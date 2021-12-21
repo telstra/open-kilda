@@ -25,22 +25,22 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAct
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.State;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.AbandonPendingCommandsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.EmitIngressRulesVerifyRequestsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.FlowValidateAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.HandleNotCompletedCommandsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.InstallIngressRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.OnFinishedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.OnFinishedWithErrorAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.OnReceivedInstallResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.OnReceivedRemoveOrRevertResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.RecalculateFlowStatusAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.RemoveOldRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.RevertNewRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.RevertPathsSwapAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.UpdateFlowPathsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.UpdateFlowStatusAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.action.ValidateIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.AbandonPendingCommandsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.EmitIngressRulesVerifyRequestsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.FlowValidateAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.HandleNotCompletedCommandsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.InstallIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.OnFinishedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.OnFinishedWithErrorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.OnReceivedInstallResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.OnReceivedRemoveOrRevertResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.RecalculateFlowStatusAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.RemoveOldRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.RevertNewRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.RevertPathsSwapAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.UpdateFlowPathsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.UpdateFlowStatusAction;
+import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.ValidateIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathSwapHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 
@@ -61,41 +61,14 @@ import java.util.concurrent.TimeUnit;
 public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, State, Event, FlowPathSwapContext,
         FlowPathSwapHubCarrier, FlowProcessingEventListener> {
 
-    public FlowPathSwapFsm(CommandContext commandContext, @NonNull FlowPathSwapHubCarrier carrier,
-                           String flowId) {
-        super(commandContext, carrier, flowId);
-    }
-
-    @Override
-    public void fireNext(FlowPathSwapContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: " + errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
-
-        fire(errorEvent);
+    public FlowPathSwapFsm(@NonNull CommandContext commandContext, @NonNull FlowPathSwapHubCarrier carrier,
+                           @NonNull String flowId) {
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, flowId);
     }
 
     @Override
     public void fireNoPathFound(String errorReason) {
 
-    }
-
-    @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
     }
 
     @Override
@@ -107,17 +80,14 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
         private final StateMachineBuilder<FlowPathSwapFsm, FlowPathSwapFsm.State, FlowPathSwapFsm.Event,
                 FlowPathSwapContext> builder;
         private final FlowPathSwapHubCarrier carrier;
-        private final FlowResourcesManager resourcesManager;
 
-
-        public Factory(FlowPathSwapHubCarrier carrier, PersistenceManager persistenceManager,
-                       FlowResourcesManager resourcesManager,
+        public Factory(@NonNull FlowPathSwapHubCarrier carrier, @NonNull PersistenceManager persistenceManager,
+                       @NonNull FlowResourcesManager resourcesManager,
                        int speakerCommandRetriesLimit) {
             this.carrier = carrier;
-            this.resourcesManager = resourcesManager;
 
             final ReportErrorAction<FlowPathSwapFsm, State, Event, FlowPathSwapContext>
-                    reportErrorAction = new ReportErrorAction<>();
+                    reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
 
             builder = StateMachineBuilderFactory.create(FlowPathSwapFsm.class, State.class, Event.class,
                     FlowPathSwapContext.class, CommandContext.class, FlowPathSwapHubCarrier.class, String.class);
@@ -236,7 +206,7 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
                     .addEntryAction(new OnFinishedAction(dashboardLogger));
         }
 
-        public FlowPathSwapFsm newInstance(CommandContext commandContext, String flowId) {
+        public FlowPathSwapFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId) {
             FlowPathSwapFsm fsm =
                     builder.newStateMachine(FlowPathSwapFsm.State.INITIALIZED, commandContext, carrier, flowId);
             MeterRegistryHolder.getRegistry().ifPresent(registry -> {

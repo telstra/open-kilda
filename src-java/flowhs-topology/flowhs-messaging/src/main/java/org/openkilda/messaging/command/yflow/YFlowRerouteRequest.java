@@ -23,7 +23,9 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 
+import java.util.Collections;
 import java.util.Set;
 
 /**
@@ -42,8 +44,13 @@ public class YFlowRerouteRequest extends CommandData {
     String reason;
     boolean ignoreBandwidth;
 
-    public YFlowRerouteRequest(String flowId, String reason) {
+    public YFlowRerouteRequest(@NonNull String flowId, String reason) {
+        this(flowId, Collections.emptySet(), reason);
+    }
+
+    public YFlowRerouteRequest(@NonNull String flowId, @NonNull Set<IslEndpoint> affectedIsl, String reason) {
         this.yFlowId = flowId;
+        this.affectedIsl = affectedIsl;
         this.reason = reason;
     }
 }

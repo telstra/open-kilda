@@ -31,8 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.UUID;
 
 @Slf4j
-public class OnReceivedResponseAction extends
-        HistoryRecordingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
+public class OnReceivedResponseAction extends HistoryRecordingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     @Override
     protected void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
         SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();

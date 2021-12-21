@@ -39,11 +39,12 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
-import org.openkilda.wfm.topology.flowhs.service.YFlowReadService;
+import org.openkilda.wfm.topology.flowhs.service.yflow.YFlowReadService;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -60,7 +61,7 @@ public class YFlowReadBolt extends AbstractBolt {
 
     private transient YFlowReadService yFlowReadService;
 
-    public YFlowReadBolt(YFlowReadConfig config, PersistenceManager persistenceManager) {
+    public YFlowReadBolt(@NonNull YFlowReadConfig config, @NonNull PersistenceManager persistenceManager) {
         super(persistenceManager, config.getLifeCycleEventComponent());
 
         this.config = config;

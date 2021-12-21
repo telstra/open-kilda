@@ -23,7 +23,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
-import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 
@@ -37,11 +37,11 @@ import java.util.stream.Collectors;
  * A base for action classes that remove or revert flow rules.
  */
 @Slf4j
-public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S, E, C, ?>, S, E, C> extends
-        FlowProcessingAction<T, S, E, C> {
+public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHistorySupportFsm<T, S, E, C, ?, ?>, S, E,
+        C> extends FlowProcessingWithHistorySupportAction<T, S, E, C> {
     protected final FlowCommandBuilderFactory commandBuilderFactory;
 
-    public BaseFlowRuleRemovalAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
+    protected BaseFlowRuleRemovalAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
         this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
@@ -112,14 +112,14 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingFsm<T, S
             RequestedFlow oldFlow, RequestedFlow newFlow, boolean server42Rtt) {
         return server42Rtt && oldFlow.getSrcPort() != newFlow.getSrcPort() // src port changed
                 && findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(
-                        oldFlow.getSrcSwitch(), oldFlow.getSrcPort()).isEmpty();
+                oldFlow.getSrcSwitch(), oldFlow.getSrcPort()).isEmpty();
     }
 
     protected boolean removeReverseSharedServer42InputRule(
             RequestedFlow oldFlow, RequestedFlow newFlow, boolean server42Rtt) {
         return server42Rtt && oldFlow.getDestPort() != newFlow.getDestPort() // dst port changed
                 && findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(
-                        oldFlow.getDestSwitch(), oldFlow.getDestPort()).isEmpty();
+                oldFlow.getDestSwitch(), oldFlow.getDestPort()).isEmpty();
     }
 
     protected boolean removeForwardSharedLldpRule(RequestedFlow oldFlow, RequestedFlow newFlow) {

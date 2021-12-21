@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.bolts;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptySet;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_CREATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_CREATE_MIRROR_POINT_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_DELETE_HUB;
@@ -24,6 +25,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_REROUTE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_UPDATE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_VALIDATION_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_CREATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_DELETE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_READ;
@@ -42,6 +44,7 @@ import org.openkilda.messaging.command.flow.FlowMirrorPointDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.flow.FlowValidationRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.command.yflow.SubFlowsReadRequest;
 import org.openkilda.messaging.command.yflow.YFlowDeleteRequest;
@@ -50,6 +53,8 @@ import org.openkilda.messaging.command.yflow.YFlowPathsReadRequest;
 import org.openkilda.messaging.command.yflow.YFlowReadRequest;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
+import org.openkilda.messaging.command.yflow.YFlowSyncRequest;
+import org.openkilda.messaging.command.yflow.YFlowValidationRequest;
 import org.openkilda.messaging.command.yflow.YFlowsDumpRequest;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.share.zk.ZkStreams;
@@ -145,6 +150,12 @@ public class RouterBolt extends AbstractBolt {
                 FlowMirrorPointDeleteRequest request = (FlowMirrorPointDeleteRequest) data;
                 emitWithContext(ROUTER_TO_FLOW_DELETE_MIRROR_POINT_HUB.name(),
                         input, new Values(key, request.getFlowId(), data));
+            } else if (data instanceof FlowValidationRequest) {
+                log.debug("Received a flow validation request with key {}. MessageId {}",
+                        key, input.getMessageId());
+                FlowValidationRequest request = (FlowValidationRequest) data;
+                emitWithContext(ROUTER_TO_FLOW_VALIDATION_HUB.name(), input,
+                        new Values(key, request.getFlowId(), data));
             } else if (data instanceof YFlowRequest) {
                 YFlowRequest request = (YFlowRequest) data;
                 log.debug("Received request {} with key {}", request, key);
@@ -184,6 +195,17 @@ public class RouterBolt extends AbstractBolt {
             } else if (data instanceof SubFlowsReadRequest) {
                 log.debug("Received a y-flow sub-flows request {} with key {}", data, key);
                 emitWithContext(ROUTER_TO_YFLOW_READ.name(), input, new Values(key, data));
+            } else if (data instanceof YFlowValidationRequest) {
+                YFlowValidationRequest request = (YFlowValidationRequest) data;
+                log.debug("Received a y-flow validation request {} with key {}", request, key);
+                //TODO: implement
+            } else if (data instanceof YFlowSyncRequest) {
+                YFlowSyncRequest request = (YFlowSyncRequest) data;
+                log.debug("Received a y-flow synchronization request {} with key {}", request, key);
+                YFlowRerouteRequest rerouteRequest = new YFlowRerouteRequest(request.getYFlowId(), emptySet(),
+                        true, "initiated via synchronization request", false);
+                emitWithContext(ROUTER_TO_YFLOW_REROUTE_HUB.name(), input,
+                        new Values(key, rerouteRequest.getYFlowId(), rerouteRequest));
             } else {
                 unhandledInput(input);
             }
@@ -201,6 +223,7 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(ROUTER_TO_FLOW_DELETE_MIRROR_POINT_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB.name(),
                 new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
+        declarer.declareStream(ROUTER_TO_FLOW_VALIDATION_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_YFLOW_CREATE_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_YFLOW_UPDATE_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_YFLOW_REROUTE_HUB.name(), STREAM_FIELDS);

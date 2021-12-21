@@ -20,6 +20,8 @@ import org.openkilda.wfm.topology.AbstractTopologyConfig;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
+import javax.validation.constraints.Min;
+
 public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     default String getKafkaFlowHsTopic() {
         return getKafkaTopics().getFlowHsTopic();
@@ -27,6 +29,10 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
 
     default String getKafkaSpeakerFlowTopic() {
         return getKafkaTopics().getSpeakerFlowHsTopic();
+    }
+
+    default String getKafkaSpeakerTopic() {
+        return getKafkaTopics().getSpeakerTopic();
     }
 
     default String getKafkaNorthboundTopic() {
@@ -161,6 +167,14 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("3")
     int getDeleteMirrorPointSpeakerCommandRetries();
 
+    @Key("flow.validation.hub.timeout.seconds")
+    @Default("30")
+    int getValidationHubTimeoutSeconds();
+
+    @Key("flow.validation.speaker.timeout.seconds")
+    @Default("10")
+    int getValidationSpeakerTimeoutSeconds();
+
     @Key("y_flow.create.speaker.command.retries")
     @Default("3")
     int getYFlowCreateSpeakerCommandRetriesLimit();
@@ -184,4 +198,13 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Key("y_flow.read.retry.delay.ms")
     @Default("100")
     int getYFlowReadRetryDelayMillis();
+
+    @Key("burst.coefficient")
+    @Default("1.05")
+    double getFlowMeterBurstCoefficient();
+
+    @Key("min.burst.size.in.kbits")
+    @Default("1024")
+    @Min(0)
+    long getFlowMeterMinBurstSizeInKbits();
 }

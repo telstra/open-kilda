@@ -16,16 +16,17 @@
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions;
 
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
-public class OnFinishedWithErrorAction extends AnonymousAction<YFlowDeleteFsm, State, Event, YFlowDeleteContext> {
+public class OnFinishedWithErrorAction extends
+        HistoryRecordingAction<YFlowDeleteFsm, State, Event, YFlowDeleteContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public OnFinishedWithErrorAction(FlowOperationsDashboardLogger dashboardLogger) {
@@ -33,7 +34,7 @@ public class OnFinishedWithErrorAction extends AnonymousAction<YFlowDeleteFsm, S
     }
 
     @Override
-    public void execute(State from, State to, Event event, YFlowDeleteContext context, YFlowDeleteFsm stateMachine) {
+    protected void perform(State from, State to, Event event, YFlowDeleteContext context, YFlowDeleteFsm stateMachine) {
         dashboardLogger.onFailedYFlowDelete(stateMachine.getYFlowId(), stateMachine.getErrorReason());
         stateMachine.saveActionToHistory("Failed to delete the y-flow", stateMachine.getErrorReason());
     }

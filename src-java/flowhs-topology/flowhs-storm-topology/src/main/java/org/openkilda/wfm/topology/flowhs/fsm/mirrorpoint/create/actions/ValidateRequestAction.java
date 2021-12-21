@@ -29,7 +29,7 @@ import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.Event;
@@ -44,8 +44,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Optional;
 
 @Slf4j
-public class ValidateRequestAction
-        extends NbTrackableAction<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> {
+public class ValidateRequestAction extends
+        NbTrackableWithHistorySupportAction<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> {
     private final FlowValidator flowValidator;
     private final FlowOperationsDashboardLogger dashboardLogger;
     private final FlowMirrorPathRepository flowMirrorPathRepository;

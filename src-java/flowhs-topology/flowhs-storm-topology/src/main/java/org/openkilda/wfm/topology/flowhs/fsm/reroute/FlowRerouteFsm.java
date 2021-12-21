@@ -116,9 +116,10 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
     private RerouteError rerouteError;
 
-    public FlowRerouteFsm(CommandContext commandContext, @NonNull FlowRerouteHubCarrier carrier, String flowId,
-                          boolean allowNorthboundResponse, Collection<FlowRerouteEventListener> eventListeners) {
-        super(commandContext, carrier, flowId, allowNorthboundResponse, eventListeners);
+    public FlowRerouteFsm(@NonNull CommandContext commandContext, @NonNull FlowRerouteHubCarrier carrier,
+                          @NonNull String flowId,
+                          @NonNull Collection<FlowRerouteEventListener> eventListeners) {
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, flowId, eventListeners);
     }
 
     @Override
@@ -138,26 +139,6 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     }
 
     @Override
-    public void fireNext(FlowRerouteContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: " + errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
-
-        fire(errorEvent);
-    }
-
-    @Override
     public void fireNoPathFound(String errorReason) {
         fireError(Event.NO_PATH_FOUND, errorReason);
     }
@@ -173,14 +154,6 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     }
 
     @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
-        // other errors reported inside actions and can be ignored here
-    }
-
-    @Override
     protected String getCrudActionName() {
         return "reroute";
     }
@@ -189,17 +162,18 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
         private final StateMachineBuilder<FlowRerouteFsm, State, Event, FlowRerouteContext> builder;
         private final FlowRerouteHubCarrier carrier;
 
-        public Factory(FlowRerouteHubCarrier carrier, Config config, PersistenceManager persistenceManager,
-                       PathComputer pathComputer, FlowResourcesManager resourcesManager) {
+        public Factory(@NonNull FlowRerouteHubCarrier carrier, @NonNull Config config,
+                       @NonNull PersistenceManager persistenceManager,
+                       @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager resourcesManager) {
             this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(FlowRerouteFsm.class, State.class, Event.class,
                     FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class, String.class,
-                    boolean.class, Collection.class);
+                    Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
             final ReportErrorAction<FlowRerouteFsm, State, Event, FlowRerouteContext>
-                    reportErrorAction = new ReportErrorAction<>();
+                    reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
 
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
@@ -450,10 +424,10 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger, carrier));
         }
 
-        public FlowRerouteFsm newInstance(String flowId, CommandContext commandContext, boolean allowNorthboundResponse,
-                                          Collection<FlowRerouteEventListener> eventListeners) {
+        public FlowRerouteFsm newInstance(@NonNull String flowId, @NonNull CommandContext commandContext,
+                                          @NonNull Collection<FlowRerouteEventListener> eventListeners) {
             FlowRerouteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
-                    allowNorthboundResponse, eventListeners);
+                    eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("FlowRerouteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));

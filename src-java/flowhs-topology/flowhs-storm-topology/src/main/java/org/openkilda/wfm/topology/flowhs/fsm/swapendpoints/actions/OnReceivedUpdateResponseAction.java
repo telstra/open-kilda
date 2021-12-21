@@ -17,20 +17,20 @@ package org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.actions;
 
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.info.flow.FlowResponse;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsContext;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
 public class OnReceivedUpdateResponseAction
-        extends AnonymousAction<FlowSwapEndpointsFsm, State, Event, FlowSwapEndpointsContext> {
+        extends FlowProcessingAction<FlowSwapEndpointsFsm, State, Event, FlowSwapEndpointsContext> {
 
     @Override
-    public void execute(State from, State to, Event event, FlowSwapEndpointsContext context,
+    protected void perform(State from, State to, Event event, FlowSwapEndpointsContext context,
                         FlowSwapEndpointsFsm stateMachine) {
         switch (event) {
             case ERROR_RECEIVED:

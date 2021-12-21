@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class RevertMirrorPointsSettingAction
-        extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+        extends FlowProcessingWithHistorySupportAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     public RevertMirrorPointsSettingAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }

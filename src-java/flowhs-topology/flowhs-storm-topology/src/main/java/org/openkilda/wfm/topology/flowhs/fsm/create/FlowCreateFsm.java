@@ -28,33 +28,33 @@ import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
-import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithEventSupportFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.CompleteFlowCreateAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.EmitIngressRulesVerifyRequestsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.EmitNonIngressRulesVerifyRequestsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.FlowValidateAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotCreatedFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotDeallocatedResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallIngressRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallNonIngressRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.NotifyFlowStatsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnFinishedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnFinishedWithErrorAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedDeleteResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedInstallResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesAllocationAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesDeallocationAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.RollbackInstalledRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateIngressRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateNonIngressRuleAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.CompleteFlowCreateAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.EmitIngressRulesVerifyRequestsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.EmitNonIngressRulesVerifyRequestsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.FlowValidateAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.HandleNotCreatedFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.HandleNotDeallocatedResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.InstallIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.InstallNonIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.NotifyFlowStatsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.OnFinishedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.OnFinishedWithErrorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.OnReceivedDeleteResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.OnReceivedInstallResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.ResourcesAllocationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.ResourcesDeallocationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.RollbackInstalledRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.ValidateIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.ValidateNonIngressRuleAction;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateEventListener;
-import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 
 import io.micrometer.core.instrument.LongTaskTimer;
@@ -82,8 +82,8 @@ import java.util.concurrent.TimeUnit;
 @Getter
 @Setter
 @Slf4j
-public final class FlowCreateFsm extends FlowProcessingWithEventSupportFsm<FlowCreateFsm, State, Event,
-        FlowCreateContext, FlowCreateHubCarrier, FlowCreateEventListener> {
+public final class FlowCreateFsm extends FlowProcessingWithHistorySupportFsm<FlowCreateFsm, State, Event,
+        FlowCreateContext, FlowGenericCarrier, FlowCreateEventListener> {
 
     private final String flowId;
 
@@ -110,12 +110,10 @@ public final class FlowCreateFsm extends FlowProcessingWithEventSupportFsm<FlowC
     private int remainRetries;
     private boolean timedOut;
 
-    private String errorReason;
-
-    private FlowCreateFsm(CommandContext commandContext, @NonNull FlowCreateHubCarrier carrier, String flowId,
-                          boolean allowNorthboundResponse,
+    private FlowCreateFsm(@NonNull CommandContext commandContext, @NonNull FlowGenericCarrier carrier,
+                          @NonNull String flowId,
                           @NonNull Collection<FlowCreateEventListener> eventListeners, @NonNull Config config) {
-        super(commandContext, carrier, allowNorthboundResponse, eventListeners);
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, eventListeners);
         this.flowId = flowId;
         this.remainRetries = config.getFlowCreationRetriesLimit();
     }
@@ -161,26 +159,6 @@ public final class FlowCreateFsm extends FlowProcessingWithEventSupportFsm<FlowC
         fireError(errorMessage);
     }
 
-    @Override
-    public void fireNext(FlowCreateContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: {}", errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
-
-        fire(errorEvent);
-    }
-
     private void resetState() {
         ingressCommands.clear();
         nonIngressCommands.clear();
@@ -197,31 +175,24 @@ public final class FlowCreateFsm extends FlowProcessingWithEventSupportFsm<FlowC
     }
 
     @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
-        // other errors reported inside actions and can be ignored here
-    }
-
-    @Override
     protected String getCrudActionName() {
         return "create";
     }
 
     public static class Factory {
         private final StateMachineBuilder<FlowCreateFsm, State, Event, FlowCreateContext> builder;
-        private final FlowCreateHubCarrier carrier;
+        private final FlowGenericCarrier carrier;
         private final Config config;
 
-        public Factory(FlowCreateHubCarrier carrier, PersistenceManager persistenceManager,
-                       FlowResourcesManager resourcesManager, PathComputer pathComputer, Config config) {
+        public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+                       @NonNull FlowResourcesManager resourcesManager, @NonNull PathComputer pathComputer,
+                       @NonNull Config config) {
             this.carrier = carrier;
             this.config = config;
 
             this.builder = StateMachineBuilderFactory.create(FlowCreateFsm.class, State.class, Event.class,
-                    FlowCreateContext.class, CommandContext.class, FlowCreateHubCarrier.class, String.class,
-                    boolean.class, Collection.class, Config.class);
+                    FlowCreateContext.class, CommandContext.class, FlowGenericCarrier.class, String.class,
+                    Collection.class, Config.class);
 
             SpeakerCommandFsm.Builder commandExecutorFsmBuilder =
                     SpeakerCommandFsm.getBuilder(carrier, config.getSpeakerCommandRetriesLimit());
@@ -233,7 +204,7 @@ public final class FlowCreateFsm extends FlowProcessingWithEventSupportFsm<FlowC
             final RollbackInstalledRulesAction rollbackInstalledRules = new RollbackInstalledRulesAction(
                     commandExecutorFsmBuilder, persistenceManager);
             final ReportErrorAction<FlowCreateFsm, State, Event, FlowCreateContext>
-                    reportErrorAction = new ReportErrorAction<>();
+                    reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
 
             // validate the flow
             builder.transition()
@@ -438,10 +409,10 @@ public final class FlowCreateFsm extends FlowProcessingWithEventSupportFsm<FlowC
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public FlowCreateFsm newInstance(CommandContext commandContext, String flowId, boolean allowNorthboundResponse,
+        public FlowCreateFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId,
                                          @NonNull Collection<FlowCreateEventListener> eventListeners) {
             FlowCreateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
-                    allowNorthboundResponse, eventListeners, config);
+                    eventListeners, config);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("FlowCreateFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
@@ -450,10 +421,11 @@ public final class FlowCreateFsm extends FlowProcessingWithEventSupportFsm<FlowC
                 fsm.addTransitionCompleteListener(event -> {
                     switch (event.getTargetState()) {
                         case FINISHED:
-                            fsm.notifyEventListenersOnComplete();
+                            fsm.notifyEventListeners(listener -> listener.onCompleted(flowId));
                             break;
                         case FINISHED_WITH_ERROR:
-                            fsm.notifyEventListenersOnError(ErrorType.INTERNAL_ERROR, fsm.getErrorReason());
+                            fsm.notifyEventListeners(listener ->
+                                    listener.onFailed(flowId, fsm.getErrorReason(), ErrorType.INTERNAL_ERROR));
                             break;
                         default:
                             // ignore

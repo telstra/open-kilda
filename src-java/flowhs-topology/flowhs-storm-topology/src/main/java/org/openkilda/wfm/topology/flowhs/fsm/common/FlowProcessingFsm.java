@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,15 +15,68 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common;
 
-import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.share.utils.AbstractBaseFsm;
+import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;
 
+import lombok.Getter;
+import lombok.NonNull;
 import org.squirrelframework.foundation.fsm.StateMachine;
 
-public abstract class FlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, E, C, R extends FlowGenericCarrier>
-        extends WithHistorySupportFsm<T, S, E, C, R> {
+import java.util.Collection;
+import java.util.function.Consumer;
 
-    public FlowProcessingFsm(CommandContext commandContext) {
-        super(commandContext);
+public abstract class FlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, E, C, L extends ProcessingEventListener>
+        extends AbstractBaseFsm<T, S, E, C> {
+    private final E nextEvent;
+    private final E errorEvent;
+    @Getter
+    private final Collection<L> eventListeners;
+    @Getter
+    private String errorReason;
+
+    protected FlowProcessingFsm(@NonNull E nextEvent, @NonNull E errorEvent, @NonNull Collection<L> eventListeners) {
+        this.nextEvent = nextEvent;
+        this.errorEvent = errorEvent;
+        this.eventListeners = eventListeners;
+    }
+
+    public void notifyEventListeners(@NonNull Consumer<L> eventProducer) {
+        eventListeners.forEach(eventProducer);
+    }
+
+    public abstract String getFlowId();
+
+    public void fireNext() {
+        fireNext(null);
+    }
+
+    public void fireNext(C context) {
+        fire(nextEvent, context);
+    }
+
+    public void fireError() {
+        fireError((C) null);
+    }
+
+    public void fireError(C context) {
+        fire(errorEvent, context);
+    }
+
+    public void fireError(String errorReason) {
+        setErrorReason(errorReason);
+        fireError();
+    }
+
+    public void fireError(@NonNull E eventToFire, String errorReason) {
+        setErrorReason(errorReason);
+        fire(eventToFire);
+    }
+
+    public void setErrorReason(String errorReason) {
+        if (this.errorReason != null) {
+            log.error("Subsequent error fired: {}", errorReason);
+        } else {
+            this.errorReason = errorReason;
+        }
     }
 }

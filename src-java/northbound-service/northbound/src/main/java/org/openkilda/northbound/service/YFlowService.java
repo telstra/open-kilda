@@ -22,7 +22,9 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -34,17 +36,21 @@ public interface YFlowService {
 
     CompletableFuture<YFlowDump> dumpYFlows();
 
-    CompletableFuture<YFlow> getYFlow(String flowId);
+    CompletableFuture<YFlow> getYFlow(String yFlowId);
 
-    CompletableFuture<YFlowPaths> getYFlowPaths(String flowId);
+    CompletableFuture<YFlowPaths> getYFlowPaths(String yFlowId);
 
-    CompletableFuture<YFlow> updateYFlow(String flowId, YFlowUpdatePayload updatePayload);
+    CompletableFuture<YFlow> updateYFlow(String yFlowId, YFlowUpdatePayload updatePayload);
 
-    CompletableFuture<YFlow> patchYFlow(String flowId, YFlowPatchPayload patchPayload);
+    CompletableFuture<YFlow> patchYFlow(String yFlowId, YFlowPatchPayload patchPayload);
 
-    CompletableFuture<YFlow> deleteYFlow(String flowId);
+    CompletableFuture<YFlow> deleteYFlow(String yFlowId);
 
-    CompletableFuture<SubFlowsDump> getSubFlows(String flowId);
+    CompletableFuture<SubFlowsDump> getSubFlows(String yFlowId);
 
-    CompletableFuture<YFlowRerouteResult> rerouteYFlow(String flowId);
+    CompletableFuture<YFlowRerouteResult> rerouteYFlow(String yFlowId);
+
+    CompletableFuture<YFlowValidationResult> validateYFlow(String yFlowId);
+
+    CompletableFuture<YFlowSyncResult> synchronizeYFlow(String yFlowId);
 }
