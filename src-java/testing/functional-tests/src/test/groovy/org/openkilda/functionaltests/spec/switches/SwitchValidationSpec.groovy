@@ -103,8 +103,8 @@ class SwitchValidationSpec extends HealthCheckSpecification {
             dstSwitchProperMeters*.burstSize[0])
 
         and: "The rest fields in the 'meter' section are empty"
-        srcSwitchValidateInfo.verifyMeterSectionsAreEmpty(srcSwitch.dpId, ["missing", "misconfigured", "excess"])
-        dstSwitchValidateInfo.verifyMeterSectionsAreEmpty(dstSwitch.dpId, ["missing", "misconfigured", "excess"])
+        srcSwitchValidateInfo.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
+        dstSwitchValidateInfo.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
 
         and: "Created rules are stored in the 'proper' section"
         def createdCookies = srcSwitchCreatedCookies + dstSwitchCreatedCookies
@@ -113,8 +113,8 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         }
 
         and: "The rest fields in the 'rule' section are empty"
-        srcSwitchValidateInfo.verifyRuleSectionsAreEmpty(srcSwitch.dpId, ["missing", "excess"])
-        dstSwitchValidateInfo.verifyRuleSectionsAreEmpty(dstSwitch.dpId, ["missing", "excess"])
+        srcSwitchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
+        dstSwitchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
 
         and: "Able to perform switch sync which does nothing"
         verifyAll(northbound.synchronizeSwitch(srcSwitch.dpId, true)) {
@@ -131,8 +131,8 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             def srcSwitchValidateInfoAfterDelete = northbound.validateSwitch(srcSwitch.dpId)
             def dstSwitchValidateInfoAfterDelete = northbound.validateSwitch(dstSwitch.dpId)
-            srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(srcSwitch.dpId)
-            dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(dstSwitch.dpId)
+            srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
+            dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
         }
         def testIsCompleted = true
 
@@ -142,7 +142,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
             [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true)}
             [srcSwitch, dstSwitch].each { sw ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
-                    northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(sw.dpId)
+                    northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty()
                 }
             }
         }
@@ -167,11 +167,11 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         then: "The intermediate switch does not contain any information about meter"
         def switchToValidate = flowPath[1..-2].find { !it.switchId.description.contains("OF_12") }
         def intermediateSwitchValidateInfo = northbound.validateSwitch(switchToValidate.switchId)
-        intermediateSwitchValidateInfo.verifyMeterSectionsAreEmpty(switchToValidate.switchId)
+        intermediateSwitchValidateInfo.verifyMeterSectionsAreEmpty()
 
         and: "Rules are stored in the 'proper' section on the transit switch"
         intermediateSwitchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
-        intermediateSwitchValidateInfo.verifyRuleSectionsAreEmpty(switchToValidate.switchId, ["missing", "excess"])
+        intermediateSwitchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
 
         and: "Able to perform switch sync which does nothing"
         verifyAll(northbound.synchronizeSwitch(switchToValidate.switchId, true)) {
@@ -188,9 +188,9 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         def involvedSwitches = pathHelper.getInvolvedSwitches(flowPath)
         involvedSwitches.each { sw ->
             def switchValidateInfo = northbound.validateSwitch(sw.dpId)
-            switchValidateInfo.verifyRuleSectionsAreEmpty(sw.dpId)
+            switchValidateInfo.verifyRuleSectionsAreEmpty()
             if (sw.description.contains("OF_13")) {
-                switchValidateInfo.verifyMeterSectionsAreEmpty(sw.dpId)
+                switchValidateInfo.verifyMeterSectionsAreEmpty()
             }
         }
         def testIsCompleted = true
@@ -202,9 +202,9 @@ class SwitchValidationSpec extends HealthCheckSpecification {
             withPool {
                 involvedSwitches.eachParallel { sw ->
                     def switchValidateInfo = northbound.validateSwitch(sw.dpId)
-                    switchValidateInfo.verifyRuleSectionsAreEmpty(sw.dpId)
+                    switchValidateInfo.verifyRuleSectionsAreEmpty()
                     if (sw.description.contains("OF_13")) {
-                        switchValidateInfo.verifyMeterSectionsAreEmpty(sw.dpId)
+                        switchValidateInfo.verifyMeterSectionsAreEmpty()
                     }
                 }
             }
@@ -265,14 +265,14 @@ misconfigured"
         }
 
         and: "The rest fields of 'meter' section are empty"
-        srcSwitchValidateInfo.verifyMeterSectionsAreEmpty(srcSwitch.dpId, ["proper", "missing", "excess"])
-        dstSwitchValidateInfo.verifyMeterSectionsAreEmpty(dstSwitch.dpId, ["proper", "missing", "excess"])
+        srcSwitchValidateInfo.verifyMeterSectionsAreEmpty(["proper", "missing", "excess"])
+        dstSwitchValidateInfo.verifyMeterSectionsAreEmpty(["proper", "missing", "excess"])
 
         and: "Created rules are still stored in the 'proper' section"
         def createdCookies = srcSwitchCreatedCookies + dstSwitchCreatedCookies
         [[srcSwitch.dpId, srcSwitchValidateInfo], [dstSwitch.dpId, dstSwitchValidateInfo]].each { swId, info ->
             assert info.rules.proper.containsAll(createdCookies), swId
-            info.verifyRuleSectionsAreEmpty(swId, ["missing", "excess"])
+            info.verifyRuleSectionsAreEmpty(["missing", "excess"])
         }
 
         and: "Flow validation shows discrepancies"
@@ -318,8 +318,8 @@ misconfigured"
 
         srcSwitchValidateInfoRestored.meters.proper*.meterId.containsAll(srcSwitchCreatedMeterIds)
         dstSwitchValidateInfoRestored.meters.proper*.meterId.containsAll(dstSwitchCreatedMeterIds)
-        srcSwitchValidateInfoRestored.verifyMeterSectionsAreEmpty(srcSwitch.dpId, ["missing", "misconfigured", "excess"])
-        dstSwitchValidateInfoRestored.verifyMeterSectionsAreEmpty(dstSwitch.dpId, ["missing", "misconfigured", "excess"])
+        srcSwitchValidateInfoRestored.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
+        dstSwitchValidateInfoRestored.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
 
         and: "Flow validation shows no discrepancies"
         northbound.validateFlow(flow.flowId).each { direction ->
@@ -334,8 +334,8 @@ misconfigured"
         Wrappers.wait(WAIT_OFFSET) {
             def srcSwitchValidateInfoAfterDelete = northbound.validateSwitch(srcSwitch.dpId)
             def dstSwitchValidateInfoAfterDelete = northbound.validateSwitch(dstSwitch.dpId)
-            srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(srcSwitch.dpId)
-            dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(dstSwitch.dpId)
+            srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
+            dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
         }
     }
 
@@ -373,8 +373,8 @@ misconfigured"
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
                 switchHelper.verifyBurstSizeIsCorrect(srcSwitch, srcSwitchBurstSize, it.burstSize)
             }
-            it.verifyMeterSectionsAreEmpty(srcSwitch.dpId, ["proper", "misconfigured", "excess"])
-            it.verifyRuleSectionsAreEmpty(srcSwitch.dpId, ["excess"])
+            it.verifyMeterSectionsAreEmpty(["proper", "misconfigured", "excess"])
+            it.verifyRuleSectionsAreEmpty(["excess"])
         }
 
         and: "Meters info/rules are NOT moved into the 'missing' section on the dstSwitch"
@@ -393,8 +393,8 @@ misconfigured"
                 assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
                 switchHelper.verifyBurstSizeIsCorrect(dstSwitch, dstSwitchBurstSize, it.burstSize)
             }
-            it.verifyMeterSectionsAreEmpty(dstSwitch.dpId, ["missing", "misconfigured", "excess"])
-            it.verifyRuleSectionsAreEmpty(dstSwitch.dpId, ["missing", "excess"])
+            it.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
+            it.verifyRuleSectionsAreEmpty(["missing", "excess"])
         }
 
         when: "Synchronize switch with missing rule and meter"
@@ -405,8 +405,8 @@ misconfigured"
 
         then: "Repeated validation shows no missing entities"
         with(northbound.validateSwitch(srcSwitch.dpId)) {
-            it.verifyMeterSectionsAreEmpty(srcSwitch.dpId, ["missing", "misconfigured", "excess"])
-            it.verifyRuleSectionsAreEmpty(srcSwitch.dpId, ["missing", "excess"])
+            it.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
+            it.verifyRuleSectionsAreEmpty(["missing", "excess"])
         }
 
         when: "Delete the flow"
@@ -416,8 +416,8 @@ misconfigured"
         Wrappers.wait(WAIT_OFFSET) {
             def srcSwitchValidateInfoAfterDelete = northbound.validateSwitch(srcSwitch.dpId)
             def dstSwitchValidateInfoAfterDelete = northbound.validateSwitch(dstSwitch.dpId)
-            srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(srcSwitch.dpId)
-            dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(dstSwitch.dpId)
+            srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
+            dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
         }
         def testIsCompleted = true
 
@@ -427,7 +427,7 @@ misconfigured"
             [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true)}
             [srcSwitch, dstSwitch].each { sw ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
-                    northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(sw.dpId)
+                    northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty()
                 }
             }
         }
@@ -459,8 +459,8 @@ misconfigured"
                 def cookie = new Cookie(it)
                 !cookie.serviceFlag || cookie.type == CookieType.SHARED_OF_FLOW
             }.sort() == untouchedCookies
-            it.verifyMeterSectionsAreEmpty(srcSwitch.dpId)
-            it.verifyRuleSectionsAreEmpty(srcSwitch.dpId, ["excess"])
+            it.verifyMeterSectionsAreEmpty()
+            it.verifyRuleSectionsAreEmpty(["excess"])
         }
 
         when: "Synchronize switch with missing unmetered rule"
@@ -470,8 +470,8 @@ misconfigured"
 
         then: "Repeated validation shows no missing entities"
         with(northbound.validateSwitch(srcSwitch.dpId)) {
-            it.verifyMeterSectionsAreEmpty(srcSwitch.dpId)
-            it.verifyRuleSectionsAreEmpty(srcSwitch.dpId, ["missing", "excess"])
+            it.verifyMeterSectionsAreEmpty()
+            it.verifyRuleSectionsAreEmpty(["missing", "excess"])
             it.rules.proper.findAll { !new Cookie(it).serviceFlag }.sort() == (untouchedCookies + ingressCookie).sort()
         }
 
@@ -482,8 +482,8 @@ misconfigured"
         Wrappers.wait(WAIT_OFFSET) {
             def srcSwitchValidateInfoAfterDelete = northbound.validateSwitch(srcSwitch.dpId)
             def dstSwitchValidateInfoAfterDelete = northbound.validateSwitch(dstSwitch.dpId)
-            srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(srcSwitch.dpId)
-            dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(dstSwitch.dpId)
+            srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
+            dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
         }
         def testIsCompleted = true
 
@@ -492,7 +492,7 @@ misconfigured"
         if (srcSwitch && dstSwitch && !testIsCompleted) {
             [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true)}
             [srcSwitch, dstSwitch].each { sw ->
-                northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(sw.dpId)
+                northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty()
             }
         }
     }
@@ -535,7 +535,7 @@ misconfigured"
         then: "Repeated validation shows no discrepancies"
         verifyAll(northbound.validateSwitch(transitSw.dpId)) {
             it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
-            it.verifyRuleSectionsAreEmpty(transitSw.dpId, ["missing", "excess"])
+            it.verifyRuleSectionsAreEmpty(["missing", "excess"])
         }
 
         when: "Delete the flow"
@@ -545,9 +545,9 @@ misconfigured"
         Wrappers.wait(WAIT_OFFSET) {
             involvedSwitches.each { sw ->
                 def switchValidateInfo = northbound.validateSwitch(sw.dpId)
-                switchValidateInfo.verifyRuleSectionsAreEmpty(sw.dpId)
+                switchValidateInfo.verifyRuleSectionsAreEmpty()
                 if (!sw.description.contains("OF_12")) {
-                    switchValidateInfo.verifyMeterSectionsAreEmpty(sw.dpId)
+                    switchValidateInfo.verifyMeterSectionsAreEmpty()
                 }
             }
         }
@@ -560,9 +560,9 @@ misconfigured"
             withPool {
                 involvedSwitches.eachParallel { sw ->
                     def switchValidateInfo = northbound.validateSwitch(sw.dpId)
-                    switchValidateInfo.verifyRuleSectionsAreEmpty(sw.dpId)
+                    switchValidateInfo.verifyRuleSectionsAreEmpty()
                     if (sw.description.contains("OF_13")) {
-                        switchValidateInfo.verifyMeterSectionsAreEmpty(sw.dpId)
+                        switchValidateInfo.verifyMeterSectionsAreEmpty()
                     }
                 }
             }
@@ -601,14 +601,14 @@ misconfigured"
         and: "Rule info is NOT moved into the 'missing' section on the dstSwitch and transit switches"
         def dstSwitchValidateInfo = northbound.validateSwitch(switchPair.dst.dpId)
         dstSwitchValidateInfo.rules.proper.sort() == rulesOnDst*.cookie.sort()
-        dstSwitchValidateInfo.verifyRuleSectionsAreEmpty(switchPair.dst.dpId, ["missing", "excess"])
+        dstSwitchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
         def involvedSwitchIds = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
         def transitSwitches = involvedSwitchIds[1..-2].findAll { !it.description.contains("OF_12") }
 
         transitSwitches.each { switchId ->
             def transitSwitchValidateInfo = northbound.validateSwitch(switchId)
             assert transitSwitchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
-            transitSwitchValidateInfo.verifyRuleSectionsAreEmpty(switchId, ["missing", "excess"])
+            transitSwitchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
         }
 
         when: "Synchronize the switch"
@@ -619,7 +619,7 @@ misconfigured"
         then: "Repeated validation shows no discrepancies"
         verifyAll(northbound.validateSwitch(switchPair.dst.dpId)) {
             it.rules.proper.sort() == rulesOnDst*.cookie.sort()
-            it.verifyRuleSectionsAreEmpty(switchPair.dst.dpId, ["missing", "excess"])
+            it.verifyRuleSectionsAreEmpty(["missing", "excess"])
         }
 
         when: "Delete the flow"
@@ -629,8 +629,8 @@ misconfigured"
         Wrappers.wait(WAIT_OFFSET) {
             involvedSwitchIds.findAll { !it.description.contains("OF_12") }.each { switchId ->
                 def switchValidateInfo = northbound.validateSwitch(switchId)
-                switchValidateInfo.verifyRuleSectionsAreEmpty(switchId)
-                switchValidateInfo.verifyMeterSectionsAreEmpty(switchId)
+                switchValidateInfo.verifyRuleSectionsAreEmpty()
+                switchValidateInfo.verifyMeterSectionsAreEmpty()
             }
         }
         def testIsCompleted = true
@@ -642,9 +642,9 @@ misconfigured"
             withPool {
                 involvedSwitchIds.eachParallel { swId ->
                     def switchValidateInfo = northbound.validateSwitch(swId)
-                    switchValidateInfo.verifyRuleSectionsAreEmpty(swId)
+                    switchValidateInfo.verifyRuleSectionsAreEmpty()
                     if (swId.description.contains("OF_13")) {
-                        switchValidateInfo.verifyMeterSectionsAreEmpty(swId)
+                        switchValidateInfo.verifyMeterSectionsAreEmpty()
                     }
                 }
             }
@@ -706,7 +706,7 @@ misconfigured"
                 } else {
                     assert involvedSwitchValidateInfo.rules.proper.sort() == createdCookiesTransitSwitch.sort()
                 }
-                involvedSwitchValidateInfo.verifyRuleSectionsAreEmpty(switchId, ["missing"])
+                involvedSwitchValidateInfo.verifyRuleSectionsAreEmpty(["missing"])
 
                 assert involvedSwitchValidateInfo.rules.excess.size() == 1
                 assert involvedSwitchValidateInfo.rules.excess == [1L]
@@ -753,8 +753,8 @@ misconfigured"
         Wrappers.wait(WAIT_OFFSET) {
             involvedSwitches.findAll { !it.description.contains("OF_12") }.each { switchId ->
                 def switchValidateInfo = northbound.validateSwitch(switchId)
-                switchValidateInfo.verifyRuleSectionsAreEmpty(switchId)
-                switchValidateInfo.verifyMeterSectionsAreEmpty(switchId)
+                switchValidateInfo.verifyRuleSectionsAreEmpty()
+                switchValidateInfo.verifyMeterSectionsAreEmpty()
             }
         }
 
@@ -936,7 +936,7 @@ misconfigured"
 
         then: "Switch validation no longer shows missing rules"
         verifyAll(northbound.validateSwitch(swPair.src.dpId)) {
-            it.verifyRuleSectionsAreEmpty(swPair.src.dpId, ["missing", "excess"])
+            it.verifyRuleSectionsAreEmpty(["missing", "excess"])
             it.rules.proper.sort() == rulesPerSwitch[swPair.src.dpId]
         }
 
@@ -994,8 +994,8 @@ misconfigured"
 
         then: "Switch validation is empty"
         verifyAll(northbound.validateSwitch(flow.destination.datapath)) {
-            it.verifyRuleSectionsAreEmpty(flow.destination.datapath)
-            it.verifyMeterSectionsAreEmpty(flow.destination.datapath)
+            it.verifyRuleSectionsAreEmpty()
+            it.verifyMeterSectionsAreEmpty()
         }
 
         cleanup:

@@ -91,8 +91,12 @@ final class ErrorMessageBuilder {
         return this;
     }
 
+    ErrorData buildData() {
+        return new ErrorData(errorType, message, description);
+    }
+
     void sendVia(IKafkaProducerService producerService) {
-        ErrorData errorData = new ErrorData(errorType, message, description);
+        ErrorData errorData = buildData();
         ErrorMessage error = new ErrorMessage(errorData, System.currentTimeMillis(), correlationId);
         if (key == null) {
             key = correlationId;

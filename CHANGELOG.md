@@ -1,5 +1,88 @@
 # Changelog
 
+## v1.110.0 (21/12/2021)
+
+### Features:
+-  [#4614](https://github.com/telstra/open-kilda/pull/4614) Introduce YFlow validation and sync in NB API
+-  [#4619](https://github.com/telstra/open-kilda/pull/4619) Add isl service rules rule manager implementation
+
+### Bug Fixes:
+-  [#4613](https://github.com/telstra/open-kilda/pull/4613) Fix improper handling of LifecycleEvents in YFlow services
+-  [#4622](https://github.com/telstra/open-kilda/pull/4622) Fix y-flow update and reroute issues
+-  [#4625](https://github.com/telstra/open-kilda/pull/4625) Server42 Up dpdk to 19.11.10 (Issue: [#4577](https://github.com/telstra/open-kilda/issues/4577))
+
+### Improvements:
+-  [#4615](https://github.com/telstra/open-kilda/pull/4615) Refactor Flow validation, move it to FlowHS topology (Issue: [#4617](https://github.com/telstra/open-kilda/issues/4617))
+-  [#4617](https://github.com/telstra/open-kilda/pull/4617) Cleanup FlowHS topology - reorganize base FSMs & services, enforce nonnull types in argument validation. (Issue: [#4614](https://github.com/telstra/open-kilda/issues/4614))
+
+### Other changes:
+-  [#4623](https://github.com/telstra/open-kilda/pull/4623) Update restlet repository reference to the actual one with valid certificate
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.109.1...v1.110.0).
+
+### Affected Components:
+flow-hs, server42
+
+---
+
+## v1.109.1 (14/12/2021)
+
+### Features:
+-  [#4611](https://github.com/telstra/open-kilda/pull/4611) Rule Manager: Rules post processing
+-  [#4612](https://github.com/telstra/open-kilda/pull/4612) Add server42 service rules rule manager implementation
+
+
+### Improvements:
+-  [#4608](https://github.com/telstra/open-kilda/pull/4608) [test] fix timeUnstable field in featureToggleV2Spec [**tests**]
+-  [#4609](https://github.com/telstra/open-kilda/pull/4609) adjust test for #4607 (Issue: [#4607](https://github.com/telstra/open-kilda/issues/4607)) [**tests**]
+-  [#4618](https://github.com/telstra/open-kilda/pull/4618) Use spock 2.1 release instead of snapshot [**tests**]
+-  [#4573](https://github.com/telstra/open-kilda/pull/4573) Make all tests do automatic switch sync in cleanup on validation failures [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.109.0...v1.109.1).
+
+---
+
+## v1.109.0.1 (21/12/2021)
+### Improvements:
+-  [#4626](https://github.com/telstra/open-kilda/pull/4626) Upgrade log4j dependency version to mitigate log4shell 
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.109.0...v1.109.0.1).
+
+### Affected Components:
+all
+
+----
+
+## v1.109.0 (08/12/2021)
+
+### Features:
+-  [#4549](https://github.com/telstra/open-kilda/pull/4549) Add affinity groups to y-flow feature (Issue: [#4526](https://github.com/telstra/open-kilda/issues/4526))
+-  [#4526](https://github.com/telstra/open-kilda/pull/4526) Implement YFlow update feature (Issue: [#4542](https://github.com/telstra/open-kilda/issues/4542))
+-  [#4591](https://github.com/telstra/open-kilda/pull/4591) Implement YFlow reroute feature (Issue: [#4566](https://github.com/telstra/open-kilda/issues/4566))
+-  [#4528](https://github.com/telstra/open-kilda/pull/4528) Implement YFlow get, dump, sub-flow & paths features
+-  [#4560](https://github.com/telstra/open-kilda/pull/4560) Feature/rule manager persistence adapter
+-  [#4566](https://github.com/telstra/open-kilda/pull/4566) Add y-flow reroute events to Reroute topology. (Issue: [#4549](https://github.com/telstra/open-kilda/issues/4549)) [**storm-topologies**]
+-  [#4534](https://github.com/telstra/open-kilda/pull/4534) Implement YFlow delete feature
+-  [#4603](https://github.com/telstra/open-kilda/pull/4603) Rule Manager: Flow mirror
+-  [#4542](https://github.com/telstra/open-kilda/pull/4542) Adapt existing Flow API to support YFlow sub-flows (Issue: [#4534](https://github.com/telstra/open-kilda/issues/4534))
+
+
+### Improvements:
+-  [#4610](https://github.com/telstra/open-kilda/pull/4610) Introduce joint rule generator for y flows
+-  [#4483](https://github.com/telstra/open-kilda/pull/4483) Add rule manager design details [**docs**]
+-  [#4350](https://github.com/telstra/open-kilda/pull/4350) Remove unused OFExxxState classes (Issue: [#238](https://github.com/telstra/open-kilda/issues/238))
+-  [#4571](https://github.com/telstra/open-kilda/pull/4571) PoC for shared bandwidth group solution
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.108.0...v1.109.0).
+
+### Affected Components:
+reroute, flow-hs
+
+----
+
 ## v1.108.0 (29/11/2021)
 
 ### Features:

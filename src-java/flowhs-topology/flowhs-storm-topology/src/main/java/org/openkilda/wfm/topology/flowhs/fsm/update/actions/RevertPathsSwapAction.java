@@ -21,7 +21,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
@@ -30,7 +30,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class RevertPathsSwapAction extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+public class RevertPathsSwapAction extends
+        FlowProcessingWithHistorySupportAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     public RevertPathsSwapAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }

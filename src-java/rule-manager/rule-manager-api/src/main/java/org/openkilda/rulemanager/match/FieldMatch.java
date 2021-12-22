@@ -21,8 +21,6 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
 import lombok.Value;
 
-import java.util.Objects;
-
 @Value
 @JsonSerialize
 @Builder
@@ -34,25 +32,5 @@ public class FieldMatch {
 
     public boolean isMasked() {
         return mask != null;
-    }
-
-    /**
-     * Two field matches on the same field are considered equal to provide ability to store Match in a Set.
-     */
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        FieldMatch that = (FieldMatch) o;
-        return field == that.field;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(field);
     }
 }

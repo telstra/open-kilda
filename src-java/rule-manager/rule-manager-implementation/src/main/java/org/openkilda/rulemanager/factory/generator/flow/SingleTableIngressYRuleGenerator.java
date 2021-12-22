@@ -91,7 +91,7 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
                 .table(OfTable.INPUT)
                 .priority(isFullPortEndpoint(ingressEndpoint) ? Constants.Priority.Y_DEFAULT_FLOW_PRIORITY
                         : Constants.Priority.Y_FLOW_PRIORITY)
-                .match(buildMatch(ingressEndpoint))
+                .match(buildMatch(ingressEndpoint, sw.getFeatures()))
                 .instructions(instructions);
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {

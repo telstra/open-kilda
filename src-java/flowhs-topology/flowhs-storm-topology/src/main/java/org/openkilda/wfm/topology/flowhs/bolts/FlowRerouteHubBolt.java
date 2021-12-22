@@ -53,19 +53,20 @@ import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier {
-
     private final FlowRerouteConfig config;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
@@ -75,8 +76,9 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
 
     private LifecycleEvent deferredShutdownEvent;
 
-    public FlowRerouteHubBolt(FlowRerouteConfig config, PersistenceManager persistenceManager,
-                              PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
+    public FlowRerouteHubBolt(@NonNull FlowRerouteConfig config, @NonNull PersistenceManager persistenceManager,
+                              @NonNull PathComputerConfig pathComputerConfig,
+                              @NonNull FlowResourcesConfig flowResourcesConfig) {
         super(persistenceManager, config);
 
         this.config = config;
@@ -125,13 +127,21 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
         String operationKey = pullKey(input);
         currentKey = KeyProvider.getParentKey(operationKey);
         SpeakerFlowSegmentResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerFlowSegmentResponse.class);
-        service.handleAsyncResponse(currentKey, flowResponse);
+        try {
+            service.handleAsyncResponse(currentKey, flowResponse);
+        } catch (UnknownKeyException e) {
+            log.warn("Received a response with unknown key {}.", currentKey);
+        }
     }
 
     @Override
     public void onTimeout(String key, Tuple tuple) {
         currentKey = key;
-        service.handleTimeout(key);
+        try {
+            service.handleTimeout(key);
+        } catch (UnknownKeyException e) {
+            log.warn("Failed to handle a timeout event for unknown key {}.", currentKey);
+        }
     }
 
     @Override
@@ -141,7 +151,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
-    public void sendSpeakerRequest(FlowSegmentRequest command) {
+    public void sendSpeakerRequest(@NonNull FlowSegmentRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
 
         Values values = new Values(commandKey, command);
@@ -149,12 +159,12 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
-    public void sendNorthboundResponse(Message message) {
+    public void sendNorthboundResponse(@NonNull Message message) {
         emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
     }
 
     @Override
-    public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
+    public void sendHistoryUpdate(@NonNull FlowHistoryHolder historyHolder) {
         emit(Stream.HUB_TO_HISTORY_BOLT.name(), getCurrentTuple(), HistoryBolt.newInputTuple(
                 historyHolder, getCommandContext()));
     }
@@ -168,7 +178,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
-    public void sendNotifyFlowMonitor(CommandData flowCommand) {
+    public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
         String correlationId = getCommandContext().getCorrelationId();
         Message message = new CommandMessage(flowCommand, System.currentTimeMillis(), correlationId);
 
@@ -178,7 +188,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
-    public void sendNotifyFlowStats(UpdateFlowPathInfo flowPathInfo) {
+    public void sendNotifyFlowStats(@NonNull UpdateFlowPathInfo flowPathInfo) {
         Message message = new InfoMessage(flowPathInfo, System.currentTimeMillis(),
                 getCommandContext().getCorrelationId());
 
@@ -187,7 +197,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
-    public void sendNotifyFlowStats(RemoveFlowPathInfo flowPathInfo) {
+    public void sendNotifyFlowStats(@NonNull RemoveFlowPathInfo flowPathInfo) {
         Message message = new InfoMessage(flowPathInfo, System.currentTimeMillis(),
                 getCommandContext().getCorrelationId());
 
@@ -235,7 +245,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
         private int speakerCommandRetriesLimit;
 
         @Builder(builderMethodName = "flowRerouteBuilder", builderClassName = "flowRerouteBuild")
-        public FlowRerouteConfig(String requestSenderComponent, String workerComponent,  String lifeCycleEventComponent,
+        public FlowRerouteConfig(String requestSenderComponent, String workerComponent, String lifeCycleEventComponent,
                                  int timeoutMs, boolean autoAck,
                                  int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                                  int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {

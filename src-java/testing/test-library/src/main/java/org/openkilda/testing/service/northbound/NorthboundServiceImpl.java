@@ -67,6 +67,7 @@ import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
+import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
@@ -83,6 +84,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -579,10 +581,12 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public SwitchValidationResult validateSwitch(SwitchId switchId) {
+    public SwitchValidationExtendedResult validateSwitch(SwitchId switchId) {
         log.debug("Switch validating '{}'", switchId);
-        return restTemplate.exchange("/api/v1/switches/{switch_id}/validate", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResult.class, switchId).getBody();
+        SwitchValidationResult result = Objects.requireNonNull(restTemplate.exchange(
+                "/api/v1/switches/{switch_id}/validate", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResult.class, switchId).getBody());
+        return new SwitchValidationExtendedResult(switchId, result);
     }
 
     @Override

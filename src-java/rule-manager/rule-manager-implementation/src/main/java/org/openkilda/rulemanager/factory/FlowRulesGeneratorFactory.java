@@ -36,6 +36,8 @@ import org.openkilda.rulemanager.factory.generator.flow.TransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopTransitRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.mirror.EgressMirrorRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.mirror.IngressMirrorRuleGenerator;
 
 import java.util.Set;
 import java.util.UUID;
@@ -138,6 +140,21 @@ public class FlowRulesGeneratorFactory {
     }
 
     /**
+     * Get ingress mirror rule generator.
+     */
+    public RuleGenerator getIngressMirrorRuleGenerator(
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation, String sharedMeterCommandUuid) {
+        return IngressMirrorRuleGenerator.builder()
+                .flowPath(flowPath)
+                .flow(flow)
+                .multiTable(isPathSrcMultiTable(flowPath, flow))
+                .config(config)
+                .encapsulation(encapsulation)
+                .sharedMeterCommandUuid(sharedMeterCommandUuid)
+                .build();
+    }
+
+    /**
      * Get input LLDP rule generator.
      */
     public RuleGenerator getInputLldpRuleGenerator(
@@ -165,19 +182,21 @@ public class FlowRulesGeneratorFactory {
      * Get egress rule generator.
      */
     public RuleGenerator getEgressRuleGenerator(FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation) {
-        if (flowPath.isOneSwitchFlow()) {
-            throw new IllegalArgumentException(format(
-                    "Couldn't create egress rule for flow %s and path %s because it is one switch flow",
-                    flow.getFlowId(), flowPath.getPathId()));
-        }
-
-        if (flowPath.getSegments().isEmpty()) {
-            throw new IllegalArgumentException(format(
-                    "Couldn't create egress rule for flow %s and path %s because path segments list is empty",
-                    flow.getFlowId(), flowPath.getPathId()));
-        }
-
+        checkEgressRulePreRequirements(flowPath, flow, "egress");
         return EgressRuleGenerator.builder()
+                .flowPath(flowPath)
+                .flow(flow)
+                .encapsulation(encapsulation)
+                .build();
+    }
+
+    /**
+     * Get egress mirror rule generator.
+     */
+    public RuleGenerator getEgressMirrorRuleGenerator(
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation) {
+        checkEgressRulePreRequirements(flowPath, flow, "egress mirror");
+        return EgressMirrorRuleGenerator.builder()
                 .flowPath(flowPath)
                 .flow(flow)
                 .encapsulation(encapsulation)
@@ -306,6 +325,20 @@ public class FlowRulesGeneratorFactory {
                     flow.getFlowId(), flowPath.getPathId(),
                     flowPath.isSrcWithMultiTable(), segment.isSrcWithMultiTable());
             throw new IllegalArgumentException(errorMessage);
+        }
+    }
+
+    private void checkEgressRulePreRequirements(FlowPath flowPath, Flow flow, String ruleName) {
+        if (flowPath.isOneSwitchFlow()) {
+            throw new IllegalArgumentException(format(
+                    "Couldn't create %s rule for flow %s and path %s because it is one switch flow",
+                    ruleName, flow.getFlowId(), flowPath.getPathId()));
+        }
+
+        if (flowPath.getSegments().isEmpty()) {
+            throw new IllegalArgumentException(format(
+                    "Couldn't create %s rule for flow %s and path %s because path segments list is empty",
+                    ruleName, flow.getFlowId(), flowPath.getPathId()));
         }
     }
 }

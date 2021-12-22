@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.nbworker;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
@@ -32,7 +31,6 @@ import org.openkilda.wfm.topology.nbworker.bolts.FeatureTogglesBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowMeterModifyHubBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowPatchBolt;
-import org.openkilda.wfm.topology.nbworker.bolts.FlowValidationHubBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.HistoryOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.KildaConfigurationBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.LinkOperationsBolt;
@@ -55,12 +53,11 @@ import java.util.concurrent.TimeUnit;
 /**
  * Storm topology to read data from database.
  * Topology design:
- * kilda.topo.nb-spout ---> router-bolt ---> validation-operations-bolt ---> response-splitter-bolt ---> nb-kafka-bolt
- * | ---> links-operations-bolt      ---> |   \                       |
- * | ---> flows-operations-bolt      ---> |  \ \                      |
- * | ---> switches-operations-bolt   ---> | \ \ \                     |
- * | ---> history-operations-bolt    ---> | \ \ \ \                   |
- * | --->                   message-encoder-bolt (in error case) ---> |
+ * kilda.topo.nb-spout ---> router-bolt ---> history-operations-bolt    ---> response-splitter-bolt ---> nb-kafka-bolt
+ *                                    | ---> links-operations-bolt      ---> |   \                       |
+ *                                    | ---> flows-operations-bolt      ---> |  \ \                      |
+ *                                    | ---> switches-operations-bolt   ---> | \ \ \                     |
+ *                                    | --->                   message-encoder-bolt (in error case) ---> |
  *
  * <p>kilda.topo.nb-spout: reads data from kafka.
  * router-bolt: detects what kind of request is send, defines the stream. neo-bolt: performs operation with the
@@ -88,7 +85,6 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String SPEAKER_KAFKA_BOLT = "speaker-bolt";
     private static final String SWITCH_MANAGER_KAFKA_BOLT = "switch-manger-bolt";
     private static final String REROUTE_KAFKA_BOLT = "reroute-bolt";
-    private static final String VALIDATION_WORKER_BOLT = "validation." + SpeakerWorkerBolt.ID;
     private static final String METER_MODIFY_WORKER_BOLT = "meter.modify." + SpeakerWorkerBolt.ID;
     private static final String FLOW_PATCH_BOLT_NAME = "flow-patch-bolt";
     private static final String SERVER42_ENCODER_BOLT_NAME = "server42-encoder-bolt";
@@ -110,8 +106,6 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         declareSpout(tb, new CoordinatorSpout(), CoordinatorSpout.ID);
         declareBolt(tb, new CoordinatorBolt(), CoordinatorBolt.ID)
                 .allGrouping(CoordinatorSpout.ID)
-                .fieldsGrouping(FlowValidationHubBolt.ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
-                .fieldsGrouping(VALIDATION_WORKER_BOLT, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
                 .fieldsGrouping(FlowMeterModifyHubBolt.ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
                 .fieldsGrouping(METER_MODIFY_WORKER_BOLT, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
 
@@ -129,42 +123,15 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
                 getZookeeperConfig(), getBoltInstancesCount(ROUTER_BOLT_NAME,
-                FlowMeterModifyHubBolt.ID, FlowValidationHubBolt.ID));
+                FlowMeterModifyHubBolt.ID));
         declareBolt(tb, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(ROUTER_BOLT_NAME, ZkStreams.ZK.toString())
-                .allGrouping(FlowMeterModifyHubBolt.ID, ZkStreams.ZK.toString())
-                .allGrouping(FlowValidationHubBolt.ID, ZkStreams.ZK.toString());
+                .allGrouping(FlowMeterModifyHubBolt.ID, ZkStreams.ZK.toString());
 
         PersistenceManager persistenceManager = new PersistenceManager(configurationProvider);
 
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
-        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
 
-        HubBolt.Config validationHubConfig = HubBolt.Config.builder()
-                .requestSenderComponent(ROUTER_BOLT_NAME)
-                .workerComponent(VALIDATION_WORKER_BOLT)
-                .lifeCycleEventComponent(ZooKeeperSpout.SPOUT_ID)
-                .timeoutMs((int) TimeUnit.SECONDS.toMillis(topologyConfig.getProcessTimeout()))
-                .build();
-        declareBolt(tb,
-                new FlowValidationHubBolt(validationHubConfig, persistenceManager, flowResourcesConfig,
-                        topologyConfig.getFlowMeterMinBurstSizeInKbits(),
-                        topologyConfig.getFlowMeterBurstCoefficient()), FlowValidationHubBolt.ID)
-                .allGrouping(ZooKeeperSpout.SPOUT_ID)
-                .fieldsGrouping(ROUTER_BOLT_NAME, FlowValidationHubBolt.INCOME_STREAM, FIELDS_KEY)
-                .directGrouping(VALIDATION_WORKER_BOLT, FlowValidationHubBolt.INCOME_STREAM)
-                .directGrouping(CoordinatorBolt.ID);
-
-        WorkerBolt.Config speakerValidationWorkerConfig = WorkerBolt.Config.builder()
-                .hubComponent(FlowValidationHubBolt.ID)
-                .streamToHub(FlowValidationHubBolt.INCOME_STREAM)
-                .workerSpoutComponent(ROUTER_BOLT_NAME)
-                .defaultTimeout((int) TimeUnit.SECONDS.toMillis(topologyConfig.getOperationTimeout()))
-                .build();
-        declareBolt(tb, new SpeakerWorkerBolt(speakerValidationWorkerConfig), VALIDATION_WORKER_BOLT)
-                .fieldsGrouping(ROUTER_BOLT_NAME, SpeakerWorkerBolt.INCOME_STREAM, FIELDS_KEY)
-                .fieldsGrouping(FlowValidationHubBolt.ID, StreamType.FLOW_VALIDATION_WORKER.toString(), FIELDS_KEY)
-                .directGrouping(CoordinatorBolt.ID);
 
         HubBolt.Config meterModifyHubConfig = HubBolt.Config.builder()
                 .requestSenderComponent(ROUTER_BOLT_NAME)
@@ -230,7 +197,6 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(KILDA_CONFIG_BOLT_NAME)
                 .shuffleGrouping(PATHS_BOLT_NAME)
                 .shuffleGrouping(HISTORY_BOLT_NAME)
-                .shuffleGrouping(FlowValidationHubBolt.ID)
                 .shuffleGrouping(FlowMeterModifyHubBolt.ID)
                 .shuffleGrouping(FLOW_PATCH_BOLT_NAME);
 
@@ -249,7 +215,6 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(KILDA_CONFIG_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(PATHS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(HISTORY_BOLT_NAME, StreamType.ERROR.toString())
-                .shuffleGrouping(FlowValidationHubBolt.ID, StreamType.ERROR.toString())
                 .shuffleGrouping(FlowMeterModifyHubBolt.ID, StreamType.ERROR.toString())
                 .shuffleGrouping(FLOW_PATCH_BOLT_NAME, StreamType.ERROR.toString());
 
@@ -278,7 +243,6 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(FLOW_PATCH_BOLT_NAME, StreamType.PING.toString());
 
         declareBolt(tb, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()), SPEAKER_KAFKA_BOLT)
-                .shuffleGrouping(VALIDATION_WORKER_BOLT, StreamType.TO_SPEAKER.toString())
                 .shuffleGrouping(METER_MODIFY_WORKER_BOLT, StreamType.TO_SPEAKER.toString());
 
         declareBolt(tb, buildKafkaBolt(topologyConfig.getKafkaSwitchManagerTopic()), SWITCH_MANAGER_KAFKA_BOLT)
@@ -310,7 +274,6 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         KafkaBolt kafkaBolt = createKafkaBolt(openTsdbTopic);
         topologyBuilder.setBolt(METRICS_BOLT, kafkaBolt)
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.TO_METRICS_BOLT.name())
-                .shuffleGrouping(FlowValidationHubBolt.ID, StreamType.TO_METRICS_BOLT.name())
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.TO_METRICS_BOLT.name())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.TO_METRICS_BOLT.name())
                 .shuffleGrouping(HISTORY_BOLT_NAME, StreamType.TO_METRICS_BOLT.name());

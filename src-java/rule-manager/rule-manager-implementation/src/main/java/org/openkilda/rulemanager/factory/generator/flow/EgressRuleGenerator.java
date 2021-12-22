@@ -20,8 +20,8 @@ import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
+import static org.openkilda.rulemanager.utils.Utils.checkAndBuildEgressEndpoint;
 
-import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
@@ -54,23 +54,18 @@ import java.util.List;
 @SuperBuilder
 public class EgressRuleGenerator extends NotIngressRuleGenerator {
 
-    private final FlowPath flowPath;
-    private final Flow flow;
-    private final FlowTransitEncapsulation encapsulation;
+    protected final FlowPath flowPath;
+    protected final Flow flow;
+    protected final FlowTransitEncapsulation encapsulation;
 
     @Override
     public List<SpeakerCommandData> generateCommands(Switch sw) {
         if (flowPath.isOneSwitchFlow() || flowPath.getSegments().isEmpty()) {
             return new ArrayList<>();
         }
-        if (!sw.getSwitchId().equals(flowPath.getDestSwitchId())) {
-            throw new IllegalArgumentException(format("Destination switch %s of flow path %s is not equal to "
-                            + "generator switch %s",
-                    flowPath.getDestSwitchId(), flowPath.getPathId(), sw.getSwitchId()));
-        }
 
         PathSegment lastSegment = flowPath.getSegments().get(flowPath.getSegments().size() - 1);
-        FlowEndpoint endpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+        FlowEndpoint endpoint = checkAndBuildEgressEndpoint(flow, flowPath, sw.getSwitchId());
         return Lists.newArrayList(buildEgressCommand(sw, lastSegment.getDestPort(), endpoint));
     }
 
@@ -85,7 +80,6 @@ public class EgressRuleGenerator extends NotIngressRuleGenerator {
                 .instructions(Instructions.builder()
                         .applyActions(buildApplyActions(egressEndpoint, sw))
                         .build());
-        // TODO add mirror group support
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
             builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
@@ -94,6 +88,12 @@ public class EgressRuleGenerator extends NotIngressRuleGenerator {
     }
 
     private List<Action> buildApplyActions(FlowEndpoint egressEndpoint, Switch sw) {
+        List<Action> result = buildTransformActions(egressEndpoint, sw);
+        result.add(new PortOutAction(new PortNumber(egressEndpoint.getPortNumber())));
+        return result;
+    }
+
+    protected List<Action> buildTransformActions(FlowEndpoint egressEndpoint, Switch sw) {
         List<Action> result = new ArrayList<>();
         if (VXLAN.equals(encapsulation.getType())) {
             if (sw.getFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)) {
@@ -113,8 +113,6 @@ public class EgressRuleGenerator extends NotIngressRuleGenerator {
             currentVlanStack.add(encapsulation.getId());
         }
         result.addAll(Utils.makeVlanReplaceActions(currentVlanStack, targetVlanStack));
-
-        result.add(new PortOutAction(new PortNumber(egressEndpoint.getPortNumber())));
         return result;
     }
 }

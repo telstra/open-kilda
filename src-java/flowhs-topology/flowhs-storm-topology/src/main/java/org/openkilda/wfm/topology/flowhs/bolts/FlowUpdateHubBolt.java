@@ -67,13 +67,13 @@ import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
-
     private final FlowUpdateConfig config;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
@@ -83,8 +83,9 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
 
     private LifecycleEvent deferredShutdownEvent;
 
-    public FlowUpdateHubBolt(FlowUpdateConfig config, PersistenceManager persistenceManager,
-                             PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
+    public FlowUpdateHubBolt(@NonNull FlowUpdateConfig config, @NonNull PersistenceManager persistenceManager,
+                             @NonNull PathComputerConfig pathComputerConfig,
+                             @NonNull FlowResourcesConfig flowResourcesConfig) {
         super(persistenceManager, config);
 
         this.config = config;
@@ -175,7 +176,7 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
-    public void sendActivateFlowMonitoring(RequestedFlow flow) {
+    public void sendActivateFlowMonitoring(@NonNull RequestedFlow flow) {
         ActivateFlowMonitoringInfoData payload = RequestedFlowMapper.INSTANCE.toActivateFlowMonitoringInfoData(flow);
 
         Message message = new InfoMessage(payload, getCommandContext().getCreateTime(),
@@ -197,7 +198,7 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
-    public void sendNotifyFlowMonitor(CommandData flowCommand) {
+    public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
         String correlationId = getCommandContext().getCorrelationId();
         Message message = new CommandMessage(flowCommand, System.currentTimeMillis(), correlationId);
 
@@ -206,7 +207,7 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
-    public void sendNotifyFlowStats(UpdateFlowPathInfo flowPathInfo) {
+    public void sendNotifyFlowStats(@NonNull UpdateFlowPathInfo flowPathInfo) {
         Message message = new InfoMessage(flowPathInfo, System.currentTimeMillis(),
                 getCommandContext().getCorrelationId());
 
@@ -215,7 +216,7 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
-    public void sendNotifyFlowStats(RemoveFlowPathInfo flowPathInfo) {
+    public void sendNotifyFlowStats(@NonNull RemoveFlowPathInfo flowPathInfo) {
         Message message = new InfoMessage(flowPathInfo, System.currentTimeMillis(),
                 getCommandContext().getCorrelationId());
 
@@ -224,7 +225,7 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
-    public void sendSpeakerRequest(FlowSegmentRequest command) {
+    public void sendSpeakerRequest(@NonNull FlowSegmentRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
 
         Values values = new Values(commandKey, command);
@@ -232,18 +233,18 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
-    public void sendNorthboundResponse(Message message) {
+    public void sendNorthboundResponse(@NonNull Message message) {
         emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
     }
 
     @Override
-    public void sendHubSwapEndpointsResponse(Message message) {
+    public void sendHubSwapEndpointsResponse(@NonNull Message message) {
         emitWithContext(Stream.UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB.name(), getCurrentTuple(),
                 new Values(KeyProvider.getParentKey(currentKey), message));
     }
 
     @Override
-    public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
+    public void sendHistoryUpdate(@NonNull FlowHistoryHolder historyHolder) {
         emit(Stream.HUB_TO_HISTORY_BOLT.name(), getCurrentTuple(), HistoryBolt.newInputTuple(
                 historyHolder, getCommandContext()));
     }

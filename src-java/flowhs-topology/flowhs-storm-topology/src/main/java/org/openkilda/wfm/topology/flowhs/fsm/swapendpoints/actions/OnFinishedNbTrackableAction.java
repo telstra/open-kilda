@@ -22,7 +22,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsContext;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm.Event;
@@ -34,7 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 abstract class OnFinishedNbTrackableAction
-        extends NbTrackableAction<FlowSwapEndpointsFsm, State, Event, FlowSwapEndpointsContext> {
+        extends NbTrackableWithHistorySupportAction<FlowSwapEndpointsFsm, State, Event, FlowSwapEndpointsContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public OnFinishedNbTrackableAction(PersistenceManager persistenceManager,

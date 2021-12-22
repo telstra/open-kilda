@@ -21,7 +21,7 @@ public final class Stream {
     public static final String KILDA_SWITCH_MANAGER = "KILDA_SWITCH_MANAGER";
     public static final String SPEAKER_DISCO = "SPEAKER_DISCO";
     public static final String NORTHBOUND_REPLY = "NORTHBOUND_REPLY";
-    public static final String NB_WORKER = "NB_WORKER";
+    public static final String FLOWHS_WORKER = "FLOWHS_WORKER";
 
     private Stream() {}
 }

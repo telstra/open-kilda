@@ -86,7 +86,7 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
                 .cookie(flowPath.getCookie().toBuilder().yFlow(true).build())
                 .table(OfTable.INGRESS)
                 .priority(getPriority(ingressEndpoint))
-                .match(buildIngressMatch(ingressEndpoint, sw))
+                .match(buildIngressMatch(ingressEndpoint, sw.getFeatures()))
                 .instructions(buildInstructions(sw, actions));
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {

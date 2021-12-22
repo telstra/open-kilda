@@ -55,19 +55,19 @@ import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
-import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateService;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
-
+public class FlowCreateHubBolt extends HubBolt implements FlowGenericCarrier {
     private final FlowCreateConfig config;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
@@ -77,8 +77,9 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
 
     private LifecycleEvent deferredShutdownEvent;
 
-    public FlowCreateHubBolt(FlowCreateConfig config, PersistenceManager persistenceManager,
-                             PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
+    public FlowCreateHubBolt(@NonNull FlowCreateConfig config, @NonNull PersistenceManager persistenceManager,
+                             @NonNull PathComputerConfig pathComputerConfig,
+                             @NonNull FlowResourcesConfig flowResourcesConfig) {
         super(persistenceManager, config);
 
         this.config = config;
@@ -149,7 +150,7 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     }
 
     @Override
-    public void sendSpeakerRequest(FlowSegmentRequest command) {
+    public void sendSpeakerRequest(@NonNull FlowSegmentRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
 
         Values values = new Values(commandKey, command);
@@ -157,18 +158,18 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     }
 
     @Override
-    public void sendNorthboundResponse(Message message) {
+    public void sendNorthboundResponse(@NonNull Message message) {
         emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
     }
 
     @Override
-    public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
+    public void sendHistoryUpdate(@NonNull FlowHistoryHolder historyHolder) {
         emit(Stream.HUB_TO_HISTORY_BOLT.name(), getCurrentTuple(), HistoryBolt.newInputTuple(
                 historyHolder, getCommandContext()));
     }
 
     @Override
-    public void cancelTimeoutCallback(String key) {
+    public void cancelTimeoutCallback(@NonNull String key) {
         cancelCallback(key);
     }
 
@@ -187,7 +188,7 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     }
 
     @Override
-    public void sendActivateFlowMonitoring(RequestedFlow flow) {
+    public void sendActivateFlowMonitoring(@NonNull RequestedFlow flow) {
         ActivateFlowMonitoringInfoData payload = RequestedFlowMapper.INSTANCE.toActivateFlowMonitoringInfoData(flow);
 
         Message message = new InfoMessage(payload, getCommandContext().getCreateTime(),
@@ -197,7 +198,7 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     }
 
     @Override
-    public void sendNotifyFlowMonitor(CommandData flowCommand) {
+    public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
         String correlationId = getCommandContext().getCorrelationId();
         Message message = new CommandMessage(flowCommand, System.currentTimeMillis(), correlationId);
 
@@ -206,7 +207,7 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     }
 
     @Override
-    public void sendNotifyFlowStats(UpdateFlowPathInfo flowPathInfo) {
+    public void sendNotifyFlowStats(@NonNull UpdateFlowPathInfo flowPathInfo) {
         Message message = new InfoMessage(flowPathInfo, System.currentTimeMillis(),
                 getCommandContext().getCorrelationId());
 

@@ -50,7 +50,6 @@ import org.openkilda.model.cookie.PortColourCookie
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
-import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -64,6 +63,7 @@ import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
+import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult
 import org.openkilda.testing.tools.IslUtils
 import org.openkilda.testing.tools.SoftAssertions
 
@@ -374,18 +374,17 @@ class SwitchHelper {
      * NOTE: will filter out default meters for 'proper' section, so that switch without flow meters, but only with
      * default meters in 'proper' section is considered 'empty'
      */
-    static void verifyMeterSectionsAreEmpty(SwitchValidationResult switchValidateInfo, SwitchId swId,
+    static void verifyMeterSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
                                             List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
         def assertions = new SoftAssertions()
         if (switchValidateInfo.meters) {
             sections.each { section ->
                 if (section == "proper") {
                     assertions.checkSucceeds {
-                        assert switchValidateInfo.meters.proper.findAll { !it.defaultMeter }.empty, swId
+                        assert switchValidateInfo.meters.proper.findAll { !it.defaultMeter }.empty
                     }
                 } else {
-                    def meters = switchValidateInfo.meters."$section"
-                    assertions.checkSucceeds { assert meters.empty, "$swId $section $meters" }
+                    assertions.checkSucceeds { assert switchValidateInfo.meters."$section".empty }
                 }
             }
         }
@@ -398,7 +397,7 @@ class SwitchHelper {
      * Default flow rules for the system looks like as a simple default rule.
      * Based on that you have to use extra filter to detect these rules in missing/excess/misconfigured sections.
      */
-    static void verifyRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo, SwitchId swId,
+    static void verifyRuleSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
                                            List<String> sections = ["missing", "proper", "excess", "misconfigured"]) {
         def assertions = new SoftAssertions()
         sections.each { String section ->
@@ -407,11 +406,10 @@ class SwitchHelper {
                     assert switchValidateInfo.rules.proper.findAll {
                         def cookie = new Cookie(it)
                         !cookie.serviceFlag && cookie.type != CookieType.SHARED_OF_FLOW
-                    }.empty, swId
+                    }.empty
                 }
             } else {
-                def rules = switchValidateInfo.rules."$section"
-                assertions.checkSucceeds { assert rules.empty, "$swId $section $rules" }
+                assertions.checkSucceeds { assert switchValidateInfo.rules."$section".empty }
             }
         }
         assertions.verify()
@@ -424,7 +422,7 @@ class SwitchHelper {
      * Based on that you have to use extra filter to detect these rules in
      * missingHex/excessHex/misconfiguredHex sections.
      */
-    static void verifyHexRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo, SwitchId swId,
+    static void verifyHexRuleSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
                                               List<String> sections = ["properHex", "excessHex", "missingHex",
                                                                        "misconfiguredHex"]) {
         def assertions = new SoftAssertions()
@@ -438,11 +436,10 @@ class SwitchHelper {
                 def defaultHexCookies = []
                 defaultCookies.each { defaultHexCookies.add(Long.toHexString(it)) }
                 assertions.checkSucceeds {
-                    assert switchValidateInfo.rules.properHex.findAll { !(it in defaultHexCookies) }.empty, swId
+                    assert switchValidateInfo.rules.properHex.findAll { !(it in defaultHexCookies) }.empty
                 }
             } else {
-                def rules = switchValidateInfo.rules."$section"
-                assertions.checkSucceeds { assert rules.empty, "$swId $section $rules" }
+                assertions.checkSucceeds { assert switchValidateInfo.rules."$section".empty }
             }
         }
         assertions.verify()

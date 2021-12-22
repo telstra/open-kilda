@@ -25,8 +25,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 public class NotifyFlowStatsOnRemovedPathsAction<T extends FlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C> extends
-        FlowProcessingAction<T, S, E, C> {
-
+        FlowProcessingWithHistorySupportAction<T, S, E, C> {
     private FlowGenericCarrier carrier;
 
     public NotifyFlowStatsOnRemovedPathsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {

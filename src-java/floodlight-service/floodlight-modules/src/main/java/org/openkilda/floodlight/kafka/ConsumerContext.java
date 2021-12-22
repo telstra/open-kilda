@@ -80,4 +80,8 @@ public class ConsumerContext {
     public String getKafkaSwitchManagerTopic() {
         return kafkaChannel.getTopoSwitchManagerTopic();
     }
+
+    public String getKafkaSpeakerFlowHsTopic() {
+        return kafkaChannel.getSpeakerFlowHsTopic();
+    }
 }

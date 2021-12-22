@@ -49,11 +49,13 @@ import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Checks whether flow can be created and has no conflicts with already created ones.
@@ -103,12 +105,11 @@ public class FlowValidator {
         checkBandwidth(flow);
         checkSwitchesSupportLldpAndArpIfNeeded(flow);
 
-        if (StringUtils.isNotBlank(flow.getDiverseFlowId()) && StringUtils.isNotBlank(flow.getAffinityFlowId())) {
-            throw new InvalidFlowException("Couldn't add flow to diverse and affinity groups at the same time",
-                    ErrorType.PARAMETERS_INVALID);
-        } else if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
+        if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
             checkDiverseFlow(flow);
-        } else if (StringUtils.isNotBlank(flow.getAffinityFlowId())) {
+        }
+
+        if (StringUtils.isNotBlank(flow.getAffinityFlowId())) {
             checkAffinityFlow(flow);
         }
 
@@ -365,13 +366,27 @@ public class FlowValidator {
                         new InvalidFlowException(format("Failed to find diverse flow id %s",
                                 targetFlow.getDiverseFlowId()), ErrorType.PARAMETERS_INVALID));
 
-        if (diverseFlow.isOneSwitchFlow()) {
-            throw new InvalidFlowException("Couldn't create diverse group with one-switch flow",
-                    ErrorType.PARAMETERS_INVALID);
-        }
 
         if (StringUtils.isNotBlank(diverseFlow.getAffinityGroupId())) {
-            throw new InvalidFlowException("Couldn't create diverse group with flow in affinity group",
+            String diverseFlowId = diverseFlow.getAffinityGroupId();
+            diverseFlow = flowRepository.findById(diverseFlowId)
+                    .orElseThrow(() ->
+                            new InvalidFlowException(format("Failed to find diverse flow id %s", diverseFlowId),
+                                    ErrorType.PARAMETERS_INVALID));
+
+
+            Collection<String> affinityFlowIds = flowRepository
+                    .findFlowsIdByAffinityGroupId(diverseFlow.getAffinityGroupId()).stream()
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            if (affinityFlowIds.contains(targetFlow.getAffinityFlowId())) {
+                throw new InvalidFlowException("Couldn't create diverse group with flow in the same affinity group",
+                        ErrorType.PARAMETERS_INVALID);
+            }
+        }
+
+        if (diverseFlow.isOneSwitchFlow()) {
+            throw new InvalidFlowException("Couldn't create diverse group with one-switch flow",
                     ErrorType.PARAMETERS_INVALID);
         }
     }
@@ -393,9 +408,24 @@ public class FlowValidator {
                     ErrorType.PARAMETERS_INVALID);
         }
 
-        if (StringUtils.isNotBlank(affinityFlow.getDiverseGroupId())) {
-            throw new InvalidFlowException("Couldn't create affinity group with flow in diverse group",
-                    ErrorType.PARAMETERS_INVALID);
+        if (StringUtils.isNotBlank(affinityFlow.getAffinityGroupId())) {
+            String mainAffinityFlowId = affinityFlow.getAffinityGroupId();
+            Flow mainAffinityFlow = flowRepository.findById(mainAffinityFlowId)
+                    .orElseThrow(() ->
+                            new InvalidFlowException(format("Failed to find main affinity flow id %s",
+                                    mainAffinityFlowId), ErrorType.PARAMETERS_INVALID));
+
+            if (StringUtils.isNotBlank(mainAffinityFlow.getDiverseGroupId())) {
+                Collection<String> diverseFlowIds = flowRepository
+                        .findFlowsIdByAffinityGroupId(mainAffinityFlow.getDiverseGroupId()).stream()
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+
+                if (!diverseFlowIds.contains(targetFlow.getDiverseFlowId())) {
+                    throw new InvalidFlowException("Couldn't create a diverse group with flow "
+                            + "in a different diverse group than main affinity flow", ErrorType.PARAMETERS_INVALID);
+                }
+            }
         }
     }
 

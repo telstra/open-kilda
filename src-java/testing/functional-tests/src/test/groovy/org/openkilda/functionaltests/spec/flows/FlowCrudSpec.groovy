@@ -6,7 +6,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
@@ -567,8 +566,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         and: "All related switches have no discrepancies in rules"
         switches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyMeterSectionsAreEmpty(it.dpId, ["excess", "misconfigured", "missing"])
-            validation.verifyRuleSectionsAreEmpty(it.dpId, ["excess", "missing"])
+            validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
+            validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
             def swProps = northbound.getSwitchProperties(it.dpId)
             def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
@@ -1015,10 +1014,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "The src switch passes switch validation"
         with(northbound.validateSwitch(srcSwitch.dpId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(srcSwitch.dpId, ["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(srcSwitch.dpId, ["missing", "excess", "misconfigured"])
+            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
-        def srcSwitchIsFine = true
 
         when: "Update the flow: switch id on the dst endpoint"
         def newDstSwitch = allSwitches[2]
@@ -1075,19 +1073,14 @@ class FlowCrudSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
                 with(northbound.validateSwitch(switchId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(switchId, ["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(switchId, ["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
                 }
             }
         }
-        def dstSwitchesAreFine = true
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        !srcSwitchIsFine && northbound.synchronizeSwitch(srcSwitch.dpId, true)
-        !dstSwitchesAreFine && dstSwitch && newDstSwitch && [dstSwitch, newDstSwitch]*.dpId.each {
-            northbound.synchronizeSwitch(it, true)
-        }
     }
 
     @Tidy
@@ -1126,19 +1119,15 @@ class FlowCrudSpec extends HealthCheckSpecification {
         withPool {
             involvedSwitchIds.eachParallel { SwitchId swId ->
                 with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
                 }
             }
         }
-        def involvedSwitchesPassSwValidation = true
 
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        !involvedSwitchesPassSwValidation && involvedSwitchIds.each { SwitchId swId ->
-            northbound.synchronizeSwitch(swId, true)
-        }
     }
 
     @Tidy
@@ -1237,27 +1226,26 @@ class FlowCrudSpec extends HealthCheckSpecification {
         withPool {
             currentPath*.switchId.eachParallel { SwitchId swId ->
                 with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
                 }
             }
         }
-        def involvedSwitchesPassSwValidation = true
 
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        !involvedSwitchesPassSwValidation && currentPath*.switchId.each { SwitchId swId ->
-            northbound.synchronizeSwitch(swId, true)
-        }
     }
 
     @Tidy
-    @Tags([VIRTUAL, LOW_PRIORITY]) //VIRTUAL -> TOPOLOGY_DEPENDENT, https://github.com/telstra/open-kilda/issues/3413
+    @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
     def "System allows to update single switch flow to multi switch flow"() {
-        given: "A single switch flow"
+        given: "A single switch flow with enabled lldp/arp on the dst side"
         def swPair = topologyHelper.getNeighboringSwitchPair()
         def flow = flowHelperV2.singleSwitchFlow(swPair.src)
+        //https://github.com/telstra/open-kilda/issues/4607
+//        flow.destination.detectConnectedDevices.lldp = true
+//        flow.destination.detectConnectedDevices.arp = true
         flowHelperV2.addFlow(flow)
 
         when: "Update the dst endpoint to make this flow as multi switch flow"
@@ -1285,15 +1273,13 @@ class FlowCrudSpec extends HealthCheckSpecification {
         and: "Involved switches pass switch validation"
         [swPair.src, swPair.dst].each {sw ->
             with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
-        def isSwitchValid = true
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        !isSwitchValid && [swPair.src, swPair.dst].each { northbound.synchronizeSwitch(it.dpId, true) }
     }
 
     @Tidy

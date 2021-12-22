@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import static org.openkilda.wfm.topology.reroute.bolts.TimeWindowBolt.STREAM_TIM
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
@@ -117,6 +118,14 @@ public class FlowRerouteQueueBolt extends CoordinatedBolt implements IRerouteQue
         log.info("Send reroute request {} with correlationId {}", request, correlationId);
         // emit without anchor to prevent a possible loop
         emit(STREAM_OPERATION_QUEUE_ID, new Values(request.getFlowId(), request, new CommandContext(correlationId)));
+        registerCallback(correlationId);
+    }
+
+    @Override
+    public void sendRerouteRequest(String correlationId, YFlowRerouteRequest request) {
+        log.info("Send reroute request {} with correlationId {}", request, correlationId);
+        // emit without anchor to prevent a possible loop
+        emit(STREAM_OPERATION_QUEUE_ID, new Values(request.getYFlowId(), request, new CommandContext(correlationId)));
         registerCallback(correlationId);
     }
 

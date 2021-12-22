@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
@@ -27,7 +28,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -39,7 +40,7 @@ import java.util.Optional;
 
 @Slf4j
 public class PostResourceAllocationAction extends
-        NbTrackableAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+        NbTrackableWithHistorySupportAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public PostResourceAllocationAction(PersistenceManager persistenceManager,
@@ -77,6 +78,9 @@ public class PostResourceAllocationAction extends
             stateMachine.setOriginalFlowStatus(FlowStatus.DOWN);
         }
 
+        // Notify about successful allocation.
+        stateMachine.notifyEventListeners(listener -> listener.onResourcesAllocated(flowId));
+
         return Optional.of(buildRerouteResponseMessage(currentForwardPath, newForwardPath,
                 stateMachine.getCommandContext()));
     }
@@ -96,5 +100,13 @@ public class PostResourceAllocationAction extends
     @Override
     protected String getGenericErrorMessage() {
         return "Could not reroute flow";
+    }
+
+    @Override
+    protected void handleError(FlowRerouteFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed allocation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
     }
 }

@@ -27,7 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class RevertYFlowStatusAction<T extends YFlowProcessingFsm<T, S, E, C, ?, ?>, S, E, C>
-        extends YFlowProcessingAction<T, S, E, C>  {
+        extends YFlowProcessingWithHistorySupportAction<T, S, E, C> {
     private final FlowOperationsDashboardLogger dashboardLogger;
 
     public RevertYFlowStatusAction(PersistenceManager persistenceManager,

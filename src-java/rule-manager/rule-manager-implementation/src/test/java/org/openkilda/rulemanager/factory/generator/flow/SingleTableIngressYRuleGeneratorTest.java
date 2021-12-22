@@ -228,7 +228,7 @@ public class SingleTableIngressYRuleGeneratorTest {
     public void buildMatchVlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
         SingleTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        Set<FieldMatch> match = generator.buildMatch(new FlowSourceAdapter(flow).getEndpoint());
+        Set<FieldMatch> match = generator.buildMatch(new FlowSourceAdapter(flow).getEndpoint(), FEATURES);
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
                 FieldMatch.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_1).build()
@@ -240,7 +240,7 @@ public class SingleTableIngressYRuleGeneratorTest {
     public void buildMatchVlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
         SingleTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        Set<FieldMatch> match = generator.buildMatch(new FlowSourceAdapter(flow).getEndpoint());
+        Set<FieldMatch> match = generator.buildMatch(new FlowSourceAdapter(flow).getEndpoint(), FEATURES);
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()
         );

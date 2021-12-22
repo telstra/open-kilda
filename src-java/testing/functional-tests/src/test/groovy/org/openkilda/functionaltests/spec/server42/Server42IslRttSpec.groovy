@@ -232,8 +232,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         and: "Involved switches pass the switch validation"
         [isl.srcSwitch.dpId, isl.dstSwitch.dpId, newIsl.dstSwitch.dpId].each { swId ->
             with(northbound.validateSwitch(swId)) { validationResponse ->
-                validationResponse.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
-                validationResponse.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                validationResponse.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
 
@@ -263,8 +263,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         and: "All involved switches pass switch validation"
         [isl.srcSwitch.dpId, isl.dstSwitch.dpId, newIsl.dstSwitch.dpId].each { swId ->
             with(northbound.validateSwitch(swId)) { validationResponse ->
-                validationResponse.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
-                validationResponse.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                validationResponse.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
 
@@ -568,8 +568,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
 
         and: "Switch is valid"
         with(northbound.validateSwitch(isl.srcSwitch.dpId)) {
-            it.verifyRuleSectionsAreEmpty(isl.srcSwitch.dpId, ["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty(isl.srcSwitch.dpId)
+            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            it.verifyMeterSectionsAreEmpty()
         }
 
         and: "ISL RTT stats in both directions are available"
@@ -614,7 +614,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
 
         and: "Switch validation shows deleted rules as missing"
         def validateInfo = northbound.validateSwitch(isl.srcSwitch.dpId)
-        validateInfo.verifyRuleSectionsAreEmpty(isl.srcSwitch.dpId, ["misconfigured", "excess"])
+        validateInfo.verifyRuleSectionsAreEmpty(["misconfigured", "excess"])
         northbound.validateSwitch(isl.srcSwitch.dpId).rules.missing.sort() == rulesToDelete*.cookie.sort()
 
         and: "No ISL Rtt stats in forward/reverse directions"

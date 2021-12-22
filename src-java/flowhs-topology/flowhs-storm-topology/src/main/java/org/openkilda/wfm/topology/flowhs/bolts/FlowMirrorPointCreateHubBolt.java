@@ -40,7 +40,7 @@ import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
-import org.openkilda.wfm.topology.flowhs.service.FlowMirrorPointCreateHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowMirrorPointCreateService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
@@ -51,8 +51,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class FlowMirrorPointCreateHubBolt extends HubBolt implements FlowMirrorPointCreateHubCarrier {
-
+public class FlowMirrorPointCreateHubBolt extends HubBolt implements FlowGenericCarrier {
     private final FlowMirrorPointCreateConfig config;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
