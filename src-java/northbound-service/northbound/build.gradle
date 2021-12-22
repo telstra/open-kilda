@@ -3,7 +3,8 @@ plugins {
 }
 
 configurations {
-    compile.exclude module: 'spring-boot-starter-logging'
+    // This conflicts with spring-boot-starter-log4j2
+    implementation.exclude module: 'spring-boot-starter-logging'
 }
 
 description = 'Northbound Service'
@@ -19,8 +20,8 @@ dependencies {
     implementation project(':floodlight-api')
     implementation project(':kilda-persistence-api')
     implementation project(':blue-green')
-    runtimeClasspath project(':kilda-persistence-orientdb')
-    runtimeClasspath project(':kilda-persistence-hibernate')
+    runtimeOnly project(':kilda-persistence-orientdb')
+    runtimeOnly project(':kilda-persistence-hibernate')
     implementation project(':kilda-configuration')
     testImplementation project(':kilda-utils:stubs')
 

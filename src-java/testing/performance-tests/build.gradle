@@ -43,7 +43,7 @@ task performanceTest(type: Test, dependsOn: 'compileGroovy') {
     include '**/performancetests/**'
     systemProperty 'tags', System.getProperty('tags')
     Properties properties = new Properties()
-    File propertiesFile = file("kilda.properties.example")
+    File propertiesFile = file('kilda.properties.example')
     propertiesFile.withInputStream {
         properties.load(it)
     }
