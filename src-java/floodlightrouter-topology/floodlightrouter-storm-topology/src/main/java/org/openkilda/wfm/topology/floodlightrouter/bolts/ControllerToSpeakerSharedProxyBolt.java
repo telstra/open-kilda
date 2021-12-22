@@ -16,17 +16,19 @@
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
 import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.api.response.SpeakerDataResponse;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
-import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
+import org.openkilda.messaging.command.switches.DumpMetersForFlowHsRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
-import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
+import org.openkilda.messaging.command.switches.DumpRulesForFlowHsRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
@@ -51,7 +53,7 @@ import java.util.Set;
 
 @Slf4j
 public class ControllerToSpeakerSharedProxyBolt extends ControllerToSpeakerProxyBolt {
-    private final String kafkaNbWorkerTopic;
+    private final String kafkaFlowHsWorkerTopic;
     private final String kafkaSwitchManagerTopic;
     private final String kafkaNorthboundTopic;
 
@@ -60,7 +62,7 @@ public class ControllerToSpeakerSharedProxyBolt extends ControllerToSpeakerProxy
             Duration switchMappingRemoveDelay) {
         super(targetTopic, allRegions, switchMappingRemoveDelay);
 
-        kafkaNbWorkerTopic = kafkaTopics.getTopoNbTopic();
+        kafkaFlowHsWorkerTopic = kafkaTopics.getFlowHsSpeakerTopic();
         kafkaSwitchManagerTopic = kafkaTopics.getTopoSwitchManagerTopic();
         kafkaNorthboundTopic = kafkaTopics.getNorthboundTopic();
     }
@@ -81,11 +83,13 @@ public class ControllerToSpeakerSharedProxyBolt extends ControllerToSpeakerProxy
                 commandMessage.getCorrelationId(), null);
 
         Tuple input = getCurrentTuple();
-        if (commandMessage.getData() instanceof DumpRulesForNbworkerRequest
-                || commandMessage.getData() instanceof DumpMetersForNbworkerRequest) {
+        if (commandMessage.getData() instanceof DumpRulesForFlowHsRequest
+                || commandMessage.getData() instanceof DumpMetersForFlowHsRequest) {
+            MessageContext messageContext = new MessageContext(commandMessage);
+            SpeakerDataResponse result = new SpeakerDataResponse(messageContext, errorData);
             // FIXME(surabujin): there is no subscriber on this stream now
-            getOutput().emit(Stream.NB_WORKER, input, makeNbWorkerTuple(
-                    commandMessage.getCorrelationId(), errorMessage));
+            getOutput().emit(Stream.FLOWHS_WORKER, input, makeFlowHsWorkerTuple(
+                    commandMessage.getCorrelationId(), result));
         } else if (commandMessage.getData() instanceof DumpRulesForSwitchManagerRequest
                 || commandMessage.getData() instanceof DumpMetersForSwitchManagerRequest
                 || commandMessage.getData() instanceof GetExpectedDefaultRulesRequest
@@ -114,13 +118,13 @@ public class ControllerToSpeakerSharedProxyBolt extends ControllerToSpeakerProxy
         Fields fields = new Fields(
                 FieldNameBasedTupleToKafkaMapper.BOLT_KEY, FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE,
                 RegionAwareKafkaTopicSelector.FIELD_ID_TOPIC, RegionAwareKafkaTopicSelector.FIELD_ID_REGION);
-        outputFieldsDeclarer.declareStream(Stream.NB_WORKER, fields);
+        outputFieldsDeclarer.declareStream(Stream.FLOWHS_WORKER, fields);
         outputFieldsDeclarer.declareStream(Stream.KILDA_SWITCH_MANAGER, fields);
         outputFieldsDeclarer.declareStream(Stream.NORTHBOUND_REPLY, fields);
     }
 
-    private Values makeNbWorkerTuple(String key, Message payload) {
-        return makeGenericControllerBolt(key, payload, kafkaNbWorkerTopic);
+    private Values makeFlowHsWorkerTuple(String key, SpeakerDataResponse payload) {
+        return new Values(key, payload, kafkaFlowHsWorkerTopic, null);
     }
 
     private Values makeSwitchManagerTuple(String key, Message payload) {

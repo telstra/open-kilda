@@ -191,81 +191,71 @@ class FlowAffinitySpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "Cannot create affinity flow if target flow has diversity"() {
+    def "Cannot create affinity flow if target flow has affinity with diverse flow"() {
         given: "Existing flows with diversity"
-        def swPair = topologyHelper.getSwitchPairs()[0]
-        def flow1 = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow1)
-        def diversityFlow = flowHelperV2.randomFlow(swPair, false, [flow1]).tap { diverseFlowId = flow1.flowId }
-        flowHelperV2.addFlow(diversityFlow)
-
-        when: "Create an affinity flow that targets the diversity flow"
-        def affinityFlow = flowHelperV2.randomFlow(swPair, false, [flow1, diversityFlow]).tap { affinityFlowId = flow1.flowId }
-        northboundV2.addFlow(affinityFlow)
-
-        then: "Error is returned"
-        def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-        with(e.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not create flow"
-            errorDescription == "Couldn't create affinity group with flow in diverse group"
-        }
-
-        when: "Create an affinity flow that targets the second diversity flow"
-        def affinityFlow2 = flowHelperV2.randomFlow(swPair, false, [flow1, diversityFlow]).tap { affinityFlowId = diversityFlow.flowId }
-        northboundV2.addFlow(affinityFlow2)
-
-        then: "Error is returned"
-        def e2 = thrown(HttpClientErrorException)
-        e2.statusCode == HttpStatus.BAD_REQUEST
-        with(e2.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not create flow"
-            errorDescription == "Couldn't create affinity group with flow in diverse group"
-        }
-
-        cleanup:
-        [flow1, diversityFlow].each { flowHelperV2.deleteFlow(it.flowId) }
-        !e && flowHelperV2.deleteFlow(affinityFlow.flowId)
-        !e2 && affinityFlow2 && flowHelperV2.deleteFlow(affinityFlow2.flowId)
-    }
-
-    @Tidy
-    def "Cannot create diversity flow if target flow has affinity"() {
-        given: "Existing flows with affinity"
         def swPair = topologyHelper.getSwitchPairs()[0]
         def flow1 = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow1)
         def affinityFlow = flowHelperV2.randomFlow(swPair, false, [flow1]).tap { affinityFlowId = flow1.flowId }
         flowHelperV2.addFlow(affinityFlow)
 
-        when: "Create a diversity flow that targets the affinity flow"
-        def diversityFlow = flowHelperV2.randomFlow(swPair, false, [flow1, affinityFlow]).tap { diverseFlowId = flow1.flowId }
-        northboundV2.addFlow(diversityFlow)
+        when: "Create affinity flow on the same switch pair"
+        def affinityFlow2 = flowHelperV2.randomFlow(swPair, false, [flow1, affinityFlow]).tap { affinityFlowId = flow1.flowId; diverseFlowId = affinityFlow.flowId }
+        northboundV2.addFlow(affinityFlow2)
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.BAD_REQUEST
         with(e.responseBodyAsString.to(MessageError)) {
             errorMessage == "Could not create flow"
-            errorDescription == "Couldn't create diverse group with flow in affinity group"
+            errorDescription == "Couldn't create diverse group with flow in the same affinity group"
         }
 
-        when: "Create a diversity flow that targets the second affinity flow"
-        def diversityFlow2 = flowHelperV2.randomFlow(swPair, false, [flow1, affinityFlow]).tap { diverseFlowId = affinityFlow.flowId }
-        northboundV2.addFlow(diversityFlow2)
+        when: "Create affinity flow on the same switch pair"
+        def affinityFlow3 = flowHelperV2.randomFlow(swPair, false, [flow1, affinityFlow]).tap { affinityFlowId = affinityFlow.flowId; diverseFlowId = flow1.flowId }
+        northboundV2.addFlow(affinityFlow3)
 
         then: "Error is returned"
         def e2 = thrown(HttpClientErrorException)
         e2.statusCode == HttpStatus.BAD_REQUEST
         with(e2.responseBodyAsString.to(MessageError)) {
             errorMessage == "Could not create flow"
-            errorDescription == "Couldn't create diverse group with flow in affinity group"
+            errorDescription == "Couldn't create diverse group with flow in the same affinity group"
         }
 
         cleanup:
         [flow1, affinityFlow].each { flowHelperV2.deleteFlow(it.flowId) }
-        !e && flowHelperV2.deleteFlow(diversityFlow.flowId)
-        !e2 && diversityFlow2 && flowHelperV2.deleteFlow(diversityFlow2.flowId)
+        !e && flowHelperV2.deleteFlow(affinityFlow2.flowId)
+        !e2 && affinityFlow3 && flowHelperV2.deleteFlow(affinityFlow3.flowId)
+    }
+
+    @Tidy
+    def "Cannot create affinity flow if target flow has another diverse group"() {
+        given: "Existing flows with diversity"
+        def swPair = topologyHelper.getSwitchPairs()[0]
+        def flow1 = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow1)
+        def affinityFlow = flowHelperV2.randomFlow(swPair, false, [flow1]).tap { affinityFlowId = flow1.flowId }
+        flowHelperV2.addFlow(affinityFlow)
+        def diverseFlow = flowHelperV2.randomFlow(swPair, false, [flow1]).tap { diverseFlowId = flow1.flowId }
+        flowHelperV2.addFlow(diverseFlow)
+        def flow2 = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow2)
+
+        when: "Create an affinity flow that targets the diversity flow"
+        def affinityFlow2 = flowHelperV2.randomFlow(swPair, false, [flow1, diverseFlow]).tap { affinityFlowId = flow1.flowId; diverseFlowId = flow2.flowId }
+        northboundV2.addFlow(affinityFlow2)
+
+        then: "Error is returned"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.BAD_REQUEST
+        with(e.responseBodyAsString.to(MessageError)) {
+            errorMessage == "Could not create flow"
+            errorDescription == "Couldn't create a diverse group with flow in a different diverse group than main affinity flow"
+        }
+        cleanup:
+        [flow1, flow2, affinityFlow, diverseFlow].each { flowHelperV2.deleteFlow(it.flowId) }
+        !e && flowHelperV2.deleteFlow(affinityFlow2.flowId)
     }
 
     @Tidy

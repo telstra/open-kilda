@@ -50,19 +50,19 @@ import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
-import org.openkilda.wfm.topology.flowhs.service.FlowDeleteHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowDeleteService;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
-
+public class FlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
     private final FlowDeleteConfig config;
     private final FlowResourcesConfig flowResourcesConfig;
 
@@ -71,8 +71,8 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
 
     private LifecycleEvent deferredShutdownEvent;
 
-    public FlowDeleteHubBolt(FlowDeleteConfig config, PersistenceManager persistenceManager,
-                             FlowResourcesConfig flowResourcesConfig) {
+    public FlowDeleteHubBolt(@NonNull FlowDeleteConfig config, @NonNull PersistenceManager persistenceManager,
+                             @NonNull FlowResourcesConfig flowResourcesConfig) {
         super(persistenceManager, config);
 
         this.config = config;
@@ -136,7 +136,7 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
     }
 
     @Override
-    public void sendSpeakerRequest(FlowSegmentRequest command) {
+    public void sendSpeakerRequest(@NonNull FlowSegmentRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
 
         Values values = new Values(commandKey, command);
@@ -144,12 +144,12 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
     }
 
     @Override
-    public void sendNorthboundResponse(Message message) {
+    public void sendNorthboundResponse(@NonNull Message message) {
         emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
     }
 
     @Override
-    public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
+    public void sendHistoryUpdate(@NonNull FlowHistoryHolder historyHolder) {
         emit(Stream.HUB_TO_HISTORY_BOLT.name(), getCurrentTuple(), HistoryBolt.newInputTuple(
                 historyHolder, getCommandContext()));
     }
@@ -186,7 +186,7 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
     }
 
     @Override
-    public void sendNotifyFlowMonitor(CommandData flowCommand) {
+    public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
         String correlationId = getCommandContext().getCorrelationId();
         Message message = new CommandMessage(flowCommand, System.currentTimeMillis(), correlationId);
 
@@ -195,7 +195,7 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
     }
 
     @Override
-    public void sendNotifyFlowStats(RemoveFlowPathInfo flowPathInfo) {
+    public void sendNotifyFlowStats(@NonNull RemoveFlowPathInfo flowPathInfo) {
         Message message = new InfoMessage(flowPathInfo, System.currentTimeMillis(),
                 getCommandContext().getCorrelationId());
 
@@ -223,7 +223,7 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
         private int speakerCommandRetriesLimit;
 
         @Builder(builderMethodName = "flowDeleteBuilder", builderClassName = "flowDeleteBuild")
-        public FlowDeleteConfig(String requestSenderComponent, String workerComponent,  String lifeCycleEventComponent,
+        public FlowDeleteConfig(String requestSenderComponent, String workerComponent, String lifeCycleEventComponent,
                                 int timeoutMs, boolean autoAck,
                                 int speakerCommandRetriesLimit) {
             super(requestSenderComponent, workerComponent, lifeCycleEventComponent, timeoutMs, autoAck);

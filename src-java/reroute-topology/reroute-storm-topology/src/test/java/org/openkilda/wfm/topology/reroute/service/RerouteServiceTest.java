@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.reroute.service;
 
 import static java.lang.String.format;
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -33,6 +34,7 @@ import static org.mockito.Mockito.when;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
+import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.reroute.SwitchStateChanged;
 import org.openkilda.model.Flow;
@@ -46,6 +48,9 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YFlow.SharedEndpoint;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.EntityNotFoundException;
@@ -53,6 +58,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.tx.TransactionCallback;
 import org.openkilda.persistence.tx.TransactionCallbackWithoutResult;
 import org.openkilda.persistence.tx.TransactionManager;
@@ -67,10 +73,10 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @RunWith(MockitoJUnitRunner.class)
 public class RerouteServiceTest {
@@ -93,10 +99,14 @@ public class RerouteServiceTest {
 
     private static final String FLOW_ID = "TEST_FLOW";
     private static final String CORRELATION_ID = "CORRELATION_ID";
+    private static final String YFLOW_ID = "TEST_YFLOW";
+    private static final String SUB_YFLOW_ID = "TEST_SUB_YFLOW";
 
     private Flow regularFlow;
     private Flow pinnedFlow;
     private Flow oneSwitchFlow;
+    private YFlow regularYFlow;
+    private Flow subFlow;
     @Mock
     private TransactionManager transactionManager;
 
@@ -228,6 +238,40 @@ public class RerouteServiceTest {
                 .build();
         oneSwitchFlow.setForwardPath(oneSwitchFlowForwardPath);
         oneSwitchFlow.setReversePath(oneSwitchFlowReversePath);
+
+        regularYFlow = YFlow.builder()
+                .yFlowId(YFLOW_ID)
+                .priority(2)
+                .sharedEndpoint(new SharedEndpoint(SWITCH_A.getSwitchId(), 10))
+                .build();
+
+        FlowPath regularYFlowForwardPath = FlowPath.builder().pathId(new PathId("3"))
+                .srcSwitch(SWITCH_A).destSwitch(SWITCH_C)
+                .cookie(new FlowSegmentCookie(FlowPathDirection.FORWARD, 3))
+                .status(FlowPathStatus.ACTIVE)
+                .build();
+        regularYFlowForwardPath.setSegments(unpinnedFlowForwardSegments);
+
+        FlowPath regularYFlowReversePath = FlowPath.builder().pathId(new PathId("4"))
+                .srcSwitch(SWITCH_C).destSwitch(SWITCH_A)
+                .cookie(new FlowSegmentCookie(FlowPathDirection.REVERSE, 3))
+                .status(FlowPathStatus.ACTIVE)
+                .build();
+        regularYFlowReversePath.setSegments(unpinnedFlowReverseSegments);
+        subFlow = Flow.builder()
+                .flowId(SUB_YFLOW_ID)
+                .srcSwitch(SWITCH_A)
+                .destSwitch(SWITCH_C)
+                .pinned(false)
+                .priority(2)
+                .yFlowId(YFLOW_ID)
+                .yFlow(regularYFlow)
+                .build();
+        subFlow.setForwardPath(regularYFlowForwardPath);
+        subFlow.setReversePath(regularYFlowReversePath);
+
+        Set<YSubFlow> subFlows = Collections.singleton(YSubFlow.builder().yFlow(regularYFlow).flow(subFlow).build());
+        regularYFlow.setSubFlows(subFlows);
     }
 
 
@@ -326,7 +370,7 @@ public class RerouteServiceTest {
 
         FlowPathRepository pathRepository = mock(FlowPathRepository.class);
         when(pathRepository.findBySegmentEndpoint(eq(islSide.getSwitchId()), eq(islSide.getPortNo())))
-                .thenReturn(Arrays.asList(regularFlow.getForwardPath(), regularFlow.getReversePath()));
+                .thenReturn(asList(regularFlow.getForwardPath(), regularFlow.getReversePath()));
 
         FlowRepository flowRepository = mock(FlowRepository.class);
 
@@ -361,10 +405,54 @@ public class RerouteServiceTest {
     }
 
     @Test
+    public void handlePathNoFoundExceptionForSubYFlow() {
+        PathNode islSide = new PathNode(SWITCH_A.getSwitchId(), 1, 0);
+
+        FlowPathRepository pathRepository = mock(FlowPathRepository.class);
+        when(pathRepository.findBySegmentEndpoint(eq(islSide.getSwitchId()), eq(islSide.getPortNo())))
+                .thenReturn(asList(subFlow.getForwardPath(), subFlow.getReversePath()));
+
+        FlowRepository flowRepository = mock(FlowRepository.class);
+        YFlowRepository yFlowRepository = mock(YFlowRepository.class);
+
+        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
+        when(repositoryFactory.createPathSegmentRepository())
+                .thenReturn(mock(PathSegmentRepository.class));
+        when(repositoryFactory.createFlowPathRepository())
+                .thenReturn(pathRepository);
+        when(repositoryFactory.createFlowRepository())
+                .thenReturn(flowRepository);
+        when(repositoryFactory.createYFlowRepository())
+                .thenReturn(yFlowRepository);
+
+        PersistenceManager persistenceManager = mock(PersistenceManager.class);
+        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+
+        RerouteService rerouteService = new RerouteService(persistenceManager);
+
+        RerouteAffectedFlows request = new RerouteAffectedFlows(islSide, "dummy-reason - unittest");
+        rerouteService.rerouteAffectedFlows(carrier, CORRELATION_ID, request);
+
+        verify(flowRepository).updateStatusSafe(eq(subFlow), eq(FlowStatus.DOWN), any());
+        FlowThrottlingData expected = FlowThrottlingData.builder()
+                .correlationId(CORRELATION_ID)
+                .priority(regularYFlow.getPriority())
+                .timeCreate(regularYFlow.getTimeCreate())
+                .affectedIsl(Collections.singleton(new IslEndpoint(islSide.getSwitchId(), islSide.getPortNo())))
+                .force(false)
+                .effectivelyDown(true)
+                .reason(request.getReason())
+                .yFlow(true)
+                .build();
+        verify(carrier).emitRerouteCommand(eq(regularYFlow.getYFlowId()), eq(expected));
+    }
+
+    @Test
     public void handleUpdateSingleSwitchFlows() {
         FlowRepository flowRepository = mock(FlowRepository.class);
         when(flowRepository.findOneSwitchFlows(oneSwitchFlow.getSrcSwitch().getSwitchId()))
-                .thenReturn(Arrays.asList(oneSwitchFlow));
+                .thenReturn(Collections.singletonList(oneSwitchFlow));
         FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createFlowRepository())
@@ -391,7 +479,7 @@ public class RerouteServiceTest {
 
         FlowPathRepository pathRepository = mock(FlowPathRepository.class);
         when(pathRepository.findBySegmentEndpoint(eq(islSide.getSwitchId()), eq(islSide.getPortNo())))
-                .thenReturn(Arrays.asList(regularFlow.getForwardPath(), regularFlow.getReversePath()));
+                .thenReturn(asList(regularFlow.getForwardPath(), regularFlow.getReversePath()));
 
         FlowRepository flowRepository = mock(FlowRepository.class);
 
@@ -423,7 +511,7 @@ public class RerouteServiceTest {
     public void handleRerouteInactiveAffectedFlows() {
         FlowPathRepository pathRepository = mock(FlowPathRepository.class);
         when(pathRepository.findInactiveBySegmentSwitch(regularFlow.getSrcSwitchId()))
-                .thenReturn(Arrays.asList(regularFlow.getForwardPath(), regularFlow.getReversePath()));
+                .thenReturn(asList(regularFlow.getForwardPath(), regularFlow.getReversePath()));
 
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createFlowPathRepository())
@@ -448,6 +536,44 @@ public class RerouteServiceTest {
                 .reason(format("Switch '%s' online", regularFlow.getSrcSwitchId()))
                 .build();
         verify(carrier).emitRerouteCommand(eq(regularFlow.getFlowId()), eq(expected));
+
+        regularFlow.setStatus(FlowStatus.UP);
+    }
+
+    @Test
+    public void handleRerouteAffectedYFlows() {
+        FlowPathRepository pathRepository = mock(FlowPathRepository.class);
+        when(pathRepository.findInactiveBySegmentSwitch(subFlow.getSrcSwitchId()))
+                .thenReturn(asList(subFlow.getForwardPath(), subFlow.getReversePath()));
+
+        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
+        when(repositoryFactory.createFlowPathRepository())
+                .thenReturn(pathRepository);
+
+        YFlowRepository yFlowRepository = mock(YFlowRepository.class);
+        when(repositoryFactory.createYFlowRepository())
+                .thenReturn(yFlowRepository);
+
+        PersistenceManager persistenceManager = mock(PersistenceManager.class);
+        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+
+        RerouteService rerouteService = new RerouteService(persistenceManager);
+
+        subFlow.setStatus(FlowStatus.DOWN);
+        rerouteService.rerouteInactiveAffectedFlows(carrier, CORRELATION_ID, subFlow.getSrcSwitchId());
+
+        FlowThrottlingData expected = FlowThrottlingData.builder()
+                .correlationId(CORRELATION_ID)
+                .priority(regularYFlow.getPriority())
+                .timeCreate(regularYFlow.getTimeCreate())
+                .affectedIsl(Collections.emptySet())
+                .force(false)
+                .effectivelyDown(true)
+                .reason(format("Switch '%s' online", subFlow.getSrcSwitchId()))
+                .yFlow(true)
+                .build();
+        verify(carrier).emitRerouteCommand(eq(regularYFlow.getYFlowId()), eq(expected));
 
         regularFlow.setStatus(FlowStatus.UP);
     }
@@ -482,5 +608,36 @@ public class RerouteServiceTest {
                 .reason("reason")
                 .build();
         verify(carrier).emitManualRerouteCommand(eq(regularFlow.getFlowId()), eq(expected));
+    }
+
+    @Test
+    public void processManualRerouteRequestForYFlow() {
+        RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
+
+        YFlowRepository yFlowRepository = mock(YFlowRepository.class);
+        when(repositoryFactory.createYFlowRepository())
+                .thenReturn(yFlowRepository);
+
+        PersistenceManager persistenceManager = mock(PersistenceManager.class);
+        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+        when(yFlowRepository.findById(YFLOW_ID)).thenReturn(Optional.of(regularYFlow));
+
+        RerouteService rerouteService = new RerouteService(persistenceManager);
+
+        YFlowRerouteRequest request = new YFlowRerouteRequest(regularYFlow.getYFlowId(), Collections.emptySet(),
+                true, "reason", false);
+        rerouteService.processRerouteRequest(carrier, CORRELATION_ID, request);
+
+        FlowThrottlingData expected = FlowThrottlingData.builder()
+                .correlationId(CORRELATION_ID)
+                .priority(regularYFlow.getPriority())
+                .timeCreate(regularYFlow.getTimeCreate())
+                .affectedIsl(Collections.emptySet())
+                .force(true)
+                .reason("reason")
+                .yFlow(true)
+                .build();
+        verify(carrier).emitManualRerouteCommand(eq(regularYFlow.getYFlowId()), eq(expected));
     }
 }

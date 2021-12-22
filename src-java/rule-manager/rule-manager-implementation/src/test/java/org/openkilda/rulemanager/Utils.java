@@ -18,10 +18,12 @@ package org.openkilda.rulemanager;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toSet;
 
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.SwitchProperties.RttState;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
@@ -36,6 +38,10 @@ import java.util.Set;
  * Testing utils.
  */
 public final class Utils {
+
+    public static final int SERVER_42_PORT = 42;
+    public static final int SERVER_42_VLAN = 142;
+    public static final MacAddress SERVER_42_MAC_ADDRESS = new MacAddress("42:42:42:42:42:42");
 
     /**
      * Build switch object for tests.
@@ -72,13 +78,27 @@ public final class Utils {
     /**
      * Build switch properties object for tests.
      */
-    public static SwitchProperties buildSwitchProperties(Switch sw, boolean multiTable,
-                                                         boolean switchLldp, boolean switchArp) {
+    public static SwitchProperties buildSwitchProperties(
+            Switch sw, boolean multiTable, boolean switchLldp, boolean switchArp) {
+        return buildSwitchProperties(sw, multiTable, switchLldp, switchArp, false, RttState.DISABLED);
+    }
+
+    /**
+     * Build switch properties object for tests.
+     */
+    public static SwitchProperties buildSwitchProperties(
+            Switch sw, boolean multiTable, boolean switchLldp, boolean switchArp,
+            boolean server42FlowRtt, RttState server42IslRtt) {
         return SwitchProperties.builder()
                 .switchObj(sw)
                 .multiTable(multiTable)
                 .switchLldp(switchLldp)
                 .switchArp(switchArp)
+                .server42FlowRtt(server42FlowRtt)
+                .server42IslRtt(server42IslRtt)
+                .server42Port(SERVER_42_PORT)
+                .server42Vlan(SERVER_42_VLAN)
+                .server42MacAddress(SERVER_42_MAC_ADDRESS)
                 .build();
     }
 

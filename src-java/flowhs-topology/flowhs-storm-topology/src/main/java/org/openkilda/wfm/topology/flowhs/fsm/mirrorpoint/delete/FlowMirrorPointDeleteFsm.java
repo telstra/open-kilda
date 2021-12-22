@@ -25,7 +25,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.DeallocateFlowMirrorPathResourcesAction;
@@ -37,7 +37,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.OnFinish
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.OnReceivedCommandResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.PostFlowMirrorPathDeallocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.ValidateRequestAction;
-import org.openkilda.wfm.topology.flowhs.service.FlowMirrorPointDeleteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -53,8 +54,8 @@ import java.util.UUID;
 @Getter
 @Setter
 @Slf4j
-public final class FlowMirrorPointDeleteFsm extends NbTrackableFsm<FlowMirrorPointDeleteFsm, State, Event,
-        FlowMirrorPointDeleteContext, FlowMirrorPointDeleteHubCarrier> {
+public final class FlowMirrorPointDeleteFsm extends FlowProcessingWithHistorySupportFsm<FlowMirrorPointDeleteFsm,
+        State, Event, FlowMirrorPointDeleteContext, FlowGenericCarrier, FlowProcessingEventListener> {
 
     private final String flowId;
 
@@ -72,42 +73,10 @@ public final class FlowMirrorPointDeleteFsm extends NbTrackableFsm<FlowMirrorPoi
 
     private boolean mirrorPathResourcesDeallocated = false;
 
-    private String errorReason;
-
-    public FlowMirrorPointDeleteFsm(CommandContext commandContext, @NonNull FlowMirrorPointDeleteHubCarrier carrier,
-                                    String flowId) {
-        super(commandContext, carrier);
+    public FlowMirrorPointDeleteFsm(@NonNull CommandContext commandContext,
+                                    @NonNull FlowGenericCarrier carrier, @NonNull String flowId) {
+        super(Event.NEXT, Event.ERROR, commandContext, carrier);
         this.flowId = flowId;
-    }
-
-    @Override
-    public void fireNext(FlowMirrorPointDeleteContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        setErrorReason(errorReason);
-        fire(errorEvent);
-    }
-
-    private void setErrorReason(String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: {}", errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
-    }
-
-    @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
     }
 
     @Override
@@ -117,15 +86,14 @@ public final class FlowMirrorPointDeleteFsm extends NbTrackableFsm<FlowMirrorPoi
 
     public static class Factory {
         private final StateMachineBuilder<FlowMirrorPointDeleteFsm, State, Event, FlowMirrorPointDeleteContext> builder;
-        private final FlowMirrorPointDeleteHubCarrier carrier;
+        private final FlowGenericCarrier carrier;
 
-        public Factory(FlowMirrorPointDeleteHubCarrier carrier, PersistenceManager persistenceManager,
-                       FlowResourcesManager resourcesManager, int speakerCommandRetriesLimit) {
+        public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+                       @NonNull FlowResourcesManager resourcesManager, int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
-
             builder = StateMachineBuilderFactory.create(FlowMirrorPointDeleteFsm.class, State.class, Event.class,
-                    FlowMirrorPointDeleteContext.class, CommandContext.class, FlowMirrorPointDeleteHubCarrier.class,
+                    FlowMirrorPointDeleteContext.class, CommandContext.class, FlowGenericCarrier.class,
                     String.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
@@ -180,7 +148,7 @@ public final class FlowMirrorPointDeleteFsm extends NbTrackableFsm<FlowMirrorPoi
                     .addEntryAction(new OnFinishedWithErrorAction(persistenceManager, dashboardLogger));
         }
 
-        public FlowMirrorPointDeleteFsm newInstance(CommandContext commandContext, String flowId) {
+        public FlowMirrorPointDeleteFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId) {
             return builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
         }
     }

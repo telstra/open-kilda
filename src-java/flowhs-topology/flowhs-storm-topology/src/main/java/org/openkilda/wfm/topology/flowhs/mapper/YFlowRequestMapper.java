@@ -29,6 +29,8 @@ import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 @Mapper
@@ -102,6 +104,6 @@ public abstract class YFlowRequestMapper {
                         .pathComputationStrategy(request.getPathComputationStrategy())
                         .allocateProtectedPath(request.isAllocateProtectedPath())
                         .build())
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(RequestedFlow::getFlowId))));
     }
 }

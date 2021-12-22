@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteAffectedInactiveFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
+import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.reroute.PathSwapResult;
@@ -102,6 +103,8 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
             rerouteService.rerouteInactiveFlows(this, correlationId, (RerouteInactiveFlows) commandData);
         } else if (commandData instanceof FlowRerouteRequest) {
             rerouteService.processRerouteRequest(this, correlationId, (FlowRerouteRequest) commandData);
+        } else if (commandData instanceof YFlowRerouteRequest) {
+            rerouteService.processRerouteRequest(this, correlationId, (YFlowRerouteRequest) commandData);
         } else {
             unhandledInput(getCurrentTuple());
         }

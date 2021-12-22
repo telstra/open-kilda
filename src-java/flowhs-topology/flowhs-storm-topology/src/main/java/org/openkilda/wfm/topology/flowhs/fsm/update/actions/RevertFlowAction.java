@@ -23,7 +23,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
@@ -33,7 +33,8 @@ import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class RevertFlowAction extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+public class RevertFlowAction extends
+        FlowProcessingWithHistorySupportAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final SwitchRepository switchRepository;
 
     public RevertFlowAction(PersistenceManager persistenceManager) {

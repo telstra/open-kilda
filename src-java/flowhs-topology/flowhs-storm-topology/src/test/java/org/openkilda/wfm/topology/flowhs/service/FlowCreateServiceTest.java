@@ -56,7 +56,7 @@ import java.util.UUID;
 @RunWith(MockitoJUnitRunner.class)
 public class FlowCreateServiceTest extends AbstractFlowTest {
     @Mock
-    private FlowCreateHubCarrier carrier;
+    private FlowGenericCarrier carrier;
 
     @Before
     public void init() {

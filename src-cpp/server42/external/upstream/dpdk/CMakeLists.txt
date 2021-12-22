@@ -1,16 +1,14 @@
 include(ExternalProject)
 ExternalProject_Add(dpdk_external
         URL
-        https://github.com/DPDK/dpdk/archive/refs/tags/v19.11.tar.gz
+        http://fast.dpdk.org/rel/dpdk-19.11.10.tar.xz
         URL_HASH
-        SHA1=f8dd55689df1baf123942bb308a06141d25698d8
+        MD5=33780dfa7462a53b22f120bcbd9da374
         DOWNLOAD_NO_PROGRESS
         1
         CONFIGURE_COMMAND
         ${CMAKE_MAKE_PROGRAM} config T=x86_64-native-linuxapp-gcc
         COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/dpdk_config.sh <SOURCE_DIR>
-        COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/kni.patch <SOURCE_DIR>
-        COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/eal_rte_random.patch <SOURCE_DIR>
         COMMAND /bin/sh dpdk_config.sh
         BUILD_COMMAND
         ${CMAKE_MAKE_PROGRAM}

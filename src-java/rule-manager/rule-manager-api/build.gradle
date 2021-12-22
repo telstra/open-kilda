@@ -20,4 +20,7 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
     testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
 }

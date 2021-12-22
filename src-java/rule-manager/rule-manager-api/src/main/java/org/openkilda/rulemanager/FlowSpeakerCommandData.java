@@ -22,6 +22,9 @@ import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 @EqualsAndHashCode(callSuper = true)
@@ -35,4 +38,21 @@ public class FlowSpeakerCommandData extends SpeakerCommandData {
     Set<FieldMatch> match;
     Instructions instructions;
     Set<OfFlowFlag> flags;
+
+    public abstract static class FlowSpeakerCommandDataBuilder<C extends FlowSpeakerCommandData,
+            B extends FlowSpeakerCommandDataBuilder<C, B>>  extends SpeakerCommandDataBuilder<C, B> {
+        private Set<FieldMatch> match;
+
+        /**
+         * If two FieldMatches have same field type for matching only one of them will be added into match set.
+         */
+        public B match(Set<FieldMatch> match) {
+            Map<Field, FieldMatch> map = new HashMap<>();
+            for (FieldMatch fieldMatch : match) {
+                map.put(fieldMatch.getField(), fieldMatch);
+            }
+            this.match = new HashSet<>(map.values());
+            return self();
+        }
+    }
 }

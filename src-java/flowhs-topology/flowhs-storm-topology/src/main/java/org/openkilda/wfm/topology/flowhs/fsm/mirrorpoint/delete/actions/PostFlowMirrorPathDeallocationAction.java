@@ -23,7 +23,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.Event;
@@ -32,8 +32,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointD
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class PostFlowMirrorPathDeallocationAction
-        extends FlowProcessingAction<FlowMirrorPointDeleteFsm, State, Event, FlowMirrorPointDeleteContext> {
+public class PostFlowMirrorPathDeallocationAction extends
+        FlowProcessingWithHistorySupportAction<FlowMirrorPointDeleteFsm, State, Event, FlowMirrorPointDeleteContext> {
     private final FlowResourcesManager resourcesManager;
     private final FlowMirrorPointsRepository flowMirrorPointsRepository;
 

@@ -22,6 +22,9 @@ public final class Constants {
     public static final int VXLAN_UDP_DST = 4789;
     public static final int SERVER_42_FLOW_RTT_FORWARD_UDP_PORT = 4700;
     public static final int SERVER_42_FLOW_RTT_REVERSE_UDP_PORT = 4701;
+    public static final int SERVER_42_FLOW_RTT_REVERSE_UDP_VXLAN_PORT = 4702;
+    public static final int SERVER_42_ISL_RTT_FORWARD_UDP_PORT = 4710;
+    public static final int SERVER_42_ISL_RTT_REVERSE_UDP_PORT = 4711;
     public static final IPv4Address VXLAN_SRC_IPV4_ADDRESS = new IPv4Address("127.0.0.1");
     public static final IPv4Address VXLAN_DST_IPV4_ADDRESS = new IPv4Address("127.0.0.2");
     public static final int NOVIFLOW_TIMESTAMP_SIZE_IN_BITS = 64;
@@ -33,6 +36,7 @@ public final class Constants {
 
     public static final int BDF_DEFAULT_PORT = 3784;
 
+    public static final int MAC_ADDRESS_SIZE_IN_BITS = 48;
     public static final int ETHERNET_HEADER_SIZE = 112; // 48 dst mac, 48 src mac, 16 ether type
     public static final int IP_V4_HEADER_SIZE = 160; /*
      * 4 version, 4 IHL, 8 Type of service, 16 length, 16 ID,
@@ -71,13 +75,16 @@ public final class Constants {
         public static final int DROP_DISCOVERY_LOOP_RULE_PRIORITY = DISCOVERY_RULE_PRIORITY + 1;
         public static final int CATCH_BFD_RULE_PRIORITY = DROP_DISCOVERY_LOOP_RULE_PRIORITY + 1;
         public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = DROP_DISCOVERY_LOOP_RULE_PRIORITY + 1;
-        public static final int MIRROR_FLOW_PRIORITY = FLOW_PRIORITY + 50;
         public static final int ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
         public static final int ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 3;
         public static final int INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
         public static final int ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 5;
         public static final int DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1;
         public static final int DOUBLE_VLAN_FLOW_PRIORITY = FLOW_PRIORITY + 10;
+
+        public static final int MIRROR_FLOW_PRIORITY = FLOW_PRIORITY + 50;
+        public static final int MIRROR_DOUBLE_VLAN_FLOW_PRIORITY = MIRROR_FLOW_PRIORITY + 10;
+        public static final int MIRROR_DEFAULT_FLOW_PRIORITY = MIRROR_FLOW_PRIORITY - 10;
 
         public static final int LOOP_FLOW_PRIORITY = FLOW_PRIORITY + 100;
         public static final int LOOP_DOUBLE_VLAN_FLOW_PRIORITY = LOOP_FLOW_PRIORITY + 10;
@@ -89,6 +96,7 @@ public final class Constants {
 
         public static final int SERVER_42_FLOW_RTT_INPUT_PRIORITY = INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE;
         public static final int SERVER_42_FLOW_RTT_TURNING_PRIORITY = DISCOVERY_RULE_PRIORITY;
+        public static final int SERVER_42_FLOW_RTT_VXLAN_TURNING_PRIORITY = VERIFICATION_RULE_VXLAN_PRIORITY + 1;
         public static final int SERVER_42_FLOW_RTT_OUTPUT_VLAN_PRIORITY = DISCOVERY_RULE_PRIORITY;
         public static final int SERVER_42_FLOW_RTT_OUTPUT_VXLAN_PRIORITY = DISCOVERY_RULE_PRIORITY;
 

@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -131,6 +131,7 @@ public class RerouteQueue {
         merged.priority(Math.max(Optional.ofNullable(first.getPriority()).orElse(0),
                 Optional.ofNullable(second.getPriority()).orElse(0)));
         merged.timeCreate(first.getTimeCreate());
+        merged.yFlow(first.isYFlow());
 
         return merged.build();
     }

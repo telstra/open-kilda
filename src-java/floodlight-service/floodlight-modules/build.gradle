@@ -41,7 +41,8 @@ dependencies {
     implementation 'org.hibernate.validator:hibernate-validator'
     implementation 'org.glassfish:javax.el'
     implementation 'com.google.guava:guava'
-    implementation 'org.restlet.jse:org.restlet:2.3.12'
+    implementation 'org.restlet.jse:org.restlet:2.3.2'
+
     compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
     implementation 'args4j:args4j'
 
@@ -67,7 +68,7 @@ dependencies {
 
 repositories {
     maven {
-        url 'https://maven.restlet.com'
+        url 'https://maven.restlet.talend.com'
     }
 }
 

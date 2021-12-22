@@ -92,7 +92,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         and: "The src and dst switches of the isl pass switch validation"
         [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
             with(northbound.validateSwitch(swId)) { validationResponse ->
-                validationResponse.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
 
@@ -160,7 +160,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
                 with(northbound.validateSwitch(swId)) { validationResponse ->
-                    validationResponse.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
                 }
             }
         }

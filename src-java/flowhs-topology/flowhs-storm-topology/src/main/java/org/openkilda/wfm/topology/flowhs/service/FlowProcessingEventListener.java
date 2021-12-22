@@ -16,11 +16,12 @@
 package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;
 
 /**
  * Defines a listener for flow processing events.
  */
-public interface FlowProcessingEventListener {
+public interface FlowProcessingEventListener extends ProcessingEventListener {
     void onCompleted(String flowId);
 
     void onFailed(String flowId, String errorReason, ErrorType errorType);

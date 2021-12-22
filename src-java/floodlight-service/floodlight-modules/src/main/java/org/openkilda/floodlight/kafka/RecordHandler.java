@@ -52,6 +52,7 @@ import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOK
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 
+import org.openkilda.floodlight.api.response.SpeakerDataResponse;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.SpeakerCommand;
@@ -98,7 +99,9 @@ import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
 import org.openkilda.messaging.AliveRequest;
 import org.openkilda.messaging.AliveResponse;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageContext;
+import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.BroadcastWrapper;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -134,13 +137,13 @@ import org.openkilda.messaging.command.switches.DeleteGroupRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
-import org.openkilda.messaging.command.switches.DumpGroupsForNbWorkerRequest;
+import org.openkilda.messaging.command.switches.DumpGroupsForFlowHsRequest;
 import org.openkilda.messaging.command.switches.DumpGroupsForSwitchManagerRequest;
-import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
+import org.openkilda.messaging.command.switches.DumpMetersForFlowHsRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
-import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
+import org.openkilda.messaging.command.switches.DumpRulesForFlowHsRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
@@ -156,6 +159,7 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.rule.FlowCommandErrorData;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
 import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
@@ -270,8 +274,8 @@ class RecordHandler implements Runnable {
             doDeleteSwitchRules(message);
         } else if (data instanceof SwitchRulesInstallRequest) {
             doInstallSwitchRules(message);
-        } else if (data instanceof DumpRulesForNbworkerRequest) {
-            doDumpRulesForNbworkerRequest(message);
+        } else if (data instanceof DumpRulesForFlowHsRequest) {
+            doDumpRulesForFlowHsRequest(message);
         } else if (data instanceof GetExpectedDefaultRulesRequest) {
             doGetExpectedDefaultRulesRequest(message);
         } else if (data instanceof GetExpectedDefaultMetersRequest) {
@@ -296,8 +300,8 @@ class RecordHandler implements Runnable {
             doDumpMetersRequest(message);
         } else if (data instanceof DumpMetersForSwitchManagerRequest) {
             doDumpMetersForSwitchManagerRequest(message);
-        } else if (data instanceof DumpMetersForNbworkerRequest) {
-            doDumpMetersForNbworkerRequest(message);
+        } else if (data instanceof DumpMetersForFlowHsRequest) {
+            doDumpMetersForFlowHsRequest(message);
         } else if (data instanceof MeterModifyCommandRequest) {
             doModifyMeterRequest(message);
         } else if (data instanceof AliveRequest) {
@@ -308,8 +312,8 @@ class RecordHandler implements Runnable {
             doRemoveIslDefaultRule(message);
         } else if (data instanceof DumpGroupsForSwitchManagerRequest) {
             doDumpGroupsForSwitchManagerRequest(message);
-        } else if (data instanceof DumpGroupsForNbWorkerRequest) {
-            doDumpGroupsForNbWorkerRequest(message);
+        } else if (data instanceof DumpGroupsForFlowHsRequest) {
+            doDumpGroupsForFlowHsRequest(message);
         } else if (data instanceof InstallGroupRequest) {
             doInstallGroupRequest(message);
         } else if (data instanceof ModifyGroupRequest) {
@@ -1367,20 +1371,17 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doDumpGroupsForSwitchManagerRequest(final CommandMessage message) {
+    private void doDumpGroupsForSwitchManagerRequest(CommandMessage message) {
         SwitchId switchId = ((DumpGroupsForSwitchManagerRequest) message.getData()).getSwitchId();
-        String correlationId = message.getCorrelationId();
-        dumpGroupsRequest(switchId, correlationId, context.getKafkaSwitchManagerTopic());
+        dumpGroupsRequest(switchId, buildSenderToSwitchManager(message));
     }
 
-    private void doDumpGroupsForNbWorkerRequest(final CommandMessage message) {
-        SwitchId switchId = ((DumpGroupsForNbWorkerRequest) message.getData()).getSwitchId();
-        String correlationId = message.getCorrelationId();
-        dumpGroupsRequest(switchId, correlationId, context.getKafkaNbWorkerTopic());
+    private void doDumpGroupsForFlowHsRequest(CommandMessage message) {
+        SwitchId switchId = ((DumpGroupsForFlowHsRequest) message.getData()).getSwitchId();
+        dumpGroupsRequest(switchId, buildSenderToFlowHs(message));
     }
 
-    private void dumpGroupsRequest(SwitchId switchId, String correlationId, String topic) {
-        final IKafkaProducerService producerService = getKafkaProducer();
+    private void dumpGroupsRequest(SwitchId switchId, java.util.function.Consumer<MessageData> sender) {
         try {
             logger.debug("Loading installed groups for switch {}", switchId);
 
@@ -1395,17 +1396,14 @@ class RecordHandler implements Runnable {
                     .switchId(switchId)
                     .groupEntries(groups)
                     .build();
-
-            InfoMessage infoMessage = new InfoMessage(response, System.currentTimeMillis(), correlationId);
-            producerService.sendMessageAndTrack(topic, correlationId, infoMessage);
+            sender.accept(response);
         } catch (SwitchOperationException e) {
             logger.error("Dumping of groups on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
-            anError(ErrorType.NOT_FOUND)
+            ErrorData errorData = anError(ErrorType.NOT_FOUND)
                     .withMessage(e.getMessage())
                     .withDescription("The switch was not found when requesting a groups dump.")
-                    .withCorrelationId(correlationId)
-                    .withTopic(topic)
-                    .sendVia(producerService);
+                    .buildData();
+            sender.accept(errorData);
         }
     }
 
@@ -1475,25 +1473,21 @@ class RecordHandler implements Runnable {
         getKafkaProducer().sendMessageAndTrack(context.getKafkaSwitchManagerTopic(), correlationId, infoMessage);
     }
 
-    private void doDumpRulesRequest(final CommandMessage message) {
-        processDumpRulesRequest(((DumpRulesRequest) message.getData()).getSwitchId(),
-                context.getKafkaNorthboundTopic(), message.getCorrelationId(), message.getTimestamp());
+    private void doDumpRulesRequest(CommandMessage message) {
+        processDumpRulesRequest(((DumpRulesRequest) message.getData()).getSwitchId(), buildSenderToNorthbound(message));
     }
 
-    private void doDumpRulesForSwitchManagerRequest(final CommandMessage message) {
+    private void doDumpRulesForSwitchManagerRequest(CommandMessage message) {
         processDumpRulesRequest(((DumpRulesForSwitchManagerRequest) message.getData()).getSwitchId(),
-                context.getKafkaSwitchManagerTopic(), message.getCorrelationId(), message.getTimestamp());
+                buildSenderToSwitchManager(message));
     }
 
-    private void doDumpRulesForNbworkerRequest(final CommandMessage message) {
-        processDumpRulesRequest(((DumpRulesForNbworkerRequest) message.getData()).getSwitchId(),
-                context.getKafkaNbWorkerTopic(), message.getCorrelationId(), message.getTimestamp());
+    private void doDumpRulesForFlowHsRequest(CommandMessage message) {
+        processDumpRulesRequest(((DumpRulesForFlowHsRequest) message.getData()).getSwitchId(),
+                buildSenderToFlowHs(message));
     }
 
-    private void processDumpRulesRequest(final SwitchId switchId, final String replyToTopic,
-                                         String correlationId, long timestamp) {
-        final IKafkaProducerService producerService = getKafkaProducer();
-
+    private void processDumpRulesRequest(SwitchId switchId, java.util.function.Consumer<MessageData> sender) {
         try {
             logger.debug("Loading installed rules for switch {}", switchId);
 
@@ -1507,16 +1501,14 @@ class RecordHandler implements Runnable {
                     .switchId(switchId)
                     .flowEntries(flows)
                     .build();
-            InfoMessage infoMessage = new InfoMessage(response, timestamp, correlationId);
-            producerService.sendMessageAndTrack(replyToTopic, correlationId, infoMessage);
+            sender.accept(response);
         } catch (SwitchOperationException e) {
             logger.error("Dumping of rules on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
-            anError(ErrorType.NOT_FOUND)
+            ErrorData errorData = anError(ErrorType.NOT_FOUND)
                     .withMessage(e.getMessage())
                     .withDescription("The switch was not found when requesting a rules dump.")
-                    .withCorrelationId(correlationId)
-                    .withTopic(replyToTopic)
-                    .sendVia(producerService);
+                    .buildData();
+            sender.accept(errorData);
         }
     }
 
@@ -1753,25 +1745,57 @@ class RecordHandler implements Runnable {
 
     private void doDumpMetersRequest(CommandMessage message) {
         DumpMetersRequest request = (DumpMetersRequest) message.getData();
-        String replyToTopic = context.getKafkaNorthboundTopic();
-        dumpMeters(request.getSwitchId(), message.getCorrelationId(), replyToTopic, message.getTimestamp());
+        dumpMeters(request.getSwitchId(), buildSenderToNorthbound(message));
     }
 
     private void doDumpMetersForSwitchManagerRequest(CommandMessage message) {
         DumpMetersForSwitchManagerRequest request = (DumpMetersForSwitchManagerRequest) message.getData();
-        String replyToTopic = context.getKafkaSwitchManagerTopic();
-        dumpMeters(request.getSwitchId(), message.getCorrelationId(), replyToTopic, message.getTimestamp());
+        dumpMeters(request.getSwitchId(), buildSenderToSwitchManager(message));
     }
 
-    private void doDumpMetersForNbworkerRequest(CommandMessage message) {
-        DumpMetersForNbworkerRequest request = (DumpMetersForNbworkerRequest) message.getData();
-        String replyToTopic = context.getKafkaNbWorkerTopic();
-        dumpMeters(request.getSwitchId(), message.getCorrelationId(), replyToTopic, message.getTimestamp());
+    private void doDumpMetersForFlowHsRequest(CommandMessage message) {
+        DumpMetersForFlowHsRequest request = (DumpMetersForFlowHsRequest) message.getData();
+        dumpMeters(request.getSwitchId(), buildSenderToFlowHs(message));
     }
 
-    private void dumpMeters(SwitchId switchId, String correlationId, String replyToTopic, long timestamp) {
-        final IKafkaProducerService producerService = getKafkaProducer();
+    private java.util.function.Consumer<MessageData> buildSenderToSwitchManager(Message message) {
+        return buildSenderToTopic(context.getKafkaSwitchManagerTopic(),
+                message.getCorrelationId(), message.getTimestamp());
+    }
 
+    private java.util.function.Consumer<MessageData> buildSenderToNorthbound(Message message) {
+        return buildSenderToTopic(context.getKafkaNorthboundTopic(),
+                message.getCorrelationId(), message.getTimestamp());
+    }
+
+    private java.util.function.Consumer<MessageData> buildSenderToTopic(String kafkaTopic,
+                                                                        String correlationId, long timestamp) {
+        IKafkaProducerService producerService = getKafkaProducer();
+        return data -> {
+            Message result;
+            if (data instanceof InfoData) {
+                result = new InfoMessage((InfoData) data, timestamp, correlationId);
+            } else if (data instanceof ErrorData) {
+                result = new ErrorMessage((ErrorData) data, timestamp, correlationId);
+            } else {
+                throw new IllegalArgumentException("Unsupported data: " + data);
+            }
+            producerService.sendMessageAndTrack(kafkaTopic, correlationId, result);
+        };
+    }
+
+    private java.util.function.Consumer<MessageData> buildSenderToFlowHs(Message message) {
+        IKafkaProducerService producerService = getKafkaProducer();
+        return data -> {
+            MessageContext messageContext = new MessageContext(message);
+            SpeakerDataResponse result = new SpeakerDataResponse(messageContext, data);
+            producerService.sendMessageAndTrack(context.getKafkaSpeakerFlowHsTopic(),
+                    message.getCorrelationId(), result);
+        };
+    }
+
+
+    private void dumpMeters(SwitchId switchId, java.util.function.Consumer<MessageData> sender) {
         try {
             logger.debug("Get all meters for switch {}", switchId);
             ISwitchManager switchManager = context.getSwitchManager();
@@ -1784,28 +1808,24 @@ class RecordHandler implements Runnable {
                     .switchId(switchId)
                     .meterEntries(meters)
                     .build();
-            InfoMessage infoMessage = new InfoMessage(response, timestamp, correlationId);
-            producerService.sendMessageAndTrack(replyToTopic, correlationId, infoMessage);
+            sender.accept(response);
         } catch (UnsupportedSwitchOperationException e) {
             logger.info("Meters not supported: {}", switchId);
-            InfoMessage infoMessage = new InfoMessage(new SwitchMeterUnsupported(switchId), timestamp, correlationId);
-            producerService.sendMessageAndTrack(replyToTopic, correlationId, infoMessage);
+            sender.accept(new SwitchMeterUnsupported(switchId));
         } catch (SwitchNotFoundException e) {
             logger.info("Dumping switch meters is unsuccessful. Switch {} not found", switchId);
-            anError(ErrorType.NOT_FOUND)
+            ErrorData errorData = anError(ErrorType.NOT_FOUND)
                     .withMessage(e.getMessage())
                     .withDescription(switchId.toString())
-                    .withCorrelationId(correlationId)
-                    .withTopic(replyToTopic)
-                    .sendVia(producerService);
+                    .buildData();
+            sender.accept(errorData);
         } catch (SwitchOperationException e) {
             logger.error("Unable to dump meters", e);
-            anError(ErrorType.NOT_FOUND)
+            ErrorData errorData = anError(ErrorType.NOT_FOUND)
                     .withMessage(e.getMessage())
                     .withDescription("Unable to dump meters")
-                    .withCorrelationId(correlationId)
-                    .withTopic(replyToTopic)
-                    .sendVia(producerService);
+                    .buildData();
+            sender.accept(errorData);
         }
     }
 

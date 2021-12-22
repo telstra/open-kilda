@@ -19,6 +19,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -26,6 +27,8 @@ import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -51,6 +54,8 @@ public class PersistenceDataAdapter implements DataAdapter {
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final TransitVlanRepository transitVlanRepository;
     private final VxlanRepository vxlanRepository;
+    private final IslRepository islRepository;
+    private final KildaFeatureTogglesRepository featureTogglesRepository;
 
     private final Set<PathId> pathIds;
     private final Set<SwitchId> switchIds;
@@ -60,6 +65,8 @@ public class PersistenceDataAdapter implements DataAdapter {
     private Map<PathId, FlowTransitEncapsulation> encapsulationCache;
     private Map<SwitchId, Switch> switchCache;
     private Map<SwitchId, SwitchProperties> switchPropertiesCache;
+    private Map<SwitchId, Set<Integer>> switchIslPortsCache;
+    private KildaFeatureToggles featureToggles;
 
     @Builder
     public PersistenceDataAdapter(PersistenceManager persistenceManager,
@@ -70,6 +77,8 @@ public class PersistenceDataAdapter implements DataAdapter {
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
         vxlanRepository = repositoryFactory.createVxlanRepository();
+        islRepository = repositoryFactory.createIslRepository();
+        featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
 
         this.pathIds = pathIds;
         this.switchIds = switchIds;
@@ -124,5 +133,21 @@ public class PersistenceDataAdapter implements DataAdapter {
             switchPropertiesCache = switchPropertiesRepository.findBySwitchIds(switchIds);
         }
         return switchPropertiesCache.get(switchId);
+    }
+
+    @Override
+    public KildaFeatureToggles getFeatureToggles() {
+        if (featureToggles == null) {
+            featureToggles = featureTogglesRepository.getOrDefault();
+        }
+        return featureToggles;
+    }
+
+    @Override
+    public Set<Integer> getSwitchIslPorts(SwitchId switchId) {
+        if (switchIslPortsCache == null) {
+            switchIslPortsCache = islRepository.findIslPortsBySwitchIds(switchIds);
+        }
+        return switchIslPortsCache.get(switchId);
     }
 }

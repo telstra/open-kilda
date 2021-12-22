@@ -52,7 +52,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     private static final int SPEAKER_COMMAND_RETRIES_LIMIT = 3;
 
     @Mock
-    private FlowDeleteHubCarrier carrier;
+    private FlowGenericCarrier carrier;
 
     @Before
     public void setUp() {

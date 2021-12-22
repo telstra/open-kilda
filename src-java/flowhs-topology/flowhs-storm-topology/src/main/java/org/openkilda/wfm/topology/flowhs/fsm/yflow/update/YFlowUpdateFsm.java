@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.update;
 
 import org.openkilda.messaging.command.yflow.YFlowRequest;
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -28,39 +27,40 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.actions.AllocateYFlowResourc
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.RevertYFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.CompleteYFlowUpdatingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.DeallocateNewYFlowResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.DeallocateOldYFlowResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.HandleNotCompletedCommandsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.HandleNotDeallocatedResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.HandleNotRevertedSubFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.HandleNotUpdatedSubFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.InstallNewYPointMeterAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.InstallReallocatedYPointMeterAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.OnFinishedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.OnFinishedWithErrorAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.OnReceivedInstallResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.OnReceivedRemoveResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.OnReceivedResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.OnReceivedValidateResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.OnRevertSubFlowAllocatedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.OnSubFlowAllocatedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.OnSubFlowRevertedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.OnSubFlowUpdatedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.OnTimeoutOperationAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.ReallocateYFlowResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.RemoveOldYPointMeterAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.RemoveYPointMetersAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.RevertSubFlowsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.RevertYFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.UpdateSubFlowsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.UpdateYFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.ValidateNewYPointMeterAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.action.ValidateYFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.CompleteYFlowUpdatingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.DeallocateNewYFlowResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.DeallocateOldYFlowResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.HandleNotCompletedCommandsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.HandleNotDeallocatedResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.HandleNotRevertedSubFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.HandleNotUpdatedSubFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.InstallNewYPointMeterAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.InstallReallocatedYPointMeterAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnFinishedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnFinishedWithErrorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnReceivedInstallResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnReceivedRemoveResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnReceivedResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnReceivedValidateResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnRevertSubFlowAllocatedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnSubFlowAllocatedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnSubFlowRevertedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnSubFlowUpdatedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnTimeoutOperationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.ReallocateYFlowResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.RemoveOldYPointMeterAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.RemoveYPointMetersAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.RevertSubFlowsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.RevertYFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.UpdateSubFlowsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.UpdateYFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.ValidateNewYPointMeterAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.ValidateYFlowAction;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowUpdateService;
-import org.openkilda.wfm.topology.flowhs.service.YFlowEventListener;
-import org.openkilda.wfm.topology.flowhs.service.YFlowUpdateHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.yflow.YFlowEventListener;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
@@ -80,7 +80,7 @@ import java.util.concurrent.TimeUnit;
 @Setter
 @Slf4j
 public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, State, Event, YFlowUpdateContext,
-        YFlowUpdateHubCarrier, YFlowEventListener> {
+        FlowGenericCarrier, YFlowEventListener> {
     private YFlowRequest originalFlow;
     private YFlowRequest targetFlow;
 
@@ -92,26 +92,12 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
     private final Set<String> failedSubFlows = new HashSet<>();
     private final Set<String> allocatedSubFlows = new HashSet<>();
 
-    private String errorReason;
+    private String mainAffinityFlowId;
+    private Collection<RequestedFlow> requestedFlows;
 
-    private YFlowUpdateFsm(@NonNull CommandContext commandContext, @NonNull YFlowUpdateHubCarrier carrier,
+    private YFlowUpdateFsm(@NonNull CommandContext commandContext, @NonNull FlowGenericCarrier carrier,
                            @NonNull String yFlowId, @NonNull Collection<YFlowEventListener> eventListeners) {
-        super(commandContext, carrier, yFlowId, eventListeners);
-    }
-
-    @Override
-    public void fireNext(YFlowUpdateContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        setErrorReason(errorReason);
-        fire(errorEvent);
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, yFlowId, eventListeners);
     }
 
     public void addSubFlow(String flowId) {
@@ -154,22 +140,6 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
         allocatedSubFlows.clear();
     }
 
-    public void setErrorReason(String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: " + errorReason);
-        } else {
-            log.error("Error fired: " + errorReason);
-            this.errorReason = errorReason;
-        }
-    }
-
-    @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
-    }
-
     @Override
     protected String getCrudActionName() {
         return "update";
@@ -177,17 +147,16 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
 
     public static class Factory {
         private final StateMachineBuilder<YFlowUpdateFsm, State, Event, YFlowUpdateContext> builder;
-        private final YFlowUpdateHubCarrier carrier;
+        private final FlowGenericCarrier carrier;
 
-        public Factory(@NonNull YFlowUpdateHubCarrier carrier, @NonNull PersistenceManager persistenceManager,
+        public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
                        @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager resourcesManager,
                        @NonNull FlowUpdateService flowUpdateService,
                        int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
-
             builder = StateMachineBuilderFactory.create(YFlowUpdateFsm.class, State.class, Event.class,
-                    YFlowUpdateContext.class, CommandContext.class, YFlowUpdateHubCarrier.class, String.class,
+                    YFlowUpdateContext.class, CommandContext.class, FlowGenericCarrier.class, String.class,
                     Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
@@ -224,7 +193,7 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
             builder.internalTransition()
                     .within(State.UPDATING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_ALLOCATED)
-                    .perform(new OnSubFlowAllocatedAction(persistenceManager));
+                    .perform(new OnSubFlowAllocatedAction(flowUpdateService, persistenceManager));
             builder.internalTransition()
                     .within(State.UPDATING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_UPDATED)
@@ -443,7 +412,7 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
             builder.internalTransition()
                     .within(State.REVERTING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_ALLOCATED)
-                    .perform(new OnRevertSubFlowAllocatedAction(persistenceManager));
+                    .perform(new OnRevertSubFlowAllocatedAction(flowUpdateService, persistenceManager));
             builder.internalTransition()
                     .within(State.REVERTING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_UPDATED)
@@ -526,28 +495,13 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public YFlowUpdateFsm newInstance(CommandContext commandContext, @NonNull String flowId,
+        public YFlowUpdateFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId,
                                           @NonNull Collection<YFlowEventListener> eventListeners) {
             YFlowUpdateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
                     eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("YFlowUpdateFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
-
-            if (!eventListeners.isEmpty()) {
-                fsm.addTransitionCompleteListener(event -> {
-                    switch (event.getTargetState()) {
-                        case FINISHED:
-                            fsm.notifyEventListenersOnComplete();
-                            break;
-                        case FINISHED_WITH_ERROR:
-                            fsm.notifyEventListenersOnError(ErrorType.INTERNAL_ERROR, fsm.getErrorReason());
-                            break;
-                        default:
-                            // ignore
-                    }
-                });
-            }
 
             MeterRegistryHolder.getRegistry().ifPresent(registry -> {
                 Sample sample = LongTaskTimer.builder("fsm.active_execution")
@@ -566,7 +520,6 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
             });
             return fsm;
         }
-
     }
 
     public enum State {

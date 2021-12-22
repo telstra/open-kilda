@@ -34,7 +34,7 @@ import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.TimedExecution;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -49,7 +49,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public class ValidateFlowAction extends
+        NbTrackableWithHistorySupportAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final KildaConfigurationRepository kildaConfigurationRepository;
     private final KildaFeatureTogglesRepository featureTogglesRepository;
     private final FlowOperationsDashboardLogger dashboardLogger;
@@ -200,5 +201,13 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
 
     private IslEndpoint getSegmentDestEndpoint(PathSegment segment) {
         return new IslEndpoint(segment.getDestSwitchId(), segment.getDestPort());
+    }
+
+    @Override
+    protected void handleError(FlowRerouteFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed validation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
     }
 }

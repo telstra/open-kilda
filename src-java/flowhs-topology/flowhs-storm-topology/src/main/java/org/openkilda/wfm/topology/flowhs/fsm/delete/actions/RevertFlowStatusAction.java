@@ -19,7 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -28,7 +28,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class RevertFlowStatusAction extends FlowProcessingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
+public class RevertFlowStatusAction extends
+        FlowProcessingWithHistorySupportAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     public RevertFlowStatusAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }

@@ -25,7 +25,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.actions.OnFinishedAction;
@@ -36,6 +36,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.actions.RevertUpdateR
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.actions.UpdateRequestAction;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.actions.ValidateFlowsAction;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
+import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 import org.openkilda.wfm.topology.flowhs.service.FlowSwapEndpointsHubCarrier;
 
 import lombok.Getter;
@@ -52,16 +53,16 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 @Slf4j
-public class FlowSwapEndpointsFsm extends NbTrackableFsm<FlowSwapEndpointsFsm, State, Event, FlowSwapEndpointsContext,
-        FlowSwapEndpointsHubCarrier> {
+public class FlowSwapEndpointsFsm extends FlowProcessingWithHistorySupportFsm<FlowSwapEndpointsFsm, State, Event,
+        FlowSwapEndpointsContext, FlowSwapEndpointsHubCarrier, FlowProcessingEventListener> {
     public static final int REQUEST_COUNT = 2;
 
     public static final String GENERIC_ERROR_MESSAGE = "Could not swap endpoints";
 
-    private RequestedFlow firstTargetFlow;
-    private RequestedFlow secondTargetFlow;
-    private String firstFlowId;
-    private String secondFlowId;
+    private final RequestedFlow firstTargetFlow;
+    private final RequestedFlow secondTargetFlow;
+    private final String firstFlowId;
+    private final String secondFlowId;
 
     private int awaitingResponses = REQUEST_COUNT;
     private List<FlowResponse> flowResponses = new ArrayList<>();
@@ -69,9 +70,9 @@ public class FlowSwapEndpointsFsm extends NbTrackableFsm<FlowSwapEndpointsFsm, S
     private Flow firstOriginalFlow;
     private Flow secondOriginalFlow;
 
-    public FlowSwapEndpointsFsm(CommandContext commandContext, @NonNull FlowSwapEndpointsHubCarrier carrier,
-                                RequestedFlow firstTargetFlow, RequestedFlow secondTargetFlow) {
-        super(commandContext, carrier);
+    public FlowSwapEndpointsFsm(@NonNull CommandContext commandContext, @NonNull FlowSwapEndpointsHubCarrier carrier,
+                                @NonNull RequestedFlow firstTargetFlow, @NonNull RequestedFlow secondTargetFlow) {
+        super(Event.NEXT, Event.ERROR, commandContext, carrier);
         this.firstTargetFlow = firstTargetFlow;
         this.secondTargetFlow = secondTargetFlow;
         this.firstFlowId = firstTargetFlow.getFlowId();
@@ -84,25 +85,8 @@ public class FlowSwapEndpointsFsm extends NbTrackableFsm<FlowSwapEndpointsFsm, S
     }
 
     @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
-        // other errors reported inside actions and can be ignored here
-    }
-
-    @Override
     protected String getCrudActionName() {
         return "swap-endpoints";
-    }
-
-    @Override
-    public void fireNext(FlowSwapEndpointsContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    public void fireNext() {
-        fireNext(null);
     }
 
     /**
@@ -155,7 +139,7 @@ public class FlowSwapEndpointsFsm extends NbTrackableFsm<FlowSwapEndpointsFsm, S
         private final StateMachineBuilder<FlowSwapEndpointsFsm, State, Event, FlowSwapEndpointsContext> builder;
         private final FlowSwapEndpointsHubCarrier carrier;
 
-        public Factory(FlowSwapEndpointsHubCarrier carrier, PersistenceManager persistenceManager) {
+        public Factory(@NonNull FlowSwapEndpointsHubCarrier carrier, @NonNull PersistenceManager persistenceManager) {
             this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(FlowSwapEndpointsFsm.class, State.class, Event.class,
@@ -203,8 +187,9 @@ public class FlowSwapEndpointsFsm extends NbTrackableFsm<FlowSwapEndpointsFsm, S
                     .addEntryAction(new OnFinishedWithErrorAction(persistenceManager, dashboardLogger));
         }
 
-        public FlowSwapEndpointsFsm newInstance(CommandContext commandContext,
-                                                RequestedFlow firstTargetFlow, RequestedFlow secondTargetFlow) {
+        public FlowSwapEndpointsFsm newInstance(@NonNull CommandContext commandContext,
+                                                @NonNull RequestedFlow firstTargetFlow,
+                                                @NonNull RequestedFlow secondTargetFlow) {
             return builder.newStateMachine(FlowSwapEndpointsFsm.State.INITIALIZED, commandContext, carrier,
                     firstTargetFlow, secondTargetFlow);
         }

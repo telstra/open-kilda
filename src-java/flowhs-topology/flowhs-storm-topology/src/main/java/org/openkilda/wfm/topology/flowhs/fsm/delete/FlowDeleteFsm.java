@@ -27,7 +27,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
-import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithEventSupportFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -46,8 +46,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.RemoveFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.RemoveRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.RevertFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.actions.ValidateFlowAction;
-import org.openkilda.wfm.topology.flowhs.service.FlowDeleteEventListener;
-import org.openkilda.wfm.topology.flowhs.service.FlowDeleteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
@@ -70,8 +70,8 @@ import java.util.concurrent.TimeUnit;
 @Getter
 @Setter
 @Slf4j
-public final class FlowDeleteFsm extends FlowProcessingWithEventSupportFsm<FlowDeleteFsm, State, Event,
-        FlowDeleteContext, FlowDeleteHubCarrier, FlowDeleteEventListener> {
+public final class FlowDeleteFsm extends FlowProcessingWithHistorySupportFsm<FlowDeleteFsm, State, Event,
+        FlowDeleteContext, FlowGenericCarrier, FlowProcessingEventListener> {
 
     private final String flowId;
 
@@ -88,33 +88,11 @@ public final class FlowDeleteFsm extends FlowProcessingWithEventSupportFsm<FlowD
 
     private final Map<UUID, FlowSegmentRequestFactory> removeCommands = new HashMap<>();
 
-    private String errorReason;
-
-    public FlowDeleteFsm(CommandContext commandContext, @NonNull FlowDeleteHubCarrier carrier, String flowId,
-                         boolean allowNorthboundResponse,
-                         @NonNull Collection<FlowDeleteEventListener> eventListeners) {
-        super(commandContext, carrier, allowNorthboundResponse, eventListeners);
+    public FlowDeleteFsm(@NonNull CommandContext commandContext, @NonNull FlowGenericCarrier carrier,
+                         @NonNull String flowId,
+                         @NonNull Collection<FlowProcessingEventListener> eventListeners) {
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, eventListeners);
         this.flowId = flowId;
-    }
-
-    @Override
-    public void fireNext(FlowDeleteContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: {}", errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
-
-        fire(errorEvent);
     }
 
     public void clearPendingCommands() {
@@ -145,33 +123,25 @@ public final class FlowDeleteFsm extends FlowProcessingWithEventSupportFsm<FlowD
     }
 
     @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
-        // other errors reported inside actions and can be ignored here
-    }
-
-    @Override
     protected String getCrudActionName() {
         return "delete";
     }
 
     public static class Factory {
         private final StateMachineBuilder<FlowDeleteFsm, State, Event, FlowDeleteContext> builder;
-        private final FlowDeleteHubCarrier carrier;
+        private final FlowGenericCarrier carrier;
 
-        public Factory(FlowDeleteHubCarrier carrier, PersistenceManager persistenceManager,
-                       FlowResourcesManager resourcesManager, int speakerCommandRetriesLimit) {
+        public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+                       @NonNull FlowResourcesManager resourcesManager, int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(FlowDeleteFsm.class, State.class, Event.class,
-                    FlowDeleteContext.class, CommandContext.class, FlowDeleteHubCarrier.class, String.class,
-                    boolean.class, Collection.class);
+                    FlowDeleteContext.class, CommandContext.class, FlowGenericCarrier.class, String.class,
+                    Collection.class);
 
             final FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
             final ReportErrorAction<FlowDeleteFsm, State, Event, FlowDeleteContext>
-                    reportErrorAction = new ReportErrorAction<>();
+                    reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
 
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
@@ -249,10 +219,10 @@ public final class FlowDeleteFsm extends FlowProcessingWithEventSupportFsm<FlowD
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public FlowDeleteFsm newInstance(CommandContext commandContext, String flowId, boolean allowNorthboundResponse,
-                                         @NonNull Collection<FlowDeleteEventListener> eventListeners) {
+        public FlowDeleteFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId,
+                                         @NonNull Collection<FlowProcessingEventListener> eventListeners) {
             FlowDeleteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
-                    allowNorthboundResponse, eventListeners);
+                    eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("FlowDeleteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
@@ -261,10 +231,11 @@ public final class FlowDeleteFsm extends FlowProcessingWithEventSupportFsm<FlowD
                 fsm.addTransitionCompleteListener(event -> {
                     switch (event.getTargetState()) {
                         case FINISHED:
-                            fsm.notifyEventListenersOnComplete();
+                            fsm.notifyEventListeners(listener -> listener.onCompleted(flowId));
                             break;
                         case FINISHED_WITH_ERROR:
-                            fsm.notifyEventListenersOnError(ErrorType.INTERNAL_ERROR, fsm.getErrorReason());
+                            fsm.notifyEventListeners(listener ->
+                                    listener.onFailed(flowId, fsm.getErrorReason(), ErrorType.INTERNAL_ERROR));
                             break;
                         default:
                             // ignore

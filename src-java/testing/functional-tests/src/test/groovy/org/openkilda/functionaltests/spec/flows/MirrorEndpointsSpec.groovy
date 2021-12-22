@@ -136,8 +136,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         and: "Related switches and flow pass validation"
         pathHelper.getInvolvedSwitches(flow.flowId).each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(it.dpId,
-                    ["missing", "misconfigured", "excess"])
+            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         }
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
@@ -197,15 +196,14 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         !fl.getGroupsStats(swPair.src.dpId).group.find { it.groupNumber == groupId }
 
         and: "Src switch and flow pass validation"
-        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(swPair.src.dpId,
-                ["missing", "misconfigured", "excess"])
+        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Src switch pass validation"
-        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(swPair.src.dpId)
+        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty()
         def testDone = true
 
         cleanup:
@@ -244,8 +242,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Mirror point is created and Active"
         and: "Flow and switch pass validation"
-        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(swPair.src.dpId,
-                ["missing", "misconfigured", "excess"])
+        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         when: "Swap flow paths"
@@ -255,8 +252,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         }
 
         then: "Flow and switch both pass validation"
-        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(swPair.src.dpId,
-                ["missing", "misconfigured", "excess"])
+        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "Flow passes main traffic"
@@ -301,8 +297,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         then: "Mirror point is created and Active"
         and: "Related switches and flow pass validation"
         pathHelper.getInvolvedSwitches(flow.flowId).each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(it.dpId,
-                    ["missing", "misconfigured", "excess"])
+            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         }
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
@@ -353,8 +348,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Related switches and flow pass validation"
         pathHelper.getInvolvedSwitches(flow.flowId).each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(it.dpId,
-                    ["missing", "misconfigured", "excess"])
+            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         }
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
@@ -405,8 +399,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Mirror point is created and Active"
         and: "Flow and src switch both pass validation"
-        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(swPair.src.dpId,
-                ["missing", "misconfigured", "excess"])
+        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         cleanup:
@@ -445,7 +438,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         database.getMirrorPoints().empty
 
         and: "Related switch pass validation"
-        northbound.validateSwitch(swPair.dst.dpId).verifyRuleSectionsAreEmpty(swPair.dst.dpId)
+        northbound.validateSwitch(swPair.dst.dpId).verifyRuleSectionsAreEmpty()
         def testComplete = true
 
         cleanup:
@@ -572,8 +565,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         })
 
         then: "Flow and affected switch are valid"
-        northbound.validateSwitch(swPair.dst.dpId).verifyRuleSectionsAreEmpty(swPair.dst.dpId,
-                ["missing", "misconfigured", "excess"])
+        northbound.validateSwitch(swPair.dst.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "Mirror rule has updated port/vlan values"
@@ -617,8 +609,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         then: "Mirror point is created and Active"
         and: "Related switches and flow pass validation"
         pathHelper.getInvolvedSwitches(flow.flowId).each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(it.dpId,
-                    ["missing", "misconfigured", "excess"])
+            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         }
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
@@ -664,8 +655,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Mirror point is created, flow and switches are valid"
         pathHelper.getInvolvedSwitches(flow.flowId).each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(it.dpId,
-                    ["missing", "misconfigured", "excess"])
+            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         }
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 

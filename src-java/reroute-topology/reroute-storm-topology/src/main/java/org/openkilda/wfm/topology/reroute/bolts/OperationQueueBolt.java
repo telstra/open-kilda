@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.info.reroute.PathSwapResult;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.wfm.CommandContext;
@@ -73,6 +74,9 @@ public class OperationQueueBolt extends CoordinatedBolt implements OperationQueu
         } else if (data instanceof FlowRerouteRequest) {
             FlowRerouteRequest flowRerouteRequest = (FlowRerouteRequest) data;
             service.addLast(flowRerouteRequest.getFlowId(), context.getCorrelationId(), flowRerouteRequest);
+        } else if (data instanceof YFlowRerouteRequest) {
+            YFlowRerouteRequest yFlowRerouteRequest = (YFlowRerouteRequest) data;
+            service.addLast(yFlowRerouteRequest.getYFlowId(), context.getCorrelationId(), yFlowRerouteRequest);
         } else if (data instanceof RerouteResultInfoData) {
             RerouteResultInfoData rerouteResultInfoData = (RerouteResultInfoData) data;
             service.operationCompleted(rerouteResultInfoData.getFlowId(), rerouteResultInfoData);

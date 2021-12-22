@@ -19,6 +19,7 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 
@@ -29,6 +30,7 @@ import java.util.UUID;
 @JsonSerialize
 @Getter
 @SuperBuilder
+@EqualsAndHashCode(of = {"switchId", "ofVersion"})
 public abstract class SpeakerCommandData {
 
     @Builder.Default

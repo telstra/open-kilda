@@ -27,6 +27,9 @@ import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteResponse;
 import org.openkilda.messaging.command.yflow.YFlowResponse;
+import org.openkilda.messaging.command.yflow.YFlowSyncRequest;
+import org.openkilda.messaging.command.yflow.YFlowValidationRequest;
+import org.openkilda.messaging.command.yflow.YFlowValidationResponse;
 import org.openkilda.messaging.command.yflow.YFlowsDumpRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
@@ -38,7 +41,9 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.YFlowService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -105,9 +110,9 @@ public class YFlowServiceImpl implements YFlowService {
     }
 
     @Override
-    public CompletableFuture<YFlow> getYFlow(String flowId) {
-        log.debug("Processing getting of y-flow: {}", flowId);
-        YFlowReadRequest readRequest = new YFlowReadRequest(flowId);
+    public CompletableFuture<YFlow> getYFlow(String yFlowId) {
+        log.debug("Processing getting of y-flow: {}", yFlowId);
+        YFlowReadRequest readRequest = new YFlowReadRequest(yFlowId);
         CommandMessage request = new CommandMessage(readRequest, System.currentTimeMillis(),
                 RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(flowHsTopic, request)
@@ -117,9 +122,9 @@ public class YFlowServiceImpl implements YFlowService {
     }
 
     @Override
-    public CompletableFuture<YFlowPaths> getYFlowPaths(String flowId) {
-        log.debug("Processing getting of y-flow paths: {}", flowId);
-        YFlowPathsReadRequest readPathsRequest = new YFlowPathsReadRequest(flowId);
+    public CompletableFuture<YFlowPaths> getYFlowPaths(String yFlowId) {
+        log.debug("Processing getting of y-flow paths: {}", yFlowId);
+        YFlowPathsReadRequest readPathsRequest = new YFlowPathsReadRequest(yFlowId);
         CommandMessage request = new CommandMessage(readPathsRequest, System.currentTimeMillis(),
                 RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(flowHsTopic, request)
@@ -128,13 +133,13 @@ public class YFlowServiceImpl implements YFlowService {
     }
 
     @Override
-    public CompletableFuture<YFlow> updateYFlow(String flowId, YFlowUpdatePayload updatePayload) {
+    public CompletableFuture<YFlow> updateYFlow(String yFlowId, YFlowUpdatePayload updatePayload) {
         log.debug("Processing y-flow update: {}", updatePayload);
         String correlationId = RequestCorrelationId.getId();
 
         YFlowRequest flowRequest;
         try {
-            flowRequest = flowMapper.toYFlowUpdateRequest(flowId, updatePayload);
+            flowRequest = flowMapper.toYFlowUpdateRequest(yFlowId, updatePayload);
         } catch (IllegalArgumentException e) {
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the create y-flow request");
@@ -148,13 +153,13 @@ public class YFlowServiceImpl implements YFlowService {
     }
 
     @Override
-    public CompletableFuture<YFlow> patchYFlow(String flowId, YFlowPatchPayload patchPayload) {
-        log.debug("Processing y-flow patch: {}", flowId);
+    public CompletableFuture<YFlow> patchYFlow(String yFlowId, YFlowPatchPayload patchPayload) {
+        log.debug("Processing y-flow patch: {}", yFlowId);
         String correlationId = RequestCorrelationId.getId();
 
         YFlowPartialUpdateRequest yFlowPartialUpdateRequest;
         try {
-            yFlowPartialUpdateRequest = flowMapper.toYFlowPatchRequest(flowId, patchPayload);
+            yFlowPartialUpdateRequest = flowMapper.toYFlowPatchRequest(yFlowId, patchPayload);
         } catch (IllegalArgumentException e) {
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the flow patch request");
@@ -169,9 +174,9 @@ public class YFlowServiceImpl implements YFlowService {
     }
 
     @Override
-    public CompletableFuture<YFlow> deleteYFlow(String flowId) {
-        log.debug("Processing y-flow delete: {}", flowId);
-        CommandMessage command = new CommandMessage(new YFlowDeleteRequest(flowId), System.currentTimeMillis(),
+    public CompletableFuture<YFlow> deleteYFlow(String yFlowId) {
+        log.debug("Processing y-flow delete: {}", yFlowId);
+        CommandMessage command = new CommandMessage(new YFlowDeleteRequest(yFlowId), System.currentTimeMillis(),
                 RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(flowHsTopic, command)
                 .thenApply(YFlowResponse.class::cast)
@@ -180,9 +185,9 @@ public class YFlowServiceImpl implements YFlowService {
     }
 
     @Override
-    public CompletableFuture<SubFlowsDump> getSubFlows(String flowId) {
-        log.debug("Processing getting of y-flow sub-flows: {}", flowId);
-        CommandMessage request = new CommandMessage(new SubFlowsReadRequest(flowId), System.currentTimeMillis(),
+    public CompletableFuture<SubFlowsDump> getSubFlows(String yFlowId) {
+        log.debug("Processing getting of y-flow sub-flows: {}", yFlowId);
+        CommandMessage request = new CommandMessage(new SubFlowsReadRequest(yFlowId), System.currentTimeMillis(),
                 RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(flowHsTopic, request)
                 .thenApply(SubFlowsResponse.class::cast)
@@ -190,13 +195,33 @@ public class YFlowServiceImpl implements YFlowService {
     }
 
     @Override
-    public CompletableFuture<YFlowRerouteResult> rerouteYFlow(String flowId) {
-        log.debug("Processing y-flow reroute: {}", flowId);
-        YFlowRerouteRequest flowRerouteRequest = new YFlowRerouteRequest(flowId, "initiated via Northbound");
+    public CompletableFuture<YFlowRerouteResult> rerouteYFlow(String yFlowId) {
+        log.debug("Processing y-flow reroute: {}", yFlowId);
+        YFlowRerouteRequest flowRerouteRequest = new YFlowRerouteRequest(yFlowId, "initiated via Northbound");
         CommandMessage command = new CommandMessage(flowRerouteRequest, System.currentTimeMillis(),
                 RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(rerouteTopic, command)
                 .thenApply(YFlowRerouteResponse.class::cast)
                 .thenApply(flowMapper::toRerouteResult);
+    }
+
+    @Override
+    public CompletableFuture<YFlowValidationResult> validateYFlow(String yFlowId) {
+        log.debug("Processing y-flow validation: {}", yFlowId);
+        CommandMessage command = new CommandMessage(new YFlowValidationRequest(yFlowId), System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(YFlowValidationResponse.class::cast)
+                .thenApply(flowMapper::toValidationResult);
+    }
+
+    @Override
+    public CompletableFuture<YFlowSyncResult> synchronizeYFlow(String yFlowId) {
+        log.debug("Processing y-flow synchronization: {}", yFlowId);
+        CommandMessage command = new CommandMessage(new YFlowSyncRequest(yFlowId), System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(YFlowRerouteResponse.class::cast)
+                .thenApply(flowMapper::toSyncResult);
     }
 }

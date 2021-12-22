@@ -271,12 +271,12 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 def switchValidateInfo = northbound.validateSwitch(switchId)
                 if(switchValidateInfo.meters) {
                     assert switchValidateInfo.meters.proper.findAll({dto -> !isDefaultMeter(dto)}).size() == 1
-                    switchValidateInfo.verifyMeterSectionsAreEmpty(switchId, ["missing", "misconfigured", "excess"])
+                    switchValidateInfo.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
                 }
                 assert switchValidateInfo.rules.proper.findAll { def cookie = new Cookie(it)
                     !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT }.size() ==
                         (switchId == switchPair.src.dpId) ? amountOfFlowRulesSrcSw + 1 : amountOfFlowRulesDstSw + 1
-                switchValidateInfo.verifyRuleSectionsAreEmpty(switchId, ["missing", "excess"])
+                switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
             }
         }
 
@@ -294,8 +294,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 } else {
                     def switchValidateInfo = northbound.validateSwitch(switchId)
                     assert switchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules
-                    switchValidateInfo.verifyRuleSectionsAreEmpty(switchId, ["missing", "excess"])
-                    switchValidateInfo.verifyMeterSectionsAreEmpty(switchId)
+                    switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
+                    switchValidateInfo.verifyMeterSectionsAreEmpty()
                 }
             }
         }

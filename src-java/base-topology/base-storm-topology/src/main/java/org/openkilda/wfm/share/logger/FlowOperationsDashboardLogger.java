@@ -54,6 +54,8 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String YFLOW_CREATE_RESULT_EVENT = "y_flow_create_result";
     private static final String YFLOW_UPDATE_EVENT = "y_flow_update";
     private static final String YFLOW_UPDATE_RESULT_EVENT = "y_flow_update_result";
+    private static final String YFLOW_REROUTE_EVENT = "y_flow_reroute";
+    private static final String YFLOW_REROUTE_RESULT_EVENT = "y_flow_reroute_result";
     private static final String YFLOW_DELETE_EVENT = "y_flow_delete";
     private static final String YFLOW_DELETE_RESULT_EVENT = "y_flow_delete_result";
 
@@ -526,6 +528,45 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put("update-result", "failed");
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed update of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a y-flow-reroute event.
+     */
+    public void onYFlowReroute(String yFlowId, Collection<IslEndpoint> affectedIsl, boolean forceToReroute) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-reroute");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_REROUTE_EVENT);
+        data.put("forced_reroute", Boolean.toString(forceToReroute));
+        invokeLogger(Level.INFO, String.format("Reroute y-flow due to failure on %s ISLs flow %s",
+                affectedIsl, yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-reroute-successful event.
+     */
+    public void onSuccessfulYFlowReroute(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-reroute-successful");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_REROUTE_RESULT_EVENT);
+        data.put("reroute-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful reroute of the y-flow %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-reroute-failed event.
+     */
+    public void onFailedYFlowReroute(String yFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-reroute-failed");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_REROUTE_RESULT_EVENT);
+        data.put("reroute-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed reroute of the y-flow %s, reason: %s", yFlowId, failureReason),
                 data);
     }
 
