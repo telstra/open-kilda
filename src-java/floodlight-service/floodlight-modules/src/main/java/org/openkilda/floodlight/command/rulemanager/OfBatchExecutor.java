@@ -141,8 +141,8 @@ public class OfBatchExecutor {
         verifyFlows();
         verifyMeters();
         verifyGroups();
-        if (holder.hasNextStage()) {
-            holder.jumpToNextStage();
+        if (holder.nextStage()) {
+            holder.resetXids();
             meterStats = CompletableFuture.completedFuture(null);
             groupStats = CompletableFuture.completedFuture(null);
             flowStats = CompletableFuture.completedFuture(null);
