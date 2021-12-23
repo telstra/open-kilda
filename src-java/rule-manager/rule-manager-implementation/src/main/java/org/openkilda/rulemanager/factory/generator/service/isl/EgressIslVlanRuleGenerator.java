@@ -21,11 +21,11 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.PortColourCookie;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.factory.RuleGenerator;
 import org.openkilda.rulemanager.match.FieldMatch;
 
@@ -42,14 +42,14 @@ public class EgressIslVlanRuleGenerator implements RuleGenerator {
     private int islPort;
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         Set<FieldMatch> match = Sets.newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(islPort).build());
 
         Instructions instructions = Instructions.builder()
                 .goToTable(OfTable.EGRESS)
                 .build();
 
-        return Collections.singletonList(FlowSpeakerCommandData.builder()
+        return Collections.singletonList(FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES, islPort))

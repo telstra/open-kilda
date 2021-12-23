@@ -27,10 +27,10 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.PortColourCookie;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import org.junit.Before;
@@ -55,11 +55,11 @@ public class EgressIslVlanRuleGeneratorTest {
     @Test
     public void shouldBuildCorrectRule() {
         Switch sw = buildSwitch("OF_13", Collections.emptySet());
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(1, commands.size());
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
         assertTrue(flowCommandData.getDependsOn().isEmpty());

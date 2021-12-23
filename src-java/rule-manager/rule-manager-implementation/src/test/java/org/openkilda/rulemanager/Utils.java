@@ -105,8 +105,8 @@ public final class Utils {
     /**
      * Find Speaker Command Data of specific type.
      */
-    public static <C extends SpeakerCommandData> C getCommand(Class<C> commandType,
-                                                              List<SpeakerCommandData> commands) {
+    public static <C extends SpeakerData> C getCommand(Class<C> commandType,
+                                                       List<SpeakerData> commands) {
         return commands.stream()
                 .filter(commandType::isInstance)
                 .map(commandType::cast)

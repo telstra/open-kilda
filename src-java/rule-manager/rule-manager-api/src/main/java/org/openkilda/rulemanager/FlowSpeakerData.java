@@ -30,7 +30,7 @@ import java.util.Set;
 @EqualsAndHashCode(callSuper = true)
 @Value
 @SuperBuilder
-public class FlowSpeakerCommandData extends SpeakerCommandData {
+public class FlowSpeakerData extends SpeakerData {
 
     CookieBase cookie;
     OfTable table;
@@ -39,8 +39,8 @@ public class FlowSpeakerCommandData extends SpeakerCommandData {
     Instructions instructions;
     Set<OfFlowFlag> flags;
 
-    public abstract static class FlowSpeakerCommandDataBuilder<C extends FlowSpeakerCommandData,
-            B extends FlowSpeakerCommandDataBuilder<C, B>>  extends SpeakerCommandDataBuilder<C, B> {
+    public abstract static class FlowSpeakerDataBuilder<C extends FlowSpeakerData,
+            B extends FlowSpeakerDataBuilder<C, B>>  extends SpeakerDataBuilder<C, B> {
         private Set<FieldMatch> match;
 
         /**

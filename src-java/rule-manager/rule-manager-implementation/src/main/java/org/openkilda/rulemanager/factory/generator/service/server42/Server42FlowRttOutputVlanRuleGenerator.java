@@ -27,14 +27,14 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.action.PushVlanAction;
@@ -67,7 +67,7 @@ public class Server42FlowRttOutputVlanRuleGenerator implements RuleGenerator {
     }
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         List<Action> actions = new ArrayList<>();
         if (server42Vlan > 0) {
             actions.add(PushVlanAction.builder().vlanId((short) server42Vlan).build());
@@ -82,7 +82,7 @@ public class Server42FlowRttOutputVlanRuleGenerator implements RuleGenerator {
         Instructions instructions = Instructions.builder()
                 .applyActions(actions)
                 .build();
-        return Collections.singletonList(FlowSpeakerCommandData.builder()
+        return Collections.singletonList(FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(new Cookie(SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE))

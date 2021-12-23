@@ -35,15 +35,15 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.MeterFlag;
-import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.Mask;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.MeterAction;
 import org.openkilda.rulemanager.action.PortOutAction;
@@ -80,14 +80,14 @@ public class UniCastDiscoveryRuleGeneratorTest {
     @Test
     public void shouldBuildCorrectRuleWithMeterForOf13() {
         sw = buildSwitch("OF_13", Sets.newHashSet(METERS, PKTPS_FLAG));
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(2, commands.size());
         commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
         commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
-        MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
+        MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
         assertEquals(1, flowCommandData.getDependsOn().size());
         assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
@@ -108,7 +108,7 @@ public class UniCastDiscoveryRuleGeneratorTest {
     @Test
     public void shouldNotGenerateRuleForOf12() {
         sw = buildSwitch("OF_12", Sets.newHashSet(METERS, PKTPS_FLAG));
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertTrue(commands.isEmpty());
     }
@@ -116,14 +116,14 @@ public class UniCastDiscoveryRuleGeneratorTest {
     @Test
     public void shouldBuildCorrectRuleWithMeterForOf15() {
         sw = buildSwitch("OF_15", Sets.newHashSet(METERS, PKTPS_FLAG));
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(2, commands.size());
         commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
         commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
-        MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
+        MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
         assertEquals(1, flowCommandData.getDependsOn().size());
         assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
@@ -155,13 +155,13 @@ public class UniCastDiscoveryRuleGeneratorTest {
     @Test
     public void shouldBuildCorrectRuleWithoutMeterForOf13() {
         sw = buildSwitch("OF_13", Collections.emptySet());
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(1, commands.size());
         commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
         commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
 
         assertTrue(flowCommandData.getDependsOn().isEmpty());
 
@@ -183,14 +183,14 @@ public class UniCastDiscoveryRuleGeneratorTest {
     @Test
     public void shouldBuildCorrectRuleWithMeterInBytesForOf13() {
         sw = buildSwitch("OF_13", Sets.newHashSet(METERS));
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(2, commands.size());
         commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
         commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
-        MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
+        MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
         assertEquals(1, flowCommandData.getDependsOn().size());
         assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
@@ -216,7 +216,7 @@ public class UniCastDiscoveryRuleGeneratorTest {
                 .containsAll(meterCommandData.getFlags()));
     }
 
-    private void checkFlowCommandBaseProperties(FlowSpeakerCommandData flowCommandData) {
+    private void checkFlowCommandBaseProperties(FlowSpeakerData flowCommandData) {
         assertEquals(new Cookie(VERIFICATION_UNICAST_RULE_COOKIE), flowCommandData.getCookie());
         assertEquals(OfTable.INPUT, flowCommandData.getTable());
         assertEquals(DISCOVERY_RULE_PRIORITY, flowCommandData.getPriority());
@@ -248,7 +248,7 @@ public class UniCastDiscoveryRuleGeneratorTest {
         assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
     }
 
-    private void checkMeterCommand(MeterSpeakerCommandData meterCommandData) {
+    private void checkMeterCommand(MeterSpeakerData meterCommandData) {
         assertEquals(createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE), meterCommandData.getMeterId());
         assertEquals(config.getUnicastRateLimit(), meterCommandData.getRate());
         assertEquals(config.getSystemMeterBurstSizeInPackets(), meterCommandData.getBurst());

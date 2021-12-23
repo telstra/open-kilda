@@ -43,15 +43,15 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.rulemanager.Constants;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.GroupSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.GroupAction;
@@ -107,10 +107,10 @@ public class EgressMirrorRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, INNER_VLAN_ID);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
-        FlowSpeakerCommandData egressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID).build(),
@@ -127,10 +127,10 @@ public class EgressMirrorRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
-        FlowSpeakerCommandData egressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
         
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
@@ -146,10 +146,10 @@ public class EgressMirrorRuleGeneratorTest {
         Flow flow = buildFlow(path, VLAN_ENCAPSULATION.getId(), 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
-        FlowSpeakerCommandData egressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(new GroupAction(GROUP_ID));
         assertEgressCommand(egressCommand, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions,
@@ -164,10 +164,10 @@ public class EgressMirrorRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, VLAN_ENCAPSULATION.getId());
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
-        FlowSpeakerCommandData egressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
@@ -183,10 +183,10 @@ public class EgressMirrorRuleGeneratorTest {
         Flow flow = buildFlow(path, 0, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
-        FlowSpeakerCommandData egressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVlanAction(),
@@ -202,10 +202,10 @@ public class EgressMirrorRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
-        FlowSpeakerCommandData egressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
@@ -221,10 +221,10 @@ public class EgressMirrorRuleGeneratorTest {
         Flow flow = buildFlow(path, VLAN_ENCAPSULATION.getId(), 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
-        FlowSpeakerCommandData egressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new GroupAction(GROUP_ID));
@@ -239,10 +239,10 @@ public class EgressMirrorRuleGeneratorTest {
         Flow flow = buildFlow(path, 0, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
-        FlowSpeakerCommandData egressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVlanAction(),
@@ -258,10 +258,10 @@ public class EgressMirrorRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, INNER_VLAN_ID);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
-        FlowSpeakerCommandData egressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
@@ -279,10 +279,10 @@ public class EgressMirrorRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
-        FlowSpeakerCommandData egressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
@@ -299,10 +299,10 @@ public class EgressMirrorRuleGeneratorTest {
         Flow flow = buildFlow(path, 0, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
-        FlowSpeakerCommandData egressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
@@ -318,10 +318,10 @@ public class EgressMirrorRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
-        FlowSpeakerCommandData egressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
@@ -339,10 +339,10 @@ public class EgressMirrorRuleGeneratorTest {
         Flow flow = buildFlow(path, 0, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
-        FlowSpeakerCommandData egressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
@@ -395,7 +395,7 @@ public class EgressMirrorRuleGeneratorTest {
     }
 
     private void assertEgressCommand(
-            FlowSpeakerCommandData command, OfTable table, FlowTransitEncapsulation encapsulation,
+            FlowSpeakerData command, OfTable table, FlowTransitEncapsulation encapsulation,
             List<Action> expectedApplyActions, String groupCommandUuid) {
         assertEquals(SWITCH_2.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_2.getOfVersion(), command.getOfVersion().toString());
@@ -419,7 +419,7 @@ public class EgressMirrorRuleGeneratorTest {
         assertEquals(newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
     }
 
-    private void assertGroupCommand(GroupSpeakerCommandData command) {
+    private void assertGroupCommand(GroupSpeakerData command) {
         assertEquals(GROUP_ID, command.getGroupId());
         assertEquals(SWITCH_2.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_2.getOfVersion(), command.getOfVersion().toString());

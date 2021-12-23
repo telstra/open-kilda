@@ -46,7 +46,7 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.rulemanager.Constants;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
@@ -54,7 +54,7 @@ import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PopVlanAction;
@@ -278,10 +278,10 @@ public class SingleTableServer42IngressRuleGeneratorTest {
     public void buildCommandsFullPortTransitVlanTest() {
         Flow flow = buildFlow(PATH, 0);
         SingleTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(1, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
 
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(SERVER_42_PORT_NUMBER).build(),
@@ -305,10 +305,10 @@ public class SingleTableServer42IngressRuleGeneratorTest {
     public void buildCommandsVxlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1);
         SingleTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(1, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
 
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(SERVER_42_PORT_NUMBER).build(),
@@ -326,7 +326,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
     }
 
     private void assertIngressCommand(
-            FlowSpeakerCommandData command, int expectedPriority, Set<FieldMatch> expectedMatch,
+            FlowSpeakerData command, int expectedPriority, Set<FieldMatch> expectedMatch,
             List<Action> expectedApplyActions) {
         assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());

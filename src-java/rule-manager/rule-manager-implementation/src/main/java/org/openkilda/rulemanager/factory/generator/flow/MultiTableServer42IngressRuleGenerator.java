@@ -40,8 +40,8 @@ import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
 import org.openkilda.model.cookie.PortColourCookie;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfMetadata;
@@ -50,7 +50,7 @@ import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PopVlanAction;
 import org.openkilda.rulemanager.action.PortOutAction;
@@ -80,8 +80,8 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
     protected final Set<FlowSideAdapter> overlappingIngressAdapters = new HashSet<>();
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
-        List<SpeakerCommandData> result = new ArrayList<>();
+    public List<SpeakerData> generateCommands(Switch sw) {
+        List<SpeakerData> result = new ArrayList<>();
         if (switchProperties == null || !switchProperties.isMultiTable() || !switchProperties.isServer42FlowRtt()
                 || flowPath.isOneSwitchFlow()) {
             return result;
@@ -126,7 +126,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
         return true;
     }
 
-    private FlowSpeakerCommandData buildServer42PreIngressCommand(Switch sw, FlowEndpoint endpoint) {
+    private FlowSpeakerData buildServer42PreIngressCommand(Switch sw, FlowEndpoint endpoint) {
         FlowSharedSegmentCookie cookie = FlowSharedSegmentCookie.builder(SharedSegmentType.SERVER42_QINQ_OUTER_VLAN)
                 .portNumber(switchProperties.getServer42Port())
                 .vlanId(endpoint.getOuterVlanId())
@@ -140,7 +140,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
                 .goToTable(OfTable.INGRESS)
                 .build();
 
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(endpoint.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(cookie)
@@ -154,7 +154,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
         return builder.build();
     }
 
-    private FlowSpeakerCommandData buildServer42IngressDoubleVlanCommand(Switch sw, FlowEndpoint ingressEndpoint) {
+    private FlowSpeakerData buildServer42IngressDoubleVlanCommand(Switch sw, FlowEndpoint ingressEndpoint) {
         RoutingMetadata metadata = RoutingMetadata.builder()
                 .inputPort(ingressEndpoint.getPortNumber())
                 .outerVlanId(ingressEndpoint.getOuterVlanId())
@@ -166,7 +166,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
         return buildServer42IngressCommand(sw, ingressEndpoint, match, SERVER_42_INGRESS_DOUBLE_VLAN_FLOW_PRIORITY);
     }
 
-    private FlowSpeakerCommandData buildServer42IngressSingleVlanCommand(Switch sw, FlowEndpoint ingressEndpoint) {
+    private FlowSpeakerData buildServer42IngressSingleVlanCommand(Switch sw, FlowEndpoint ingressEndpoint) {
         RoutingMetadata metadata = RoutingMetadata.builder()
                 .inputPort(ingressEndpoint.getPortNumber())
                 .outerVlanId(ingressEndpoint.getOuterVlanId())
@@ -177,7 +177,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
         return buildServer42IngressCommand(sw, ingressEndpoint, match, SERVER_42_INGRESS_SINGLE_VLAN_FLOW_PRIORITY);
     }
 
-    private FlowSpeakerCommandData buildServer42IngressFullPortCommand(Switch sw, FlowEndpoint ingressEndpoint) {
+    private FlowSpeakerData buildServer42IngressFullPortCommand(Switch sw, FlowEndpoint ingressEndpoint) {
         RoutingMetadata metadata = RoutingMetadata.builder()
                 .inputPort(ingressEndpoint.getPortNumber())
                 .build(sw.getFeatures());
@@ -187,12 +187,12 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
         return buildServer42IngressCommand(sw, ingressEndpoint, match, SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY);
     }
 
-    private FlowSpeakerCommandData buildServer42IngressCommand(
+    private FlowSpeakerData buildServer42IngressCommand(
             Switch sw, FlowEndpoint ingressEndpoint, Set<FieldMatch> match, int priority) {
         FlowSegmentCookie cookie = new FlowSegmentCookie(flowPath.getCookie().getValue()).toBuilder()
                 .type(CookieType.SERVER_42_FLOW_RTT_INGRESS)
                 .build();
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(ingressEndpoint.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(cookie)
@@ -207,7 +207,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
         return builder.build();
     }
 
-    private FlowSpeakerCommandData buildServer42IngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
+    private FlowSpeakerData buildServer42IngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
         if (FlowEndpoint.isVlanIdSet(ingressEndpoint.getInnerVlanId())) {
             return buildServer42IngressDoubleVlanCommand(sw, ingressEndpoint);
         } else if (FlowEndpoint.isVlanIdSet(ingressEndpoint.getOuterVlanId())) {
@@ -248,7 +248,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
         return actions;
     }
 
-    private FlowSpeakerCommandData buildServer42InputCommand(Switch sw, int inPort) {
+    private FlowSpeakerData buildServer42InputCommand(Switch sw, int inPort) {
         int udpSrcPort = inPort + config.getServer42FlowRttUdpPortOffset();
         Set<FieldMatch> match = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(switchProperties.getServer42Port()).build(),
@@ -273,7 +273,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
                 .writeMetadata(mapMetadata(RoutingMetadata.builder().inputPort(inPort).build(sw.getFeatures())))
                 .build();
 
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(cookie)

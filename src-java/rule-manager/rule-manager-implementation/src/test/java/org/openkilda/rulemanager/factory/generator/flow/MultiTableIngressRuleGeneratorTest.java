@@ -51,16 +51,16 @@ import org.openkilda.model.cookie.PortColourCookie;
 import org.openkilda.rulemanager.Constants;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.MeterFlag;
-import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PopVlanAction;
@@ -350,11 +350,11 @@ public class MultiTableIngressRuleGeneratorTest {
     public void oneSwitchFlowFullPortRuleTest() {
         Flow flow = buildFlow(ONE_SWITCH_PATH, 0, 0, OUTER_VLAN_ID_2, 0);
         MultiTableIngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(2, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
-        FlowSpeakerCommandData inputCustomerCommand = (FlowSpeakerCommandData) commands.get(1);
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
+        FlowSpeakerData inputCustomerCommand = (FlowSpeakerData) commands.get(1);
 
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build());
@@ -372,13 +372,13 @@ public class MultiTableIngressRuleGeneratorTest {
     public void buildCommandsVlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(4, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
-        FlowSpeakerCommandData preIngressCommand = (FlowSpeakerCommandData) commands.get(1);
-        FlowSpeakerCommandData inputCustomerCommand = (FlowSpeakerCommandData) commands.get(2);
-        MeterSpeakerCommandData meterCommand = (MeterSpeakerCommandData) commands.get(3);
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
+        FlowSpeakerData preIngressCommand = (FlowSpeakerData) commands.get(1);
+        FlowSpeakerData inputCustomerCommand = (FlowSpeakerData) commands.get(2);
+        MeterSpeakerData meterCommand = (MeterSpeakerData) commands.get(3);
         assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
         Set<FieldMatch> expectedPreIngressMatch = Sets.newHashSet(
@@ -419,11 +419,11 @@ public class MultiTableIngressRuleGeneratorTest {
                 FlowSideAdapter.makeIngressAdapter(oneSwitchFlow, ONE_SWITCH_PATH));
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, overlapping);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(2, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
-        MeterSpeakerCommandData meterCommand = (MeterSpeakerCommandData) commands.get(1);
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
+        MeterSpeakerData meterCommand = (MeterSpeakerData) commands.get(1);
         assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
@@ -450,12 +450,12 @@ public class MultiTableIngressRuleGeneratorTest {
                 FlowSideAdapter.makeIngressAdapter(oneSwitchFlow, ONE_SWITCH_PATH));
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, overlapping);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(3, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
-        FlowSpeakerCommandData preIngressCommand = (FlowSpeakerCommandData) commands.get(1);
-        MeterSpeakerCommandData meterCommand = (MeterSpeakerCommandData) commands.get(2);
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
+        FlowSpeakerData preIngressCommand = (FlowSpeakerData) commands.get(1);
+        MeterSpeakerData meterCommand = (MeterSpeakerData) commands.get(2);
         assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
@@ -488,7 +488,7 @@ public class MultiTableIngressRuleGeneratorTest {
     }
 
     private void assertIngressCommand(
-            FlowSpeakerCommandData command, int expectedPriority, Set<FieldMatch> expectedMatch,
+            FlowSpeakerData command, int expectedPriority, Set<FieldMatch> expectedMatch,
             List<Action> expectedApplyActions, MeterId expectedMeter, OfMetadata expectedMetadata) {
         assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
@@ -510,7 +510,7 @@ public class MultiTableIngressRuleGeneratorTest {
     }
 
     private void assertPreIngressCommand(
-            FlowSpeakerCommandData command, CookieBase cookie, int expectedPriority, Set<FieldMatch> expectedMatch,
+            FlowSpeakerData command, CookieBase cookie, int expectedPriority, Set<FieldMatch> expectedMatch,
             List<Action> expectedApplyActions, OfMetadata expectedMetadata) {
         assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
@@ -531,7 +531,7 @@ public class MultiTableIngressRuleGeneratorTest {
     }
 
     private void assertInputCustomerCommand(
-            FlowSpeakerCommandData command, CookieBase cookie, Set<FieldMatch> expectedMatch) {
+            FlowSpeakerData command, CookieBase cookie, Set<FieldMatch> expectedMatch) {
         assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
         assertEquals(cookie, command.getCookie());
@@ -548,7 +548,7 @@ public class MultiTableIngressRuleGeneratorTest {
         assertNull(command.getFlags());
     }
 
-    private void assertMeterCommand(MeterSpeakerCommandData command) {
+    private void assertMeterCommand(MeterSpeakerData command) {
         assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
         assertEquals(METER_ID, command.getMeterId());

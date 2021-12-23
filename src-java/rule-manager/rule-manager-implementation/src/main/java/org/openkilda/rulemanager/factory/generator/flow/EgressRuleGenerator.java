@@ -30,14 +30,14 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants.Priority;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PopVxlanAction;
@@ -59,7 +59,7 @@ public class EgressRuleGenerator extends NotIngressRuleGenerator {
     protected final FlowTransitEncapsulation encapsulation;
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         if (flowPath.isOneSwitchFlow() || flowPath.getSegments().isEmpty()) {
             return new ArrayList<>();
         }
@@ -69,8 +69,8 @@ public class EgressRuleGenerator extends NotIngressRuleGenerator {
         return Lists.newArrayList(buildEgressCommand(sw, lastSegment.getDestPort(), endpoint));
     }
 
-    private SpeakerCommandData buildEgressCommand(Switch sw, int inPort, FlowEndpoint egressEndpoint) {
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+    private SpeakerData buildEgressCommand(Switch sw, int inPort, FlowEndpoint egressEndpoint) {
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(flowPath.getDestSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie())

@@ -13,25 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.rulemanager;
+package org.openkilda.floodlight.api.request.rulemanager;
 
-import org.openkilda.model.MeterId;
+import org.openkilda.model.SwitchId;
+import org.openkilda.rulemanager.MeterSpeakerData;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.EqualsAndHashCode;
 import lombok.Value;
-import lombok.experimental.SuperBuilder;
 
-import java.util.Set;
-
-@EqualsAndHashCode(callSuper = true)
 @Value
-@JsonSerialize
-@SuperBuilder
-public class MeterSpeakerCommandData extends SpeakerCommandData {
+public class MeterCommand extends OfCommand {
 
-    MeterId meterId;
-    long rate;
-    long burst;
-    Set<MeterFlag> flags;
+    private final MeterSpeakerData data;
+
+    @Override
+    public void buildInstall(OfEntityBatch builder, SwitchId switchId) {
+        builder.addInstallMeter(data, switchId);
+    }
+
+    @Override
+    public void buildDelete(OfEntityBatch builder, SwitchId switchId) {
+        builder.addDeleteMeter(data, switchId);
+    }
 }

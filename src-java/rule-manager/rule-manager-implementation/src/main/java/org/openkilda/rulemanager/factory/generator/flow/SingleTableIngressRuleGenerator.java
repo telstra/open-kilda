@@ -28,14 +28,14 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.match.FieldMatch;
@@ -54,16 +54,16 @@ import java.util.Set;
 public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
-        List<SpeakerCommandData> result = new ArrayList<>();
+    public List<SpeakerData> generateCommands(Switch sw) {
+        List<SpeakerData> result = new ArrayList<>();
         FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
-        FlowSpeakerCommandData command = buildFlowIngressCommand(sw, ingressEndpoint);
+        FlowSpeakerData command = buildFlowIngressCommand(sw, ingressEndpoint);
         if (command == null) {
             return Collections.emptyList();
         }
         result.add(command);
 
-        SpeakerCommandData meterCommand = buildMeter(flowPath, config, flowPath.getMeterId(), sw);
+        SpeakerData meterCommand = buildMeter(flowPath, config, flowPath.getMeterId(), sw);
         if (meterCommand != null) {
             addMeterToInstructions(flowPath.getMeterId(), sw, command.getInstructions());
             result.add(meterCommand);
@@ -73,7 +73,7 @@ public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
         return result;
     }
 
-    private FlowSpeakerCommandData buildFlowIngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
+    private FlowSpeakerData buildFlowIngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
         List<Action> actions = new ArrayList<>();
         Instructions instructions = Instructions.builder()
                 .applyActions(actions)
@@ -83,7 +83,7 @@ public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
         actions.add(new PortOutAction(new PortNumber(getOutPort(flowPath, flow))));
         addMeterToInstructions(flowPath.getMeterId(), sw, instructions);
 
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(ingressEndpoint.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie())

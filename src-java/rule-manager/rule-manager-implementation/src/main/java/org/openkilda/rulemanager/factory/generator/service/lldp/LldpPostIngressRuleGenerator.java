@@ -24,7 +24,7 @@ import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
 
@@ -42,7 +42,7 @@ public class LldpPostIngressRuleGenerator extends LldpRuleGenerator {
     }
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         RoutingMetadata metadata = buildMetadata(RoutingMetadata.builder().lldpFlag(true), sw);
         Set<FieldMatch> match = Sets.newHashSet(
                 FieldMatch.builder().field(Field.METADATA).value(metadata.getValue()).mask(metadata.getMask()).build()
