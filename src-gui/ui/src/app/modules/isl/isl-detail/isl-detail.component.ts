@@ -93,6 +93,7 @@ import { FlowsService } from 'src/app/common/services/flows.service';
         targetSwitch:""
         
   }
+ 
 
     @Output() hideToValue: EventEmitter<any> = new EventEmitter();
     newMessageDetail(){
@@ -218,10 +219,10 @@ import { FlowsService } from 'src/app/common/services/flows.service';
 
          this.islListService.getLinkBFDProperties(this.src_switch, this.src_port, this.dst_switch, this.dst_port).subscribe((data : any) =>{
           if(data!= null){
-            this.bfdPropertyData = data;
+            this.bfdPropertyData = data; 
             this.bfdPropForm = this.formBuiler.group({
-              interval_ms: [this.bfdPropertyData.interval_ms, Validators.min(0)],
-              multiplier:[this.bfdPropertyData.multiplier,Validators.min(0)]
+              interval_ms: [this.bfdPropertyData.properties['interval_ms'], Validators.min(0)],
+              multiplier: [this.bfdPropertyData.properties['multiplier'],Validators.min(0)]
               });
           }
           else{
@@ -1006,6 +1007,7 @@ get f() {
         let multiplier = this.bfdPropForm.value.multiplier;
         var data = {interval_ms:interval_ms,multiplier:multiplier};
         this.islListService.updateLinkBFDProperties(data,this.src_switch, this.src_port, this.dst_switch, this.dst_port).subscribe((response: any) => {
+          this.bfdPropertyData = response;
           this.loaderService.hide();
           this.toastr.success(MessageObj.updating_bfd_properties_success,'Success');
           this.isBFDEdit = false;
