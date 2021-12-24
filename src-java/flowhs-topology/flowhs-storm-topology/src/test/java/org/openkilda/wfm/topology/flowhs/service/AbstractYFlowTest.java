@@ -29,7 +29,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
+import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
+import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.messaging.Message;
@@ -49,7 +55,6 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
 import org.openkilda.model.YFlow.SharedEndpoint;
 import org.openkilda.model.YSubFlow;
-import org.openkilda.model.cookie.Cookie;
 import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
@@ -59,6 +64,10 @@ import org.openkilda.persistence.dummy.PersistenceDummyEntityFactory;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.YFlowRepository;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 
@@ -77,7 +86,6 @@ import org.mockito.stubbing.Answer;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -155,14 +163,14 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
     private YFlowRepository yFlowRepositorySpy = null;
 
     protected FlowResourcesManager flowResourcesManager = null;
+    protected RuleManager ruleManager = null;
 
     protected final String injectedErrorMessage = "Unit-test injected failure";
 
     @Mock
     protected PathComputer pathComputer;
 
-    final Queue<FlowSegmentRequest> requests = new ArrayDeque<>();
-    final Map<SwitchId, Map<Cookie, FlowSegmentRequest>> installedSegments = new HashMap<>();
+    final Queue<SpeakerRequest> requests = new ArrayDeque<>();
 
     @Before
     public void before() {
@@ -170,6 +178,9 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
 
         FlowResourcesConfig resourceConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
         flowResourcesManager = spy(new FlowResourcesManager(persistenceManager, resourceConfig));
+
+        RuleManagerConfig ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
+        ruleManager = spy(new RuleManagerImpl(ruleManagerConfig));
 
         alterFeatureToggles(true, true, true, true);
 
@@ -200,21 +211,15 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
 
     protected Answer getSpeakerCommandsAnswer() {
         return invocation -> {
-            FlowSegmentRequest request = invocation.getArgument(0);
+            SpeakerRequest request = invocation.getArgument(0);
             requests.offer(request);
-
-            if (request.isInstallRequest()) {
-                installedSegments.computeIfAbsent(request.getSwitchId(), ignore -> new HashMap<>())
-                        .put(request.getCookie(), request);
-            }
-
             return request;
         };
     }
 
     @SneakyThrows
-    protected void handleSpeakerCommands(CheckedConsumer<FlowSegmentRequest> speakerRequestConsumer) {
-        FlowSegmentRequest request;
+    protected void handleSpeakerCommands(CheckedConsumer<SpeakerRequest> speakerRequestConsumer) {
+        SpeakerRequest request;
         while ((request = requests.poll()) != null) {
             // For testing purpose we assume that key equals to flowId.
             speakerRequestConsumer.accept(request);
@@ -247,6 +252,33 @@ public abstract class AbstractYFlowTest extends InMemoryGraphBasedTest {
                 .build();
     }
 
+    protected SpeakerCommandResponse buildSuccessfulYFlowSpeakerResponse(BaseSpeakerCommandsRequest request) {
+        return SpeakerCommandResponse.builder()
+                .messageContext(request.getMessageContext())
+                .commandId(request.getCommandId())
+                .switchId(request.getSwitchId())
+                .success(true)
+                .failedCommandIds(new HashMap<>())
+                .build();
+    }
+
+    protected SpeakerCommandResponse buildErrorYFlowSpeakerResponse(BaseSpeakerCommandsRequest request) {
+        return SpeakerCommandResponse.builder()
+                .messageContext(request.getMessageContext())
+                .commandId(request.getCommandId())
+                .switchId(request.getSwitchId())
+                .success(false)
+                .failedCommandIds(request.getCommands().stream().map(command -> {
+                    if (command instanceof FlowCommand) {
+                        return ((FlowCommand) command).getData();
+                    }
+                    if (command instanceof MeterCommand) {
+                        return ((MeterCommand) command).getData();
+                    }
+                    return ((GroupCommand) command).getData();
+                }).collect(Collectors.toMap(SpeakerData::getUuid, error -> "Switch is unavailable")))
+                .build();
+    }
 
     protected YFlowRepository setupYFlowRepositorySpy() {
         if (yFlowRepositorySpy == null) {

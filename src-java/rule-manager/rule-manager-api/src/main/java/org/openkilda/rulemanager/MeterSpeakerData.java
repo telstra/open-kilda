@@ -16,19 +16,25 @@
 package org.openkilda.rulemanager;
 
 import org.openkilda.model.MeterId;
+import org.openkilda.model.SwitchId;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
+import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
-@JsonSerialize
 @SuperBuilder
+@JsonNaming(SnakeCaseStrategy.class)
 public class MeterSpeakerData extends SpeakerData {
 
     private static final long INACCURATE_RATE_ALLOWED_DEVIATION = 1;
@@ -43,7 +49,23 @@ public class MeterSpeakerData extends SpeakerData {
     Set<MeterFlag> flags;
     boolean inaccurate;
 
-
+    @JsonCreator
+    public MeterSpeakerData(@JsonProperty("uuid") UUID uuid,
+                            @JsonProperty("switch_id") SwitchId switchId,
+                            @JsonProperty("depends_on") Collection<UUID> dependsOn,
+                            @JsonProperty("of_version") OfVersion ofVersion,
+                            @JsonProperty("meter_id") MeterId meterId,
+                            @JsonProperty("rate") long rate,
+                            @JsonProperty("burst") long burst,
+                            @JsonProperty("flags") Set<MeterFlag> flags,
+                            @JsonProperty("inaccurate") boolean inaccurate) {
+        super(uuid, switchId, dependsOn, ofVersion);
+        this.meterId = meterId;
+        this.rate = rate;
+        this.burst = burst;
+        this.flags = flags;
+        this.inaccurate = inaccurate;
+    }
 
     @Override
     public boolean equals(Object o) {

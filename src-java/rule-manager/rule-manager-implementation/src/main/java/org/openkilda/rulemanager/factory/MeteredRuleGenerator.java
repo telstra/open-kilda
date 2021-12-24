@@ -59,7 +59,7 @@ public interface MeteredRuleGenerator extends RuleGenerator {
      * @param sw target switch
      * @return command data
      */
-    default SpeakerData buildMeter(String uuid, FlowPath flowPath, RuleManagerConfig config, MeterId meterId,
+    default SpeakerData buildMeter(UUID uuid, FlowPath flowPath, RuleManagerConfig config, MeterId meterId,
                                    Switch sw) {
         if (meterId == null || !sw.getFeatures().contains(METERS)) {
             return null;
@@ -74,7 +74,7 @@ public interface MeteredRuleGenerator extends RuleGenerator {
                 .uuid(uuid)
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .meterId(meterId)
-                .switchId(flowPath.getSrcSwitchId())
+                .switchId(sw.getSwitchId())
                 .rate(flowPath.getBandwidth())
                 .burst(burstSize)
                 .flags(FLOW_METER_STATS)
@@ -90,6 +90,6 @@ public interface MeteredRuleGenerator extends RuleGenerator {
      * @return command data
      */
     default SpeakerData buildMeter(FlowPath flowPath, RuleManagerConfig config, MeterId meterId, Switch sw) {
-        return buildMeter(UUID.randomUUID().toString(), flowPath, config, meterId, sw);
+        return buildMeter(UUID.randomUUID(), flowPath, config, meterId, sw);
     }
 }

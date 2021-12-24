@@ -25,19 +25,18 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.State
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class InstallNewYPointMetersAction
+public class ValidateNewMeterAction
         extends YFlowProcessingWithHistorySupportAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
-    public InstallNewYPointMetersAction(PersistenceManager persistenceManager) {
+    public ValidateNewMeterAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
 
     @Override
-    protected void perform(State from, State to, Event event,
-                           YFlowRerouteContext context, YFlowRerouteFsm stateMachine) {
+    protected void perform(State from, State to, Event event, YFlowRerouteContext context,
+                           YFlowRerouteFsm stateMachine) {
         stateMachine.clearPendingAndRetriedAndFailedCommands();
 
-        //TODO: build and send shared-endpoint and y-point (main & protected) meters install command
-        stateMachine.saveActionToHistory("Do not install because Rule Manger feature is not implemented yet");
-        stateMachine.fire(Event.YFLOW_METERS_INSTALLED);
+        // We use validation directly in floodlight after installing the rules, so it's not necessary to do it here.
+        stateMachine.fire(Event.YFLOW_METERS_VALIDATED);
     }
 }

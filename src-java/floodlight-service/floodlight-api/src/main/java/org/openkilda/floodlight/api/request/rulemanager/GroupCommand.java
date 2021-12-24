@@ -18,13 +18,21 @@ package org.openkilda.floodlight.api.request.rulemanager;
 import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.GroupSpeakerData;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class GroupCommand extends OfCommand {
 
-    private final GroupSpeakerData data;
+    GroupSpeakerData data;
 
+    @JsonCreator
+    public GroupCommand(@JsonProperty("data") GroupSpeakerData data) {
+        this.data = data;
+    }
 
     @Override
     public void buildInstall(OfEntityBatch builder, SwitchId switchId) {

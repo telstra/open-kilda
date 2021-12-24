@@ -18,11 +18,13 @@ package org.openkilda.wfm.topology.flowhs.service.yflow;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -46,11 +48,12 @@ public class YFlowRerouteService
 
     public YFlowRerouteService(@NonNull YFlowRerouteHubCarrier carrier, @NonNull PersistenceManager persistenceManager,
                                @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager flowResourcesManager,
+                               @NonNull RuleManager ruleManager,
                                @NonNull FlowRerouteService flowRerouteService,
                                int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
         super(new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
-        this.fsmFactory = new YFlowRerouteFsm.Factory(carrier, persistenceManager, pathComputer,
-                flowResourcesManager, flowRerouteService, resourceAllocationRetriesLimit, speakerCommandRetriesLimit);
+        this.fsmFactory = new YFlowRerouteFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
+                ruleManager, flowRerouteService, resourceAllocationRetriesLimit, speakerCommandRetriesLimit);
         this.flowRerouteService = flowRerouteService;
         addFlowRerouteEventListener();
     }
@@ -127,28 +130,32 @@ public class YFlowRerouteService
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(@NonNull String key, @NonNull SpeakerFlowSegmentResponse flowResponse)
+    public void handleAsyncResponse(@NonNull String key, @NonNull SpeakerResponse speakerResponse)
             throws UnknownKeyException {
-        log.debug("Received flow command response {}", flowResponse);
+        log.debug("Received flow command response {}", speakerResponse);
         YFlowRerouteFsm fsm = fsmRegister.getFsmByKey(key)
                 .orElseThrow(() -> new UnknownKeyException(key));
 
-        String flowId = flowResponse.getMetadata().getFlowId();
-        if (fsm.getReroutingSubFlows().contains(flowId)) {
-            flowRerouteService.handleAsyncResponseByFlowId(flowId, flowResponse);
-        } else {
-            YFlowRerouteContext context = YFlowRerouteContext.builder()
-                    .speakerResponse(flowResponse)
-                    .build();
-            if (flowResponse instanceof FlowErrorResponse) {
-                fsmExecutor.fire(fsm, Event.ERROR_RECEIVED, context);
-            } else {
-                fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
+        if (speakerResponse instanceof SpeakerFlowSegmentResponse) {
+            SpeakerFlowSegmentResponse response = (SpeakerFlowSegmentResponse) speakerResponse;
+            String flowId = response.getMetadata().getFlowId();
+            if (fsm.getReroutingSubFlows().contains(flowId)) {
+                flowRerouteService.handleAsyncResponseByFlowId(flowId, response);
             }
+        } else if (speakerResponse instanceof SpeakerCommandResponse) {
+            SpeakerCommandResponse response = (SpeakerCommandResponse) speakerResponse;
+            YFlowRerouteContext context = YFlowRerouteContext.builder()
+                    .speakerResponse(response)
+                    .build();
+            fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
+        } else {
+            log.debug("Received unexpected speaker response: {}", speakerResponse);
         }
 
         // After handling an event by FlowReroute service, we should propagate execution to the FSM.
-        fsmExecutor.fire(fsm, Event.NEXT);
+        if (!fsm.isTerminated()) {
+            fsmExecutor.fire(fsm, Event.NEXT);
+        }
 
         removeIfFinished(fsm, key);
     }

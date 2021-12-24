@@ -23,6 +23,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.YFlow;
 
 import java.util.Map;
 import java.util.Set;
@@ -42,4 +43,6 @@ public interface DataAdapter {
     KildaFeatureToggles getFeatureToggles();
 
     Set<Integer> getSwitchIslPorts(SwitchId switchId);
+
+    YFlow getYFlow(PathId pathId);
 }

@@ -15,8 +15,10 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions;
 
+import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingWithHistorySupportAction;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowRuleManagerProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.Event;
@@ -24,11 +26,13 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.State
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Collection;
+
 @Slf4j
-public class RemoveOldYPointMetersAction extends
-        YFlowProcessingWithHistorySupportAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
-    public RemoveOldYPointMetersAction(PersistenceManager persistenceManager) {
-        super(persistenceManager);
+public class RemoveOldMetersAction extends
+        YFlowRuleManagerProcessingAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
+    public RemoveOldMetersAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
+        super(persistenceManager, ruleManager);
     }
 
     @Override
@@ -37,8 +41,19 @@ public class RemoveOldYPointMetersAction extends
         log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());
         stateMachine.clearPendingAndRetriedAndFailedCommands();
 
-        //TODO: build and send shared-endpoint and y-point (main & protected) meters install command
-        stateMachine.saveActionToHistory("Do not remove because Rule Manger feature is not implemented yet");
-        stateMachine.fire(Event.YPOINT_METER_REMOVED);
+        Collection<DeleteSpeakerCommandsRequest> commands = stateMachine.getDeleteOldYFlowCommands();
+
+        if (commands.isEmpty()) {
+            stateMachine.saveActionToHistory("No need to remove y-flow meters");
+            stateMachine.fire(Event.YPOINT_METER_REMOVED);
+        } else {
+            // emitting
+            commands.forEach(command -> {
+                stateMachine.getCarrier().sendSpeakerRequest(command);
+                stateMachine.addDeleteSpeakerCommand(command.getCommandId(), command);
+                stateMachine.addPendingCommand(command.getCommandId(), command.getSwitchId());
+            });
+            stateMachine.saveActionToHistory("Commands for removing y-flow rules have been sent");
+        }
     }
 }

@@ -51,7 +51,8 @@ public class OfSpeakerService implements BatchCommandProcessor {
         SwitchId switchId = request.getSwitchId();
         DatapathId dpId = DatapathId.of(switchId.toLong());
         IOFSwitch sw = iofSwitchService.getSwitch(dpId);
-        OfBatchHolder holder = new OfBatchHolder(iofSwitchService, request.getMessageContext());
+        OfBatchHolder holder = new OfBatchHolder(iofSwitchService, request.getMessageContext(),
+                request.getCommandId(), request.getSwitchId());
         for (OfCommand data : request.getCommands()) {
             data.buildInstall(holder, switchId);
         }
@@ -73,7 +74,8 @@ public class OfSpeakerService implements BatchCommandProcessor {
         SwitchId switchId = request.getSwitchId();
         DatapathId dpId = DatapathId.of(switchId.toLong());
         IOFSwitch sw = iofSwitchService.getSwitch(dpId);
-        OfBatchHolder holder = new OfBatchHolder(iofSwitchService, request.getMessageContext());
+        OfBatchHolder holder = new OfBatchHolder(iofSwitchService, request.getMessageContext(),
+                request.getCommandId(), request.getSwitchId());
         for (OfCommand data : request.getCommands()) {
             data.buildDelete(holder, switchId);
         }

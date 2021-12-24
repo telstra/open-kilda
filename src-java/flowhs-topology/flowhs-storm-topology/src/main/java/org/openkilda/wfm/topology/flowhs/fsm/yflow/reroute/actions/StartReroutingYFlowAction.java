@@ -24,9 +24,10 @@ import org.openkilda.model.YFlow;
 import org.openkilda.model.YSubFlow;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowRuleManagerProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.Event;
@@ -43,9 +44,9 @@ import java.util.stream.Stream;
 
 @Slf4j
 public class StartReroutingYFlowAction
-        extends YFlowProcessingAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
-    public StartReroutingYFlowAction(PersistenceManager persistenceManager) {
-        super(persistenceManager);
+        extends YFlowRuleManagerProcessingAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
+    public StartReroutingYFlowAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
+        super(persistenceManager, ruleManager);
     }
 
     @Override
@@ -55,6 +56,7 @@ public class StartReroutingYFlowAction
         List<FlowPath> flowPaths = transactionManager.doInTransaction(() -> {
             YFlow yFlow = getYFlow(yFlowId);
             saveOldResources(stateMachine, yFlow);
+            stateMachine.setDeleteOldYFlowCommands(buildYFlowDeleteCommands(yFlow, stateMachine.getCommandContext()));
 
             SwitchId sharedSwitchId = yFlow.getSharedEndpoint().getSwitchId();
             return yFlow.getSubFlows().stream()

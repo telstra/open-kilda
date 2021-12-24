@@ -39,12 +39,13 @@ import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @SuperBuilder
 public class TransitYRuleGenerator extends TransitRuleGenerator implements MeteredRuleGenerator {
     protected final MeterId sharedMeterId;
     protected RuleManagerConfig config;
-    protected String externalMeterCommandUuid;
+    protected UUID externalMeterCommandUuid;
     protected boolean generateMeterCommand;
 
 

@@ -35,8 +35,7 @@ public class ValidateYFlowResourcesAction extends
     protected void perform(State from, State to, Event event, YFlowCreateContext context, YFlowCreateFsm stateMachine) {
         stateMachine.clearPendingAndRetriedAndFailedCommands();
 
-        //TODO: build and send shared-endpoint and y-point (main & protected) meters validate command
-        stateMachine.saveActionToHistory("No need to validate y-flow meters");
+        // We use validation directly in floodlight after installing the rules, so it's not necessary to do it here.
         stateMachine.fire(Event.ALL_YFLOW_METERS_VALIDATED);
     }
 }

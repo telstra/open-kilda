@@ -23,7 +23,7 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PA
 import static org.openkilda.wfm.topology.utils.MessageKafkaTranslator.STREAM_FIELDS;
 
 import org.openkilda.bluegreen.LifecycleEvent;
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRequest;
@@ -118,7 +118,7 @@ public class FlowSwapEndpointsHubBolt extends HubBolt implements FlowSwapEndpoin
     }
 
     @Override
-    public void sendSpeakerRequest(FlowSegmentRequest command) {
+    public void sendSpeakerRequest(SpeakerRequest command) {
         log.info("Not implemented for swap flow endpoints operation. Skipping command: {}", command);
     }
 

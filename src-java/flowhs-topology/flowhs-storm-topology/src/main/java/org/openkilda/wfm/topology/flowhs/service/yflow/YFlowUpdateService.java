@@ -18,7 +18,8 @@ package org.openkilda.wfm.topology.flowhs.service.yflow;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.SubFlowPartialUpdateDto;
 import org.openkilda.messaging.command.yflow.SubFlowSharedEndpointEncapsulation;
@@ -34,6 +35,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -71,12 +73,12 @@ public class YFlowUpdateService
 
     public YFlowUpdateService(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
                               @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager flowResourcesManager,
-                              @NonNull FlowUpdateService flowUpdateService,
+                              @NonNull RuleManager ruleManager, @NonNull FlowUpdateService flowUpdateService,
                               int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit,
                               @NonNull String prefixForGeneratedYFlowId, @NonNull String prefixForGeneratedSubFlowId) {
         super(new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
-        fsmFactory = new YFlowUpdateFsm.Factory(carrier, persistenceManager, pathComputer,
-                flowResourcesManager, flowUpdateService, resourceAllocationRetriesLimit, speakerCommandRetriesLimit);
+        fsmFactory = new YFlowUpdateFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
+                ruleManager, flowUpdateService, resourceAllocationRetriesLimit, speakerCommandRetriesLimit);
         this.prefixForGeneratedYFlowId = prefixForGeneratedYFlowId;
         this.prefixForGeneratedSubFlowId = prefixForGeneratedSubFlowId;
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
@@ -302,28 +304,32 @@ public class YFlowUpdateService
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(@NonNull String key, @NonNull SpeakerFlowSegmentResponse flowResponse)
+    public void handleAsyncResponse(@NonNull String key, @NonNull SpeakerResponse speakerResponse)
             throws UnknownKeyException {
-        log.debug("Received flow command response {}", flowResponse);
+        log.debug("Received flow command response {}", speakerResponse);
         YFlowUpdateFsm fsm = fsmRegister.getFsmByKey(key)
                 .orElseThrow(() -> new UnknownKeyException(key));
 
-        String flowId = flowResponse.getMetadata().getFlowId();
-        if (fsm.getUpdatingSubFlows().contains(flowId)) {
-            flowUpdateService.handleAsyncResponseByFlowId(flowId, flowResponse);
-        } else {
-            YFlowUpdateContext context = YFlowUpdateContext.builder()
-                    .speakerResponse(flowResponse)
-                    .build();
-            if (flowResponse instanceof FlowErrorResponse) {
-                fsmExecutor.fire(fsm, Event.ERROR_RECEIVED, context);
-            } else {
-                fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
+        if (speakerResponse instanceof SpeakerFlowSegmentResponse) {
+            SpeakerFlowSegmentResponse response = (SpeakerFlowSegmentResponse) speakerResponse;
+            String flowId = response.getMetadata().getFlowId();
+            if (fsm.getUpdatingSubFlows().contains(flowId)) {
+                flowUpdateService.handleAsyncResponseByFlowId(flowId, response);
             }
+        } else if (speakerResponse instanceof SpeakerCommandResponse) {
+            SpeakerCommandResponse response = (SpeakerCommandResponse) speakerResponse;
+            YFlowUpdateContext context = YFlowUpdateContext.builder()
+                    .speakerResponse(response)
+                    .build();
+            fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
+        } else {
+            log.debug("Received unexpected speaker response: {}", speakerResponse);
         }
 
         // After handling an event by FlowUpdate service, we should propagate execution to the FSM.
-        fsmExecutor.fire(fsm, Event.NEXT);
+        if (!fsm.isTerminated()) {
+            fsmExecutor.fire(fsm, Event.NEXT);
+        }
 
         removeIfFinished(fsm, key);
     }

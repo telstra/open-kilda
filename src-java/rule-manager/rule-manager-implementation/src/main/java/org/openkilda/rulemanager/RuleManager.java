@@ -47,4 +47,9 @@ public interface RuleManager {
      * Build all required rules, meters and groups for switch. Including service and all required flow-related rules.
      */
     List<SpeakerData> buildRulesForSwitch(SwitchId switchId, DataAdapter adapter);
+
+    /**
+     * Build all required rules and meters y-flow.
+     */
+    List<SpeakerData> buildRulesForYFlow(List<FlowPath> flowPaths, DataAdapter adapter);
 }

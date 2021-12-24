@@ -15,26 +15,40 @@
 
 package org.openkilda.floodlight.api.response.rulemanager;
 
-import org.openkilda.messaging.AbstractMessage;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.MessageContext;
+import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.NonNull;
+import lombok.ToString;
 import lombok.Value;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Value
-public class SpeakerCommandResponse extends AbstractMessage {
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+public class SpeakerCommandResponse extends SpeakerResponse {
+
+    @JsonProperty("success")
+    boolean success;
+    @JsonProperty("failed_command_ids")
+    Map<UUID, String> failedCommandIds;
 
     @Builder
-    public SpeakerCommandResponse(@NonNull MessageContext messageContext, boolean success,
-                                  Map<String, String> failedUuids) {
-        super(messageContext);
+    @JsonCreator
+    public SpeakerCommandResponse(@JsonProperty("message_context") @NonNull MessageContext messageContext,
+                                  @JsonProperty("command_id") @NonNull UUID commandId,
+                                  @JsonProperty("switch_id") @NonNull SwitchId switchId,
+                                  @JsonProperty("success") boolean success,
+                                  @JsonProperty("failed_command_ids") @NonNull Map<UUID, String> failedCommandIds) {
+        super(messageContext, commandId, switchId);
         this.success = success;
-        this.failedUuids = failedUuids;
+        this.failedCommandIds = failedCommandIds;
     }
-
-    private boolean success;
-    private Map<String, String> failedUuids;
 }

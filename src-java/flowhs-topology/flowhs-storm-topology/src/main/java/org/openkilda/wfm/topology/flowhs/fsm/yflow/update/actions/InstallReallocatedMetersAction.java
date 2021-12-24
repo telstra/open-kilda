@@ -13,32 +13,31 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions;
 
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowRuleManagerProcessingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateContext;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 
 @Slf4j
-public class InstallYFlowResourcesAction extends
-        YFlowRuleManagerProcessingAction<YFlowCreateFsm, State, Event, YFlowCreateContext> {
-
-    public InstallYFlowResourcesAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
+public class InstallReallocatedMetersAction
+        extends YFlowRuleManagerProcessingAction<YFlowUpdateFsm, State, Event, YFlowUpdateContext> {
+    public InstallReallocatedMetersAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
         super(persistenceManager, ruleManager);
     }
 
     @Override
-    protected void perform(State from, State to, Event event, YFlowCreateContext context, YFlowCreateFsm stateMachine) {
+    protected void perform(State from, State to, Event event, YFlowUpdateContext context, YFlowUpdateFsm stateMachine) {
         stateMachine.clearPendingAndRetriedAndFailedCommands();
 
         String yFlowId = stateMachine.getYFlowId();
@@ -56,7 +55,6 @@ public class InstallYFlowResourcesAction extends
                 stateMachine.addInstallSpeakerCommand(command.getCommandId(), command);
                 stateMachine.addPendingCommand(command.getCommandId(), command.getSwitchId());
             });
-
             stateMachine.saveActionToHistory("Commands for installing y-flow rules have been sent");
         }
     }

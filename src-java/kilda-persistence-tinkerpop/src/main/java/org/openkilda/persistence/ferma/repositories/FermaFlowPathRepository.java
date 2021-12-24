@@ -24,6 +24,7 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.YFlow;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
@@ -108,6 +109,20 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
         return flowPathFrames.stream()
                 .map(FlowPath::new)
                 .collect(Collectors.toMap(FlowPath::getPathId, FlowPath::getFlow));
+    }
+
+    @Override
+    public Map<PathId, YFlow> findYFlowsByPathIds(Set<PathId> pathIds) {
+        Set<String> graphPathIds = pathIds.stream()
+                .map(PathIdConverter.INSTANCE::toGraphProperty)
+                .collect(Collectors.toSet());
+        List<? extends FlowPathFrame> flowPathFrames = framedGraph().traverse(g -> g.V()
+                        .hasLabel(FlowPathFrame.FRAME_LABEL)
+                        .has(FlowPathFrame.PATH_ID_PROPERTY, P.within(graphPathIds)))
+                .toListExplicit(FlowPathFrame.class);
+        return flowPathFrames.stream()
+                .map(FlowPath::new)
+                .collect(Collectors.toMap(FlowPath::getPathId, flowPath -> flowPath.getFlow().getYFlow()));
     }
 
     @Override

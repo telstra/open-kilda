@@ -27,8 +27,8 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_STA
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -43,6 +43,9 @@ import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.server42.control.messaging.flowrtt.ActivateFlowMonitoringInfoData;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
@@ -80,6 +83,7 @@ public class YFlowRerouteHubBolt extends HubBolt implements YFlowRerouteHubCarri
     private final FlowRerouteConfig flowRerouteConfig;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
+    private final RuleManagerConfig ruleManagerConfig;
 
     private transient YFlowRerouteService yFlowRerouteService;
     private transient FlowRerouteService flowRerouteService;
@@ -91,13 +95,15 @@ public class YFlowRerouteHubBolt extends HubBolt implements YFlowRerouteHubCarri
                                @NonNull FlowRerouteConfig flowRerouteConfig,
                                @NonNull PersistenceManager persistenceManager,
                                @NonNull PathComputerConfig pathComputerConfig,
-                               @NonNull FlowResourcesConfig flowResourcesConfig) {
+                               @NonNull FlowResourcesConfig flowResourcesConfig,
+                               @NonNull RuleManagerConfig ruleManagerConfig) {
         super(persistenceManager, yFlowRerouteConfig);
 
         this.yFlowRerouteConfig = yFlowRerouteConfig;
         this.flowRerouteConfig = flowRerouteConfig;
         this.pathComputerConfig = pathComputerConfig;
         this.flowResourcesConfig = flowResourcesConfig;
+        this.ruleManagerConfig = ruleManagerConfig;
 
         enableMeterRegistry("kilda.y_flow_reroute", HUB_TO_METRICS_BOLT.name());
     }
@@ -109,6 +115,7 @@ public class YFlowRerouteHubBolt extends HubBolt implements YFlowRerouteHubCarri
                 new AvailableNetworkFactory(pathComputerConfig, persistenceManager.getRepositoryFactory());
         PathComputer pathComputer =
                 new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
+        RuleManager ruleManager = new RuleManagerImpl(ruleManagerConfig);
 
         flowRerouteService = new FlowRerouteService(
                 new FlowRerouteHubCarrierIsolatingResponsesAndLifecycleEvents(this),
@@ -118,7 +125,7 @@ public class YFlowRerouteHubBolt extends HubBolt implements YFlowRerouteHubCarri
                 flowRerouteConfig.getSpeakerCommandRetriesLimit());
 
         yFlowRerouteService = new YFlowRerouteService(this, persistenceManager, pathComputer, resourcesManager,
-                flowRerouteService, yFlowRerouteConfig.getResourceAllocationRetriesLimit(),
+                ruleManager, flowRerouteService, yFlowRerouteConfig.getResourceAllocationRetriesLimit(),
                 yFlowRerouteConfig.getSpeakerCommandRetriesLimit());
     }
 
@@ -136,7 +143,7 @@ public class YFlowRerouteHubBolt extends HubBolt implements YFlowRerouteHubCarri
         flowRerouteService.activate();
         yFlowRerouteService.activate();
     }
-    
+
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = pullKey(input);
@@ -152,9 +159,9 @@ public class YFlowRerouteHubBolt extends HubBolt implements YFlowRerouteHubCarri
     protected void onWorkerResponse(Tuple input) throws PipelineException {
         String operationKey = pullKey(input);
         currentKey = KeyProvider.getParentKey(operationKey);
-        SpeakerFlowSegmentResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerFlowSegmentResponse.class);
+        SpeakerResponse speakerResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerResponse.class);
         try {
-            yFlowRerouteService.handleAsyncResponse(currentKey, flowResponse);
+            yFlowRerouteService.handleAsyncResponse(currentKey, speakerResponse);
         } catch (UnknownKeyException e) {
             log.error("Received a response with unknown key {}.", currentKey);
         }
@@ -171,7 +178,7 @@ public class YFlowRerouteHubBolt extends HubBolt implements YFlowRerouteHubCarri
     }
 
     @Override
-    public void sendSpeakerRequest(@NonNull FlowSegmentRequest command) {
+    public void sendSpeakerRequest(@NonNull SpeakerRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
 
         Values values = new Values(commandKey, command);

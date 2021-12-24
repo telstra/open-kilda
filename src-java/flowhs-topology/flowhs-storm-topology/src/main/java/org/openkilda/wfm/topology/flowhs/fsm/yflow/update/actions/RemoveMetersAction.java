@@ -13,51 +13,51 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions;
 
-import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowRuleManagerProcessingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateContext;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 
 @Slf4j
-public class InstallYFlowResourcesAction extends
-        YFlowRuleManagerProcessingAction<YFlowCreateFsm, State, Event, YFlowCreateContext> {
-
-    public InstallYFlowResourcesAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
+public class RemoveMetersAction extends
+        YFlowRuleManagerProcessingAction<YFlowUpdateFsm, State, Event, YFlowUpdateContext> {
+    public RemoveMetersAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
         super(persistenceManager, ruleManager);
     }
 
     @Override
-    protected void perform(State from, State to, Event event, YFlowCreateContext context, YFlowCreateFsm stateMachine) {
+    protected void perform(State from, State to, Event event, YFlowUpdateContext context, YFlowUpdateFsm stateMachine) {
+        log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());
         stateMachine.clearPendingAndRetriedAndFailedCommands();
 
         String yFlowId = stateMachine.getYFlowId();
         YFlow yFlow = getYFlow(yFlowId);
-        Collection<InstallSpeakerCommandsRequest> commands =
-                buildYFlowInstallCommands(yFlow, stateMachine.getCommandContext());
+        Collection<DeleteSpeakerCommandsRequest> commands =
+                buildYFlowDeleteCommands(yFlow, stateMachine.getCommandContext());
+        commands.addAll(stateMachine.getDeleteOldYFlowCommands());
 
         if (commands.isEmpty()) {
-            stateMachine.saveActionToHistory("No need to install y-flow meters");
-            stateMachine.fire(Event.ALL_YFLOW_METERS_INSTALLED);
+            stateMachine.saveActionToHistory("No need to remove y-flow meters");
+            stateMachine.fire(Event.YPOINT_METERS_REMOVED);
         } else {
             // emitting
             commands.forEach(command -> {
                 stateMachine.getCarrier().sendSpeakerRequest(command);
-                stateMachine.addInstallSpeakerCommand(command.getCommandId(), command);
+                stateMachine.addDeleteSpeakerCommand(command.getCommandId(), command);
                 stateMachine.addPendingCommand(command.getCommandId(), command.getSwitchId());
             });
-
-            stateMachine.saveActionToHistory("Commands for installing y-flow rules have been sent");
+            stateMachine.saveActionToHistory("Commands for removing y-flow rules have been sent");
         }
     }
 }

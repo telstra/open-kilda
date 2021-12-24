@@ -29,6 +29,7 @@ import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterSpeakerData;
 
+import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -39,25 +40,29 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
+@Slf4j
 public class OfBatchHolder implements OfEntityBatch {
 
     private final IOFSwitchService iofSwitchService;
-    private MessageContext messageContext;
+    private final MessageContext messageContext;
+    private final UUID commandId;
+    private final SwitchId switchId;
 
-    private Map<String, String> failedUuids = new HashMap<>();
-    private Set<String> successUuids = new HashSet<>();
-    private final Map<String, BatchData> commandMap = new HashMap<>();
+    private final Map<UUID, String> failedUuids = new HashMap<>();
+    private final Set<UUID> successUuids = new HashSet<>();
+    private final Map<UUID, BatchData> commandMap = new HashMap<>();
 
-    private ExecutionGraph executionGraph = new ExecutionGraph();
+    private final ExecutionGraph executionGraph = new ExecutionGraph();
 
     private final Map<MeterId, MeterSpeakerData> metersMap = new HashMap<>();
     private final Map<CookieBase, FlowSpeakerData> flowsMap = new HashMap<>();
     private final Map<GroupId, GroupSpeakerData> groupsMap = new HashMap<>();
 
-    private Map<Long, String> xidMapping = new HashMap<>();
+    private Map<Long, UUID> xidMapping = new HashMap<>();
 
-    public List<String> getCurrentStage() {
+    public List<UUID> getCurrentStage() {
         return executionGraph.getCurrent();
     }
 
@@ -72,30 +77,30 @@ public class OfBatchHolder implements OfEntityBatch {
         xidMapping = new HashMap<>();
     }
 
-    public void recordSuccessUuid(String failedUuid) {
+    public void recordSuccessUuid(UUID failedUuid) {
+        log.debug("Record success for {}", failedUuid);
         successUuids.add(failedUuid);
     }
 
-    public void recordFailedUuid(String failedUuid, String message) {
+    public void recordFailedUuid(UUID failedUuid, String message) {
+        log.debug("Record failed for {}, error message: {}", failedUuid, message);
         failedUuids.put(failedUuid, message);
     }
 
     /**
      * Checks if action deps are satisfied.
      */
-    public boolean canExecute(String uuid) {
-        List<String> nodeInEdges = executionGraph.getNodeDependsOn(uuid);
-        for (String dep : nodeInEdges) {
+    public boolean canExecute(UUID uuid) {
+        List<UUID> nodeInEdges = executionGraph.getNodeDependsOn(uuid);
+        for (UUID dep : nodeInEdges) {
             if (!successUuids.contains(dep)) {
                 return false;
             }
         }
-        return true;
+        return commandMap.get(uuid) != null;
     }
 
-
-
-    public BatchData getByUUid(String uuid) {
+    public BatchData getByUUid(UUID uuid) {
         return commandMap.get(uuid);
     }
 
@@ -111,13 +116,16 @@ public class OfBatchHolder implements OfEntityBatch {
         return groupsMap.get(groupId);
     }
 
-    public String popAwaitingXid(long xid) {
+    public UUID popAwaitingXid(long xid) {
         return xidMapping.remove(xid);
     }
 
-    public OfBatchHolder(IOFSwitchService iofSwitchService, MessageContext messageContext) {
+    public OfBatchHolder(IOFSwitchService iofSwitchService, MessageContext messageContext,
+                         UUID commandId, SwitchId switchId) {
         this.iofSwitchService = iofSwitchService;
         this.messageContext = messageContext;
+        this.commandId = commandId;
+        this.switchId = switchId;
     }
 
     @Override
@@ -192,7 +200,9 @@ public class OfBatchHolder implements OfEntityBatch {
     public SpeakerCommandResponse getResult() {
         return SpeakerCommandResponse.builder()
                 .messageContext(messageContext)
+                .commandId(commandId)
+                .switchId(switchId)
                 .success(failedUuids.isEmpty())
-                .failedUuids(failedUuids).build();
+                .failedCommandIds(failedUuids).build();
     }
 }

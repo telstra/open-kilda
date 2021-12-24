@@ -72,6 +72,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 public class EgressMirrorRuleGeneratorTest {
     public static final PathId PATH_ID = new PathId("path_id");
@@ -396,7 +397,7 @@ public class EgressMirrorRuleGeneratorTest {
 
     private void assertEgressCommand(
             FlowSpeakerData command, OfTable table, FlowTransitEncapsulation encapsulation,
-            List<Action> expectedApplyActions, String groupCommandUuid) {
+            List<Action> expectedApplyActions, UUID groupCommandUuid) {
         assertEquals(SWITCH_2.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_2.getOfVersion(), command.getOfVersion().toString());
         assertEquals(Lists.newArrayList(groupCommandUuid), new ArrayList<>(command.getDependsOn()));

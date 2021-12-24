@@ -49,6 +49,7 @@ public final class OfUtils {
 
     private static OFMeterConfigStatsRequest makeMeterReadCommand(IOFSwitch sw) {
         return sw.getOFFactory().buildMeterConfigStatsRequest()
+                .setMeterId(0xffffffff)
                 .build();
     }
 

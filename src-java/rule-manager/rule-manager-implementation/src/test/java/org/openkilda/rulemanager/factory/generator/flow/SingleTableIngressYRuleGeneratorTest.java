@@ -69,6 +69,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 public class SingleTableIngressYRuleGeneratorTest {
     public static final PathId PATH_ID = new PathId("path_id");
@@ -125,7 +126,7 @@ public class SingleTableIngressYRuleGeneratorTest {
     RuleManagerConfig config;
 
     public static final MeterId SHARED_METER_ID = new MeterId(34);
-    public static final String SHARED_METER_UUID = "uuid";
+    public static final UUID SHARED_METER_UUID = UUID.fromString("dc8b54d3-3f25-4c5b-9d90-5f59d2836bc2");
 
 
 

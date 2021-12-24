@@ -20,6 +20,10 @@ import static org.openkilda.rulemanager.action.ActionType.NOVI_SWAP_FIELD;
 
 import org.openkilda.rulemanager.action.noviflow.OpenFlowOxms;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.collect.Sets;
 import lombok.AccessLevel;
@@ -31,6 +35,7 @@ import java.util.Set;
 
 @Value
 @JsonSerialize
+@JsonNaming(SnakeCaseStrategy.class)
 public class SwapFieldAction implements Action {
 
     private static final Set<ActionType> VALID_TYPES = Sets.newHashSet(NOVI_SWAP_FIELD, KILDA_SWAP_FIELD);
@@ -45,12 +50,13 @@ public class SwapFieldAction implements Action {
     ActionType type;
 
     @Builder
-    public SwapFieldAction(ActionType type,
-                           int numberOfBits,
-                           int srcOffset,
-                           int dstOffset,
-                           OpenFlowOxms oxmSrcHeader,
-                           OpenFlowOxms oxmDstHeader) {
+    @JsonCreator
+    public SwapFieldAction(@JsonProperty("type") ActionType type,
+                           @JsonProperty("number_of_bits") int numberOfBits,
+                           @JsonProperty("src_offset") int srcOffset,
+                           @JsonProperty("dst_offset") int dstOffset,
+                           @JsonProperty("oxm_src_header") OpenFlowOxms oxmSrcHeader,
+                           @JsonProperty("oxm_dst_header") OpenFlowOxms oxmDstHeader) {
         if (!VALID_TYPES.contains(type)) {
             throw new IllegalArgumentException(
                     String.format("Type %s is invalid. Valid types: %s", type, VALID_TYPES));
