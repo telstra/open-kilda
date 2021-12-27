@@ -271,6 +271,8 @@ public class UserService implements UserDetailsService {
             throw new RequestValidationException(messageUtil.getAttributeInvalid("username", userName + ""));
         }
         userEntity.setLoginTime(Calendar.getInstance().getTime());
+        userEntity.setFailedLoginCount(null);
+        userEntity.setUnlockTime(null);
         if (userEntity.getIs2FaEnabled()) {
             userEntity.setIs2FaConfigured(true);
         }

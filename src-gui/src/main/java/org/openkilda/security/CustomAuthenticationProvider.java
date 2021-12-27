@@ -100,10 +100,13 @@ public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
             }
             return new UsernamePasswordAuthenticationToken(user, result.getCredentials(), result.getAuthorities());
         } catch (BadCredentialsException e) {
+            String error = null;
             if (user.getUserId() != 1) {
-                updateInvalidLoginAttempts(user, loginCount, unlockTime);
+                error = updateInvalidLoginAttempts(user, loginCount, unlockTime);
+            } else {
+                error = "Login Failed.Invalid email or password."; 
             }
-            throw new BadCredentialsException(e.getMessage());
+            throw new BadCredentialsException(error);
         }
     
     }
@@ -132,7 +135,7 @@ public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
         }
     }
 
-    private void updateInvalidLoginAttempts(UserEntity entity, String value, String accUnlockTime) {
+    private String updateInvalidLoginAttempts(UserEntity entity, String value, String accUnlockTime) {
         Integer loginCount = entity.getFailedLoginCount();
         if (loginCount != null) {
             if (loginCount + 1 >= Integer.valueOf(value)) {
@@ -157,7 +160,10 @@ public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
         } else {
             entity.setFailedLoginCount(1);
         }
+        int attempts = Integer.valueOf(value) - entity.getFailedLoginCount();
+        String error = "Invalid email or password.You are left with " + attempts + " more attempts.";
         userRepository.save(entity);
+        return error;
     }
 
     /*
