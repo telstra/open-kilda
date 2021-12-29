@@ -13,17 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats.service;
+package org.openkilda.wfm.topology.stats.model;
 
-import org.openkilda.messaging.info.stats.FlowStatsData;
-import org.openkilda.messaging.info.stats.MeterStatsData;
-import org.openkilda.wfm.topology.stats.model.FlowCacheEntry;
-import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
+public interface KildaEntryDescriptorHandler {
+    void handle(KildaEntryDescriptor entry);
 
-import java.util.Map;
+    void handleStatsEntry(CommonFlowDescriptor descriptor);
 
-public interface FlowCacheBoltCarrier {
-    void emitFlowStats(FlowStatsData data, Map<Long, FlowCacheEntry> cookieDataCache);
+    void handleStatsEntry(YFlowDescriptor descriptor);
 
-    void emitMeterStats(MeterStatsData data, Map<MeterCacheKey, FlowCacheEntry> meterDataCache);
+    void handleStatsEntry(YFlowSubDescriptor descriptor);
+
+    void handleStatsEntry(DummyFlowDescriptor descriptor);
+
+    void handleStatsEntry(DummyMeterDescriptor descriptor);
 }

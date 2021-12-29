@@ -338,10 +338,11 @@ public class StatsTopologyTest extends AbstractStormTest {
 
 
         datapoints.forEach(datapoint -> {
-            assertEquals(5, datapoint.getTags().size());
+            assertEquals(6, datapoint.getTags().size());
             assertEquals(SWITCH_ID_1.toOtsdFormat(), datapoint.getTags().get("switchid"));
             assertEquals(String.valueOf(flowPath.getMeterId().getValue()), datapoint.getTags().get("meterid"));
             assertEquals("forward", datapoint.getTags().get("direction"));
+            assertEquals("false", datapoint.getTags().get("is_y_flow_subflow"));
             assertEquals(flowId, datapoint.getTags().get("flowid"));
             assertEquals(String.valueOf(flowPath.getCookie().getValue()), datapoint.getTags().get("cookie"));
             assertEquals(timestamp, datapoint.getTime().longValue());
@@ -495,7 +496,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                 case METRIC_PREFIX + "flow.raw.packets":
                 case METRIC_PREFIX + "flow.raw.bytes":
                 case METRIC_PREFIX + "flow.raw.bits":
-                    assertEquals(8, datapoint.getTags().size());
+                    assertEquals(9, datapoint.getTags().size());
                     assertEquals(flowId, datapoint.getTags().get("flowid"));
                     assertEquals(direction, datapoint.getTags().get("direction"));
                     assertEquals(String.valueOf(flowStats.getTableId()), datapoint.getTags().get("tableid"));
@@ -503,6 +504,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                     assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
                     assertEquals(Integer.toString(flowStats.getOutPort()), datapoint.getTags().get("outPort"));
                     assertEquals(Integer.toString(flowStats.getInPort()), datapoint.getTags().get("inPort"));
+                    assertEquals("false", datapoint.getTags().get("is_flow_satellite"));
                     break;
                 case METRIC_PREFIX + "flow.ingress.packets":
                 case METRIC_PREFIX + "flow.ingress.bytes":
@@ -510,7 +512,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                 case METRIC_PREFIX + "flow.packets":
                 case METRIC_PREFIX + "flow.bytes":
                 case METRIC_PREFIX + "flow.bits":
-                    assertEquals(2, datapoint.getTags().size());
+                    assertEquals(3, datapoint.getTags().size());
                     assertEquals(flowId, datapoint.getTags().get("flowid"));
                     assertEquals(direction, datapoint.getTags().get("direction"));
                     break;
@@ -785,7 +787,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     private void sendRemoveFlowPathInfo(FlowPath flowPath) {
         RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
-                flowPath.getFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
+                flowPath.getFlowId(), null, flowPath.getCookie(), flowPath.getMeterId(),
                 FlowPathMapper.INSTANCE.mapToPathNodes(flowPath));
         InfoMessage infoMessage = new InfoMessage(pathInfo, timestamp, UUID.randomUUID().toString(), null, null);
         sendMessage(infoMessage, statsTopologyConfig.getFlowStatsNotifyTopic());
@@ -793,7 +795,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     private void sendUpdateFlowPathInfo(FlowPath flowPath) {
         UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
-                flowPath.getFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
+                flowPath.getFlowId(), null, flowPath.getCookie(), flowPath.getMeterId(),
                 FlowPathMapper.INSTANCE.mapToPathNodes(flowPath));
         InfoMessage infoMessage = new InfoMessage(pathInfo, timestamp, UUID.randomUUID().toString(), null, null);
         sendMessage(infoMessage, statsTopologyConfig.getFlowStatsNotifyTopic());

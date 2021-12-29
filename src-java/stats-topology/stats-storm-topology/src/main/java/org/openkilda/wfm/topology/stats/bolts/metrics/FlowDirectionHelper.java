@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.stats.bolts.metrics;
 
 import org.openkilda.exception.InvalidCookieException;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
@@ -50,8 +51,15 @@ public final class FlowDirectionHelper {
             return Optional.empty();
         }
 
+        return Optional.ofNullable(mapDirection(cookie.getDirection()));
+    }
+
+    /**
+     * Map direction value from {@link FlowPathDirection} into {@link Direction}.
+     */
+    public static Direction mapDirection(FlowPathDirection origin) {
         Direction direction;
-        switch (cookie.getDirection()) {
+        switch (origin) {
             case FORWARD:
                 direction = Direction.FORWARD;
                 break;
@@ -61,7 +69,6 @@ public final class FlowDirectionHelper {
             default:
                 direction = null;
         }
-
-        return Optional.ofNullable(direction);
+        return direction;
     }
 }

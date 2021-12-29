@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
+import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
@@ -38,8 +39,9 @@ public class NotifyFlowStatsAction extends
     protected void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
         flowPathRepository.findByFlowId(flowId).forEach(flowPath -> {
+            Flow flow = flowPath.getFlow();
             RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
-                    flowPath.getFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
+                    flow.getFlowId(), flow.getYFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
                     FlowPathMapper.INSTANCE.mapToPathNodes(flowPath));
             carrier.sendNotifyFlowStats(pathInfo);
         });

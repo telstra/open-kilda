@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.create.actions;
 
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
+import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
@@ -38,8 +39,9 @@ public class NotifyFlowStatsAction extends
     protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
         flowPathRepository.findByFlowId(flowId).forEach(flowPath -> {
+            Flow flow = flowPath.getFlow();
             UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
-                    flowPath.getFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
+                    flow.getFlowId(), flow.getYFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
                     FlowPathMapper.INSTANCE.mapToPathNodes(flowPath));
             carrier.sendNotifyFlowStats(pathInfo);
         });

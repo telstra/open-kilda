@@ -46,6 +46,8 @@ public class DeallocateYFlowResourcesAction extends
 
     @Override
     public void perform(State from, State to, Event event, YFlowDeleteContext context, YFlowDeleteFsm stateMachine) {
+        notifyStats(stateMachine);
+
         String yFlowId = stateMachine.getYFlowId();
         Optional<YFlowResources> oldResources = Optional.ofNullable(stateMachine.getOldResources());
         Optional<EndpointResources> sharedEndpointResources =
@@ -90,6 +92,13 @@ public class DeallocateYFlowResourcesAction extends
                     format("The meter %s / %s was deallocated", endpoint, meterId));
         } else {
             log.debug("No meter was allocated for y-flow {} (protected paths)", yFlowId);
+        }
+    }
+
+    private void notifyStats(YFlowDeleteFsm fsm) {
+        YFlowResources resources = fsm.getOldResources();
+        if (resources != null) {
+            fsm.sendRemoveStatsNotification(resources);
         }
     }
 }
