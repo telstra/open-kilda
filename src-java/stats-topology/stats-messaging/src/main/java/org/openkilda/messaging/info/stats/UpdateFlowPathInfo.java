@@ -40,7 +40,7 @@ public class UpdateFlowPathInfo extends BaseFlowPathInfo {
 
     @JsonCreator
     public UpdateFlowPathInfo(@NonNull @JsonProperty("flow_id") String flowId,
-                              @JsonProperty("y_flow_id") String yFlowId,
+                              @JsonProperty("yflow_id") String yFlowId,
                               @NonNull @JsonProperty("cookie") FlowSegmentCookie cookie,
                               @JsonProperty("meter_id") MeterId meterId,
                               @NonNull @JsonProperty("path_nodes") List<PathNodePayload> pathNodes) {
