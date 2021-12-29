@@ -34,8 +34,6 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.types.DatapathId;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,18 +48,28 @@ public class OfBatchHolder implements OfEntityBatch {
     private Map<String, String> failedUuids = new HashMap<>();
     private Set<String> successUuids = new HashSet<>();
     private final Map<String, BatchData> commandMap = new HashMap<>();
-    private final Map<String, Collection<String>> deps = new HashMap<>();
+
+    private ExecutionGraph executionGraph = new ExecutionGraph();
+
     private final Map<MeterId, MeterSpeakerData> metersMap = new HashMap<>();
     private final Map<CookieBase, FlowSpeakerData> flowsMap = new HashMap<>();
     private final Map<GroupId, GroupSpeakerData> groupsMap = new HashMap<>();
 
     private Map<Long, String> xidMapping = new HashMap<>();
 
-    private List<String> currentStage = new ArrayList<>();
-    private List<String> nextStage = new ArrayList<>();
-
     public List<String> getCurrentStage() {
-        return currentStage;
+        return executionGraph.getCurrent();
+    }
+
+    public boolean nextStage() {
+        return executionGraph.nextStage();
+    }
+
+    /**
+     * Reset in-flight xids.
+     */
+    public void resetXids() {
+        xidMapping = new HashMap<>();
     }
 
     public void recordSuccessUuid(String failedUuid) {
@@ -72,18 +80,12 @@ public class OfBatchHolder implements OfEntityBatch {
         failedUuids.put(failedUuid, message);
     }
 
-    public boolean hasNextStage() {
-        return !nextStage.isEmpty();
-    }
-
     /**
      * Checks if action deps are satisfied.
      */
     public boolean canExecute(String uuid) {
-        if (!deps.containsKey(uuid) || deps.get(uuid).isEmpty()) {
-            return false;
-        }
-        for (String dep : deps.get(uuid)) {
+        List<String> nodeInEdges = executionGraph.getNodeDependsOn(uuid);
+        for (String dep : nodeInEdges) {
             if (!successUuids.contains(dep)) {
                 return false;
             }
@@ -91,14 +93,7 @@ public class OfBatchHolder implements OfEntityBatch {
         return true;
     }
 
-    /**
-     * Iterate to the next stage.
-     */
-    public void jumpToNextStage() {
-        currentStage = nextStage;
-        nextStage = new ArrayList<>();
-        xidMapping = new HashMap<>();
-    }
+
 
     public BatchData getByUUid(String uuid) {
         return commandMap.get(uuid);
@@ -133,13 +128,7 @@ public class OfBatchHolder implements OfEntityBatch {
         xidMapping.put(message.getXid(), data.getUuid());
         commandMap.put(data.getUuid(), BatchData.builder().flow(true).message(message).build());
         flowsMap.put(data.getCookie(), data);
-        deps.put(data.getUuid(), data.getDependsOn());
-        // TODO(tdurakov): reimplement with true staged approach
-        if (data.getDependsOn().isEmpty()) {
-            currentStage.add(data.getUuid());
-        } else {
-            nextStage.add(data.getUuid());
-        }
+        executionGraph.add(data.getUuid(), data.getDependsOn());
     }
 
     @Override
@@ -150,13 +139,7 @@ public class OfBatchHolder implements OfEntityBatch {
         xidMapping.put(message.getXid(), data.getUuid());
         commandMap.put(data.getUuid(), BatchData.builder().flow(true).message(message).build());
         flowsMap.put(data.getCookie(), data);
-        deps.put(data.getUuid(), data.getDependsOn());
-        // TODO(tdurakov): reimplement with true staged approach
-        if (data.getDependsOn().isEmpty()) {
-            currentStage.add(data.getUuid());
-        } else {
-            nextStage.add(data.getUuid());
-        }
+        executionGraph.add(data.getUuid(), data.getDependsOn());
     }
 
     @Override
@@ -167,13 +150,7 @@ public class OfBatchHolder implements OfEntityBatch {
         xidMapping.put(message.getXid(), data.getUuid());
         commandMap.put(data.getUuid(), BatchData.builder().meter(true).message(message).build());
         metersMap.put(data.getMeterId(), data);
-        deps.put(data.getUuid(), data.getDependsOn());
-        // TODO(tdurakov): reimplement with true staged approach
-        if (data.getDependsOn().isEmpty()) {
-            currentStage.add(data.getUuid());
-        } else {
-            nextStage.add(data.getUuid());
-        }
+        executionGraph.add(data.getUuid(), data.getDependsOn());
     }
 
     @Override
@@ -184,13 +161,7 @@ public class OfBatchHolder implements OfEntityBatch {
         xidMapping.put(message.getXid(), data.getUuid());
         commandMap.put(data.getUuid(), BatchData.builder().meter(true).message(message).build());
         metersMap.put(data.getMeterId(), data);
-        deps.put(data.getUuid(), data.getDependsOn());
-        // TODO(tdurakov): reimplement with true staged approach
-        if (data.getDependsOn().isEmpty()) {
-            currentStage.add(data.getUuid());
-        } else {
-            nextStage.add(data.getUuid());
-        }
+        executionGraph.add(data.getUuid(), data.getDependsOn());
     }
 
     @Override
@@ -201,13 +172,7 @@ public class OfBatchHolder implements OfEntityBatch {
         xidMapping.put(message.getXid(), data.getUuid());
         commandMap.put(data.getUuid(), BatchData.builder().group(true).message(message).build());
         groupsMap.put(data.getGroupId(), data);
-        deps.put(data.getUuid(), data.getDependsOn());
-        // TODO(tdurakov): reimplement with true staged approach
-        if (data.getDependsOn().isEmpty()) {
-            currentStage.add(data.getUuid());
-        } else {
-            nextStage.add(data.getUuid());
-        }
+        executionGraph.add(data.getUuid(), data.getDependsOn());
     }
 
     @Override
@@ -218,13 +183,7 @@ public class OfBatchHolder implements OfEntityBatch {
         xidMapping.put(message.getXid(), data.getUuid());
         commandMap.put(data.getUuid(), BatchData.builder().group(true).message(message).build());
         groupsMap.put(data.getGroupId(), data);
-        deps.put(data.getUuid(), data.getDependsOn());
-        // TODO(tdurakov): reimplement with true staged approach
-        if (data.getDependsOn().isEmpty()) {
-            currentStage.add(data.getUuid());
-        } else {
-            nextStage.add(data.getUuid());
-        }
+        executionGraph.add(data.getUuid(), data.getDependsOn());
     }
 
     /**
