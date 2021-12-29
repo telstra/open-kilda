@@ -32,7 +32,7 @@ public final class Constants {
     public static final Integer RULES_INSTALLATION_TIME = 25;
     public static final Integer STATS_LOGGING_TIMEOUT = 80;
     public static final Integer FL_DUMP_INTERVAL = 60; //floodlight.dump.interval defaults to 60
-    public static final Integer STATS_FROM_SERVER42_LOGGING_TIMEOUT = 50;
+    public static final Integer STATS_FROM_SERVER42_LOGGING_TIMEOUT = 60;
     public static final String NON_EXISTENT_FLOW_ID = "non-existent-" + UUID.randomUUID().toString();
     public static final Integer SINGLE_TABLE_ID = 0;
     public static final Integer INGRESS_RULE_MULTI_TABLE_ID = 2;
