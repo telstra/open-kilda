@@ -61,11 +61,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @SuperBuilder
 public class IngressMirrorRuleGenerator extends IngressRuleGenerator {
     private boolean multiTable;
-    private String sharedMeterCommandUuid;
+    private UUID sharedMeterCommandUuid;
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {

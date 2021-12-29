@@ -18,12 +18,21 @@ package org.openkilda.floodlight.api.request.rulemanager;
 import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.MeterSpeakerData;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class MeterCommand extends OfCommand {
 
-    private final MeterSpeakerData data;
+    MeterSpeakerData data;
+
+    @JsonCreator
+    public MeterCommand(@JsonProperty("data") MeterSpeakerData data) {
+        this.data = data;
+    }
 
     @Override
     public void buildInstall(OfEntityBatch builder, SwitchId switchId) {

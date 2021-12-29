@@ -2121,7 +2121,6 @@ class RecordHandler implements Runnable {
         }
     }
 
-
     private boolean handleRuleManagerCommand() {
         try {
             BaseSpeakerCommandsRequest request = MAPPER.readValue(record.value(), BaseSpeakerCommandsRequest.class);
@@ -2129,7 +2128,7 @@ class RecordHandler implements Runnable {
             return true;
         } catch (JsonMappingException e) {
             logger.trace("Received deprecated command message");
-        } catch (IOException | IllegalArgumentException e) {
+        } catch (IOException e) {
             logger.error("Error while parsing record {}", record.value(), e);
         }
         return false;

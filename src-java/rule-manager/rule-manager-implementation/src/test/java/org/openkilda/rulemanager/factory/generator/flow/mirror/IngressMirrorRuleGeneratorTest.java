@@ -84,6 +84,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 public class IngressMirrorRuleGeneratorTest {
     public static final PathId PATH_ID = new PathId("path_id");
@@ -505,7 +506,7 @@ public class IngressMirrorRuleGeneratorTest {
 
     private void assertIngressCommand(
             FlowSpeakerData command, int expectedPriority, OfTable expectedTable, Set<FieldMatch> expectedMatch,
-            List<Action> expectedApplyActions, MeterId expectedMeter, String groupCommandUuid) {
+            List<Action> expectedApplyActions, MeterId expectedMeter, UUID groupCommandUuid) {
         assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
 

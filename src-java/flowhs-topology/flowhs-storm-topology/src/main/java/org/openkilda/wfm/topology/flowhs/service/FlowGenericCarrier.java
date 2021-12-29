@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
 import org.openkilda.messaging.info.stats.StatsNotification;
@@ -31,7 +31,7 @@ public interface FlowGenericCarrier extends NorthboundResponseCarrier, HistoryUp
      * Sends commands to speaker.
      * @param command command to be executed.
      */
-    void sendSpeakerRequest(FlowSegmentRequest command);
+    void sendSpeakerRequest(SpeakerRequest command);
 
     /**
      * Sends update on periodic ping status for the flow.

@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.delete;
 
-import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.error.ErrorType;
 
 import lombok.AllArgsConstructor;
@@ -29,7 +29,7 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode
 public class YFlowDeleteContext {
     String subFlowId;
-    SpeakerResponse speakerResponse;
+    SpeakerCommandResponse speakerResponse;
     String error;
     ErrorType errorType;
 }

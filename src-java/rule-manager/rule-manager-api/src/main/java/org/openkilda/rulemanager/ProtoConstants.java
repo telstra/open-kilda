@@ -15,6 +15,10 @@
 
 package org.openkilda.rulemanager;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -40,9 +44,17 @@ public final class ProtoConstants {
     @Getter
     @EqualsAndHashCode(of = {"portNumber", "portType"})
     @ToString
+    @JsonNaming(SnakeCaseStrategy.class)
     public static class PortNumber {
         private int portNumber;
         private SpecialPortType portType;
+
+        @JsonCreator
+        public PortNumber(@JsonProperty("port_number") int portNumber,
+                          @JsonProperty("port_type") SpecialPortType portType) {
+            this.portNumber = portNumber;
+            this.portType = portType;
+        }
 
         public PortNumber(int number) {
             portNumber = number;

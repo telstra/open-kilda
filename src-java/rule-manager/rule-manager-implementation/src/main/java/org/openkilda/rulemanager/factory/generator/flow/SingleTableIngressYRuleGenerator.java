@@ -42,12 +42,13 @@ import lombok.experimental.SuperBuilder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 @SuperBuilder
 public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGenerator {
 
     protected final MeterId sharedMeterId;
-    protected String externalMeterCommandUuid;
+    protected UUID externalMeterCommandUuid;
     protected boolean generateMeterCommand;
 
     @Override

@@ -26,20 +26,23 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class ExecutionGraph {
-    private Map<String, Node> nodes = new HashMap<>();
+    private final Map<UUID, Node> nodes = new HashMap<>();
+    private final List<UUID> topologicalOrder = new ArrayList<>();
+
     private boolean ready;
-    private List<String> topologicalOrder = new ArrayList<>();
-    @VisibleForTesting
-    List<List<String>> stages = new ArrayList<>();
     private int currentStage = 0;
+
+    @VisibleForTesting
+    List<List<UUID>> stages = new ArrayList<>();
 
     /**
      * Returns current stage.
      */
-    public List<String> getCurrent() {
+    public List<UUID> getCurrent() {
         if (!ready) {
             buildStages();
         }
@@ -65,7 +68,7 @@ public class ExecutionGraph {
     /**
      * Returns uuid of nodes to depend on.
      */
-    public List<String> getNodeDependsOn(String uuid) {
+    public List<UUID> getNodeDependsOn(UUID uuid) {
         if (!nodes.containsKey(uuid)) {
             throw new IllegalArgumentException(String.format("Unknown task uuid=%s", uuid));
         }
@@ -76,8 +79,8 @@ public class ExecutionGraph {
     @VisibleForTesting
     void buildStages() {
         topologicalSort();
-        Map<Integer, List<String>> stagesMap = new HashMap<>();
-        for (String uuid : topologicalOrder) {
+        Map<Integer, List<UUID>> stagesMap = new HashMap<>();
+        for (UUID uuid : topologicalOrder) {
             Node node = nodes.get(uuid);
             for (Node dep : node.getDepends()) {
                 node.order = Math.max(node.order, dep.order + 1);
@@ -114,30 +117,30 @@ public class ExecutionGraph {
     /**
      * Adds task to graph.
      */
-    public void add(String uuid, Collection<String> dependsOn) {
+    public void add(UUID uuid, Collection<UUID> dependsOn) {
         if (ready) {
             throw new IllegalStateException("Graph is already computed.");
         }
         Node uuidNode = ensureNode(uuid);
-        for (String dep : dependsOn) {
+        for (UUID dep : dependsOn) {
             Node depNode = ensureNode(dep);
             uuidNode.getDepends().add(depNode);
         }
 
     }
 
-    private Node ensureNode(String uuid) {
+    private Node ensureNode(UUID uuid) {
         return nodes.computeIfAbsent(uuid, x -> new Node(uuid));
     }
 
     @Data
     private static class Node {
-        private String uuid;
+        private UUID uuid;
         private Set<Node> depends = new HashSet<>();
         private NodeColor color = NodeColor.WHITE;
         private int order;
 
-        public Node(String uuid) {
+        public Node(UUID uuid) {
             this.uuid = uuid;
         }
     }

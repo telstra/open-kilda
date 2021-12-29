@@ -17,16 +17,26 @@ package org.openkilda.rulemanager.action;
 
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.AllArgsConstructor;
 import lombok.Value;
 
 @Value
 @JsonSerialize
-@AllArgsConstructor
+@JsonNaming(SnakeCaseStrategy.class)
+@JsonIgnoreProperties(value = { "type" })
 public class PortOutAction implements Action {
 
     PortNumber portNumber;
+
+    @JsonCreator
+    public PortOutAction(@JsonProperty("port_number") PortNumber portNumber) {
+        this.portNumber = portNumber;
+    }
 
     @Override
     public ActionType getType() {

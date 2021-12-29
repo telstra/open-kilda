@@ -22,11 +22,24 @@ import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
+import lombok.Getter;
 import lombok.NonNull;
 
 import java.util.Collection;
 import java.util.UUID;
 
+@JsonTypeInfo(use = Id.NAME, property = "clazz")
+@JsonSubTypes({
+        @Type(value = InstallSpeakerCommandsRequest.class,
+                name = "org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest"),
+        @Type(value = DeleteSpeakerCommandsRequest.class,
+                name = "org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest")
+})
+@Getter
 public abstract class BaseSpeakerCommandsRequest extends SpeakerRequest {
 
     @JsonProperty("command_data")

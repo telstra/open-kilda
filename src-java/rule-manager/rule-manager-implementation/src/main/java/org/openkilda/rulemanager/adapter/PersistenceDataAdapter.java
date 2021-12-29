@@ -25,6 +25,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
+import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -67,6 +68,7 @@ public class PersistenceDataAdapter implements DataAdapter {
     private Map<SwitchId, SwitchProperties> switchPropertiesCache;
     private Map<SwitchId, Set<Integer>> switchIslPortsCache;
     private KildaFeatureToggles featureToggles;
+    private Map<PathId, YFlow> yFlowCache;
 
     @Builder
     public PersistenceDataAdapter(PersistenceManager persistenceManager,
@@ -149,5 +151,13 @@ public class PersistenceDataAdapter implements DataAdapter {
             switchIslPortsCache = islRepository.findIslPortsBySwitchIds(switchIds);
         }
         return switchIslPortsCache.get(switchId);
+    }
+
+    @Override
+    public YFlow getYFlow(PathId pathId) {
+        if (yFlowCache == null) {
+            yFlowCache = flowPathRepository.findYFlowsByPathIds(pathIds);
+        }
+        return yFlowCache.get(pathId);
     }
 }

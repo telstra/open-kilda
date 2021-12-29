@@ -17,6 +17,20 @@ package org.openkilda.floodlight.api.request.rulemanager;
 
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
+
+@JsonTypeInfo(use = Id.NAME, property = "clazz")
+@JsonSubTypes({
+        @Type(value = FlowCommand.class,
+                name = "org.openkilda.floodlight.api.request.rulemanager.FlowCommand"),
+        @Type(value = MeterCommand.class,
+                name = "org.openkilda.floodlight.api.request.rulemanager.MeterCommand"),
+        @Type(value = GroupCommand.class,
+                name = "org.openkilda.floodlight.api.request.rulemanager.GroupCommand")
+})
 public abstract class OfCommand {
 
     public abstract void buildInstall(OfEntityBatch builder, SwitchId switchId);

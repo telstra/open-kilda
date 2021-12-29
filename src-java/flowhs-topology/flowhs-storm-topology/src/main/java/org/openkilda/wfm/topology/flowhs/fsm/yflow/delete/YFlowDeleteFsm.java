@@ -15,8 +15,10 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.delete;
 
+import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
@@ -36,6 +38,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.OnReceivedRemo
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.OnSubFlowRemovedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.RemoveSubFlowsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.RemoveYFlowResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.StartRemovingYFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.ValidateYFlowAction;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.service.FlowDeleteService;
@@ -67,6 +70,8 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
     private final Set<String> subFlows = new HashSet<>();
     private final Set<String> deletingSubFlows = new HashSet<>();
     private final Set<String> failedSubFlows = new HashSet<>();
+
+    private Collection<DeleteSpeakerCommandsRequest> deleteOldYFlowCommands;
 
     private YFlowDeleteFsm(@NonNull CommandContext commandContext, @NonNull FlowGenericCarrier carrier,
                            @NonNull String yFlowId, @NonNull Collection<YFlowEventListener> eventListeners) {
@@ -111,7 +116,7 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
         private final FlowGenericCarrier carrier;
 
         public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
-                       @NonNull FlowResourcesManager resourcesManager,
+                       @NonNull FlowResourcesManager resourcesManager, @NonNull RuleManager ruleManager,
                        @NonNull FlowDeleteService flowDeleteService, int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
@@ -134,7 +139,8 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
             builder.transition()
                     .from(State.YFLOW_VALIDATED)
                     .to(State.REMOVING_SUB_FLOWS)
-                    .on(Event.NEXT);
+                    .on(Event.NEXT)
+                    .perform(new StartRemovingYFlowAction(persistenceManager, ruleManager));
             builder.transitions()
                     .from(State.YFLOW_VALIDATED)
                     .toAmong(State.REVERTING_YFLOW_STATUS, State.REVERTING_YFLOW_STATUS)
@@ -161,15 +167,11 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
                     .from(State.SUB_FLOWS_REMOVED)
                     .to(State.REMOVING_YFLOW_METERS)
                     .on(Event.NEXT)
-                    .perform(new RemoveYFlowResourcesAction(persistenceManager, resourcesManager));
+                    .perform(new RemoveYFlowResourcesAction(persistenceManager, ruleManager));
 
             builder.internalTransition()
                     .within(State.REMOVING_YFLOW_METERS)
                     .on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedRemoveResponseAction(speakerCommandRetriesLimit));
-            builder.internalTransition()
-                    .within(State.REMOVING_YFLOW_METERS)
-                    .on(Event.ERROR_RECEIVED)
                     .perform(new OnReceivedRemoveResponseAction(speakerCommandRetriesLimit));
             builder.transition()
                     .from(State.REMOVING_YFLOW_METERS)
@@ -245,6 +247,7 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
     public enum State {
         INITIALIZED,
         YFLOW_VALIDATED,
+        YFLOW_DELETE_STARTED,
 
         REMOVING_SUB_FLOWS,
         SUB_FLOW_REMOVAL_STARTED,
@@ -266,7 +269,6 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
         NEXT,
 
         RESPONSE_RECEIVED,
-        ERROR_RECEIVED,
 
         SUB_FLOW_REMOVED,
         SUB_FLOW_FAILED,

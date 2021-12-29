@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.create;
 
-import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.error.ErrorType;
 
@@ -31,7 +31,7 @@ import lombok.EqualsAndHashCode;
 public class YFlowCreateContext {
     YFlowRequest targetFlow;
     String subFlowId;
-    SpeakerResponse speakerResponse;
+    SpeakerCommandResponse speakerResponse;
     String error;
     ErrorType errorType;
 }

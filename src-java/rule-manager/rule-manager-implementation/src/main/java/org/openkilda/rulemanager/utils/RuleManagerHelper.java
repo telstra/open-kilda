@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 
 public final class RuleManagerHelper {
@@ -56,9 +57,9 @@ public final class RuleManagerHelper {
 
     @VisibleForTesting
     static void checkCircularDependencies(List<SpeakerData> commands) {
-        Map<String, Color> used = new HashMap<>();
-        Map<String, String> predecessors = new HashMap<>();
-        Map<String, SpeakerData> commandMap = buildCommandMap(commands);
+        Map<UUID, Color> used = new HashMap<>();
+        Map<UUID, UUID> predecessors = new HashMap<>();
+        Map<UUID, SpeakerData> commandMap = buildCommandMap(commands);
 
         for (SpeakerData command : commands) {
             if (!used.containsKey(command.getUuid())) {
@@ -70,8 +71,8 @@ public final class RuleManagerHelper {
         }
     }
 
-    private static Map<String, SpeakerData> buildCommandMap(List<SpeakerData> commands) {
-        Map<String, SpeakerData> map = commands.stream()
+    private static Map<UUID, SpeakerData> buildCommandMap(List<SpeakerData> commands) {
+        Map<UUID, SpeakerData> map = commands.stream()
                 .collect(toMap(SpeakerData::getUuid, Function.identity()));
         if (map.size() != commands.size()) {
             for (SpeakerData command : commands) {
@@ -85,10 +86,10 @@ public final class RuleManagerHelper {
     }
 
     private static List<SpeakerData> findCycle(SpeakerData current,
-                                               Map<String, SpeakerData> commandMap, Map<String, Color> used,
-                                               Map<String, String> predecessors) {
+                                               Map<UUID, SpeakerData> commandMap, Map<UUID, Color> used,
+                                               Map<UUID, UUID> predecessors) {
         used.put(current.getUuid(), Color.GREY);
-        for (String nextUuid : current.getDependsOn()) {
+        for (UUID nextUuid : current.getDependsOn()) {
             if (!commandMap.containsKey(nextUuid)) {
                 throw new IllegalStateException(format(
                         "Command %s depends on unknown command with UUID %s", current, nextUuid));
@@ -109,7 +110,7 @@ public final class RuleManagerHelper {
     }
 
     private static List<SpeakerData> buildCycle(
-            String current, String end, Map<String, String> predecessors, Map<String, SpeakerData> commandMap) {
+            UUID current, UUID end, Map<UUID, UUID> predecessors, Map<UUID, SpeakerData> commandMap) {
         List<SpeakerData> cycle = new ArrayList<>();
         cycle.add(commandMap.get(current));
 
@@ -123,8 +124,8 @@ public final class RuleManagerHelper {
     @VisibleForTesting
     static List<SpeakerData> sortCommandsByDependencies(List<SpeakerData> commands) {
         List<SpeakerData> sortedCommands = new ArrayList<>();
-        Set<String> used = new HashSet<>();
-        Map<String, SpeakerData> commandMap = buildCommandMap(commands);
+        Set<UUID> used = new HashSet<>();
+        Map<UUID, SpeakerData> commandMap = buildCommandMap(commands);
 
         for (SpeakerData command : commands) {
             if (!used.contains(command.getUuid())) {
@@ -135,11 +136,11 @@ public final class RuleManagerHelper {
     }
 
     private static void topologicalSort(
-            SpeakerData current, Map<String, SpeakerData> commandMap, Set<String> used,
+            SpeakerData current, Map<UUID, SpeakerData> commandMap, Set<UUID> used,
             List<SpeakerData> sortedCommands) {
         used.add(current.getUuid());
 
-        for (String nextUuid : current.getDependsOn()) {
+        for (UUID nextUuid : current.getDependsOn()) {
             if (!used.contains(nextUuid)) {
                 topologicalSort(commandMap.get(nextUuid), commandMap, used, sortedCommands);
             }

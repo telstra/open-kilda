@@ -25,6 +25,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.YFlow;
 import org.openkilda.rulemanager.DataAdapter;
 
 import lombok.Builder;
@@ -44,6 +45,7 @@ public class InMemoryDataAdapter implements DataAdapter {
     Map<SwitchId, SwitchProperties> switchProperties;
     Map<SwitchId, Set<Integer>> switchIslPorts;
     KildaFeatureToggles featureToggles;
+    Map<PathId, YFlow> yFlows;
 
     @Override
     public Flow getFlow(PathId pathId) {
@@ -70,6 +72,15 @@ public class InMemoryDataAdapter implements DataAdapter {
             throw new IllegalStateException(format("Switch properties for '%s' not found.", switchId));
         }
         return result;
+    }
+
+    @Override
+    public YFlow getYFlow(PathId pathId) {
+        YFlow yFlow = yFlows.get(pathId);
+        if (yFlow == null) {
+            throw new IllegalStateException(format("YFlow for pathId '%s' not found.", pathId));
+        }
+        return yFlow;
     }
 
     @Override

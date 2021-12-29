@@ -17,7 +17,10 @@ package org.openkilda.rulemanager;
 
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -30,13 +33,15 @@ import java.util.UUID;
 @JsonSerialize
 @Getter
 @SuperBuilder
+@AllArgsConstructor
+@JsonNaming(SnakeCaseStrategy.class)
 @EqualsAndHashCode(of = {"switchId", "ofVersion"})
 public abstract class SpeakerData {
 
     @Builder.Default
-    protected String uuid = UUID.randomUUID().toString();
+    protected UUID uuid = UUID.randomUUID();
     protected SwitchId switchId;
     @Builder.Default
-    protected Collection<String> dependsOn = new ArrayList<>();
+    protected Collection<UUID> dependsOn = new ArrayList<>();
     protected OfVersion ofVersion;
 }

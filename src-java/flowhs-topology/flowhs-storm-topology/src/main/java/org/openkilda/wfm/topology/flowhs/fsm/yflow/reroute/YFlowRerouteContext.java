@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute;
 
-import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
 
@@ -31,7 +31,7 @@ import lombok.EqualsAndHashCode;
 public class YFlowRerouteContext {
     private YFlowRerouteRequest rerouteRequest;
     private String subFlowId;
-    private SpeakerResponse speakerResponse;
+    private SpeakerCommandResponse speakerResponse;
     String error;
     ErrorType errorType;
 }

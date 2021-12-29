@@ -42,8 +42,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 @Slf4j
 public class OfBatchExecutor {
@@ -85,9 +85,11 @@ public class OfBatchExecutor {
      * Execute current batch of commands.
      */
     public void executeBatch() {
-        List<String> stageCommandsUuids = holder.getCurrentStage();
+        log.debug("Execute batch start (key={})", kafkaKey);
+        List<UUID> stageCommandsUuids = holder.getCurrentStage();
         List<OFMessage> ofMessages = new ArrayList<>();
-        for (String uuid : stageCommandsUuids) {
+        for (UUID uuid : stageCommandsUuids) {
+            log.debug("Start processing UUID: {} (key={})", uuid, kafkaKey);
             if (holder.canExecute(uuid)) {
                 BatchData batchData = holder.getByUUid(uuid);
 
@@ -102,46 +104,63 @@ public class OfBatchExecutor {
         List<CompletableFuture<Optional<OFMessage>>> requests = new ArrayList<>();
         try (Session session = sessionService.open(messageContext, iofSwitch)) {
             for (OFMessage message : ofMessages) {
-                requests.add(session.write(message));
+                requests.add(session.write(message).whenComplete((res, ex) -> {
+                    log.debug("Check responses (key={})", kafkaKey);
+                    if (ex == null) {
+                        res.ifPresent(ofMessage -> {
+                            UUID uuid = holder.popAwaitingXid(ofMessage.getXid());
+                            if (ofMessage instanceof OFErrorMsg) {
+                                OFErrorMsg errorMsg = (OFErrorMsg) ofMessage;
+                                holder.recordFailedUuid(uuid, errorMsg.getErrType().toString());
+                            }
+                        });
+                    } else {
+                        log.error("Received error {}", ex.getMessage(), ex);
+                    }
+                }));
             }
         }
 
         CompletableFuture.allOf(requests.toArray(new CompletableFuture<?>[0]))
-                .thenAccept(ignore -> checkOfResponses(requests));
+                .thenAccept(ignore -> checkOfResponses());
     }
 
-
-    private void checkOfResponses(List<CompletableFuture<Optional<OFMessage>>> waitingMessages) {
-        for (CompletableFuture<Optional<OFMessage>> message : waitingMessages) {
-            try {
-                OFMessage ofMessage = message.get().get();
-                String uuid = holder.popAwaitingXid(ofMessage.getXid());
-                if (ofMessage instanceof OFErrorMsg) {
-                    OFErrorMsg errorMsg = (OFErrorMsg) ofMessage;
-                    holder.recordFailedUuid(uuid, errorMsg.getErrType().toString());
-                }
-            } catch (InterruptedException | ExecutionException e) {
-                log.error("Failed to get results for message", e);
-            }
-        }
+    private void checkOfResponses() {
         if (hasMeters) {
-            meterStats = OfUtils.verifyMeters(messageContext, iofSwitch);
+            meterStats = OfUtils.verifyMeters(messageContext, iofSwitch).whenComplete((res, ex) -> {
+                log.debug("Get meter stats: {} (key={})", res, kafkaKey);
+                if (ex != null) {
+                    log.error("Received error {}", ex.getMessage(), ex);
+                }
+            });
         }
         if (hasGroups) {
-            groupStats = OfUtils.verifyGroups(messageContext, iofSwitch);
+            groupStats = OfUtils.verifyGroups(messageContext, iofSwitch).whenComplete((res, ex) -> {
+                log.debug("Get group stats: {} (key={})", res, kafkaKey);
+                if (ex != null) {
+                    log.error("Received error {}", ex.getMessage(), ex);
+                }
+            });
         }
         if (hasFlows) {
-            flowStats = OfUtils.verifyFlows(messageContext, iofSwitch);
+            flowStats = OfUtils.verifyFlows(messageContext, iofSwitch).whenComplete((res, ex) -> {
+                log.debug("Get flow stats: {} (key={})", res, kafkaKey);
+                if (ex != null) {
+                    log.error("Received error {}", ex.getMessage(), ex);
+                }
+            });
         }
         CompletableFuture.allOf(meterStats, groupStats, flowStats)
                 .thenAccept(ignore -> runVerify());
     }
 
     private void runVerify() {
+        log.debug("Verify entities (key={})", kafkaKey);
         verifyFlows();
         verifyMeters();
         verifyGroups();
         if (holder.nextStage()) {
+            log.debug("Proceed next stage (key={})", kafkaKey);
             holder.resetXids();
             meterStats = CompletableFuture.completedFuture(null);
             groupStats = CompletableFuture.completedFuture(null);
@@ -157,6 +176,7 @@ public class OfBatchExecutor {
     }
 
     private void verifyFlows() {
+        log.debug("Verify flows with key: {} (hasFlows={})", kafkaKey, hasFlows);
         if (!hasFlows) {
             return;
         }
@@ -175,12 +195,13 @@ public class OfBatchExecutor {
                     }
                 }
             }
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (Exception e) {
             log.error("Failed to verify flows for message", e);
         }
     }
 
     private void verifyMeters() {
+        log.debug("Verify meters with key: {} (hasMeters={})", kafkaKey, hasMeters);
         if (!hasMeters) {
             return;
         }
@@ -201,13 +222,14 @@ public class OfBatchExecutor {
                     }
                 }
             }
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (Exception e) {
             log.error("Failed to verify meters for message", e);
         }
 
     }
 
     private void verifyGroups() {
+        log.debug("Verify groups with key: {} (hasGroups={})", kafkaKey, hasGroups);
         if (!hasGroups) {
             return;
         }
@@ -227,7 +249,7 @@ public class OfBatchExecutor {
                     }
                 }
             }
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (Exception e) {
             log.error("Failed to verify groups for message", e);
         }
 
@@ -235,6 +257,7 @@ public class OfBatchExecutor {
 
     private void sendResponse() {
         KafkaChannel kafkaChannel = kafkaUtilityService.getKafkaChannel();
+        log.debug("Send response to {} (key={})", kafkaChannel.getSpeakerFlowHsTopic(), kafkaKey);
         kafkaProducerService.sendMessageAndTrack(kafkaChannel.getSpeakerFlowHsTopic(),
                 kafkaKey, holder.getResult());
     }

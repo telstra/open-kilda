@@ -48,6 +48,7 @@ import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.kafka.AbstractMessageSerializer;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
@@ -467,9 +468,10 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        RuleManagerConfig ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
 
         YFlowCreateHubBolt hubBolt = new YFlowCreateHubBolt(yFlowCreateConfig, config, persistenceManager,
-                pathComputerConfig, flowResourcesConfig);
+                pathComputerConfig, flowResourcesConfig, ruleManagerConfig);
         declareBolt(topologyBuilder, hubBolt, ComponentId.YFLOW_CREATE_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(),
                         Stream.ROUTER_TO_YFLOW_CREATE_HUB.name(), FLOW_FIELD)
@@ -505,9 +507,10 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        RuleManagerConfig ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
 
         YFlowUpdateHubBolt hubBolt = new YFlowUpdateHubBolt(yflowUpdateConfig, flowUpdateConfig, persistenceManager,
-                pathComputerConfig, flowResourcesConfig);
+                pathComputerConfig, flowResourcesConfig, ruleManagerConfig);
         declareBolt(topologyBuilder, hubBolt, ComponentId.YFLOW_UPDATE_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_YFLOW_UPDATE_HUB.name(), FLOW_FIELD)
                 .directGrouping(ComponentId.YFLOW_UPDATE_SPEAKER_WORKER.name(),
@@ -542,9 +545,10 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        RuleManagerConfig ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
 
         YFlowRerouteHubBolt hubBolt = new YFlowRerouteHubBolt(yFlowRerouteConfig, flowRerouteConfig, persistenceManager,
-                pathComputerConfig, flowResourcesConfig);
+                pathComputerConfig, flowResourcesConfig, ruleManagerConfig);
         declareBolt(topologyBuilder, hubBolt, ComponentId.YFLOW_REROUTE_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_YFLOW_REROUTE_HUB.name(), FLOW_FIELD)
                 .directGrouping(ComponentId.YFLOW_REROUTE_SPEAKER_WORKER.name(),
@@ -566,8 +570,10 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .build();
 
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        RuleManagerConfig ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
 
-        YFlowDeleteHubBolt hubBolt = new YFlowDeleteHubBolt(config, persistenceManager, flowResourcesConfig);
+        YFlowDeleteHubBolt hubBolt = new YFlowDeleteHubBolt(config, persistenceManager, flowResourcesConfig,
+                ruleManagerConfig);
         declareBolt(topologyBuilder, hubBolt, ComponentId.YFLOW_DELETE_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(),
                         Stream.ROUTER_TO_YFLOW_DELETE_HUB.name(), FLOW_FIELD)

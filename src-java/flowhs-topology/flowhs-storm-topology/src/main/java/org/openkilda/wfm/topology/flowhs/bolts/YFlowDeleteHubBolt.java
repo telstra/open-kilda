@@ -26,8 +26,8 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_STA
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -37,6 +37,9 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.server42.control.messaging.flowrtt.DeactivateFlowMonitoringInfoData;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
@@ -68,6 +71,7 @@ import org.apache.storm.tuple.Values;
 public class YFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
     private final YFlowDeleteConfig yFlowDeleteConfig;
     private final FlowResourcesConfig flowResourcesConfig;
+    private final RuleManagerConfig ruleManagerConfig;
 
     private transient YFlowDeleteService yFlowDeleteService;
     private transient FlowDeleteService flowDeleteService;
@@ -77,11 +81,13 @@ public class YFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
 
     public YFlowDeleteHubBolt(@NonNull YFlowDeleteConfig yFlowDeleteConfig,
                               @NonNull PersistenceManager persistenceManager,
-                              @NonNull FlowResourcesConfig flowResourcesConfig) {
+                              @NonNull FlowResourcesConfig flowResourcesConfig,
+                              @NonNull RuleManagerConfig ruleManagerConfig) {
         super(persistenceManager, yFlowDeleteConfig);
 
         this.yFlowDeleteConfig = yFlowDeleteConfig;
         this.flowResourcesConfig = flowResourcesConfig;
+        this.ruleManagerConfig = ruleManagerConfig;
 
         enableMeterRegistry("kilda.y_flow_delete", HUB_TO_METRICS_BOLT.name());
     }
@@ -89,13 +95,14 @@ public class YFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
     @Override
     protected void init() {
         FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
+        RuleManager ruleManager = new RuleManagerImpl(ruleManagerConfig);
 
         flowDeleteService = new FlowDeleteService(
                 new FlowDeleteHubCarrierIsolatingResponsesAndLifecycleEvents(this),
                 persistenceManager, resourcesManager,
                 yFlowDeleteConfig.getSpeakerCommandRetriesLimit());
 
-        yFlowDeleteService = new YFlowDeleteService(this, persistenceManager, resourcesManager,
+        yFlowDeleteService = new YFlowDeleteService(this, persistenceManager, resourcesManager, ruleManager,
                 flowDeleteService, yFlowDeleteConfig.getSpeakerCommandRetriesLimit());
     }
 
@@ -129,9 +136,9 @@ public class YFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
     protected void onWorkerResponse(Tuple input) throws PipelineException {
         String operationKey = pullKey(input);
         currentKey = KeyProvider.getParentKey(operationKey);
-        SpeakerFlowSegmentResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerFlowSegmentResponse.class);
+        SpeakerResponse speakerResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerResponse.class);
         try {
-            yFlowDeleteService.handleAsyncResponse(currentKey, flowResponse);
+            yFlowDeleteService.handleAsyncResponse(currentKey, speakerResponse);
         } catch (UnknownKeyException e) {
             log.error("Received a response with unknown key {}.", currentKey);
         }
@@ -148,7 +155,7 @@ public class YFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
     }
 
     @Override
-    public void sendSpeakerRequest(@NonNull FlowSegmentRequest command) {
+    public void sendSpeakerRequest(@NonNull SpeakerRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
 
         Values values = new Values(commandKey, command);

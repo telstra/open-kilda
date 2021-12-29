@@ -15,12 +15,22 @@
 
 package org.openkilda.rulemanager.action;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Value;
 
 @Value
 @JsonSerialize
+@JsonNaming(SnakeCaseStrategy.class)
+@JsonIgnoreProperties(value = { "type" })
 public class PopVlanAction implements Action {
+
+    @JsonCreator
+    public PopVlanAction() {
+    }
 
     @Override
     public ActionType getType() {

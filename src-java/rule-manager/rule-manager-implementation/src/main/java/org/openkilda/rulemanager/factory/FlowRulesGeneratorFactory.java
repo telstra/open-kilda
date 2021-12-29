@@ -84,7 +84,7 @@ public class FlowRulesGeneratorFactory {
             FlowPath alternativeFlowPath, Flow alternativeFlow, FlowTransitEncapsulation alternativeEncapsulation,
             Set<FlowSideAdapter> alternativeOverlappingIngressAdapters,
             MeterId sharedMeterId) {
-        String externalMeterCommandUuid = UUID.randomUUID().toString();
+        UUID externalMeterCommandUuid = UUID.randomUUID();
         RuleGenerator firstGenerator = getIngressYRuleGenerator(flowPath, flow, encapsulation,
                 overlappingIngressAdapters, sharedMeterId,
                 externalMeterCommandUuid, true);
@@ -101,7 +101,7 @@ public class FlowRulesGeneratorFactory {
 
     RuleGenerator getIngressYRuleGenerator(
             FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
-            Set<FlowSideAdapter> overlappingIngressAdapters, MeterId sharedMeterId, String externalMeterCommandUuid,
+            Set<FlowSideAdapter> overlappingIngressAdapters, MeterId sharedMeterId, UUID externalMeterCommandUuid,
             boolean generateMeterCommand) {
         boolean multiTable = isPathSrcMultiTable(flowPath, flow);
         if (multiTable) {
@@ -143,7 +143,7 @@ public class FlowRulesGeneratorFactory {
      * Get ingress mirror rule generator.
      */
     public RuleGenerator getIngressMirrorRuleGenerator(
-            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation, String sharedMeterCommandUuid) {
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation, UUID sharedMeterCommandUuid) {
         return IngressMirrorRuleGenerator.builder()
                 .flowPath(flowPath)
                 .flow(flow)
@@ -237,7 +237,7 @@ public class FlowRulesGeneratorFactory {
             PathSegment secondSegment, FlowPath alternativeFlowPath, FlowTransitEncapsulation alternativeEncapsulation,
             PathSegment alternativeFirstSegment, PathSegment alternativeSecondSegment, MeterId sharedMeterId) {
 
-        String externalMeterCommandUuid = UUID.randomUUID().toString();
+        UUID externalMeterCommandUuid = UUID.randomUUID();
         TransitYRuleGenerator firstGenerator = getTransitYRuleGenerator(flowPath, encapsulation, firstSegment,
                 secondSegment, sharedMeterId, externalMeterCommandUuid, true);
 
@@ -255,7 +255,7 @@ public class FlowRulesGeneratorFactory {
      */
     TransitYRuleGenerator getTransitYRuleGenerator(FlowPath flowPath, FlowTransitEncapsulation encapsulation,
                                                    PathSegment firstSegment, PathSegment secondSegment,
-                                                   MeterId sharedMeterId, String externalMeterCommandUuid,
+                                                   MeterId sharedMeterId, UUID externalMeterCommandUuid,
                                                    boolean generateMeterCommand
     ) {
         if (flowPath.isOneSwitchFlow()) {

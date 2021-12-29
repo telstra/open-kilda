@@ -19,17 +19,22 @@ import org.openkilda.floodlight.api.BatchCommandProcessor;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.NonNull;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.UUID;
 
 public class DeleteSpeakerCommandsRequest extends BaseSpeakerCommandsRequest {
 
-    public DeleteSpeakerCommandsRequest(MessageContext messageContext,
-                                         @NonNull SwitchId switchId,
-                                         @NonNull UUID commandId,
-                                         List<OfCommand> commands) {
+    @Builder(toBuilder = true)
+    @JsonCreator
+    public DeleteSpeakerCommandsRequest(@JsonProperty("message_context") MessageContext messageContext,
+                                        @JsonProperty("switch_id") @NonNull SwitchId switchId,
+                                        @JsonProperty("command_id") @NonNull UUID commandId,
+                                        @JsonProperty("command_data") Collection<OfCommand> commands) {
         super(messageContext, switchId, commandId, commands);
     }
 

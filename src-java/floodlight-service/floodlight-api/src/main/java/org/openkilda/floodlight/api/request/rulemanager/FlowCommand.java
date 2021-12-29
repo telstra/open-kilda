@@ -18,12 +18,21 @@ package org.openkilda.floodlight.api.request.rulemanager;
 import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.FlowSpeakerData;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class FlowCommand extends OfCommand {
 
-    private final FlowSpeakerData data;
+    FlowSpeakerData data;
+
+    @JsonCreator
+    public FlowCommand(@JsonProperty("data") FlowSpeakerData data) {
+        this.data = data;
+    }
 
     @Override
     public void buildInstall(OfEntityBatch builder, SwitchId switchId) {

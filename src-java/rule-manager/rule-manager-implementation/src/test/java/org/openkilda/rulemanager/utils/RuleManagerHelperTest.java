@@ -164,7 +164,7 @@ public class RuleManagerHelperTest {
 
     @Test(expected = IllegalStateException.class)
     public void checkCircularDependenciesUnknownDependsOnTest() {
-        FlowSpeakerData command = buildFullFlowSpeakerCommandData(METER_ID_1, UUID.randomUUID().toString());
+        FlowSpeakerData command = buildFullFlowSpeakerCommandData(METER_ID_1, UUID.randomUUID());
         checkCircularDependencies(newArrayList(command));
     }
 
@@ -234,14 +234,14 @@ public class RuleManagerHelperTest {
     }
 
     private FlowSpeakerData buildFullFlowSpeakerCommandData() {
-        return buildFullFlowSpeakerCommandData(METER_ID_1, UUID.randomUUID().toString());
+        return buildFullFlowSpeakerCommandData(METER_ID_1, UUID.randomUUID());
     }
 
     private FlowSpeakerData buildFullFlowSpeakerCommandData(MeterId goToMeterId) {
-        return buildFullFlowSpeakerCommandData(goToMeterId, UUID.randomUUID().toString());
+        return buildFullFlowSpeakerCommandData(goToMeterId, UUID.randomUUID());
     }
 
-    private FlowSpeakerData buildFullFlowSpeakerCommandData(MeterId goToMeterId, String dependsOnUuid) {
+    private FlowSpeakerData buildFullFlowSpeakerCommandData(MeterId goToMeterId, UUID dependsOnUuid) {
         Set<FieldMatch> match = Arrays.stream(Field.values())
                 .map(f -> FieldMatch.builder().field(f).value(f.ordinal()).mask(f.ordinal() + 1L).build())
                 .collect(Collectors.toSet());
@@ -258,7 +258,7 @@ public class RuleManagerHelperTest {
                 .build();
 
         return FlowSpeakerData.builder()
-                .uuid(UUID.randomUUID().toString())
+                .uuid(UUID.randomUUID())
                 .cookie(new Cookie(123))
                 .priority(PRIORITY)
                 .table(OfTable.INPUT)
@@ -277,14 +277,14 @@ public class RuleManagerHelperTest {
 
     private MeterSpeakerData buildFullMeterSpeakerCommandData(int rate) {
         return MeterSpeakerData.builder()
-                .uuid(UUID.randomUUID().toString())
+                .uuid(UUID.randomUUID())
                 .meterId(METER_ID_1)
                 .rate(rate)
                 .burst(BURST)
                 .flags(Sets.newHashSet(MeterFlag.values()))
                 .switchId(SWITCH_ID)
                 .ofVersion(OfVersion.OF_13)
-                .dependsOn(newArrayList(UUID.randomUUID().toString()))
+                .dependsOn(newArrayList(UUID.randomUUID()))
                 .build();
     }
 
@@ -300,13 +300,13 @@ public class RuleManagerHelperTest {
                 .build();
 
         return GroupSpeakerData.builder()
-                .uuid(UUID.randomUUID().toString())
+                .uuid(UUID.randomUUID())
                 .groupId(groupId)
                 .type(GroupType.ALL)
                 .buckets(newArrayList(bucket))
                 .switchId(SWITCH_ID)
                 .ofVersion(OfVersion.OF_13)
-                .dependsOn(newArrayList(UUID.randomUUID().toString()))
+                .dependsOn(newArrayList(UUID.randomUUID()))
                 .build();
     }
 

@@ -15,21 +15,30 @@
 
 package org.openkilda.rulemanager;
 
+import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.CookieBase;
 import org.openkilda.rulemanager.match.FieldMatch;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
 @SuperBuilder
+@JsonNaming(SnakeCaseStrategy.class)
 public class FlowSpeakerData extends SpeakerData {
 
     CookieBase cookie;
@@ -38,6 +47,26 @@ public class FlowSpeakerData extends SpeakerData {
     Set<FieldMatch> match;
     Instructions instructions;
     Set<OfFlowFlag> flags;
+
+    @JsonCreator
+    public FlowSpeakerData(@JsonProperty("uuid") UUID uuid,
+                           @JsonProperty("switch_id") SwitchId switchId,
+                           @JsonProperty("depends_on") Collection<UUID> dependsOn,
+                           @JsonProperty("of_version") OfVersion ofVersion,
+                           @JsonProperty("cookie") long cookie,
+                           @JsonProperty("table") OfTable table,
+                           @JsonProperty("priority") int priority,
+                           @JsonProperty("match") Set<FieldMatch> match,
+                           @JsonProperty("instructions") Instructions instructions,
+                           @JsonProperty("flags") Set<OfFlowFlag> flags) {
+        super(uuid, switchId, dependsOn, ofVersion);
+        this.cookie = new Cookie(cookie);
+        this.table = table;
+        this.priority = priority;
+        this.match = match;
+        this.instructions = instructions;
+        this.flags = flags;
+    }
 
     public abstract static class FlowSpeakerDataBuilder<C extends FlowSpeakerData,
             B extends FlowSpeakerDataBuilder<C, B>>  extends SpeakerDataBuilder<C, B> {
