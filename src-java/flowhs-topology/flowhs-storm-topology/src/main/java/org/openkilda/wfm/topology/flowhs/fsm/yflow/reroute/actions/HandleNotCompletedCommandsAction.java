@@ -38,6 +38,9 @@ public class HandleNotCompletedCommandsAction extends
 
     @Override
     public void perform(State from, State to, Event event, YFlowRerouteContext context, YFlowRerouteFsm stateMachine) {
+        if (Event.TIMEOUT.equals(event)) {
+            stateMachine.setErrorReason("Timeout event has been received");
+        }
         for (UUID commandId : stateMachine.getPendingCommands().keySet()) {
             stateMachine.saveErrorToHistory("Command is not finished yet",
                     format("Completing the %s operation although the command may not be "
