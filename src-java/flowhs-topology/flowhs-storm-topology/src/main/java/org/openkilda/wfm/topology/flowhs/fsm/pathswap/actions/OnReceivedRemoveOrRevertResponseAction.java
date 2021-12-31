@@ -19,8 +19,9 @@ import static java.lang.String.format;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.Event;
@@ -28,85 +29,112 @@ import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
-public class OnReceivedRemoveOrRevertResponseAction extends
-        HistoryRecordingAction<FlowPathSwapFsm, State, Event, FlowPathSwapContext> {
-    private final int speakerCommandRetriesLimit;
-
+public class OnReceivedRemoveOrRevertResponseAction extends BaseOnReceivedResponseAction {
     public OnReceivedRemoveOrRevertResponseAction(int speakerCommandRetriesLimit) {
-        this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        super(speakerCommandRetriesLimit);
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowPathSwapContext context,
                            FlowPathSwapFsm stateMachine) {
-        SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
+        SpeakerResponse response = context.getSpeakerResponse();
         UUID commandId = response.getCommandId();
-        FlowSegmentRequestFactory removeCommand = stateMachine.getRemoveCommands().get(commandId);
-        FlowSegmentRequestFactory installCommand = stateMachine.getInstallCommand(commandId);
-        if (!stateMachine.getPendingCommands().containsKey(commandId)
-                || (removeCommand == null && installCommand == null)) {
+        if (!stateMachine.hasPendingCommand(commandId)) {
             log.info("Received a response for unexpected command: {}", response);
             return;
         }
 
+        boolean isInstallCommand = stateMachine.getInstallCommand(commandId) != null
+                || stateMachine.getInstallSpeakerCommand(commandId).isPresent();
+
         if (response.isSuccess()) {
             stateMachine.removePendingCommand(commandId);
-
-            if (removeCommand != null) {
-                stateMachine.saveActionToHistory("Rule was deleted",
-                        format("The rule was removed: switch %s, cookie %s", response.getSwitchId(),
-                                removeCommand.getCookie()));
+            String commandName = isInstallCommand ? "re-installed (reverted)" : "deleted";
+            if (response instanceof SpeakerFlowSegmentResponse) {
+                stateMachine.saveActionToHistory("Rule was " + commandName,
+                        format("The rule was %s: switch %s, cookie %s", commandName,
+                                response.getSwitchId(), ((SpeakerFlowSegmentResponse) response).getCookie()));
             } else {
-                stateMachine.saveActionToHistory("Rule was re-installed (reverted)",
-                        format("The rule was installed: switch %s, cookie %s",
-                                response.getSwitchId(), installCommand.getCookie()));
+                stateMachine.saveActionToHistory("Rule was " + commandName,
+                        format("The rule was %s: switch %s", commandName, response.getSwitchId()));
             }
         } else {
-            FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-
             int attempt = stateMachine.doRetryForCommand(commandId);
             if (attempt <= speakerCommandRetriesLimit) {
-                if (removeCommand != null) {
-                    stateMachine.saveErrorToHistory("Failed to remove rule", format(
-                            "Failed to remove the rule: commandId %s, switch %s, cookie %s. Error %s. "
-                                    + "Retrying (attempt %d)",
-                            commandId, errorResponse.getSwitchId(), removeCommand.getCookie(), errorResponse, attempt));
+                if (response instanceof FlowErrorResponse) {
+                    FlowErrorResponse errorResponse = (FlowErrorResponse) response;
+                    if (isInstallCommand) {
+                        FlowSegmentRequestFactory installCommand = stateMachine.getInstallCommand(commandId);
+                        stateMachine.saveErrorToHistory("Failed to re-install (revert) rule",
+                                format("Failed to install the rule: commandId %s, switch %s, cookie %s. Error %s. "
+                                                + "Retrying (attempt %d)",
+                                        commandId, errorResponse.getSwitchId(), installCommand.getCookie(),
+                                        errorResponse, attempt));
+                        stateMachine.getCarrier().sendSpeakerRequest(installCommand.makeInstallRequest(commandId));
+                    } else {
+                        FlowSegmentRequestFactory removeCommand = stateMachine.getRemoveCommand(commandId);
+                        stateMachine.saveErrorToHistory("Failed to delete rule",
+                                format("Failed to remove the rule: commandId %s, switch %s, cookie %s. Error %s. "
+                                                + "Retrying (attempt %d)",
+                                        commandId, errorResponse.getSwitchId(), removeCommand.getCookie(),
+                                        errorResponse, attempt));
+                        stateMachine.getCarrier().sendSpeakerRequest(removeCommand.makeRemoveRequest(commandId));
+                    }
+                } else if (response instanceof SpeakerCommandResponse) {
+                    String commandName = isInstallCommand ? "re-install (revert)" : "delete";
+                    SpeakerCommandResponse speakerCommandResponse = (SpeakerCommandResponse) response;
+                    speakerCommandResponse.getFailedCommandIds().forEach((uuid, message) ->
+                            stateMachine.saveErrorToHistory("Failed to " + commandName + " rule",
+                                    format("Failed to %s the rule: commandId %s, ruleId %s, switch %s. "
+                                                    + "Error %s. Retrying (attempt %d)", commandName,
+                                            commandId, uuid, response.getSwitchId(), message, attempt)));
 
-                    stateMachine.getCarrier().sendSpeakerRequest(removeCommand.makeRemoveRequest(commandId));
+                    Set<UUID> failedUuids = speakerCommandResponse.getFailedCommandIds().keySet();
+                    stateMachine.getInstallSpeakerCommand(commandId)
+                            .ifPresent(command -> stateMachine.getCarrier()
+                                    .sendSpeakerRequest(command.toBuilder()
+                                            .commands(filterOfCommands(command.getCommands(), failedUuids)).build()));
+                    stateMachine.getDeleteSpeakerCommand(commandId)
+                            .ifPresent(command -> stateMachine.getCarrier()
+                                    .sendSpeakerRequest(command.toBuilder()
+                                            .commands(filterOfCommands(command.getCommands(), failedUuids)).build()));
                 } else {
-                    stateMachine.saveErrorToHistory("Failed to re-install (revert) rule", format(
-                            "Failed to install the rule: commandId %s, switch %s, cookie %s. Error %s. "
-                                    + "Retrying (attempt %d)", commandId, errorResponse.getSwitchId(),
-                            installCommand.getCookie(), errorResponse, attempt));
-
-                    stateMachine.getCarrier().sendSpeakerRequest(installCommand.makeInstallRequest(commandId));
+                    log.warn("Received a unknown response: {}", response);
+                    return;
                 }
             } else {
+                stateMachine.addFailedCommand(commandId, response);
                 stateMachine.removePendingCommand(commandId);
 
-                if (removeCommand != null) {
-                    stateMachine.saveErrorToHistory("Failed to remove rule", format(
-                            "Failed to remove the rule: commandId %s, switch %s, cookie %s. Error: %s",
-                            commandId, errorResponse.getSwitchId(), removeCommand.getCookie(), errorResponse));
+                String commandName = isInstallCommand ? "re-install (revert)" : "delete";
+                if (response instanceof FlowErrorResponse) {
+                    stateMachine.saveErrorToHistory("Failed to " + commandName + " rule",
+                            format("Failed to %s the rule: commandId %s, switch %s, cookie %s. Error %s.",
+                                    commandName, commandId, response.getSwitchId(),
+                                    ((FlowErrorResponse) response).getCookie(), response));
+                } else if (response instanceof SpeakerCommandResponse) {
+                    ((SpeakerCommandResponse) response).getFailedCommandIds().forEach((uuid, message) ->
+                            stateMachine.saveErrorToHistory("Failed to " + commandName + " rule",
+                                    format("Failed to %s the rule: commandId %s, ruleId %s, switch %s. Error %s.",
+                                            commandName, commandId, uuid, response.getSwitchId(), message)));
                 } else {
-                    stateMachine.saveErrorToHistory("Failed to re-install rule", format(
-                            "Failed to install the rule: commandId %s, switch %s, cookie %s. Error: %s",
-                            commandId, errorResponse.getSwitchId(), installCommand.getCookie(), errorResponse));
+                    log.warn("Received a unknown response: {}", response);
+                    return;
                 }
-                stateMachine.addFailedCommand(commandId, errorResponse);
             }
         }
 
         if (stateMachine.getPendingCommands().isEmpty()) {
             if (stateMachine.getFailedCommands().isEmpty()) {
-                log.debug("Received responses for all pending remove / re-install commands of the flow {}",
+                log.debug("Received responses for all pending install / delete commands of the flow {}",
                         stateMachine.getFlowId());
                 stateMachine.fire(Event.RULES_REMOVED);
             } else {
-                String errorMessage = format("Received error response(s) for %d remove / re-install commands",
+                String errorMessage = format("Received error response(s) for %d install / delete commands",
                         stateMachine.getFailedCommands().size());
                 stateMachine.saveErrorToHistory(errorMessage);
                 stateMachine.fireError(errorMessage);
