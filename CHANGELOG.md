@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.111.0 (04/01/2022)
+
+### Features:
+-  [#4627](https://github.com/telstra/open-kilda/pull/4627) Rule Manager Floodlight integration [**floodlight**]
+-  [#4635](https://github.com/telstra/open-kilda/pull/4635) Implement YFlow validation feature 
+-  [#4636](https://github.com/telstra/open-kilda/pull/4636) Add Rule Manager to Y-Flow FSMs (Issue: [#4632](https://github.com/telstra/open-kilda/issues/4632)) [**floodlight**]
+
+### Bug Fixes:
+-  [#4631](https://github.com/telstra/open-kilda/pull/4631) Fix null pointer into flowmonitoring flow cache init 
+-  [#4639](https://github.com/telstra/open-kilda/pull/4639) Fix incorrect JSON deserialization. [**storm-topologies**]
+-  [#4641](https://github.com/telstra/open-kilda/pull/4641) Fix speaker response timeout handling for y-flow reroute operation 
+
+### Improvements:
+-  [#4620](https://github.com/telstra/open-kilda/pull/4620) [test] fix getActiveServer42Switches [**tests**]
+-  [#4626](https://github.com/telstra/open-kilda/pull/4626) Upgrade log4j dependency version to mitigate log4shell 
+-  [#4632](https://github.com/telstra/open-kilda/pull/4632) Introduce real staged execution in floodlight [**floodlight**]
+-  [#4633](https://github.com/telstra/open-kilda/pull/4633) Reconfigure switch connections transaction retry policy [**storm-topologies**]
+-  [#4634](https://github.com/telstra/open-kilda/pull/4634) fix restoring swProps in ConfigurationSpec [**tests**]
+-  [#4637](https://github.com/telstra/open-kilda/pull/4637) improve defaultRuleSpec(temporary add sleep) [**tests**]
+-  [#4638](https://github.com/telstra/open-kilda/pull/4638) Of match converter [**floodlight**]
+-  [#4642](https://github.com/telstra/open-kilda/pull/4642) [test] ignore validateSwitch in yflow specs [**tests**]
+
+### Other changes:
+-  [#4621](https://github.com/telstra/open-kilda/pull/4621) Extend stats topology by adding support for y-flow objects set [**storm-topologies**]
+-  [#4595](https://github.com/telstra/open-kilda/pull/4595) Initial commit of y-flow tests prototypes [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.110.0...v1.111.0).
+
+### Affected Components:
+stats, flow-monitor, network, fl, flow-hs
+
+
 ## v1.110.0 (21/12/2021)
 
 ### Features:
