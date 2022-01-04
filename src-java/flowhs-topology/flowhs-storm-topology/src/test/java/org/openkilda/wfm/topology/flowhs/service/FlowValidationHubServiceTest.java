@@ -35,6 +35,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.FlowValidationService;
@@ -49,13 +50,15 @@ import java.util.List;
 public class FlowValidationHubServiceTest extends FlowValidationTestBase {
     private static final String TEST_KEY = "test_key";
 
+    private static FlowResourcesManager flowResourcesManager;
     private static FlowValidationService flowValidationService;
     private FlowValidationHubService flowValidationHubService;
 
     @BeforeClass
     public static void setUpOnce() {
         FlowValidationTestBase.setUpOnce();
-        flowValidationService = new FlowValidationService(persistenceManager, flowResourcesConfig,
+        flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
+        flowValidationService = new FlowValidationService(persistenceManager, flowResourcesManager,
                 MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
     }
 
@@ -106,7 +109,7 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
 
             }
         };
-        flowValidationHubService = new FlowValidationHubService(carrier, persistenceManager, flowResourcesConfig,
+        flowValidationHubService = new FlowValidationHubService(carrier, persistenceManager, flowResourcesManager,
                 MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
 
         buildTransitVlanFlow("");
@@ -163,7 +166,7 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
 
             }
         };
-        flowValidationHubService = new FlowValidationHubService(carrier, persistenceManager, flowResourcesConfig,
+        flowValidationHubService = new FlowValidationHubService(carrier, persistenceManager, flowResourcesManager,
                 MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
 
         buildTransitVlanFlow("");
@@ -212,7 +215,7 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             }
         };
 
-        flowValidationHubService = new FlowValidationHubService(carrier, persistenceManager, flowResourcesConfig,
+        flowValidationHubService = new FlowValidationHubService(carrier, persistenceManager, flowResourcesManager,
                 MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
 
         buildTransitVlanFlow("");

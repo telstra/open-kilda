@@ -25,8 +25,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.FlowValidationRequest;
-import org.openkilda.messaging.info.ChunkedInfoMessage;
+import org.openkilda.messaging.command.yflow.YFlowValidationRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
@@ -39,53 +38,63 @@ import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.validation.YFlowValidationService;
 import org.openkilda.wfm.topology.flowhs.service.FlowValidationHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowValidationHubService;
+import org.openkilda.wfm.topology.flowhs.service.yflow.YFlowValidationHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.yflow.YFlowValidationHubService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import lombok.AllArgsConstructor;
 import lombok.NonNull;
-import org.apache.commons.collections4.CollectionUtils;
+import lombok.experimental.Delegate;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public class FlowValidationHubBolt extends HubBolt implements FlowValidationHubCarrier {
+public class YFlowValidationHubBolt extends HubBolt implements YFlowValidationHubCarrier {
 
     private final FlowResourcesConfig flowResourcesConfig;
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
 
-    private transient FlowValidationHubService service;
+    private transient FlowValidationHubService flowValidationHubService;
+    private transient YFlowValidationHubService yFlowValidationHubService;
     private String currentKey;
 
     private LifecycleEvent deferredShutdownEvent;
 
-    public FlowValidationHubBolt(@NonNull Config config, @NonNull PersistenceManager persistenceManager,
-                                 @NonNull FlowResourcesConfig flowResourcesConfig,
-                                 long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
-        super(persistenceManager, config);
+    public YFlowValidationHubBolt(@NonNull Config yFlowValidationConfig, @NonNull PersistenceManager persistenceManager,
+                                  @NonNull FlowResourcesConfig flowResourcesConfig,
+                                  long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
+        super(persistenceManager, yFlowValidationConfig);
 
         this.flowResourcesConfig = flowResourcesConfig;
         this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
         this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
 
-        enableMeterRegistry("kilda.flow_validation", HUB_TO_METRICS_BOLT.name());
+        enableMeterRegistry("kilda.y_flow_validation", HUB_TO_METRICS_BOLT.name());
     }
 
     @Override
     public void init() {
         FlowResourcesManager flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
-        service = new FlowValidationHubService(this, persistenceManager, flowResourcesManager,
-                flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
+        flowValidationHubService = new FlowValidationHubService(
+                new FlowValidationHubCarrierIsolatingResponsesAndLifecycleEvents(this),
+                persistenceManager, flowResourcesManager, flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
+        YFlowValidationService yFlowValidationService = new YFlowValidationService(persistenceManager,
+                flowResourcesManager, flowMeterMinBurstSizeInKbits,
+                flowMeterBurstCoefficient);
+        yFlowValidationHubService = new YFlowValidationHubService(this, persistenceManager,
+                flowValidationHubService, yFlowValidationService);
     }
 
     @Override
     protected boolean deactivate(LifecycleEvent event) {
-        if (service.deactivate()) {
+        if (yFlowValidationHubService.deactivate() && flowValidationHubService.deactivate()) {
             return true;
         }
         deferredShutdownEvent = event;
@@ -94,15 +103,16 @@ public class FlowValidationHubBolt extends HubBolt implements FlowValidationHubC
 
     @Override
     protected void activate() {
-        service.activate();
+        flowValidationHubService.activate();
+        yFlowValidationHubService.activate();
     }
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = pullKey(input);
-        FlowValidationRequest payload = pullValue(input, FIELD_ID_PAYLOAD, FlowValidationRequest.class);
+        YFlowValidationRequest payload = pullValue(input, FIELD_ID_PAYLOAD, YFlowValidationRequest.class);
         try {
-            service.handleFlowValidationRequest(currentKey, getCommandContext(), payload);
+            yFlowValidationHubService.handleRequest(currentKey, getCommandContext(), payload.getYFlowId());
         } catch (DuplicateKeyException e) {
             log.error("Failed to handle a request with key {}. {}", currentKey, e.getMessage());
         }
@@ -111,10 +121,12 @@ public class FlowValidationHubBolt extends HubBolt implements FlowValidationHubC
     @Override
     protected void onWorkerResponse(Tuple input) throws PipelineException {
         String operationKey = pullKey(input);
-        currentKey = KeyProvider.getParentKey(operationKey);
+        String flowKey = KeyProvider.getParentKey(operationKey);
+        String flowId = KeyProvider.getChildKey(flowKey);
+        currentKey = KeyProvider.getParentKey(flowKey);
         MessageData messageData = pullValue(input, FIELD_ID_PAYLOAD, MessageData.class);
         try {
-            service.handleAsyncResponse(currentKey, messageData);
+            yFlowValidationHubService.handleAsyncResponse(currentKey, flowId, messageData);
         } catch (UnknownKeyException e) {
             log.warn("Received a response with unknown key {}.", currentKey);
         }
@@ -124,47 +136,23 @@ public class FlowValidationHubBolt extends HubBolt implements FlowValidationHubC
     public void onTimeout(String key, Tuple tuple) {
         currentKey = key;
         try {
-            service.handleTimeout(key);
+            yFlowValidationHubService.handleTimeout(key);
         } catch (UnknownKeyException e) {
-            log.warn("Failed to handle a timeout event for unknown key {}.", currentKey);
+            log.error("Failed to handle a timeout event for unknown key {}.", currentKey);
         }
     }
 
     @Override
-    public void sendSpeakerRequest(@NonNull String flowId, @NonNull CommandData commandData) {
+    public void sendSpeakerRequest(String flowId, @NonNull CommandData commandData) {
         String commandId = KeyProvider.generateKey();
-        String commandKey = KeyProvider.joinKeys(commandId, currentKey);
+        String commandKey = KeyProvider.joinKeys(commandId, KeyProvider.joinKeys(flowId, currentKey));
         Values values = new Values(commandKey, new CommandMessage(commandData, System.currentTimeMillis(), commandKey));
         emitWithContext(HUB_TO_SPEAKER_WORKER.name(), getCurrentTuple(), values);
     }
 
     @Override
-    public void sendNorthboundResponse(@NonNull List<? extends InfoData> messageData) {
-        // The validation process sends a response to NB when CommandContext represents a worker response, so
-        // we need to use "parent" key to override the CommandContext.correlationId.
-        buildResponseMessages(messageData, currentKey)
-                .forEach(message -> emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(),
-                        new Values(currentKey, message)));
-    }
-
-    @Override
     public void sendNorthboundResponse(@NonNull Message message) {
         emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
-    }
-
-    private List<Message> buildResponseMessages(List<? extends InfoData> responseData, String requestId) {
-        List<Message> messages = new ArrayList<>(responseData.size());
-        if (CollectionUtils.isEmpty(responseData)) {
-            messages.add(new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId, requestId, 0));
-        } else {
-            int i = 0;
-            for (InfoData data : responseData) {
-                Message message = new ChunkedInfoMessage(data, System.currentTimeMillis(), requestId, i++,
-                        responseData.size());
-                messages.add(message);
-            }
-        }
-        return messages;
     }
 
     @Override
@@ -186,5 +174,35 @@ public class FlowValidationHubBolt extends HubBolt implements FlowValidationHubC
         declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(ZkStreams.ZK.toString(),
                 new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
+    }
+
+    @AllArgsConstructor
+    private static class FlowValidationHubCarrierIsolatingResponsesAndLifecycleEvents
+            implements FlowValidationHubCarrier {
+        @Delegate(excludes = CarrierMethodsToIsolateResponsesAndLifecycleEvents.class)
+        YFlowValidationHubCarrier delegate;
+
+        @Override
+        public void sendNorthboundResponse(List<? extends InfoData> messageData) {
+            // Isolating, so nothing to do.
+        }
+
+        @Override
+        public void sendNorthboundResponse(Message message) {
+            // Isolating, so nothing to do.
+        }
+
+        @Override
+        public void sendInactive() {
+            // Isolating, so nothing to do.
+        }
+    }
+
+    private interface CarrierMethodsToIsolateResponsesAndLifecycleEvents {
+        void sendNorthboundResponse(List<? extends InfoData> messageData);
+
+        void sendNorthboundResponse(Message message);
+
+        void sendInactive();
     }
 }

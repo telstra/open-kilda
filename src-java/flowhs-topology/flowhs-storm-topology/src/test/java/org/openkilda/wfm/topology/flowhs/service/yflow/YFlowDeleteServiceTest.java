@@ -41,7 +41,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
-public class YFlowDeleteServiceTest extends AbstractYFlowTest {
+public class YFlowDeleteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     @Mock
     private FlowGenericCarrier flowDeleteHubCarrier;
     @Mock
@@ -49,9 +49,9 @@ public class YFlowDeleteServiceTest extends AbstractYFlowTest {
 
     @Before
     public void init() {
-        doAnswer(getSpeakerCommandsAnswer())
+        doAnswer(buildSpeakerRequestAnswer())
                 .when(flowDeleteHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
-        doAnswer(getSpeakerCommandsAnswer())
+        doAnswer(buildSpeakerRequestAnswer())
                 .when(yFlowDeleteHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
     }
 
@@ -125,7 +125,7 @@ public class YFlowDeleteServiceTest extends AbstractYFlowTest {
         service.handleRequest(yFlowId, new CommandContext(), new YFlowDeleteRequest(yFlowId));
         verifyYFlowStatus(yFlowId, FlowStatus.IN_PROGRESS);
         // and
-        handleSpeakerCommandsAndTimeoutRemove(service, yFlowId, yFlowId);
+        handleSpeakerCommandsAndTimeoutRemove(service, yFlowId);
 
         //then
         verifyNorthboundSuccessResponse(yFlowDeleteHubCarrier, YFlowResponse.class);
@@ -140,7 +140,7 @@ public class YFlowDeleteServiceTest extends AbstractYFlowTest {
 
         verifyYFlowStatus(yFlowRequest.getYFlowId(), FlowStatus.IN_PROGRESS);
 
-        handleSpeakerCommands(speakerRequest -> {
+        handleSpeakerRequests(speakerRequest -> {
             SpeakerResponse commandResponse;
             if (speakerRequest instanceof FlowSegmentRequest) {
                 FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) speakerRequest;
@@ -154,22 +154,22 @@ public class YFlowDeleteServiceTest extends AbstractYFlowTest {
     }
 
     private void handleAsyncResponse(YFlowDeleteService service,
-                                     String key, SpeakerResponse commandResponse) {
+                                     String yFlowFsmKey, SpeakerResponse commandResponse) {
         try {
-            service.handleAsyncResponse(key, commandResponse);
+            service.handleAsyncResponse(yFlowFsmKey, commandResponse);
         } catch (UnknownKeyException ex) {
             //skip
         }
     }
 
-    private void handleSpeakerCommandsAndFailRemove(YFlowDeleteService yFlowDeleteService, String key,
-                                                    String commandKeyToFail) {
-        handleSpeakerCommands(request -> {
+    private void handleSpeakerCommandsAndFailRemove(YFlowDeleteService yFlowDeleteService, String yFlowFsmKey,
+                                                    String commandFlowIdToFail) {
+        handleSpeakerRequests(request -> {
             SpeakerResponse commandResponse;
             if (request instanceof FlowSegmentRequest) {
                 FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) request;
                 commandResponse = flowSegmentRequest.isRemoveRequest()
-                        && flowSegmentRequest.getMetadata().getFlowId().equals(commandKeyToFail)
+                        && flowSegmentRequest.getMetadata().getFlowId().equals(commandFlowIdToFail)
                         ? buildErrorSpeakerResponse(flowSegmentRequest)
                         : buildSuccessfulSpeakerResponse(flowSegmentRequest);
             } else {
@@ -178,29 +178,30 @@ public class YFlowDeleteServiceTest extends AbstractYFlowTest {
                         ? buildErrorYFlowSpeakerResponse(speakerCommandsRequest)
                         : buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
             }
-            handleAsyncResponse(yFlowDeleteService, key, commandResponse);
+            handleAsyncResponse(yFlowDeleteService, yFlowFsmKey, commandResponse);
         });
     }
 
-    private void handleSpeakerCommandsAndTimeoutRemove(YFlowDeleteService yFlowDeleteService, String key,
-                                                       String commandKeyToFail) {
-        handleSpeakerCommands(request -> {
+    private void handleSpeakerCommandsAndTimeoutRemove(YFlowDeleteService yFlowDeleteService, String yFlowFsmKey) {
+        handleSpeakerRequests(request -> {
             SpeakerResponse commandResponse;
             if (request instanceof FlowSegmentRequest) {
                 FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) request;
-                if (flowSegmentRequest.isRemoveRequest()
-                        && flowSegmentRequest.getMetadata().getFlowId().equals(commandKeyToFail)) {
-                    yFlowDeleteService.handleTimeout(key);
-                }
                 commandResponse = buildSuccessfulSpeakerResponse(flowSegmentRequest);
+                handleAsyncResponse(yFlowDeleteService, yFlowFsmKey, commandResponse);
             } else {
                 BaseSpeakerCommandsRequest speakerCommandsRequest = (BaseSpeakerCommandsRequest) request;
-                if (speakerCommandsRequest instanceof DeleteSpeakerCommandsRequest && key.equals(commandKeyToFail)) {
-                    yFlowDeleteService.handleTimeout(key);
+                if (speakerCommandsRequest instanceof DeleteSpeakerCommandsRequest) {
+                    try {
+                        yFlowDeleteService.handleTimeout(yFlowFsmKey);
+                    } catch (UnknownKeyException ex) {
+                        //skip
+                    }
+                } else {
+                    commandResponse = buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
+                    handleAsyncResponse(yFlowDeleteService, yFlowFsmKey, commandResponse);
                 }
-                commandResponse = buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
             }
-            handleAsyncResponse(yFlowDeleteService, key, commandResponse);
         });
     }
 

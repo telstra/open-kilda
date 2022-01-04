@@ -27,7 +27,7 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -51,7 +51,7 @@ public class FlowValidationHubService extends FsmBasedProcessingService<FlowVali
 
     public FlowValidationHubService(@NonNull FlowValidationHubCarrier carrier,
                                     @NonNull PersistenceManager persistenceManager,
-                                    @NonNull FlowResourcesConfig flowResourcesConfig,
+                                    @NonNull FlowResourcesManager flowResourcesManager,
                                     long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
         super(new FlowProcessingFsmRegister<>(), new FsmExecutor<>(Event.NEXT));
         this.carrier = carrier;
@@ -60,7 +60,7 @@ public class FlowValidationHubService extends FsmBasedProcessingService<FlowVali
                 .flowMeterMinBurstSizeInKbits(flowMeterMinBurstSizeInKbits)
                 .flowMeterBurstCoefficient(flowMeterBurstCoefficient)
                 .build();
-        fsmFactory = new FlowValidationFsm.Factory(carrier, persistenceManager, flowResourcesConfig, fsmConfig);
+        fsmFactory = new FlowValidationFsm.Factory(carrier, persistenceManager, flowResourcesManager, fsmConfig);
     }
 
     /**

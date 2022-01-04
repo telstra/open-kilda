@@ -336,7 +336,10 @@ public class PersistenceDummyEntityFactory {
         return flowCookie;
     }
 
-    private FlowMeter makeFlowMeter(SwitchId swId, String flowId, PathId pathId) {
+    /**
+     * Create {@link FlowMeter} object.
+     */
+    public FlowMeter makeFlowMeter(SwitchId swId, String flowId, PathId pathId) {
         FlowMeter meter = FlowMeter.builder()
                 .switchId(swId)
                 .meterId(idProvider.provideMeterId(swId))

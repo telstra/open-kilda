@@ -34,11 +34,11 @@ import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IllegalFlowStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRule;
 import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRuleConverter;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 import java.nio.file.InvalidPathException;
@@ -61,11 +61,12 @@ public class FlowValidationService {
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
 
-    public FlowValidationService(PersistenceManager persistenceManager, FlowResourcesConfig flowResourcesConfig,
+    public FlowValidationService(@NonNull PersistenceManager persistenceManager,
+                                 @NonNull FlowResourcesManager flowResourcesManager,
                                  long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        this.flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
+        this.flowResourcesManager = flowResourcesManager;
         this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
         this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
 
