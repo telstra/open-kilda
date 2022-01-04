@@ -1,11 +1,16 @@
 package org.openkilda.functionaltests.helpers
 
-
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS_Y
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS_Y
+import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
+import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
+import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.messaging.payload.flow.FlowEncapsulationType
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.yflows.SubFlowUpdatePayload
@@ -17,6 +22,7 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpointEncapsulation
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
 import com.github.javafaker.Faker
@@ -37,6 +43,8 @@ class YFlowHelper {
     TopologyDefinition topology
     @Autowired @Qualifier("islandNbV2")
     NorthboundServiceV2 northboundV2
+    @Autowired @Qualifier("islandNb")
+    NorthboundService northbound
 
     def random = new Random()
     def faker = new Faker()
@@ -44,6 +52,7 @@ class YFlowHelper {
 
     /**
      * Creates YFlowCreatePayload for a y-flow with random vlan.
+     * Guarantees that different ports are used for shared endpoint and subflow endpoints (given the same switch)
      *
      * @param sharedSwitch the shared endpoint of y-flow
      * @param firstSwitch the endpoint of the first sub-flow
@@ -51,53 +60,70 @@ class YFlowHelper {
      * @param useTraffgenPorts try using traffgen ports if available
      */
     YFlowCreatePayload randomYFlow(Switch sharedSwitch, Switch firstSwitch, Switch secondSwitch,
-                                   boolean useTraffgenPorts = true) {
-        assert srcSwitch.dpId != dstSwitch.dpId
-
-        Wrappers.retry(3, 0) {
-            def newFlow = YFlowCreatePayload.builder()
-                    .sharedEndpoint(YFlowSharedEndpoint.builder()
-                            .switchId(sharedSwitch.dpId)
-                            .portNumber(randomEndpointPort(sharedSwitch, useTraffgenPorts))
-                            .build())
-                    .subFlows([firstSwitch, secondSwitch].collect {
-                        SubFlowUpdatePayload.builder()
-                                .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder().vlanId(randomVlan()).build())
-                                .endpoint(randomEndpoint(it))
-                                .build()
-                    })
-                    .maximumBandwidth(500)
-                    .ignoreBandwidth(false)
-                    .periodicPings(false)
-                    .description(generateDescription())
-                    .strictBandwidth(false)
+                                   boolean useTraffgenPorts = true, List<YFlowCreatePayload> existingFlows = []) {
+        List<SwitchPortVlan> busyEndpoints = getBusyEndpoints(existingFlows)
+        def se = YFlowSharedEndpoint.builder()
+                .switchId(sharedSwitch.dpId)
+                .portNumber(randomEndpointPort(sharedSwitch, useTraffgenPorts, busyEndpoints))
+                .build()
+        def subFlows = [firstSwitch, secondSwitch].collect {sw ->
+            def seVlan = randomVlan()
+            busyEndpoints << new SwitchPortVlan(se.switchId, se.portNumber, seVlan)
+            def ep = SubFlowUpdatePayload.builder()
+                    .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder().vlanId(seVlan).build())
+                    .endpoint(randomEndpoint(sw, busyEndpoints))
                     .build()
+            busyEndpoints << new SwitchPortVlan(ep.endpoint.switchId, ep.endpoint.portNumber, ep.endpoint.vlanId)
+            ep
+        }
+        return YFlowCreatePayload.builder()
+                .sharedEndpoint(se)
+                .subFlows(subFlows)
+                .maximumBandwidth(1000)
+                .ignoreBandwidth(false)
+                .periodicPings(false)
+                .description(generateDescription())
+                .strictBandwidth(false)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN.toString())
+                .pathComputationStrategy(PathComputationStrategy.COST.toString())
+                .build()
+    }
 
-            /*TODO: if (flowConflicts(newFlow, existingFlows)) {
-                throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
-            }*/
-            return newFlow
-        } as YFlowCreatePayload
+    YFlowCreatePayload randomYFlow(SwitchTriplet swT, boolean useTraffgenPorts = true,
+                                   List<YFlowCreatePayload> existingFlows = []) {
+        randomYFlow(swT.shared, swT.ep1, swT.ep2, useTraffgenPorts, existingFlows)
     }
 
     /**
      * Adds y-flow and waits for it to become UP.
      */
     YFlow addYFlow(YFlowCreatePayload flow) {
-        log.debug("Adding y-flow: '${flow}'")
+        log.debug("Adding y-flow")
         def response = northboundV2.addYFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(response.flowId).status == FlowState.UP }
-        return response
+        YFlow yFlow
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
+            yFlow = northboundV2.getYFlow(response.YFlowId)
+            assert yFlow.status == FlowState.UP.toString()
+            assert northbound.getFlowHistory(response.YFlowId).last().payload.last().action == CREATE_SUCCESS_Y
+        }
+        return yFlow
     }
 
     /**
      * Deletes y-flow and waits when the flow disappears from the flow list.
      */
     YFlow deleteYFlow(String yFlowId) {
-        Wrappers.wait(WAIT_OFFSET * 2) { assert northboundV2.getFlowStatus(yFlowId).status != FlowState.IN_PROGRESS }
+        Wrappers.wait(WAIT_OFFSET * 2) {
+            assert northboundV2.getYFlow(yFlowId)?.status != FlowState.IN_PROGRESS.toString()
+        }
         log.debug("Deleting y-flow '$yFlowId'")
         def response = northboundV2.deleteYFlow(yFlowId)
-        Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getFlowStatus(yFlowId) }
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
+            assert !northboundV2.getYFlow(yFlowId)
+            assert northbound.getFlowHistory(response.YFlowId).last().payload.last().action == DELETE_SUCCESS_Y
+        }
+        // https://github.com/telstra/open-kilda/issues/3411
+        northbound.synchronizeSwitch(response.sharedEndpoint.switchId, true)
         return response
     }
 
@@ -107,15 +133,56 @@ class YFlowHelper {
     YFlow updateYFlow(String yFlowId, YFlowUpdatePayload flow) {
         log.debug("Updating y-flow '${yFlowId}'")
         def response = northboundV2.updateYFlow(yFlowId, flow)
-        Wrappers.wait(PATH_INSTALLATION_TIME) { assert northboundV2.getFlowStatus(yFlowId).status == FlowState.UP }
-        return response
+        YFlow yFlow
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
+            yFlow = northboundV2.getYFlow(response.YFlowId)
+            assert yFlow.status == FlowState.UP.toString()
+            yFlow.subFlows.each {
+                assert it.status == FlowState.UP.toString()
+            }
+        }
+        return yFlow
     }
 
     YFlow partialUpdateYFlow(String yFlowId, YFlowPatchPayload flow) {
         log.debug("Updating y-flow '${yFlowId}'(partial update)")
         def response = northboundV2.partialUpdateYFlow(yFlowId, flow)
-        Wrappers.wait(PATH_INSTALLATION_TIME) { assert northboundV2.getFlowStatus(yFlowId).status == FlowState.UP }
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
+            def yFlow = northboundV2.getYFlow(yFlowId)
+            assert yFlow.status == FlowState.UP.toString()
+            yFlow.subFlows.each {
+                assert it.status == FlowState.UP.toString()
+            }
+        }
         return response
+    }
+
+    static List<SwitchPortVlan> getBusyEndpoints(List<YFlowCreatePayload> yFlows) {
+        yFlows.collectMany { yFlow ->
+            yFlow.subFlows.collectMany { subFlow ->
+                [new SwitchPortVlan(yFlow.sharedEndpoint.switchId, yFlow.sharedEndpoint.portNumber, subFlow.sharedEndpoint.vlanId),
+                 new SwitchPortVlan(subFlow.endpoint.switchId, subFlow.endpoint.portNumber, subFlow.endpoint.vlanId)]
+            }
+        }
+    }
+
+    static SwitchPortVlan getBusyEndpoint(YFlowSharedEndpoint se) {
+        return new SwitchPortVlan(se.switchId, se.portNumber)
+    }
+
+    static SwitchPortVlan getBusyEndpoint(SubFlowUpdatePayload subFlow) {
+        return new SwitchPortVlan(subFlow.endpoint.switchId, subFlow.endpoint.portNumber)
+    }
+
+    YFlowUpdatePayload convertToUpdate(YFlow yFlow) {
+        def yFlowCopy = yFlow.jacksonCopy()
+        def builder = YFlowUpdatePayload.builder()
+        YFlowUpdatePayload.class.getDeclaredFields()*.name.each {
+            if (yFlowCopy.class.declaredFields*.name.contains(it)) {
+                builder."$it" = yFlowCopy."$it"
+            }
+        }
+        return builder.build()
     }
 
     /**
@@ -124,9 +191,9 @@ class YFlowHelper {
      * @param useTraffgenPorts if true, will try to use a port attached to a traffgen. The port must be present
      * in 'allowedPorts'
      */
-    private FlowEndpointV2 randomEndpoint(Switch sw, boolean useTraffgenPorts = true) {
+    private FlowEndpointV2 randomEndpoint(Switch sw, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEps) {
         return new FlowEndpointV2(
-                sw.dpId, randomEndpointPort(sw, useTraffgenPorts), randomVlan(),
+                sw.dpId, randomEndpointPort(sw, useTraffgenPorts, busyEps), randomVlan(),
                 new DetectConnectedDevicesV2(false, false))
     }
 
@@ -136,8 +203,8 @@ class YFlowHelper {
      * @param useTraffgenPorts if true, will try to use a port attached to a traffgen. The port must be present
      * in 'allowedPorts'
      */
-    private int randomEndpointPort(Switch sw, boolean useTraffgenPorts = true) {
-        def allowedPorts = topology.getAllowedPortsForSwitch(sw)
+    private int randomEndpointPort(Switch sw, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEps) {
+        def allowedPorts = topology.getAllowedPortsForSwitch(sw) - busyEps.findAll { it.sw == sw.dpId }*.port
         int port = allowedPorts[random.nextInt(allowedPorts.size())]
         if (useTraffgenPorts) {
             List<Integer> tgPorts = sw.traffGens*.switchPort.findAll { allowedPorts.contains(it) }
