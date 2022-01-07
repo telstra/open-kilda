@@ -156,7 +156,7 @@ public class LoginController extends BaseController {
             }
         } catch (BadCredentialsException e) {
             LOGGER.warn("Authentication failure", e);
-            error = "Login failed; Invalid email or password.";
+            error = e.getMessage();
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         } catch (LockedException e) {
             error = e.getMessage();
