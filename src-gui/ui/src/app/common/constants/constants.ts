@@ -129,7 +129,7 @@ export const MessageObj = {
     updating_user_status:"Updating user status",
     user_status_updated:"User status changed successfully!",
     unblok_user:"Unblocking user",
-    user_unblocked:"User account is unblokced successfully",
+    user_unblocked:"User account is unblocked successfully",
     resetting_password:"Resetting Password",
     reset_pwd_mail_sent:"Reset password email sent successfully!",
     resetting_pwd_by_admin:"Resetting password by admin",
