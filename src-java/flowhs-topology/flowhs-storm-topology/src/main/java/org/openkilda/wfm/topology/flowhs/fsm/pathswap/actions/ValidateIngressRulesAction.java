@@ -18,7 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
@@ -42,7 +42,7 @@ public class ValidateIngressRulesAction extends
     @Override
     protected void perform(State from, State to, Event event, FlowPathSwapContext context,
                            FlowPathSwapFsm stateMachine) {
-        SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
+        SpeakerResponse response = context.getSpeakerResponse();
         UUID commandId = response.getCommandId();
         FlowSegmentRequestFactory command = stateMachine.getIngressCommands().get(commandId);
         if (!stateMachine.getPendingCommands().containsKey(commandId) || command == null) {

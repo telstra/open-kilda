@@ -18,8 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.common;
 import static java.util.Collections.emptyList;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
@@ -76,8 +75,8 @@ public abstract class FlowPathSwappingFsm<T extends StateMachine<T, S, E, C>, S,
 
     protected final Map<UUID, SwitchId> pendingCommands = new HashMap<>();
     protected final Map<UUID, Integer> retriedCommands = new HashMap<>();
-    protected final Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
-    protected final Map<UUID, SpeakerFlowSegmentResponse> failedValidationResponses = new HashMap<>();
+    protected final Map<UUID, SpeakerResponse> failedCommands = new HashMap<>();
+    protected final Map<UUID, SpeakerResponse> failedValidationResponses = new HashMap<>();
 
     protected final Map<UUID, FlowSegmentRequestFactory> ingressCommands = new HashMap<>();
     protected final Map<UUID, FlowSegmentRequestFactory> nonIngressCommands = new HashMap<>();
@@ -105,6 +104,10 @@ public abstract class FlowPathSwappingFsm<T extends StateMachine<T, S, E, C>, S,
         return requestFactory;
     }
 
+    public FlowSegmentRequestFactory getRemoveCommand(UUID commandId) {
+        return removeCommands.get(commandId);
+    }
+
     public abstract void fireNoPathFound(String errorReason);
 
     public void clearPendingCommands() {
@@ -113,6 +116,10 @@ public abstract class FlowPathSwappingFsm<T extends StateMachine<T, S, E, C>, S,
 
     public Optional<SwitchId> getPendingCommand(UUID key) {
         return Optional.ofNullable(pendingCommands.get(key));
+    }
+
+    public boolean hasPendingCommand(UUID key) {
+        return pendingCommands.containsKey(key);
     }
 
     public void addPendingCommand(UUID key, SwitchId switchId) {
@@ -137,7 +144,7 @@ public abstract class FlowPathSwappingFsm<T extends StateMachine<T, S, E, C>, S,
         failedCommands.clear();
     }
 
-    public void addFailedCommand(UUID key, FlowErrorResponse errorResponse) {
+    public void addFailedCommand(UUID key, SpeakerResponse errorResponse) {
         failedCommands.put(key, errorResponse);
     }
 

@@ -17,11 +17,11 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -31,6 +31,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingService;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -38,12 +39,14 @@ public class FlowPathSwapService extends FlowProcessingService<FlowPathSwapFsm, 
         FlowPathSwapHubCarrier, FlowProcessingFsmRegister<FlowPathSwapFsm>, FlowProcessingEventListener> {
     private final FlowPathSwapFsm.Factory fsmFactory;
 
-    public FlowPathSwapService(FlowPathSwapHubCarrier carrier,
-                               PersistenceManager persistenceManager,
-                               int speakerCommandRetriesLimit, FlowResourcesManager flowResourcesManager) {
+    public FlowPathSwapService(@NonNull FlowPathSwapHubCarrier carrier,
+                               @NonNull PersistenceManager persistenceManager,
+                               @NonNull RuleManager ruleManager,
+                               int speakerCommandRetriesLimit,
+                               @NonNull FlowResourcesManager flowResourcesManager) {
         super(new FlowProcessingFsmRegister<>(), new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
         fsmFactory = new FlowPathSwapFsm.Factory(carrier,
-                persistenceManager, flowResourcesManager, speakerCommandRetriesLimit);
+                persistenceManager, flowResourcesManager, ruleManager, speakerCommandRetriesLimit);
     }
 
     /**
@@ -52,9 +55,10 @@ public class FlowPathSwapService extends FlowProcessingService<FlowPathSwapFsm, 
      * @param key command identifier.
      * @param request request data.
      */
-    public void handleRequest(String key, CommandContext commandContext, FlowPathSwapRequest request) {
+    public void handleRequest(@NonNull String key, @NonNull CommandContext commandContext,
+                              @NonNull FlowPathSwapRequest request) {
         String flowId = request.getFlowId();
-        if (yFlowRepository.isSubFlow(flowId)) {
+        if (request.isManual() && yFlowRepository.isSubFlow(flowId)) {
             sendForbiddenSubFlowOperationToNorthbound(flowId, commandContext);
             return;
         }
@@ -88,8 +92,8 @@ public class FlowPathSwapService extends FlowProcessingService<FlowPathSwapFsm, 
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
-        log.debug("Received flow command response {}", flowResponse);
+    public void handleAsyncResponse(@NonNull String key, @NonNull SpeakerResponse speakerResponse) {
+        log.debug("Received flow command response {}", speakerResponse);
         FlowPathSwapFsm fsm = fsmRegister.getFsmByKey(key).orElse(null);
         if (fsm == null) {
             log.warn("Failed to find a FSM: received response with key {} for non pending FSM", key);
@@ -97,14 +101,9 @@ public class FlowPathSwapService extends FlowProcessingService<FlowPathSwapFsm, 
         }
 
         FlowPathSwapContext context = FlowPathSwapContext.builder()
-                .speakerFlowResponse(flowResponse)
+                .speakerResponse(speakerResponse)
                 .build();
-
-        if (flowResponse instanceof FlowErrorResponse) {
-            fsmExecutor.fire(fsm, FlowPathSwapFsm.Event.ERROR_RECEIVED, context);
-        } else {
-            fsmExecutor.fire(fsm, FlowPathSwapFsm.Event.RESPONSE_RECEIVED, context);
-        }
+        fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
 
         removeIfFinished(fsm, key);
     }
@@ -114,7 +113,7 @@ public class FlowPathSwapService extends FlowProcessingService<FlowPathSwapFsm, 
      *
      * @param key command identifier.
      */
-    public void handleTimeout(String key) {
+    public void handleTimeout(@NonNull String key) {
         log.debug("Handling timeout for {}", key);
         FlowPathSwapFsm fsm = fsmRegister.getFsmByKey(key).orElse(null);
         if (fsm == null) {
@@ -122,7 +121,7 @@ public class FlowPathSwapService extends FlowProcessingService<FlowPathSwapFsm, 
             return;
         }
 
-        fsmExecutor.fire(fsm, FlowPathSwapFsm.Event.TIMEOUT, null);
+        fsmExecutor.fire(fsm, Event.TIMEOUT, null);
 
         removeIfFinished(fsm, key);
     }
