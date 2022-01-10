@@ -144,5 +144,12 @@ export const MessageObj = {
     provider_deleted_success:"Provider deleted successfully",
     switch_updated_success:"Switch location updated successfully.",
     switch_updated_error:"Error in updating switch location.",
+    delete_bfd_properties:"Deleting BFD properties.",
+    updating_bfd_properties:'Updating BFD properties values.',
+    updating_bfd_properties_success:'BFD Properties updated successfully.',
+    updating_bfd_properties_error:"Error in updating BFD properties.",
+    BFD_properties_deleted:"BFD properties deleted successfully.",
+    error_BFD_properties_delete:"Error in deleting BFD properties.",
+    delete_isl_bfd_not_authorised:"You are not authorised to delete the ISL BFD Properties."
 
 }
