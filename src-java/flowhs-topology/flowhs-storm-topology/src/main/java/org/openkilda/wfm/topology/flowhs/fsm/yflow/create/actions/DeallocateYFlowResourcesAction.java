@@ -54,6 +54,8 @@ public class DeallocateYFlowResourcesAction extends
             return;
         }
 
+        notifyStats(stateMachine, newResources);
+
         Optional<EndpointResources> sharedEndpointResources = ofNullable(newResources.getSharedEndpointResources());
         Optional<MeterId> sharedEndpointMeterId = sharedEndpointResources.map(EndpointResources::getMeterId);
         if (sharedEndpointMeterId.isPresent()) {
@@ -92,5 +94,9 @@ public class DeallocateYFlowResourcesAction extends
         } else {
             log.debug("No meter was allocated for y-flow {} (protected paths)", yFlowId);
         }
+    }
+
+    private void notifyStats(YFlowCreateFsm fsm, YFlowResources resources) {
+        fsm.sendRemoveStatsNotification(resources);
     }
 }

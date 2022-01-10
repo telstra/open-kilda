@@ -54,14 +54,14 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.rulemanager.Constants;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.GroupSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.GroupAction;
@@ -84,6 +84,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 public class IngressMirrorRuleGeneratorTest {
     public static final PathId PATH_ID = new PathId("path_id");
@@ -375,11 +376,11 @@ public class IngressMirrorRuleGeneratorTest {
     public void oneSwitchFlowFullPortRuleTest() {
         Flow flow = buildFlow(MULTI_TABLE_ONE_SWITCH_PATH, 0, 0, OUTER_VLAN_ID_2, 0);
         IngressMirrorRuleGenerator generator = buildGenerator(MULTI_TABLE_ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(2, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData ingressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build());
@@ -397,11 +398,11 @@ public class IngressMirrorRuleGeneratorTest {
     public void buildCommandsVxlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(MULTI_TABLE_PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         IngressMirrorRuleGenerator generator = buildGenerator(MULTI_TABLE_PATH, flow, VXLAN_ENCAPSULATION);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(2, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData ingressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
@@ -424,11 +425,11 @@ public class IngressMirrorRuleGeneratorTest {
     public void buildSingleTableCommandsVlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(SINGLE_TABLE_PATH, OUTER_VLAN_ID_1, 0);
         IngressMirrorRuleGenerator generator = buildGenerator(SINGLE_TABLE_PATH, flow, VLAN_ENCAPSULATION);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(2, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData ingressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
@@ -447,11 +448,11 @@ public class IngressMirrorRuleGeneratorTest {
     public void buildSingleTableCommandsOneSwitchFullPortTest() {
         Flow flow = buildFlow(SINGLE_TABLE_ONE_SWITCH_PATH, 0, 0, 0, 0);
         IngressMirrorRuleGenerator generator = buildGenerator(SINGLE_TABLE_ONE_SWITCH_PATH, flow, VXLAN_ENCAPSULATION);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(2, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommand = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData ingressCommand = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build());
@@ -480,7 +481,7 @@ public class IngressMirrorRuleGeneratorTest {
         assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }
 
-    private void assertGroupCommand(GroupSpeakerCommandData command, Set<Action> flowActions) {
+    private void assertGroupCommand(GroupSpeakerData command, Set<Action> flowActions) {
         assertEquals(GROUP_ID, command.getGroupId());
         assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
@@ -504,8 +505,8 @@ public class IngressMirrorRuleGeneratorTest {
     }
 
     private void assertIngressCommand(
-            FlowSpeakerCommandData command, int expectedPriority, OfTable expectedTable, Set<FieldMatch> expectedMatch,
-            List<Action> expectedApplyActions, MeterId expectedMeter, String groupCommandUuid) {
+            FlowSpeakerData command, int expectedPriority, OfTable expectedTable, Set<FieldMatch> expectedMatch,
+            List<Action> expectedApplyActions, MeterId expectedMeter, UUID groupCommandUuid) {
         assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
 

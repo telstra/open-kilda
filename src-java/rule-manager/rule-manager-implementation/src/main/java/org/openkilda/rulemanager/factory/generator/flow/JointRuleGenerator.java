@@ -16,7 +16,7 @@
 package org.openkilda.rulemanager.factory.generator.flow;
 
 import org.openkilda.model.Switch;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.factory.RuleGenerator;
 
 import lombok.Builder;
@@ -30,8 +30,8 @@ public class JointRuleGenerator implements RuleGenerator {
 
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
-        List<SpeakerCommandData> commands = firstGenerator.generateCommands(sw);
+    public List<SpeakerData> generateCommands(Switch sw) {
+        List<SpeakerData> commands = firstGenerator.generateCommands(sw);
         commands.addAll(secondGenerator.generateCommands(sw));
         return commands;
     }

@@ -52,6 +52,7 @@ import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOK
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.response.SpeakerDataResponse;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
@@ -1888,6 +1889,9 @@ class RecordHandler implements Runnable {
         if (handleSpeakerCommand()) {
             return;
         }
+        if (handleRuleManagerCommand()) {
+            return;
+        }
 
         CommandMessage message;
         try {
@@ -2114,6 +2118,27 @@ class RecordHandler implements Runnable {
         try (CorrelationContextClosable closable =
                      CorrelationContext.create(messageContext.getCorrelationId())) {
             context.getCommandProcessor().process(command, record.key());
+        }
+    }
+
+    private boolean handleRuleManagerCommand() {
+        try {
+            BaseSpeakerCommandsRequest request = MAPPER.readValue(record.value(), BaseSpeakerCommandsRequest.class);
+            handleRuleManagerCommand(request);
+            return true;
+        } catch (JsonMappingException e) {
+            logger.trace("Received deprecated command message");
+        } catch (IOException e) {
+            logger.error("Error while parsing record {}", record.value(), e);
+        }
+        return false;
+    }
+
+    private void handleRuleManagerCommand(BaseSpeakerCommandsRequest command) {
+        final MessageContext messageContext = command.getMessageContext();
+        try (CorrelationContextClosable closable =
+                     CorrelationContext.create(messageContext.getCorrelationId())) {
+            command.process(context.getOfSpeakerService(), record.key());
         }
     }
 

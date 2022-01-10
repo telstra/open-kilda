@@ -17,16 +17,26 @@ package org.openkilda.rulemanager.action;
 
 import org.openkilda.model.MeterId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.AllArgsConstructor;
 import lombok.Value;
 
 @Value
 @JsonSerialize
-@AllArgsConstructor
+@JsonNaming(SnakeCaseStrategy.class)
+@JsonIgnoreProperties(value = { "type" })
 public class MeterAction implements Action {
 
     MeterId meterId;
+
+    @JsonCreator
+    public MeterAction(@JsonProperty("meter_id") MeterId meterId) {
+        this.meterId = meterId;
+    }
 
     @Override
     public ActionType getType() {

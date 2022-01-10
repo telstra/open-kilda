@@ -18,12 +18,14 @@ package org.openkilda.wfm.topology.flowhs.service.yflow;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -54,13 +56,13 @@ public class YFlowCreateService
 
     public YFlowCreateService(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
                               @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager flowResourcesManager,
-                              @NonNull FlowCreateService flowCreateService,
+                              @NonNull RuleManager ruleManager, @NonNull FlowCreateService flowCreateService,
                               @NonNull FlowDeleteService flowDeleteService,
                               int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit,
                               @NonNull String prefixForGeneratedYFlowId, @NonNull String prefixForGeneratedSubFlowId) {
         super(new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
         fsmFactory = new YFlowCreateFsm.Factory(carrier, persistenceManager, pathComputer,
-                flowResourcesManager, flowCreateService, flowDeleteService,
+                flowResourcesManager, ruleManager, flowCreateService, flowDeleteService,
                 resourceAllocationRetriesLimit, speakerCommandRetriesLimit);
         this.prefixForGeneratedYFlowId = prefixForGeneratedYFlowId;
         this.prefixForGeneratedSubFlowId = prefixForGeneratedSubFlowId;
@@ -188,30 +190,34 @@ public class YFlowCreateService
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(@NonNull String key, @NonNull SpeakerFlowSegmentResponse flowResponse)
+    public void handleAsyncResponse(@NonNull String key, @NonNull SpeakerResponse speakerResponse)
             throws UnknownKeyException {
-        log.debug("Received flow command response: {}", flowResponse);
+        log.debug("Received flow command response: {}", speakerResponse);
         YFlowCreateFsm fsm = fsmRegister.getFsmByKey(key)
                 .orElseThrow(() -> new UnknownKeyException(key));
 
-        String flowId = flowResponse.getMetadata().getFlowId();
-        if (fsm.getCreatingSubFlows().contains(flowId)) {
-            flowCreateService.handleAsyncResponseByFlowId(flowId, flowResponse);
-        } else if (fsm.getDeletingSubFlows().contains(flowId)) {
-            flowDeleteService.handleAsyncResponseByFlowId(flowId, flowResponse);
-        } else {
-            YFlowCreateContext context = YFlowCreateContext.builder()
-                    .speakerResponse(flowResponse)
-                    .build();
-            if (flowResponse instanceof FlowErrorResponse) {
-                fsmExecutor.fire(fsm, Event.ERROR_RECEIVED, context);
-            } else {
-                fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
+        if (speakerResponse instanceof SpeakerFlowSegmentResponse) {
+            SpeakerFlowSegmentResponse response = (SpeakerFlowSegmentResponse) speakerResponse;
+            String flowId = response.getMetadata().getFlowId();
+            if (fsm.getCreatingSubFlows().contains(flowId)) {
+                flowCreateService.handleAsyncResponseByFlowId(flowId, response);
+            } else if (fsm.getDeletingSubFlows().contains(flowId)) {
+                flowDeleteService.handleAsyncResponseByFlowId(flowId, response);
             }
+        } else if (speakerResponse instanceof SpeakerCommandResponse) {
+            SpeakerCommandResponse response = (SpeakerCommandResponse) speakerResponse;
+            YFlowCreateContext context = YFlowCreateContext.builder()
+                    .speakerResponse(response)
+                    .build();
+            fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
+        } else {
+            log.debug("Received unexpected speaker response: {}", speakerResponse);
         }
 
         // After handling an event by FlowCreate or FlowDelete services, we should propagate execution to the FSM.
-        fsmExecutor.fire(fsm, Event.NEXT);
+        if (!fsm.isTerminated()) {
+            fsmExecutor.fire(fsm, Event.NEXT);
+        }
 
         removeIfFinished(fsm, key);
     }

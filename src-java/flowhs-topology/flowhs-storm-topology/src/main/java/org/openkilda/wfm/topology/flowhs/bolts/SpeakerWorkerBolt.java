@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@ package org.openkilda.wfm.topology.flowhs.bolts;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_REQUEST_SENDER;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandCarrier;
@@ -48,15 +48,15 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
 
     @Override
     protected void onHubRequest(Tuple input) throws PipelineException {
-        FlowSegmentRequest command = pullValue(input, FIELD_ID_PAYLOAD, FlowSegmentRequest.class);
+        SpeakerRequest command = pullValue(input, FIELD_ID_PAYLOAD, SpeakerRequest.class);
         service.sendCommand(pullKey(), command);
     }
 
     @Override
     protected void onAsyncResponse(Tuple request, Tuple response) throws PipelineException {
         Object payload = response.getValueByField(FIELD_ID_PAYLOAD);
-        if (payload instanceof SpeakerFlowSegmentResponse) {
-            SpeakerFlowSegmentResponse message = (SpeakerFlowSegmentResponse) payload;
+        if (payload instanceof SpeakerResponse) {
+            SpeakerResponse message = (SpeakerResponse) payload;
             service.handleResponse(pullKey(response), message);
         } else {
             log.debug("Unknown response received: {}", payload);
@@ -76,12 +76,12 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     }
 
     @Override
-    public void sendCommand(@NonNull String key, @NonNull FlowSegmentRequest command) {
+    public void sendCommand(@NonNull String key, @NonNull SpeakerRequest command) {
         emitWithContext(SPEAKER_WORKER_REQUEST_SENDER.name(), getCurrentTuple(), new Values(key, command));
     }
 
     @Override
-    public void sendResponse(@NonNull String key, @NonNull SpeakerFlowSegmentResponse response) {
+    public void sendResponse(@NonNull String key, @NonNull SpeakerResponse response) {
         Values values = new Values(key, response, getCommandContext());
         emitResponseToHub(getCurrentTuple(), values);
     }

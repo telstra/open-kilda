@@ -30,17 +30,17 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.GroupSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.MeterFlag;
-import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.GroupAction;
@@ -93,57 +93,57 @@ public class RuleManagerHelperTest {
 
     @Test
     public void removeDuplicateCommandsDifferentVlanMatchTest() {
-        FlowSpeakerCommandData command1 = buildVlanMatchCommand(1);
-        FlowSpeakerCommandData command2 = buildVlanMatchCommand(2);
+        FlowSpeakerData command1 = buildVlanMatchCommand(1);
+        FlowSpeakerData command2 = buildVlanMatchCommand(2);
         assertEquals(2, removeDuplicateCommands(newArrayList(command1, command2)).size());
     }
 
     @Test
     public void removeDuplicateCommandsEqualVlanMatchTest() {
-        FlowSpeakerCommandData command1 = buildVlanMatchCommand(1);
-        FlowSpeakerCommandData command2 = buildVlanMatchCommand(1);
+        FlowSpeakerData command1 = buildVlanMatchCommand(1);
+        FlowSpeakerData command2 = buildVlanMatchCommand(1);
         assertEquals(1, removeDuplicateCommands(newArrayList(command1, command2)).size());
     }
 
     @Test
     public void removeDuplicateCommandsFullEqualFlowCommandTest() {
-        FlowSpeakerCommandData command1 = buildFullFlowSpeakerCommandData();
-        FlowSpeakerCommandData command2 = buildFullFlowSpeakerCommandData();
+        FlowSpeakerData command1 = buildFullFlowSpeakerCommandData();
+        FlowSpeakerData command2 = buildFullFlowSpeakerCommandData();
         assertEquals(1, removeDuplicateCommands(newArrayList(command1, command2)).size());
     }
 
     @Test
     public void removeDuplicateCommandsDifferentFlowCommandTest() {
-        FlowSpeakerCommandData command1 = buildFullFlowSpeakerCommandData(METER_ID_1);
-        FlowSpeakerCommandData command2 = buildFullFlowSpeakerCommandData(METER_ID_2);
+        FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1);
+        FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_2);
         assertEquals(2, removeDuplicateCommands(newArrayList(command1, command2)).size());
     }
 
     @Test
     public void removeDuplicateCommandsFullEqualMeterCommandTest() {
-        MeterSpeakerCommandData command1 = buildFullMeterSpeakerCommandData();
-        MeterSpeakerCommandData command2 = buildFullMeterSpeakerCommandData();
+        MeterSpeakerData command1 = buildFullMeterSpeakerCommandData();
+        MeterSpeakerData command2 = buildFullMeterSpeakerCommandData();
         assertEquals(1, removeDuplicateCommands(newArrayList(command1, command2)).size());
     }
 
     @Test
     public void removeDuplicateCommandsDifferentMeterCommandTest() {
-        MeterSpeakerCommandData command1 = buildFullMeterSpeakerCommandData(RATE_1);
-        MeterSpeakerCommandData command2 = buildFullMeterSpeakerCommandData(RATE_2);
+        MeterSpeakerData command1 = buildFullMeterSpeakerCommandData(RATE_1);
+        MeterSpeakerData command2 = buildFullMeterSpeakerCommandData(RATE_2);
         assertEquals(2, removeDuplicateCommands(newArrayList(command1, command2)).size());
     }
 
     @Test
     public void removeDuplicateCommandsFullEqualGroupCommandTest() {
-        GroupSpeakerCommandData command1 = buildFullGroupSpeakerCommandData();
-        GroupSpeakerCommandData command2 = buildFullGroupSpeakerCommandData();
+        GroupSpeakerData command1 = buildFullGroupSpeakerCommandData();
+        GroupSpeakerData command2 = buildFullGroupSpeakerCommandData();
         assertEquals(1, removeDuplicateCommands(newArrayList(command1, command2)).size());
     }
 
     @Test
     public void removeDuplicateCommandsDifferentGroupCommandTest() {
-        GroupSpeakerCommandData command1 = buildFullGroupSpeakerCommandData(GROUP_ID_1);
-        GroupSpeakerCommandData command2 = buildFullGroupSpeakerCommandData(GROUP_ID_2);
+        GroupSpeakerData command1 = buildFullGroupSpeakerCommandData(GROUP_ID_1);
+        GroupSpeakerData command2 = buildFullGroupSpeakerCommandData(GROUP_ID_2);
         assertEquals(2, removeDuplicateCommands(newArrayList(command1, command2)).size());
     }
 
@@ -151,53 +151,53 @@ public class RuleManagerHelperTest {
     public void checkCircularDependenciesTest() {
         checkCircularDependencies(new ArrayList<>());
 
-        GroupSpeakerCommandData groupCommand = buildFullGroupSpeakerCommandData(GROUP_ID_1);
+        GroupSpeakerData groupCommand = buildFullGroupSpeakerCommandData(GROUP_ID_1);
         groupCommand.getDependsOn().clear();
         checkCircularDependencies(newArrayList(groupCommand));
 
-        FlowSpeakerCommandData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
-        FlowSpeakerCommandData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
-        FlowSpeakerCommandData command3 = buildFullFlowSpeakerCommandData(METER_ID_2, command2.getUuid());
+        FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
+        FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
+        FlowSpeakerData command3 = buildFullFlowSpeakerCommandData(METER_ID_2, command2.getUuid());
         checkCircularDependencies(newArrayList(command1, command2, command3));
         // if there are no exceptions - test passed
     }
 
     @Test(expected = IllegalStateException.class)
     public void checkCircularDependenciesUnknownDependsOnTest() {
-        FlowSpeakerCommandData command = buildFullFlowSpeakerCommandData(METER_ID_1, UUID.randomUUID().toString());
+        FlowSpeakerData command = buildFullFlowSpeakerCommandData(METER_ID_1, UUID.randomUUID());
         checkCircularDependencies(newArrayList(command));
     }
 
     @Test(expected = IllegalStateException.class)
     public void checkCircularDependenciesLoopTest() {
-        FlowSpeakerCommandData command = buildFullFlowSpeakerCommandData(METER_ID_1, null);
+        FlowSpeakerData command = buildFullFlowSpeakerCommandData(METER_ID_1, null);
         command.getDependsOn().add(command.getUuid());
         checkCircularDependencies(newArrayList(command));
     }
 
     @Test(expected = IllegalStateException.class)
     public void checkCircularDependenciesCycle3Test() {
-        FlowSpeakerCommandData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
-        FlowSpeakerCommandData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
-        FlowSpeakerCommandData command3 = buildFullFlowSpeakerCommandData(METER_ID_2, command2.getUuid());
+        FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
+        FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
+        FlowSpeakerData command3 = buildFullFlowSpeakerCommandData(METER_ID_2, command2.getUuid());
         command1.getDependsOn().add(command3.getUuid());
         checkCircularDependencies(newArrayList(command1, command2, command3));
     }
 
     @Test(expected = IllegalStateException.class)
     public void checkCircularDependenciesCycle2Test() {
-        FlowSpeakerCommandData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
-        FlowSpeakerCommandData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
+        FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
+        FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
         command1.getDependsOn().add(command2.getUuid());
         checkCircularDependencies(newArrayList(command1, command2));
     }
 
     @Test
     public void sortCommandsByDependencies3Test() {
-        FlowSpeakerCommandData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
-        FlowSpeakerCommandData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
-        FlowSpeakerCommandData command3 = buildFullFlowSpeakerCommandData(METER_ID_2, command2.getUuid());
-        List<SpeakerCommandData> result = sortCommandsByDependencies(newArrayList(command3, command2, command1));
+        FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
+        FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
+        FlowSpeakerData command3 = buildFullFlowSpeakerCommandData(METER_ID_2, command2.getUuid());
+        List<SpeakerData> result = sortCommandsByDependencies(newArrayList(command3, command2, command1));
 
         assertEquals(3, result.size());
         assertEquals(command1.getUuid(), result.get(0).getUuid());
@@ -207,10 +207,10 @@ public class RuleManagerHelperTest {
 
     @Test
     public void sortCommandsByDependencies2Test() {
-        FlowSpeakerCommandData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
-        FlowSpeakerCommandData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
-        FlowSpeakerCommandData command3 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
-        List<SpeakerCommandData> result = sortCommandsByDependencies(newArrayList(command3, command2, command1));
+        FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
+        FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
+        FlowSpeakerData command3 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
+        List<SpeakerData> result = sortCommandsByDependencies(newArrayList(command3, command2, command1));
 
         assertEquals(3, result.size());
         int command1Pos = -1;
@@ -227,21 +227,21 @@ public class RuleManagerHelperTest {
     }
 
 
-    private FlowSpeakerCommandData buildVlanMatchCommand(int vlan) {
-        return FlowSpeakerCommandData.builder()
+    private FlowSpeakerData buildVlanMatchCommand(int vlan) {
+        return FlowSpeakerData.builder()
                 .match(newHashSet(FieldMatch.builder().field(Field.VLAN_VID).value(vlan).build()))
                 .build();
     }
 
-    private FlowSpeakerCommandData buildFullFlowSpeakerCommandData() {
-        return buildFullFlowSpeakerCommandData(METER_ID_1, UUID.randomUUID().toString());
+    private FlowSpeakerData buildFullFlowSpeakerCommandData() {
+        return buildFullFlowSpeakerCommandData(METER_ID_1, UUID.randomUUID());
     }
 
-    private FlowSpeakerCommandData buildFullFlowSpeakerCommandData(MeterId goToMeterId) {
-        return buildFullFlowSpeakerCommandData(goToMeterId, UUID.randomUUID().toString());
+    private FlowSpeakerData buildFullFlowSpeakerCommandData(MeterId goToMeterId) {
+        return buildFullFlowSpeakerCommandData(goToMeterId, UUID.randomUUID());
     }
 
-    private FlowSpeakerCommandData buildFullFlowSpeakerCommandData(MeterId goToMeterId, String dependsOnUuid) {
+    private FlowSpeakerData buildFullFlowSpeakerCommandData(MeterId goToMeterId, UUID dependsOnUuid) {
         Set<FieldMatch> match = Arrays.stream(Field.values())
                 .map(f -> FieldMatch.builder().field(f).value(f.ordinal()).mask(f.ordinal() + 1L).build())
                 .collect(Collectors.toSet());
@@ -257,8 +257,8 @@ public class RuleManagerHelperTest {
                 .applyActions(applyActions)
                 .build();
 
-        return FlowSpeakerCommandData.builder()
-                .uuid(UUID.randomUUID().toString())
+        return FlowSpeakerData.builder()
+                .uuid(UUID.randomUUID())
                 .cookie(new Cookie(123))
                 .priority(PRIORITY)
                 .table(OfTable.INPUT)
@@ -271,42 +271,42 @@ public class RuleManagerHelperTest {
                 .build();
     }
 
-    private MeterSpeakerCommandData buildFullMeterSpeakerCommandData() {
+    private MeterSpeakerData buildFullMeterSpeakerCommandData() {
         return buildFullMeterSpeakerCommandData(RATE_1);
     }
 
-    private MeterSpeakerCommandData buildFullMeterSpeakerCommandData(int rate) {
-        return MeterSpeakerCommandData.builder()
-                .uuid(UUID.randomUUID().toString())
+    private MeterSpeakerData buildFullMeterSpeakerCommandData(int rate) {
+        return MeterSpeakerData.builder()
+                .uuid(UUID.randomUUID())
                 .meterId(METER_ID_1)
                 .rate(rate)
                 .burst(BURST)
                 .flags(Sets.newHashSet(MeterFlag.values()))
                 .switchId(SWITCH_ID)
                 .ofVersion(OfVersion.OF_13)
-                .dependsOn(newArrayList(UUID.randomUUID().toString()))
+                .dependsOn(newArrayList(UUID.randomUUID()))
                 .build();
     }
 
-    private GroupSpeakerCommandData buildFullGroupSpeakerCommandData() {
+    private GroupSpeakerData buildFullGroupSpeakerCommandData() {
         return buildFullGroupSpeakerCommandData(GROUP_ID_1);
     }
 
-    private GroupSpeakerCommandData buildFullGroupSpeakerCommandData(GroupId groupId) {
+    private GroupSpeakerData buildFullGroupSpeakerCommandData(GroupId groupId) {
         Bucket bucket = Bucket.builder()
                 .watchGroup(WatchGroup.ANY)
                 .watchPort(WatchPort.ANY)
                 .writeActions(new HashSet<>(buildAllActions()))
                 .build();
 
-        return GroupSpeakerCommandData.builder()
-                .uuid(UUID.randomUUID().toString())
+        return GroupSpeakerData.builder()
+                .uuid(UUID.randomUUID())
                 .groupId(groupId)
                 .type(GroupType.ALL)
                 .buckets(newArrayList(bucket))
                 .switchId(SWITCH_ID)
                 .ofVersion(OfVersion.OF_13)
-                .dependsOn(newArrayList(UUID.randomUUID().toString()))
+                .dependsOn(newArrayList(UUID.randomUUID()))
                 .build();
     }
 

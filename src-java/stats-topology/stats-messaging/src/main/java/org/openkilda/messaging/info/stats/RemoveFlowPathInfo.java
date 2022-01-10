@@ -17,7 +17,7 @@ package org.openkilda.messaging.info.stats;
 
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.MeterId;
-import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -40,9 +40,10 @@ public class RemoveFlowPathInfo extends BaseFlowPathInfo {
 
     @JsonCreator
     public RemoveFlowPathInfo(@NonNull @JsonProperty("flow_id") String flowId,
-                              @NonNull @JsonProperty("cookie") Cookie cookie,
+                              @JsonProperty("yflow_id") String yFlowId,
+                              @NonNull @JsonProperty("cookie") FlowSegmentCookie cookie,
                               @JsonProperty("meter_id") MeterId meterId,
                               @NonNull @JsonProperty("path_nodes") List<PathNodePayload> pathNodes) {
-        super(flowId, cookie, meterId, pathNodes);
+        super(flowId, yFlowId, cookie, meterId, pathNodes);
     }
 }

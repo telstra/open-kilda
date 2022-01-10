@@ -15,8 +15,11 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions;
 
+import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
+import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingWithHistorySupportAction;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowRuleManagerProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.Event;
@@ -24,19 +27,37 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Collection;
+
 @Slf4j
 public class InstallYFlowResourcesAction extends
-        YFlowProcessingWithHistorySupportAction<YFlowCreateFsm, State, Event, YFlowCreateContext> {
-    public InstallYFlowResourcesAction(PersistenceManager persistenceManager) {
-        super(persistenceManager);
+        YFlowRuleManagerProcessingAction<YFlowCreateFsm, State, Event, YFlowCreateContext> {
+
+    public InstallYFlowResourcesAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
+        super(persistenceManager, ruleManager);
     }
 
     @Override
     protected void perform(State from, State to, Event event, YFlowCreateContext context, YFlowCreateFsm stateMachine) {
         stateMachine.clearPendingAndRetriedAndFailedCommands();
 
-        //TODO: build and send shared-endpoint and y-point (main & protected) meters install command
-        stateMachine.saveActionToHistory("No need to install y-flow meters. Not yet implemented.");
-        stateMachine.fire(Event.ALL_YFLOW_METERS_INSTALLED);
+        String yFlowId = stateMachine.getYFlowId();
+        YFlow yFlow = getYFlow(yFlowId);
+        Collection<InstallSpeakerCommandsRequest> commands =
+                buildYFlowInstallCommands(yFlow, stateMachine.getCommandContext());
+
+        if (commands.isEmpty()) {
+            stateMachine.saveActionToHistory("No need to install y-flow meters");
+            stateMachine.fire(Event.ALL_YFLOW_METERS_INSTALLED);
+        } else {
+            // emitting
+            commands.forEach(command -> {
+                stateMachine.getCarrier().sendSpeakerRequest(command);
+                stateMachine.addInstallSpeakerCommand(command.getCommandId(), command);
+                stateMachine.addPendingCommand(command.getCommandId(), command.getSwitchId());
+            });
+
+            stateMachine.saveActionToHistory("Commands for installing y-flow rules have been sent");
+        }
     }
 }

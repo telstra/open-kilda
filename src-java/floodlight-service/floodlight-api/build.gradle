@@ -5,6 +5,7 @@ plugins {
 description = 'Floodlight Service API'
 dependencies {
     api project(':base-messaging')
+    implementation project(':rule-manager-api')
 
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-annotations'

@@ -21,7 +21,8 @@ import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingWithHistorySupportAction;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowRuleManagerProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.Event;
@@ -34,9 +35,9 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class UpdateYFlowAction extends
-        YFlowProcessingWithHistorySupportAction<YFlowUpdateFsm, State, Event, YFlowUpdateContext> {
-    public UpdateYFlowAction(PersistenceManager persistenceManager) {
-        super(persistenceManager);
+        YFlowRuleManagerProcessingAction<YFlowUpdateFsm, State, Event, YFlowUpdateContext> {
+    public UpdateYFlowAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
+        super(persistenceManager, ruleManager);
     }
 
     @Override
@@ -47,6 +48,7 @@ public class UpdateYFlowAction extends
             YFlow yFlow = getYFlow(targetFlow.getYFlowId());
 
             saveOldResources(stateMachine, yFlow);
+            stateMachine.setDeleteOldYFlowCommands(buildYFlowDeleteCommands(yFlow, stateMachine.getCommandContext()));
 
             updateFlow(yFlow, YFlowRequestMapper.INSTANCE.toYFlow(targetFlow));
             return yFlow.getStatus();

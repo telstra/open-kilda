@@ -105,6 +105,8 @@ class ConfigurationSpec extends HealthCheckSpecification {
         def initConf = northbound.getKildaConfiguration()
         def sw = topology.activeSwitches.first()
         def isls = topology.getRelatedIsls(sw)
+        //need to restore supportedTransitEncapsulation field after deleting sw from BD
+        def initSwProps = switchHelper.getCachedSwProps(sw.dpId)
         assert northbound.getSwitchProperties(sw.dpId).multiTable == initConf.useMultiTable
         def islRules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
             new Cookie(it.cookie).getType() == CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES
@@ -181,8 +183,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
             }
         }
         initConf && northbound.updateKildaConfiguration(initConf)
-        initConf && northbound.updateSwitchProperties(sw.dpId,
-                northbound.getSwitchProperties(sw.dpId).tap { multiTable = initConf.useMultiTable })
+        initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
         wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
         }

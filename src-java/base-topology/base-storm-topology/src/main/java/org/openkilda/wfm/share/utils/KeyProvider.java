@@ -46,4 +46,14 @@ public final class KeyProvider {
         }
         return key;
     }
+
+    /**
+     * Get child key.
+     */
+    public static String getChildKey(String key) {
+        if (key.contains(SEPARATOR)) {
+            return key.substring(0, key.indexOf(SEPARATOR));
+        }
+        return key;
+    }
 }

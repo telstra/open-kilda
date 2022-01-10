@@ -24,7 +24,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.command.yflow.YFlowResponse;
 import org.openkilda.messaging.error.ErrorType;
@@ -54,7 +57,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
-public class YFlowCreateServiceTest extends AbstractYFlowTest {
+public class YFlowCreateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     private static final int METER_ALLOCATION_RETRIES_LIMIT = 3;
 
     @Mock
@@ -66,12 +69,12 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
 
     @Before
     public void init() {
-        doAnswer(getSpeakerCommandsAnswer())
-                .when(flowCreateHubCarrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
-        doAnswer(getSpeakerCommandsAnswer())
-                .when(flowDeleteHubCarrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
-        /*TODO: doAnswer(getSpeakerCommandsAnswer())
-                .when(yFlowCreateHubCarrier).sendSpeakerRequest(any(FlowSegmentRequest.class));*/
+        doAnswer(buildSpeakerRequestAnswer())
+                .when(flowCreateHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
+        doAnswer(buildSpeakerRequestAnswer())
+                .when(flowDeleteHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
+        doAnswer(buildSpeakerRequestAnswer())
+                .when(yFlowCreateHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
     }
 
     @Test
@@ -116,7 +119,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
     public void shouldFailOnErrorDuringDraftYFlowCreation()
             throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         // given
-        YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
+        YFlowRequest request = buildYFlowRequest("test_failed_yflow", "test_flow_1", "test_flow_2")
                 .build();
         YFlowRepository repository = setupYFlowRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
@@ -138,7 +141,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
     public void shouldFailIfNoPathAvailableForFirstSubFlow()
             throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         // given
-        YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
+        YFlowRequest request = buildYFlowRequest("test_failed_yflow", "test_flow_1", "test_flow_2")
                 .build();
         when(pathComputer.getPath(buildFlowIdArgumentMatch("test_flow_1")))
                 .thenThrow(new UnroutableFlowException(injectedErrorMessage));
@@ -158,7 +161,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
     public void shouldFailIfNoPathAvailableForSecondSubFlow()
             throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         // given
-        YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
+        YFlowRequest request = buildYFlowRequest("test_failed_yflow", "test_flow_1", "test_flow_2")
                 .build();
         preparePathComputation("test_flow_1", buildFirstSubFlowPathPair());
         when(pathComputer.getPath(buildFlowIdArgumentMatch("test_flow_2")))
@@ -177,29 +180,28 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
     public void shouldFailIfNoResourcesAvailable()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException, DuplicateKeyException {
         // given
-        YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
+        YFlowRequest request = buildYFlowRequest("test_failed_yflow", "test_flow_1", "test_flow_2")
                 .build();
         preparePathComputation("test_flow_1", buildFirstSubFlowPathPair());
         preparePathComputation("test_flow_2", buildSecondSubFlowPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT);
         doThrow(new ResourceAllocationException(injectedErrorMessage))
-                .when(flowResourcesManager).allocateMeter(eq("test_successful_yflow"), eq(SWITCH_TRANSIT));
+                .when(flowResourcesManager).allocateMeter(eq(request.getYFlowId()), eq(SWITCH_TRANSIT));
 
         // when
         processRequestAndSpeakerCommands(request);
         // then
         verifyNoSpeakerInteraction(yFlowCreateHubCarrier);
         verify(flowResourcesManager, times(METER_ALLOCATION_RETRIES_LIMIT + 1))
-                .allocateMeter(eq("test_successful_yflow"), eq(SWITCH_TRANSIT));
+                .allocateMeter(eq(request.getYFlowId()), eq(SWITCH_TRANSIT));
         verifyYFlowIsAbsent(request.getYFlowId());
     }
 
-    @Ignore("TODO: implement meter installation")
     @Test
     public void shouldFailOnUnsuccessfulMeterInstallation()
             throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         // given
-        YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
+        YFlowRequest request = buildYFlowRequest("test_failed_yflow", "test_flow_1", "test_flow_2")
                 .build();
         preparePathComputation("test_flow_1", buildFirstSubFlowPathPair());
         preparePathComputation("test_flow_2", buildSecondSubFlowPathPair());
@@ -211,19 +213,17 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
         verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
         // and
-        handleSpeakerCommandsAndFailInstall(service, request.getYFlowId(), "test_successful_yflow");
+        handleSpeakerCommandsAndFailInstall(service, request.getYFlowId(), request.getYFlowId());
 
         // then
-        verifyNoSpeakerInteraction(yFlowCreateHubCarrier);
         verifyYFlowIsAbsent(request.getYFlowId());
     }
 
-    @Ignore("TODO: implement meter installation")
     @Test
     public void shouldFailOnTimeoutDuringMeterInstallation()
             throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         // given
-        YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
+        YFlowRequest request = buildYFlowRequest("test_failed_yflow", "test_flow_1", "test_flow_2")
                 .build();
         preparePathComputation("test_flow_1", buildFirstSubFlowPathPair());
         preparePathComputation("test_flow_2", buildSecondSubFlowPathPair());
@@ -235,10 +235,9 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
         verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
         // and
-        handleSpeakerCommandsAndTimeoutInstall(service, request.getYFlowId(), "test_successful_yflow");
+        handleSpeakerCommandsAndTimeoutInstall(service, request.getYFlowId());
 
         // then
-        verifyNoSpeakerInteraction(yFlowCreateHubCarrier);
         verifyYFlowIsAbsent(request.getYFlowId());
     }
 
@@ -247,7 +246,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
     public void shouldFailOnUnsuccessfulValidation()
             throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         // given
-        YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
+        YFlowRequest request = buildYFlowRequest("test_failed_yflow", "test_flow_1", "test_flow_2")
                 .build();
         preparePathComputation("test_flow_1", buildFirstSubFlowPathPair());
         preparePathComputation("test_flow_2", buildSecondSubFlowPathPair());
@@ -259,7 +258,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
         verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
         // and
-        handleSpeakerCommandsAndFailVerify(service, request.getYFlowId(), "test_successful_yflow");
+        handleSpeakerCommandsAndFailVerify(service, request.getYFlowId(), request.getYFlowId());
 
         // then
         verifyNoSpeakerInteraction(yFlowCreateHubCarrier);
@@ -271,7 +270,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
     public void shouldFailOnTimeoutDuringMeterValidation()
             throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         // given
-        YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
+        YFlowRequest request = buildYFlowRequest("test_failed_yflow", "test_flow_1", "test_flow_2")
                 .build();
         preparePathComputation("test_flow_1", buildFirstSubFlowPathPair());
         preparePathComputation("test_flow_2", buildSecondSubFlowPathPair());
@@ -283,7 +282,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
         verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
         // and
-        handleSpeakerCommandsAndTimeoutVerify(service, request.getYFlowId(), "test_successful_yflow");
+        handleSpeakerCommandsAndTimeoutVerify(service, request.getYFlowId(), request.getYFlowId());
 
         // then
         verifyNoSpeakerInteraction(yFlowCreateHubCarrier);
@@ -296,16 +295,23 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
 
         verifyYFlowAndSubFlowStatus(yFlowRequest.getYFlowId(), FlowStatus.IN_PROGRESS);
 
-        handleSpeakerCommands(speakerRequest -> {
-            SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(speakerRequest);
+        handleSpeakerRequests(speakerRequest -> {
+            SpeakerResponse commandResponse;
+            if (speakerRequest instanceof FlowSegmentRequest) {
+                FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) speakerRequest;
+                commandResponse = buildSuccessfulSpeakerResponse(flowSegmentRequest);
+            } else {
+                BaseSpeakerCommandsRequest speakerCommandsRequest = (BaseSpeakerCommandsRequest) speakerRequest;
+                commandResponse = buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
+            }
             handleAsyncResponse(service, yFlowRequest.getYFlowId(), commandResponse);
         });
     }
 
     private void handleAsyncResponse(YFlowCreateService yFlowCreateService,
-                                     String key, SpeakerFlowSegmentResponse commandResponse) {
+                                     String yFlowFsmKey, SpeakerResponse commandResponse) {
         try {
-            yFlowCreateService.handleAsyncResponse(key, commandResponse);
+            yFlowCreateService.handleAsyncResponse(yFlowFsmKey, commandResponse);
         } catch (UnknownKeyException ex) {
             //skip
         }
@@ -316,52 +322,85 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
         service.handleRequest(yFlowRequest.getYFlowId(), new CommandContext(), yFlowRequest);
     }
 
-    private void handleSpeakerCommandsAndFailInstall(YFlowCreateService yFlowCreateService, String key,
-                                                     String commandKeyToFail) {
-        handleSpeakerCommands(request -> {
-            SpeakerFlowSegmentResponse commandResponse = request.isInstallRequest()
-                    && request.getMetadata().getFlowId().equals(commandKeyToFail)
-                    ? buildErrorSpeakerResponse(request) : buildSuccessfulSpeakerResponse(request);
-            handleAsyncResponse(yFlowCreateService, key, commandResponse);
-        });
-    }
-
-    private void handleSpeakerCommandsAndFailVerify(YFlowCreateService yFlowCreateService, String key,
-                                                    String commandKeyToFail) {
-        handleSpeakerCommands(request -> {
-            SpeakerFlowSegmentResponse commandResponse = request.isVerifyRequest() && key.equals(commandKeyToFail)
-                    ? buildErrorSpeakerResponse(request) : buildSuccessfulSpeakerResponse(request);
-            handleAsyncResponse(yFlowCreateService, key, commandResponse);
-        });
-    }
-
-    private void handleSpeakerCommandsAndTimeoutInstall(YFlowCreateService yFlowCreateService, String key,
-                                                        String commandKeyToFail) {
-        handleSpeakerCommands(request -> {
-            if (request.isInstallRequest() && key.equals(commandKeyToFail)) {
-                handleTimeout(yFlowCreateService, key);
+    private void handleSpeakerCommandsAndFailInstall(YFlowCreateService yFlowCreateService, String yFlowFsmKey,
+                                                     String commandFlowIdToFail) {
+        handleSpeakerRequests(request -> {
+            SpeakerResponse commandResponse;
+            if (request instanceof FlowSegmentRequest) {
+                FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) request;
+                commandResponse = flowSegmentRequest.isInstallRequest()
+                        && flowSegmentRequest.getMetadata().getFlowId().equals(commandFlowIdToFail)
+                        ? buildErrorSpeakerResponse(flowSegmentRequest)
+                        : buildSuccessfulSpeakerResponse(flowSegmentRequest);
+            } else {
+                BaseSpeakerCommandsRequest speakerCommandsRequest = (BaseSpeakerCommandsRequest) request;
+                commandResponse = request instanceof InstallSpeakerCommandsRequest
+                        ? buildErrorYFlowSpeakerResponse(speakerCommandsRequest)
+                        : buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
             }
-            SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(request);
-            yFlowCreateService.handleAsyncResponse(key, commandResponse);
+            handleAsyncResponse(yFlowCreateService, yFlowFsmKey, commandResponse);
         });
     }
 
-    private void handleTimeout(YFlowCreateService yFlowCreateService, String key) {
+    private void handleSpeakerCommandsAndFailVerify(YFlowCreateService yFlowCreateService, String yFlowFsmKey,
+                                                    String commandFlowIdToFail) {
+        handleSpeakerRequests(request -> {
+            SpeakerResponse commandResponse;
+            if (request instanceof FlowSegmentRequest) {
+                FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) request;
+                commandResponse = flowSegmentRequest.isVerifyRequest()
+                        && flowSegmentRequest.getMetadata().getFlowId().equals(commandFlowIdToFail)
+                        ? buildErrorSpeakerResponse(flowSegmentRequest)
+                        : buildSuccessfulSpeakerResponse(flowSegmentRequest);
+            } else {
+                BaseSpeakerCommandsRequest speakerCommandsRequest = (BaseSpeakerCommandsRequest) request;
+                commandResponse = buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
+            }
+            handleAsyncResponse(yFlowCreateService, yFlowFsmKey, commandResponse);
+        });
+    }
+
+    private void handleSpeakerCommandsAndTimeoutInstall(YFlowCreateService yFlowCreateService, String yFlowFsmKey) {
+        handleSpeakerRequests(request -> {
+            SpeakerResponse commandResponse;
+            if (request instanceof FlowSegmentRequest) {
+                FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) request;
+                commandResponse = buildSuccessfulSpeakerResponse(flowSegmentRequest);
+            } else {
+                BaseSpeakerCommandsRequest speakerCommandsRequest = (BaseSpeakerCommandsRequest) request;
+                if (speakerCommandsRequest instanceof InstallSpeakerCommandsRequest) {
+                    handleTimeout(yFlowCreateService, yFlowFsmKey);
+                }
+                commandResponse = buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
+            }
+            yFlowCreateService.handleAsyncResponse(yFlowFsmKey, commandResponse);
+        });
+    }
+
+    private void handleTimeout(YFlowCreateService yFlowCreateService, String yFlowFsmKey) {
         try {
-            yFlowCreateService.handleTimeout(key);
+            yFlowCreateService.handleTimeout(yFlowFsmKey);
         } catch (UnknownKeyException ex) {
             //skip
         }
     }
 
-    private void handleSpeakerCommandsAndTimeoutVerify(YFlowCreateService yFlowCreateService, String key,
-                                                       String commandKeyToFail) {
-        handleSpeakerCommands(request -> {
-            if (request.isVerifyRequest() && key.equals(commandKeyToFail)) {
-                handleTimeout(yFlowCreateService, key);
+    private void handleSpeakerCommandsAndTimeoutVerify(YFlowCreateService yFlowCreateService, String yFlowFsmKey,
+                                                       String commandFlowIdToFail) {
+        handleSpeakerRequests(request -> {
+            SpeakerResponse commandResponse;
+            if (request instanceof FlowSegmentRequest) {
+                FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) request;
+                if (flowSegmentRequest.isVerifyRequest()
+                        && flowSegmentRequest.getMetadata().getFlowId().equals(commandFlowIdToFail)) {
+                    handleTimeout(yFlowCreateService, yFlowFsmKey);
+                }
+                commandResponse = buildSuccessfulSpeakerResponse(flowSegmentRequest);
+            } else {
+                BaseSpeakerCommandsRequest speakerCommandsRequest = (BaseSpeakerCommandsRequest) request;
+                commandResponse = buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
             }
-            SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(request);
-            yFlowCreateService.handleAsyncResponse(key, commandResponse);
+            yFlowCreateService.handleAsyncResponse(yFlowFsmKey, commandResponse);
         });
     }
 
@@ -422,6 +461,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest {
                                                       FlowDeleteService flowDeleteService,
                                                       int retriesLimit) {
         return new YFlowCreateService(yFlowCreateHubCarrier, persistenceManager, pathComputer, flowResourcesManager,
-                flowCreateService, flowDeleteService, METER_ALLOCATION_RETRIES_LIMIT, retriesLimit, "", "");
+                ruleManager, flowCreateService, flowDeleteService, METER_ALLOCATION_RETRIES_LIMIT, retriesLimit, "",
+                "");
     }
 }

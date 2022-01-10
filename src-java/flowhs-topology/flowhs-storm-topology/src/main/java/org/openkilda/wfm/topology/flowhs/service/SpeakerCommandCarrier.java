@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,13 +15,13 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.wfm.error.PipelineException;
 
 public interface SpeakerCommandCarrier {
 
-    void sendCommand(String key, FlowSegmentRequest command) throws PipelineException;
+    void sendCommand(String key, SpeakerRequest command) throws PipelineException;
 
-    void sendResponse(String key, SpeakerFlowSegmentResponse response) throws PipelineException;
+    void sendResponse(String key, SpeakerResponse response) throws PipelineException;
 }

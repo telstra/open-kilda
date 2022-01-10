@@ -55,6 +55,7 @@ import java.util.UUID;
 public class TestFlowBuilder {
 
     private String flowId = UUID.randomUUID().toString();
+    private String yFlowId = null;
     @Setter(AccessLevel.NONE)
     private final Endpoint source = new Endpoint();
     private int srcVlan;
@@ -63,7 +64,7 @@ public class TestFlowBuilder {
     private int destVlan;
     private final List<Endpoint> transit = new ArrayList<>();
     private final List<Endpoint> protectedTransit = new ArrayList<>();
-    private long unmaskedCookie = 1;
+    private long unmaskedCookie = 1;  // TODO(surabujin): must be named "effectiveFlowId"
     private long protectedUnmaskedCookie = 2;
     private long bandwidth;
     private boolean ignoreBandwidth = false;
@@ -148,6 +149,7 @@ public class TestFlowBuilder {
 
         Flow flow = Flow.builder()
                 .flowId(flowId)
+                .yFlowId(yFlowId)
                 .srcSwitch(srcSwitch)
                 .srcPort(source.port)
                 .srcVlan(srcVlan)
@@ -272,7 +274,7 @@ public class TestFlowBuilder {
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
-    private class Endpoint {
+    private static class Endpoint {
         Switch sw;
         int port;
     }

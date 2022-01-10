@@ -31,9 +31,9 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class FlowCacheService {
@@ -42,7 +42,7 @@ public class FlowCacheService {
     private Duration flowRttStatsExpirationTime;
     private FlowCacheBoltCarrier carrier;
 
-    private Map<String, FlowState> flowStates;
+    private final Map<String, FlowState> flowStates = new HashMap<>();
 
     public FlowCacheService(PersistenceManager persistenceManager, Clock clock,
                             Duration flowRttStatsExpirationTime, FlowCacheBoltCarrier carrier) {
@@ -55,15 +55,28 @@ public class FlowCacheService {
     }
 
     private void initCache(FlowRepository flowRepository) {
+        Collection<Flow> flowsAll;
         try {
-            flowStates = flowRepository.findAll().stream()
-                    .filter(flow -> !flow.isOneSwitchFlow())
-                    .collect(Collectors.toMap(Flow::getFlowId, FlowMapper.INSTANCE::toFlowState));
-            log.info("Flow cache initialized successfully.");
+            flowsAll = flowRepository.findAll();
         } catch (Exception e) {
-            log.error("Flow cache initialization exception. Empty cache is used.", e);
-            flowStates = new HashMap<>();
+            log.error("Unable to fetch flow list from DB. Empty cache is used.", e);
+            return;
         }
+
+        for (Flow entry : flowsAll) {
+            if (entry.isOneSwitchFlow()) {
+                continue;
+            }
+            if (isIncompleteFlow(entry)) {
+                log.warn(
+                        "Flow is incomplete, do not put it into flow cache (flow_id: {}, ctime: {}, mtime: {}",
+                        entry.getFlowId(), entry.getTimeCreate(), entry.getTimeModify());
+                continue;
+            }
+
+            flowStates.put(entry.getFlowId(), FlowMapper.INSTANCE.toFlowState(entry));
+        }
+        log.info("Flow cache initialized successfully.");
     }
 
     /**
@@ -126,5 +139,9 @@ public class FlowCacheService {
 
     public boolean isExpired(Instant timestamp, Instant current) {
         return timestamp == null || current.isAfter(timestamp.plus(flowRttStatsExpirationTime));
+    }
+
+    private boolean isIncompleteFlow(Flow flow) {
+        return flow.getForwardPathId() == null || flow.getReversePathId() == null;
     }
 }

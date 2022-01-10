@@ -30,8 +30,8 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.GroupSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
@@ -40,7 +40,7 @@ import org.openkilda.rulemanager.ProtoConstants.Mask;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.GroupAction;
 import org.openkilda.rulemanager.action.PortOutAction;
@@ -65,24 +65,24 @@ public class BroadCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator
     }
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
-        List<SpeakerCommandData> commands = new ArrayList<>();
+    public List<SpeakerData> generateCommands(Switch sw) {
+        List<SpeakerData> commands = new ArrayList<>();
         List<Action> actions = new ArrayList<>();
         Instructions instructions = Instructions.builder()
                 .applyActions(actions)
                 .build();
-        FlowSpeakerCommandData flowCommand = buildRule(sw, instructions);
+        FlowSpeakerData flowCommand = buildRule(sw, instructions);
         commands.add(flowCommand);
 
         MeterId meterId = createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE);
-        SpeakerCommandData meterCommand = generateMeterCommandForServiceRule(sw, meterId,
+        SpeakerData meterCommand = generateMeterCommandForServiceRule(sw, meterId,
                 config.getBroadcastRateLimit(), config.getSystemMeterBurstSizeInPackets(), config.getDiscoPacketSize());
         if (meterCommand != null) {
             commands.add(meterCommand);
             addMeterToInstructions(meterId, sw, instructions);
         }
 
-        GroupSpeakerCommandData groupCommand = null;
+        GroupSpeakerData groupCommand = null;
         if (sw.getFeatures().contains(SwitchFeature.GROUP_PACKET_OUT_CONTROLLER)) {
             groupCommand = getRoundTripLatencyGroup(sw);
             actions.add(new GroupAction(groupCommand.getGroupId()));
@@ -101,8 +101,8 @@ public class BroadCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator
         return commands;
     }
 
-    private FlowSpeakerCommandData buildRule(Switch sw, Instructions instructions) {
-        return FlowSpeakerCommandData.builder()
+    private FlowSpeakerData buildRule(Switch sw, Instructions instructions) {
+        return FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(new Cookie(VERIFICATION_BROADCAST_RULE_COOKIE))
@@ -132,7 +132,7 @@ public class BroadCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator
         return match;
     }
 
-    private static GroupSpeakerCommandData getRoundTripLatencyGroup(Switch sw) {
+    private static GroupSpeakerData getRoundTripLatencyGroup(Switch sw) {
         List<Bucket> buckets = new ArrayList<>();
         buckets.add(Bucket.builder()
                 .writeActions(Sets.newHashSet(
@@ -146,7 +146,7 @@ public class BroadCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator
                         new PortOutAction(new PortNumber(SpecialPortType.IN_PORT))))
                 .build());
 
-        return GroupSpeakerCommandData.builder()
+        return GroupSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .groupId(GroupId.ROUND_TRIP_LATENCY_GROUP_ID)

@@ -15,12 +15,14 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute;
 
+import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
@@ -35,7 +37,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.DeallocateOld
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.HandleNotCompletedCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.HandleNotDeallocatedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.HandleNotReroutedSubFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.InstallNewYPointMetersAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.InstallNewMetersAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnReceivedInstallResponseAction;
@@ -45,10 +47,10 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnReceivedVal
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnSubFlowAllocatedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnSubFlowReroutedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnTimeoutOperationAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.RemoveOldYPointMetersAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.RemoveOldMetersAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.RerouteSubFlowsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.StartReroutingYFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.ValidateNewYPointMeterAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.ValidateNewMeterAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.ValidateYFlowAction;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteService;
@@ -98,6 +100,8 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
     private List<SubFlowPathDto> oldSubFlowPathDtos;
     private List<Long> oldYFlowPathCookies;
 
+    private Collection<DeleteSpeakerCommandsRequest> deleteOldYFlowCommands;
+
     private YFlowRerouteFsm(@NonNull CommandContext commandContext, @NonNull YFlowRerouteHubCarrier carrier,
                             @NonNull String yFlowId, @NonNull Collection<YFlowEventListener> eventListeners) {
         super(Event.NEXT, Event.ERROR, commandContext, carrier, yFlowId, eventListeners);
@@ -133,7 +137,7 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
 
     @Override
     protected String getCrudActionName() {
-        return "create";
+        return "reroute";
     }
 
     public static class Factory {
@@ -142,7 +146,7 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
 
         public Factory(@NonNull YFlowRerouteHubCarrier carrier, @NonNull PersistenceManager persistenceManager,
                        @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager resourcesManager,
-                       @NonNull FlowRerouteService flowRerouteService,
+                       @NonNull RuleManager ruleManager, @NonNull FlowRerouteService flowRerouteService,
                        int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
@@ -166,7 +170,7 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
                     .from(State.YFLOW_VALIDATED)
                     .to(State.YFLOW_REROUTE_STARTED)
                     .on(Event.NEXT)
-                    .perform(new StartReroutingYFlowAction(persistenceManager));
+                    .perform(new StartReroutingYFlowAction(persistenceManager, ruleManager));
             builder.transitions()
                     .from(State.YFLOW_VALIDATED)
                     .toAmong(State.REVERTING_YFLOW_STATUS, State.REVERTING_YFLOW_STATUS)
@@ -225,63 +229,56 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
                     .from(State.NEW_YFLOW_RESOURCES_ALLOCATED)
                     .to(State.INSTALLING_NEW_YFLOW_METERS)
                     .on(Event.NEXT)
-                    .perform(new InstallNewYPointMetersAction(persistenceManager));
+                    .perform(new InstallNewMetersAction(persistenceManager, ruleManager));
+            /*TODO: need to handle errors and timeout here
+            builder.transitions()
+                    .from(State.NEW_YFLOW_RESOURCES_ALLOCATED)
+                    .toAmong(???)
+                    .onEach(Event.ERROR, Event.TIMEOUT);*/
 
             builder.internalTransition()
                     .within(State.INSTALLING_NEW_YFLOW_METERS)
                     .on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
-            builder.internalTransition()
-                    .within(State.INSTALLING_NEW_YFLOW_METERS)
-                    .on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
             builder.transition()
                     .from(State.INSTALLING_NEW_YFLOW_METERS)
                     .to(State.NEW_YFLOW_METERS_INSTALLED)
                     .on(Event.YFLOW_METERS_INSTALLED);
-            builder.transition()
+            builder.transitions()
                     .from(State.INSTALLING_NEW_YFLOW_METERS)
-                    .to(State.NEW_YFLOW_METERS_INSTALLED)
-                    .on(Event.ERROR)
+                    .toAmong(State.NEW_YFLOW_METERS_INSTALLED, State.NEW_YFLOW_METERS_INSTALLED)
+                    .onEach(Event.ERROR, Event.TIMEOUT)
                     .perform(new HandleNotCompletedCommandsAction("install new meters"));
 
             builder.transition()
                     .from(State.NEW_YFLOW_METERS_INSTALLED)
                     .to(State.VALIDATING_NEW_YFLOW_METERS)
                     .on(Event.NEXT)
-                    .perform(new ValidateNewYPointMeterAction(persistenceManager));
+                    .perform(new ValidateNewMeterAction(persistenceManager));
 
             builder.internalTransition()
                     .within(State.VALIDATING_NEW_YFLOW_METERS)
                     .on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedValidateResponseAction(speakerCommandRetriesLimit));
-            builder.internalTransition()
-                    .within(State.VALIDATING_NEW_YFLOW_METERS)
-                    .on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedValidateResponseAction(speakerCommandRetriesLimit));
             builder.transition()
                     .from(State.VALIDATING_NEW_YFLOW_METERS)
                     .to(State.NEW_YFLOW_METERS_VALIDATED)
                     .on(Event.YFLOW_METERS_VALIDATED);
-            builder.transition()
+            builder.transitions()
                     .from(State.VALIDATING_NEW_YFLOW_METERS)
-                    .to(State.NEW_YFLOW_METERS_VALIDATED)
-                    .on(Event.ERROR)
+                    .toAmong(State.NEW_YFLOW_METERS_VALIDATED, State.NEW_YFLOW_METERS_VALIDATED)
+                    .onEach(Event.ERROR, Event.TIMEOUT)
                     .perform(new HandleNotCompletedCommandsAction("validate new meters"));
 
             builder.transition()
                     .from(State.NEW_YFLOW_METERS_VALIDATED)
                     .to(State.REMOVING_OLD_YFLOW_METERS)
                     .on(Event.NEXT)
-                    .perform(new RemoveOldYPointMetersAction(persistenceManager));
+                    .perform(new RemoveOldMetersAction(persistenceManager, ruleManager));
 
             builder.internalTransition()
                     .within(State.REMOVING_OLD_YFLOW_METERS)
                     .on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedRemoveResponseAction(speakerCommandRetriesLimit));
-            builder.internalTransition()
-                    .within(State.REMOVING_OLD_YFLOW_METERS)
-                    .on(Event.ERROR_RECEIVED)
                     .perform(new OnReceivedRemoveResponseAction(speakerCommandRetriesLimit));
             builder.transition()
                     .from(State.REMOVING_OLD_YFLOW_METERS)
@@ -400,7 +397,6 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
         NEXT,
 
         RESPONSE_RECEIVED,
-        ERROR_RECEIVED,
 
         SUB_FLOW_ALLOCATED,
         SUB_FLOW_REROUTED,

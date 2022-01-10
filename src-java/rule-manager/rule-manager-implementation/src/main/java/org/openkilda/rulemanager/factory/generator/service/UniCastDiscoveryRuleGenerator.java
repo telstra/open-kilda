@@ -25,14 +25,14 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.Mask;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 
@@ -52,12 +52,12 @@ public class UniCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator {
     }
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
-        List<SpeakerCommandData> commands = new ArrayList<>();
+    public List<SpeakerData> generateCommands(Switch sw) {
+        List<SpeakerData> commands = new ArrayList<>();
         Instructions instructions = Instructions.builder()
                 .applyActions(new ArrayList<>())
                 .build();
-        FlowSpeakerCommandData flowCommand = buildRule(sw, instructions);
+        FlowSpeakerData flowCommand = buildRule(sw, instructions);
         if (flowCommand == null) {
             return Collections.emptyList();
         } else {
@@ -65,7 +65,7 @@ public class UniCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator {
         }
 
         MeterId meterId = createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE);
-        SpeakerCommandData meterCommand = generateMeterCommandForServiceRule(sw, meterId, config.getUnicastRateLimit(),
+        SpeakerData meterCommand = generateMeterCommandForServiceRule(sw, meterId, config.getUnicastRateLimit(),
                 config.getSystemMeterBurstSizeInPackets(), config.getDiscoPacketSize());
         if (meterCommand != null) {
             commands.add(meterCommand);
@@ -80,13 +80,13 @@ public class UniCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator {
         return commands;
     }
 
-    private FlowSpeakerCommandData buildRule(Switch sw, Instructions instructions) {
+    private FlowSpeakerData buildRule(Switch sw, Instructions instructions) {
         OfVersion ofVersion = OfVersion.of(sw.getOfVersion());
         if (ofVersion == OfVersion.OF_12) {
             return null;
         }
 
-        return FlowSpeakerCommandData.builder()
+        return FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(ofVersion)
                 .cookie(new Cookie(VERIFICATION_UNICAST_RULE_COOKIE))

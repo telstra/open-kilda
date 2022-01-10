@@ -115,6 +115,8 @@ public class ReallocateYFlowResourcesAction extends
                     flow.setProtectedPathMeterId(reallocatedResources.getProtectedPathYPointResources().getMeterId());
                 }
             });
+
+            notifyStats(stateMachine, reallocatedResources);
         } catch (ResourceAllocationException ex) {
             String errorMessage = format("Failed to allocate y-flow resources. %s", ex.getMessage());
             stateMachine.saveErrorToHistory(errorMessage, ex);
@@ -135,5 +137,9 @@ public class ReallocateYFlowResourcesAction extends
         }
 
         return EndpointResources.builder().endpoint(forwardYPoint).meterId(meterId).build();
+    }
+
+    private void notifyStats(YFlowUpdateFsm fsm, YFlowResources resources) {
+        fsm.sendAddOrUpdateStatsNotification(resources);
     }
 }

@@ -26,15 +26,15 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants.Priority;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
-import org.openkilda.rulemanager.GroupSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
+import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.GroupAction;
 import org.openkilda.rulemanager.action.PortOutAction;
@@ -54,8 +54,8 @@ import java.util.List;
 public class EgressMirrorRuleGenerator extends EgressRuleGenerator {
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
-        List<SpeakerCommandData> result = new ArrayList<>();
+    public List<SpeakerData> generateCommands(Switch sw) {
+        List<SpeakerData> result = new ArrayList<>();
         if (flowPath.isOneSwitchFlow() || flowPath.getSegments().isEmpty()) {
             return result;
         }
@@ -69,19 +69,19 @@ public class EgressMirrorRuleGenerator extends EgressRuleGenerator {
 
         PathSegment lastSegment = flowPath.getSegments().get(flowPath.getSegments().size() - 1);
         FlowEndpoint egressEndpoint = checkAndBuildEgressEndpoint(flow, flowPath, sw.getSwitchId());
-        SpeakerCommandData egressCommand = buildEgressCommand(sw, lastSegment.getDestPort(), egressEndpoint,
+        SpeakerData egressCommand = buildEgressCommand(sw, lastSegment.getDestPort(), egressEndpoint,
                 mirrorPoints.getMirrorGroupId());
         result.add(egressCommand);
 
-        SpeakerCommandData groupCommand = buildGroup(sw, mirrorPoints, egressEndpoint.getPortNumber());
+        SpeakerData groupCommand = buildGroup(sw, mirrorPoints, egressEndpoint.getPortNumber());
         result.add(groupCommand);
 
         egressCommand.getDependsOn().add(groupCommand.getUuid());
         return result;
     }
 
-    private SpeakerCommandData buildEgressCommand(Switch sw, int inPort, FlowEndpoint egressEndpoint, GroupId groupId) {
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+    private SpeakerData buildEgressCommand(Switch sw, int inPort, FlowEndpoint egressEndpoint, GroupId groupId) {
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(flowPath.getDestSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie().toBuilder().mirror(true).build())
@@ -112,11 +112,11 @@ public class EgressMirrorRuleGenerator extends EgressRuleGenerator {
                 .build();
     }
 
-    private GroupSpeakerCommandData buildGroup(Switch sw, FlowMirrorPoints flowMirrorPoints, int flowOutPort) {
+    private GroupSpeakerData buildGroup(Switch sw, FlowMirrorPoints flowMirrorPoints, int flowOutPort) {
         List<Bucket> buckets = newArrayList(buildFlowBucket(flowOutPort));
         buckets.addAll(buildMirrorBuckets(flowMirrorPoints));
 
-        return GroupSpeakerCommandData.builder()
+        return GroupSpeakerData.builder()
                 .groupId(flowMirrorPoints.getMirrorGroupId())
                 .buckets(buckets)
                 .type(GroupType.ALL)

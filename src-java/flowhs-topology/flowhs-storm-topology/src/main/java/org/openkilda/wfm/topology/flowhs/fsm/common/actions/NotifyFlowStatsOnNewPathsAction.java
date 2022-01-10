@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
+import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
@@ -41,8 +42,9 @@ public class NotifyFlowStatsOnNewPathsAction<T extends FlowPathSwappingFsm<T, S,
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .forEach(flowPath -> {
+                    Flow flow = flowPath.getFlow();
                     UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
-                            flowPath.getFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
+                            flow.getFlowId(), flow.getYFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
                             FlowPathMapper.INSTANCE.mapToPathNodes(flowPath));
                     carrier.sendNotifyFlowStats(pathInfo);
                 });

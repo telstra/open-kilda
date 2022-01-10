@@ -23,7 +23,7 @@ import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 
 import org.openkilda.model.Meter;
 import org.openkilda.rulemanager.MeterFlag;
-import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.factory.generator.service.ConnectedDevicesRuleGeneratorTest;
 
@@ -41,7 +41,7 @@ public abstract class ArpRuleGeneratorTest extends ConnectedDevicesRuleGenerator
     }
 
     @Override
-    protected void checkMeterCommand(MeterSpeakerCommandData meterCommandData) {
+    protected void checkMeterCommand(MeterSpeakerData meterCommandData) {
         assertEquals(createMeterIdForDefaultRule(cookie.getValue()), meterCommandData.getMeterId());
         assertEquals(config.getArpRateLimit(), meterCommandData.getRate());
         assertEquals(config.getArpMeterBurstSizeInPackets(), meterCommandData.getBurst());
@@ -51,7 +51,7 @@ public abstract class ArpRuleGeneratorTest extends ConnectedDevicesRuleGenerator
     }
 
     @Override
-    protected void checkMeterInBytesCommand(MeterSpeakerCommandData meterCommandData) {
+    protected void checkMeterInBytesCommand(MeterSpeakerData meterCommandData) {
         assertEquals(createMeterIdForDefaultRule(cookie.getValue()), meterCommandData.getMeterId());
         long expectedRate = Meter.convertRateToKiloBits(config.getArpRateLimit(), config.getArpPacketSize());
         assertEquals(expectedRate, meterCommandData.getRate());

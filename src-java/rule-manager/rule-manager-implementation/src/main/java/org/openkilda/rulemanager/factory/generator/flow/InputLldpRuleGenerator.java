@@ -23,15 +23,15 @@ import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.PortColourCookie;
 import org.openkilda.rulemanager.Constants;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.factory.RuleGenerator;
 import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
@@ -54,8 +54,8 @@ public class InputLldpRuleGenerator implements RuleGenerator {
     private boolean multiTable;
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
-        List<SpeakerCommandData> result = new ArrayList<>();
+    public List<SpeakerData> generateCommands(Switch sw) {
+        List<SpeakerData> result = new ArrayList<>();
         if (multiTable && ingressEndpoint.isTrackLldpConnectedDevices()
                 && overlappingIngressAdapters.stream().noneMatch(FlowSideAdapter::isDetectConnectedDevicesLldp)) {
             result.add(buildLldpInputCustomerFlowCommand(sw, ingressEndpoint));
@@ -63,10 +63,10 @@ public class InputLldpRuleGenerator implements RuleGenerator {
         return result;
     }
 
-    private SpeakerCommandData buildLldpInputCustomerFlowCommand(Switch sw, FlowEndpoint endpoint) {
+    private SpeakerData buildLldpInputCustomerFlowCommand(Switch sw, FlowEndpoint endpoint) {
         RoutingMetadata metadata = RoutingMetadata.builder().lldpFlag(true).build(sw.getFeatures());
 
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(endpoint.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(new PortColourCookie(CookieType.LLDP_INPUT_CUSTOMER_TYPE, endpoint.getPortNumber()))

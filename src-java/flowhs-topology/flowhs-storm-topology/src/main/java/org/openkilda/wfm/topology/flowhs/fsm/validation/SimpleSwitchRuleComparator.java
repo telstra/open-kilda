@@ -22,15 +22,17 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRule;
 
+import lombok.NonNull;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 public class SimpleSwitchRuleComparator {
-    private SwitchRepository switchRepository;
+    private final SwitchRepository switchRepository;
 
-    public SimpleSwitchRuleComparator(SwitchRepository switchRepository) {
+    public SimpleSwitchRuleComparator(@NonNull SwitchRepository switchRepository) {
         this.switchRepository = switchRepository;
     }
 

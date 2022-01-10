@@ -33,14 +33,14 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.rulemanager.Constants;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 
@@ -85,7 +85,7 @@ public class TransitRuleGeneratorTest {
                 .encapsulation(VLAN_ENCAPSULATION)
                 .build();
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertTransitCommands(commands, OfTable.TRANSIT, VLAN_ENCAPSULATION);
     }
 
@@ -99,7 +99,7 @@ public class TransitRuleGeneratorTest {
                 .encapsulation(VLAN_ENCAPSULATION)
                 .build();
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertTransitCommands(commands, OfTable.INPUT, VLAN_ENCAPSULATION);
     }
 
@@ -113,7 +113,7 @@ public class TransitRuleGeneratorTest {
                 .encapsulation(VXLAN_ENCAPSULATION)
                 .build();
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertTransitCommands(commands, OfTable.TRANSIT, VXLAN_ENCAPSULATION);
     }
 
@@ -127,15 +127,15 @@ public class TransitRuleGeneratorTest {
                 .encapsulation(VXLAN_ENCAPSULATION)
                 .build();
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertTransitCommands(commands, OfTable.INPUT, VXLAN_ENCAPSULATION);
     }
 
-    private void assertTransitCommands(List<SpeakerCommandData> commands, OfTable table,
+    private void assertTransitCommands(List<SpeakerData> commands, OfTable table,
                                        FlowTransitEncapsulation encapsulation) {
         assertEquals(1, commands.size());
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
         assertTrue(flowCommandData.getDependsOn().isEmpty());

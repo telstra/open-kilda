@@ -34,6 +34,8 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.Vxlan;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YFlow.SharedEndpoint;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -247,5 +249,32 @@ public class PersistenceDataAdapterTest {
         verify(vxlanRepository).findByPathId(pathId, null);
         verifyNoMoreInteractions(transitVlanRepository);
         verifyNoMoreInteractions(vxlanRepository);
+    }
+
+    @Test
+    public void shouldProvideCorrectYFlows() {
+        PathId pathId = new PathId("path1");
+        Set<PathId> pathIds = Sets.newHashSet(pathId);
+        YFlow yFlow = YFlow.builder()
+                .yFlowId("flow")
+                .sharedEndpoint(new SharedEndpoint(SWITCH_ID_1, 1))
+                .build();
+        Map<PathId, YFlow> yFlows = new HashMap<>();
+        yFlows.put(pathId, yFlow);
+        when(flowPathRepository.findYFlowsByPathIds(pathIds)).thenReturn(yFlows);
+
+        adapter = PersistenceDataAdapter.builder()
+                .pathIds(pathIds)
+                .persistenceManager(persistenceManager)
+                .build();
+
+        YFlow actual = adapter.getYFlow(pathId);
+
+        assertEquals(yFlow, actual);
+
+        adapter.getYFlow(new PathId("test"));
+
+        verify(flowPathRepository).findYFlowsByPathIds(pathIds);
+        verifyNoMoreInteractions(flowPathRepository);
     }
 }

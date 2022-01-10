@@ -54,7 +54,7 @@ import org.openkilda.model.cookie.PortColourCookie;
 import org.openkilda.rulemanager.Constants;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
@@ -62,7 +62,7 @@ import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PopVlanAction;
@@ -268,12 +268,12 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     public void buildCommandsVlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(3, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
-        FlowSpeakerCommandData preIngressCommand = (FlowSpeakerCommandData) commands.get(1);
-        FlowSpeakerCommandData inputCustomerCommand = (FlowSpeakerCommandData) commands.get(2);
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
+        FlowSpeakerData preIngressCommand = (FlowSpeakerData) commands.get(1);
+        FlowSpeakerData inputCustomerCommand = (FlowSpeakerData) commands.get(2);
 
         assertPreIngressCommand(preIngressCommand, newArrayList(new PopVlanAction()));
         assertInputCommand(inputCustomerCommand);
@@ -299,12 +299,12 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     public void buildCommandsVxlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
         MultiTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(3, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
-        FlowSpeakerCommandData preIngressCommand = (FlowSpeakerCommandData) commands.get(1);
-        FlowSpeakerCommandData inputCustomerCommand = (FlowSpeakerCommandData) commands.get(2);
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
+        FlowSpeakerData preIngressCommand = (FlowSpeakerData) commands.get(1);
+        FlowSpeakerData inputCustomerCommand = (FlowSpeakerData) commands.get(2);
 
         assertPreIngressCommand(preIngressCommand, newArrayList(new PopVlanAction()));
         assertInputCommand(inputCustomerCommand);
@@ -325,11 +325,11 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     public void buildCommandsVlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
         MultiTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(2, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
-        FlowSpeakerCommandData inputCustomerCommand = (FlowSpeakerCommandData) commands.get(1);
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
+        FlowSpeakerData inputCustomerCommand = (FlowSpeakerData) commands.get(1);
 
         assertInputCommand(inputCustomerCommand);
 
@@ -412,7 +412,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     }
 
     private void assertIngressCommand(
-            FlowSpeakerCommandData command, int expectedPriority, Set<FieldMatch> expectedMatch,
+            FlowSpeakerData command, int expectedPriority, Set<FieldMatch> expectedMatch,
             List<Action> expectedApplyActions) {
         assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
@@ -429,7 +429,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
         assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
     }
 
-    private void assertPreIngressCommand(FlowSpeakerCommandData command, List<Action> expectedApplyActions) {
+    private void assertPreIngressCommand(FlowSpeakerData command, List<Action> expectedApplyActions) {
         FlowSharedSegmentCookie cookie = FlowSharedSegmentCookie.builder(SharedSegmentType.SERVER42_QINQ_OUTER_VLAN)
                 .portNumber(SERVER_42_PORT_NUMBER)
                 .vlanId(OUTER_VLAN_ID_1).build();
@@ -456,7 +456,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
         assertNull(command.getFlags());
     }
 
-    private void assertInputCommand(FlowSpeakerCommandData command) {
+    private void assertInputCommand(FlowSpeakerData command) {
         assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
         assertEquals(new PortColourCookie(SERVER_42_FLOW_RTT_INPUT, PORT_NUMBER_1), command.getCookie());

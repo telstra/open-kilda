@@ -31,6 +31,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
@@ -77,7 +78,8 @@ public class FlowValidationHubBolt extends HubBolt implements FlowValidationHubC
 
     @Override
     public void init() {
-        service = new FlowValidationHubService(this, persistenceManager, flowResourcesConfig,
+        FlowResourcesManager flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
+        service = new FlowValidationHubService(this, persistenceManager, flowResourcesManager,
                 flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
     }
 

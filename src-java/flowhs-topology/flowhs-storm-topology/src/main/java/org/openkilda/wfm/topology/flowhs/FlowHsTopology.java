@@ -40,6 +40,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WO
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_YFLOW_DELETE;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_YFLOW_REROUTE;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_YFLOW_UPDATE;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_YFLOW_VALIDATION;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SWAP_ENDPOINTS_HUB_TO_ROUTER_BOLT;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB;
 import static org.openkilda.wfm.topology.flowhs.bolts.RouterBolt.FLOW_ID_FIELD;
@@ -48,6 +49,7 @@ import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.kafka.AbstractMessageSerializer;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
@@ -89,6 +91,7 @@ import org.openkilda.wfm.topology.flowhs.bolts.YFlowRerouteHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.YFlowRerouteHubBolt.YFlowRerouteConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.YFlowUpdateHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.YFlowUpdateHubBolt.YFlowUpdateConfig;
+import org.openkilda.wfm.topology.flowhs.bolts.YFlowValidationHubBolt;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -130,6 +133,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         yFlowRerouteHub(tb, persistenceManager);
         yFlowDeleteHub(tb, persistenceManager);
         yFlowReadBolt(tb, persistenceManager);
+        yFlowValidationHub(tb, persistenceManager);
 
         speakerSpout(tb);
         flowCreateSpeakerWorker(tb);
@@ -144,6 +148,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         yFlowUpdateSpeakerWorker(tb);
         yFlowRerouteSpeakerWorker(tb);
         yFlowDeleteSpeakerWorker(tb);
+        yFlowValidationSpeakerWorker(tb);
         speakerOutput(tb);
         speakerOutputForDumps(tb);
 
@@ -185,7 +190,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                         ComponentId.YFLOW_UPDATE_HUB.name(),
                         ComponentId.YFLOW_REROUTE_HUB.name(),
                         ComponentId.YFLOW_DELETE_HUB.name(),
-                        ComponentId.YFLOW_READ_BOLT.name()));
+                        ComponentId.YFLOW_READ_BOLT.name(),
+                        ComponentId.YFLOW_VALIDATION_HUB.name()));
         declareBolt(topologyBuilder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(ComponentId.FLOW_CREATE_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.FLOW_UPDATE_HUB.name(), ZkStreams.ZK.toString())
@@ -201,7 +207,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .allGrouping(ComponentId.YFLOW_UPDATE_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.YFLOW_REROUTE_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.YFLOW_DELETE_HUB.name(), ZkStreams.ZK.toString())
-                .allGrouping(ComponentId.YFLOW_READ_BOLT.name(), ZkStreams.ZK.toString());
+                .allGrouping(ComponentId.YFLOW_READ_BOLT.name(), ZkStreams.ZK.toString())
+                .allGrouping(ComponentId.YFLOW_VALIDATION_HUB.name(), ZkStreams.ZK.toString());
     }
 
     private void inputSpout(TopologyBuilder topologyBuilder) {
@@ -467,9 +474,10 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        RuleManagerConfig ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
 
         YFlowCreateHubBolt hubBolt = new YFlowCreateHubBolt(yFlowCreateConfig, config, persistenceManager,
-                pathComputerConfig, flowResourcesConfig);
+                pathComputerConfig, flowResourcesConfig, ruleManagerConfig);
         declareBolt(topologyBuilder, hubBolt, ComponentId.YFLOW_CREATE_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(),
                         Stream.ROUTER_TO_YFLOW_CREATE_HUB.name(), FLOW_FIELD)
@@ -505,9 +513,10 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        RuleManagerConfig ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
 
         YFlowUpdateHubBolt hubBolt = new YFlowUpdateHubBolt(yflowUpdateConfig, flowUpdateConfig, persistenceManager,
-                pathComputerConfig, flowResourcesConfig);
+                pathComputerConfig, flowResourcesConfig, ruleManagerConfig);
         declareBolt(topologyBuilder, hubBolt, ComponentId.YFLOW_UPDATE_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_YFLOW_UPDATE_HUB.name(), FLOW_FIELD)
                 .directGrouping(ComponentId.YFLOW_UPDATE_SPEAKER_WORKER.name(),
@@ -542,9 +551,10 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        RuleManagerConfig ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
 
         YFlowRerouteHubBolt hubBolt = new YFlowRerouteHubBolt(yFlowRerouteConfig, flowRerouteConfig, persistenceManager,
-                pathComputerConfig, flowResourcesConfig);
+                pathComputerConfig, flowResourcesConfig, ruleManagerConfig);
         declareBolt(topologyBuilder, hubBolt, ComponentId.YFLOW_REROUTE_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_YFLOW_REROUTE_HUB.name(), FLOW_FIELD)
                 .directGrouping(ComponentId.YFLOW_REROUTE_SPEAKER_WORKER.name(),
@@ -566,8 +576,10 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .build();
 
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        RuleManagerConfig ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
 
-        YFlowDeleteHubBolt hubBolt = new YFlowDeleteHubBolt(config, persistenceManager, flowResourcesConfig);
+        YFlowDeleteHubBolt hubBolt = new YFlowDeleteHubBolt(config, persistenceManager, flowResourcesConfig,
+                ruleManagerConfig);
         declareBolt(topologyBuilder, hubBolt, ComponentId.YFLOW_DELETE_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(),
                         Stream.ROUTER_TO_YFLOW_DELETE_HUB.name(), FLOW_FIELD)
@@ -588,6 +600,30 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         declareBolt(topologyBuilder, bolt, ComponentId.YFLOW_READ_BOLT.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_YFLOW_READ.name(), FIELDS_KEY)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
+    }
+
+    private void yFlowValidationHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
+        int hubTimeout = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getValidationHubTimeoutSeconds());
+
+        HubBolt.Config config = HubBolt.Config.builder()
+                .requestSenderComponent(ComponentId.FLOW_ROUTER_BOLT.name())
+                .workerComponent(ComponentId.YFLOW_VALIDATION_SPEAKER_WORKER.name())
+                .lifeCycleEventComponent(ZooKeeperSpout.SPOUT_ID)
+                .timeoutMs(hubTimeout)
+                .build();
+
+        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+
+        YFlowValidationHubBolt hubBolt = new YFlowValidationHubBolt(config, persistenceManager, flowResourcesConfig,
+                topologyConfig.getFlowMeterMinBurstSizeInKbits(),
+                topologyConfig.getFlowMeterBurstCoefficient());
+        declareBolt(topologyBuilder, hubBolt, ComponentId.YFLOW_VALIDATION_HUB.name())
+                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(),
+                        Stream.ROUTER_TO_YFLOW_VALIDATION_HUB.name(), FLOW_FIELD)
+                .directGrouping(ComponentId.YFLOW_VALIDATION_SPEAKER_WORKER.name(),
+                        SPEAKER_WORKER_TO_HUB_YFLOW_VALIDATION.name())
+                .allGrouping(ZooKeeperSpout.SPOUT_ID)
+                .directGrouping(CoordinatorBolt.ID);
     }
 
     private void speakerSpout(TopologyBuilder topologyBuilder) {
@@ -788,6 +824,22 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .directGrouping(CoordinatorBolt.ID);
     }
 
+    private void yFlowValidationSpeakerWorker(TopologyBuilder topologyBuilder) {
+        int speakerTimeout = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getYFlowValidationSpeakerTimeoutSeconds());
+        Config speakerWorkerConfig = Config.builder()
+                .hubComponent(ComponentId.YFLOW_VALIDATION_HUB.name())
+                .streamToHub(SPEAKER_WORKER_TO_HUB_YFLOW_VALIDATION.name())
+                .workerSpoutComponent(ComponentId.SPEAKER_WORKER_SPOUT.name())
+                .defaultTimeout(speakerTimeout)
+                .build();
+        SpeakerWorkerForDumpsBolt speakerWorker = new SpeakerWorkerForDumpsBolt(speakerWorkerConfig);
+        declareBolt(topologyBuilder, speakerWorker, ComponentId.YFLOW_VALIDATION_SPEAKER_WORKER.name())
+                .fieldsGrouping(ComponentId.SPEAKER_WORKER_SPOUT.name(), FIELDS_KEY)
+                .fieldsGrouping(ComponentId.YFLOW_VALIDATION_HUB.name(), Stream.HUB_TO_SPEAKER_WORKER.name(),
+                        FIELDS_KEY)
+                .directGrouping(CoordinatorBolt.ID);
+    }
+
     private void speakerOutput(TopologyBuilder topologyBuilder) {
         KafkaBolt<String, AbstractMessage> flKafkaBolt = makeKafkaBolt(
                 getConfig().getKafkaSpeakerFlowTopic(), AbstractMessageSerializer.class);
@@ -820,6 +872,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         declareBolt(topologyBuilder, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()),
                 ComponentId.SPEAKER_DUMP_REQUEST_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_VALIDATION_SPEAKER_WORKER.name(),
+                        SPEAKER_WORKER_REQUEST_SENDER.name())
+                .shuffleGrouping(ComponentId.YFLOW_VALIDATION_SPEAKER_WORKER.name(),
                         SPEAKER_WORKER_REQUEST_SENDER.name());
     }
 
@@ -856,6 +910,9 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                         CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
                 .fieldsGrouping(ComponentId.YFLOW_DELETE_HUB.name(), CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
                 .fieldsGrouping(ComponentId.YFLOW_DELETE_SPEAKER_WORKER.name(),
+                        CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
+                .fieldsGrouping(ComponentId.YFLOW_VALIDATION_HUB.name(), CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
+                .fieldsGrouping(ComponentId.YFLOW_VALIDATION_SPEAKER_WORKER.name(),
                         CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
     }
 
@@ -880,7 +937,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.YFLOW_REROUTE_HUB.name(),
                         Stream.HUB_TO_NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.YFLOW_DELETE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
-                .shuffleGrouping(ComponentId.YFLOW_READ_BOLT.name());
+                .shuffleGrouping(ComponentId.YFLOW_READ_BOLT.name())
+                .shuffleGrouping(ComponentId.YFLOW_VALIDATION_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name());
     }
 
     private void rerouteTopologyOutput(TopologyBuilder topologyBuilder) {
@@ -1010,7 +1068,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.YFLOW_CREATE_HUB.name(), Stream.HUB_TO_METRICS_BOLT.name())
                 .shuffleGrouping(ComponentId.YFLOW_UPDATE_HUB.name(), Stream.HUB_TO_METRICS_BOLT.name())
                 .shuffleGrouping(ComponentId.YFLOW_REROUTE_HUB.name(), Stream.HUB_TO_METRICS_BOLT.name())
-                .shuffleGrouping(ComponentId.YFLOW_DELETE_HUB.name(), Stream.HUB_TO_METRICS_BOLT.name());
+                .shuffleGrouping(ComponentId.YFLOW_DELETE_HUB.name(), Stream.HUB_TO_METRICS_BOLT.name())
+                .shuffleGrouping(ComponentId.YFLOW_VALIDATION_HUB.name(), Stream.HUB_TO_METRICS_BOLT.name());
     }
 
     public enum ComponentId {
@@ -1043,11 +1102,13 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         YFLOW_REROUTE_HUB("y_flow.reroute.hub.bolt"),
         YFLOW_DELETE_HUB("y_flow.delete.hub.bolt"),
         YFLOW_READ_BOLT("y_flow.read.bolt"),
+        YFLOW_VALIDATION_HUB("y_flow.validation.hub.bolt"),
 
         YFLOW_CREATE_SPEAKER_WORKER("y_flow.create.worker.bolt"),
         YFLOW_UPDATE_SPEAKER_WORKER("y_flow.update.worker.bolt"),
         YFLOW_REROUTE_SPEAKER_WORKER("y_flow.reroute.worker.bolt"),
         YFLOW_DELETE_SPEAKER_WORKER("y_flow.delete.worker.bolt"),
+        YFLOW_VALIDATION_SPEAKER_WORKER("y_flow.validation.worker.bolt"),
 
         NB_RESPONSE_SENDER("nb.kafka.bolt"),
         REROUTE_RESPONSE_SENDER("reroute.kafka.bolt"),
@@ -1092,6 +1153,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         ROUTER_TO_YFLOW_REROUTE_HUB,
         ROUTER_TO_YFLOW_DELETE_HUB,
         ROUTER_TO_YFLOW_READ,
+        ROUTER_TO_YFLOW_VALIDATION_HUB,
 
         HUB_TO_SPEAKER_WORKER,
         HUB_TO_HISTORY_BOLT,
@@ -1109,6 +1171,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         SPEAKER_WORKER_TO_HUB_YFLOW_UPDATE,
         SPEAKER_WORKER_TO_HUB_YFLOW_REROUTE,
         SPEAKER_WORKER_TO_HUB_YFLOW_DELETE,
+        SPEAKER_WORKER_TO_HUB_YFLOW_VALIDATION,
 
         SWAP_ENDPOINTS_HUB_TO_ROUTER_BOLT,
         UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB,
