@@ -317,6 +317,57 @@ Response body:
 }
 ```
 
+## Ping operation
+
+REST endpoint: `POST /v2/y-flows/{y_flow_id}/ping`
+
+request payload:
+
+```json
+{
+  "timeout": 0
+} 
+```
+
+response payload:
+
+```json
+{
+  "y_flow_id": "yf-AAAAAAAAAAAAAAA",
+  "ping_success": true,
+  "error": "error",
+  "sub_flows": [
+    {
+      "flow_id": "fAAAAAAAAAAAAAAA",
+      "forward": {
+        "ping_success": true,
+        "error": "error",
+        "latency": 0
+      },
+      "reverse": {
+        "ping_success": true,
+        "error": "error",
+        "latency": 0
+      }
+    },
+    {
+      "flow_id": "fAAAAAAAAAAAAAAB",
+      "forward": {
+        "ping_success": true,
+        "error": "error",
+        "latency": 0
+      },
+      "reverse": {
+        "ping_success": true,
+        "error": "error",
+        "latency": 0
+      }
+    }
+  ]
+}
+```
+
+
 # Existing API changes
 
 All flows CRUD operation responses will be extended with following fields:
