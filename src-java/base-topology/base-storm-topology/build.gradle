@@ -1,6 +1,12 @@
 buildscript {
+    repositories {
+        maven { url 'https://jitpack.io' }
+    }
     dependencies {
-        classpath 'org.anarres.jarjar:jarjar-gradle:1.0.1'
+        // Not compatible with Gradle 7. See https://github.com/shevek/jarjar/issues/22
+        //classpath 'org.anarres.jarjar:jarjar-gradle:1.0.1'
+        // So build the plugin from the source at the version which supports Gradle 7.
+        classpath 'com.github.shevek.jarjar:jarjar-gradle:9a7eca72f9'
     }
 }
 
@@ -40,11 +46,11 @@ dependencies {
         from 'org.apache.storm:flux-core:1.2.1'
 
         // Remove bundled libraries as they conflict with other dependencies.
-        classDelete "org.apache.commons.**"
-        classDelete "org.apache.http.**"
-        classDelete "org.apache.storm.flux.wrappers.**"
-        classDelete "org.apache.thrift.**"
-        classDelete "org.yaml.**"
+        classDelete 'org.apache.commons.**'
+        classDelete 'org.apache.http.**'
+        classDelete 'org.apache.storm.flux.wrappers.**'
+        classDelete 'org.apache.thrift.**'
+        classDelete 'org.yaml.**'
     }
 
     api('org.squirrelframework:squirrel-foundation') {
@@ -65,7 +71,7 @@ dependencies {
     api 'org.hibernate.validator:hibernate-validator'
     runtimeOnly 'org.glassfish:javax.el'
 
-    implementation 'org.aspectj:aspectjrt'
+    api 'org.aspectj:aspectjrt'
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'
     annotationProcessor 'org.mapstruct:mapstruct-processor'
@@ -100,7 +106,7 @@ dependencies {
 }
 
 sourceSets {
-    release {
+    releaseResources {
         resources {
             srcDir 'src/release/resources'
         }
@@ -121,7 +127,7 @@ task testJar(type: Jar) {
 task releaseJar(type: Jar) {
     dependsOn processResources
     classifier 'release'
-    from sourceSets.release.output
+    from sourceSets.releaseResources.output
 }
 
 artifacts {
@@ -130,5 +136,5 @@ artifacts {
 }
 
 buildAndCopyArtifacts {
-    from("${project.buildDir}/resources/release/topology.properties") { into "${project.name}/resources" }
+    from("${project.buildDir}/resources/releaseResources/topology.properties") { into "${project.name}/resources" }
 }
