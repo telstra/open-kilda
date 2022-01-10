@@ -46,7 +46,6 @@ import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
@@ -423,7 +422,7 @@ public class EgressMirrorRuleGeneratorTest {
 
         Instructions expectedInstructions = Instructions.builder().applyActions(expectedApplyActions).build();
         assertEquals(expectedInstructions, command.getInstructions());
-        assertEquals(newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
+        assertTrue(command.getFlags().isEmpty());
     }
 
     private void assertGroupCommand(GroupSpeakerData command) {

@@ -17,7 +17,6 @@ package org.openkilda.rulemanager.factory.generator.flow;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -537,7 +536,7 @@ public class MultiTableIngressRuleGeneratorTest {
                 .goToTable(OfTable.INGRESS)
                 .build();
         assertEquals(expectedInstructions, command.getInstructions());
-        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
+        assertTrue(command.getFlags().isEmpty());
     }
 
     private void assertInputCustomerCommand(
@@ -555,7 +554,7 @@ public class MultiTableIngressRuleGeneratorTest {
                 .goToTable(OfTable.PRE_INGRESS)
                 .build();
         assertEquals(expectedInstructions, command.getInstructions());
-        assertNull(command.getFlags());
+        assertTrue(command.getFlags().isEmpty());
     }
 
     private void assertMeterCommand(MeterSpeakerData command) {

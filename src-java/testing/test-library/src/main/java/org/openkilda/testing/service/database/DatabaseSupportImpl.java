@@ -22,6 +22,7 @@ import static org.openkilda.testing.Constants.DEFAULT_COST;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowMeter;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.MeterId;
@@ -38,6 +39,7 @@ import org.openkilda.persistence.ferma.frames.IslFrame;
 import org.openkilda.persistence.ferma.frames.SwitchFrame;
 import org.openkilda.persistence.orientdb.OrientDbContextExtension;
 import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
+import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -78,6 +80,7 @@ public class DatabaseSupportImpl implements Database {
     private final SwitchRepository switchRepository;
     private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
+    private final FlowMeterRepository flowMeterRepository;
     private final FlowMirrorPointsRepository flowMirrorPointsRepository;
     private final TransitVlanRepository transitVlanRepository;
     private final SwitchConnectedDeviceRepository switchDevicesRepository;
@@ -92,6 +95,7 @@ public class DatabaseSupportImpl implements Database {
         switchRepository = repositoryFactory.createSwitchRepository();
         flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
+        flowMeterRepository = repositoryFactory.createFlowMeterRepository();
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
         switchDevicesRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         flowEventRepository = repositoryFactory.createFlowEventRepository();
@@ -406,7 +410,7 @@ public class DatabaseSupportImpl implements Database {
     }
 
     @Override
-    public void updateFlowMeterId(String flowId, MeterId newMeterId) {
+    public void updateFlowMeterId(String flowId, long newMeterId) {
         //TODO(andriidovhan) rewrite it, FlowPair flowPair -> Flow
         //FlowPair flowPair = flowPairRepository.findById(flowId)
         //        .orElseThrow(() -> new RuntimeException(format("Unable to find Flow for %s", flowId)));
@@ -416,9 +420,14 @@ public class DatabaseSupportImpl implements Database {
         //flow path
         transactionManager.doInTransaction(() -> {
             Collection<FlowPath> flowPaths = flowPathRepository.findByFlowId(flowId);
-            flowPaths.forEach(p -> {
-                p.setMeterId(newMeterId);
-            });
+            long meterId = newMeterId;
+            for (FlowPath flowPath : flowPaths) {
+                flowPath.setMeterId(new MeterId(meterId));
+                Optional<FlowMeter> meter = flowMeterRepository.findByPathId(flowPath.getPathId());
+                if (meter.isPresent()) {
+                    meter.get().setMeterId(new MeterId(meterId++));
+                }
+            }
         });
     }
 

@@ -23,14 +23,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.LAG;
-import static org.openkilda.model.SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES;
 
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
@@ -38,27 +36,26 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchGroupEntries;
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
+import org.openkilda.messaging.info.group.GroupDumpResponse;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
-import org.openkilda.model.KildaFeatureToggles;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.cookie.Cookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.IslRepository;
-import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.Instructions;
+import org.openkilda.rulemanager.MeterFlag;
+import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.OfTable;
+import org.openkilda.rulemanager.OfVersion;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
@@ -74,7 +71,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.util.Collections;
 import java.util.Optional;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -92,52 +88,52 @@ public class SwitchValidateServiceImplTest {
     private ValidationServiceImpl validationService;
 
     @Mock
+    private RuleManager ruleManager;
+
+    @Mock
     private SwitchManagerCarrier carrier;
 
     private SwitchValidateServiceImpl service;
     private SwitchValidateRequest request;
 
-    private FlowEntry flowEntry;
-    private MeterEntry meterEntry;
+    private FlowSpeakerData flowSpeakerData;
+    private MeterSpeakerData meterSpeakerData;
 
     @Before
     public void setUp() {
         RepositoryFactory repositoryFactory = Mockito.mock(RepositoryFactory.class);
         FlowPathRepository flowPathRepository = Mockito.mock(FlowPathRepository.class);
-        FlowRepository flowRepository = Mockito.mock(FlowRepository.class);
         SwitchRepository switchRepository = Mockito.mock(SwitchRepository.class);
         when(switchRepository.findById(eq(SWITCH_ID))).thenReturn(Optional.of(SWITCH_1));
         when(switchRepository.findById(eq(SWITCH_ID_MISSING))).thenReturn(Optional.empty());
-        SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
-        when(switchPropertiesRepository.findBySwitchId(any(SwitchId.class))).thenAnswer((invocation) ->
-                Optional.of(SwitchProperties.builder()
-                        .switchObj(Switch.builder().switchId(invocation.getArgument(0)).build())
-                        .multiTable(false)
-                        .supportedTransitEncapsulation(DEFAULT_FLOW_ENCAPSULATION_TYPES)
-                        .build()));
-        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
-        IslRepository islRepository = Mockito.mock(IslRepository.class);
-        when(islRepository.findBySrcSwitch(any(SwitchId.class))).thenAnswer((invocation) ->
-                Collections.emptyList());
         LagLogicalPortRepository lagLogicalPortRepository = Mockito.mock(LagLogicalPortRepository.class);
-        KildaFeatureTogglesRepository featureTogglesRepository = mock(KildaFeatureTogglesRepository.class);
-        when(featureTogglesRepository.getOrDefault()).thenReturn(KildaFeatureToggles.DEFAULTS);
-        when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
-        when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
-        when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
-        service = new SwitchValidateServiceImpl(carrier, persistenceManager, validationService);
+        service = new SwitchValidateServiceImpl(carrier, persistenceManager, validationService, ruleManager);
 
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).processMeters(true).build();
-        flowEntry = new FlowEntry(-1L, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
-        meterEntry = new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
+        flowSpeakerData = FlowSpeakerData.builder()
+                .ofVersion(OfVersion.OF_13)
+                .cookie(new Cookie(1L))
+                .table(OfTable.INPUT)
+                .priority(10)
+                .match(emptySet())
+                .instructions(Instructions.builder().build())
+                .flags(emptySet())
+                .build();
+        meterSpeakerData = MeterSpeakerData.builder()
+                .meterId(new MeterId(32))
+                .rate(10000)
+                .burst(10500)
+                .ofVersion(OfVersion.OF_13)
+                .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
+                .build();
 
         when(validationService.validateRules(any(), any(), any()))
-                .thenReturn(new ValidateRulesResult(newHashSet(flowEntry.getCookie()), emptySet(), emptySet(),
-                        emptySet()));
+                .thenReturn(new ValidateRulesResult(newHashSet(flowSpeakerData.getCookie().getValue()), emptySet(),
+                        emptySet(), emptySet()));
         when(validationService.validateMeters(any(), any(), any()))
                 .thenReturn(new ValidateMetersResult(emptyList(), emptyList(), emptyList(), emptyList()));
     }
@@ -151,7 +147,7 @@ public class SwitchValidateServiceImplTest {
     public void receiveOnlyRules() {
         handleRequestAndInitDataReceive();
 
-        service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
+        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
@@ -161,7 +157,7 @@ public class SwitchValidateServiceImplTest {
     public void receiveTaskTimeout() {
         handleRequestAndInitDataReceive();
 
-        service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
+        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
         service.handleTaskTimeout(KEY);
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
@@ -174,7 +170,7 @@ public class SwitchValidateServiceImplTest {
     public void receiveTaskError() {
         handleRequestAndInitDataReceive();
 
-        service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
+        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
         ErrorMessage errorMessage = getErrorMessage();
         service.handleTaskError(KEY, errorMessage);
 
@@ -195,7 +191,7 @@ public class SwitchValidateServiceImplTest {
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
         SwitchValidationResponse response = (SwitchValidationResponse) responseCaptor.getValue().getData();
-        assertEquals(singletonList(flowEntry.getCookie()), response.getRules().getMissing());
+        assertEquals(singletonList(flowSpeakerData.getCookie().getValue()), response.getRules().getMissing());
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
@@ -206,20 +202,18 @@ public class SwitchValidateServiceImplTest {
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).build();
 
         service.handleSwitchValidateRequest(KEY, request);
-        verify(carrier, times(3)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
+        verify(carrier, times(2)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
 
-        service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
-        service.handleGroupEntriesResponse(KEY, new SwitchGroupEntries(SWITCH_ID, emptyList()));
-        service.handleExpectedDefaultFlowEntriesResponse(KEY,
-                new SwitchExpectedDefaultFlowEntries(SWITCH_ID, emptyList()));
+        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
+        service.handleGroupEntriesResponse(KEY, new GroupDumpResponse(SWITCH_ID, emptyList()));
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
-        verify(validationService).validateGroups(eq(SWITCH_ID), any());
+        verify(validationService).validateGroups(eq(SWITCH_ID), any(), any());
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
 
         SwitchValidationResponse response = (SwitchValidationResponse) responseCaptor.getValue().getData();
-        assertEquals(singletonList(flowEntry.getCookie()), response.getRules().getMissing());
+        assertEquals(singletonList(flowSpeakerData.getCookie().getValue()), response.getRules().getMissing());
         assertNull(response.getMeters());
 
         verifyNoMoreInteractions(carrier);
@@ -229,22 +223,18 @@ public class SwitchValidateServiceImplTest {
     @Test
     public void validationSuccessWithUnsupportedMeters() {
         handleRequestAndInitDataReceive();
-        service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
-        service.handleExpectedDefaultFlowEntriesResponse(KEY,
-                new SwitchExpectedDefaultFlowEntries(SWITCH_ID, emptyList()));
+        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
         service.handleMetersUnsupportedResponse(KEY);
-        service.handleExpectedDefaultMeterEntriesResponse(KEY,
-                new SwitchExpectedDefaultMeterEntries(SWITCH_ID, emptyList()));
-        service.handleGroupEntriesResponse(KEY, new SwitchGroupEntries(SWITCH_ID, emptyList()));
+        service.handleGroupEntriesResponse(KEY, new GroupDumpResponse(SWITCH_ID, emptyList()));
 
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
-        verify(validationService).validateGroups(eq(SWITCH_ID), any());
+        verify(validationService).validateGroups(eq(SWITCH_ID), any(), any());
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
 
         SwitchValidationResponse response = (SwitchValidationResponse) responseCaptor.getValue().getData();
-        assertEquals(singletonList(flowEntry.getCookie()), response.getRules().getMissing());
+        assertEquals(singletonList(flowSpeakerData.getCookie().getValue()), response.getRules().getMissing());
         assertNull(response.getMeters());
 
         verifyNoMoreInteractions(carrier);
@@ -256,7 +246,7 @@ public class SwitchValidateServiceImplTest {
         handleRequestAndInitDataReceive();
 
         String errorMessage = "test error";
-        when(validationService.validateGroups(any(), any()))
+        when(validationService.validateGroups(any(), any(), any()))
                 .thenThrow(new IllegalArgumentException(errorMessage));
         handleDataReceiveAndValidate();
 
@@ -271,7 +261,7 @@ public class SwitchValidateServiceImplTest {
 
     @Test
     public void doNothingWhenFsmNotFound() {
-        service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
+        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
 
         verifyZeroInteractions(carrier);
         verifyZeroInteractions(validationService);
@@ -307,23 +297,18 @@ public class SwitchValidateServiceImplTest {
     private void handleRequestAndInitDataReceive() {
         service.handleSwitchValidateRequest(KEY, request);
 
-        verify(carrier, times(5)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
+        verify(carrier, times(3)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
         verifyNoMoreInteractions(carrier);
     }
 
     private void handleDataReceiveAndValidate() {
-        service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
-        service.handleExpectedDefaultFlowEntriesResponse(KEY,
-                new SwitchExpectedDefaultFlowEntries(SWITCH_ID, emptyList()));
-        service.handleMeterEntriesResponse(KEY, new SwitchMeterEntries(SWITCH_ID, singletonList(meterEntry)));
-        service.handleGroupEntriesResponse(KEY, new SwitchGroupEntries(SWITCH_ID, emptyList()));
-
-        service.handleExpectedDefaultMeterEntriesResponse(KEY,
-                new SwitchExpectedDefaultMeterEntries(SWITCH_ID, emptyList()));
+        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
+        service.handleMeterEntriesResponse(KEY, new MeterDumpResponse(SWITCH_ID, singletonList(meterSpeakerData)));
+        service.handleGroupEntriesResponse(KEY, new GroupDumpResponse(SWITCH_ID, emptyList()));
 
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
         verify(validationService).validateMeters(eq(SWITCH_ID), any(), any());
-        verify(validationService).validateGroups(eq(SWITCH_ID), any());
+        verify(validationService).validateGroups(eq(SWITCH_ID), any(), any());
     }
 
     private ErrorMessage getErrorMessage() {

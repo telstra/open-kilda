@@ -19,6 +19,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.SpeakerData;
@@ -46,6 +47,7 @@ public class TableDefaultRuleGenerator implements RuleGenerator {
                 .table(ofTable)
                 // todo move to priority 0
                 .priority(Priority.MINIMAL_POSITIVE_PRIORITY)
+                .instructions(Instructions.builder().build())
                 .build();
         return Collections.singletonList(command);
     }

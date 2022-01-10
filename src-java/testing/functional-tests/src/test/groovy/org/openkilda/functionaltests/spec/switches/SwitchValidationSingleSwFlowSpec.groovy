@@ -25,7 +25,6 @@ import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.FlowEndpoint
-import org.openkilda.model.MeterId
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
@@ -317,7 +316,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         swValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
 
         when: "Update meterId for created flow directly via db"
-        MeterId newMeterId = new MeterId(100)
+        long newMeterId = 100;
         database.updateFlowMeterId(flow.flowId, newMeterId)
 
         then: "Origin meters are moved into the 'excess' section"
@@ -336,7 +335,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.meters.missing.each {
             verifyRateIsCorrect(sw, it.rate, flow.maximumBandwidth)
             assert it.flowId == flow.flowId
-            assert it.meterId == newMeterId.value
+            assert it.meterId == newMeterId || it.meterId == newMeterId + 1
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
             switchHelper.verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }

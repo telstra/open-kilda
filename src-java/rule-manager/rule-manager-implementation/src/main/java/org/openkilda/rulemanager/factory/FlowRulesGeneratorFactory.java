@@ -23,6 +23,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.factory.generator.flow.EgressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.InputArpRuleGenerator;
@@ -30,8 +31,10 @@ import org.openkilda.rulemanager.factory.generator.flow.InputLldpRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.JointRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressYRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.MultiTableServer42IngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressYRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.SingleTableServer42IngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopIngressRuleGenerator;
@@ -71,6 +74,32 @@ public class FlowRulesGeneratorFactory {
                     .flowPath(flowPath)
                     .flow(flow)
                     .encapsulation(encapsulation)
+                    .build();
+        }
+    }
+
+    /**
+     * Get server42 ingress rule generator.
+     */
+    public RuleGenerator getServer42IngressRuleGenerator(
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
+            SwitchProperties switchProperties) {
+        boolean multiTable = isPathSrcMultiTable(flowPath, flow);
+        if (multiTable) {
+            return MultiTableServer42IngressRuleGenerator.builder()
+                    .config(config)
+                    .flowPath(flowPath)
+                    .flow(flow)
+                    .encapsulation(encapsulation)
+                    .switchProperties(switchProperties)
+                    .build();
+        } else {
+            return SingleTableServer42IngressRuleGenerator.builder()
+                    .config(config)
+                    .flowPath(flowPath)
+                    .flow(flow)
+                    .encapsulation(encapsulation)
+                    .switchProperties(switchProperties)
                     .build();
         }
     }

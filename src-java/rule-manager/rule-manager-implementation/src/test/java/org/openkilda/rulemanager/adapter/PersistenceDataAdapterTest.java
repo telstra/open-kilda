@@ -54,7 +54,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -203,21 +202,21 @@ public class PersistenceDataAdapterTest {
                 .pathId(pathId)
                 .vlan(8)
                 .build();
-        when(transitVlanRepository.findByPathId(pathId)).thenReturn(Optional.of(transitVlan));
+        when(transitVlanRepository.findByPathId(pathId, null)).thenReturn(Collections.singletonList(transitVlan));
 
         adapter = PersistenceDataAdapter.builder()
                 .pathIds(pathIds)
                 .persistenceManager(persistenceManager)
                 .build();
 
-        FlowTransitEncapsulation actual = adapter.getTransitEncapsulation(pathId);
+        FlowTransitEncapsulation actual = adapter.getTransitEncapsulation(pathId, null);
 
         assertEquals(FlowEncapsulationType.TRANSIT_VLAN, actual.getType());
         assertEquals(transitVlan.getVlan(), actual.getId().intValue());
 
-        adapter.getTransitEncapsulation(pathId);
+        adapter.getTransitEncapsulation(pathId, null);
 
-        verify(transitVlanRepository).findByPathId(pathId);
+        verify(transitVlanRepository).findByPathId(pathId, null);
         verifyNoMoreInteractions(transitVlanRepository);
         verifyNoInteractions(vxlanRepository);
     }
@@ -238,14 +237,14 @@ public class PersistenceDataAdapterTest {
                 .persistenceManager(persistenceManager)
                 .build();
 
-        FlowTransitEncapsulation actual = adapter.getTransitEncapsulation(pathId);
+        FlowTransitEncapsulation actual = adapter.getTransitEncapsulation(pathId, null);
 
         assertEquals(FlowEncapsulationType.VXLAN, actual.getType());
         assertEquals(vxlan.getVni(), actual.getId().intValue());
 
-        adapter.getTransitEncapsulation(pathId);
+        adapter.getTransitEncapsulation(pathId, null);
 
-        verify(transitVlanRepository).findByPathId(pathId);
+        verify(transitVlanRepository).findByPathId(pathId, null);
         verify(vxlanRepository).findByPathId(pathId, null);
         verifyNoMoreInteractions(transitVlanRepository);
         verifyNoMoreInteractions(vxlanRepository);

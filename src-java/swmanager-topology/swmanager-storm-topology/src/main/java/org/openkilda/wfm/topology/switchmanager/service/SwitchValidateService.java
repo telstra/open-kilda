@@ -17,28 +17,22 @@ package org.openkilda.wfm.topology.switchmanager.service;
 
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
+import org.openkilda.messaging.info.group.GroupDumpResponse;
 import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
-import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchGroupEntries;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 
 public interface SwitchValidateService {
 
     void handleSwitchValidateRequest(String key, SwitchValidateRequest data);
 
-    void handleFlowEntriesResponse(String key, SwitchFlowEntries data);
+    void handleFlowEntriesResponse(String key, FlowDumpResponse data);
 
-    void handleGroupEntriesResponse(String key, SwitchGroupEntries data);
+    void handleGroupEntriesResponse(String key, GroupDumpResponse data);
 
     void handleLogicalPortResponse(String key, DumpLogicalPortsResponse data);
 
-    void handleExpectedDefaultFlowEntriesResponse(String key, SwitchExpectedDefaultFlowEntries data);
-
-    void handleExpectedDefaultMeterEntriesResponse(String key, SwitchExpectedDefaultMeterEntries data);
-
-    void handleMeterEntriesResponse(String key, SwitchMeterEntries data);
+    void handleMeterEntriesResponse(String key, MeterDumpResponse data);
 
     void handleMetersUnsupportedResponse(String key);
 

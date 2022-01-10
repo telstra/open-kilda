@@ -33,10 +33,10 @@ import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBand;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Mapper
 public class OfMeterConverter {
@@ -146,25 +146,34 @@ public class OfMeterConverter {
     }
 
     /**
-     * Convert meter.
+     * Convert meter stats reply.
      */
     public List<MeterSpeakerData> convertToMeterSpeakerData(OFMeterConfigStatsReply statsReply,
                                                             boolean inaccurate) {
-        List<MeterSpeakerData> commandData = new ArrayList<>();
-        for (OFMeterConfig entry : statsReply.getEntries()) {
-            MeterId meterId = new MeterId(entry.getMeterId());
-            long rate = 0;
-            long burst = 0;
-            for (OFMeterBand band : entry.getEntries()) {
-                if (band instanceof OFMeterBandDrop) {
-                    rate = ((OFMeterBandDrop) band).getRate();
-                    burst = ((OFMeterBandDrop) band).getBurstSize();
-                }
-            }
-            commandData.add(MeterSpeakerData.builder().meterId(meterId).burst(burst).rate(rate)
-                    .flags(fromOfMeterFlags(entry.getFlags())).inaccurate(inaccurate).build());
-        }
-        return commandData;
+        return statsReply.getEntries().stream()
+                .map(entry -> convertToMeterSpeakerData(entry, inaccurate))
+                .collect(Collectors.toList());
     }
 
+    /**
+     * Convert meter config.
+     */
+    public MeterSpeakerData convertToMeterSpeakerData(OFMeterConfig meterConfig, boolean inaccurate) {
+        MeterId meterId = new MeterId(meterConfig.getMeterId());
+        long rate = 0;
+        long burst = 0;
+        for (OFMeterBand band : meterConfig.getEntries()) {
+            if (band instanceof OFMeterBandDrop) {
+                rate = ((OFMeterBandDrop) band).getRate();
+                burst = ((OFMeterBandDrop) band).getBurstSize();
+            }
+        }
+        return MeterSpeakerData.builder()
+                .meterId(meterId)
+                .burst(burst)
+                .rate(rate)
+                .flags(fromOfMeterFlags(meterConfig.getFlags()))
+                .inaccurate(inaccurate)
+                .build();
+    }
 }

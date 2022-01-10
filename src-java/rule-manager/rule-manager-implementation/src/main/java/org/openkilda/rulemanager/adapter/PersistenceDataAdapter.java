@@ -39,6 +39,7 @@ import org.openkilda.rulemanager.DataAdapter;
 
 import lombok.Builder;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -105,14 +106,15 @@ public class PersistenceDataAdapter implements DataAdapter {
     }
 
     @Override
-    public FlowTransitEncapsulation getTransitEncapsulation(PathId pathId) {
+    public FlowTransitEncapsulation getTransitEncapsulation(PathId pathId, PathId oppositePathId) {
         if (encapsulationCache.get(pathId) == null) {
-            Optional<TransitVlan> vlan = transitVlanRepository.findByPathId(pathId);
+            Optional<TransitVlan> vlan = transitVlanRepository.findByPathId(pathId, oppositePathId)
+                    .stream().findFirst();
             if (vlan.isPresent()) {
                 encapsulationCache.put(pathId, new FlowTransitEncapsulation(vlan.get().getVlan(),
                         FlowEncapsulationType.TRANSIT_VLAN));
             } else {
-                vxlanRepository.findByPathId(pathId, null)
+                vxlanRepository.findByPathId(pathId, oppositePathId)
                         .stream().findFirst()
                         .ifPresent(vxlan -> encapsulationCache.put(pathId, new FlowTransitEncapsulation(vxlan.getVni(),
                                 FlowEncapsulationType.VXLAN)));
@@ -150,7 +152,7 @@ public class PersistenceDataAdapter implements DataAdapter {
         if (switchIslPortsCache == null) {
             switchIslPortsCache = islRepository.findIslPortsBySwitchIds(switchIds);
         }
-        return switchIslPortsCache.get(switchId);
+        return switchIslPortsCache.getOrDefault(switchId, Collections.emptySet());
     }
 
     @Override

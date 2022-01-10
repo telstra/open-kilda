@@ -34,7 +34,7 @@ public interface DataAdapter {
 
     Flow getFlow(PathId pathId);
 
-    FlowTransitEncapsulation getTransitEncapsulation(PathId pathId);
+    FlowTransitEncapsulation getTransitEncapsulation(PathId pathId, PathId oppositePathId);
 
     Switch getSwitch(SwitchId switchId);
 

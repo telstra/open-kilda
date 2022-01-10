@@ -15,12 +15,11 @@
 
 package org.openkilda.wfm.topology.switchmanager.model;
 
-import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
-import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.SwitchId;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
+import org.openkilda.rulemanager.MeterSpeakerData;
 
 import com.google.common.collect.ImmutableList;
 import lombok.Builder;
@@ -32,14 +31,11 @@ import java.util.List;
 public class SwitchValidationContext {
     private final SwitchId switchId;
 
-    List<FlowSegmentRequestFactory> expectedFlowSegments;
-    List<FlowEntry> expectedServiceOfFlows;
-    List<FlowEntry> actualOfFlows;
+    List<FlowSpeakerData> actualOfFlows;
 
-    List<MeterEntry> expectedServiceMeters;
-    List<MeterEntry> actualMeters;
+    List<MeterSpeakerData> actualMeters;
 
-    List<GroupEntry> actualGroupEntries;
+    List<GroupSpeakerData> actualGroupEntries;
     List<LogicalPort> actualLogicalPortEntries;
 
     ValidateRulesResult ofFlowsValidationReport;
@@ -49,21 +45,15 @@ public class SwitchValidationContext {
 
     @Builder(toBuilder = true)
     protected SwitchValidationContext(
-            SwitchId switchId, List<FlowSegmentRequestFactory> expectedFlowSegments,
-            List<FlowEntry> expectedServiceOfFlows, List<FlowEntry> actualOfFlows,
-            List<MeterEntry> expectedServiceMeters, List<MeterEntry> actualMeters,
-            List<GroupEntry> actualGroupEntries,
+            SwitchId switchId, List<FlowSpeakerData> actualOfFlows,
+            List<MeterSpeakerData> actualMeters, List<GroupSpeakerData> actualGroupEntries,
             List<LogicalPort> actualLogicalPortEntries,
             ValidateRulesResult ofFlowsValidationReport, ValidateMetersResult metersValidationReport,
             ValidateGroupsResult validateGroupsResult, ValidateLogicalPortsResult validateLogicalPortResult) {
         this.switchId = switchId;
 
-        this.expectedFlowSegments = expectedFlowSegments != null ? ImmutableList.copyOf(expectedFlowSegments) : null;
-        this.expectedServiceOfFlows = expectedServiceOfFlows != null
-                ? ImmutableList.copyOf(expectedServiceOfFlows) : null;
         this.actualOfFlows = actualOfFlows != null ? ImmutableList.copyOf(actualOfFlows) : null;
 
-        this.expectedServiceMeters = expectedServiceMeters != null ? ImmutableList.copyOf(expectedServiceMeters) : null;
         this.actualMeters = actualMeters != null ? ImmutableList.copyOf(actualMeters) : null;
 
         this.actualGroupEntries = actualGroupEntries != null ? ImmutableList.copyOf(actualGroupEntries) : null;

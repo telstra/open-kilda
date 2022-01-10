@@ -37,7 +37,6 @@ import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
@@ -98,7 +97,7 @@ public class FlowLoopTransitRuleGeneratorTest {
                 .build();
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertTransitCommands(commands, OfTable.TRANSIT, VLAN_ENCAPSULATION);
+        assertTransitCommands(commands, OfTable.EGRESS, VLAN_ENCAPSULATION);
     }
 
     @Test
@@ -126,7 +125,7 @@ public class FlowLoopTransitRuleGeneratorTest {
                 .build();
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertTransitCommands(commands, OfTable.TRANSIT, VXLAN_ENCAPSULATION);
+        assertTransitCommands(commands, OfTable.EGRESS, VXLAN_ENCAPSULATION);
     }
 
     @Test
@@ -204,7 +203,7 @@ public class FlowLoopTransitRuleGeneratorTest {
         expectedApplyActions.add(new PortOutAction(new PortNumber(SpecialPortType.IN_PORT)));
         Instructions expectedInstructions = Instructions.builder().applyActions(expectedApplyActions).build();
         assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
+        assertTrue(flowCommandData.getFlags().isEmpty());
     }
 
     private Set<FieldMatch> buildExpectedVlanMatch(int port, int vlanId) {

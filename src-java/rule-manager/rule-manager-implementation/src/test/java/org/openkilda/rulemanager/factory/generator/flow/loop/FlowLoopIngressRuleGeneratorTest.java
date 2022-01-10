@@ -35,7 +35,6 @@ import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
@@ -164,7 +163,7 @@ public class FlowLoopIngressRuleGeneratorTest {
 
         Instructions expectedInstructions = Instructions.builder().applyActions(expectedApplyActions).build();
         assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertEquals(newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
+        assertTrue(flowCommandData.getFlags().isEmpty());
     }
 
     private Flow buildFlow(FlowPath path, int srcOuterVlan, int srcInnerVlan, int dstOuterVlan, int dstInnerVlan) {

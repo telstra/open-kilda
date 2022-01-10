@@ -63,6 +63,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import lombok.Builder.Default;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -70,6 +71,7 @@ import java.util.List;
 import java.util.Set;
 
 @SuperBuilder
+@Slf4j
 public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleGenerator {
 
     /*
@@ -273,15 +275,14 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
                 .writeMetadata(mapMetadata(RoutingMetadata.builder().inputPort(inPort).build(sw.getFeatures())))
                 .build();
 
-        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
+        return FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(cookie)
                 .table(OfTable.INPUT)
                 .priority(Priority.SERVER_42_FLOW_RTT_INPUT_PRIORITY)
                 .match(match)
-                .instructions(instructions);
-
-        return builder.build();
+                .instructions(instructions)
+                .build();
     }
 }

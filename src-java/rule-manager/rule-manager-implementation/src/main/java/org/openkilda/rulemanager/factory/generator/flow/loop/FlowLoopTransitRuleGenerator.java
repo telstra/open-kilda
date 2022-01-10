@@ -24,13 +24,11 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
@@ -42,7 +40,6 @@ import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.factory.generator.flow.NotIngressRuleGenerator;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
@@ -75,14 +72,12 @@ public class FlowLoopTransitRuleGenerator extends NotIngressRuleGenerator {
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie().toBuilder().looped(true).build())
-                .table(multiTable ? OfTable.TRANSIT : OfTable.INPUT)
+                .table(multiTable ? OfTable.EGRESS : OfTable.INPUT)
                 .priority(Priority.LOOP_FLOW_PRIORITY)
                 .match(makeTransitMatch(sw, inPort, encapsulation))
                 .instructions(buildInstructions(sw.getSwitchId()));
 
-        if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
-            builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
-        }
+        //todo add RESET_COUNTERS flag
         return builder.build();
     }
 

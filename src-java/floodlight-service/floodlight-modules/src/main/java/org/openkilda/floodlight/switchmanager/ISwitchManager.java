@@ -23,7 +23,6 @@ import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSharedSegmentCookie;
@@ -543,30 +542,6 @@ public interface ISwitchManager extends IFloodlightService {
 
     void installServer42OuterVlanMatchSharedFlow(DatapathId switchId, FlowSharedSegmentCookie cookie)
             throws SwitchOperationException;
-
-    /**
-     * Returns list of default flows that must be installed on a switch.
-     *
-     * @param dpid switch id.
-     * @param multiTable flag
-     * @param switchLldp flag. True means that switch must has rules for catching LLDP packets.
-     * @param switchArp flag. True means that switch must have rules for catching ARP packets.
-     * @return list of default flows.
-     */
-    List<OFFlowMod> getExpectedDefaultFlows(
-            DatapathId dpid, boolean multiTable, boolean switchLldp, boolean switchArp) throws SwitchOperationException;
-
-    /**
-     * Returns list of default meters that must be installed on a switch.
-     *
-     * @param dpid switch id.
-     * @param multiTable flag
-     * @param switchLldp flag. True means that switch must has rules for catching LLDP packets.
-     * @param switchArp flag. True means that switch must have rules for catching ARP packets.
-     * @return list of default meters.
-     */
-    List<MeterEntry> getExpectedDefaultMeters(
-            DatapathId dpid, boolean multiTable, boolean switchLldp, boolean switchArp) throws SwitchOperationException;
 
     /**
      * Returns list of flows that must be installed for multitable pipeline per isl port.

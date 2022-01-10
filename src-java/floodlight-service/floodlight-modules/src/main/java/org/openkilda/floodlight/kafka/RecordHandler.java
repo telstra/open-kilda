@@ -78,6 +78,8 @@ import org.openkilda.floodlight.command.meter.MeterModifyCommand;
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
+import org.openkilda.floodlight.converter.rulemanager.OfFlowConverter;
+import org.openkilda.floodlight.converter.rulemanager.OfGroupConverter;
 import org.openkilda.floodlight.error.FlowCommandException;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.OfInstallException;
@@ -93,6 +95,7 @@ import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.FlowTransitData;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.floodlight.service.CommandProcessorService;
+import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchTrackingService;
@@ -148,8 +151,6 @@ import org.openkilda.messaging.command.switches.DumpRulesForFlowHsRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
-import org.openkilda.messaging.command.switches.GetExpectedDefaultMetersRequest;
-import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
 import org.openkilda.messaging.command.switches.InstallGroupRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.ModifyGroupRequest;
@@ -164,16 +165,17 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
 import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
 import org.openkilda.messaging.info.flow.FlowInstallResponse;
 import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.flow.FlowRemoveResponse;
+import org.openkilda.messaging.info.group.GroupDumpResponse;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.GroupEntry;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.messaging.info.stats.PortStatusData;
@@ -198,12 +200,16 @@ import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.PortStatus;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSharedSegmentCookie;
 import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
 import org.openkilda.model.cookie.PortColourCookie;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
+import org.openkilda.rulemanager.MeterSpeakerData;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -212,7 +218,6 @@ import com.google.common.collect.ImmutableList;
 import lombok.Getter;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
@@ -242,6 +247,7 @@ class RecordHandler implements Runnable {
     private final ConsumerRecord<String, String> record;
 
     private final CommandProcessorService commandProcessor;
+    private final FeatureDetectorService featureDetectorService;
 
     public RecordHandler(ConsumerContext context, List<CommandDispatcher<?>> dispatchers,
                          ConsumerRecord<String, String> record) {
@@ -250,6 +256,7 @@ class RecordHandler implements Runnable {
         this.record = record;
 
         this.commandProcessor = context.getModuleContext().getServiceImpl(CommandProcessorService.class);
+        this.featureDetectorService = context.getModuleContext().getServiceImpl(FeatureDetectorService.class);
     }
 
     @VisibleForTesting
@@ -277,10 +284,6 @@ class RecordHandler implements Runnable {
             doInstallSwitchRules(message);
         } else if (data instanceof DumpRulesForFlowHsRequest) {
             doDumpRulesForFlowHsRequest(message);
-        } else if (data instanceof GetExpectedDefaultRulesRequest) {
-            doGetExpectedDefaultRulesRequest(message);
-        } else if (data instanceof GetExpectedDefaultMetersRequest) {
-            doGetExpectedDefaultMetersRequest(message);
         } else if (data instanceof DumpRulesRequest) {
             doDumpRulesRequest(message);
         } else if (data instanceof DumpRulesForSwitchManagerRequest) {
@@ -1259,122 +1262,9 @@ class RecordHandler implements Runnable {
         getKafkaProducer().sendMessageAndTrack(context.getKafkaNorthboundTopic(), infoMessage);
     }
 
-    private void doGetExpectedDefaultRulesRequest(CommandMessage message) {
-        IKafkaProducerService producerService = getKafkaProducer();
-        String replyToTopic = context.getKafkaSwitchManagerTopic();
-
-        GetExpectedDefaultRulesRequest request = (GetExpectedDefaultRulesRequest) message.getData();
-        SwitchId switchId = request.getSwitchId();
-        boolean multiTable = request.isMultiTable();
-        boolean switchLldp = request.isSwitchLldp();
-        boolean switchArp = request.isSwitchArp();
-        boolean server42FlowRttFeatureToggle = request.isServer42FlowRttFeatureToggle();
-        boolean server42FlowRttSwitchProperty = request.isServer42FlowRttSwitchProperty();
-        Integer server42Port = request.getServer42Port();
-        Integer server42Vlan = request.getServer42Vlan();
-        MacAddress server42MacAddress = request.getServer42MacAddress();
-        List<Integer> islPorts = request.getIslPorts();
-        List<Integer> flowPorts = request.getFlowPorts();
-        Set<Integer> flowLldpPorts = request.getFlowLldpPorts();
-        Set<Integer> flowArpPorts = request.getFlowArpPorts();
-        Set<Integer> server42FlowRttPorts = request.getServer42FlowRttPorts();
-
-        try {
-            logger.debug("Loading expected default rules for switch {}", switchId);
-            DatapathId dpid = DatapathId.of(switchId.toLong());
-            List<OFFlowMod> defaultRules =
-                    context.getSwitchManager().getExpectedDefaultFlows(dpid, multiTable, switchLldp, switchArp);
-            if (multiTable) {
-                for (int port : islPorts) {
-                    List<OFFlowMod> islFlows = context.getSwitchManager().getExpectedIslFlowsForPort(dpid, port);
-                    defaultRules.addAll(islFlows);
-                }
-                for (int port : flowPorts) {
-                    defaultRules.add(context.getSwitchManager().buildIntermediateIngressRule(dpid, port));
-                }
-                for (Integer port : flowLldpPorts) {
-                    defaultRules.add(context.getSwitchManager().buildLldpInputCustomerFlow(dpid, port));
-                }
-                for (Integer port : flowArpPorts) {
-                    defaultRules.add(context.getSwitchManager().buildArpInputCustomerFlow(dpid, port));
-                }
-            }
-            defaultRules.addAll(context.getSwitchManager()
-                    .buildExpectedServer42FlowRttFlows(dpid, server42FlowRttFeatureToggle,
-                            server42FlowRttSwitchProperty, server42Port, server42Vlan, server42MacAddress,
-                            server42FlowRttPorts));
-
-            defaultRules.addAll(context.getSwitchManager()
-                    .buildExpectedServer42IslRttFlows(dpid, request.isServer42IslRttEnabled(),
-                            server42Port, server42Vlan, server42MacAddress, islPorts));
-
-            List<FlowEntry> flows = defaultRules.stream()
-                    .map(OfFlowStatsMapper.INSTANCE::toFlowEntry)
-                    .collect(Collectors.toList());
-
-            SwitchExpectedDefaultFlowEntries response = SwitchExpectedDefaultFlowEntries.builder()
-                    .switchId(switchId)
-                    .flowEntries(flows)
-                    .build();
-            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(), message.getCorrelationId());
-            producerService.sendMessageAndTrack(replyToTopic, message.getCorrelationId(), infoMessage);
-        } catch (SwitchOperationException e) {
-            logger.error("Getting of expected default rules for switch '{}' was unsuccessful: {}",
-                    switchId, e.getMessage());
-            anError(ErrorType.NOT_FOUND)
-                    .withMessage(e.getMessage())
-                    .withDescription(format("Switch '%s' was not found when requesting expected default rules.",
-                            switchId))
-                    .withCorrelationId(message.getCorrelationId())
-                    .withTopic(replyToTopic)
-                    .sendVia(producerService);
-        }
-
-    }
-
-    private void doGetExpectedDefaultMetersRequest(CommandMessage message) {
-        IKafkaProducerService producerService = getKafkaProducer();
-        String replyToTopic = context.getKafkaSwitchManagerTopic();
-
-        GetExpectedDefaultMetersRequest request = (GetExpectedDefaultMetersRequest) message.getData();
-        SwitchId switchId = request.getSwitchId();
-        boolean multiTable = request.isMultiTable();
-        boolean switchLldp = request.isSwitchLldp();
-        boolean switchArp = request.isSwitchArp();
-
-        try {
-            logger.debug("Loading expected default meters for switch {}", switchId);
-            DatapathId dpid = DatapathId.of(switchId.toLong());
-            List<MeterEntry> defaultMeters =
-                    context.getSwitchManager().getExpectedDefaultMeters(dpid, multiTable, switchLldp, switchArp);
-
-            SwitchExpectedDefaultMeterEntries response = SwitchExpectedDefaultMeterEntries.builder()
-                    .switchId(switchId)
-                    .meterEntries(defaultMeters)
-                    .build();
-            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(), message.getCorrelationId());
-            producerService.sendMessageAndTrack(replyToTopic, message.getCorrelationId(), infoMessage);
-        } catch (UnsupportedSwitchOperationException e) {
-            logger.info("Meters not supported: {}", switchId);
-            InfoMessage infoMessage = new InfoMessage(new SwitchMeterUnsupported(switchId), message.getTimestamp(),
-                    message.getCorrelationId());
-            producerService.sendMessageAndTrack(replyToTopic, message.getCorrelationId(), infoMessage);
-        } catch (SwitchOperationException e) {
-            logger.error("Getting of expected default meters for switch '{}' was unsuccessful: {}",
-                    switchId, e.getMessage());
-            anError(ErrorType.NOT_FOUND)
-                    .withMessage(e.getMessage())
-                    .withDescription(format("Switch '%s' was not found when requesting get expected default meters.",
-                            switchId))
-                    .withCorrelationId(message.getCorrelationId())
-                    .withTopic(replyToTopic)
-                    .sendVia(producerService);
-        }
-    }
-
     private void doDumpGroupsForSwitchManagerRequest(CommandMessage message) {
         SwitchId switchId = ((DumpGroupsForSwitchManagerRequest) message.getData()).getSwitchId();
-        dumpGroupsRequest(switchId, buildSenderToSwitchManager(message));
+        dumpRuleMangerGroupsRequest(switchId, buildSenderToSwitchManager(message));
     }
 
     private void doDumpGroupsForFlowHsRequest(CommandMessage message) {
@@ -1396,6 +1286,32 @@ class RecordHandler implements Runnable {
             SwitchGroupEntries response = SwitchGroupEntries.builder()
                     .switchId(switchId)
                     .groupEntries(groups)
+                    .build();
+            sender.accept(response);
+        } catch (SwitchOperationException e) {
+            logger.error("Dumping of groups on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
+            ErrorData errorData = anError(ErrorType.NOT_FOUND)
+                    .withMessage(e.getMessage())
+                    .withDescription("The switch was not found when requesting a groups dump.")
+                    .buildData();
+            sender.accept(errorData);
+        }
+    }
+
+    private void dumpRuleMangerGroupsRequest(SwitchId switchId, java.util.function.Consumer<MessageData> sender) {
+        try {
+            logger.debug("Loading installed groups for switch {}", switchId);
+
+            List<OFGroupDescStatsEntry> ofGroupDescStatsEntries = context.getSwitchManager()
+                    .dumpGroups(DatapathId.of(switchId.toLong()));
+
+            List<GroupSpeakerData> groups = ofGroupDescStatsEntries.stream()
+                    .map(OfGroupConverter.INSTANCE::convertToGroupSpeakerData)
+                    .collect(Collectors.toList());
+
+            GroupDumpResponse response = GroupDumpResponse.builder()
+                    .switchId(switchId)
+                    .groupSpeakerData(groups)
                     .build();
             sender.accept(response);
         } catch (SwitchOperationException e) {
@@ -1479,7 +1395,7 @@ class RecordHandler implements Runnable {
     }
 
     private void doDumpRulesForSwitchManagerRequest(CommandMessage message) {
-        processDumpRulesRequest(((DumpRulesForSwitchManagerRequest) message.getData()).getSwitchId(),
+        processDumpRuleManagerRulesRequest(((DumpRulesForSwitchManagerRequest) message.getData()).getSwitchId(),
                 buildSenderToSwitchManager(message));
     }
 
@@ -1504,6 +1420,32 @@ class RecordHandler implements Runnable {
                     .build();
             sender.accept(response);
         } catch (SwitchOperationException e) {
+            logger.error("Dumping of rules on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
+            ErrorData errorData = anError(ErrorType.NOT_FOUND)
+                    .withMessage(e.getMessage())
+                    .withDescription("The switch was not found when requesting a rules dump.")
+                    .buildData();
+            sender.accept(errorData);
+        }
+    }
+
+    private void processDumpRuleManagerRulesRequest(SwitchId switchId,
+                                                    java.util.function.Consumer<MessageData> sender) {
+        try {
+            logger.debug("Loading installed rules for switch {}", switchId);
+
+            List<OFFlowStatsEntry> flowEntries =
+                    context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId.toLong()));
+            List<FlowSpeakerData> flows = flowEntries.stream()
+                    .map(entry -> OfFlowConverter.INSTANCE.convertToFlowSpeakerData(entry, switchId))
+                    .collect(Collectors.toList());
+
+            FlowDumpResponse response = FlowDumpResponse.builder()
+                    .switchId(switchId)
+                    .flowSpeakerData(flows)
+                    .build();
+            sender.accept(response);
+        } catch (SwitchNotFoundException e) {
             logger.error("Dumping of rules on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
             ErrorData errorData = anError(ErrorType.NOT_FOUND)
                     .withMessage(e.getMessage())
@@ -1751,7 +1693,7 @@ class RecordHandler implements Runnable {
 
     private void doDumpMetersForSwitchManagerRequest(CommandMessage message) {
         DumpMetersForSwitchManagerRequest request = (DumpMetersForSwitchManagerRequest) message.getData();
-        dumpMeters(request.getSwitchId(), buildSenderToSwitchManager(message));
+        dumpRuleManagerMeters(request.getSwitchId(), buildSenderToSwitchManager(message));
     }
 
     private void doDumpMetersForFlowHsRequest(CommandMessage message) {
@@ -1795,7 +1737,6 @@ class RecordHandler implements Runnable {
         };
     }
 
-
     private void dumpMeters(SwitchId switchId, java.util.function.Consumer<MessageData> sender) {
         try {
             logger.debug("Get all meters for switch {}", switchId);
@@ -1808,6 +1749,45 @@ class RecordHandler implements Runnable {
             SwitchMeterEntries response = SwitchMeterEntries.builder()
                     .switchId(switchId)
                     .meterEntries(meters)
+                    .build();
+            sender.accept(response);
+        } catch (UnsupportedSwitchOperationException e) {
+            logger.info("Meters not supported: {}", switchId);
+            sender.accept(new SwitchMeterUnsupported(switchId));
+        } catch (SwitchNotFoundException e) {
+            logger.info("Dumping switch meters is unsuccessful. Switch {} not found", switchId);
+            ErrorData errorData = anError(ErrorType.NOT_FOUND)
+                    .withMessage(e.getMessage())
+                    .withDescription(switchId.toString())
+                    .buildData();
+            sender.accept(errorData);
+        } catch (SwitchOperationException e) {
+            logger.error("Unable to dump meters", e);
+            ErrorData errorData = anError(ErrorType.NOT_FOUND)
+                    .withMessage(e.getMessage())
+                    .withDescription("Unable to dump meters")
+                    .buildData();
+            sender.accept(errorData);
+        }
+    }
+
+    private void dumpRuleManagerMeters(SwitchId switchId, java.util.function.Consumer<MessageData> sender) {
+        try {
+            logger.debug("Get all meters for switch {}", switchId);
+            ISwitchManager switchManager = context.getSwitchManager();
+            DatapathId datapathId = DatapathId.of(switchId.toLong());
+            List<OFMeterConfig> meterEntries = switchManager.dumpMeters(datapathId);
+            IOFSwitch iofSwitch = switchManager.lookupSwitch(datapathId);
+            boolean inaccurate = featureDetectorService.detectSwitch(iofSwitch)
+                    .contains(SwitchFeature.INACCURATE_METER);
+            List<MeterSpeakerData> meters = meterEntries.stream()
+                    .map(entry -> org.openkilda.floodlight.converter.rulemanager.OfMeterConverter.INSTANCE
+                            .convertToMeterSpeakerData(entry, inaccurate))
+                    .collect(Collectors.toList());
+
+            MeterDumpResponse response = MeterDumpResponse.builder()
+                    .switchId(switchId)
+                    .meterSpeakerData(meters)
                     .build();
             sender.accept(response);
         } catch (UnsupportedSwitchOperationException e) {
