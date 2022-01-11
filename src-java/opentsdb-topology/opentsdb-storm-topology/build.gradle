@@ -15,7 +15,7 @@ dependencies {
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
     implementation project(':blue-green')
 
-    runtimeOnly 'org.yaml:snakeyaml:1.15'
+    runtimeOnly 'org.yaml:snakeyaml:1.30'
     runtimeOnly 'commons-logging:commons-logging:1.2'
     implementation('org.apache.storm:storm-opentsdb:1.2.1') {
         exclude group: 'org.apache.httpcomponents', module: 'httpclient'

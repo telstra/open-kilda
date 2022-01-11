@@ -27,8 +27,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
@@ -801,14 +801,14 @@ public class NetworkIslServiceTest {
 
         reset(dashboardLogger);
         service.bfdPropertiesUpdate(reference);
-        verifyZeroInteractions(dashboardLogger);
+        verifyNoInteractions(dashboardLogger);
 
         service.bfdStatusUpdate(reference.getSource(), reference, BfdStatusUpdate.DOWN);
         service.bfdStatusUpdate(reference.getSource(), reference, BfdStatusUpdate.KILL);
-        verifyZeroInteractions(dashboardLogger);
+        verifyNoInteractions(dashboardLogger);
 
         service.bfdStatusUpdate(reference.getSource(), reference, BfdStatusUpdate.DOWN);
-        verifyZeroInteractions(dashboardLogger);
+        verifyNoInteractions(dashboardLogger);
 
         service.bfdStatusUpdate(reference.getDest(), reference, BfdStatusUpdate.DOWN);
         verify(dashboardLogger).onIslDown(eq(reference), any());
@@ -819,10 +819,10 @@ public class NetworkIslServiceTest {
     public void pollDiscoveryResetsPortDownStatus() {
         IslReference reference = preparePortDownStatusReset();
 
-        verifyZeroInteractions(dashboardLogger); // only destination endpoint status is cleaned
+        verifyNoInteractions(dashboardLogger); // only destination endpoint status is cleaned
 
         service.islUp(reference.getSource(), reference, new IslDataHolder(100, 100, 100));
-        verifyZeroInteractions(dashboardLogger); // only destination endpoint status is cleaned
+        verifyNoInteractions(dashboardLogger); // only destination endpoint status is cleaned
 
         service.islUp(reference.getDest(), reference, new IslDataHolder(100, 100, 100));
         verify(dashboardLogger).onIslUp(eq(reference), any());
