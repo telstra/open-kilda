@@ -118,7 +118,7 @@ class LagPortSpec extends HealthCheckSpecification {
             [it.src, it.dst].every { it.dpId in allTraffGenSwitchIds }
         }
         def traffgenSrcSwPort = switchPair.src.traffGens.switchPort[0]
-        def portsArray = topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1] << traffgenSrcSwPort
+        def portsArray = (topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1] << traffgenSrcSwPort).unique()
         def payload = new CreateLagPortDto(portNumbers: portsArray)
         def lagPort = northboundV2.createLagLogicalPort(switchPair.src.dpId, payload).logicalPortNumber
 
@@ -328,8 +328,8 @@ class LagPortSpec extends HealthCheckSpecification {
         exc.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Error during LAG create"
-        errorDetails.errorDescription == "Physical port $mirrorPort already used as sink by following mirror points" +
-                " flow '$flow.flowId': [$mirrorEndpoint.mirrorPointId]"
+        errorDetails.errorDescription == "Physical port $mirrorPort already used by following flows: [$flow.flowId]. " +
+                "You must remove these flows to be able to use the port in LAG."
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
