@@ -52,6 +52,9 @@ class YFlowCreateSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid y-flow can be created#trafficDisclaimer, covered cases: #coveredCases"() {
         assumeTrue(swT != null, "These cases cannot be covered on given topology: $coveredCases")
+        if (coveredCases.toString().contains("qinq")) {
+            assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
+        }
 
         when: "Create a y-flow of certain configuration"
         def yFlow = northboundV2.addYFlow(yFlowRequest)
