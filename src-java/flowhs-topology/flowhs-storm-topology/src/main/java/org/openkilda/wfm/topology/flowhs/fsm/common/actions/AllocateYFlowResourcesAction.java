@@ -127,6 +127,7 @@ public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, 
                 flow.setSharedEndpointMeterId(newResources.getSharedEndpointResources().getMeterId());
             });
 
+            notifyStats(stateMachine, newResources);
         } catch (ResourceAllocationException ex) {
             String errorMessage = format("Failed to allocate y-flow resources. %s", ex.getMessage());
             stateMachine.saveErrorToHistory(errorMessage, ex);
@@ -160,5 +161,9 @@ public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, 
                 () -> resourcesManager.allocateMeter(yFlowId, switchId));
         log.debug("Meter {} has been allocated for y-flow {}", meterId, yFlowId);
         return meterId;
+    }
+
+    private void notifyStats(T fsm, YFlowResources resources) {
+        fsm.sendAddOrUpdateStatsNotification(resources);
     }
 }

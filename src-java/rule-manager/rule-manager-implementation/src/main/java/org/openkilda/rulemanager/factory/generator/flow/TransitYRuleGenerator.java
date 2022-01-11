@@ -21,15 +21,15 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants.Priority;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.factory.MeteredRuleGenerator;
 
@@ -39,27 +39,28 @@ import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @SuperBuilder
 public class TransitYRuleGenerator extends TransitRuleGenerator implements MeteredRuleGenerator {
     protected final MeterId sharedMeterId;
     protected RuleManagerConfig config;
-    protected String externalMeterCommandUuid;
+    protected UUID externalMeterCommandUuid;
     protected boolean generateMeterCommand;
 
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         if (flowPath.isOneSwitchFlow()) {
             return new ArrayList<>();
         }
 
-        List<SpeakerCommandData> result = new ArrayList<>();
-        SpeakerCommandData command = buildTransitCommand(sw, inPort, outPort);
+        List<SpeakerData> result = new ArrayList<>();
+        SpeakerData command = buildTransitCommand(sw, inPort, outPort);
         result.add(command);
 
         if (generateMeterCommand) {
-            SpeakerCommandData meterCommand = buildMeter(externalMeterCommandUuid, flowPath, config, sharedMeterId, sw);
+            SpeakerData meterCommand = buildMeter(externalMeterCommandUuid, flowPath, config, sharedMeterId, sw);
             if (meterCommand != null) {
                 result.add(meterCommand);
                 command.getDependsOn().add(externalMeterCommandUuid);
@@ -71,14 +72,14 @@ public class TransitYRuleGenerator extends TransitRuleGenerator implements Meter
     }
 
 
-    private SpeakerCommandData buildTransitCommand(Switch sw, int inPort, int outPort) {
+    private SpeakerData buildTransitCommand(Switch sw, int inPort, int outPort) {
         Instructions instructions = Instructions.builder()
                 .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(outPort))))
                 .build();
         if (sharedMeterId != null && sharedMeterId.getValue() != 0L) {
             addMeterToInstructions(sharedMeterId, sw, instructions);
         }
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie().toBuilder().yFlow(true).build())

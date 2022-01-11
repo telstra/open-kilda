@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.yflow.create;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
@@ -148,7 +149,8 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
 
         public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
                        @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager resourcesManager,
-                       @NonNull FlowCreateService flowCreateService, @NonNull FlowDeleteService flowDeleteService,
+                       @NonNull RuleManager ruleManager, @NonNull FlowCreateService flowCreateService,
+                       @NonNull FlowDeleteService flowDeleteService,
                        int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
@@ -225,7 +227,7 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
                     .from(State.YFLOW_RESOURCES_ALLOCATED)
                     .to(State.INSTALLING_YFLOW_METERS)
                     .on(Event.NEXT)
-                    .perform(new InstallYFlowResourcesAction(persistenceManager));
+                    .perform(new InstallYFlowResourcesAction(persistenceManager, ruleManager));
             builder.transitions()
                     .from(State.YFLOW_RESOURCES_ALLOCATED)
                     .toAmong(State.DEALLOCATING_YFLOW_RESOURCES, State.DEALLOCATING_YFLOW_RESOURCES)
@@ -234,10 +236,6 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
             builder.internalTransition()
                     .within(State.INSTALLING_YFLOW_METERS)
                     .on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
-            builder.internalTransition()
-                    .within(State.INSTALLING_YFLOW_METERS)
-                    .on(Event.ERROR_RECEIVED)
                     .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
             builder.transition()
                     .from(State.INSTALLING_YFLOW_METERS)
@@ -261,10 +259,6 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
             builder.internalTransition()
                     .within(State.VALIDATING_YFLOW_METERS)
                     .on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedValidateResponseAction(speakerCommandRetriesLimit));
-            builder.internalTransition()
-                    .within(State.VALIDATING_YFLOW_METERS)
-                    .on(Event.ERROR_RECEIVED)
                     .perform(new OnReceivedValidateResponseAction(speakerCommandRetriesLimit));
             builder.transitions()
                     .from(State.VALIDATING_YFLOW_METERS)
@@ -290,15 +284,11 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
                     .from(State.REVERTING_YFLOW)
                     .to(State.REMOVING_YFLOW_METERS)
                     .on(Event.NEXT)
-                    .perform(new RemoveYFlowResourcesAction(persistenceManager));
+                    .perform(new RemoveYFlowResourcesAction(persistenceManager, ruleManager));
 
             builder.internalTransition()
                     .within(State.REMOVING_YFLOW_METERS)
                     .on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedRemoveResponseAction(speakerCommandRetriesLimit));
-            builder.internalTransition()
-                    .within(State.REMOVING_YFLOW_METERS)
-                    .on(Event.ERROR_RECEIVED)
                     .perform(new OnReceivedRemoveResponseAction(speakerCommandRetriesLimit));
             builder.transition()
                     .from(State.REMOVING_YFLOW_METERS)
@@ -433,7 +423,6 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
         NEXT,
 
         RESPONSE_RECEIVED,
-        ERROR_RECEIVED,
 
         SUB_FLOW_ALLOCATED,
         SUB_FLOW_CREATED,

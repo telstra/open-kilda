@@ -45,16 +45,16 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.rulemanager.Constants;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.MeterFlag;
-import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PopVlanAction;
@@ -73,6 +73,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 public class MultiTableIngressYRuleGeneratorTest {
     public static final PathId PATH_ID = new PathId("path_id");
@@ -130,7 +131,7 @@ public class MultiTableIngressYRuleGeneratorTest {
     RuleManagerConfig config;
 
     public static final MeterId SHARED_METER_ID = new MeterId(34);
-    public static final String SHARED_METER_UUID = "uuid";
+    public static final UUID SHARED_METER_UUID = UUID.fromString("dc8b54d3-3f25-4c5b-9d90-5f59d2836bc2");
 
 
     @Before
@@ -356,11 +357,11 @@ public class MultiTableIngressYRuleGeneratorTest {
     public void buildCommandsVlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(2, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
-        MeterSpeakerCommandData meterCommand = (MeterSpeakerCommandData) commands.get(1);
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
+        MeterSpeakerData meterCommand = (MeterSpeakerData) commands.get(1);
         assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
@@ -387,11 +388,11 @@ public class MultiTableIngressYRuleGeneratorTest {
                 FlowSideAdapter.makeIngressAdapter(oneSwitchFlow, ONE_SWITCH_PATH));
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, overlapping);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(2, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
-        MeterSpeakerCommandData meterCommand = (MeterSpeakerCommandData) commands.get(1);
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
+        MeterSpeakerData meterCommand = (MeterSpeakerData) commands.get(1);
         assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
@@ -418,11 +419,11 @@ public class MultiTableIngressYRuleGeneratorTest {
                 FlowSideAdapter.makeIngressAdapter(oneSwitchFlow, ONE_SWITCH_PATH));
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, overlapping);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(2, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
-        MeterSpeakerCommandData meterCommand = (MeterSpeakerCommandData) commands.get(1);
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
+        MeterSpeakerData meterCommand = (MeterSpeakerData) commands.get(1);
         assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
@@ -450,10 +451,10 @@ public class MultiTableIngressYRuleGeneratorTest {
                 FlowSideAdapter.makeIngressAdapter(oneSwitchFlow, ONE_SWITCH_PATH));
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, overlapping, false);
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(1, commands.size());
 
-        FlowSpeakerCommandData ingressCommand = (FlowSpeakerCommandData) commands.get(0);
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
         assertEquals(newArrayList(SHARED_METER_UUID), new ArrayList<>(ingressCommand.getDependsOn()));
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
@@ -474,7 +475,7 @@ public class MultiTableIngressYRuleGeneratorTest {
     }
 
     private void assertIngressCommand(
-            FlowSpeakerCommandData command, int expectedPriority, Set<FieldMatch> expectedMatch,
+            FlowSpeakerData command, int expectedPriority, Set<FieldMatch> expectedMatch,
             List<Action> expectedApplyActions, MeterId expectedMeter, OfMetadata expectedMetadata) {
         assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
@@ -495,7 +496,7 @@ public class MultiTableIngressYRuleGeneratorTest {
         assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
     }
 
-    private void assertMeterCommand(MeterSpeakerCommandData command) {
+    private void assertMeterCommand(MeterSpeakerData command) {
         assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
         assertEquals(SHARED_METER_ID, command.getMeterId());

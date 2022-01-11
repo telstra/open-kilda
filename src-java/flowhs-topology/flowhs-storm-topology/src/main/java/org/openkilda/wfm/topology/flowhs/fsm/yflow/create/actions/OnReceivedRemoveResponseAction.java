@@ -17,8 +17,12 @@ package org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.api.response.SpeakerResponse;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
+import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
+import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
+import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm;
@@ -27,7 +31,11 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class OnReceivedRemoveResponseAction extends
@@ -42,7 +50,7 @@ public class OnReceivedRemoveResponseAction extends
 
     @Override
     public void perform(State from, State to, Event event, YFlowCreateContext context, YFlowCreateFsm stateMachine) {
-        SpeakerResponse response = context.getSpeakerResponse();
+        SpeakerCommandResponse response = context.getSpeakerResponse();
         UUID commandId = response.getCommandId();
         if (!stateMachine.hasPendingCommand(commandId)) {
             log.info("Received a response for unexpected command: {}", response);
@@ -54,22 +62,34 @@ public class OnReceivedRemoveResponseAction extends
             stateMachine.saveActionToHistory("Rule was deleted",
                     format("The rule was removed: switch %s", response.getSwitchId()));
         } else {
-            FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-
+            Optional<DeleteSpeakerCommandsRequest> request = stateMachine.getDeleteSpeakerCommand(commandId);
             int attempt = stateMachine.doRetryForCommand(commandId);
-            if (attempt <= speakerCommandRetriesLimit) {
-                stateMachine.saveErrorToHistory(FAILED_TO_REMOVE_RULE_ACTION,
-                        format("Failed to remove the rule: commandId %s, switch %s. Error %s. Retrying (attempt %d)",
-                                commandId, errorResponse.getSwitchId(), errorResponse, attempt));
+            if (attempt <= speakerCommandRetriesLimit && request.isPresent()) {
+                response.getFailedCommandIds().forEach((uuid, message) ->
+                        stateMachine.saveErrorToHistory(FAILED_TO_REMOVE_RULE_ACTION,
+                                format("Failed to remove the rule: commandId %s, ruleId %s, switch %s. "
+                                                + "Error %s. Retrying (attempt %d)",
+                                        commandId, uuid, response.getSwitchId(), message, attempt)));
 
-                //TODO: stateMachine.getCarrier().sendSpeakerRequest(removeCommand.makeRemoveRequest(commandId));
+                Set<UUID> failedUuids = response.getFailedCommandIds().keySet();
+                DeleteSpeakerCommandsRequest deleteRequest = request.get();
+                List<OfCommand> commands = deleteRequest.getCommands().stream()
+                        .filter(command -> command instanceof FlowCommand
+                                && failedUuids.contains(((FlowCommand) command).getData().getUuid())
+                                || command instanceof MeterCommand
+                                && failedUuids.contains(((MeterCommand) command).getData().getUuid())
+                                || command instanceof GroupCommand
+                                && failedUuids.contains(((GroupCommand) command).getData().getUuid()))
+                        .collect(Collectors.toList());
+                stateMachine.getCarrier().sendSpeakerRequest(deleteRequest.toBuilder().commands(commands).build());
             } else {
-                stateMachine.addFailedCommand(commandId, errorResponse);
+                stateMachine.addFailedCommand(commandId, response);
                 stateMachine.removePendingCommand(commandId);
 
-                stateMachine.saveErrorToHistory(FAILED_TO_REMOVE_RULE_ACTION,
-                        format("Failed to remove the rule: commandId %s, switch %s. Error: %s",
-                                commandId, errorResponse.getSwitchId(), errorResponse));
+                response.getFailedCommandIds().forEach((uuid, message) ->
+                        stateMachine.saveErrorToHistory(FAILED_TO_REMOVE_RULE_ACTION,
+                                format("Failed to remove the rule: commandId %s, ruleId %s, switch %s. Error: %s",
+                                        commandId, uuid, response.getSwitchId(), message)));
             }
         }
 

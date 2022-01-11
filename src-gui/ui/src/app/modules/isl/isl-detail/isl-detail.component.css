@@ -67,3 +67,10 @@ i.icon {
 .isl_details_div .col-form-label {
   line-height: 1;
 }
+
+.update_isl_cost{
+padding-left: 0px;
+}
+.isl_delete_dropdown .dropdown-menu{
+  min-width: 120px;
+}

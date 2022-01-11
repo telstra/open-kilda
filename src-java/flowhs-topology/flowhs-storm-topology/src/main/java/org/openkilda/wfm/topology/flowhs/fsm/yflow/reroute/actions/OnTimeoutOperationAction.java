@@ -29,6 +29,7 @@ public class OnTimeoutOperationAction extends AnonymousAction<YFlowRerouteFsm, S
     @Override
     public final void execute(State from, State to, Event event, YFlowRerouteContext context,
                               YFlowRerouteFsm stateMachine) {
+        stateMachine.setErrorReason("Timeout event has been received");
         if (stateMachine.getReroutingSubFlows().isEmpty()) {
             stateMachine.fire(Event.PENDING_OPERATIONS_COMPLETED);
         }

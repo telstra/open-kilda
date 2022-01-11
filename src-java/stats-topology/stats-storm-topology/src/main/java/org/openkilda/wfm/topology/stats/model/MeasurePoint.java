@@ -17,8 +17,10 @@ package org.openkilda.wfm.topology.stats.model;
 
 public enum MeasurePoint {
     INGRESS,
-    INGRESS_ATTENDANT,
     EGRESS,
     ONE_SWITCH,
-    TRANSIT
+    TRANSIT,
+    UNKNOWN,
+    Y_FLOW_SHARED,
+    Y_FLOW_Y_POINT
 }

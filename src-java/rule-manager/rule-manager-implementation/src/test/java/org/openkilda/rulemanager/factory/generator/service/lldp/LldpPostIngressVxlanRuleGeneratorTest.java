@@ -36,7 +36,7 @@ import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.MeterAction;
@@ -73,7 +73,7 @@ public class LldpPostIngressVxlanRuleGeneratorTest extends LldpRuleGeneratorTest
     public void shouldSkipRuleWithoutPopVxlanFeatureForOf13() {
         expectedFeatures.remove(NOVIFLOW_PUSH_POP_VXLAN);
         sw = buildSwitch("OF_13", expectedFeatures);
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertTrue(commands.isEmpty());
     }

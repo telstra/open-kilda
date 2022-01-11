@@ -15,6 +15,8 @@
 
 package org.openkilda.rulemanager;
 
+import static java.lang.String.format;
+
 import lombok.Getter;
 
 public enum OfTable {
@@ -30,5 +32,27 @@ public enum OfTable {
 
     OfTable(int tableId) {
         this.tableId = tableId;
+    }
+
+    /**
+     * Lookup table by table id.
+     */
+    public static OfTable fromInt(int val) {
+        switch (val) {
+            case 0:
+                return INPUT;
+            case 1:
+                return PRE_INGRESS;
+            case 2:
+                return INGRESS;
+            case 3:
+                return POST_INGRESS;
+            case 4:
+                return EGRESS;
+            case 5:
+                return TRANSIT;
+            default:
+                throw new IllegalArgumentException(format("Unknown table id %d", val));
+        }
     }
 }

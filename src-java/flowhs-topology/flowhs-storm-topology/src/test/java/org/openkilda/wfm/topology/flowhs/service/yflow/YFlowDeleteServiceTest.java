@@ -19,7 +19,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.command.yflow.YFlowDeleteRequest;
 import org.openkilda.messaging.command.yflow.YFlowResponse;
 import org.openkilda.messaging.error.ErrorType;
@@ -32,14 +35,13 @@ import org.openkilda.wfm.topology.flowhs.service.FlowDeleteService;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
-public class YFlowDeleteServiceTest extends AbstractYFlowTest {
+public class YFlowDeleteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     @Mock
     private FlowGenericCarrier flowDeleteHubCarrier;
     @Mock
@@ -47,10 +49,10 @@ public class YFlowDeleteServiceTest extends AbstractYFlowTest {
 
     @Before
     public void init() {
-        doAnswer(getSpeakerCommandsAnswer())
-                .when(flowDeleteHubCarrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
-        /*TODO: doAnswer(getSpeakerCommandsAnswer())
-                .when(yFlowCreateHubCarrier).sendSpeakerRequest(any(FlowSegmentRequest.class));*/
+        doAnswer(buildSpeakerRequestAnswer())
+                .when(flowDeleteHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
+        doAnswer(buildSpeakerRequestAnswer())
+                .when(yFlowDeleteHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
     }
 
     @Test
@@ -92,7 +94,6 @@ public class YFlowDeleteServiceTest extends AbstractYFlowTest {
         verifyNorthboundErrorResponse(yFlowDeleteHubCarrier, ErrorType.NOT_FOUND);
     }
 
-    @Ignore("TODO: implement meter removal")
     @Test
     public void shouldDeleteOnUnsuccessfulMeterRemoval() throws DuplicateKeyException {
         // given
@@ -112,7 +113,6 @@ public class YFlowDeleteServiceTest extends AbstractYFlowTest {
         verifyYFlowIsAbsent(yFlowId);
     }
 
-    @Ignore("TODO: implement meter removal")
     @Test
     public void shouldDeleteOnTimeoutDuringMeterRemoval() throws DuplicateKeyException {
         // given
@@ -125,7 +125,7 @@ public class YFlowDeleteServiceTest extends AbstractYFlowTest {
         service.handleRequest(yFlowId, new CommandContext(), new YFlowDeleteRequest(yFlowId));
         verifyYFlowStatus(yFlowId, FlowStatus.IN_PROGRESS);
         // and
-        handleSpeakerCommandsAndTimeoutRemove(service, yFlowId, yFlowId);
+        handleSpeakerCommandsAndTimeoutRemove(service, yFlowId);
 
         //then
         verifyNorthboundSuccessResponse(yFlowDeleteHubCarrier, YFlowResponse.class);
@@ -140,39 +140,68 @@ public class YFlowDeleteServiceTest extends AbstractYFlowTest {
 
         verifyYFlowStatus(yFlowRequest.getYFlowId(), FlowStatus.IN_PROGRESS);
 
-        handleSpeakerCommands(speakerRequest -> {
-            SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(speakerRequest);
+        handleSpeakerRequests(speakerRequest -> {
+            SpeakerResponse commandResponse;
+            if (speakerRequest instanceof FlowSegmentRequest) {
+                FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) speakerRequest;
+                commandResponse = buildSuccessfulSpeakerResponse(flowSegmentRequest);
+            } else {
+                BaseSpeakerCommandsRequest speakerCommandsRequest = (BaseSpeakerCommandsRequest) speakerRequest;
+                commandResponse = buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
+            }
             handleAsyncResponse(service, yFlowRequest.getYFlowId(), commandResponse);
         });
     }
 
     private void handleAsyncResponse(YFlowDeleteService service,
-                                     String key, SpeakerFlowSegmentResponse commandResponse) {
+                                     String yFlowFsmKey, SpeakerResponse commandResponse) {
         try {
-            service.handleAsyncResponse(key, commandResponse);
+            service.handleAsyncResponse(yFlowFsmKey, commandResponse);
         } catch (UnknownKeyException ex) {
             //skip
         }
     }
 
-    private void handleSpeakerCommandsAndFailRemove(YFlowDeleteService yFlowDeleteService, String key,
-                                                    String commandKeyToFail) {
-        handleSpeakerCommands(request -> {
-            SpeakerFlowSegmentResponse commandResponse = request.isRemoveRequest()
-                    && request.getMetadata().getFlowId().equals(commandKeyToFail)
-                    ? buildErrorSpeakerResponse(request) : buildSuccessfulSpeakerResponse(request);
-            handleAsyncResponse(yFlowDeleteService, key, commandResponse);
+    private void handleSpeakerCommandsAndFailRemove(YFlowDeleteService yFlowDeleteService, String yFlowFsmKey,
+                                                    String commandFlowIdToFail) {
+        handleSpeakerRequests(request -> {
+            SpeakerResponse commandResponse;
+            if (request instanceof FlowSegmentRequest) {
+                FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) request;
+                commandResponse = flowSegmentRequest.isRemoveRequest()
+                        && flowSegmentRequest.getMetadata().getFlowId().equals(commandFlowIdToFail)
+                        ? buildErrorSpeakerResponse(flowSegmentRequest)
+                        : buildSuccessfulSpeakerResponse(flowSegmentRequest);
+            } else {
+                BaseSpeakerCommandsRequest speakerCommandsRequest = (BaseSpeakerCommandsRequest) request;
+                commandResponse = request instanceof DeleteSpeakerCommandsRequest
+                        ? buildErrorYFlowSpeakerResponse(speakerCommandsRequest)
+                        : buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
+            }
+            handleAsyncResponse(yFlowDeleteService, yFlowFsmKey, commandResponse);
         });
     }
 
-    private void handleSpeakerCommandsAndTimeoutRemove(YFlowDeleteService yFlowDeleteService, String key,
-                                                       String commandKeyToFail) {
-        handleSpeakerCommands(request -> {
-            if (request.isRemoveRequest() && key.equals(commandKeyToFail)) {
-                yFlowDeleteService.handleTimeout(key);
+    private void handleSpeakerCommandsAndTimeoutRemove(YFlowDeleteService yFlowDeleteService, String yFlowFsmKey) {
+        handleSpeakerRequests(request -> {
+            SpeakerResponse commandResponse;
+            if (request instanceof FlowSegmentRequest) {
+                FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) request;
+                commandResponse = buildSuccessfulSpeakerResponse(flowSegmentRequest);
+                handleAsyncResponse(yFlowDeleteService, yFlowFsmKey, commandResponse);
+            } else {
+                BaseSpeakerCommandsRequest speakerCommandsRequest = (BaseSpeakerCommandsRequest) request;
+                if (speakerCommandsRequest instanceof DeleteSpeakerCommandsRequest) {
+                    try {
+                        yFlowDeleteService.handleTimeout(yFlowFsmKey);
+                    } catch (UnknownKeyException ex) {
+                        //skip
+                    }
+                } else {
+                    commandResponse = buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
+                    handleAsyncResponse(yFlowDeleteService, yFlowFsmKey, commandResponse);
+                }
             }
-            SpeakerFlowSegmentResponse commandResponse = buildSuccessfulSpeakerResponse(request);
-            handleAsyncResponse(yFlowDeleteService, key, commandResponse);
         });
     }
 
@@ -187,7 +216,7 @@ public class YFlowDeleteServiceTest extends AbstractYFlowTest {
 
     private YFlowDeleteService makeYFlowDeleteService(FlowDeleteService flowDeleteService,
                                                       int retriesLimit) {
-        return new YFlowDeleteService(yFlowDeleteHubCarrier, persistenceManager, flowResourcesManager,
+        return new YFlowDeleteService(yFlowDeleteHubCarrier, persistenceManager, flowResourcesManager, ruleManager,
                 flowDeleteService, retriesLimit);
     }
 }

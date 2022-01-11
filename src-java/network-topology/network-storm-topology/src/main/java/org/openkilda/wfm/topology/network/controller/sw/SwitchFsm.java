@@ -35,6 +35,7 @@ import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
+import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SpeakerRepository;
@@ -518,9 +519,22 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     private void persistSwitchConnections(SwitchAvailabilityData availabilityData) {
+        RetryPolicy<?> retryPolicy = new RetryPolicy<>()
+                .handle(RecoverablePersistenceException.class, ConstraintViolationException.class)
+                .withMaxDuration(Duration.ofSeconds(options.getDbRepeatMaxDurationSeconds()))
+                .withDelay(Duration.ofMillis(20))
+                .withJitter(Duration.ofMillis(8))
+                .onRetry(
+                        e -> log.warn(
+                                "Failure updating switch connection's set {} - {}. Retrying #{}...",
+                                switchId, e.getLastFailure().getMessage(), e.getAttemptCount()))
+                .onRetriesExceeded(
+                        e -> log.error(
+                                "Failed to update switch {} connection's set, DB data is not actual now",
+                                switchId, e.getFailure()));
+
         transactionManager.doInTransaction(
-                transactionRetryPolicy,
-                () -> persistSwitchConnections(lookupSwitchCreateIfMissing(), availabilityData));
+                retryPolicy, () -> persistSwitchConnections(lookupSwitchCreateIfMissing(), availabilityData));
     }
 
     private void persistSwitchConnections(Switch sw, SwitchAvailabilityData availabilityData) {

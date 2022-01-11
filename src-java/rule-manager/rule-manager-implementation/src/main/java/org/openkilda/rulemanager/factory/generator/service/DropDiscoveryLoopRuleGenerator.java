@@ -23,11 +23,11 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.factory.RuleGenerator;
 import org.openkilda.rulemanager.match.FieldMatch;
 
@@ -44,7 +44,7 @@ public class DropDiscoveryLoopRuleGenerator implements RuleGenerator {
     private RuleManagerConfig config;
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         OfVersion ofVersion = OfVersion.of(sw.getOfVersion());
         if (ofVersion == OF_12) {
             return Collections.emptyList();
@@ -56,7 +56,7 @@ public class DropDiscoveryLoopRuleGenerator implements RuleGenerator {
                 FieldMatch.builder().field(Field.ETH_SRC).value(sw.getSwitchId().toLong()).build()
         );
 
-        return Collections.singletonList(FlowSpeakerCommandData.builder()
+        return Collections.singletonList(FlowSpeakerData.builder()
                         .switchId(sw.getSwitchId())
                         .ofVersion(ofVersion)
                         .cookie(new Cookie(DROP_VERIFICATION_LOOP_RULE_COOKIE))

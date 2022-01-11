@@ -38,8 +38,8 @@ import java.util.stream.Collectors;
 public interface FlowMapper {
     FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
 
-    @Mapping(target = "forwardPath", expression = "java(toLinks(flow.getForwardPath().getSegments()))")
-    @Mapping(target = "reversePath", expression = "java(toLinks(flow.getReversePath().getSegments()))")
+    @Mapping(target = "forwardPath", source = "forwardPath.segments")
+    @Mapping(target = "reversePath", source = "reversePath.segments")
     FlowState toFlowState(Flow flow);
 
     @Mapping(target = "forwardPath", source = "info.flowPath.forwardPath")

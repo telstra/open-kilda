@@ -16,6 +16,5 @@
 package org.openkilda.rulemanager.group;
 
 public enum GroupType {
-
     ALL
 }

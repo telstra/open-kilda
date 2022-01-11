@@ -18,10 +18,12 @@ package org.openkilda.wfm.topology.flowhs.service.yflow;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.command.yflow.YFlowDeleteRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -45,11 +47,11 @@ public class YFlowDeleteService
     private final FlowDeleteService flowDeleteService;
 
     public YFlowDeleteService(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
-                              @NonNull FlowResourcesManager flowResourcesManager,
+                              @NonNull FlowResourcesManager flowResourcesManager, @NonNull RuleManager ruleManager,
                               @NonNull FlowDeleteService flowDeleteService, int speakerCommandRetriesLimit) {
         super(new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
         fsmFactory = new YFlowDeleteFsm.Factory(carrier, persistenceManager,
-                flowResourcesManager, flowDeleteService, speakerCommandRetriesLimit);
+                flowResourcesManager, ruleManager, flowDeleteService, speakerCommandRetriesLimit);
         this.flowDeleteService = flowDeleteService;
         addFlowDeleteEventListener();
     }
@@ -115,28 +117,32 @@ public class YFlowDeleteService
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(@NonNull String key, @NonNull SpeakerFlowSegmentResponse flowResponse)
+    public void handleAsyncResponse(@NonNull String key, @NonNull SpeakerResponse speakerResponse)
             throws UnknownKeyException {
-        log.debug("Received flow command response: {}", flowResponse);
+        log.debug("Received flow command response: {}", speakerResponse);
         YFlowDeleteFsm fsm = fsmRegister.getFsmByKey(key)
                 .orElseThrow(() -> new UnknownKeyException(key));
 
-        String flowId = flowResponse.getMetadata().getFlowId();
-        if (fsm.getDeletingSubFlows().contains(flowId)) {
-            flowDeleteService.handleAsyncResponseByFlowId(flowId, flowResponse);
-        } else {
-            YFlowDeleteContext context = YFlowDeleteContext.builder()
-                    .speakerResponse(flowResponse)
-                    .build();
-            if (flowResponse instanceof FlowErrorResponse) {
-                fsmExecutor.fire(fsm, Event.ERROR_RECEIVED, context);
-            } else {
-                fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
+        if (speakerResponse instanceof SpeakerFlowSegmentResponse) {
+            SpeakerFlowSegmentResponse response = (SpeakerFlowSegmentResponse) speakerResponse;
+            String flowId = response.getMetadata().getFlowId();
+            if (fsm.getDeletingSubFlows().contains(flowId)) {
+                flowDeleteService.handleAsyncResponseByFlowId(flowId, response);
             }
+        } else if (speakerResponse instanceof SpeakerCommandResponse) {
+            SpeakerCommandResponse response = (SpeakerCommandResponse) speakerResponse;
+            YFlowDeleteContext context = YFlowDeleteContext.builder()
+                    .speakerResponse(response)
+                    .build();
+            fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
+        } else {
+            log.debug("Received unexpected speaker response: {}", speakerResponse);
         }
 
         // After handling an event by FlowDelete services, we should propagate execution to the FSM.
-        fsmExecutor.fire(fsm, Event.NEXT);
+        if (!fsm.isTerminated()) {
+            fsmExecutor.fire(fsm, Event.NEXT);
+        }
 
         removeIfFinished(fsm, key);
     }

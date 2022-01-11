@@ -42,6 +42,7 @@ import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlow;
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 import org.openkilda.testing.model.topology.TopologyDefinition;
@@ -135,6 +136,7 @@ public interface NorthboundServiceV2 {
 
     BfdPropertiesPayload getLinkBfd(TopologyDefinition.Isl isl);
 
+    //y-flows
     YFlow getYFlow(String yFlowId);
 
     List<YFlow> getAllYFlows();
@@ -148,4 +150,6 @@ public interface NorthboundServiceV2 {
     YFlow deleteYFlow(String yFlowId);
 
     YFlowRerouteResult rerouteYFlow(String yFlowId);
+
+    YFlowPaths getYFlowPaths(String yFlowId);
 }

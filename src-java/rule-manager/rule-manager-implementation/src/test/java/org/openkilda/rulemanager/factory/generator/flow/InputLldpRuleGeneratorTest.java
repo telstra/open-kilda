@@ -32,13 +32,13 @@ import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.PortColourCookie;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
 
@@ -71,11 +71,11 @@ public class InputLldpRuleGeneratorTest {
                 .overlappingIngressAdapters(Sets.newHashSet(overlapAdapter))
                 .build();
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SW);
+        List<SpeakerData> commands = generator.generateCommands(SW);
 
         assertEquals(1, commands.size());
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertEquals(SW.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(SW.getOfVersion(), flowCommandData.getOfVersion().toString());
         assertTrue(flowCommandData.getDependsOn().isEmpty());

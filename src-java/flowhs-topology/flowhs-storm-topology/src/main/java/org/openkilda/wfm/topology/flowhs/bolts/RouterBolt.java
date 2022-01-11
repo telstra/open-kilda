@@ -31,6 +31,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_READ;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_REROUTE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_UPDATE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_VALIDATION_HUB;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KEY;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
@@ -198,7 +199,8 @@ public class RouterBolt extends AbstractBolt {
             } else if (data instanceof YFlowValidationRequest) {
                 YFlowValidationRequest request = (YFlowValidationRequest) data;
                 log.debug("Received a y-flow validation request {} with key {}", request, key);
-                //TODO: implement
+                emitWithContext(ROUTER_TO_YFLOW_VALIDATION_HUB.name(), input,
+                        new Values(key, request.getYFlowId(), data));
             } else if (data instanceof YFlowSyncRequest) {
                 YFlowSyncRequest request = (YFlowSyncRequest) data;
                 log.debug("Received a y-flow synchronization request {} with key {}", request, key);
@@ -230,6 +232,7 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(ROUTER_TO_YFLOW_DELETE_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_YFLOW_READ.name(),
                 new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
+        declarer.declareStream(ROUTER_TO_YFLOW_VALIDATION_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ZkStreams.ZK.toString(),
                 new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
     }

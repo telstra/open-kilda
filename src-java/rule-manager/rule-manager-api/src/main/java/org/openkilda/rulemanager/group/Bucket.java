@@ -17,6 +17,10 @@ package org.openkilda.rulemanager.group;
 
 import org.openkilda.rulemanager.action.Action;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
 import lombok.Value;
@@ -26,9 +30,19 @@ import java.util.Set;
 @Value
 @JsonSerialize
 @Builder
+@JsonNaming(SnakeCaseStrategy.class)
 public class Bucket {
 
     WatchGroup watchGroup;
     WatchPort watchPort;
     Set<Action> writeActions;
+
+    @JsonCreator
+    public Bucket(@JsonProperty("watch_group") WatchGroup watchGroup,
+                  @JsonProperty("watch_port") WatchPort watchPort,
+                  @JsonProperty("write_actions") Set<Action> writeActions) {
+        this.watchGroup = watchGroup;
+        this.watchPort = watchPort;
+        this.writeActions = writeActions;
+    }
 }

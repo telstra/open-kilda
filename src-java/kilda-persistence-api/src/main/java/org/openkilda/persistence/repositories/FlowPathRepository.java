@@ -20,6 +20,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.YFlow;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import java.util.Collection;
@@ -35,6 +36,8 @@ public interface FlowPathRepository extends Repository<FlowPath> {
     Map<PathId, FlowPath> findByIds(Set<PathId> pathIds);
 
     Map<PathId, Flow> findFlowsByPathIds(Set<PathId> pathIds);
+
+    Map<PathId, YFlow> findYFlowsByPathIds(Set<PathId> pathIds);
 
     Optional<FlowPath> findByFlowIdAndCookie(String flowId, FlowSegmentCookie flowCookie);
 

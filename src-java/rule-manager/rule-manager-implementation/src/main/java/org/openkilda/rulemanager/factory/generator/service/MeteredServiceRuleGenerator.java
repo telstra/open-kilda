@@ -24,7 +24,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.MeterFlag;
-import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
@@ -45,11 +45,11 @@ public abstract class MeteredServiceRuleGenerator implements MeteredRuleGenerato
 
     protected RuleManagerConfig config;
 
-    protected MeterSpeakerCommandData generateMeterCommandForServiceRule(Switch sw,
-                                                                         MeterId meterId,
-                                                                         long rateInPackets,
-                                                                         long burstSizeInPackets,
-                                                                         long packetSizeInBytes) {
+    protected MeterSpeakerData generateMeterCommandForServiceRule(Switch sw,
+                                                                  MeterId meterId,
+                                                                  long rateInPackets,
+                                                                  long burstSizeInPackets,
+                                                                  long packetSizeInBytes) {
         if (!sw.getFeatures().contains(METERS)) {
             return null;
         }
@@ -73,11 +73,12 @@ public abstract class MeteredServiceRuleGenerator implements MeteredRuleGenerato
                     switchFeatures);
         }
 
-        return MeterSpeakerCommandData.builder()
+        return MeterSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .meterId(meterId)
                 .rate(rate)
+                .inaccurate(sw.getFeatures().contains(SwitchFeature.INACCURATE_METER))
                 .burst(burstSize)
                 .flags(flags)
                 .build();

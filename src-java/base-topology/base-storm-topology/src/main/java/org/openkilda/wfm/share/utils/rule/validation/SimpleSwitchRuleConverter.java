@@ -73,7 +73,10 @@ public class SimpleSwitchRuleConverter {
         return rules;
     }
 
-    private List<SimpleSwitchRule> buildIngressSimpleSwitchRules(Flow flow, FlowPath flowPath,
+    /**
+     * Build ingress rules ({@link SimpleSwitchRule}) for provided {@link FlowPath}.
+     */
+    public List<SimpleSwitchRule> buildIngressSimpleSwitchRules(Flow flow, FlowPath flowPath,
                                                                  EncapsulationId encapsulationId,
                                                                  long flowMeterMinBurstSizeInKbits,
                                                                  double flowMeterBurstCoefficient) {
@@ -194,7 +197,10 @@ public class SimpleSwitchRuleConverter {
         return rules;
     }
 
-    private SimpleSwitchRule buildTransitSimpleSwitchRule(Flow flow, FlowPath flowPath,
+    /**
+     * Build transit rule ({@link SimpleSwitchRule}) between the segments of provided {@link FlowPath}.
+     */
+    public SimpleSwitchRule buildTransitSimpleSwitchRule(Flow flow, FlowPath flowPath,
                                                           PathSegment srcPathSegment, PathSegment dstPathSegment,
                                                           EncapsulationId encapsulationId) {
 

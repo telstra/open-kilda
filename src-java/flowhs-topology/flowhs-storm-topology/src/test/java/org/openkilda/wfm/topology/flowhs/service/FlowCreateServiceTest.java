@@ -54,13 +54,13 @@ import java.util.Set;
 import java.util.UUID;
 
 @RunWith(MockitoJUnitRunner.class)
-public class FlowCreateServiceTest extends AbstractFlowTest {
+public class FlowCreateServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
     @Mock
     private FlowGenericCarrier carrier;
 
     @Before
     public void init() {
-        doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
+        doAnswer(buildSpeakerRequestAnswer()).when(carrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
     }
 
     @Test

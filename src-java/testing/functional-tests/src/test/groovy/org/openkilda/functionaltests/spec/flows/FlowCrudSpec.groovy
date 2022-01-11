@@ -1424,8 +1424,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
     boolean isFlowPingable(FlowRequestV2 flow) {
         if (flow.source.switchId == flow.destination.switchId) {
             return false
-        } else if (topologyHelper.findSwitch(flow.source.switchId).ofVersion == "OF_12" ||
-                topologyHelper.findSwitch(flow.destination.switchId).ofVersion == "OF_12") {
+        } else if (topology.find(flow.source.switchId).ofVersion == "OF_12" ||
+                topology.find(flow.destination.switchId).ofVersion == "OF_12") {
             return false
         } else {
             return true

@@ -20,6 +20,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
+import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.messaging.command.yflow.SubFlowsResponse;
 import org.openkilda.messaging.command.yflow.YFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowPathsResponse;
@@ -33,7 +34,7 @@ import org.junit.Test;
 import java.time.Duration;
 import java.util.List;
 
-public class YFlowReadServiceTest extends AbstractYFlowTest {
+public class YFlowReadServiceTest extends AbstractYFlowTest<FlowSegmentRequest> {
     private static YFlowReadService yFlowReadService;
 
     @BeforeClass

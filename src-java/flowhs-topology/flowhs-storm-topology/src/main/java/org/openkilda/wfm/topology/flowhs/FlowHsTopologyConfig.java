@@ -199,6 +199,10 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("100")
     int getYFlowReadRetryDelayMillis();
 
+    @Key("y_flow.validation.speaker.timeout.seconds")
+    @Default("10")
+    int getYFlowValidationSpeakerTimeoutSeconds();
+
     @Key("burst.coefficient")
     @Default("1.05")
     double getFlowMeterBurstCoefficient();

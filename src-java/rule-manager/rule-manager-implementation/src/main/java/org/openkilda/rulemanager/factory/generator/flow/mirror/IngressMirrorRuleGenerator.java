@@ -34,15 +34,15 @@ import org.openkilda.model.GroupId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants.Priority;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
-import org.openkilda.rulemanager.GroupSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
+import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.GroupAction;
 import org.openkilda.rulemanager.action.PortOutAction;
@@ -61,15 +61,16 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @SuperBuilder
 public class IngressMirrorRuleGenerator extends IngressRuleGenerator {
     private boolean multiTable;
-    private String sharedMeterCommandUuid;
+    private UUID sharedMeterCommandUuid;
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
-        List<SpeakerCommandData> result = new ArrayList<>();
+    public List<SpeakerData> generateCommands(Switch sw) {
+        List<SpeakerData> result = new ArrayList<>();
 
         FlowMirrorPoints mirrorPoints = flowPath.getFlowMirrorPointsSet().stream()
                 .filter(points -> sw.getSwitchId().equals(points.getMirrorSwitchId()))
@@ -79,11 +80,11 @@ public class IngressMirrorRuleGenerator extends IngressRuleGenerator {
         }
 
         FlowEndpoint ingressEndpoint = checkAndBuildIngressEndpoint(flow, flowPath, sw.getSwitchId());
-        FlowSpeakerCommandData ingressCommand = buildFlowIngressCommand(
+        FlowSpeakerData ingressCommand = buildFlowIngressCommand(
                 sw, ingressEndpoint, mirrorPoints.getMirrorGroupId());
         result.add(ingressCommand);
 
-        SpeakerCommandData groupCommand = buildGroup(sw, mirrorPoints);
+        SpeakerData groupCommand = buildGroup(sw, mirrorPoints);
         result.add(groupCommand);
 
         ingressCommand.getDependsOn().add(groupCommand.getUuid());
@@ -93,8 +94,8 @@ public class IngressMirrorRuleGenerator extends IngressRuleGenerator {
         return result;
     }
 
-    private FlowSpeakerCommandData buildFlowIngressCommand(Switch sw, FlowEndpoint ingressEndpoint, GroupId groupId) {
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+    private FlowSpeakerData buildFlowIngressCommand(Switch sw, FlowEndpoint ingressEndpoint, GroupId groupId) {
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(ingressEndpoint.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie().toBuilder().mirror(true).build())
@@ -176,10 +177,10 @@ public class IngressMirrorRuleGenerator extends IngressRuleGenerator {
                 .build();
     }
 
-    private GroupSpeakerCommandData buildGroup(Switch sw, FlowMirrorPoints flowMirrorPoints) {
+    private GroupSpeakerData buildGroup(Switch sw, FlowMirrorPoints flowMirrorPoints) {
         List<Bucket> buckets = newArrayList(buildFlowBucket(sw.getFeatures()));
         buckets.addAll(buildMirrorBuckets(flowMirrorPoints));
-        return GroupSpeakerCommandData.builder()
+        return GroupSpeakerData.builder()
                 .groupId(flowMirrorPoints.getMirrorGroupId())
                 .buckets(buckets)
                 .type(GroupType.ALL)

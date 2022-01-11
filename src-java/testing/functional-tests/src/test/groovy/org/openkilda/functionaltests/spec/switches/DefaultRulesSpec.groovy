@@ -107,6 +107,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
                     .containsExactlyInAnyOrder(*defaultRules*.cookie.sort())
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
+        sleep(1000) // looks as a bug, wait for ruleManager
 
         where:
         [data, sw] << [
@@ -180,6 +181,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
             assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == defaultRules.size()
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
+        sleep(1000) // looks as a bug, wait for ruleManager
 
         where:
         [data, sw] << [
@@ -240,6 +242,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
                 assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
             }
         }
+        sleep(1000) // looks as a bug, wait for ruleManager
 
 
         where:

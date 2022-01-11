@@ -18,11 +18,11 @@ package org.openkilda.rulemanager.factory.generator.service;
 import org.openkilda.model.Switch;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.Constants.Priority;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.factory.RuleGenerator;
 
 import lombok.Builder;
@@ -38,12 +38,12 @@ public class TablePassThroughDefaultRuleGenerator implements RuleGenerator {
     private OfTable tableId;
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         Instructions instructions = Instructions.builder()
                 .goToTable(goToTableId)
                 .build();
 
-        return Collections.singletonList(FlowSpeakerCommandData.builder()
+        return Collections.singletonList(FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(cookie)

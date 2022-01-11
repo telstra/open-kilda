@@ -15,18 +15,23 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common;
 
-import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
+import org.openkilda.messaging.info.stats.YFlowStatsInfoFactory;
+import org.openkilda.messaging.payload.yflow.YFlowEndpointResources;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.topology.flowhs.exception.InsufficientDataException;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
-import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
-import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;
 
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachine;
 
 import java.util.Collection;
@@ -35,16 +40,20 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Getter
 public abstract class YFlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, E, C,
-        R extends NorthboundResponseCarrier & HistoryUpdateCarrier, L extends ProcessingEventListener>
+        R extends FlowGenericCarrier, L extends ProcessingEventListener>
         extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
     private final String yFlowId;
 
     private final Map<UUID, SwitchId> pendingCommands = new HashMap<>();
     private final Map<UUID, Integer> retriedCommands = new HashMap<>();
-    private final Map<UUID, SpeakerResponse> failedCommands = new HashMap<>();
-    private final Map<UUID, SpeakerResponse> failedValidationResponses = new HashMap<>();
+    private final Map<UUID, SpeakerCommandResponse> failedCommands = new HashMap<>();
+    private final Map<UUID, SpeakerCommandResponse> failedValidationResponses = new HashMap<>();
+
+    private final Map<UUID, InstallSpeakerCommandsRequest> installSpeakerRequests = new HashMap<>();
+    private final Map<UUID, DeleteSpeakerCommandsRequest> deleteSpeakerRequests = new HashMap<>();
 
     @Setter
     private FlowStatus originalYFlowStatus;
@@ -97,7 +106,7 @@ public abstract class YFlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, 
         failedCommands.clear();
     }
 
-    public void addFailedCommand(UUID key, SpeakerResponse errorResponse) {
+    public void addFailedCommand(UUID key, SpeakerCommandResponse errorResponse) {
         failedCommands.put(key, errorResponse);
     }
 
@@ -105,5 +114,64 @@ public abstract class YFlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, 
         clearPendingCommands();
         clearRetriedCommands();
         clearFailedCommands();
+    }
+
+    public void sendAddOrUpdateStatsNotification(YFlowResources resources) {
+        try {
+            getCarrier().sendStatsNotification(newYFlowStatsInfoFactory(resources).produceAddUpdateNotification());
+        } catch (InsufficientDataException e) {
+            log.error(
+                    "Do not notify stats about new y-flows resources allocation - resources data is incomplete {}",
+                    e.getMessage());
+        }
+    }
+
+    public void sendRemoveStatsNotification(YFlowResources resources) {
+        try {
+            getCarrier().sendStatsNotification(newYFlowStatsInfoFactory(resources).produceRemoveYFlowStatsInfo());
+        } catch (InsufficientDataException e) {
+            log.info("Do not notify stats about y-flows resources release - resources data is incomplete {}",
+                    e.getMessage());  // resource can be incomplete
+        }
+    }
+
+    private YFlowStatsInfoFactory newYFlowStatsInfoFactory(YFlowResources resources) throws InsufficientDataException {
+        YFlowResources.EndpointResources sharedEndpoint = resources.getSharedEndpointResources();
+        YFlowResources.EndpointResources yPoint = resources.getMainPathYPointResources();
+
+        String missing;
+        if (sharedEndpoint == null && yPoint == null) {
+            missing = "shared and y-point endpoints";
+        } else if (sharedEndpoint == null) {
+            missing = "shared endpoint";
+        } else if (yPoint == null) {
+            missing = "y-point endpoint";
+        } else {
+            missing = null;
+        }
+        if (missing != null) {
+            throw new InsufficientDataException(String.format("%s data are empty (is null)", missing));
+        }
+
+        return new YFlowStatsInfoFactory(
+                getYFlowId(),
+                new YFlowEndpointResources(sharedEndpoint.getEndpoint(), sharedEndpoint.getMeterId()),
+                new YFlowEndpointResources(yPoint.getEndpoint(), yPoint.getMeterId()));
+    }
+
+    public void addInstallSpeakerCommand(UUID key, InstallSpeakerCommandsRequest command) {
+        installSpeakerRequests.put(key, command);
+    }
+
+    public Optional<InstallSpeakerCommandsRequest> getInstallSpeakerCommand(UUID key) {
+        return Optional.ofNullable(installSpeakerRequests.get(key));
+    }
+
+    public void addDeleteSpeakerCommand(UUID key, DeleteSpeakerCommandsRequest command) {
+        deleteSpeakerRequests.put(key, command);
+    }
+
+    public Optional<DeleteSpeakerCommandsRequest> getDeleteSpeakerCommand(UUID key) {
+        return Optional.ofNullable(deleteSpeakerRequests.get(key));
     }
 }

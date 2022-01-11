@@ -36,7 +36,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PopVlanAction;
@@ -228,8 +228,8 @@ public final class Utils {
     /**
      * Find Speaker Command Data of specific type.
      */
-    public static <C extends SpeakerCommandData> Optional<C> getCommand(
-            Class<C> commandType, List<SpeakerCommandData> commands) {
+    public static <C extends SpeakerData> Optional<C> getCommand(
+            Class<C> commandType, List<SpeakerData> commands) {
         return commands.stream()
                 .filter(commandType::isInstance)
                 .map(commandType::cast)

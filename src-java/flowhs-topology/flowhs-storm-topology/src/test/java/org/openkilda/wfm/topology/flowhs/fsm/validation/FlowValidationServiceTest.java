@@ -26,6 +26,7 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -39,7 +40,8 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
     @BeforeClass
     public static void setUpOnce() {
         FlowValidationTestBase.setUpOnce();
-        service = new FlowValidationService(persistenceManager, flowResourcesConfig,
+        FlowResourcesManager flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
+        service = new FlowValidationService(persistenceManager, flowResourcesManager,
                 MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
     }
 

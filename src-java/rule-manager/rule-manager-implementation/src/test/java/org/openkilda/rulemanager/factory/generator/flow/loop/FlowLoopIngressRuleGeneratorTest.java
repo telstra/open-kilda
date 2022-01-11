@@ -33,13 +33,13 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.action.PushVlanAction;
@@ -78,7 +78,7 @@ public class FlowLoopIngressRuleGeneratorTest {
     @Test
     public void buildMultiTableDoubleVlanRuleTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_1, INNER_VLAN_1, 0, 0);
-        List<SpeakerCommandData> commands = buildGenerator(flow, true).generateCommands(SWITCH_1);
+        List<SpeakerData> commands = buildGenerator(flow, true).generateCommands(SWITCH_1);
         assertIngressCommands(commands, OfTable.INGRESS, Priority.LOOP_DOUBLE_VLAN_FLOW_PRIORITY,
                 newHashSet(
                         FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
@@ -92,7 +92,7 @@ public class FlowLoopIngressRuleGeneratorTest {
     @Test
     public void buildMultiTableSingleVlanRuleTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_1, 0, OUTER_VLAN_2, INNER_VLAN_2);
-        List<SpeakerCommandData> commands = buildGenerator(flow, true).generateCommands(SWITCH_1);
+        List<SpeakerData> commands = buildGenerator(flow, true).generateCommands(SWITCH_1);
         assertIngressCommands(commands, OfTable.INGRESS, Priority.LOOP_FLOW_PRIORITY,
                 newHashSet(
                         FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
@@ -105,7 +105,7 @@ public class FlowLoopIngressRuleGeneratorTest {
     @Test
     public void buildMultiTableDefaultFlowRuleTest() {
         Flow flow = buildFlow(PATH, 0, 0, OUTER_VLAN_2, INNER_VLAN_2);
-        List<SpeakerCommandData> commands = buildGenerator(flow, true).generateCommands(SWITCH_1);
+        List<SpeakerData> commands = buildGenerator(flow, true).generateCommands(SWITCH_1);
         assertIngressCommands(commands, OfTable.INGRESS, Priority.LOOP_DEFAULT_FLOW_PRIORITY,
                 newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()),
                 newArrayList(new PortOutAction(new PortNumber(SpecialPortType.IN_PORT))));
@@ -114,7 +114,7 @@ public class FlowLoopIngressRuleGeneratorTest {
     @Test
     public void buildSingleTableSingleVlanRuleTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_1, 0, OUTER_VLAN_2, 0);
-        List<SpeakerCommandData> commands = buildGenerator(flow, false).generateCommands(SWITCH_1);
+        List<SpeakerData> commands = buildGenerator(flow, false).generateCommands(SWITCH_1);
         assertIngressCommands(commands, OfTable.INPUT, Priority.LOOP_FLOW_PRIORITY,
                 newHashSet(
                         FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
@@ -125,7 +125,7 @@ public class FlowLoopIngressRuleGeneratorTest {
     @Test
     public void buildSingleTableDefaultFlowRuleTest() {
         Flow flow = buildFlow(PATH, 0, 0, 0, 0);
-        List<SpeakerCommandData> commands = buildGenerator(flow, false).generateCommands(SWITCH_1);
+        List<SpeakerData> commands = buildGenerator(flow, false).generateCommands(SWITCH_1);
         assertIngressCommands(commands, OfTable.INPUT, Priority.LOOP_DEFAULT_FLOW_PRIORITY,
                 newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()),
                 newArrayList(new PortOutAction(new PortNumber(SpecialPortType.IN_PORT))));
@@ -135,7 +135,7 @@ public class FlowLoopIngressRuleGeneratorTest {
     public void buildRulesForLoopLessFlowTest() {
         Flow flow = buildFlow(PATH, 0, 0, 0, 0);
         flow.setLoopSwitchId(null);
-        List<SpeakerCommandData> commands = buildGenerator(flow, false).generateCommands(SWITCH_1);
+        List<SpeakerData> commands = buildGenerator(flow, false).generateCommands(SWITCH_1);
         assertEquals(0, commands.size());
     }
 
@@ -144,11 +144,11 @@ public class FlowLoopIngressRuleGeneratorTest {
         return FieldMatch.builder().field(Field.METADATA).value(metadata.getValue()).mask(metadata.getMask()).build();
     }
 
-    private void assertIngressCommands(List<SpeakerCommandData> commands, OfTable table, int priority,
+    private void assertIngressCommands(List<SpeakerData> commands, OfTable table, int priority,
                                        Set<FieldMatch> expectedMatch, List<Action> expectedApplyActions) {
         assertEquals(1, commands.size());
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
         assertTrue(flowCommandData.getDependsOn().isEmpty());

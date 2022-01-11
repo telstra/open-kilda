@@ -40,11 +40,16 @@ public interface RuleManager {
      *                filterOutUsedSharedRules must be presented in this adapter
      * @return list of rules, meters and groups.
      */
-    List<SpeakerCommandData> buildRulesForFlowPath(FlowPath flowPath, boolean filterOutUsedSharedRules,
-                                                   DataAdapter adapter);
+    List<SpeakerData> buildRulesForFlowPath(FlowPath flowPath, boolean filterOutUsedSharedRules,
+                                            DataAdapter adapter);
 
     /**
      * Build all required rules, meters and groups for switch. Including service and all required flow-related rules.
      */
-    List<SpeakerCommandData> buildRulesForSwitch(SwitchId switchId, DataAdapter adapter);
+    List<SpeakerData> buildRulesForSwitch(SwitchId switchId, DataAdapter adapter);
+
+    /**
+     * Build all required rules and meters y-flow.
+     */
+    List<SpeakerData> buildRulesForYFlow(List<FlowPath> flowPaths, DataAdapter adapter);
 }

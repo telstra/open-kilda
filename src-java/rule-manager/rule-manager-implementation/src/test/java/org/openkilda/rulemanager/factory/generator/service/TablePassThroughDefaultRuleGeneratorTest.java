@@ -25,10 +25,10 @@ import static org.openkilda.rulemanager.Utils.getCommand;
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.cookie.Cookie;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 
 import org.junit.Test;
 
@@ -45,11 +45,11 @@ public class TablePassThroughDefaultRuleGeneratorTest {
                 .tableId(OfTable.EGRESS)
                 .goToTableId(OfTable.TRANSIT)
                 .build();
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(1, commands.size());
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
         assertTrue(flowCommandData.getDependsOn().isEmpty());

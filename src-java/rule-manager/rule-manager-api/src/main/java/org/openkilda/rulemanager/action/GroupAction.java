@@ -17,14 +17,26 @@ package org.openkilda.rulemanager.action;
 
 import org.openkilda.model.GroupId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Value;
 
 @Value
 @JsonSerialize
+@JsonNaming(SnakeCaseStrategy.class)
+@JsonIgnoreProperties(value = { "type" })
 public class GroupAction implements Action {
 
     GroupId groupId;
+
+    @JsonCreator
+    public GroupAction(@JsonProperty("group_id") GroupId groupId) {
+        this.groupId = groupId;
+    }
 
     @Override
     public ActionType getType() {

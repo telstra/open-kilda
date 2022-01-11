@@ -25,14 +25,14 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
 
@@ -42,29 +42,30 @@ import lombok.experimental.SuperBuilder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 @SuperBuilder
 public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGenerator {
 
     protected final MeterId sharedMeterId;
-    protected String externalMeterCommandUuid;
+    protected UUID externalMeterCommandUuid;
     protected boolean generateMeterCommand;
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         if (flow.isOneSwitchFlow()) {
             throw new IllegalStateException("Y-Flow rules can't be created for one switch flow");
         }
-        List<SpeakerCommandData> result = new ArrayList<>();
+        List<SpeakerData> result = new ArrayList<>();
         FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
-        FlowSpeakerCommandData command = buildFlowIngressCommand(sw, ingressEndpoint);
+        FlowSpeakerData command = buildFlowIngressCommand(sw, ingressEndpoint);
         if (command == null) {
             return Collections.emptyList();
         }
         result.add(command);
 
         if (generateMeterCommand) {
-            SpeakerCommandData meterCommand = buildMeter(externalMeterCommandUuid, flowPath, config, sharedMeterId, sw);
+            SpeakerData meterCommand = buildMeter(externalMeterCommandUuid, flowPath, config, sharedMeterId, sw);
             if (meterCommand != null) {
                 result.add(meterCommand);
                 command.getDependsOn().add(externalMeterCommandUuid);
@@ -75,7 +76,7 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
         return result;
     }
 
-    private FlowSpeakerCommandData buildFlowIngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
+    private FlowSpeakerData buildFlowIngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
         List<Action> actions = new ArrayList<>();
         Instructions instructions = Instructions.builder()
                 .applyActions(actions)
@@ -84,7 +85,7 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
         actions.add(new PortOutAction(new PortNumber(getOutPort(flowPath, flow))));
         addMeterToInstructions(sharedMeterId, sw, instructions);
 
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(ingressEndpoint.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie().toBuilder().yFlow(true).build())

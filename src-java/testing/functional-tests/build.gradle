@@ -1,7 +1,7 @@
 plugins {
     id 'groovy'
-    id 'com.adarshr.test-logger' version '3.0.0'
-    id "org.gradle.test-retry" version "1.2.1"
+    id 'com.adarshr.test-logger' version '3.1.0'
+    id 'org.gradle.test-retry' version '1.3.1'
 }
 description = 'Functional-Tests'
 
@@ -64,7 +64,7 @@ task functionalTest(type: Test, dependsOn: 'compileGroovy') {
     }
 
     Properties properties = new Properties()
-    File propertiesFile = file("kilda.properties.example")
+    File propertiesFile = file('kilda.properties.example')
     propertiesFile.withInputStream {
         properties.load(it)
     }
@@ -91,11 +91,11 @@ tasks.withType(Test) {
     //if there is a failed/unstable test, create log file for further processing in Jenkins pipeline
     def unstableLog = new File("${project.buildDir}/test-results/unstable.log").tap {
         it.parentFile.mkdirs()
-        it.write "false"
+        it.write 'false'
     }
     afterTest { desc, result ->
-        if ("FAILURE" == result.resultType as String) {
-            unstableLog.write "true"
+        if ('FAILURE' == result.resultType as String) {
+            unstableLog.write 'true'
         }
     }
     retry { //test-retry plugin config

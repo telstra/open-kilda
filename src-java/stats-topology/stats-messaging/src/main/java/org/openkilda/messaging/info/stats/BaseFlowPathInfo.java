@@ -15,13 +15,11 @@
 
 package org.openkilda.messaging.info.stats;
 
-import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.MeterId;
-import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NonNull;
 
@@ -32,10 +30,10 @@ import java.util.List;
  */
 @Getter
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = false)
-abstract class BaseFlowPathInfo extends InfoData {
+public abstract class BaseFlowPathInfo extends StatsNotification {
     @NonNull String flowId;
-    @NonNull Cookie cookie;
+    String yFlowId;
+    @NonNull FlowSegmentCookie cookie;
     MeterId meterId;
     @NonNull List<PathNodePayload> pathNodes;
 }
