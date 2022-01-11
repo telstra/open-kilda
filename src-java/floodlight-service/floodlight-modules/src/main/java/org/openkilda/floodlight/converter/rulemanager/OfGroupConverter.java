@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,12 +15,15 @@
 
 package org.openkilda.floodlight.converter.rulemanager;
 
+import org.openkilda.model.GroupId;
 import org.openkilda.rulemanager.GroupSpeakerData;
+import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.group.Bucket;
 import org.openkilda.rulemanager.group.GroupType;
 import org.openkilda.rulemanager.group.WatchGroup;
 import org.openkilda.rulemanager.group.WatchPort;
 
+import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 import org.projectfloodlight.openflow.protocol.OFBucket;
 import org.projectfloodlight.openflow.protocol.OFBucket.Builder;
@@ -35,9 +38,12 @@ import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+@Mapper
 public class OfGroupConverter {
     public static final OfGroupConverter INSTANCE = Mappers.getMapper(OfGroupConverter.class);
 
@@ -47,6 +53,14 @@ public class OfGroupConverter {
     public List<GroupSpeakerData> convertToGroupSpeakerData(OFGroupDescStatsReply statsReply) {
         List<GroupSpeakerData> commandData = new ArrayList<>();
         for (OFGroupDescStatsEntry entry : statsReply.getEntries()) {
+            GroupId groupId = new GroupId(entry.getGroup().getGroupNumber());
+            GroupType type = fromOfGroupType(entry.getGroupType());
+            List<Bucket> buckets = new ArrayList<>();
+            List<OFBucket> ofBuckets = entry.getBuckets();
+            for (OFBucket bucket : ofBuckets) {
+                buckets.add(fromOfBucket(bucket));
+            }
+            commandData.add(GroupSpeakerData.builder().groupId(groupId).type(type).buckets(buckets).build());
         }
         return commandData;
     }
@@ -87,6 +101,16 @@ public class OfGroupConverter {
         return builder.build();
     }
 
+    private Bucket fromOfBucket(OFBucket ofBucket) {
+        WatchGroup watchGroup = fromOfGroup(ofBucket.getWatchGroup());
+        WatchPort watchPort = fromOfPort(ofBucket.getWatchPort());
+        Set<Action> actions = new HashSet<>();
+        for (OFAction ofAction : ofBucket.getActions()) {
+            actions.add(OfInstructionsConverter.INSTANCE.convertToRuleManagerAction(ofAction));
+        }
+        return Bucket.builder().watchGroup(watchGroup).watchPort(watchPort).writeActions(actions).build();
+    }
+
     private OFPort toOfWatchPort(WatchPort watchPort) {
         switch (watchPort) {
             case ANY:
@@ -97,7 +121,7 @@ public class OfGroupConverter {
     }
 
     private WatchPort fromOfPort(OFPort watchPort) {
-        if (watchPort.equals(OFGroup.ANY)) {
+        if (watchPort.equals(OFPort.ANY)) {
             return WatchPort.ANY;
         } else {
             throw new IllegalArgumentException(String.format("Unknown watch port %s", watchPort));
