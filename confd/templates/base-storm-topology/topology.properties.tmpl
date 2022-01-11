@@ -42,6 +42,9 @@ port.up.down.throttling.delay.seconds.cool.down = {{ getv "/kilda_port_up_down_t
 port.antiflap.stats.dumping.interval.seconds = 60
 
 lag.port.offset = {{ getv "/kilda_lag_port_offset" }}
+lag.port.max.number = {{ getv "/kilda_lag_port_max_number" }}
+lag.port.pool.chunks.count = 10
+lag.port.pool.cache.size = 128
 bfd.port.offset = {{ getv "/kilda_bfd_port_offset" }}
 bfd.port.max.number = {{ getv "/kilda_bfd_port_max_number" }}
 

@@ -41,9 +41,12 @@ port.up.down.throttling.delay.seconds.warm.up = 5
 port.up.down.throttling.delay.seconds.cool.down = 10
 port.antiflap.stats.dumping.interval.seconds = 60
 
+lag.port.offset = 2000
+lag.port.max.number = 2999
+lag.port.pool.chunks.count = 10
+lag.port.pool.cache.size = 128
 bfd.port.offset = 1000
 bfd.port.max.number = 1999
-lag.port.offset = 2000
 
 persistence.implementation.default = orientdb
 persistence.implementation.area.history = orientdb

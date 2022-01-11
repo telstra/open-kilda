@@ -60,6 +60,7 @@ import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.CreateLagPortService;
 import org.openkilda.wfm.topology.switchmanager.service.DeleteLagPortService;
+import org.openkilda.wfm.topology.switchmanager.service.LagPortOperationConfig;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchRuleService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
@@ -72,11 +73,13 @@ import org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers.SwitchS
 import org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers.SwitchValidateServiceImpl;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+@Slf4j
 public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public static final String ID = "switch.manager.hub";
 
@@ -118,12 +121,15 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                 new ValidationServiceImpl(persistenceManager, topologyConfig, flowResourcesConfig));
         syncService = new SwitchSyncServiceImpl(this, persistenceManager, flowResourcesConfig);
         switchRuleService = new SwitchRuleServiceImpl(this, persistenceManager.getRepositoryFactory());
-        createLagPortService = new CreateLagPortServiceImpl(this, persistenceManager.getRepositoryFactory(),
-                persistenceManager.getTransactionManager(), topologyConfig.getBfdPortOffset(),
-                topologyConfig.getBfdPortMaxNumber(), topologyConfig.getLagPortOffset());
-        deleteLagPortService = new DeleteLagPortServiceImpl(this, persistenceManager.getRepositoryFactory(),
-                persistenceManager.getTransactionManager(), topologyConfig.getBfdPortOffset(),
-                topologyConfig.getBfdPortMaxNumber(), topologyConfig.getLagPortOffset());
+
+        LagPortOperationConfig config = new LagPortOperationConfig(
+                persistenceManager.getRepositoryFactory(), persistenceManager.getTransactionManager(),
+                topologyConfig.getBfdPortOffset(), topologyConfig.getBfdPortMaxNumber(),
+                topologyConfig.getLagPortOffset(), topologyConfig.getLagPortMaxNumber(),
+                topologyConfig.getLagPortPoolChunksCount(), topologyConfig.getLagPortPoolCacheSize());
+        log.info("LAG logical ports service config: {}", config);
+        createLagPortService = new CreateLagPortServiceImpl(this, config);
+        deleteLagPortService = new DeleteLagPortServiceImpl(this, config);
     }
 
     @Override

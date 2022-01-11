@@ -37,7 +37,13 @@ Response example:
 ## Details
 All logical port related commands are sent to the switches using gRPC speaker.
 
-Open-kilda calculate logical port number using the following rule: 2000 + min of the physical ports number in the LAG. It is not allowed to have one physical port in two LAGs so this rule will provide unique logical port number for any correct port configuration. LAG logical port configuration should be validated before any create operation to avoid inconsistency. 
+Kilda configuration defines logical port numbers range and amount of chunks in this range. During LAG create operation
+random chunk number will be selected and first unassigned number from this chunk will be used as logical port number.
+Port number allocation done on per switch basis, so different switches can have LAG logical ports with same numbers. 
+
+It is not allowed to have one physical port in two LAGs so this rule will provide unique logical port number for any 
+correct port configuration. LAG logical port configuration should be validated before any create operation to avoid 
+inconsistency. 
 
 Currently, open-kilda doesn't have any port related information representation in database. We need to save LAG logical port configuration into database to have ability to restore configuration on the switch. Information about LAGs stored as a separate models in order to provide minimal impact on already existing data structures.
 

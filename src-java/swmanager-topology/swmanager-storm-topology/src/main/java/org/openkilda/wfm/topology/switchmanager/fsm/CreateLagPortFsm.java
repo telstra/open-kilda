@@ -31,7 +31,6 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
 import org.openkilda.messaging.swmanager.response.LagPortResponse;
-import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.InvalidDataException;
@@ -53,6 +52,7 @@ import org.squirrelframework.foundation.fsm.StateMachineStatus;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 @Slf4j
 public class CreateLagPortFsm extends AbstractStateMachine<
@@ -117,13 +117,13 @@ public class CreateLagPortFsm extends AbstractStateMachine<
     void createLagInDb(CreateLagState from, CreateLagState to, CreateLagEvent event, CreateLagContext context) {
         log.info("Creating LAG {} on switch {}. Key={}", request, switchId, key);
         try {
-            Switch sw = lagPortOperationService.getSwitch(switchId);
-            String ipAddress = lagPortOperationService.getSwitchIpAddress(sw);
-            lagPortOperationService.validatePhysicalPorts(switchId, request.getPortNumbers(), sw.getFeatures());
-            lagLogicalPortNumber = lagPortOperationService.createLagPort(switchId, request.getPortNumbers());
+            HashSet<Integer> targetPorts = new HashSet<>(request.getPortNumbers());
+            lagLogicalPortNumber = lagPortOperationService.createLagPort(switchId, targetPorts);
+
+            String ipAddress = lagPortOperationService.getSwitchIpAddress(switchId);
             grpcRequest = new CreateLogicalPortRequest(ipAddress, request.getPortNumbers(), lagLogicalPortNumber, LAG);
         } catch (InvalidDataException | InconsistentDataException | SwitchNotFoundException e) {
-            log.error(format("Enable to create LAG port %s in DB. Error: %s", request, e.getMessage()), e);
+            log.error(format("Unable to handle %s. Error: %s", request, e.getMessage()), e);
             fire(ERROR, CreateLagContext.builder().error(e).build());
         }
     }
@@ -141,24 +141,32 @@ public class CreateLagPortFsm extends AbstractStateMachine<
         LagPortResponse response = new LagPortResponse(
                 grpcRequest.getLogicalPortNumber(), new ArrayList<>(grpcRequest.getPortNumbers()));
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
-
-        carrier.cancelTimeoutCallback(key);
         carrier.response(key, message);
     }
 
     protected void finishedWithErrorEnter(CreateLagState from, CreateLagState to,
                                           CreateLagEvent event, CreateLagContext context) {
-        if (lagLogicalPortNumber != null) {
-            // remove created LAG port
-            log.info("Removing form DB created LAG port {} on switch {}. Key={}", lagLogicalPortNumber, switchId, key);
-            lagPortOperationService.removeLagPort(switchId, lagLogicalPortNumber);
-        }
+        removePortEntryIgnoreMissing();
         SwitchManagerException error = context.getError();
         log.error(format("Unable to create LAG %s on switch %s. Key: %s. Error: %s",
                 request, switchId, key, error.getMessage()), error);
 
-        carrier.cancelTimeoutCallback(key);
         carrier.errorResponse(key, error.getError(), "Error during LAG create", error.getMessage());
+    }
+
+    private void removePortEntryIgnoreMissing() {
+        if (lagLogicalPortNumber == null) {
+            return;
+        }
+
+        log.info("Removing form DB created LAG port {} on switch {}. Key={}", lagLogicalPortNumber, switchId, key);
+        try {
+            lagPortOperationService.removeLagPort(switchId, lagLogicalPortNumber);
+        } catch (SwitchManagerException e) {
+            log.debug(
+                    "Ignoring error on LAG logical port #{} on {} remove from DB during rollback: {}",
+                    lagLogicalPortNumber, switchId, e.getMessage());
+        }
     }
 
     @Override

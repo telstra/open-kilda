@@ -13,20 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.wfm.error;
 
-import org.openkilda.model.LagLogicalPort;
-import org.openkilda.model.SwitchId;
-
-import java.util.Collection;
-import java.util.Optional;
-
-public interface LagLogicalPortRepository extends Repository<LagLogicalPort> {
-    Collection<LagLogicalPort> findAll();
-
-    Collection<LagLogicalPort> findBySwitchId(SwitchId switchId);
-
-    Optional<LagLogicalPort> findBySwitchIdAndPortNumber(SwitchId switchId, int portNumber);
-
-    Optional<Integer> findUnassignedPortInRange(SwitchId switchId, int portFirst, int portLast);
+public class NoPoolResourcesAvailableException extends Exception {
+    public NoPoolResourcesAvailableException() {
+        super("Unable to allocate pool entity - all entity slots are busy");
+    }
 }
