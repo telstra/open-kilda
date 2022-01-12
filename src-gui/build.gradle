@@ -9,11 +9,7 @@ plugins {
 repositories {
     mavenCentral()
     maven {
-        url = uri('https://repo.spring.io/libs-milestone')
-    }
-
-    maven {
-        url = uri('http://repo.maven.apache.org/maven2')
+        url 'https://repo.spring.io/libs-milestone'
     }
 }
 
@@ -74,14 +70,14 @@ tasks.withType(JavaCompile) {
 }
 
 jacoco {
-    toolVersion = '0.8.5'
+    toolVersion = '0.8.7'
 }
 
 jacocoTestReport {
     reports {
-        xml.enabled = true
-        csv.enabled = false
-        html.enabled = true
+        xml.required = true
+        csv.required = false
+        html.required = true
     }
 }
 
