@@ -51,5 +51,6 @@ public class YFlowPartialUpdateRequest extends CommandData {
     Boolean strictBandwidth;
     String description;
     Boolean allocateProtectedPath;
+    String diverseFlowId;
     List<SubFlowPartialUpdateDto> subFlows;
 }

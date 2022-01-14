@@ -173,10 +173,11 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
         return flowIds;
     }
 
-    protected Set<String> getDiverseWithFlowIds(Flow flow) {
-        return flow.getDiverseGroupId() == null ? Collections.emptySet() :
-                flowRepository.findFlowsIdByDiverseGroupId(flow.getDiverseGroupId()).stream()
-                        .filter(flowId -> !flowId.equals(flow.getFlowId()))
+    protected Collection<Flow> getDiverseWithFlow(Flow flow) {
+        return flow.getDiverseGroupId() == null ? Collections.emptyList() :
+                flowRepository.findByDiverseGroupId(flow.getDiverseGroupId()).stream()
+                        .filter(diverseFlow -> !flow.getFlowId().equals(diverseFlow.getFlowId())
+                                || (flow.getYFlowId() != null && !flow.getYFlowId().equals(diverseFlow.getYFlowId())))
                         .collect(Collectors.toSet());
     }
 
@@ -216,8 +217,17 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
     }
 
     protected Message buildResponseMessage(Flow flow, CommandContext commandContext) {
+        Collection<Flow> diverseWithFlow = getDiverseWithFlow(flow);
+        Set<String> diverseFlows = diverseWithFlow.stream()
+                .filter(f -> f.getYFlowId() == null)
+                .map(Flow::getFlowId)
+                .collect(Collectors.toSet());
+        Set<String> diverseYFlows = diverseWithFlow.stream()
+                .map(Flow::getYFlowId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
         InfoData flowData =
-                new FlowResponse(FlowMapper.INSTANCE.map(flow, getDiverseWithFlowIds(flow),
+                new FlowResponse(FlowMapper.INSTANCE.map(flow, diverseFlows, diverseYFlows,
                         getFlowMirrorPaths(flow)));
         return new InfoMessage(flowData, commandContext.getCreateTime(),
                 commandContext.getCorrelationId());

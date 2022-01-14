@@ -52,6 +52,7 @@ public class CreateDraftYFlowAction extends
     protected Optional<Message> performWithResponse(State from, State to, Event event, YFlowCreateContext context,
                                                     YFlowCreateFsm stateMachine) {
         YFlowRequest targetFlow = stateMachine.getTargetFlow();
+        stateMachine.setDiverseFlowId(targetFlow.getDiverseFlowId());
         String yFlowId = targetFlow.getYFlowId();
         if (yFlowRepository.exists(yFlowId)) {
             throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,

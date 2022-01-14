@@ -29,6 +29,8 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
 import org.openkilda.pce.GetPathsResult;
@@ -42,6 +44,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
@@ -73,11 +76,13 @@ import org.apache.commons.collections4.map.LazyMap;
 import org.apache.commons.lang3.StringUtils;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Slf4j
 public class ResourcesAllocationAction extends
@@ -88,6 +93,7 @@ public class ResourcesAllocationAction extends
     private final FlowResourcesManager resourcesManager;
     private final IslRepository islRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
+    private final YFlowRepository yFlowRepository;
 
     private final FlowPathBuilder flowPathBuilder;
     private final FlowCommandBuilderFactory commandBuilderFactory;
@@ -103,6 +109,7 @@ public class ResourcesAllocationAction extends
         this.resourcesManager = resourcesManager;
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
+        this.yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
         KildaConfigurationRepository kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
                 .createKildaConfigurationRepository();
 
@@ -182,9 +189,17 @@ public class ResourcesAllocationAction extends
 
     private Optional<String> getFlowDiverseGroupFromContext(String diverseFlowId) throws FlowNotFoundException {
         if (StringUtils.isNotBlank(diverseFlowId)) {
-            return flowRepository.getOrCreateDiverseFlowGroupId(diverseFlowId)
+            String flowId = yFlowRepository.findById(diverseFlowId).map(Stream::of).orElseGet(Stream::empty)
+                    .map(YFlow::getSubFlows)
+                    .flatMap(Collection::stream)
+                    .map(YSubFlow::getFlow)
+                    .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
+                    .map(Flow::getFlowId)
+                    .findFirst()
+                    .orElse(diverseFlowId);
+            return flowRepository.getOrCreateDiverseFlowGroupId(flowId)
                     .map(Optional::of)
-                    .orElseThrow(() -> new FlowNotFoundException(diverseFlowId));
+                    .orElseThrow(() -> new FlowNotFoundException(flowId));
         }
         return Optional.empty();
     }
@@ -291,7 +306,7 @@ public class ResourcesAllocationAction extends
         if (!tmpFlow.isAllocateProtectedPath()) {
             return;
         }
-        tmpFlow.setDiverseGroupId(flowRepository.getOrCreateDiverseFlowGroupId(flowId)
+        tmpFlow.setDiverseGroupId(getFlowDiverseGroupFromContext(flowId)
                 .orElseThrow(() -> new FlowNotFoundException(flowId)));
         GetPathsResult protectedPath = pathComputer.getPath(tmpFlow);
         stateMachine.setBackUpProtectedPathComputationWayUsed(protectedPath.isBackUpPathComputationWayUsed());

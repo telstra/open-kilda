@@ -52,6 +52,7 @@ public class YFlowRequest extends CommandData {
     boolean strictBandwidth;
     String description;
     boolean allocateProtectedPath;
+    String diverseFlowId;
 
     List<SubFlowDto> subFlows;
 

@@ -170,22 +170,34 @@ public class PersistenceDummyEntityFactory {
         return isl;
     }
 
+    public Flow makeMainAffinityFlow(FlowEndpoint source, FlowEndpoint dest, IslDirectionalReference... trace) {
+        String flowId = idProvider.provideFlowId();
+        return makeFlow(flowId, source, dest, flowId, Arrays.asList(trace));
+    }
+
     public Flow makeFlow(FlowEndpoint source, FlowEndpoint dest, IslDirectionalReference... trace) {
-        return makeFlow(source, dest, Arrays.asList(trace));
+        return makeFlow(source, dest, null, trace);
+    }
+
+    public Flow makeFlow(FlowEndpoint source, FlowEndpoint dest, String affinityGroupId,
+                         IslDirectionalReference... trace) {
+        return makeFlow(idProvider.provideFlowId(), source, dest, affinityGroupId, Arrays.asList(trace));
     }
 
     /**
      * Create {@link Flow} object.
      */
-    public Flow makeFlow(FlowEndpoint source, FlowEndpoint dest, List<IslDirectionalReference> pathHint) {
+    public Flow makeFlow(String flowId, FlowEndpoint source, FlowEndpoint dest, String affinityGroupId,
+                         List<IslDirectionalReference> pathHint) {
         Flow flow = flowDefaults.fill(Flow.builder())
-                .flowId(idProvider.provideFlowId())
+                .flowId(flowId)
                 .srcSwitch(fetchOrCreateSwitch(source.getSwitchId()))
                 .srcPort(source.getPortNumber())
                 .srcVlan(source.getOuterVlanId())
                 .destSwitch(fetchOrCreateSwitch(dest.getSwitchId()))
                 .destPort(dest.getPortNumber())
                 .destVlan(dest.getOuterVlanId())
+                .affinityGroupId(affinityGroupId)
                 .build();
         return txManager.doInTransaction(() -> {
             makeFlowPathPair(flow, source, dest, pathHint);
@@ -199,14 +211,34 @@ public class PersistenceDummyEntityFactory {
         });
     }
 
-    /**
-     * Create {@link Flow} object with protected paths.
-     */
+    public Flow makeMainAffinityFlowWithProtectedPath(FlowEndpoint source, FlowEndpoint dest,
+                                                      List<IslDirectionalReference> pathHint,
+                                                      List<IslDirectionalReference> protectedPathHint) {
+        String flowId = idProvider.provideFlowId();
+        return makeFlowWithProtectedPath(flowId, source, dest, flowId, pathHint, protectedPathHint);
+    }
+
     public Flow makeFlowWithProtectedPath(FlowEndpoint source, FlowEndpoint dest,
                                           List<IslDirectionalReference> pathHint,
                                           List<IslDirectionalReference> protectedPathHint) {
+        return makeFlowWithProtectedPath(idProvider.provideFlowId(), source, dest, null, pathHint, protectedPathHint);
+    }
+
+    public Flow makeFlowWithProtectedPath(FlowEndpoint source, FlowEndpoint dest, String affinityGroupId,
+                                          List<IslDirectionalReference> pathHint,
+                                          List<IslDirectionalReference> protectedPathHint) {
+        return makeFlowWithProtectedPath(
+                idProvider.provideFlowId(), source, dest, affinityGroupId, pathHint, protectedPathHint);
+    }
+
+    /**
+     * Create {@link Flow} object with protected paths.
+     */
+    public Flow makeFlowWithProtectedPath(String flowId, FlowEndpoint source, FlowEndpoint dest, String affinityGroupId,
+                                          List<IslDirectionalReference> pathHint,
+                                          List<IslDirectionalReference> protectedPathHint) {
         Flow flow = flowDefaults.fill(Flow.builder())
-                .flowId(idProvider.provideFlowId())
+                .flowId(flowId)
                 .srcSwitch(fetchOrCreateSwitch(source.getSwitchId()))
                 .srcPort(source.getPortNumber())
                 .srcVlan(source.getOuterVlanId())
@@ -214,6 +246,7 @@ public class PersistenceDummyEntityFactory {
                 .destPort(dest.getPortNumber())
                 .destVlan(dest.getOuterVlanId())
                 .allocateProtectedPath(true)
+                .affinityGroupId(affinityGroupId)
                 .build();
         return txManager.doInTransaction(() -> {
             makeFlowPathPair(flow, source, dest, protectedPathHint, Collections.singletonList("protected"));

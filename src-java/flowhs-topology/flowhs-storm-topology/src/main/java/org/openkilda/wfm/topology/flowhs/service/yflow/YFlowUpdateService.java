@@ -222,6 +222,7 @@ public class YFlowUpdateService
         Optional.ofNullable(request.getStrictBandwidth()).ifPresent(target::setStrictBandwidth);
         Optional.ofNullable(request.getDescription()).ifPresent(target::setDescription);
         Optional.ofNullable(request.getAllocateProtectedPath()).ifPresent(target::setAllocateProtectedPath);
+        Optional.ofNullable(request.getDiverseFlowId()).ifPresent(target::setDiverseFlowId);
 
         if (request.getSubFlows() != null && !request.getSubFlows().isEmpty()) {
             Map<String, SubFlowDto> stringSubFlowDtoMap;

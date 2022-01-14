@@ -97,6 +97,8 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
     private String mainAffinityFlowId;
     private Collection<RequestedFlow> requestedFlows;
 
+    private String diverseFlowId;
+
     private Collection<DeleteSpeakerCommandsRequest> deleteOldYFlowCommands;
 
     private YFlowUpdateFsm(@NonNull CommandContext commandContext, @NonNull FlowGenericCarrier carrier,

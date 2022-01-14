@@ -74,6 +74,7 @@ public abstract class FlowMapper {
     @Mapping(target = "meterId", ignore = true)
     @Mapping(target = "transitEncapsulationId", ignore = true)
     @Mapping(target = "diverseWith", ignore = true)
+    @Mapping(target = "diverseWithYFlows", ignore = true)
     @Mapping(source = "affinityGroupId", target = "affinityWith")
     @Mapping(target = "mirrorPointStatuses", ignore = true)
     @Mapping(target = "forwardLatency", ignore = true)
@@ -85,17 +86,19 @@ public abstract class FlowMapper {
     /**
      * Convert {@link Flow} to {@link FlowDto} with diverse flow ids and mirror paths.
      */
-    public FlowDto map(Flow flow, Set<String> diverseWith, List<FlowMirrorPath> flowMirrorPaths) {
-        return map(flow, diverseWith, flowMirrorPaths, FlowStats.EMPTY);
+    public FlowDto map(Flow flow, Set<String> diverseWith, Set<String> diverseWithYFlows,
+                       List<FlowMirrorPath> flowMirrorPaths) {
+        return map(flow, diverseWith, diverseWithYFlows, flowMirrorPaths, FlowStats.EMPTY);
     }
 
     /**
      * Convert {@link Flow} to {@link FlowDto} with diverse flow ids, mirror paths and flow properties.
      */
-    public FlowDto map(Flow flow, Set<String> diverseWith, List<FlowMirrorPath> flowMirrorPaths,
-                       FlowStats flowStats) {
+    public FlowDto map(Flow flow, Set<String> diverseWith, Set<String> diverseWithYFlows,
+                       List<FlowMirrorPath> flowMirrorPaths, FlowStats flowStats) {
         FlowDto flowDto = map(flow);
         flowDto.setDiverseWith(diverseWith);
+        flowDto.setDiverseWithYFlows(diverseWithYFlows);
         flowDto.setMirrorPointStatuses(map(flowMirrorPaths));
         flowDto.setForwardLatency(flowStats.getForwardLatency());
         flowDto.setReverseLatency(flowStats.getReverseLatency());

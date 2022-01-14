@@ -72,6 +72,11 @@ public class ValidateYFlowAction extends
             throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Y-flow create feature is disabled");
         }
 
+        if (flowRepository.exists(yFlowId)) {
+            throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,
+                    format("Flow %s already exists", yFlowId));
+        }
+
         if (yFlowRepository.exists(yFlowId)) {
             throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,
                     format("Y-flow %s already exists", yFlowId));

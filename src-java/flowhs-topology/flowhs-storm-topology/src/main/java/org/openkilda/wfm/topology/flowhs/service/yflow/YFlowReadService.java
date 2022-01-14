@@ -18,8 +18,10 @@ package org.openkilda.wfm.topology.flowhs.service.yflow;
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
 import org.openkilda.messaging.command.yflow.SubFlowsResponse;
+import org.openkilda.messaging.command.yflow.YFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowPathsResponse;
 import org.openkilda.messaging.command.yflow.YFlowResponse;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -28,11 +30,13 @@ import org.openkilda.model.YFlow;
 import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
+import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.mapper.YFlowMapper;
 
 import lombok.NonNull;
@@ -41,14 +45,17 @@ import net.jodah.failsafe.RetryPolicy;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class YFlowReadService {
     private final YFlowRepository yFlowRepository;
+    private final FlowRepository flowRepository;
     private final TransactionManager transactionManager;
     private final int readOperationRetriesLimit;
     private final Duration readOperationRetryDelay;
@@ -56,6 +63,7 @@ public class YFlowReadService {
     public YFlowReadService(@NonNull PersistenceManager persistenceManager,
                             int readOperationRetriesLimit, @NonNull Duration readOperationRetryDelay) {
         this.yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
+        this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.transactionManager = persistenceManager.getTransactionManager();
         this.readOperationRetriesLimit = readOperationRetriesLimit;
         this.readOperationRetryDelay = readOperationRetryDelay;
@@ -78,7 +86,7 @@ public class YFlowReadService {
         Collection<YFlow> yFlows = transactionManager.doInTransaction(getReadOperationRetryPolicy(),
                 yFlowRepository::findAll);
         return yFlows.stream()
-                .map(YFlowMapper.INSTANCE::toYFlowDto)
+                .map(this::convertToYFlowDto)
                 .map(YFlowResponse::new)
                 .collect(Collectors.toList());
     }
@@ -89,7 +97,7 @@ public class YFlowReadService {
     public YFlowResponse getYFlow(@NonNull String yFlowId) throws FlowNotFoundException {
         return transactionManager.doInTransaction(getReadOperationRetryPolicy(), () ->
                         yFlowRepository.findById(yFlowId))
-                .map(YFlowMapper.INSTANCE::toYFlowDto)
+                .map(this::convertToYFlowDto)
                 .map(YFlowResponse::new)
                 .orElseThrow(() -> new FlowNotFoundException(yFlowId));
     }
@@ -146,5 +154,31 @@ public class YFlowReadService {
                     .collect(Collectors.toList());
             return new SubFlowsResponse(subFlows);
         });
+    }
+
+    private YFlowDto convertToYFlowDto(YFlow yFlow) {
+        Flow mainAffinityFlow = yFlow.getSubFlows().stream()
+                .map(YSubFlow::getFlow)
+                .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
+                .findFirst().orElseThrow(() -> new FlowProcessingException(ErrorType.INTERNAL_ERROR,
+                        "Main affinity flow not found"));
+        Collection<Flow> diverseWithFlow = getDiverseWithFlow(mainAffinityFlow);
+        Set<String> diverseFlows = diverseWithFlow.stream()
+                .filter(flow -> flow.getYFlowId() == null)
+                .map(Flow::getFlowId)
+                .collect(Collectors.toSet());
+        Set<String> diverseYFlows = diverseWithFlow.stream()
+                .map(Flow::getYFlowId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        return YFlowMapper.INSTANCE.toYFlowDto(yFlow, diverseFlows, diverseYFlows);
+    }
+
+    private Collection<Flow> getDiverseWithFlow(Flow flow) {
+        return flow.getDiverseGroupId() == null ? Collections.emptyList() :
+                flowRepository.findByDiverseGroupId(flow.getDiverseGroupId()).stream()
+                        .filter(diverseFlow -> !flow.getYFlowId().equals(diverseFlow.getYFlowId()))
+                        .collect(Collectors.toSet());
     }
 }

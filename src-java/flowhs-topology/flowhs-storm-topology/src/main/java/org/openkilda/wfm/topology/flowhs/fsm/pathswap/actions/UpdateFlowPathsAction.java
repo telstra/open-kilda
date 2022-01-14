@@ -16,14 +16,10 @@
 package org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm;
@@ -74,10 +70,7 @@ public class UpdateFlowPathsAction extends
 
         stateMachine.saveActionToHistory("The flow paths were updated");
         CommandContext commandContext = stateMachine.getCommandContext();
-        InfoData flowData =
-                new FlowResponse(FlowMapper.INSTANCE.map(f, getDiverseWithFlowIds(f), getFlowMirrorPaths(f)));
-        Message response = new InfoMessage(flowData, commandContext.getCreateTime(), commandContext.getCorrelationId());
-        return Optional.of(response);
+        return Optional.of(buildResponseMessage(f, commandContext));
     }
 
     @Override
