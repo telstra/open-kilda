@@ -80,9 +80,10 @@ class StormHeavyLoadSpec extends HealthCheckSpecification {
 
         and: "Topology is unchanged at the end"
         northbound.activeSwitches.size() == topology.activeSwitches.size()
-        Wrappers.wait(WAIT_OFFSET * 2 + antiflapCooldown) {
+        Wrappers.wait(WAIT_OFFSET * 4 + antiflapCooldown) {
             assert northbound.getAllLinks().findAll { it.state == IslChangeType.DISCOVERED }
                     .size() == topology.islsForActiveSwitches.size() * 2
+            assert northbound.getAllLinks().findAll { it.actualState != IslChangeType.DISCOVERED }.empty
         }
 
         cleanup:

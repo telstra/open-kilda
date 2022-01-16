@@ -138,7 +138,16 @@ class IslReplugSpec extends HealthCheckSpecification {
         islUtils.replug(newIsl, true, isl, false, false)
 
         then: "Original ISL becomes DISCOVERED again"
-        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+//        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        //https://github.com/telstra/open-kilda/issues/4005
+        Wrappers.wait(discoveryInterval + discoveryAuxiliaryInterval + WAIT_OFFSET) {
+            def fr = northbound.getLink(isl)
+            def rv = northbound.getLink(isl.reversed)
+            assert fr.state == DISCOVERED
+            assert fr.actualState == DISCOVERED
+            assert rv.state == DISCOVERED
+            assert rv.actualState == DISCOVERED
+        }
         def originIslIsUp = true
 
         and: "Replugged ISL status changes to MOVED"
@@ -204,7 +213,16 @@ class IslReplugSpec extends HealthCheckSpecification {
         islUtils.replug(loopedIsl, true, isl, false, false)
 
         then: "Original ISL becomes DISCOVERED again"
-        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+//        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        //https://github.com/telstra/open-kilda/issues/4005
+        Wrappers.wait(discoveryInterval + discoveryAuxiliaryInterval+ WAIT_OFFSET) {
+            def fr = northbound.getLink(isl)
+            def rv = northbound.getLink(isl.reversed)
+            assert fr.state == DISCOVERED
+            assert fr.actualState == DISCOVERED
+            assert rv.state == DISCOVERED
+            assert rv.actualState == DISCOVERED
+        }
         def originIslIsUp = true
 
         cleanup:
