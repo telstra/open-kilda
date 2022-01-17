@@ -233,7 +233,7 @@ public class YFlowServiceImpl implements YFlowService {
     }
 
     @Override
-    public CompletableFuture<YFlowPingResult> pingFlow(String yFlowId, YFlowPingPayload payload) {
+    public CompletableFuture<YFlowPingResult> pingYFlow(String yFlowId, YFlowPingPayload payload) {
         log.debug("Processing y-flow ping: {} {}", yFlowId, payload);
         CommandMessage command = new CommandMessage(new YFlowPingRequest(yFlowId, payload.getTimeoutMillis()),
                 System.currentTimeMillis(), RequestCorrelationId.getId());

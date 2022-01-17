@@ -28,7 +28,6 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
-import org.openkilda.wfm.topology.ping.model.GroupId;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -48,17 +47,15 @@ public class PingProducer extends Abstract {
         PingContext pingContext = pullPingContext(input);
 
         // TODO(surabujin): add one switch flow filter
-        GroupId group = new GroupId(2);
-        emit(input, produce(pingContext, group, FlowDirection.FORWARD));
-        emit(input, produce(pingContext, group, FlowDirection.REVERSE));
+        emit(input, produce(pingContext, FlowDirection.FORWARD));
+        emit(input, produce(pingContext, FlowDirection.REVERSE));
     }
 
-    private PingContext produce(PingContext pingContext, GroupId group, FlowDirection direction) {
+    private PingContext produce(PingContext pingContext, FlowDirection direction) {
         Ping ping = buildPing(pingContext, direction);
         return pingContext.toBuilder()
                 .ping(ping)
                 .direction(direction)
-                .group(group)
                 .build();
     }
 

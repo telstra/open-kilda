@@ -141,9 +141,9 @@ public class YFlowControllerV2 extends BaseController {
             response = YFlowPingResult.class)
     @PostMapping(path = "/{y_flow_id}/ping")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<YFlowPingResult> pingFlow(
+    public CompletableFuture<YFlowPingResult> pingYFlow(
             @RequestBody YFlowPingPayload payload,
             @PathVariable("y_flow_id") String yFlowId) {
-        return flowService.pingFlow(yFlowId, payload);
+        return flowService.pingYFlow(yFlowId, payload);
     }
 }
