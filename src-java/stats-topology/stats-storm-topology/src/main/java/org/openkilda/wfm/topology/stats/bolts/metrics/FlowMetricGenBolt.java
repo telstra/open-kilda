@@ -19,7 +19,6 @@ import static org.openkilda.wfm.topology.stats.StatsTopology.STATS_FIELD;
 
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.cookie.Cookie;
 import org.openkilda.wfm.topology.stats.model.DummyFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.FlowStatsAndDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
@@ -61,9 +60,6 @@ public class FlowMetricGenBolt extends MetricGenBolt implements TimeSeriesMeterE
             FlowStatsEntry statsEntry, long timestamp, @NonNull SwitchId switchId,
             @Nullable KildaEntryDescriptor descriptor) {
         if (descriptor == null) {
-            log.warn(
-                    "Missed cache for switch {} cookie {} cookie-hex {}",
-                    switchId, statsEntry.getCookie(), new Cookie(statsEntry.getCookie()));
             descriptor = new DummyFlowDescriptor(switchId);
         }
 
