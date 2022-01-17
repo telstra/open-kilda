@@ -32,6 +32,7 @@ import org.openkilda.integration.source.store.dto.Port;
 import org.openkilda.model.FlowPathStats;
 import org.openkilda.model.PortDiscrepancy;
 import org.openkilda.model.PortInfo;
+import org.openkilda.model.SwitchLogicalPort;
 import org.openkilda.model.SwitchPortStats;
 import org.openkilda.model.victoria.RangeQueryParams;
 import org.openkilda.model.victoria.VictoriaData;
@@ -425,7 +426,25 @@ public class StatsService {
      */
     private List<PortInfo> getIslPorts(final Map<String, Map<String, Double>> portStatsByPortNo, String switchid) {
         List<PortInfo> portInfos = getPortInfo(portStatsByPortNo);
-
+        String switchIdentifier = IoUtil.switchCodeToSwitchId(switchid);
+        List<SwitchLogicalPort> switchLogicalPorts = switchIntegrationService.getLogicalPort(switchIdentifier);
+        if (!switchLogicalPorts.isEmpty()) {
+            for (SwitchLogicalPort logicalPort : switchLogicalPorts) {
+                for (String portnumber : logicalPort.getPortNumbers()) {
+                    for (int i = 0; i < portInfos.size(); i++) {
+                        if (portInfos.get(i).getPortNumber().equals(logicalPort.getLogicalPortNumber())) {
+                            portInfos.get(i).setLogicalPort(true);
+                            portInfos.get(i).setAssignmenttype("PORT");
+                            portInfos.get(i).setPortNumbers(logicalPort.getPortNumbers());
+                        } else if (portInfos.get(i).getPortNumber().equals(portnumber)) {
+                            portInfos.get(i).setAssignmenttype("LAG_GROUP");
+                            portInfos.get(i).setLogicalGroupName(logicalPort.getLogicalPortNumber());
+                            portInfos.get(i).setLogicalPort(false);
+                        }
+                    }
+                }
+            }
+        }
         List<IslLink> islLinkPorts = switchIntegrationService.getIslLinkPortsInfo(null);
         String switchIdInfo = null;
         if (islLinkPorts != null) {
