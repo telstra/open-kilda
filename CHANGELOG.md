@@ -7,6 +7,9 @@
 -  [#4648](https://github.com/telstra/open-kilda/pull/4648) Y-Flow: Ping API design (Issue: [#4589](https://github.com/telstra/open-kilda/issues/4589)) [**docs**]
 -  [#4146](https://github.com/telstra/open-kilda/pull/4146) Adding feature to edit/delete/update isl bfd properties (Issue: [#3920](https://github.com/telstra/open-kilda/issues/3920)) [**gui**]
 
+### Bug Fixes:
+-  [#4658](https://github.com/telstra/open-kilda/pull/4658) Fix false negative stats cache missing warnigns
+
 ### Improvements:
 -  [#4643](https://github.com/telstra/open-kilda/pull/4643) ignore qinq tests in yflow spec for singleTable mode [**tests**]
 -  [#4646](https://github.com/telstra/open-kilda/pull/4646) [test] fix LagPortSpec [**tests**]
