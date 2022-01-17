@@ -20,6 +20,9 @@
        </div>
       <div class="clear clearfix"></div>
     </div>
+    <div>
+      <button  class="btn btn-dark btn-sm pull-right mr-3"  [disabled]="switchPortDataSet==null"    (click)="createLagPort()">Create Lag Port</button> 
+    </div>
     <div id="portsTable_wrapper" class="dataTables_wrapper no-footer">
       <table datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" id="portsTable" class="display no-footer dataTable custom-margin-datatable" cellspacing="0"
         role="grid" aria-describedby="portsTable_info">

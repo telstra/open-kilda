@@ -1552,6 +1552,10 @@ label {
   width: 85% !important;
   max-width: 85%;
 }
+.modal-port .modal-dialog.modal-lg{
+  width: 40% !important;
+  max-width: 85%;
+}
 
 .tab-wrapper ul li a {
   text-decoration: none;

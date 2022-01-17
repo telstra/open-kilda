@@ -1,0 +1,33 @@
+<div class="modal-header">
+    <h4 class="modal-title"><span class="ml-1">Create Lag Port</span></h4>
+    <button type="button" class="close" aria-label="Close" (click)="activeModal.dismiss('Cross click')">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="row" [formGroup]="createLogPortForm">
+      <div class="form-group col-lg-12" >
+        <label class='col-lg-3 col-form-label'>Port:</label>
+        <div class="col-lg-9">
+          <ng-select 
+          formControlName="port_numbers"
+            [items]="data"
+             bindLabel="port_number"
+             bindValue="port_number"
+             [multiple]="true"
+             placeholder="Select Port Number"
+             [ngClass]="{ 'is-invalid': submitted && f.port_numbers.errors }" >
+          </ng-select>
+          <div *ngIf="submitted && f.port_numbers.errors" class="invalid-feedback">
+            <div *ngIf="f.port_numbers.errors.required">Port Numbers is required</div>
+        </div>
+    </div>
+        </div>
+  </div>
+  
+  </div>
+  
+
+  <div class="modal-footer">
+    <button type="button" class="btn kilda_btn" (click)="createPort()">Create</button>
+  </div>

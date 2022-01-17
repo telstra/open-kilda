@@ -159,6 +159,9 @@ export const MessageObj = {
     updating_bfd_properties_error: 'Error in updating BFD properties.',
     BFD_properties_deleted: 'BFD properties deleted successfully.',
     error_BFD_properties_delete: 'Error in deleting BFD properties.',
-    delete_isl_bfd_not_authorised: 'You are not authorised to delete the ISL BFD Properties.'
+    delete_isl_bfd_not_authorised: 'You are not authorised to delete the ISL BFD Properties.',
+    create_lag_port: 'Requested Lag Port Created Successfully! Port List Data  will be updated in some time',
+    error_in_create_lag_port: 'Error in create Lag Port!',
+    port_deleted: 'Port deleted successfully'
 
 };
