@@ -17,6 +17,8 @@ package org.openkilda.wfm.topology.stats.service;
 
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.stats.bolts.metrics.FlowDirectionHelper.Direction;
@@ -28,6 +30,9 @@ import org.openkilda.wfm.topology.stats.model.MeasurePoint;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowSubDescriptor;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandler {
     /**
      * Handle stats entry.
@@ -79,7 +84,16 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
 
     @Override
     public void handleStatsEntry(DummyFlowDescriptor descriptor) {
-        // nothing to do here
+        Cookie cookie = new Cookie(statsEntry.getCookie());
+        if (cookie.getType() == CookieType.SERVICE_OR_FLOW_SEGMENT) {
+            log.warn(
+                    "Missed cache entry for stats record from switch {} from table {} with cookie {}",
+                    switchId, statsEntry.getTableId(), cookie);
+        } else {
+            log.debug(
+                    "Ignoring stats entry from switch {} from table {} with cookie {}",
+                    switchId, statsEntry.getTableId(), cookie);
+        }
     }
 
     @Override
