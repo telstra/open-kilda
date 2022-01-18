@@ -18,7 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -53,7 +53,7 @@ public class HandleNotCompletedCommandsAction extends
             }
         }
 
-        for (FlowErrorResponse errorResponse : stateMachine.getFailedCommands().values()) {
+        for (SpeakerResponse errorResponse : stateMachine.getFailedCommands().values()) {
             log.warn(
                     "Receive error response from {} for command {}: {}",
                     errorResponse.getSwitchId(), errorResponse.getCommandId(), errorResponse);

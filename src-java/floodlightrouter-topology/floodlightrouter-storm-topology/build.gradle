@@ -9,13 +9,13 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 description = 'Floodlight Router Storm Topology'
 dependencies {
     implementation project(':base-storm-topology')
-    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
+    runtimeOnly project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     testImplementation project(':kilda-utils:stubs')
     implementation project(':floodlight-api')
     implementation project(':blue-green')
-    runtimeClasspath project(':kilda-persistence-orientdb')
-    runtimeClasspath project(':kilda-persistence-hibernate')
+    runtimeOnly project(':kilda-persistence-orientdb')
+    runtimeOnly project(':kilda-persistence-hibernate')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
 
     implementation 'org.mapstruct:mapstruct'

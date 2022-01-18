@@ -52,8 +52,12 @@ class YFlowCreateSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid y-flow can be created#trafficDisclaimer, covered cases: #coveredCases"() {
         assumeTrue(swT != null, "These cases cannot be covered on given topology: $coveredCases")
+        if (coveredCases.toString().contains("qinq")) {
+            assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
+        }
 
         when: "Create a y-flow of certain configuration"
+        def allLinksBefore = northbound.getAllLinks()
         def yFlow = northboundV2.addYFlow(yFlowRequest)
 
         then: "Y-flow is created and has UP status"
@@ -87,7 +91,18 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 //            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
 //        }
 
-//        and: "Bandwidth is properly consumed on shared and non-shared ISLs"
+        and: "Bandwidth is properly consumed on shared and non-shared ISLs"
+        def allLinksAfter = northbound.getAllLinks()
+        def involvedIslsSFlow_1 = pathHelper.getInvolvedIsls(yFlow.subFlows[0].flowId)
+        def involvedIslsSFlow_2 = pathHelper.getInvolvedIsls(yFlow.subFlows[1].flowId)
+
+        (involvedIslsSFlow_1 + involvedIslsSFlow_2).unique().each { link ->
+            [link, link.reversed].each {
+                def bwBefore = islUtils.getIslInfo(allLinksBefore, it).get().availableBandwidth
+                def bwAfter = islUtils.getIslInfo(allLinksAfter, it).get().availableBandwidth
+                assert bwBefore == bwAfter + yFlow.maximumBandwidth
+            }
+        }
 
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
         def beforeTraffic = new Date()

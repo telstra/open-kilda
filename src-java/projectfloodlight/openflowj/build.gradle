@@ -1,6 +1,6 @@
 plugins {
     id 'java-base'
-    id 'org.ajoberstar.grgit' version '4.0.2' apply false
+    id 'org.ajoberstar.grgit' version '4.1.1' apply false
 }
 
 group = 'org.projectfloodlight'
@@ -42,8 +42,8 @@ task cloneLoxigenRepo {
         }
     } else {
         def repoUri = 'https://github.com/kilda/loxigen.git'
-        if (project.hasProperty("loxigenGitRepo")) {
-            repoUri = project.property("loxigenGitRepo")
+        if (project.hasProperty('loxigenGitRepo')) {
+            repoUri = project.property('loxigenGitRepo')
         }
         def grgit = Grgit.clone(dir: repo.absolutePath, uri: repoUri, refToCheckout: 'STABLE')
         grgit.close()

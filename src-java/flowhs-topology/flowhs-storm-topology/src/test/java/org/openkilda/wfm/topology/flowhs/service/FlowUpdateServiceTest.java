@@ -75,7 +75,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @RunWith(MockitoJUnitRunner.class)
-public class FlowUpdateServiceTest extends AbstractFlowTest {
+public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
     private static final int PATH_ALLOCATION_RETRIES_LIMIT = 10;
     private static final int PATH_ALLOCATION_RETRY_DELAY = 0;
     private static final int SPEAKER_COMMAND_RETRIES_LIMIT = 0;
@@ -85,7 +85,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
     @Before
     public void setUp() {
-        doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any());
+        doAnswer(buildSpeakerRequestAnswer()).when(carrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
 
         // must be done before first service create attempt, because repository objects are cached inside FSM actions
         setupFlowRepositorySpy();

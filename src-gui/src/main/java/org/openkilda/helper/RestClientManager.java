@@ -393,4 +393,30 @@ public class RestClientManager {
             }
         }
     }
+
+    /**
+     * Checks if is delete link bfd valid response.
+     *
+     * @param response the response
+     * @return true, if is valid response
+     */
+    public static boolean isDeleteBfdValidResponse(final HttpResponse response) {
+        LOGGER.debug("[isValidResponse] Response Code " + response.getStatusLine().getStatusCode());
+        boolean isValid = response.getStatusLine().getStatusCode() >= HttpStatus.OK.value()
+                && response.getStatusLine().getStatusCode() < HttpStatus.MULTIPLE_CHOICES.value();
+        if (isValid) {
+            return true;
+        } else {
+            try {
+                String content = IoUtil.toString(response.getEntity().getContent());
+                LOGGER.warn("Found invalid Response. Status Code: " + response.getStatusLine().getStatusCode()
+                        + ", content: " + content);
+                throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
+            } catch (IOException exception) {
+                LOGGER.warn("Error occurred while vaildating response", exception);
+                throw new InvalidResponseException(HttpError.INTERNAL_ERROR.getCode(),
+                        HttpError.INTERNAL_ERROR.getMessage());
+            }
+        }
+    }
 }

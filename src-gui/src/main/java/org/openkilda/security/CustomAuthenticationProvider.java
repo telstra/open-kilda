@@ -15,23 +15,48 @@
 
 package org.openkilda.security;
 
+import org.openkilda.constants.IConstants.ApplicationSetting;
+import org.openkilda.constants.Status;
 import org.openkilda.exception.InvalidOtpException;
 import org.openkilda.exception.OtpRequiredException;
 import org.openkilda.exception.TwoFaKeyNotSetException;
+import org.openkilda.service.ApplicationSettingService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
+import org.usermanagement.service.MailService;
+import org.usermanagement.service.TemplateService;
+import org.usermanagement.util.MailUtils;
+
+import java.sql.Timestamp;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(CustomAuthenticationProvider.class);
+    
+    @Autowired
+    private MailUtils mailUtils;
+    
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private ApplicationSettingService applicationSettingService;
+    
+    @Autowired
+    private MailService mailService;
 
     /*
      * (non-Javadoc)
@@ -48,10 +73,20 @@ public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
         String verificationCode = customWebAuthenticationDetails.getVerificationCode();
         UserEntity user = userRepository.findByUsernameIgnoreCase(auth.getName());
         if (user == null || !user.getActiveFlag()) {
-            throw new UsernameNotFoundException("User '" + auth.getName() + "' does not exist");
+            throw new BadCredentialsException("Login failed; Invalid email or password.");
+        }
+        String loginCount = null;
+        String unlockTime = null;
+        if (user.getUserId() != 1) {
+            loginCount = applicationSettingService.getApplicationSetting(ApplicationSetting.INVALID_LOGIN_ATTEMPT);
+            unlockTime = applicationSettingService.getApplicationSetting(ApplicationSetting
+                .USER_ACCOUNT_UNLOCK_TIME);
+            if (!user.getStatusEntity().getStatus().equalsIgnoreCase("ACTIVE")) {
+                checkUserLoginAttempts(user, loginCount, unlockTime);
+            }
         }
         try {
-            Authentication result = super.authenticate(auth);
+            final Authentication result = super.authenticate(auth);
             if (user.getIs2FaEnabled()) {
                 if (!user.getIs2FaConfigured() && !customWebAuthenticationDetails.isConfigure2Fa()) {
                     throw new TwoFaKeyNotSetException();
@@ -65,8 +100,70 @@ public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
             }
             return new UsernamePasswordAuthenticationToken(user, result.getCredentials(), result.getAuthorities());
         } catch (BadCredentialsException e) {
-            throw new BadCredentialsException(e.getMessage());
+            String error = null;
+            if (user.getUserId() != 1) {
+                error = updateInvalidLoginAttempts(user, loginCount, unlockTime);
+            } else {
+                error = "Login Failed.Invalid email or password."; 
+            }
+            throw new BadCredentialsException(error);
         }
+    
+    }
+
+    private void checkUserLoginAttempts(UserEntity user, String value, String accUnlockTime) {
+        if (user.getFailedLoginCount() != null) {
+            Date loginTime = user.getFailedLoginTime();
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(loginTime);
+            cal.add(Calendar.MINUTE, Integer.valueOf(user.getUnlockTime()));
+            Date time = Calendar.getInstance().getTime();
+            if (cal.getTime().after(time)) {
+                Date calTime = cal.getTime();
+                long unlockTime = calTime.getTime() - time.getTime();  
+                long diffMinutes = unlockTime / (60 * 1000);
+                long minutes = diffMinutes + 1;
+                throw new LockedException("User account is locked, will be unlocked after " 
+                        + minutes + " minute(s)");
+            } else {
+                user.setStatusEntity(Status.ACTIVE.getStatusEntity());
+                user.setFailedLoginCount(null);
+                user.setUnlockTime(null);
+                user.setLoginTime(new Timestamp(System.currentTimeMillis()));
+                userRepository.save(user);
+            }
+        }
+    }
+
+    private String updateInvalidLoginAttempts(UserEntity entity, String value, String accUnlockTime) {
+        Integer loginCount = entity.getFailedLoginCount();
+        if (loginCount != null) {
+            if (loginCount + 1 >= Integer.valueOf(value)) {
+                entity.setFailedLoginCount(loginCount + 1);
+                entity.setUnlockTime(Integer.valueOf(accUnlockTime));
+                entity.setFailedLoginTime(new Timestamp(System.currentTimeMillis()));
+                entity.setStatusEntity(Status.getStatusByCode(Status.LOCK.getCode()).getStatusEntity());
+                userRepository.save(entity);
+                try {
+                    Map<String, Object> map = new HashMap<String, Object>();
+                    map.put("name", entity.getName());
+                    map.put("time", accUnlockTime);
+                    mailService.send(entity.getEmail(), mailUtils.getSubjectAccountBlock(),
+                            TemplateService.Template.ACCOUNT_BLOCK, map);
+                } catch (Exception e) {
+                    LOGGER.warn("User account block email failed for username:'" + entity.getUsername());
+                }
+                throw new LockedException("User account is locked for "
+                        + Integer.valueOf(accUnlockTime) + " minute(s)");
+            }
+            entity.setFailedLoginCount(loginCount + 1);
+        } else {
+            entity.setFailedLoginCount(1);
+        }
+        int attempts = Integer.valueOf(value) - entity.getFailedLoginCount();
+        String error = "Invalid email or password.You are left with " + attempts + " more attempts.";
+        userRepository.save(entity);
+        return error;
     }
 
     /*

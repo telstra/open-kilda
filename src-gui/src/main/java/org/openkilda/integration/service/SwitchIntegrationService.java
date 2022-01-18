@@ -30,8 +30,10 @@ import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.PortConfiguration;
 import org.openkilda.integration.model.response.ConfiguredPort;
 import org.openkilda.integration.model.response.IslLink;
+import org.openkilda.model.BfdProperties;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkBfdProperties;
 import org.openkilda.model.LinkMaxBandwidth;
 import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkProps;
@@ -775,6 +777,88 @@ public class SwitchIntegrationService {
             LOGGER.warn("Error occurred while updating switch location:" + switchId, e);
             throw new IntegrationException(e.getMessage(), e);
         }
+        return null;
+    }
+
+    /**
+     * Gets the link Bfd properties.
+     *
+     * @param srcSwitch the src switch
+     * @param srcPort the src port
+     * @param dstSwitch the dst switch
+     * @param dstPort the dst port
+     * @return the link Bfd properties
+     */
+    public LinkBfdProperties getLinkBfdProperties(String srcSwitch, String srcPort, String dstSwitch, String dstPort) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINK_BFD_PROPERTIES
+                    .replace("{src-switch}", srcSwitch).replace("{src-port}", srcPort)
+                    .replace("{dst-switch}", dstSwitch).replace("{dst-port}", dstPort), HttpMethod.GET, 
+                    "", "application/json", 
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, LinkBfdProperties.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while reading link bfd properties", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } 
+        return null;
+    }
+
+    /**
+     * Updates the link Bfd properties.
+     *
+     * @return the LinkBfdProperties
+     */
+    public LinkBfdProperties updateLinkBfdProperties(String srcSwitch, String srcPort, String dstSwitch, 
+            String dstPort, BfdProperties properties) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINK_BFD_PROPERTIES
+                    .replace("{src-switch}", srcSwitch).replace("{src-port}", srcPort)
+                    .replace("{dst-switch}", dstSwitch).replace("{dst-port}", dstPort), HttpMethod.PUT, 
+                    objectMapper.writeValueAsString(properties), "application/json", 
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, LinkBfdProperties.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while updating link bfd properties", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        } 
+        return null;
+    }
+
+    /**
+     * Deletes link bfd.
+     * @param srcSwitch the src switch
+     * @param srcPort the src port
+     * @param dstSwitch the dst switch
+     * @param dstPort the dst port
+     * 
+     * @return LinkBfdProperties
+     */
+    public String deleteLinkBfd(String srcSwitch, String srcPort, String dstSwitch, String dstPort) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINK_BFD_PROPERTIES
+                    .replace("{src-switch}", srcSwitch).replace("{src-port}", srcPort)
+                    .replace("{dst-switch}", dstSwitch).replace("{dst-port}", dstPort), HttpMethod.DELETE, 
+                    "", "application/json", 
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isDeleteBfdValidResponse(response)) {
+                return restClientManager.getResponse(response, String.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occured while deleting link bfd", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (UnsupportedOperationException e) {
+            e.printStackTrace();
+        } 
         return null;
     }
 }

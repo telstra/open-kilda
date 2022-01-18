@@ -4,7 +4,7 @@ plugins {
 
 configurations {
     // This conflicts with spring-boot-starter-log4j2
-    compile.exclude module: 'spring-boot-starter-logging'
+    implementation.exclude module: 'spring-boot-starter-logging'
 }
 
 dependencies {

@@ -66,7 +66,7 @@ public class InstallIngressRulesAction extends
                 commandBuilder.buildIngressOnly(
                         stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse, speakerContext));
         commands.addAll(commandBuilder.buildEgressOnly(stateMachine.getCommandContext(),
-                flow, newPrimaryForward, newPrimaryReverse).stream()
+                        flow, newPrimaryForward, newPrimaryReverse).stream()
                 .filter(f -> f instanceof TransitFlowLoopSegmentRequestFactory
                         || f instanceof EgressMirrorFlowSegmentRequestFactory)
                 .collect(Collectors.toList()));

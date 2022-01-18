@@ -23,8 +23,10 @@ import org.openkilda.integration.model.PortConfiguration;
 import org.openkilda.integration.model.response.ConfiguredPort;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
+import org.openkilda.model.BfdProperties;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkBfdProperties;
 import org.openkilda.model.LinkMaxBandwidth;
 import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkProps;
@@ -409,5 +411,68 @@ public class SwitchController {
             @RequestBody final SwitchLocation switchLocation) {
         activityLogger.log(ActivityType.UPDATE_SWITCH_LOCATION, switchId);
         return serviceSwitch.updateSwitchLocation(switchId, switchLocation);
+    }
+    
+    /**
+     * Gets the link BFD properties.
+     *
+     * @param srcSwitch the src switch
+     * @param srcPort the src port
+     * @param dstSwitch the dst switch
+     * @param dstPort the dst port
+     * @return the link Bfd properties
+     */
+    @RequestMapping(value = "/links/bfd", method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody LinkBfdProperties readBfdProperties(@RequestParam(value = "src_switch",
+            required = false) final String srcSwitch, @RequestParam(value = "src_port",
+            required = false) final String srcPort, @RequestParam(value = "dst_switch",
+            required = false) final String dstSwitch, @RequestParam(value = "dst_port",
+            required = false) final String dstPort) {
+        return serviceSwitch.getLinkBfdProperties(srcSwitch, srcPort, dstSwitch, dstPort);
+    }
+    
+    /**
+     * Updates the link BFD properties.
+     *
+     * @param srcSwitch the src switch
+     * @param srcPort the src port
+     * @param dstSwitch the dst switch
+     * @param dstPort the dst port
+     * @return the link Bfd properties
+     */
+    @RequestMapping(value = "/links/bfd", method = RequestMethod.PUT)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = IConstants.Permission.ISL_UPDATE_BFD_PROPERTIES)
+    public @ResponseBody LinkBfdProperties updateBfdProperties(@RequestParam(value = "src_switch",
+            required = true) final String srcSwitch, @RequestParam(value = "src_port",
+            required = true) final String srcPort, @RequestParam(value = "dst_switch",
+            required = true) final String dstSwitch, @RequestParam(value = "dst_port",
+            required = true) final String dstPort, @RequestBody(required = true) BfdProperties properties) {
+        activityLogger.log(ActivityType.UPDATE_ISL_BFD_PROPERTIES, "Src_SW_" + srcSwitch + "\nSrc_PORT_"
+                + srcPort + "\nDst_SW_" + dstSwitch + "\nDst_PORT_"
+                + dstPort + "\nProperties_" + properties);
+        return serviceSwitch.updateLinkBfdProperties(srcSwitch, srcPort, dstSwitch, dstPort, properties);
+    }
+
+    /**
+     * Delete link BFD.
+     *
+     * @param srcSwitch the src switch
+     * @param srcPort the src port
+     * @param dstSwitch the dst switch
+     * @param dstPort the dst port
+     */
+    @RequestMapping(value = "/links/bfd", method = RequestMethod.DELETE)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = IConstants.Permission.ISL_DELETE_BFD)
+    public @ResponseBody String deleteLinkBfd(@RequestParam(value = "src_switch",
+            required = true) final String srcSwitch, @RequestParam(value = "src_port",
+            required = true) final String srcPort, @RequestParam(value = "dst_switch",
+            required = true) final String dstSwitch, @RequestParam(value = "dst_port",
+            required = true) final String dstPort) {
+        activityLogger.log(ActivityType.DELETE_ISL_BFD, "Src_SW_" + srcSwitch + "\nSrc_PORT_"
+                + srcPort + "\nDst_SW_" + dstSwitch + "\nDst_PORT_" + dstPort);
+        return serviceSwitch.deleteLinkBfd(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 }

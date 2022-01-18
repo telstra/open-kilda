@@ -9,6 +9,7 @@ class FlowHistoryConstants {
     public static String CREATE_SUCCESS = "Flow was created successfully"
     public static String CREATE_SUCCESS_Y = "The y-flow was created successfully"
     public static String REROUTE_SUCCESS = "Flow was rerouted successfully"
+    public static String REROUTE_SUCCESS_Y = "The y-flow was rerouted successfully"
     public static String REROUTE_FAIL = "Failed to reroute the flow"
     public static String REROUTE_COMPLETE = "Flow reroute completed"
     public static String DELETE_SUCCESS = "Flow was deleted successfully"

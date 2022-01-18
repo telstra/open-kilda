@@ -174,7 +174,7 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
     public void emitPathSwapCommand(String correlationId, String flowId, String reason) {
         CommandContext context = new CommandContext(correlationId).fork(UUID.randomUUID().toString());
         emit(STREAM_OPERATION_QUEUE_ID, getCurrentTuple(),
-                new Values(flowId, new FlowPathSwapRequest(flowId), context));
+                new Values(flowId, new FlowPathSwapRequest(flowId, false), context));
 
         log.warn("Flow {} swap path command message sent with correlationId {}, reason \"{}\"",
                 flowId, context.getCorrelationId(), reason);

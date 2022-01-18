@@ -5,7 +5,7 @@ plugins {
 description = 'Test-Library'
 dependencies {
     implementation(platform('org.springframework:spring-framework-bom:5.2.13.RELEASE'))
-    compile 'org.springframework.boot:spring-boot-autoconfigure:2.2.13.RELEASE'
+    implementation 'org.springframework.boot:spring-boot-autoconfigure:2.2.13.RELEASE'
 
     api project(':base-messaging')
     api project(':flowhs-messaging')

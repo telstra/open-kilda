@@ -47,7 +47,9 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 
 import lombok.extern.slf4j.Slf4j;
@@ -430,6 +432,18 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     public YFlowPaths getYFlowPaths(String yFlowId) {
         return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/paths", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), YFlowPaths.class, yFlowId).getBody();
+    }
+
+    @Override
+    public YFlowValidationResult validateYFlow(String yFlowId) {
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/validate", HttpMethod.POST,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), YFlowValidationResult.class, yFlowId).getBody();
+    }
+
+    @Override
+    public YFlowSyncResult synchronizeYFlow(String yFlowId) {
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/sync", HttpMethod.POST,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), YFlowSyncResult.class, yFlowId).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {

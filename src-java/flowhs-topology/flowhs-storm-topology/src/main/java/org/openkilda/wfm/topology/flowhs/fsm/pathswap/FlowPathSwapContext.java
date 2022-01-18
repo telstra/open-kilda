@@ -15,19 +15,17 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.pathswap;
 
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 @Data
-@EqualsAndHashCode(callSuper = true)
-public class FlowPathSwapContext extends FlowContext {
+public class FlowPathSwapContext {
+    private SpeakerResponse speakerResponse;
 
     @Builder
-    public FlowPathSwapContext(SpeakerFlowSegmentResponse speakerFlowResponse) {
-        super(speakerFlowResponse);
+    public FlowPathSwapContext(SpeakerResponse speakerResponse) {
+        this.speakerResponse = speakerResponse;
     }
 }

@@ -48,7 +48,7 @@ import org.mockito.hamcrest.MockitoHamcrest;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
-public class FlowDeleteServiceTest extends AbstractFlowTest {
+public class FlowDeleteServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
     private static final int SPEAKER_COMMAND_RETRIES_LIMIT = 3;
 
     @Mock
@@ -56,7 +56,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
 
     @Before
     public void setUp() {
-        doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any());
+        doAnswer(buildSpeakerRequestAnswer()).when(carrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
 
         // must be done before first service create attempt, because repository objects are cached inside FSM actions
         setupFlowRepositorySpy();

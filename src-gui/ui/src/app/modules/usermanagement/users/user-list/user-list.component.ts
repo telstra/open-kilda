@@ -211,6 +211,27 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit{
   }
 
   /*
+    Method: unblockUser
+    Description: Unblock a user if blocked by failed login attempts
+  */
+    unblockUser(id){
+      const modalRef = this.modalService.open(ModalconfirmationComponent);
+      modalRef.componentInstance.title = "Confirmation";
+      modalRef.componentInstance.content = 'Are you sure you want to unblock this user ?';
+  
+      modalRef.result.then((response) => {
+        if(response && response == true){
+          this.loaderService.show(MessageObj.unblok_user);
+          this.userService.unblockUser(id).subscribe(user => {
+            this.toastr.success(MessageObj.user_unblocked,'Success')
+            this.getUsers();
+           
+          });
+        }
+      });
+    }
+
+  /*
     Method: resetpassword
     Description: Reset the user password and send an email with updated imformation.
   */
