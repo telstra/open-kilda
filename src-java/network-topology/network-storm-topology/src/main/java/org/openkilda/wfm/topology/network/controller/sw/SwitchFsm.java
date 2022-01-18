@@ -521,6 +521,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private void persistSwitchConnections(SwitchAvailabilityData availabilityData) {
         RetryPolicy<?> retryPolicy = new RetryPolicy<>()
                 .handle(RecoverablePersistenceException.class, ConstraintViolationException.class)
+                .withMaxRetries(-1)  // removing default(==2) retries limit
                 .withMaxDuration(Duration.ofSeconds(options.getDbRepeatMaxDurationSeconds()))
                 .withDelay(Duration.ofMillis(20))
                 .withJitter(Duration.ofMillis(8))
