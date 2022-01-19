@@ -64,6 +64,8 @@ public class YFlow implements CompositeDataEntity<YFlowData> {
      */
     private YFlow() {
         data = new YFlowDataImpl();
+        // The reference is used to link sub-flows back to the y-flow. See {@link #setSubFlows(Set)}.
+        ((YFlowDataImpl) data).yFlow = this;
     }
 
     /**
@@ -94,7 +96,7 @@ public class YFlow implements CompositeDataEntity<YFlowData> {
                 .sharedEndpointMeterId(sharedEndpointMeterId);
         data = builder.build();
 
-        // The reference is used to link sub-flows back to the y-flow. See {@link #setSegments(List)}.
+        // The reference is used to link sub-flows back to the y-flow. See {@link #setSubFlows(Set)}.
         ((YFlowDataImpl) data).yFlow = this;
     }
 
@@ -355,6 +357,7 @@ public class YFlow implements CompositeDataEntity<YFlowData> {
          */
         default YFlowData deepCopy(YFlowData source, YFlow targetFlow) {
             YFlowDataImpl result = new YFlowDataImpl();
+            result.yFlow = targetFlow;
             copyWithoutSubFlows(source, result);
             result.setSubFlows(source.getSubFlows().stream()
                     .map(subFlow -> new YSubFlow(subFlow, targetFlow))
