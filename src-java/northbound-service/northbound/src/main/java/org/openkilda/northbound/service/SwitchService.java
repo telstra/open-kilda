@@ -36,8 +36,8 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
-import org.openkilda.northbound.dto.v2.switches.CreateLagPortDto;
-import org.openkilda.northbound.dto.v2.switches.LagPortDto;
+import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
+import org.openkilda.northbound.dto.v2.switches.LagPortResponse;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
@@ -301,9 +301,12 @@ public interface SwitchService {
 
     CompletableFuture<SwitchConnectionsResponse> getSwitchConnections(SwitchId switchId);
 
-    CompletableFuture<LagPortDto> createLag(SwitchId switchId, CreateLagPortDto createLagPortDto);
+    CompletableFuture<LagPortResponse> createLag(SwitchId switchId, LagPortRequest lagPortRequest);
 
-    CompletableFuture<List<LagPortDto>> getLagPorts(SwitchId switchId);
+    CompletableFuture<List<LagPortResponse>> getLagPorts(SwitchId switchId);
 
-    CompletableFuture<LagPortDto> deleteLagPort(SwitchId switchId, Integer logicalPortNumber);
+    CompletableFuture<LagPortResponse> updateLagPort(
+            SwitchId switchId, int logicalPortNumber, LagPortRequest payload);
+
+    CompletableFuture<LagPortResponse> deleteLagPort(SwitchId switchId, int logicalPortNumber);
 }

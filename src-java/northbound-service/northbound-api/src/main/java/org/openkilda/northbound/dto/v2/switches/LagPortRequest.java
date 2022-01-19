@@ -27,7 +27,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
-public class LagPortDto {
-    private int logicalPortNumber;
+public class LagPortRequest {
     private List<Integer> portNumbers;
 }

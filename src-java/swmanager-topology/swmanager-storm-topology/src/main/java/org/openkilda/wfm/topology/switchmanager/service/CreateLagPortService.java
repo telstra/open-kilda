@@ -18,7 +18,7 @@ package org.openkilda.wfm.topology.switchmanager.service;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
 import org.openkilda.wfm.error.MessageDispatchException;
 import org.openkilda.wfm.error.UnexpectedInputException;
@@ -95,8 +95,8 @@ public class CreateLagPortService implements SwitchManagerHubService {
     @Override
     public void dispatchWorkerMessage(InfoData payload, MessageCookie cookie)
             throws UnexpectedInputException, MessageDispatchException {
-        if (payload instanceof CreateLogicalPortResponse) {
-            handleCreateOrUpdateResponse((CreateLogicalPortResponse) payload, cookie);
+        if (payload instanceof CreateOrUpdateLogicalPortResponse) {
+            handleCreateOrUpdateResponse((CreateOrUpdateLogicalPortResponse) payload, cookie);
         } else {
             throw new UnexpectedInputException(payload);
         }
@@ -111,7 +111,7 @@ public class CreateLagPortService implements SwitchManagerHubService {
         fireFsmEvent(cookie, CreateLagEvent.ERROR, context);
     }
 
-    private void handleCreateOrUpdateResponse(CreateLogicalPortResponse payload, MessageCookie cookie)
+    private void handleCreateOrUpdateResponse(CreateOrUpdateLogicalPortResponse payload, MessageCookie cookie)
             throws MessageDispatchException {
         fireFsmEvent(cookie, CreateLagEvent.LAG_INSTALLED,
                 CreateLagContext.builder().createdLogicalPort(payload.getLogicalPort()).build());

@@ -20,7 +20,7 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
@@ -68,9 +68,9 @@ public class GrpcRouter extends AbstractBolt {
     private void route(Tuple input, InfoMessage message) throws PipelineException {
         InfoData payload = message.getData();
         String key = pullKey(input);
-        if (payload instanceof CreateLogicalPortResponse) {
+        if (payload instanceof CreateOrUpdateLogicalPortResponse) {
             emit(STREAM_BFD_WORKER_ID, input, makeBfdWorkerTuple(
-                    key, new BfdWorkerLogicalPortCreateResponse((CreateLogicalPortResponse) payload)));
+                    key, new BfdWorkerLogicalPortCreateResponse((CreateOrUpdateLogicalPortResponse) payload)));
         } else if (payload instanceof DeleteLogicalPortResponse) {
             emit(STREAM_BFD_WORKER_ID, input, makeBfdWorkerTuple(
                     key, new BfdWorkerLogicalPortDeleteResponse((DeleteLogicalPortResponse) payload)));

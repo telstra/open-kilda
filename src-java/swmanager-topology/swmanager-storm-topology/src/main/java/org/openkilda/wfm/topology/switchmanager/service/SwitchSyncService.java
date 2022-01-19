@@ -22,7 +22,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.flow.FlowInstallResponse;
 import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.flow.FlowRemoveResponse;
-import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.info.switches.DeleteGroupResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
@@ -101,7 +101,7 @@ public class SwitchSyncService implements SwitchManagerHubService {
             fireHandlerEvent(cookie, SwitchSyncEvent.GROUPS_MODIFIED);
         } else if (payload instanceof DeleteGroupResponse) {
             fireHandlerEvent(cookie, SwitchSyncEvent.GROUPS_REMOVED);
-        } else if (payload instanceof CreateLogicalPortResponse) {
+        } else if (payload instanceof CreateOrUpdateLogicalPortResponse) {
             fireHandlerEvent(cookie, SwitchSyncEvent.LOGICAL_PORT_INSTALLED);
         } else if (payload instanceof DeleteLogicalPortResponse) {
             fireHandlerEvent(cookie, SwitchSyncEvent.LOGICAL_PORT_REMOVED);

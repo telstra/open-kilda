@@ -25,7 +25,7 @@ import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
-public class CreateLogicalPortResponse extends InfoData {
+public class CreateOrUpdateLogicalPortResponse extends InfoData {
 
     @JsonProperty("switch_address")
     private String switchAddress;
@@ -37,9 +37,9 @@ public class CreateLogicalPortResponse extends InfoData {
     private boolean created;
 
     @JsonCreator
-    public CreateLogicalPortResponse(@JsonProperty("switch_address") String switchAddress,
-                                     @JsonProperty("logical_port") LogicalPort logicalPort,
-                                     @JsonProperty("created") boolean created) {
+    public CreateOrUpdateLogicalPortResponse(@JsonProperty("switch_address") String switchAddress,
+                                             @JsonProperty("logical_port") LogicalPort logicalPort,
+                                             @JsonProperty("created") boolean created) {
         this.switchAddress = switchAddress;
         this.logicalPort = logicalPort;
         this.created = created;

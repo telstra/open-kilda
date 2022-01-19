@@ -29,8 +29,8 @@ import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.dto.v2.links.BfdProperties;
 import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
-import org.openkilda.northbound.dto.v2.switches.CreateLagPortDto;
-import org.openkilda.northbound.dto.v2.switches.LagPortDto;
+import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
+import org.openkilda.northbound.dto.v2.switches.LagPortResponse;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
@@ -118,11 +118,11 @@ public interface NorthboundServiceV2 {
 
     SwitchPropertiesDump getAllSwitchProperties();
 
-    List<LagPortDto> getLagLogicalPort(SwitchId switchId);
+    List<LagPortResponse> getLagLogicalPort(SwitchId switchId);
 
-    LagPortDto createLagLogicalPort(SwitchId switchId, CreateLagPortDto payload);
+    LagPortResponse createLagLogicalPort(SwitchId switchId, LagPortRequest payload);
 
-    LagPortDto deleteLagLogicalPort(SwitchId switchId, Integer logicalPortNumber);
+    LagPortResponse deleteLagLogicalPort(SwitchId switchId, Integer logicalPortNumber);
 
     //links
     BfdPropertiesPayload setLinkBfd(TopologyDefinition.Isl isl);

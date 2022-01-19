@@ -24,7 +24,7 @@ import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
+import org.openkilda.messaging.command.grpc.CreateOrUpdateLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DeleteLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DumpLogicalPortsRequest;
 import org.openkilda.messaging.command.grpc.GetPacketInOutStatsRequest;
@@ -34,7 +34,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.grpc.GetPacketInOutStatsResponse;
@@ -88,16 +88,16 @@ public class MessageProcessor {
         String correlationId = command.getCorrelationId();
         CompletableFuture<Response> result;
 
-        if (data instanceof CreateLogicalPortRequest) {
-            result = handleCreateLogicalPortRequest((CreateLogicalPortRequest) data);
+        if (data instanceof CreateOrUpdateLogicalPortRequest) {
+            result = handleCreateOrUpdateLogicalPortRequest((CreateOrUpdateLogicalPortRequest) data);
         } else if (data instanceof DumpLogicalPortsRequest) {
             result = handleDumpLogicalPortsRequest((DumpLogicalPortsRequest) data);
+        } else if (data instanceof DeleteLogicalPortRequest) {
+            result = handleDeleteLogicalPortRequest((DeleteLogicalPortRequest) data);
         } else if (data instanceof GetSwitchInfoRequest) {
             result = handleGetSwitchInfoRequest((GetSwitchInfoRequest) data);
         } else if (data instanceof GetPacketInOutStatsRequest) {
             result = handleGetPacketInOutStatsRequest((GetPacketInOutStatsRequest) data);
-        } else if (data instanceof DeleteLogicalPortRequest) {
-            result = handleDeleteLogicalPortRequest((DeleteLogicalPortRequest) data);
         } else {
             result = unhandledMessage(command);
         }
@@ -105,12 +105,14 @@ public class MessageProcessor {
         result.thenAccept(response -> sendResponse(response, correlationId, key, command.getCookie()));
     }
 
-    private CompletableFuture<Response> handleCreateLogicalPortRequest(CreateLogicalPortRequest request) {
+    private CompletableFuture<Response> handleCreateOrUpdateLogicalPortRequest(
+            CreateOrUpdateLogicalPortRequest request) {
         CompletableFuture<InfoData> future = service
-                .createLogicalPort(request.getAddress(), requestMapper.toLogicalPort(request))
-                .thenApply(result -> new CreateLogicalPortResponse(request.getAddress(), result, true));
+                .createOrUpdateLogicalPort(request.getAddress(), requestMapper.toLogicalPort(request))
+                .thenApply(result -> new CreateOrUpdateLogicalPortResponse(request.getAddress(), result, true));
         return makeResponse(future, String.format(
-                "Creating logical port %s on switch %s", request.getLogicalPortNumber(), request.getAddress()));
+                "Creating or update %s logical port %s on switch %s",
+                request.getType(), request.getLogicalPortNumber(), request.getAddress()));
     }
 
     private CompletableFuture<Response> handleDumpLogicalPortsRequest(DumpLogicalPortsRequest request) {

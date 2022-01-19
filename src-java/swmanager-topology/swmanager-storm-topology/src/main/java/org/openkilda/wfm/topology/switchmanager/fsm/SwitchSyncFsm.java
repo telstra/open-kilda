@@ -51,7 +51,7 @@ import org.openkilda.messaging.command.flow.ModifyDefaultMeterForSwitchManagerRe
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
-import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
+import org.openkilda.messaging.command.grpc.CreateOrUpdateLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DeleteLogicalPortRequest;
 import org.openkilda.messaging.command.switches.DeleteGroupRequest;
 import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
@@ -124,7 +124,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private List<GroupInstallContext> missingGroups = emptyList();
     private List<GroupInstallContext> misconfiguredGroups = emptyList();
     private List<Integer> excessGroups = emptyList();
-    private List<CreateLogicalPortRequest> missingLogicalPorts = emptyList();
+    private List<CreateOrUpdateLogicalPortRequest> missingLogicalPorts = emptyList();
     private List<DeleteLogicalPortRequest> excessLogicalPorts = emptyList();
 
     private int missingRulesPendingResponsesCount = 0;
@@ -520,7 +520,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
             log.info("Request to install logical ports has been sent (switch={}, key={})", switchId, key);
             missingLogicalPortsPendingResponsesCount = missingLogicalPorts.size();
 
-            for (CreateLogicalPortRequest createRequest : missingLogicalPorts) {
+            for (CreateOrUpdateLogicalPortRequest createRequest : missingLogicalPorts) {
                 carrier.sendCommandToSpeaker(key, createRequest);
             }
         }

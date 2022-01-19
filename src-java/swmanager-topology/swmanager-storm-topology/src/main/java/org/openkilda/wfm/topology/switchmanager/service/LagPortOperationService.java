@@ -98,15 +98,25 @@ public class LagPortOperationService {
     /**
      * Create LAG logical port.
      */
-    public int createLagPort(SwitchId switchId, Set<Integer> physicalPortNumbers) {
-        if (physicalPortNumbers == null || physicalPortNumbers.isEmpty()) {
-            throw new InvalidDataException("Physical ports list is empty");
-        }
-
+    public int createLagPort(SwitchId switchId, Set<Integer> targetPorts) {
+        verifyTargetPortsInput(targetPorts);
         LagLogicalPort port = transactionManager.doInTransaction(
-                newCreateRetryPolicy(switchId), () -> createTransaction(switchId, physicalPortNumbers));
+                newCreateRetryPolicy(switchId), () -> createTransaction(switchId, targetPorts));
         return port.getLogicalPortNumber();
     }
+
+    /**
+     * Update LAG logical port.
+     */
+    public Set<Integer> updateLagPort(SwitchId switchId, int logicalPortNumber, Set<Integer> targetPorts) {
+        verifyTargetPortsInput(targetPorts);
+        Set<Integer> targetsBeforeUpdate = new HashSet<>();
+        transactionManager.doInTransaction(
+                newUpdateRetryPolicy(switchId),
+                () -> targetsBeforeUpdate.addAll(updateTransaction(switchId, logicalPortNumber, targetPorts)));
+        return targetsBeforeUpdate;
+    }
+
 
     /**
      * Delete LAG logical port.
@@ -121,11 +131,7 @@ public class LagPortOperationService {
      */
     public LagLogicalPort ensureDeleteIsPossible(SwitchId switchId, int logicalPortNumber) {
         Switch sw = querySwitch(switchId); // locate switch first to produce correct error if switch is missing
-        Optional<LagLogicalPort> port = lagLogicalPortRepository.findBySwitchIdAndPortNumber(
-                switchId, logicalPortNumber);
-        if (!port.isPresent()) {
-            throw new LagPortNotFoundException(switchId, logicalPortNumber);
-        }
+        LagLogicalPort port = queryLagPort(switchId, logicalPortNumber);
 
         List<String> occupiedBy = flowRepository.findByEndpoint(switchId, logicalPortNumber).stream()
                 .map(Flow::getFlowId)
@@ -141,7 +147,7 @@ public class LagPortOperationService {
                     logicalPortNumber, switchId);
         }
 
-        return port.get();
+        return port;
     }
 
     private void validatePhysicalPort(SwitchId switchId, Set<SwitchFeature> features, Integer portNumber)
@@ -213,28 +219,42 @@ public class LagPortOperationService {
                         format("Switch %s has invalid IP address %s", sw, sw.getSocketAddress())));
     }
 
-    private LagLogicalPort createTransaction(SwitchId switchId, Set<Integer> targetPorts)  {
+    private void verifyTargetPortsInput(Set<Integer> targetPorts) {
+        if (targetPorts == null || targetPorts.isEmpty()) {
+            throw new InvalidDataException("Physical ports list is empty");
+        }
+    }
+
+    private LagLogicalPort createTransaction(SwitchId switchId, Set<Integer> targetPorts) {
         Switch sw = querySwitch(switchId); // locate switch first to produce correct error if switch is missing
-        if (! isSwitchLagCapable(sw)) {
-            throw new InvalidDataException(format("Switch %s doesn't support LAG.", sw.getSwitchId()));
-        }
-
-        Set<SwitchFeature> features = sw.getFeatures();
-        for (Integer portNumber : targetPorts) {
-            validatePhysicalPort(switchId, features, portNumber);
-        }
-
-        ensureNoLagCollisions(switchId, targetPorts);
+        ensureLagDataValid(sw, targetPorts);
+        ensureNoLagCollisions(sw.getSwitchId(), targetPorts);
 
         LagLogicalPort port = queryPoolManager(switchId).allocate();
-        port.setPhysicalPorts(
-                targetPorts.stream()
-                        .map(portNumber -> new PhysicalPort(switchId, portNumber, port))
-                        .collect(Collectors.toList()));
+        replacePhysicalPorts(port, switchId, targetPorts);
 
         log.info("Adding new LAG logical port entry into DB: {}", port);
         lagLogicalPortRepository.add(port);
         return port;
+    }
+
+    private Set<Integer> updateTransaction(SwitchId switchId, int logicalPortNumber, Set<Integer> targetPorts) {
+        Switch sw = querySwitch(switchId);
+        ensureLagDataValid(sw, targetPorts);
+        ensureNoLagCollisions(switchId, targetPorts, logicalPortNumber);
+
+        LagLogicalPort port = queryLagPort(sw.getSwitchId(), logicalPortNumber);
+        Set<Integer> targetsBeforeUpdate = port.getPhysicalPorts().stream()
+                .map(PhysicalPort::getPortNumber)
+                .collect(Collectors.toSet());
+        log.info(
+                "Updating LAG logical port #{} on {} entry desired target ports set {}, current target ports set {}",
+                logicalPortNumber, switchId,
+                formatPortNumbersSet(targetPorts), formatPortNumbersSet(targetsBeforeUpdate));
+        replacePhysicalPorts(port, switchId, targetPorts);
+
+
+        return targetsBeforeUpdate;
     }
 
     private LagLogicalPort deleteTransaction(SwitchId switchId, int logicalPortNumber) {
@@ -244,14 +264,49 @@ public class LagPortOperationService {
         return port;
     }
 
+    private void ensureLagDataValid(Switch sw, Set<Integer> targetPorts) {
+        ensureSwitchIsLagCapable(sw);
+        ensureTargetPortsValid(sw, targetPorts);
+    }
+
+    private void ensureSwitchIsLagCapable(Switch sw) {
+        if (!isSwitchLagCapable(sw)) {
+            throw new InvalidDataException(format("Switch %s doesn't support LAG.", sw.getSwitchId()));
+        }
+    }
+
     private boolean isSwitchLagCapable(Switch sw) {
         return sw.getFeatures().contains(SwitchFeature.LAG);
     }
 
+    private void ensureTargetPortsValid(Switch sw, Set<Integer> targetPorts) {
+        Set<SwitchFeature> features = sw.getFeatures();
+        SwitchId switchId = sw.getSwitchId();
+        for (Integer portNumber : targetPorts) {
+            validatePhysicalPort(switchId, features, portNumber);
+        }
+    }
+
     private void ensureNoLagCollisions(SwitchId switchId, Set<Integer> targetPorts) {
-        Set<Integer> occupiedPorts = physicalPortRepository.findPortNumbersBySwitchId(switchId);
+        ensureNoLagCollisions(switchId, targetPorts, null);
+    }
+
+    private void ensureNoLagCollisions(SwitchId switchId, Set<Integer> targetPorts, Integer excludeLogicalPort) {
         // FIXME(surabujin): we are unreasonably supposing that all physical port objects in DB related to LAGs
-        SetView<Integer> intersection = Sets.intersection(occupiedPorts, new HashSet<>(targetPorts));
+        Collection<PhysicalPort> occupiedPorts = physicalPortRepository.findBySwitchId(switchId);
+        Set<Integer> deniedTargets = new HashSet<>();
+        for (PhysicalPort entry : occupiedPorts) {
+            LagLogicalPort partOf = entry.getLagLogicalPort();
+            if (excludeLogicalPort != null && partOf != null && excludeLogicalPort == partOf.getLogicalPortNumber()) {
+                log.debug(
+                        "Exclude port #{} on {} from collision list, because it is part of {} LAG logical port",
+                        entry.getPortNumber(), switchId, excludeLogicalPort);
+                continue;
+            }
+            deniedTargets.add(entry.getPortNumber());
+        }
+
+        SetView<Integer> intersection = Sets.intersection(deniedTargets, new HashSet<>(targetPorts));
 
         if (! intersection.isEmpty()) {
             throw new InvalidDataException(
@@ -270,6 +325,18 @@ public class LagPortOperationService {
         return switchRepository.findById(switchId).orElseThrow(() -> new SwitchNotFoundException(switchId));
     }
 
+    private LagLogicalPort queryLagPort(SwitchId switchId, int logicalPortNumber) {
+        Optional<LagLogicalPort> port = lagLogicalPortRepository.findBySwitchIdAndPortNumber(
+                switchId, logicalPortNumber);
+        return port.orElseThrow(() -> new LagPortNotFoundException(switchId, logicalPortNumber));
+    }
+
+    private void replacePhysicalPorts(LagLogicalPort port, SwitchId switchId, Set<Integer> targetPorts) {
+        port.setPhysicalPorts(targetPorts.stream()
+                .map(portNumber -> new PhysicalPort(switchId, portNumber, port))
+                .collect(Collectors.toList()));
+    }
+
     private PoolManager<LagLogicalPort> newPoolManager(SwitchId switchId) {
         LagPortPoolEntityAdapter adapter = new LagPortPoolEntityAdapter(config, lagLogicalPortRepository, switchId);
         return new PoolManager<>(config.getPoolConfig(), adapter);
@@ -277,6 +344,10 @@ public class LagPortOperationService {
 
     private RetryPolicy<LagLogicalPort> newCreateRetryPolicy(SwitchId switchId) {
         return newRetryPolicy(switchId, "create");
+    }
+
+    private RetryPolicy<LagLogicalPort> newUpdateRetryPolicy(SwitchId switchId) {
+        return newRetryPolicy(switchId, "update");
     }
 
     private RetryPolicy<LagLogicalPort> newDeleteRetryPolicy(SwitchId switchId) {
@@ -294,5 +365,12 @@ public class LagPortOperationService {
                         e -> log.error(
                                 "Failed to {} LAG logical port DB record for switch {}: {}",
                                 action, switchId, e.getFailure().getMessage(), e.getFailure()));
+    }
+
+    private static String formatPortNumbersSet(Set<Integer> ports) {
+        return ports.stream()
+                .sorted()
+                .map(Objects::toString)
+                .collect(Collectors.joining(", ", "{", "}"));
     }
 }

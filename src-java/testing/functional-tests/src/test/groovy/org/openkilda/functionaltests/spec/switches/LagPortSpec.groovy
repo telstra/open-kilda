@@ -17,7 +17,7 @@ import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
-import org.openkilda.northbound.dto.v2.switches.CreateLagPortDto
+import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.grpc.GrpcService
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -53,7 +53,7 @@ class LagPortSpec extends HealthCheckSpecification {
         def portsArray = topology.getAllowedPortsForSwitch(sw)[-2, -1]
 
         when: "Create a LAG"
-        def payload = new CreateLagPortDto(portNumbers: portsArray)
+        def payload = new LagPortRequest(portNumbers: portsArray)
         def createResponse = northboundV2.createLagLogicalPort(sw.dpId, payload)
 
         then: "Response reports successful creation of the LAG port"
@@ -119,7 +119,7 @@ class LagPortSpec extends HealthCheckSpecification {
         }
         def traffgenSrcSwPort = switchPair.src.traffGens.switchPort[0]
         def portsArray = (topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1] << traffgenSrcSwPort).unique()
-        def payload = new CreateLagPortDto(portNumbers: portsArray)
+        def payload = new LagPortRequest(portNumbers: portsArray)
         def lagPort = northboundV2.createLagLogicalPort(switchPair.src.dpId, payload).logicalPortNumber
 
         when: "Create a flow"
@@ -162,7 +162,7 @@ class LagPortSpec extends HealthCheckSpecification {
         assumeTrue(swPair.asBoolean(), "Unable to find required switch in topology")
         def traffgenSrcSwPort = swPair.src.traffGens[0].switchPort
         def traffgenDstSwPort = swPair.src.traffGens[1].switchPort
-        def payload = new CreateLagPortDto(portNumbers: [traffgenSrcSwPort])
+        def payload = new LagPortRequest(portNumbers: [traffgenSrcSwPort])
         def lagPort = northboundV2.createLagLogicalPort(swPair.src.dpId, payload).logicalPortNumber
 
         when: "Create a flow"
@@ -197,7 +197,7 @@ class LagPortSpec extends HealthCheckSpecification {
         given: "A switch with a LAG port"
         def sw = topology.getActiveSwitches().first()
         def portsArray = topology.getAllowedPortsForSwitch(sw)[-2, -1]
-        def payload = new CreateLagPortDto(portNumbers: portsArray)
+        def payload = new LagPortRequest(portNumbers: portsArray)
         def lagPort = northboundV2.createLagLogicalPort(sw.dpId, payload).logicalPortNumber
 
         when: "Disconnect the switch"
@@ -229,7 +229,7 @@ class LagPortSpec extends HealthCheckSpecification {
         given: "A flow on a LAG port"
         def switchPair = topologyHelper.getSwitchPairs().first()
         def portsArray = topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1]
-        def payload = new CreateLagPortDto(portNumbers: portsArray)
+        def payload = new LagPortRequest(portNumbers: portsArray)
         def lagPort = northboundV2.createLagLogicalPort(switchPair.src.dpId, payload).logicalPortNumber
         def flow = flowHelperV2.randomFlow(switchPair).tap { source.portNumber = lagPort }
         flowHelperV2.addFlow(flow)
@@ -258,7 +258,7 @@ class LagPortSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         when: "Create a LAG port with flow's port"
-        northboundV2.createLagLogicalPort(sw.dpId, new CreateLagPortDto(portNumbers: [flow.source.portNumber]))
+        northboundV2.createLagLogicalPort(sw.dpId, new LagPortRequest(portNumbers: [flow.source.portNumber]))
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -278,7 +278,7 @@ class LagPortSpec extends HealthCheckSpecification {
         given: "An active switch with LAG port on it"
         def sw = topology.activeSwitches.first()
         def portsArray = topology.getAllowedPortsForSwitch(sw)[-2, -1]
-        def payload = new CreateLagPortDto(portNumbers: portsArray)
+        def payload = new LagPortRequest(portNumbers: portsArray)
         def lagPort = northboundV2.createLagLogicalPort(sw.dpId, payload).logicalPortNumber
 
         when: "Create flow on ports which are in inside LAG group"
@@ -321,7 +321,7 @@ class LagPortSpec extends HealthCheckSpecification {
         flowHelperV2.createMirrorPoint(flow.flowId, mirrorEndpoint)
 
         when: "Create a LAG port with port which is used as mirrorPort"
-        northboundV2.createLagLogicalPort(swP.src.dpId, new CreateLagPortDto(portNumbers: [mirrorPort]))
+        northboundV2.createLagLogicalPort(swP.src.dpId, new LagPortRequest(portNumbers: [mirrorPort]))
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -341,7 +341,7 @@ class LagPortSpec extends HealthCheckSpecification {
         when: "Create a LAG port on a occupied port"
         def sw = topology.getActiveServer42Switches().first()
         def occupiedPort = data.portNumber(sw)
-        northboundV2.createLagLogicalPort(sw.dpId, new CreateLagPortDto(portNumbers: [occupiedPort]))
+        northboundV2.createLagLogicalPort(sw.dpId, new LagPortRequest(portNumbers: [occupiedPort]))
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -380,11 +380,11 @@ class LagPortSpec extends HealthCheckSpecification {
         def availablePorts = topology.getAllowedPortsForSwitch(sw)
         def portsArray = availablePorts[-2, -1]
         def conflictPortsArray = availablePorts[-3, -1]
-        def payload = new CreateLagPortDto(portNumbers: portsArray)
+        def payload = new LagPortRequest(portNumbers: portsArray)
         def lagPort = northboundV2.createLagLogicalPort(sw.dpId, payload).logicalPortNumber
 
         when: "Try to create the same LAG port with the same physical ports inside"
-        northboundV2.createLagLogicalPort(sw.dpId, new CreateLagPortDto(portNumbers: conflictPortsArray))
+        northboundV2.createLagLogicalPort(sw.dpId, new LagPortRequest(portNumbers: conflictPortsArray))
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -433,7 +433,7 @@ class LagPortSpec extends HealthCheckSpecification {
         given: "A switch with a LAG port"
         def sw = topology.getActiveSwitches().first()
         def portsArray = topology.getAllowedPortsForSwitch(sw)[-2,-1]
-        def payload = new CreateLagPortDto(portNumbers: portsArray)
+        def payload = new LagPortRequest(portNumbers: portsArray)
         def lagPort = northboundV2.createLagLogicalPort(sw.dpId, payload).logicalPortNumber
 
         when: "Delete LAG port via grpc"
@@ -464,7 +464,7 @@ class LagPortSpec extends HealthCheckSpecification {
         given: "A switch with a LAG port"
         def sw = topology.getActiveSwitches().first()
         def portsArray = topology.getAllowedPortsForSwitch(sw)[-3,-1]
-        def payload = new CreateLagPortDto(portNumbers: portsArray)
+        def payload = new LagPortRequest(portNumbers: portsArray)
         def lagPort = northboundV2.createLagLogicalPort(sw.dpId, payload).logicalPortNumber
 
         when: "Modify LAG port via grpc(delete, create with incorrect ports)"

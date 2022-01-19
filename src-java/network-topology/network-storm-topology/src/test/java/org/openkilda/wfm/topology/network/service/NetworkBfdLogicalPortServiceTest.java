@@ -22,7 +22,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.messaging.model.grpc.LogicalPortType;
@@ -350,8 +350,8 @@ public class NetworkBfdLogicalPortServiceTest {
         return new NetworkBfdLogicalPortService(carrier, switchOnlineStatusMonitor, LOGICAL_PORT_OFFSET);
     }
 
-    private CreateLogicalPortResponse makePortCreateResponse(Endpoint physical, Endpoint logical) {
-        return new CreateLogicalPortResponse(
+    private CreateOrUpdateLogicalPortResponse makePortCreateResponse(Endpoint physical, Endpoint logical) {
+        return new CreateOrUpdateLogicalPortResponse(
                 "127.0.1.1",
                 LogicalPort.builder()
                         .portNumber(physical.getPortNumber())
