@@ -25,6 +25,7 @@ import org.openkilda.bluegreen.kafka.TransportAdapter;
 import org.openkilda.bluegreen.kafka.TransportErrorReport;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.MessageCookie;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -71,10 +72,15 @@ public class InfoMessage extends Message implements TransportAdapter {
                        @JsonProperty(TIMESTAMP) final long timestamp,
                        @JsonProperty(CORRELATION_ID) final String correlationId,
                        @JsonProperty(DESTINATION) final Destination destination,
-                       @JsonProperty(REGION) final String region) {
-        super(timestamp, correlationId, destination);
+                       @JsonProperty(REGION) final String region,
+                       @JsonProperty("cookie") MessageCookie cookie) {
+        super(timestamp, correlationId, destination, cookie);
         this.region = region;
         this.data = data;
+    }
+
+    public InfoMessage(InfoData data, long timestamp, String correlationId, Destination destination, String region) {
+        this(data, timestamp, correlationId, destination, region, null);
     }
 
     /**
@@ -84,11 +90,8 @@ public class InfoMessage extends Message implements TransportAdapter {
      * @param timestamp     timestamp value
      * @param correlationId message correlation id
      */
-    public InfoMessage(final InfoData data,
-                       final long timestamp,
-                       final String correlationId) {
-        super(timestamp, correlationId);
-        this.data = data;
+    public InfoMessage(final InfoData data, final long timestamp, final String correlationId) {
+        this(data, timestamp, correlationId, null, null, null);
     }
 
     /**
@@ -99,13 +102,12 @@ public class InfoMessage extends Message implements TransportAdapter {
      * @param correlationId message correlation id
      * @param region        floodlight region identifier
      */
-    public InfoMessage(final InfoData data,
-                       final long timestamp,
-                       final String correlationId,
-                       final String region) {
-        super(timestamp, correlationId);
-        this.data = data;
-        this.region = region;
+    public InfoMessage(final InfoData data, final long timestamp, final String correlationId, final String region) {
+        this(data, timestamp, correlationId, null, region, null);
+    }
+
+    public InfoMessage(InfoData data, String correlationId, MessageCookie cookie) {
+        this(data, System.currentTimeMillis(), correlationId, null, null, cookie);
     }
 
     @JsonIgnore

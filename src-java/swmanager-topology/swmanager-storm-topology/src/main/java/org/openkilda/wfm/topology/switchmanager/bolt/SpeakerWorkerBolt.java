@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.switchmanager.bolt;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.grpc.GrpcBaseRequest;
@@ -34,6 +35,9 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
 
     public static final String ID = "speaker.worker.bolt";
     public static final String INCOME_STREAM = "speaker.worker.stream";
+
+    public static final String FIELD_ID_COOKIE = "cookie";
+
     private transient SpeakerWorkerService service;
 
     public SpeakerWorkerBolt(Config config) {
@@ -50,11 +54,12 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     protected void onHubRequest(Tuple input) throws PipelineException {
         String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         CommandData command = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, CommandData.class);
+        MessageCookie cookie = pullValue(input, FIELD_ID_COOKIE, MessageCookie.class);
 
         if (command instanceof GrpcBaseRequest) {
-            service.sendGrpcCommand(key, command);
+            service.sendGrpcCommand(key, command, cookie);
         } else {
-            service.sendFloodlightCommand(key, command);
+            service.sendFloodlightCommand(key, command, cookie);
         }
     }
 

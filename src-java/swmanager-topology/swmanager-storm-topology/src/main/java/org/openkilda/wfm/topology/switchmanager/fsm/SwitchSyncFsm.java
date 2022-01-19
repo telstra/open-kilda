@@ -249,6 +249,10 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
         builder.externalTransition().from(RULES_COMMANDS_SEND).to(FINISHED).on(NEXT)
                 .callMethod(FINISHED_METHOD_NAME);
+
+        builder.defineFinalState(FINISHED);
+        builder.defineFinalState(FINISHED_WITH_ERROR);
+
         return builder;
     }
 
@@ -750,8 +754,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     protected void finishedWithError(SwitchSyncState from, SwitchSyncState to,
                                      SwitchSyncEvent event, Object context) {
-        ErrorMessage sourceError = (ErrorMessage) context;
-        ErrorMessage message = new ErrorMessage(sourceError.getData(), System.currentTimeMillis(), key);
+        ErrorData payload = (ErrorData) context;
+        ErrorMessage message = new ErrorMessage(payload, System.currentTimeMillis(), key);
 
         log.error(ERROR_LOG_MESSAGE, key, message.getData().getErrorMessage());
 
@@ -762,8 +766,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private void sendException(Exception e) {
         ErrorData errorData = new SwitchSyncErrorData(switchId, ErrorType.INTERNAL_ERROR, e.getMessage(),
                 "Error in SwitchSyncFsm");
-        ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
-        fire(ERROR, errorMessage);
+        fire(ERROR, errorData);
     }
 
     public enum SwitchSyncState {
