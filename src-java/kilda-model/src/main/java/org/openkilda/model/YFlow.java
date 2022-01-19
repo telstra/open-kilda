@@ -151,6 +151,27 @@ public class YFlow implements CompositeDataEntity<YFlowData> {
     }
 
     /**
+     * Recalculate the y-flow status based on sub-flow statuses.
+     */
+    public void recalculateStatus() {
+        FlowStatus yFlowStatus = null;
+        for (YSubFlow subFlow : getSubFlows()) {
+            FlowStatus subFlowStatus = subFlow.getFlow().getStatus();
+            if (subFlowStatus == FlowStatus.IN_PROGRESS) {
+                yFlowStatus = FlowStatus.IN_PROGRESS;
+                break;
+            }
+            if (yFlowStatus == null) {
+                yFlowStatus = subFlowStatus;
+            } else if (yFlowStatus == FlowStatus.DOWN && subFlowStatus != FlowStatus.DOWN
+                    || yFlowStatus == FlowStatus.UP && subFlowStatus != FlowStatus.UP) {
+                yFlowStatus = FlowStatus.DEGRADED;
+            }
+        }
+        setStatus(yFlowStatus);
+    }
+
+    /**
      * Defines persistable data of the Y-flow.
      */
     public interface YFlowData {

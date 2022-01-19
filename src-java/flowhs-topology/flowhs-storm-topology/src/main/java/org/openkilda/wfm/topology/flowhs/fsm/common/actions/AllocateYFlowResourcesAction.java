@@ -17,17 +17,19 @@ package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
-import org.openkilda.model.YSubFlow;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources.EndpointResources;
@@ -35,6 +37,9 @@ import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources.EndpointReso
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, C, ?, ?>, S, E, C>
@@ -87,13 +92,20 @@ public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, 
             }
 
             if (newResources.getMainPathYPointResources() == null) {
-                FlowPath[] subFlowsReversePaths = yFlow.getSubFlows().stream()
-                        .map(YSubFlow::getFlow)
-                        .map(Flow::getReversePath)
-                        .toArray(FlowPath[]::new);
+                List<FlowPath> subFlowsReversePaths = new ArrayList<>();
+                yFlow.getSubFlows().forEach(subFlow -> {
+                    Flow flow = subFlow.getFlow();
+                    FlowPath path = flow.getReversePath();
+                    if (path == null) {
+                        throw new FlowProcessingException(ErrorType.INTERNAL_ERROR,
+                                format("Missing a reverse path for %s sub-flow", flow.getFlowId()));
+                    } else {
+                        subFlowsReversePaths.add(path);
+                    }
+                });
 
                 EndpointResources yPointResources = allocateYPointResources(yFlowId, sharedEndpoint,
-                        yFlow.getMaximumBandwidth(), subFlowsReversePaths);
+                        yFlow.getMaximumBandwidth(), subFlowsReversePaths.toArray(new FlowPath[0]));
                 newResources.setMainPathYPointResources(yPointResources);
 
                 stateMachine.saveActionToHistory("A new meter was allocated for the y-flow y-point",
@@ -102,29 +114,49 @@ public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, 
             }
 
             if (yFlow.isAllocateProtectedPath() && newResources.getProtectedPathYPointResources() == null) {
-                FlowPath[] subFlowsReversePaths = yFlow.getSubFlows().stream()
-                        .map(YSubFlow::getFlow)
-                        .map(Flow::getProtectedReversePath)
-                        .toArray(FlowPath[]::new);
+                List<FlowPath> subFlowsReversePaths = new ArrayList<>();
+                yFlow.getSubFlows().forEach(subFlow -> {
+                    Flow flow = subFlow.getFlow();
+                    FlowPath path = flow.getProtectedReversePath();
+                    if (path == null) {
+                        if (flow.getStatus() == FlowStatus.UP) {
+                            throw new FlowProcessingException(ErrorType.INTERNAL_ERROR,
+                                    format("Missing a protected path for %s sub-flow", flow.getFlowId()));
+                        } else {
+                            log.warn("Sub-flow {} has no expected protected path and status {}",
+                                    flow.getFlowId(), flow.getStatus());
+                        }
+                    } else {
+                        subFlowsReversePaths.add(path);
+                    }
+                });
 
-                EndpointResources yPointResources = allocateYPointResources(yFlowId, sharedEndpoint,
-                        yFlow.getMaximumBandwidth(), subFlowsReversePaths);
-                newResources.setProtectedPathYPointResources(yPointResources);
+                if (subFlowsReversePaths.size() > 1) {
+                    EndpointResources yPointResources = allocateYPointResources(yFlowId, sharedEndpoint,
+                            yFlow.getMaximumBandwidth(), subFlowsReversePaths.toArray(new FlowPath[0]));
+                    newResources.setProtectedPathYPointResources(yPointResources);
 
-                stateMachine.saveActionToHistory("A new meter was allocated for the y-flow protected path y-point",
-                        format("A new meter %s / %s was allocated", yPointResources.getMeterId(),
-                                yPointResources.getEndpoint()));
+                    stateMachine.saveActionToHistory("A new meter was allocated for the y-flow protected path y-point",
+                            format("A new meter %s / %s was allocated", yPointResources.getMeterId(),
+                                    yPointResources.getEndpoint()));
+                } else {
+                    stateMachine.saveActionToHistory("Skip meter allocation for the y-flow protected path y-point",
+                            "Y-flow protected path y-point can't be found - sub-flow(s) lacks a protected path");
+                }
             }
 
             transactionManager.doInTransaction(() -> {
-                YFlow flow = getYFlow(yFlowId);
-                flow.setYPoint(newResources.getMainPathYPointResources().getEndpoint());
-                flow.setMeterId(newResources.getMainPathYPointResources().getMeterId());
+                YFlow yFlowToUpdate = getYFlow(yFlowId);
+                yFlowToUpdate.setYPoint(newResources.getMainPathYPointResources().getEndpoint());
+                yFlowToUpdate.setMeterId(newResources.getMainPathYPointResources().getMeterId());
                 if (newResources.getProtectedPathYPointResources() != null) {
-                    flow.setProtectedPathYPoint(newResources.getProtectedPathYPointResources().getEndpoint());
-                    flow.setProtectedPathMeterId(newResources.getProtectedPathYPointResources().getMeterId());
+                    yFlowToUpdate.setProtectedPathYPoint(newResources.getProtectedPathYPointResources().getEndpoint());
+                    yFlowToUpdate.setProtectedPathMeterId(newResources.getProtectedPathYPointResources().getMeterId());
+                } else {
+                    yFlowToUpdate.setProtectedPathYPoint(null);
+                    yFlowToUpdate.setProtectedPathMeterId(null);
                 }
-                flow.setSharedEndpointMeterId(newResources.getSharedEndpointResources().getMeterId());
+                yFlowToUpdate.setSharedEndpointMeterId(newResources.getSharedEndpointResources().getMeterId());
             });
 
             notifyStats(stateMachine, newResources);

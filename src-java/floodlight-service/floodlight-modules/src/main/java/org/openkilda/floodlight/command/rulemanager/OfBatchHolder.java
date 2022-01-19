@@ -82,9 +82,18 @@ public class OfBatchHolder implements OfEntityBatch {
         successUuids.add(failedUuid);
     }
 
+    /**
+     * Record the given uuid as failed with corresponding error message.
+     */
     public void recordFailedUuid(UUID failedUuid, String message) {
         log.debug("Record failed for {}, error message: {}", failedUuid, message);
-        failedUuids.put(failedUuid, message);
+        if (failedUuids.containsKey(failedUuid)) {
+            // Append error messages.
+            String previousMessage = failedUuids.get(failedUuid);
+            failedUuids.put(failedUuid, previousMessage + "; " + message);
+        } else {
+            failedUuids.put(failedUuid, message);
+        }
     }
 
     /**
@@ -98,6 +107,24 @@ public class OfBatchHolder implements OfEntityBatch {
             }
         }
         return commandMap.get(uuid) != null;
+    }
+
+    /**
+     * Return a map of uuids (with description message) which block the given uuid.
+     */
+    public Map<UUID, String> getBlockingDependencies(UUID uuid) {
+        Map<UUID, String> result = new HashMap<>();
+        List<UUID> nodeInEdges = executionGraph.getNodeDependsOn(uuid);
+        for (UUID dep : nodeInEdges) {
+            if (!successUuids.contains(dep)) {
+                if (failedUuids.containsKey(dep)) {
+                    result.put(dep, failedUuids.get(dep));
+                } else {
+                    result.put(dep, "Not executed yet");
+                }
+            }
+        }
+        return result;
     }
 
     public BatchData getByUUid(UUID uuid) {

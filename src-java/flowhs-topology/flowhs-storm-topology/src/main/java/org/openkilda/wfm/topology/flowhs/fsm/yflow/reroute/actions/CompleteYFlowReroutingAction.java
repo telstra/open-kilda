@@ -19,7 +19,6 @@ import static java.lang.String.format;
 
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.YFlow;
-import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingWithHistorySupportAction;
@@ -47,22 +46,9 @@ public class CompleteYFlowReroutingAction extends
         String yFlowId = stateMachine.getYFlowId();
 
         FlowStatus flowStatus = transactionManager.doInTransaction(() -> {
-            YFlow flow = getYFlow(yFlowId);
-            FlowStatus status = FlowStatus.UP;
-            boolean allSubFlowsIsInactive = true;
-            for (YSubFlow subFlow : flow.getSubFlows()) {
-                if (!subFlow.getFlow().isActive()) {
-                    status = FlowStatus.DEGRADED;
-                }
-                allSubFlowsIsInactive &= !subFlow.getFlow().isActive();
-            }
-
-            if (allSubFlowsIsInactive) {
-                status = FlowStatus.DOWN;
-            }
-
-            flow.setStatus(status);
-            return status;
+            YFlow yFlow = getYFlow(yFlowId);
+            yFlow.recalculateStatus();
+            return yFlow.getStatus();
         });
 
         dashboardLogger.onYFlowStatusUpdate(yFlowId, flowStatus);

@@ -86,7 +86,7 @@ public class MeterSpeakerData extends SpeakerData {
                     && isEqualOrWithinDeviation(burst, that.burst, INACCURATE_BURST_ALLOWED_DEVIATION,
                     INACCURATE_BURST_ALLOWED_RELATIVE_DEVIATION);
         } else {
-            return rate == that.rate && burst == that.burst;
+            return rate == that.rate && inaccurateEquals(burst, that.burst, INACCURATE_BURST_ALLOWED_DEVIATION);
         }
     }
 
