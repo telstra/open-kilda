@@ -374,10 +374,11 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 //                }
 //            }
 //        }
-//        def dstSwitchesAreFine = true
+        def dstSwitchesAreFine = false
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
+        !dstSwitchesAreFine && [dstSwitch, newDstSwitch]*.dpId.each { northbound.synchronizeSwitch(it, true) }
     }
 
     @Tidy
