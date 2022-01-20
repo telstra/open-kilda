@@ -121,6 +121,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         then: "Traffic flows on both sub-flows, but does not exceed the y-flow bandwidth restriction (~halves for each sub-flow)"
         if (trafficApplicable) {
+            sleep(7000)
             def assertions = new SoftAssertions()
             examReports.each { report ->
                 assertions.checkSucceeds {
@@ -171,7 +172,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         where:
         //Not all cases may be covered. Uncovered cases will be shown as a 'skipped' test
-        data << getFLowsTestData()
+        data << getFLowsTestData() * 5
         swT = data.swT as SwitchTriplet
         yFlowRequest = data.yFlow as YFlowCreatePayload
         coveredCases = data.coveredCases as List<String>
