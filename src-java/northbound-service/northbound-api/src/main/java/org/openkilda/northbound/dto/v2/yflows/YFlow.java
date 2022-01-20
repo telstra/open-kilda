@@ -51,6 +51,7 @@ public class YFlow {
     Integer priority;
     boolean strictBandwidth;
     String description;
+    boolean allocateProtectedPath;
 
     @JsonProperty("y_point")
     SwitchId yPoint;
