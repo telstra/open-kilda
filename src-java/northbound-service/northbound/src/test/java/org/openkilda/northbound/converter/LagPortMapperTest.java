@@ -22,14 +22,20 @@ import org.openkilda.messaging.swmanager.response.LagPortResponse;
 
 import com.google.common.collect.Lists;
 import org.junit.Test;
-import org.mapstruct.factory.Mappers;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.test.context.junit4.SpringRunner;
 
+@RunWith(SpringRunner.class)
 public class LagPortMapperTest {
     public static final int LOGICAL_PORT_NUMBER_1 = 2021;
     public static final int PHYSICAL_PORT_NUMBER_1 = 1;
     public static final int PHYSICAL_PORT_NUMBER_2 = 2;
 
-    private final LagPortMapper lagMapper = Mappers.getMapper(LagPortMapper.class);
+    @Autowired
+    private LagPortMapper lagMapper;
 
     @Test
     public void mapLagPortDtoTest() {
@@ -51,5 +57,11 @@ public class LagPortMapperTest {
         assertEquals(LOGICAL_PORT_NUMBER_1, dto.getLogicalPortNumber());
         assertEquals(PHYSICAL_PORT_NUMBER_1, dto.getPortNumbers().get(0).intValue());
         assertEquals(PHYSICAL_PORT_NUMBER_2, dto.getPortNumbers().get(1).intValue());
+    }
+
+    @TestConfiguration
+    @ComponentScan({"org.openkilda.northbound.converter"})
+    static class Config {
+        // nothing to define here
     }
 }

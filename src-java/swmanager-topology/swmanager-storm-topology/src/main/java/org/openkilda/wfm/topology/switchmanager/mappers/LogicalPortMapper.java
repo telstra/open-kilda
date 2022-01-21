@@ -27,7 +27,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.util.Optional;
 
-@Mapper(imports = {LogicalPortType.class})
+@Mapper
 public abstract class LogicalPortMapper {
     public static final LogicalPortMapper INSTANCE = Mappers.getMapper(LogicalPortMapper.class);
 
@@ -36,7 +36,7 @@ public abstract class LogicalPortMapper {
     @Mapping(target = "actual", ignore = true)
     public abstract LogicalPortInfoEntry map(LogicalPort logicalPort);
 
-    @Mapping(target = "type", expression = "java(LogicalPortType.LAG)")
+    @Mapping(target = "type", constant = "LAG")
     @Mapping(target = "expected", ignore = true)
     @Mapping(target = "actual", ignore = true)
     public abstract LogicalPortInfoEntry map(LagLogicalPort logicalPort);

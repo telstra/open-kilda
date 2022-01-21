@@ -56,7 +56,7 @@ import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring",
         uses = {FlowEncapsulationTypeMapper.class, FlowStatusMapper.class, PathComputationStrategyMapper.class,
-                InstantMapper.class},
+                TimeMapper.class},
         imports = {FlowEndpointPayload.class, FlowEndpointV2.class})
 public abstract class YFlowMapper {
 

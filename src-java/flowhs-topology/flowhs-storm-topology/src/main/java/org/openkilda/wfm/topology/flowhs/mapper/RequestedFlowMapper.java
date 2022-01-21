@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.mapper;
 
+import org.openkilda.adapter.FlowDestAdapter;
+import org.openkilda.adapter.FlowSourceAdapter;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.model.SwapFlowDto;
@@ -23,10 +25,12 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.PathComputationStrategy;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.server42.control.messaging.flowrtt.ActivateFlowMonitoringInfoData;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
+import lombok.NonNull;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
@@ -51,23 +55,16 @@ public abstract class RequestedFlowMapper {
     /**
      * Convert {@link Flow} to {@link RequestedFlow}.
      */
-    @Mapping(source = "flowId", target = "flowId")
-    @Mapping(target = "srcSwitch", expression = "java(flow.getSrcSwitchId())")
-    @Mapping(source = "srcPort", target = "srcPort")
-    @Mapping(source = "srcVlan", target = "srcVlan")
-    @Mapping(target = "destSwitch", expression = "java(flow.getDestSwitchId())")
-    @Mapping(source = "destPort", target = "destPort")
-    @Mapping(source = "destVlan", target = "destVlan")
+    @Mapping(source = "srcSwitchId", target = "srcSwitch")
+    @Mapping(source = "destSwitchId", target = "destSwitch")
     @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
     @Mapping(target = "diverseFlowId", ignore = true)
     @Mapping(target = "affinityFlowId", ignore = true)
-    @Mapping(target = "loopSwitchId", source = "loopSwitchId")
     public abstract RequestedFlow toRequestedFlow(Flow flow);
 
     /**
      * Convert {@link SwapFlowDto} to {@link RequestedFlow}.
      */
-    @Mapping(source = "flowId", target = "flowId")
     @Mapping(source = "sourceSwitch", target = "srcSwitch")
     @Mapping(source = "sourcePort", target = "srcPort")
     @Mapping(source = "sourceVlan", target = "srcVlan")
@@ -97,25 +94,28 @@ public abstract class RequestedFlowMapper {
     /**
      * Convert {@link RequestedFlow} to {@link Flow}.
      */
-    @Mapping(source = "flowId", target = "flowId")
-    @Mapping(target = "srcSwitch",
-            expression = "java(org.openkilda.model.Switch.builder().switchId(requestedFlow.getSrcSwitch()).build())")
-    @Mapping(source = "srcPort", target = "srcPort")
-    @Mapping(source = "srcVlan", target = "srcVlan")
-    @Mapping(target = "destSwitch",
-            expression = "java(org.openkilda.model.Switch.builder().switchId(requestedFlow.getDestSwitch()).build())")
-    @Mapping(source = "destPort", target = "destPort")
-    @Mapping(source = "destVlan", target = "destVlan")
     @Mapping(source = "flowEncapsulationType", target = "encapsulationType")
     @Mapping(target = "diverseGroupId", ignore = true)
     @Mapping(target = "affinityGroupId", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "statusInfo", ignore = true)
     @Mapping(target = "targetPathComputationStrategy", ignore = true)
-    @Mapping(target = "loopSwitchId", source = "loopSwitchId")
     @Mapping(target = "yFlowId", ignore = true)
     @Mapping(target = "yFlow", ignore = true)
     public abstract Flow toFlow(RequestedFlow requestedFlow);
+
+    /**
+     * Convert {@link Flow} to {@link FlowRequest}.
+     */
+    public FlowRequest toFlowRequest(@NonNull Flow flow) {
+        FlowRequest request = generatedMap(flow);
+        request.setSource(new FlowSourceAdapter(flow).getEndpoint());
+        request.setDestination(new FlowDestAdapter(flow).getEndpoint());
+        if (flow.getPathComputationStrategy() != null) {
+            request.setPathComputationStrategy(flow.getPathComputationStrategy().toString().toLowerCase());
+        }
+        return request;
+    }
 
     @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
     @Mapping(target = "srcSwitch", ignore = true)
@@ -126,8 +126,21 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "destPort", ignore = true)
     @Mapping(target = "destVlan", ignore = true)
     @Mapping(target = "destInnerVlan", ignore = true)
-    @Mapping(target = "loopSwitchId", source = "loopSwitchId")
     protected abstract RequestedFlow generatedMap(FlowRequest request);
+
+    /**
+     * Convert {@link Flow} to {@link FlowRequest}.
+     */
+    @Mapping(target = "pathComputationStrategy", ignore = true)
+    @Mapping(target = "source", ignore = true)
+    @Mapping(target = "destination", ignore = true)
+    @Mapping(target = "transitEncapsulationId", ignore = true)
+    @Mapping(target = "diverseFlowId", ignore = true)
+    @Mapping(target = "affinityFlowId", ignore = true)
+    @Mapping(target = "type", ignore = true)
+    @Mapping(target = "bulkUpdateFlowIds", ignore = true)
+    @Mapping(target = "doNotRevert", ignore = true)
+    protected abstract FlowRequest generatedMap(Flow flow);
 
     public abstract FlowEncapsulationType map(org.openkilda.messaging.payload.flow.FlowEncapsulationType source);
 
@@ -166,37 +179,6 @@ public abstract class RequestedFlowMapper {
     }
 
     /**
-     * Convert {@link Flow} to {@link FlowRequest}.
-     */
-    @Mapping(target = "flowId", source = "flowId")
-    @Mapping(target = "source", expression = "java(new FlowEndpoint(flow.getSrcSwitchId(), "
-            + "flow.getSrcPort(), flow.getSrcVlan(), flow.getSrcInnerVlan()))")
-    @Mapping(target = "destination", expression = "java(new FlowEndpoint(flow.getDestSwitchId(), "
-            + "flow.getDestPort(), flow.getDestVlan(), flow.getDestInnerVlan()))")
-    @Mapping(target = "encapsulationType", source = "encapsulationType")
-    @Mapping(target = "pathComputationStrategy",
-            expression = "java(java.util.Optional.ofNullable(flow.getPathComputationStrategy())"
-                    + ".map(pcs -> pcs.toString().toLowerCase())"
-                    + ".orElse(null))")
-    @Mapping(target = "bandwidth", source = "bandwidth")
-    @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
-    @Mapping(target = "periodicPings", source = "periodicPings")
-    @Mapping(target = "allocateProtectedPath", source = "allocateProtectedPath")
-    @Mapping(target = "description", source = "description")
-    @Mapping(target = "maxLatency", source = "maxLatency")
-    @Mapping(target = "priority", source = "priority")
-    @Mapping(target = "pinned", source = "pinned")
-    @Mapping(target = "detectConnectedDevices", source = "detectConnectedDevices")
-    @Mapping(target = "loopSwitchId", source = "loopSwitchId")
-    @Mapping(target = "transitEncapsulationId", ignore = true)
-    @Mapping(target = "diverseFlowId", ignore = true)
-    @Mapping(target = "affinityFlowId", ignore = true)
-    @Mapping(target = "type", ignore = true)
-    @Mapping(target = "bulkUpdateFlowIds", ignore = true)
-    @Mapping(target = "doNotRevert", ignore = true)
-    public abstract FlowRequest toFlowRequest(Flow flow);
-
-    /**
      * Convert {@link DetectConnectedDevices} to {@link DetectConnectedDevicesDto}.
      */
     public abstract DetectConnectedDevicesDto toDetectConnectedDevices(DetectConnectedDevices detectConnectedDevices);
@@ -204,7 +186,6 @@ public abstract class RequestedFlowMapper {
     /**
      * Convert {@link RequestedFlow} to {@link ActivateFlowMonitoringInfoData}.
      */
-    @Mapping(target = "flowId", source = "flowId")
     @Mapping(target = "source.datapath", source = "srcSwitch")
     @Mapping(target = "source.portNumber", source = "srcPort")
     @Mapping(target = "source.vlanId", source = "srcVlan")
@@ -214,6 +195,10 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "destination.vlanId", source = "destVlan")
     @Mapping(target = "destination.innerVlanId", source = "destInnerVlan")
     public abstract ActivateFlowMonitoringInfoData toActivateFlowMonitoringInfoData(RequestedFlow flow);
+
+    protected Switch newSwitch(SwitchId switchId) {
+        return Switch.builder().switchId(switchId).build();
+    }
 
     public SwitchId mapSwitchId(String value) {
         return value == null ? null : new SwitchId(value);

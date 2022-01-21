@@ -49,7 +49,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.List;
@@ -387,30 +387,8 @@ public class FlowMapperTest {
     }
 
     @TestConfiguration
+    @ComponentScan({"org.openkilda.northbound.converter"})
     static class Config {
-        @Bean
-        public InstantMapper instantMapper() {
-            return new InstantMapperImpl();
-        }
-
-        @Bean
-        public PathComputationStrategyMapper pathComputationStrategyMapper() {
-            return new PathComputationStrategyMapperImpl();
-        }
-
-        @Bean
-        public FlowStatusMapper flowStatusMapper() {
-            return new FlowStatusMapperImpl();
-        }
-
-        @Bean
-        public FlowEncapsulationTypeMapper flowEncapsulationTypeMapper() {
-            return new FlowEncapsulationTypeMapperImpl();
-        }
-
-        @Bean
-        public FlowMapper flowMapper() {
-            return new FlowMapperImpl();
-        }
+        // nothing to define here
     }
 }

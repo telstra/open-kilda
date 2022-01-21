@@ -105,8 +105,8 @@ public abstract class HistoryMapper {
     @Mapping(source = "reverse.meterId", target = "reverseMeterId")
     @Mapping(source = "forward.status", target = "forwardStatus")
     @Mapping(source = "reverse.status", target = "reverseStatus")
-    @Mapping(target = "forwardPath", expression = "java(mapPath(forward))")
-    @Mapping(target = "reversePath", expression = "java(mapPath(reverse))")
+    @Mapping(source = "forward", target = "forwardPath")
+    @Mapping(source = "reverse", target = "reversePath")
     @Mapping(source = "dumpType", target = "dumpType")
     public abstract FlowDumpData map(Flow flow, FlowPath forward, FlowPath reverse, DumpType dumpType);
 

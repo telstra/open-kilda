@@ -36,7 +36,6 @@ import org.openkilda.messaging.model.SwitchLocation;
 import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.model.IpSocketAddress;
-import org.openkilda.model.MacAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.northbound.dto.v1.switches.GroupInfoDto;
@@ -54,7 +53,6 @@ import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationDto;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
-import org.openkilda.northbound.dto.v1.switches.SwitchLocationDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
@@ -68,13 +66,11 @@ import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Mapper(componentModel = "spring",
-        uses = {FlowMapper.class, InstantMapper.class},
-        imports = {Date.class, MacAddress.class, SwitchLocationDto.class, SwitchLocationDtoV2.class})
+@Mapper(componentModel = "spring", uses = {
+        FlowMapper.class, KildaTypeMapper.class, TimeMapper.class, FlowEncapsulationTypeMapper.class})
 public abstract class SwitchMapper {
 
     @Mapping(source = "ofDescriptionManufacturer", target = "manufacturer")
@@ -84,9 +80,8 @@ public abstract class SwitchMapper {
     @Mapping(source = "status", target = "state")
     @Mapping(source = "socketAddress.address", target = "address")
     @Mapping(source = "socketAddress.port", target = "port")
-    @Mapping(target = "location", expression = "java(new SwitchLocationDto("
-            + "data.getLatitude(), data.getLongitude(), data.getStreet(), data.getCity(), data.getCountry()))")
-    public abstract SwitchDto toSwitchDto(Switch data);
+    @Mapping(target = "location", source = "input")
+    public abstract SwitchDto toSwitchDto(Switch input);
 
     /**
      * Convert {@link SwitchStatus} to {@link String} representation.
@@ -168,25 +163,13 @@ public abstract class SwitchMapper {
 
     public abstract MeterMisconfiguredInfoDto toMeterMisconfiguredInfoDto(MeterMisconfiguredInfoEntry data);
 
-    @Mapping(target = "supportedTransitEncapsulation",
-            expression = "java(entry.getSupportedTransitEncapsulation().stream()"
-                       + ".map(e -> e.toString().toLowerCase()).collect(java.util.stream.Collectors.toList()))")
-    @Mapping(target = "server42MacAddress", expression = "java(entry.getServer42MacAddress() == null ? null "
-            + ": entry.getServer42MacAddress().toString())")
     public abstract SwitchPropertiesDto map(org.openkilda.messaging.model.SwitchPropertiesDto entry);
 
-    @Mapping(target = "supportedTransitEncapsulation",
-            expression = "java(entry.getSupportedTransitEncapsulation() == null ? null : "
-                    + "entry.getSupportedTransitEncapsulation().stream()"
-                    + ".map(e-> org.openkilda.messaging.payload.flow.FlowEncapsulationType.valueOf(e.toUpperCase()))"
-                    + ".collect(java.util.stream.Collectors.toSet()))")
-    @Mapping(target = "server42MacAddress", expression = "java(entry.getServer42MacAddress() == null ? null "
-            + ": new MacAddress(entry.getServer42MacAddress()))")
     public abstract org.openkilda.messaging.model.SwitchPropertiesDto map(SwitchPropertiesDto entry);
 
     @Mapping(source = "upEventsCount", target = "upCount")
     @Mapping(source = "downEventsCount", target = "downCount")
-    @Mapping(target = "date", expression = "java(Date.from(response.getTime()))")
+    @Mapping(source = "time", target = "date")
     public abstract PortHistoryResponse map(PortHistoryPayload response);
 
     @Mapping(source = "ofDescriptionManufacturer", target = "manufacturer")
@@ -196,9 +179,8 @@ public abstract class SwitchMapper {
     @Mapping(source = "status", target = "state")
     @Mapping(source = "socketAddress.address", target = "address")
     @Mapping(source = "socketAddress.port", target = "port")
-    @Mapping(target = "location", expression = "java(new SwitchLocationDtoV2("
-            + "data.getLatitude(), data.getLongitude(), data.getStreet(), data.getCity(), data.getCountry()))")
-    public abstract SwitchDtoV2 map(Switch data);
+    @Mapping(target = "location", source = "input")
+    public abstract SwitchDtoV2 map(Switch input);
 
     public abstract SwitchPatch map(SwitchPatchDto data);
 
