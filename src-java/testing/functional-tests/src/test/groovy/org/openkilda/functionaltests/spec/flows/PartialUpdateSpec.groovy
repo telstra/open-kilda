@@ -556,6 +556,9 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         expect northboundV2.getFlow(flow.flowId), sameBeanAs(flowBeforeUpdate)
                 .ignoring("lastUpdated")
                 .ignoring("diverseWith")
+                .ignoring("latencyLastModifiedTime")
+                .ignoring("forwardPathLatencyNs")
+                .ignoring("reversePathLatencyNs")
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
@@ -590,6 +593,9 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         then: "Flow is left intact"
         expect northboundV2.getFlow(flow.flowId), sameBeanAs(flowBeforeUpdate)
                 .ignoring("lastUpdated")
+                .ignoring("latencyLastModifiedTime")
+                .ignoring("forwardPathLatencyNs")
+                .ignoring("reversePathLatencyNs")
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
