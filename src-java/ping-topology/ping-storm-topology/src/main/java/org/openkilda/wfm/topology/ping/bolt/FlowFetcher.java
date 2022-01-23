@@ -149,8 +149,10 @@ public class FlowFetcher extends Abstract {
         final CommandContext commandContext = pullContext(input);
         for (FlowWithTransitEncapsulation flow : flowsSet) {
             PingContext pingContext = PingContext.builder()
+                    .group(new GroupId(DIRECTION_COUNT_PER_FLOW))
                     .kind(Kinds.PERIODIC)
                     .flow(flow.getFlow())
+                    .yFlowId(flow.yFlowId)
                     .transitEncapsulation(flow.getTransitEncapsulation())
                     .build();
             emit(input, pingContext, commandContext);
@@ -244,8 +246,10 @@ public class FlowFetcher extends Abstract {
 
     private Optional<FlowWithTransitEncapsulation> getFlowWithTransitEncapsulation(Flow flow) {
         if (!flow.isOneSwitchFlow()) {
+            Optional<String> yFlowId = yFlowRepository.findYFlowId(flow.getFlowId());
             return getTransitEncapsulation(flow)
-                    .map(transitEncapsulation -> new FlowWithTransitEncapsulation(flow, transitEncapsulation));
+                    .map(transitEncapsulation -> new FlowWithTransitEncapsulation(
+                            flow, yFlowId.orElse(null), transitEncapsulation));
         }
         return Optional.empty();
     }
@@ -325,6 +329,7 @@ public class FlowFetcher extends Abstract {
     @EqualsAndHashCode(exclude = {"transitEncapsulation"})
     private static class FlowWithTransitEncapsulation {
         Flow flow;
+        String yFlowId;
         FlowTransitEncapsulation transitEncapsulation;
     }
 }
