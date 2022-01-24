@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -197,11 +197,11 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
             builder.internalTransition()
                     .within(State.UPDATING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_ALLOCATED)
-                    .perform(new OnSubFlowAllocatedAction(flowUpdateService, persistenceManager));
+                    .perform(new OnSubFlowAllocatedAction(persistenceManager));
             builder.internalTransition()
                     .within(State.UPDATING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_UPDATED)
-                    .perform(new OnSubFlowUpdatedAction());
+                    .perform(new OnSubFlowUpdatedAction(flowUpdateService));
             builder.internalTransition()
                     .within(State.UPDATING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_FAILED)
@@ -390,11 +390,11 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
             builder.internalTransition()
                     .within(State.REVERTING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_ALLOCATED)
-                    .perform(new OnRevertSubFlowAllocatedAction(flowUpdateService, persistenceManager));
+                    .perform(new OnRevertSubFlowAllocatedAction(persistenceManager));
             builder.internalTransition()
                     .within(State.REVERTING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_UPDATED)
-                    .perform(new OnSubFlowRevertedAction());
+                    .perform(new OnSubFlowRevertedAction(flowUpdateService));
             builder.internalTransition()
                     .within(State.REVERTING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_FAILED)

@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -92,8 +92,12 @@ public class AvailableNetworkFactory {
                         .collect(Collectors.toList());
             }
 
+            Collection<PathId> affinityPathIds =
+                    flowPathRepository.findPathIdsByFlowAffinityGroupId(flow.getAffinityGroupId());
             flowPaths.forEach(pathId ->
                     flowPathRepository.findById(pathId)
+                            .filter(flowPath -> !affinityPathIds.contains(flowPath.getPathId())
+                                    || flowPath.getFlowId().equals(flow.getFlowId()))
                             .ifPresent(flowPath -> {
                                 network.processDiversitySegments(flowPath.getSegments(), flow);
                                 network.processDiversitySegmentsWithPop(flowPath.getSegments());

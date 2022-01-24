@@ -267,7 +267,7 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
 
         // when
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
-        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
+        verifyYFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS, FlowStatus.IN_PROGRESS, FlowStatus.UP);
         // and
         handleSpeakerCommandsAndFailInstall(service, request.getYFlowId(), "test_successful_yflow");
 

@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,29 +17,53 @@ package org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.FlowRerouteService;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class OnSubFlowReroutedAction extends
         HistoryRecordingAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
+    private final FlowRerouteService flowRerouteService;
+
+    public OnSubFlowReroutedAction(FlowRerouteService flowRerouteService) {
+        this.flowRerouteService = flowRerouteService;
+    }
+
     @Override
     protected void perform(State from, State to, Event event,
                            YFlowRerouteContext context, YFlowRerouteFsm stateMachine) {
-        String flowId = context.getSubFlowId();
-        if (!stateMachine.isReroutingSubFlow(flowId)) {
-            throw new IllegalStateException("Received an event for non-pending sub-flow " + flowId);
+        String subFlowId = context.getSubFlowId();
+        if (!stateMachine.isReroutingSubFlow(subFlowId)) {
+            throw new IllegalStateException("Received an event for non-pending sub-flow " + subFlowId);
         }
 
         stateMachine.saveActionToHistory("Rerouted a sub-flow",
-                format("Rerouted sub-flow %s of y-flow %s", flowId, stateMachine.getYFlowId()));
+                format("Rerouted sub-flow %s of y-flow %s", subFlowId, stateMachine.getYFlowId()));
 
-        stateMachine.removeReroutingSubFlow(flowId);
+        stateMachine.removeReroutingSubFlow(subFlowId);
+
+        String yFlowId = stateMachine.getYFlowId();
+        if (subFlowId.equals(stateMachine.getMainAffinityFlowId())) {
+            stateMachine.getRerouteRequests().forEach(rerouteRequest -> {
+                String requestedFlowId = rerouteRequest.getFlowId();
+                if (!requestedFlowId.equals(subFlowId)) {
+                    // clear to avoid the 'path has no affected ISLs' exception
+                    rerouteRequest.getAffectedIsl().clear();
+                    stateMachine.addReroutingSubFlow(requestedFlowId);
+                    stateMachine.notifyEventListeners(listener ->
+                            listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
+                    CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
+                    flowRerouteService.startFlowRerouting(rerouteRequest, flowContext, yFlowId);
+                }
+            });
+        }
 
         if (stateMachine.getReroutingSubFlows().isEmpty()) {
             if (stateMachine.getFailedSubFlows().isEmpty()) {
