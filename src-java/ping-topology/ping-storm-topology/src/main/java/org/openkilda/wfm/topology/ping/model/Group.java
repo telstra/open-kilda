@@ -23,11 +23,18 @@ import java.util.List;
 
 @Value
 public class Group implements Serializable {
-    private GroupId id;
-    private List<PingContext> records;
+    GroupId id;
+    Type type;
+    List<PingContext> records;
 
-    public Group(GroupId id, List<PingContext> records) {
+    public Group(GroupId id, Type type, List<PingContext> records) {
         this.id = id;
+        this.type = type;
         this.records = ImmutableList.copyOf(records);
+    }
+
+    public enum Type {
+        FLOW,
+        Y_FLOW
     }
 }

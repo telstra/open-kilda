@@ -41,21 +41,17 @@ public class ResultDispatcher extends Abstract {
     }
 
     private String dispatch(PingContext pingContext) {
-        String value;
         final Kinds kind = pingContext.getKind();
         switch (kind) {
             case PERIODIC:
-                value = STREAM_PERIODIC_ID;
-                break;
+                return STREAM_PERIODIC_ID;
             case ON_DEMAND:
-                value = STREAM_MANUAL_ID;
-                break;
-
+            case ON_DEMAND_Y_FLOW:
+                return STREAM_MANUAL_ID;
             default:
                 throw new IllegalArgumentException(String.format(
                         "Unsupported value %s.%s", kind.getClass().getName(), kind));
         }
-        return value;
     }
 
     @Override

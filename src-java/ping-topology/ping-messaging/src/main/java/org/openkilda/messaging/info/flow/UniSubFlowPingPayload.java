@@ -31,4 +31,8 @@ public class UniSubFlowPingPayload {
     private boolean pingSuccess;
     private Errors error;
     private long latency;
+
+    public UniSubFlowPingPayload(Errors error, long latency) {
+        this(error == null, error, latency);
+    }
 }

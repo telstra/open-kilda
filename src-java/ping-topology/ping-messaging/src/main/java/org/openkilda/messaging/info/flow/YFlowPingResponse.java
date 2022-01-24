@@ -38,4 +38,26 @@ public class YFlowPingResponse extends InfoData {
     boolean pingSuccess;
     String error;
     List<SubFlowPingPayload> subFlows;
+
+    public YFlowPingResponse(String yFlowId, String error, List<SubFlowPingPayload> subFlows) {
+        this.yFlowId = yFlowId;
+        this.error = error;
+        this.subFlows = subFlows;
+        this.pingSuccess = checkPingSuccess(error, subFlows);
+    }
+
+    @JsonProperty
+    private boolean checkPingSuccess(String error, List<SubFlowPingPayload> subFlows) {
+        if (error != null) {
+            return false;
+        }
+        if (subFlows != null) {
+            for (SubFlowPingPayload subFlow : subFlows) {
+                if (!subFlow.getForward().isPingSuccess() || !subFlow.getReverse().isPingSuccess()) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 }
