@@ -9,7 +9,7 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 })
 export class CreateLagPortComponent implements OnInit {
   createLogPortForm:FormGroup;
-  private data:any;
+  data:any;
   createData:any;
   @Output() emitService = new EventEmitter();
   submitted = false;
