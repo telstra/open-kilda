@@ -46,6 +46,8 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingPayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
@@ -444,6 +446,13 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     public YFlowSyncResult synchronizeYFlow(String yFlowId) {
         return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/sync", HttpMethod.POST,
                 new HttpEntity<>(buildHeadersWithCorrelationId()), YFlowSyncResult.class, yFlowId).getBody();
+    }
+
+    @Override
+    public YFlowPingResult pingYFlow(String yFlowId, YFlowPingPayload payload) {
+        HttpEntity<YFlowPingPayload> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/ping", HttpMethod.POST, httpEntity,
+                YFlowPingResult.class, yFlowId).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {

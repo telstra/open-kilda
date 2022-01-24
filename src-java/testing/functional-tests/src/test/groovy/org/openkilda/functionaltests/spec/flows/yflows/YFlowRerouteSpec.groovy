@@ -79,7 +79,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "Y-flow passes flow validation"
-        northboundV2.validateYFlow(yFlow.YFlowId)
+        northboundV2.validateYFlow(yFlow.YFlowId).asExpected
 
         and: "Both sub-flows pass flow validation"
         yFlow.subFlows.each {
