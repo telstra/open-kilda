@@ -18,12 +18,18 @@ package org.openkilda.northbound.converter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.openkilda.northbound.converter.PingMapper.TIMEOUT_ERROR_MESSAGE;
 
 import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.info.flow.FlowMirrorPointResponse;
+import org.openkilda.messaging.info.flow.FlowPingResponse;
+import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.FlowPatch;
+import org.openkilda.messaging.model.Ping.Errors;
+import org.openkilda.messaging.model.PingMeters;
 import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse;
 import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse.FlowMirrorPoint;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
@@ -35,6 +41,7 @@ import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
+import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
@@ -108,6 +115,7 @@ public class FlowMapperTest {
     private static final String MIRROR_POINT_DIRECTION_B = "reverse";
 
     private static final long MS_TO_NS_MULTIPLIER = 1000000L;
+    public static final String ERROR_MESSAGE = "Error";
 
     @Autowired
     private FlowMapper flowMapper;
@@ -384,6 +392,25 @@ public class FlowMapperTest {
         assertEquals(secondPoint.getSinkEndpoint().getPortNumber(), secondPayload.getSinkEndpoint().getPortNumber());
         assertEquals(secondPoint.getSinkEndpoint().getOuterVlanId(), secondPayload.getSinkEndpoint().getVlanId());
         assertEquals(secondPoint.getSinkEndpoint().getInnerVlanId(), secondPayload.getSinkEndpoint().getInnerVlanId());
+    }
+
+    @Test
+    public void testPingOutput() {
+        FlowPingResponse response = new FlowPingResponse(
+                FLOW_ID, new UniFlowPingResponse(false, Errors.TIMEOUT, null, null),
+                new UniFlowPingResponse(true, null, new PingMeters(1, 2, 3), null), ERROR_MESSAGE);
+        PingOutput output = flowMapper.toPingOutput(response);
+
+        assertEquals(response.getFlowId(), output.getFlowId());
+        assertEquals(response.getError(), output.getError());
+
+        assertEquals(response.getForward().isPingSuccess(), output.getForward().isPingSuccess());
+        assertEquals(0, output.getForward().getLatency());
+        assertEquals(TIMEOUT_ERROR_MESSAGE, output.getForward().getError());
+
+        assertEquals(response.getReverse().isPingSuccess(), output.getReverse().isPingSuccess());
+        assertEquals(1, output.getReverse().getLatency());
+        assertNull(output.getReverse().getError());
     }
 
     @TestConfiguration

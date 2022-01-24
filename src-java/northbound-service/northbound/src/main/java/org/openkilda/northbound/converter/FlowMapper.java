@@ -30,7 +30,6 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.model.MirrorPointStatusDto;
 import org.openkilda.messaging.model.PatchEndpoint;
-import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.nbtopology.response.FlowLoopDto;
 import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse;
@@ -74,7 +73,7 @@ import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring", uses = {
         FlowEncapsulationTypeMapper.class, FlowStatusMapper.class, PathComputationStrategyMapper.class,
-        KildaTypeMapper.class, TimeMapper.class})
+        KildaTypeMapper.class, TimeMapper.class, PingMapper.class})
 public abstract class FlowMapper {
     /**
      * Map {@link FlowDto} into {@link FlowPayload}.
@@ -377,36 +376,6 @@ public abstract class FlowMapper {
     @Mapping(target = "mainPath", source = "mainFlowPathStatus")
     @Mapping(target = "protectedPath", source = "protectedFlowPathStatus")
     public abstract PathStatus map(FlowStatusDetails flowStatusDetails);
-
-    /**
-     * Translate Java's error code(enum) into human readable string.
-     */
-    public String getPingError(Ping.Errors error) {
-        if (error == null) {
-            return null;
-        }
-
-        String message;
-        switch (error) {
-            case TIMEOUT:
-                message = "No ping for reasonable time";
-                break;
-            case WRITE_FAILURE:
-                message = "Can't send ping";
-                break;
-            case NOT_CAPABLE:
-                message = "Can't ping - at least one of endpoints are not capable to catch pings.";
-                break;
-            case SOURCE_NOT_AVAILABLE:
-            case DEST_NOT_AVAILABLE:
-                message = "Can't ping - at least one of endpoints are unavailable";
-                break;
-            default:
-                message = error.toString();
-        }
-
-        return message;
-    }
 
     public abstract FlowLoopResponse toFlowLoopResponse(FlowLoopDto payload);
 

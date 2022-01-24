@@ -24,6 +24,8 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingPayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
@@ -132,5 +134,16 @@ public class YFlowControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<YFlowSyncResult> synchronizeYFlow(@PathVariable("y_flow_id") String yFlowId) {
         return flowService.synchronizeYFlow(yFlowId);
+    }
+
+    @ApiOperation(
+            value = "Verify flow - using special network packet that is being routed in the same way as client traffic",
+            response = YFlowPingResult.class)
+    @PostMapping(path = "/{y_flow_id}/ping")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<YFlowPingResult> pingFlow(
+            @RequestBody YFlowPingPayload payload,
+            @PathVariable("y_flow_id") String yFlowId) {
+        return flowService.pingFlow(yFlowId, payload);
     }
 }

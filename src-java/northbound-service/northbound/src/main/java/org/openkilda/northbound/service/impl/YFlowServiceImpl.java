@@ -16,6 +16,7 @@
 package org.openkilda.northbound.service.impl;
 
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.YFlowPingRequest;
 import org.openkilda.messaging.command.yflow.SubFlowsReadRequest;
 import org.openkilda.messaging.command.yflow.SubFlowsResponse;
 import org.openkilda.messaging.command.yflow.YFlowDeleteRequest;
@@ -33,6 +34,7 @@ import org.openkilda.messaging.command.yflow.YFlowValidationResponse;
 import org.openkilda.messaging.command.yflow.YFlowsDumpRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
+import org.openkilda.messaging.info.flow.YFlowPingResponse;
 import org.openkilda.northbound.converter.YFlowMapper;
 import org.openkilda.northbound.dto.v2.yflows.SubFlowsDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlow;
@@ -40,6 +42,8 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingPayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
@@ -67,6 +71,9 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Value("#{kafkaTopicsConfig.getTopoRerouteTopic()}")
     private String rerouteTopic;
+
+    @Value("#{kafkaTopicsConfig.getPingTopic()}")
+    private String pingTopic;
 
     @Autowired
     private MessagingChannel messagingChannel;
@@ -223,5 +230,15 @@ public class YFlowServiceImpl implements YFlowService {
         return messagingChannel.sendAndGet(flowHsTopic, command)
                 .thenApply(YFlowRerouteResponse.class::cast)
                 .thenApply(flowMapper::toSyncResult);
+    }
+
+    @Override
+    public CompletableFuture<YFlowPingResult> pingFlow(String yFlowId, YFlowPingPayload payload) {
+        log.debug("Processing y-flow ping: {} {}", yFlowId, payload);
+        CommandMessage command = new CommandMessage(new YFlowPingRequest(yFlowId, payload.getTimeoutMillis()),
+                System.currentTimeMillis(), RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(pingTopic, command)
+                .thenApply(YFlowPingResponse.class::cast)
+                .thenApply(flowMapper::toPingResult);
     }
 }
