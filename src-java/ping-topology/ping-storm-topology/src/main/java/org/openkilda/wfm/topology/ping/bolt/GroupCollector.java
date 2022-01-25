@@ -80,8 +80,12 @@ public class GroupCollector extends Abstract {
     private void collect(Tuple input) throws Exception {
         CollectorDescriptor descriptor = saveCurrentRecord(input);
         if (descriptor.isCompleted()) {
-            Group group = descriptor.makeGroup();
-            emitGroup(input, group);
+            try {
+                Group group = descriptor.makeGroup();
+                emitGroup(input, group);
+            } catch (IllegalStateException e) {
+                throw new WorkflowException(this, input, e.toString());
+            }
         }
     }
 

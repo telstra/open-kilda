@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
@@ -783,6 +784,7 @@ switches"() {
         def flow1Isl = pathHelper.getInvolvedIsls(flow1Path)[0]
         def flow1IslMaxBw = islUtils.getIslInfo(flow1Isl).get().maxBandwidth
         northbound.updateFlow(flow1.id, flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         and: "Break all alternative paths for the first flow"
         def altPaths = flow1SwitchPair.paths.findAll { it != flow1Path }
@@ -876,6 +878,7 @@ switches"() {
         def flow1Isl = pathHelper.getInvolvedIsls(flow1Path)[0]
         def flow1IslMaxBw = islUtils.getIslInfo(flow1Isl).get().maxBandwidth
         northbound.updateFlow(flow1.id, flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         and: "Break all alternative paths for the first flow"
         def altPaths = flow1SwitchPair.paths.findAll { it != flow1Path }
@@ -967,6 +970,7 @@ switches"() {
         def flow1Isl = pathHelper.getInvolvedIsls(flow1Path)[0]
         def flow1IslMaxBw = islUtils.getIslInfo(flow1Isl).get().maxBandwidth
         northbound.updateFlow(flow1.id, flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         and: "Break all alternative paths for the first flow"
         def altPaths = flow1SwitchPair.paths.findAll { it != flow1Path }

@@ -28,6 +28,7 @@ import org.openkilda.messaging.command.yflow.YFlowRerouteResponse;
 import org.openkilda.messaging.command.yflow.YFlowValidationResponse;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.flow.YFlowPingResponse;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
@@ -42,6 +43,7 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPath;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpoint;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpointEncapsulation;
@@ -56,7 +58,7 @@ import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring",
         uses = {FlowEncapsulationTypeMapper.class, FlowStatusMapper.class, PathComputationStrategyMapper.class,
-                InstantMapper.class},
+                TimeMapper.class, PingMapper.class},
         imports = {FlowEndpointPayload.class, FlowEndpointV2.class})
 public abstract class YFlowMapper {
 
@@ -138,4 +140,7 @@ public abstract class YFlowMapper {
     public abstract YFlowValidationResult toValidationResult(YFlowValidationResponse source);
 
     public abstract YFlowSyncResult toSyncResult(YFlowRerouteResponse source);
+
+    @Mapping(target = "yFlowId", source = "YFlowId")
+    public abstract YFlowPingResult toPingResult(YFlowPingResponse source);
 }

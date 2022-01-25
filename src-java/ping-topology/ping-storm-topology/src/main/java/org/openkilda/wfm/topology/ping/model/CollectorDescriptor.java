@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.ping.model;
 
+import org.openkilda.wfm.topology.ping.model.Group.Type;
+import org.openkilda.wfm.topology.ping.model.PingContext.Kinds;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -22,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -49,7 +53,26 @@ public class CollectorDescriptor extends Expirable<GroupId> {
     }
 
     public Group makeGroup() {
-        return new Group(getGroupId(), getRecords());
+        return new Group(getGroupId(), getType(), getRecords());
+    }
+
+    private Group.Type getType() {
+        List<Kinds> kinds = records.stream().map(PingContext::getKind).distinct().collect(Collectors.toList());
+        if (kinds.isEmpty()) {
+            return null;
+        }
+        if (kinds.size() > 1) {
+            throw new IllegalStateException(String.format("GroupId %s contains records about different ping types: %s. "
+                    + "Full record objects: %s", groupId, kinds, records));
+        }
+        switch (kinds.get(0)) {
+            case ON_DEMAND:
+                return Type.FLOW;
+            case ON_DEMAND_Y_FLOW:
+                return Type.Y_FLOW;
+            default:
+                return null;
+        }
     }
 
     public boolean isCompleted() {

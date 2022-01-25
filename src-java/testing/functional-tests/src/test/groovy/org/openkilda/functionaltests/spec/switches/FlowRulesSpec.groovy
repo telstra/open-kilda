@@ -721,8 +721,10 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def flowInfo = database.getFlow(flow.flowId)
         def flowRulesSrcSw = getFlowRules(srcSwitch)
         def flowRulesDstSw = getFlowRules(dstSwitch)
-        def sharedRuleSrcSw = flowRulesSrcSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW }.cookie
-        def sharedRuleDstSw = flowRulesDstSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW }.cookie
+        def sharedRuleSrcSw = flowRulesSrcSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW &&
+                it.match.inPort.toInteger() == flow.source.portNumber }.cookie
+        def sharedRuleDstSw = flowRulesDstSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW &&
+                it.match.inPort.toInteger() == flow.destination.portNumber }.cookie
 
         def ingressSrcSw = flowInfo.forwardPath.cookie.value
         def egressSrcSw = flowInfo.reversePath.cookie.value
@@ -796,8 +798,10 @@ class FlowRulesSpec extends HealthCheckSpecification {
             rulesAfterRerouteSrcSw = getFlowRules(srcSwitch)
             rulesAfterRerouteDstSw = getFlowRules(dstSwitch)
             //system doesn't reinstall shared rule
-            assert rulesAfterRerouteSrcSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW }.cookie == sharedRuleSrcSw
-            assert rulesAfterRerouteDstSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW }.cookie == sharedRuleDstSw
+            assert rulesAfterRerouteSrcSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW &&
+                    it.match.inPort.toInteger() == flow.source.portNumber }.cookie == sharedRuleSrcSw
+            assert rulesAfterRerouteDstSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW &&
+                    it.match.inPort.toInteger() == flow.destination.portNumber }.cookie == sharedRuleDstSw
             rulesAfterRerouteSrcSw.findAll { new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW }.cookie.each {
                 assert !(it in [ingressSrcSw, egressSrcSw])
             }

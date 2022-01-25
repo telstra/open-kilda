@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.113.0 (25/01/2022)
+
+### Features:
+-  [#4651](https://github.com/telstra/open-kilda/pull/4651) Y Flow Ping: API [**northbound**][**storm-topologies**]
+-  [#4663](https://github.com/telstra/open-kilda/pull/4663) Y Flow Ping: manual ping [**storm-topologies**]
+
+### Bug Fixes:
+-  [#4664](https://github.com/telstra/open-kilda/pull/4664) Changed Kafka and Zookeeper ports in unit tests (Issue: [#4529](https://github.com/telstra/open-kilda/issues/4529)) [**tests**]
+-  [#4669](https://github.com/telstra/open-kilda/pull/4669) Fix `deepCopy` method for YFlow 
+
+### Improvements:
+-  [#4672](https://github.com/telstra/open-kilda/pull/4672) [test] ignore latency related fields in partUpdateSpec [**tests**]
+-  [#4535](https://github.com/telstra/open-kilda/pull/4535) Cleanup mappers code [**northbound**][**storm-topologies**]
+-  [#4659](https://github.com/telstra/open-kilda/pull/4659) [test] fix FlowRulesSpec(find sharedRule) [**tests**]
+-  [#4662](https://github.com/telstra/open-kilda/pull/4662) [test] fix "cleanup" in partialUpdateSpec [**tests**]
+-  [#4665](https://github.com/telstra/open-kilda/pull/4665) Remove unused classes from Ping topology [**storm-topologies**]
+-  [#4670](https://github.com/telstra/open-kilda/pull/4670) [test] check that flow is up after updating in swapEndpSpec [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.112.0...v1.113.0).
+
+### Affected Components:
+flow-hs, flow-monitor, nb, ping, nbworker, swmanager
+
+---
+
 ## v1.112.0 (12/01/2022)
 
 ### Features:

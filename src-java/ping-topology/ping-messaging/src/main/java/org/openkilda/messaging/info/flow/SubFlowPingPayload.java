@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,28 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.ping.model;
+package org.openkilda.messaging.info.flow;
 
-import com.google.common.collect.ImmutableList;
-import lombok.Value;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
 
-import java.io.Serializable;
-import java.util.List;
-
-@Value
-public class Group implements Serializable {
-    GroupId id;
-    Type type;
-    List<PingContext> records;
-
-    public Group(GroupId id, Type type, List<PingContext> records) {
-        this.id = id;
-        this.type = type;
-        this.records = ImmutableList.copyOf(records);
-    }
-
-    public enum Type {
-        FLOW,
-        Y_FLOW
-    }
+@Data
+@Builder
+@AllArgsConstructor
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class SubFlowPingPayload {
+    String flowId;
+    UniSubFlowPingPayload forward;
+    UniSubFlowPingPayload reverse;
 }
