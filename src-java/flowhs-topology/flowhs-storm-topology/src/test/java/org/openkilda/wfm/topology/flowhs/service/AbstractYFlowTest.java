@@ -660,9 +660,11 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
     protected YFlow createYFlowViaTransit(String yFlowId) {
         // Create sub-flows
         Flow firstFlow =
-                dummyFactory.makeFlow(firstSharedEndpoint, firstEndpoint, islSharedToTransit, islTransitToFirst);
+                dummyFactory.makeMainAffinityFlow(firstSharedEndpoint, firstEndpoint,
+                        islSharedToTransit, islTransitToFirst);
         Flow secondFlow =
-                dummyFactory.makeFlow(secondSharedEndpoint, secondEndpoint, islSharedToTransit, islTransitToSecond);
+                dummyFactory.makeFlow(secondSharedEndpoint, secondEndpoint, firstFlow.getAffinityGroupId(),
+                        islSharedToTransit, islTransitToSecond);
 
         SwitchId yPoint = SWITCH_TRANSIT;
         FlowMeter yPointMeter = dummyFactory.makeFlowMeter(yPoint, yFlowId, null);
@@ -698,10 +700,11 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
     protected YFlow createYFlowWithProtected(String yFlowId) {
         dummyFactory.getFlowDefaults().setAllocateProtectedPath(true);
         // Create sub-flows
-        Flow firstFlow = dummyFactory.makeFlowWithProtectedPath(firstSharedEndpoint, firstEndpoint,
+        Flow firstFlow = dummyFactory.makeMainAffinityFlowWithProtectedPath(firstSharedEndpoint, firstEndpoint,
                 asList(islSharedToTransit, islTransitToFirst),
                 asList(islSharedToAltTransit, islAltTransitToFirst));
         Flow secondFlow = dummyFactory.makeFlowWithProtectedPath(secondSharedEndpoint, secondEndpoint,
+                firstFlow.getAffinityGroupId(),
                 asList(islSharedToTransit, islTransitToSecond),
                 asList(islSharedToAltTransit, islAltTransitToSecond));
 

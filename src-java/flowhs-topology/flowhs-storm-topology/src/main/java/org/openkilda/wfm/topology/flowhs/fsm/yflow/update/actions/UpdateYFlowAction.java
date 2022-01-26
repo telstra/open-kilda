@@ -43,6 +43,7 @@ public class UpdateYFlowAction extends
     @Override
     protected void perform(State from, State to, Event event, YFlowUpdateContext context, YFlowUpdateFsm stateMachine) {
         YFlowRequest targetFlow = stateMachine.getTargetFlow();
+        stateMachine.setDiverseFlowId(targetFlow.getDiverseFlowId());
 
         FlowStatus flowStatus = transactionManager.doInTransaction(() -> {
             YFlow yFlow = getYFlow(targetFlow.getYFlowId());

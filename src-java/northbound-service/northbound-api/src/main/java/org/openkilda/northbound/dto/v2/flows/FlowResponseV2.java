@@ -56,6 +56,8 @@ public class FlowResponseV2 {
     private Integer priority;
 
     private Set<String> diverseWith;
+    @JsonProperty("diverse_with_y_flows")
+    private Set<String> diverseWithYFlows;
     private String affinityWith;
     private boolean pinned;
     private boolean allocateProtectedPath;

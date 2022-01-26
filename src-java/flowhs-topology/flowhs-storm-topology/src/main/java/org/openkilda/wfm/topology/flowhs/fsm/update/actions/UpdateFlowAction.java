@@ -22,9 +22,12 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
@@ -42,17 +45,21 @@ import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.shade.com.google.common.base.Objects;
 
+import java.util.Collection;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Slf4j
 public class UpdateFlowAction extends
         NbTrackableWithHistorySupportAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final SwitchRepository switchRepository;
+    private final YFlowRepository yFlowRepository;
 
     public UpdateFlowAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        switchRepository = repositoryFactory.createSwitchRepository();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.yFlowRepository = repositoryFactory.createYFlowRepository();
     }
 
     @Override
@@ -190,8 +197,16 @@ public class UpdateFlowAction extends
         return targetFlow;
     }
 
-    private String getOrCreateDiverseFlowGroupId(String flowId) throws FlowProcessingException {
-        log.debug("Getting flow diverse group for flow with id {}", flowId);
+    private String getOrCreateDiverseFlowGroupId(String diverseFlowId) throws FlowProcessingException {
+        log.debug("Getting flow diverse group for flow with id {}", diverseFlowId);
+        String flowId = yFlowRepository.findById(diverseFlowId).map(Stream::of).orElseGet(Stream::empty)
+                .map(YFlow::getSubFlows)
+                .flatMap(Collection::stream)
+                .map(YSubFlow::getFlow)
+                .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
+                .map(Flow::getFlowId)
+                .findFirst()
+                .orElse(diverseFlowId);
         return flowRepository.getOrCreateDiverseFlowGroupId(flowId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Flow %s not found", flowId)));

@@ -55,6 +55,7 @@ public class UpdateSubFlowsAction extends HistoryRecordingAction<YFlowUpdateFsm,
                     stateMachine.notifyEventListeners(listener ->
                             listener.onSubFlowProcessingStart(yFlowId, subFlowId));
                     CommandContext flowContext = stateMachine.getCommandContext().fork(subFlowId);
+                    requestedFlow.setDiverseFlowId(stateMachine.getDiverseFlowId());
                     flowUpdateService.startFlowUpdating(flowContext, requestedFlow, yFlowId);
                 });
     }

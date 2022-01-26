@@ -49,6 +49,7 @@ public class YFlowUpdatePayload {
     boolean strictBandwidth;
     String description;
     boolean allocateProtectedPath;
+    String diverseFlowId;
 
     List<SubFlowUpdatePayload> subFlows;
 }

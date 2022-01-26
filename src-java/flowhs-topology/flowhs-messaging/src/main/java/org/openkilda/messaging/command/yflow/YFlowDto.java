@@ -28,6 +28,7 @@ import lombok.Data;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 @Data
 @JsonNaming(SnakeCaseStrategy.class)
@@ -50,6 +51,8 @@ public class YFlowDto implements Serializable {
     String description;
     SwitchId yPoint;
     SwitchId protectedPathYPoint;
+    Set<String> diverseWithFlows;
+    Set<String> diverseWithYFlows;
     List<SubFlowDto> subFlows;
     Instant timeCreate;
     Instant timeUpdate;

@@ -29,13 +29,14 @@ import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 import java.util.Optional;
+import java.util.Set;
 
 @Mapper
 public abstract class YFlowMapper {
     public static final YFlowMapper INSTANCE = Mappers.getMapper(YFlowMapper.class);
 
-    @Mapping(target = "timeUpdate", source = "timeModify")
-    public abstract YFlowDto toYFlowDto(YFlow flow);
+    @Mapping(target = "timeUpdate", source = "flow.timeModify")
+    public abstract YFlowDto toYFlowDto(YFlow flow, Set<String> diverseWithFlows, Set<String> diverseWithYFlows);
 
     @Mapping(target = "outerVlanId", ignore = true)
     @Mapping(target = "innerVlanId", ignore = true)

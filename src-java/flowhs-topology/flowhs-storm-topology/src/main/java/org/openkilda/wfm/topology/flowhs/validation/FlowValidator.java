@@ -29,6 +29,8 @@ import org.openkilda.model.PhysicalPort;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
@@ -37,6 +39,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlowMirrorPoint;
@@ -63,6 +66,7 @@ import java.util.stream.Collectors;
 public class FlowValidator {
 
     private final FlowRepository flowRepository;
+    private final YFlowRepository yFlowRepository;
     private final SwitchRepository switchRepository;
     private final IslRepository islRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
@@ -72,6 +76,7 @@ public class FlowValidator {
 
     public FlowValidator(PersistenceManager persistenceManager) {
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        this.yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
@@ -361,10 +366,21 @@ public class FlowValidator {
                     ErrorType.PARAMETERS_INVALID);
         }
 
-        Flow diverseFlow = flowRepository.findById(targetFlow.getDiverseFlowId())
-                .orElseThrow(() ->
-                        new InvalidFlowException(format("Failed to find diverse flow id %s",
-                                targetFlow.getDiverseFlowId()), ErrorType.PARAMETERS_INVALID));
+        Flow diverseFlow = flowRepository.findById(targetFlow.getDiverseFlowId()).orElse(null);
+        if (diverseFlow == null) {
+            YFlow diverseYFlow = yFlowRepository.findById(targetFlow.getDiverseFlowId())
+                    .orElseThrow(() ->
+                            new InvalidFlowException(format("Failed to find diverse flow id %s",
+                                    targetFlow.getDiverseFlowId()), ErrorType.PARAMETERS_INVALID));
+            diverseFlow = diverseYFlow.getSubFlows().stream()
+                    .map(YSubFlow::getFlow)
+                    .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
+                    .findFirst()
+                    .orElseThrow(() ->
+                            new InvalidFlowException(
+                                    format("Failed to find main affinity flow for diverse y-flow id %s",
+                                            targetFlow.getDiverseFlowId()), ErrorType.INTERNAL_ERROR));
+        }
 
 
         if (StringUtils.isNotBlank(diverseFlow.getAffinityGroupId())) {

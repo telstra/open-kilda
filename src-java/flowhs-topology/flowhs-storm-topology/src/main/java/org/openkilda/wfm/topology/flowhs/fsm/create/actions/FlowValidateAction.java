@@ -22,6 +22,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -43,6 +44,7 @@ import java.util.Optional;
 public class FlowValidateAction extends
         NbTrackableWithHistorySupportAction<FlowCreateFsm, State, Event, FlowCreateContext> {
     private final KildaFeatureTogglesRepository featureTogglesRepository;
+    private final YFlowRepository yFlowRepository;
     private final FlowValidator flowValidator;
     private final FlowOperationsDashboardLogger dashboardLogger;
 
@@ -51,6 +53,7 @@ public class FlowValidateAction extends
 
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
+        this.yFlowRepository = repositoryFactory.createYFlowRepository();
         this.flowValidator = new FlowValidator(persistenceManager);
         this.dashboardLogger = dashboardLogger;
     }
@@ -72,6 +75,11 @@ public class FlowValidateAction extends
         if (flowRepository.exists(request.getFlowId())) {
             throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,
                     format("Flow %s already exists", request.getFlowId()));
+        }
+
+        if (yFlowRepository.exists(request.getFlowId())) {
+            throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,
+                    format("Y-flow %s already exists", request.getFlowId()));
         }
 
         try {
