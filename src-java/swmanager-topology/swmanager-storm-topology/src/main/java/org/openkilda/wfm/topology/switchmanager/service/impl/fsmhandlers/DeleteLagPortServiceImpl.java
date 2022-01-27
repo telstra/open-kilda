@@ -20,8 +20,6 @@ import static java.lang.String.format;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.swmanager.request.DeleteLagPortRequest;
-import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.switchmanager.error.OperationTimeoutException;
 import org.openkilda.wfm.topology.switchmanager.error.SpeakerFailureException;
@@ -30,9 +28,9 @@ import org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagCo
 import org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagState;
 import org.openkilda.wfm.topology.switchmanager.service.DeleteLagPortService;
+import org.openkilda.wfm.topology.switchmanager.service.LagPortOperationConfig;
 import org.openkilda.wfm.topology.switchmanager.service.LagPortOperationService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
-import org.openkilda.wfm.topology.switchmanager.service.impl.LagPortOperationServiceImpl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
@@ -51,11 +49,8 @@ public class DeleteLagPortServiceImpl implements DeleteLagPortService {
 
     private boolean active = true;
 
-    public DeleteLagPortServiceImpl(SwitchManagerCarrier carrier, RepositoryFactory repositoryFactory,
-                                    TransactionManager transactionManager, int bfdPortOffset, int bfdPortMaxNumber,
-                                    int lagPortOffset) {
-        this.lagOperationService = new LagPortOperationServiceImpl(repositoryFactory, transactionManager, bfdPortOffset,
-                bfdPortMaxNumber, lagPortOffset);
+    public DeleteLagPortServiceImpl(SwitchManagerCarrier carrier, LagPortOperationConfig config) {
+        this.lagOperationService = new LagPortOperationService(config);
         this.builder = DeleteLagPortFsm.builder();
         this.fsmExecutor = new FsmExecutor<>(DeleteLagEvent.NEXT);
         this.carrier = carrier;
@@ -144,8 +139,11 @@ public class DeleteLagPortServiceImpl implements DeleteLagPortService {
 
     private void removeIfCompleted(DeleteLagPortFsm fsm) {
         if (fsm.isTerminated()) {
-            log.info("Delete LAG {} FSM have reached termination state (key={})", fsm.getRequest(), fsm.getKey());
-            fsms.remove(fsm.getKey());
+            String requestKey = fsm.getKey();
+            log.info("Delete LAG {} FSM have reached termination state (key={})", fsm.getRequest(), requestKey);
+            fsms.remove(requestKey);
+            carrier.cancelTimeoutCallback(requestKey);
+
             if (isAllOperationsCompleted() && !active) {
                 carrier.sendInactive();
             }

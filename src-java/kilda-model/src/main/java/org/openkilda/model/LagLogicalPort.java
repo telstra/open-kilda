@@ -120,11 +120,6 @@ public class LagLogicalPort implements CompositeDataEntity<LagLogicalPortData> {
         return Objects.hash(getSwitchId(), getLogicalPortNumber());
     }
 
-    public static int generateLogicalPortNumber(Collection<Integer> physicalPorts, int lagPortOffset) {
-        return physicalPorts.stream().min(Integer::compareTo).map(port -> port + lagPortOffset).orElseThrow(
-                () -> new IllegalArgumentException("No physical ports provided"));
-    }
-
     /**
      * Defines persistable data of the LagLogicalPort.
      */

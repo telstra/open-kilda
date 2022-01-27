@@ -86,6 +86,18 @@ public interface SwitchManagerTopologyConfig  extends AbstractTopologyConfig {
     @Default("2000")
     int getLagPortOffset();
 
+    @Key("lag.port.max.number")
+    @Default("2999")
+    int getLagPortMaxNumber();
+
+    @Key("lag.port.pool.chunks.count")
+    @Default("10")
+    int getLagPortPoolChunksCount();
+
+    @Key("lag.port.pool.cache.size")
+    @Default("128")
+    int getLagPortPoolCacheSize();
+
     @Key("bfd.port.offset")
     @Default("1000")
     int getBfdPortOffset();
