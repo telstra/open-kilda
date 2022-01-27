@@ -50,16 +50,18 @@ class LagPortSpec extends HealthCheckSpecification {
     @Tidy
     def "Able to CRUD LAG port on #sw.hwSwString"() {
         given: "A switch"
-        def portsArray = topology.getAllowedPortsForSwitch(sw)[-2, -1]
+        def portsArrayCreate = topology.getAllowedPortsForSwitch(sw)[-2, -1]
+        def portsArrayUpdate = topology.getAllowedPortsForSwitch(sw)[1, -1]
+        assert portsArrayCreate.sort() != portsArrayUpdate.sort()
 
         when: "Create a LAG"
-        def payload = new LagPortRequest(portNumbers: portsArray)
-        def createResponse = northboundV2.createLagLogicalPort(sw.dpId, payload)
+        def payloadCreate = new LagPortRequest(portNumbers: portsArrayCreate)
+        def createResponse = northboundV2.createLagLogicalPort(sw.dpId, payloadCreate)
 
         then: "Response reports successful creation of the LAG port"
         with(createResponse) {
             logicalPortNumber > 0
-            portNumbers.sort() == portsArray.sort()
+            portNumbers.sort() == portsArrayCreate.sort()
         }
         def lagPort = createResponse.logicalPortNumber
 
@@ -68,7 +70,7 @@ class LagPortSpec extends HealthCheckSpecification {
         getResponse.size() == 1
         with(getResponse[0]) {
             logicalPortNumber == lagPort
-            portNumbers.sort() == portsArray.sort()
+            portNumbers.sort() == portsArrayCreate.sort()
         }
 
         and: "LAG port is really created on the switch(check GRPC)"
@@ -76,7 +78,7 @@ class LagPortSpec extends HealthCheckSpecification {
         with(grpc.getSwitchLogicalPortConfig(swAddress, lagPort)) {
             logicalPortNumber == lagPort
             name == "novi_lport" + lagPort.toString()
-            portNumbers.sort() == portsArray.sort()
+            portNumbers.sort() == portsArrayCreate.sort()
             type == LogicalPortType.LAG
         }
 
@@ -86,13 +88,47 @@ class LagPortSpec extends HealthCheckSpecification {
             it.verifyMeterSectionsAreEmpty()
         }
 
+        when: "Update the LAG port"
+        def payloadUpdate = new LagPortRequest(portNumbers: portsArrayUpdate)
+        def updateResponse = northboundV2.updateLagLogicalPort(sw.dpId, lagPort, payloadUpdate)
+
+        then: "Response reports successful updation of the LAG port"
+        with(updateResponse) {
+            logicalPortNumber == lagPort
+            portNumbers.sort() == portsArrayUpdate.sort()
+        }
+
+        and: "LAG port is really updated"
+        with(northboundV2.getLagLogicalPort(sw.dpId)) {
+            it.size() == 1
+            it[0].logicalPortNumber == lagPort
+            it[0].portNumbers.sort() == portsArrayUpdate.sort()
+        }
+
+        and: "LAG port is really updated on the switch(check GRPC)"
+        with(grpc.getSwitchLogicalPortConfig(swAddress, lagPort)) {
+            logicalPortNumber == lagPort
+            name == "novi_lport" + lagPort.toString()
+            portNumbers.sort() == portsArrayUpdate.sort()
+            type == LogicalPortType.LAG
+        }
+
+        and: "Switch is valid"
+        with(northbound.validateSwitch(sw.dpId)) {
+            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            it.verifyMeterSectionsAreEmpty()
+            it.logicalPorts.misconfigured.empty
+            it.logicalPorts.missing.empty
+            it.logicalPorts.excess.empty
+        }
+
         when: "Delete the LAG port"
         def deleteResponse = northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
 
         then: "Response reports successful deletion of the LAG port"
         with(deleteResponse) {
             logicalPortNumber == lagPort
-            portNumbers.sort() == portsArray.sort()
+            portNumbers.sort() == portsArrayUpdate.sort()
         }
 
         and: "LAG port is really deleted from db"
