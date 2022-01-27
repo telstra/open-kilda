@@ -90,6 +90,7 @@ public class CommandBuilderImplTest {
     public static void setUpOnce() {
         Properties configProps = new Properties();
         configProps.setProperty("flow.meter-id.max", "40");
+        configProps.setProperty("flow.meter-id.pool.chunks.count", "1");
         configProps.setProperty("flow.vlan.max", "50");
 
         PropertiesBasedConfigurationProvider configurationProvider =
