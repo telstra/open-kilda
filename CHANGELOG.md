@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.114.0 (31/01/2022)
+
+### Features:
+-  [#4675](https://github.com/telstra/open-kilda/pull/4675) Y Flow Ping: Periodic pings (Issue: [#4589](https://github.com/telstra/open-kilda/issues/4589)) [**storm-topologies**]
+-  [#4676](https://github.com/telstra/open-kilda/pull/4676) [test] use yFlowPing in func-tests [**tests**]
+-  [#4616](https://github.com/telstra/open-kilda/pull/4616) [yflow] tests for a subFlow [**tests**]
+-  [#4655](https://github.com/telstra/open-kilda/pull/4655) Add diversity to YFlow [**docs**][**northbound**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#4674](https://github.com/telstra/open-kilda/pull/4674) Fix Y-flow update - handle allocateProtectedPath changes
+-  [#4677](https://github.com/telstra/open-kilda/pull/4677) Fix PCE for protected YFlows.
+-  [#4668](https://github.com/telstra/open-kilda/pull/4668) Fix switch connections transaction retry policy [**storm-topologies**]
+-  [#4671](https://github.com/telstra/open-kilda/pull/4671) Fix Y-flow API - add allocateProtectedPath to returned entities [**northbound**]
+
+### Improvements:
+-  [#4654](https://github.com/telstra/open-kilda/pull/4654) Reimplement LAG logical port number allocation [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.113.0...v1.114.0).
+
+### Affected Components:
+ping, nbworker, network, nb, swmanager, flow-hs
+
+---
+
 ## v1.113.0 (25/01/2022)
 
 ### Features:
