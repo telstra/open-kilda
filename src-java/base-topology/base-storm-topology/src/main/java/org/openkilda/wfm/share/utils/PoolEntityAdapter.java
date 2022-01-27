@@ -17,12 +17,10 @@ package org.openkilda.wfm.share.utils;
 
 import java.util.Optional;
 
-public interface PoolEntityAdapter<T> {
-    long getNumericSequentialId(T entity);
+public interface PoolEntityAdapter {
+    boolean allocateSpecificId(long entityId);
 
-    Optional<T> allocateSpecificId(long entityId);
-
-    Optional<T> allocateFirstInRange(long idMinimum, long idMaximum);
+    Optional<Long> allocateFirstInRange(long idMinimum, long idMaximum);
 
     String formatResourceNotAvailableMessage();
 }

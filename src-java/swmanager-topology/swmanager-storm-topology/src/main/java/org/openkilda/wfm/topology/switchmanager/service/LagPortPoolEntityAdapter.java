@@ -20,10 +20,9 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.wfm.share.utils.PoolEntityAdapter;
 
-import java.util.Collections;
 import java.util.Optional;
 
-public class LagPortPoolEntityAdapter implements PoolEntityAdapter<LagLogicalPort> {
+public class LagPortPoolEntityAdapter implements PoolEntityAdapter {
     private final LagPortOperationConfig config;
     private final LagLogicalPortRepository repository;
 
@@ -37,23 +36,15 @@ public class LagPortPoolEntityAdapter implements PoolEntityAdapter<LagLogicalPor
     }
 
     @Override
-    public long getNumericSequentialId(LagLogicalPort entity) {
-        return entity.getLogicalPortNumber();
-    }
-
-    @Override
-    public Optional<LagLogicalPort> allocateSpecificId(long entityId) {
+    public boolean allocateSpecificId(long entityId) {
         Optional<LagLogicalPort> existing = repository.findBySwitchIdAndPortNumber(switchId, (int) entityId);
-        if (existing.isPresent()) {
-            return Optional.empty();
-        }
-        return Optional.of(newEntity(entityId));
+        return ! existing.isPresent();
     }
 
     @Override
-    public Optional<LagLogicalPort> allocateFirstInRange(long idMinimum, long idMaximum) {
+    public Optional<Long> allocateFirstInRange(long idMinimum, long idMaximum) {
         return repository.findUnassignedPortInRange(switchId, (int) idMinimum, (int) idMaximum)
-                .map(this::newEntity);
+                .map(Long.class::cast);
     }
 
     @Override
@@ -61,9 +52,5 @@ public class LagPortPoolEntityAdapter implements PoolEntityAdapter<LagLogicalPor
         return String.format(
                 "Unable to find any unassigned LAG logical port number for switch %s in range from %d to %d",
                 switchId, config.getPoolConfig().getIdMinimum(), config.getPoolConfig().getIdMaximum());
-    }
-
-    private LagLogicalPort newEntity(long portNumber) {
-        return new LagLogicalPort(switchId, (int) portNumber, Collections.<Integer>emptyList());
     }
 }

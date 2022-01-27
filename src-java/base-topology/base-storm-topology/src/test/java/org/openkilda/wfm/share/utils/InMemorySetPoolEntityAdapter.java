@@ -18,7 +18,7 @@ package org.openkilda.wfm.share.utils;
 import java.util.HashSet;
 import java.util.Optional;
 
-public class InMemorySetPoolEntityAdapter implements PoolEntityAdapter<Long> {
+public class InMemorySetPoolEntityAdapter implements PoolEntityAdapter {
     private final HashSet<Long> allocated = new HashSet<>();
 
     public void release(long entity) {
@@ -26,16 +26,8 @@ public class InMemorySetPoolEntityAdapter implements PoolEntityAdapter<Long> {
     }
 
     @Override
-    public long getNumericSequentialId(Long entity) {
-        return entity;
-    }
-
-    @Override
-    public Optional<Long> allocateSpecificId(long entityId) {
-        if (allocated.add(entityId)) {
-            return Optional.of(entityId);
-        }
-        return Optional.empty();
+    public boolean allocateSpecificId(long entityId) {
+        return allocated.add(entityId);
     }
 
     @Override
