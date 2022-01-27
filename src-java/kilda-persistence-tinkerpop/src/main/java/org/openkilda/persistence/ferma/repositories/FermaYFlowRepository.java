@@ -82,6 +82,23 @@ public class FermaYFlowRepository extends FermaGenericRepository<YFlow, YFlowDat
     }
 
     @Override
+    public Optional<String> findYFlowId(String subFlowId) {
+        try (GraphTraversal<?, ?> traversal = framedGraph().traverse(g -> g.E()
+                        .hasLabel(YSubFlowFrame.FRAME_LABEL)
+                        .has(YSubFlowFrame.SUBFLOW_ID_PROPERTY, subFlowId)
+                        .values(YSubFlowFrame.YFLOW_ID_PROPERTY))
+                .getRawTraversal()) {
+            if (traversal.hasNext()) {
+                return Optional.of((String) traversal.next());
+            } else {
+                return Optional.empty();
+            }
+        } catch (Exception e) {
+            throw new PersistenceException("Failed to traverse", e);
+        }
+    }
+
+    @Override
     public Optional<YFlow> remove(String flowId) {
         TransactionManager transactionManager = getTransactionManager();
         if (transactionManager.isTxOpen()) {

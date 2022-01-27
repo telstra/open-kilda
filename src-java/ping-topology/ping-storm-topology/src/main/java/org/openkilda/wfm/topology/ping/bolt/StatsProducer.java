@@ -53,6 +53,9 @@ public class StatsProducer extends Abstract {
 
         HashMap<String, String> tags = new HashMap<>();
         tags.put("flowid", pingContext.getFlowId());
+        if (pingContext.getYFlowId() != null) {
+            tags.put("y_flow_id", pingContext.getYFlowId());
+        }
 
         produceMetersStats(input, tags, pingContext);
     }
