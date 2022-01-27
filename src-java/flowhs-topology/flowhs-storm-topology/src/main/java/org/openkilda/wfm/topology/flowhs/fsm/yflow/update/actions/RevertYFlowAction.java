@@ -41,7 +41,7 @@ public class RevertYFlowAction extends
     @Override
     protected void perform(State from, State to, Event event, YFlowUpdateContext context, YFlowUpdateFsm stateMachine) {
         YFlowRequest originalFlow = stateMachine.getOriginalFlow();
-        YFlowResources resources = stateMachine.getReallocatedResources();
+        YFlowResources resources = stateMachine.getOldResources();
 
         FlowStatus flowStatus = transactionManager.doInTransaction(() -> {
             YFlow yFlow = getYFlow(originalFlow.getYFlowId());

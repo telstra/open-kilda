@@ -49,7 +49,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnSubFlowAlloc
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnSubFlowRevertedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnSubFlowUpdatedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnTimeoutOperationAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.ReallocateYFlowResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.RemoveMetersAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.RemoveOldMeterAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.RevertSubFlowsAction;
@@ -87,7 +86,6 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
     private YFlowRequest targetFlow;
 
     private YFlowResources oldResources;
-    private YFlowResources reallocatedResources;
 
     private final Set<String> subFlows = new HashSet<>();
     private final Set<String> updatingSubFlows = new HashSet<>();
@@ -304,8 +302,14 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
 
             builder.transition()
                     .from(State.OLD_YPOINT_METER_REMOVED)
-                    .to(State.DEALLOCATING_OLD_YFLOW_RESOURCES)
-                    .on(Event.NEXT);
+                    .to(State.YFLOW_INSTALLATION_COMPLETED)
+                    .on(Event.NEXT)
+                    .perform(new CompleteYFlowUpdatingAction(persistenceManager, dashboardLogger));
+            builder.transitions()
+                    .from(State.YFLOW_INSTALLATION_COMPLETED)
+                    .toAmong(State.DEALLOCATING_OLD_YFLOW_RESOURCES, State.FINISHED_WITH_ERROR,
+                            State.FINISHED_WITH_ERROR)
+                    .onEach(Event.NEXT, Event.ERROR, Event.TIMEOUT);
 
             builder.transition()
                     .from(State.DEALLOCATING_OLD_YFLOW_RESOURCES)
@@ -315,28 +319,13 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
 
             builder.transition()
                     .from(State.OLD_YFLOW_RESOURCES_DEALLOCATED)
-                    .to(State.COMPLETE_YFLOW_INSTALLATION)
-                    .on(Event.NEXT);
-            builder.transition()
-                    .from(State.OLD_YFLOW_RESOURCES_DEALLOCATED)
-                    .to(State.COMPLETE_YFLOW_INSTALLATION)
-                    .on(Event.ERROR)
-                    .perform(new HandleNotDeallocatedResourcesAction());
-
-            builder.transition()
-                    .from(State.COMPLETE_YFLOW_INSTALLATION)
-                    .to(State.YFLOW_INSTALLATION_COMPLETED)
-                    .on(Event.NEXT)
-                    .perform(new CompleteYFlowUpdatingAction(persistenceManager, dashboardLogger));
-
-            builder.transition()
-                    .from(State.YFLOW_INSTALLATION_COMPLETED)
                     .to(State.FINISHED)
                     .on(Event.NEXT);
             builder.transition()
-                    .from(State.YFLOW_INSTALLATION_COMPLETED)
+                    .from(State.OLD_YFLOW_RESOURCES_DEALLOCATED)
                     .to(State.FINISHED_WITH_ERROR)
-                    .on(Event.ERROR);
+                    .on(Event.ERROR)
+                    .perform(new HandleNotDeallocatedResourcesAction());
 
             builder.onEntry(State.ALL_PENDING_OPERATIONS_COMPLETED)
                     .perform(new OnTimeoutOperationAction());
@@ -398,7 +387,6 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
             builder.defineState(State.SUB_FLOW_REVERTING_STARTED)
                     .addEntryAction(new RevertSubFlowsAction(flowUpdateService));
 
-
             builder.internalTransition()
                     .within(State.REVERTING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_ALLOCATED)
@@ -423,12 +411,17 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
 
             builder.transition()
                     .from(State.ALL_SUB_FLOWS_REVERTED)
-                    .to(State.YFLOW_RESOURCES_REALLOCATED)
-                    .on(Event.NEXT)
-                    .perform(new ReallocateYFlowResourcesAction(persistenceManager, pathComputer));
+                    .to(State.REVERTING_YFLOW_UPDATE)
+                    .on(Event.NEXT);
 
             builder.transition()
-                    .from(State.YFLOW_RESOURCES_REALLOCATED)
+                    .from(State.REVERTING_YFLOW_UPDATE)
+                    .to(State.YFLOW_UPDATE_REVERTED)
+                    .on(Event.NEXT)
+                    .perform(new RevertYFlowAction(persistenceManager));
+
+            builder.transition()
+                    .from(State.YFLOW_UPDATE_REVERTED)
                     .to(State.INSTALLING_OLD_YPOINT_METER)
                     .on(Event.NEXT)
                     .perform(new InstallReallocatedMetersAction(persistenceManager, ruleManager));
@@ -449,17 +442,6 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
 
             builder.transition()
                     .from(State.OLD_YPOINT_METER_INSTALLED)
-                    .to(State.REVERTING_YFLOW_UPDATE)
-                    .on(Event.NEXT);
-
-            builder.transition()
-                    .from(State.REVERTING_YFLOW_UPDATE)
-                    .to(State.YFLOW_UPDATE_REVERTED)
-                    .on(Event.NEXT)
-                    .perform(new RevertYFlowAction(persistenceManager));
-
-            builder.transition()
-                    .from(State.YFLOW_UPDATE_REVERTED)
                     .to(State.YFLOW_REVERTED)
                     .on(Event.NEXT)
                     .perform(new CompleteYFlowUpdatingAction(persistenceManager, dashboardLogger));

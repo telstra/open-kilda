@@ -46,10 +46,8 @@ public class CompleteYFlowInstallationAction extends
 
         FlowStatus flowStatus = transactionManager.doInTransaction(() -> {
             YFlow yFlow = getYFlow(yFlowId);
-            boolean hasDownSubFlow = yFlow.getSubFlows().stream().anyMatch(subFlow -> !subFlow.getFlow().isActive());
-            FlowStatus status = hasDownSubFlow ? FlowStatus.DEGRADED : FlowStatus.UP;
-            yFlow.setStatus(status);
-            return status;
+            yFlow.recalculateStatus();
+            return yFlow.getStatus();
         });
 
         dashboardLogger.onYFlowStatusUpdate(yFlowId, flowStatus);

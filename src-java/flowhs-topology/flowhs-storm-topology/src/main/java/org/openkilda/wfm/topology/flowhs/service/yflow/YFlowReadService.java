@@ -115,7 +115,7 @@ public class YFlowReadService {
             for (YSubFlow subFlow : subFlows) {
                 Flow flow = subFlow.getFlow();
                 mainPaths.add(flow.getForwardPath());
-                if (flow.isAllocateProtectedPath()) {
+                if (flow.isAllocateProtectedPath() && flow.getProtectedForwardPath() != null) {
                     protectedPaths.add(flow.getProtectedForwardPath());
                 }
             }
@@ -124,7 +124,8 @@ public class YFlowReadService {
             PathInfoData sharedPath = FlowPathMapper.INSTANCE.map(sharedPathSegments);
 
             PathInfoData sharedProtectedPath;
-            if (protectedPaths.isEmpty()) {
+            // At least 2 paths required to calculate Y-point.
+            if (protectedPaths.size() < 2) {
                 sharedProtectedPath = new PathInfoData();
             } else {
                 List<PathSegment> pathSegments =
