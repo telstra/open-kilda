@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -29,27 +29,23 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
-import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.FlowUpdateService;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class OnRevertSubFlowAllocatedAction extends
         HistoryRecordingAction<YFlowUpdateFsm, State, Event, YFlowUpdateContext> {
-    private final FlowUpdateService flowUpdateService;
     private final TransactionManager transactionManager;
     private final YFlowRepository yFlowRepository;
     protected final FlowRepository flowRepository;
 
-    public OnRevertSubFlowAllocatedAction(FlowUpdateService flowUpdateService, PersistenceManager persistenceManager) {
-        this.flowUpdateService = flowUpdateService;
+    public OnRevertSubFlowAllocatedAction(PersistenceManager persistenceManager) {
         this.transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
@@ -100,18 +96,5 @@ public class OnRevertSubFlowAllocatedAction extends
             yFlow.updateSubFlow(subFlow);
             return yFlow;
         });
-
-        if (subFlowId.equals(stateMachine.getMainAffinityFlowId())) {
-            stateMachine.getRequestedFlows().forEach(originalFlow -> {
-                String requestedFlowId = originalFlow.getFlowId();
-                if (!requestedFlowId.equals(subFlowId)) {
-                    CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
-                    stateMachine.addUpdatingSubFlow(requestedFlowId);
-                    stateMachine.notifyEventListeners(listener ->
-                            listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
-                    flowUpdateService.startFlowUpdating(flowContext, originalFlow, yFlowId);
-                }
-            });
-        }
     }
 }

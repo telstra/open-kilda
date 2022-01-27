@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -46,17 +46,17 @@ public class UpdateSubFlowsAction extends HistoryRecordingAction<YFlowUpdateFsm,
         stateMachine.clearUpdatingSubFlows();
 
         String yFlowId = stateMachine.getYFlowId();
-        requestedFlows.stream()
-                .filter(requestedFlow -> requestedFlow.getFlowId().equals(stateMachine.getMainAffinityFlowId()))
-                .forEach(requestedFlow -> {
-                    String subFlowId = requestedFlow.getFlowId();
-                    stateMachine.addSubFlow(subFlowId);
-                    stateMachine.addUpdatingSubFlow(subFlowId);
-                    stateMachine.notifyEventListeners(listener ->
-                            listener.onSubFlowProcessingStart(yFlowId, subFlowId));
-                    CommandContext flowContext = stateMachine.getCommandContext().fork(subFlowId);
-                    requestedFlow.setDiverseFlowId(stateMachine.getDiverseFlowId());
-                    flowUpdateService.startFlowUpdating(flowContext, requestedFlow, yFlowId);
-                });
+        requestedFlows.forEach(requestedFlow -> {
+            String subFlowId = requestedFlow.getFlowId();
+            stateMachine.addSubFlow(subFlowId);
+            if (requestedFlow.getFlowId().equals(stateMachine.getMainAffinityFlowId())) {
+                stateMachine.addUpdatingSubFlow(subFlowId);
+                stateMachine.notifyEventListeners(listener ->
+                        listener.onSubFlowProcessingStart(yFlowId, subFlowId));
+                CommandContext flowContext = stateMachine.getCommandContext().fork(subFlowId);
+                requestedFlow.setDiverseFlowId(stateMachine.getDiverseFlowId());
+                flowUpdateService.startFlowUpdating(flowContext, requestedFlow, yFlowId);
+            }
+        });
     }
 }

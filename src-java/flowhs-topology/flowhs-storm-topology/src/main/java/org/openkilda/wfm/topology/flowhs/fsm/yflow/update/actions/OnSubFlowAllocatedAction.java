@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -39,7 +39,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.YFlowMapper;
-import org.openkilda.wfm.topology.flowhs.service.FlowUpdateService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -52,12 +51,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class OnSubFlowAllocatedAction extends
         NbTrackableWithHistorySupportAction<YFlowUpdateFsm, State, Event, YFlowUpdateContext> {
-    private final FlowUpdateService flowUpdateService;
     private final YFlowRepository yFlowRepository;
 
-    public OnSubFlowAllocatedAction(FlowUpdateService flowUpdateService, PersistenceManager persistenceManager) {
+    public OnSubFlowAllocatedAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        this.flowUpdateService = flowUpdateService;
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
     }
@@ -107,20 +104,6 @@ public class OnSubFlowAllocatedAction extends
             yFlow.updateSubFlow(subFlow);
             return yFlow;
         });
-
-        if (subFlowId.equals(stateMachine.getMainAffinityFlowId())) {
-            stateMachine.getRequestedFlows().forEach(requestedFlow -> {
-                String requestedFlowId = requestedFlow.getFlowId();
-                if (!requestedFlowId.equals(subFlowId)) {
-                    stateMachine.addSubFlow(requestedFlowId);
-                    stateMachine.addUpdatingSubFlow(requestedFlowId);
-                    stateMachine.notifyEventListeners(listener ->
-                            listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
-                    CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
-                    flowUpdateService.startFlowUpdating(flowContext, requestedFlow, yFlowId);
-                }
-            });
-        }
 
         if (stateMachine.getAllocatedSubFlows().size() == stateMachine.getSubFlows().size()) {
             return Optional.of(buildResponseMessage(result, stateMachine.getCommandContext()));

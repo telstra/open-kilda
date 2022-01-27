@@ -180,7 +180,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
 
         // when
         processRerouteRequestAndSpeakerCommands(request,
-                FlowStatus.IN_PROGRESS, FlowStatus.IN_PROGRESS, FlowStatus.DOWN);
+                FlowStatus.IN_PROGRESS, FlowStatus.IN_PROGRESS, FlowStatus.UP);
 
         verifyNorthboundErrorResponse(yFlowRerouteHubCarrier, ErrorType.NOT_FOUND);
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.DEGRADED, FlowStatus.UP, FlowStatus.DOWN);
@@ -293,7 +293,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
 
         // when
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
-        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS);
+        verifyYFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS, FlowStatus.IN_PROGRESS, FlowStatus.UP);
         // and
         handleSpeakerCommandsAndFailInstall(service, request.getYFlowId(), "test_successful_yflow");
 

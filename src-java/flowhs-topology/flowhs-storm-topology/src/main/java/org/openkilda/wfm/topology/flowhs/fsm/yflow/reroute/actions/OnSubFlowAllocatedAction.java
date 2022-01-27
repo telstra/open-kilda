@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -41,7 +41,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.FlowRerouteService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -54,12 +53,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class OnSubFlowAllocatedAction extends
         NbTrackableWithHistorySupportAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
-    private final FlowRerouteService flowRerouteService;
     private final YFlowRepository yFlowRepository;
 
-    public OnSubFlowAllocatedAction(FlowRerouteService flowRerouteService, PersistenceManager persistenceManager) {
+    public OnSubFlowAllocatedAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        this.flowRerouteService = flowRerouteService;
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
     }
@@ -77,22 +74,6 @@ public class OnSubFlowAllocatedAction extends
                 format("Allocated resources for sub-flow %s of y-flow %s", subFlowId, yFlowId));
 
         stateMachine.addAllocatedSubFlow(subFlowId);
-
-        if (subFlowId.equals(stateMachine.getMainAffinityFlowId())) {
-            stateMachine.getRerouteRequests().forEach(rerouteRequest -> {
-                String requestedFlowId = rerouteRequest.getFlowId();
-                if (!requestedFlowId.equals(subFlowId)) {
-                    // clear to avoid the 'path has no affected ISLs' exception
-                    rerouteRequest.getAffectedIsl().clear();
-                    stateMachine.addSubFlow(requestedFlowId);
-                    stateMachine.addReroutingSubFlow(requestedFlowId);
-                    stateMachine.notifyEventListeners(listener ->
-                            listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
-                    CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
-                    flowRerouteService.startFlowRerouting(rerouteRequest, flowContext, yFlowId);
-                }
-            });
-        }
 
         if (stateMachine.getAllocatedSubFlows().size() == stateMachine.getSubFlows().size()) {
             return Optional.of(buildRerouteResponseMessage(stateMachine));

@@ -188,11 +188,11 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
             builder.internalTransition()
                     .within(State.REROUTING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_ALLOCATED)
-                    .perform(new OnSubFlowAllocatedAction(flowRerouteService, persistenceManager));
+                    .perform(new OnSubFlowAllocatedAction(persistenceManager));
             builder.internalTransition()
                     .within(State.REROUTING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_REROUTED)
-                    .perform(new OnSubFlowReroutedAction());
+                    .perform(new OnSubFlowReroutedAction(flowRerouteService));
             builder.internalTransition()
                     .within(State.REROUTING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_FAILED)
