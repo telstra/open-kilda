@@ -49,6 +49,7 @@ public class YFlowDto implements Serializable {
     Integer priority;
     boolean strictBandwidth;
     String description;
+    boolean allocateProtectedPath;
     SwitchId yPoint;
     SwitchId protectedPathYPoint;
     Set<String> diverseWithFlows;
