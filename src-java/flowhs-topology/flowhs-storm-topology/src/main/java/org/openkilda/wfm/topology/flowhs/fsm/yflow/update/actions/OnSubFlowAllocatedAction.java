@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.SubFlowSharedEndpointEncapsulation;
+import org.openkilda.messaging.command.yflow.YFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowResponse;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
@@ -38,21 +39,22 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.YFlowMapper;
-import org.openkilda.wfm.topology.flowhs.service.FlowUpdateService;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Collection;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class OnSubFlowAllocatedAction extends
         NbTrackableWithHistorySupportAction<YFlowUpdateFsm, State, Event, YFlowUpdateContext> {
-    private final FlowUpdateService flowUpdateService;
     private final YFlowRepository yFlowRepository;
 
-    public OnSubFlowAllocatedAction(FlowUpdateService flowUpdateService, PersistenceManager persistenceManager) {
+    public OnSubFlowAllocatedAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        this.flowUpdateService = flowUpdateService;
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
     }
@@ -103,20 +105,6 @@ public class OnSubFlowAllocatedAction extends
             return yFlow;
         });
 
-        if (subFlowId.equals(stateMachine.getMainAffinityFlowId())) {
-            stateMachine.getRequestedFlows().forEach(requestedFlow -> {
-                String requestedFlowId = requestedFlow.getFlowId();
-                if (!requestedFlowId.equals(subFlowId)) {
-                    stateMachine.addSubFlow(requestedFlowId);
-                    stateMachine.addUpdatingSubFlow(requestedFlowId);
-                    stateMachine.notifyEventListeners(listener ->
-                            listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
-                    CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
-                    flowUpdateService.startFlowUpdating(flowContext, requestedFlow, yFlowId);
-                }
-            });
-        }
-
         if (stateMachine.getAllocatedSubFlows().size() == stateMachine.getSubFlows().size()) {
             return Optional.of(buildResponseMessage(result, stateMachine.getCommandContext()));
         } else {
@@ -125,8 +113,29 @@ public class OnSubFlowAllocatedAction extends
     }
 
     private Message buildResponseMessage(YFlow yFlow, CommandContext commandContext) {
-        YFlowResponse response = YFlowResponse.builder().yFlow(YFlowMapper.INSTANCE.toYFlowDto(yFlow)).build();
+        YFlowResponse response = YFlowResponse.builder()
+                .yFlow(convertToYFlowDto(yFlow))
+                .build();
         return new InfoMessage(response, commandContext.getCreateTime(), commandContext.getCorrelationId());
+    }
+
+    private YFlowDto convertToYFlowDto(YFlow yFlow) {
+        Flow mainAffinityFlow = yFlow.getSubFlows().stream()
+                .map(YSubFlow::getFlow)
+                .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
+                .findFirst().orElseThrow(() -> new FlowProcessingException(ErrorType.INTERNAL_ERROR,
+                        "Main affinity flow not found"));
+        Collection<Flow> diverseWithFlow = getDiverseWithFlow(mainAffinityFlow);
+        Set<String> diverseFlows = diverseWithFlow.stream()
+                .filter(flow -> flow.getYFlowId() == null)
+                .map(Flow::getFlowId)
+                .collect(Collectors.toSet());
+        Set<String> diverseYFlows = diverseWithFlow.stream()
+                .map(Flow::getYFlowId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        return YFlowMapper.INSTANCE.toYFlowDto(yFlow, diverseFlows, diverseYFlows);
     }
 
     @Override

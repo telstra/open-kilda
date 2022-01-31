@@ -190,6 +190,9 @@ public class FlowDto implements Serializable {
     @JsonProperty("diverse_with")
     private Set<String> diverseWith;
 
+    @JsonProperty("diverse_with_y_flows")
+    private Set<String> diverseWithYFlows;
+
     @JsonProperty("affinity_with")
     private String affinityWith;
 
@@ -290,6 +293,7 @@ public class FlowDto implements Serializable {
                    @JsonProperty("target_path_computation_strategy")
                                PathComputationStrategy targetPathComputationStrategy,
                    @JsonProperty("diverse_with") Set<String> diverseWith,
+                   @JsonProperty("diverse_with_y_flows") Set<String> diverseWithYFlows,
                    @JsonProperty("affinity_with") String affinityWith,
                    @JsonProperty("loop_switch_id") SwitchId loopSwitchId,
                    @JsonProperty("mirror_point_statuses") List<MirrorPointStatusDto> mirrorPointStatuses,
@@ -329,6 +333,7 @@ public class FlowDto implements Serializable {
         this.pathComputationStrategy = pathComputationStrategy;
         this.targetPathComputationStrategy = targetPathComputationStrategy;
         this.diverseWith = diverseWith;
+        this.diverseWithYFlows = diverseWithYFlows;
         this.affinityWith = affinityWith;
         this.loopSwitchId = loopSwitchId;
         this.mirrorPointStatuses = mirrorPointStatuses;
@@ -377,7 +382,7 @@ public class FlowDto implements Serializable {
                 sourceVlan,
                 destinationVlan, 0, 0,
                 null, 0, null, null, null, null, null, null, pinned, null, detectConnectedDevices, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -412,7 +417,7 @@ public class FlowDto implements Serializable {
                         input.getDestination().getDetectConnectedDevices().isArp()),
                 input.getPathComputationStrategy() != null ? PathComputationStrategy.valueOf(
                         input.getPathComputationStrategy().toUpperCase()) : null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
     }
 
     @JsonIgnore

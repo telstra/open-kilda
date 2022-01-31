@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,26 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.wfm.share.utils;
 
-import org.openkilda.model.YFlow;
+public class PredictablePoolManager<T> extends PoolManager<T> {
+    private long lastSelectedChunk = -1;
 
-import java.util.Collection;
-import java.util.Optional;
+    public PredictablePoolManager(PoolConfig config, PoolEntityAdapter<T> entityAdapter) {
+        super(config, entityAdapter);
+    }
 
-public interface YFlowRepository extends Repository<YFlow> {
-    /**
-     * Fetches all y-flows.
-     */
-    Collection<YFlow> findAll();
-
-    boolean exists(String yFlowId);
-
-    Optional<YFlow> findById(String yFlowId);
-
-    boolean isSubFlow(String flowId);
-
-    Optional<String> findYFlowId(String subFlowId);
-
-    Optional<YFlow> remove(String yFlowId);
+    @Override
+    protected long selectChunkNumber(long chunksCount) {
+        lastSelectedChunk += 1;
+        if (chunksCount <= lastSelectedChunk) {
+            lastSelectedChunk = 0;
+        }
+        return lastSelectedChunk;
+    }
 }

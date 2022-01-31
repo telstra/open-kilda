@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,17 +17,25 @@ package org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.FlowUpdateService;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class OnSubFlowUpdatedAction extends
         HistoryRecordingAction<YFlowUpdateFsm, State, Event, YFlowUpdateContext> {
+    private final FlowUpdateService flowUpdateService;
+
+    public OnSubFlowUpdatedAction(FlowUpdateService flowUpdateService) {
+        this.flowUpdateService = flowUpdateService;
+    }
+
     @Override
     protected void perform(State from, State to, Event event, YFlowUpdateContext context, YFlowUpdateFsm stateMachine) {
         String subFlowId = context.getSubFlowId();
@@ -41,6 +49,20 @@ public class OnSubFlowUpdatedAction extends
         stateMachine.removeUpdatingSubFlow(subFlowId);
         stateMachine.notifyEventListeners(listener ->
                 listener.onSubFlowProcessingFinished(stateMachine.getYFlowId(), subFlowId));
+
+        String yFlowId = stateMachine.getYFlowId();
+        if (subFlowId.equals(stateMachine.getMainAffinityFlowId())) {
+            stateMachine.getRequestedFlows().forEach(requestedFlow -> {
+                String requestedFlowId = requestedFlow.getFlowId();
+                if (!requestedFlowId.equals(subFlowId)) {
+                    stateMachine.addUpdatingSubFlow(requestedFlowId);
+                    stateMachine.notifyEventListeners(listener ->
+                            listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
+                    CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
+                    flowUpdateService.startFlowUpdating(flowContext, requestedFlow, yFlowId);
+                }
+            });
+        }
 
         if (stateMachine.getUpdatingSubFlows().isEmpty()) {
             if (stateMachine.getFailedSubFlows().isEmpty()) {

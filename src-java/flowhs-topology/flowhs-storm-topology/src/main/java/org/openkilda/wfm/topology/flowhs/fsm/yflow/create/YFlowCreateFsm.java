@@ -85,6 +85,8 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
     private String mainAffinityFlowId;
     private Collection<RequestedFlow> requestedFlows;
 
+    private String diverseFlowId;
+
     private YFlowCreateFsm(@NonNull CommandContext commandContext, @NonNull FlowGenericCarrier carrier,
                            @NonNull String yFlowId, @NonNull Collection<YFlowEventListener> eventListeners) {
         super(Event.NEXT, Event.ERROR, commandContext, carrier, yFlowId, eventListeners);

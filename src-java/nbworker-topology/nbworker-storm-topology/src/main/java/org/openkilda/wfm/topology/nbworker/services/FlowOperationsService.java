@@ -45,6 +45,8 @@ import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -79,6 +81,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -93,14 +96,14 @@ public class FlowOperationsService {
     private static final int RETRY_DELAY = 100;
     private static final Set<PathComputationStrategy> LATENCY_BASED_STRATEGIES = Sets.newHashSet(MAX_LATENCY, LATENCY);
 
-    private TransactionManager transactionManager;
-    private IslRepository islRepository;
-    private SwitchRepository switchRepository;
-    private FlowRepository flowRepository;
-    private FlowStatsRepository flowStatsRepository;
-    private FlowPathRepository flowPathRepository;
-    private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
-    private YFlowRepository yFlowRepository;
+    private final TransactionManager transactionManager;
+    private final IslRepository islRepository;
+    private final SwitchRepository switchRepository;
+    private final FlowRepository flowRepository;
+    private final FlowStatsRepository flowStatsRepository;
+    private final FlowPathRepository flowPathRepository;
+    private final SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
+    private final YFlowRepository yFlowRepository;
 
     public FlowOperationsService(RepositoryFactory repositoryFactory, TransactionManager transactionManager) {
         this.islRepository = repositoryFactory.createIslRepository();
@@ -109,7 +112,7 @@ public class FlowOperationsService {
         this.flowStatsRepository = repositoryFactory.createFlowStatsRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
-        yFlowRepository = repositoryFactory.createYFlowRepository();
+        this.yFlowRepository = repositoryFactory.createYFlowRepository();
         this.transactionManager = transactionManager;
     }
 
@@ -147,16 +150,6 @@ public class FlowOperationsService {
     public Collection<FlowStats> getFlowStats() {
         return transactionManager.doInTransaction(getReadOperationRetryPolicy(),
                 () -> flowStatsRepository.findAll());
-    }
-
-    /**
-     * Return flow ids in the same flow diverse group.
-     */
-    public Set<String> getDiverseFlowsId(Flow flow) {
-        return flow.getDiverseGroupId() == null ? Collections.emptySet() :
-                flowRepository.findFlowsIdByDiverseGroupId(flow.getDiverseGroupId()).stream()
-                        .filter(flowId -> !flowId.equals(flow.getFlowId()))
-                        .collect(Collectors.toSet());
     }
 
     /**
@@ -398,8 +391,7 @@ public class FlowOperationsService {
             carrier.sendUpdateRequest(addChangedFields(flowRequest, flowPatch));
         } else {
             flowDashboardLogger.onFlowPatchUpdate(updatedFlow);
-            carrier.sendNorthboundResponse(new FlowResponse(FlowMapper.INSTANCE.map(updatedFlow,
-                    getDiverseFlowsId(updatedFlow), getFlowMirrorPaths(updatedFlow))));
+            carrier.sendNorthboundResponse(buildFlowResponse(updatedFlow));
         }
 
         return updateFlowResult.getUpdatedFlow();
@@ -487,10 +479,21 @@ public class FlowOperationsService {
     }
 
     private boolean updateRequiredByDiverseFlowIdField(FlowPatch flowPatch, Flow flow) {
-        return flowPatch.getDiverseFlowId() != null
-                && flowRepository.getOrCreateDiverseFlowGroupId(flowPatch.getDiverseFlowId())
-                .map(groupId -> !flowRepository.findFlowsIdByDiverseGroupId(groupId).contains(flow.getFlowId()))
-                .orElse(true);
+        if (flowPatch.getDiverseFlowId() != null) {
+            String diverseFlowId = yFlowRepository.findById(flowPatch.getDiverseFlowId())
+                    .map(Stream::of).orElseGet(Stream::empty)
+                    .map(YFlow::getSubFlows)
+                    .flatMap(Collection::stream)
+                    .map(YSubFlow::getFlow)
+                    .filter(f -> f.getFlowId().equals(f.getAffinityGroupId()))
+                    .map(Flow::getFlowId)
+                    .findFirst()
+                    .orElse(flowPatch.getDiverseFlowId());
+            return flowRepository.getOrCreateDiverseFlowGroupId(diverseFlowId)
+                    .map(groupId -> !flowRepository.findFlowsIdByDiverseGroupId(groupId).contains(flow.getFlowId()))
+                    .orElse(true);
+        }
+        return false;
     }
 
     private FlowRequest addChangedFields(FlowRequest flowRequest, FlowPatch flowPatch) {
@@ -637,6 +640,39 @@ public class FlowOperationsService {
             return Optional.of(points);
 
         }).orElseThrow(() -> new FlowNotFoundException(flowId));
+    }
+
+    /**
+     * Build flow response message.
+     */
+    public FlowResponse buildFlowResponse(Flow flow, FlowStats flowStats) {
+        Collection<Flow> diverseWithFlow = getDiverseWithFlow(flow);
+        Set<String> diverseFlows = diverseWithFlow.stream()
+                .filter(f -> f.getYFlowId() == null)
+                .map(Flow::getFlowId)
+                .collect(Collectors.toSet());
+        Set<String> diverseYFlows = diverseWithFlow.stream()
+                .map(Flow::getYFlowId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        return new FlowResponse(
+                FlowMapper.INSTANCE.map(flow, diverseFlows, diverseYFlows, getFlowMirrorPaths(flow), flowStats));
+    }
+
+    /**
+     * Build flow response message with FlowStats.EMPTY.
+     */
+    public FlowResponse buildFlowResponse(Flow flow) {
+        return buildFlowResponse(flow, FlowStats.EMPTY);
+    }
+
+    private Collection<Flow> getDiverseWithFlow(Flow flow) {
+        return flow.getDiverseGroupId() == null ? Collections.emptyList() :
+                flowRepository.findByDiverseGroupId(flow.getDiverseGroupId()).stream()
+                        .filter(diverseFlow -> !flow.getFlowId().equals(diverseFlow.getFlowId())
+                                || (flow.getYFlowId() != null && !flow.getYFlowId().equals(diverseFlow.getYFlowId())))
+                        .collect(Collectors.toSet());
     }
 
     @Data

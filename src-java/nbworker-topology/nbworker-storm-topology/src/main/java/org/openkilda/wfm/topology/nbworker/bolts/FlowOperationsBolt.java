@@ -26,7 +26,6 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
-import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.FlowConnectedDeviceRequest;
 import org.openkilda.messaging.nbtopology.request.FlowMirrorPointsDumpRequest;
@@ -57,7 +56,6 @@ import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.mappers.ConnectedDeviceMapper;
-import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.metrics.TimedExecution;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
@@ -135,9 +133,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
                     .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
                     .map(FlowPath::getFlow)
                     .distinct()
-                    .map(f -> FlowMapper.INSTANCE.map(f, flowOperationsService.getDiverseFlowsId(f),
-                            flowOperationsService.getFlowMirrorPaths(f)))
-                    .map(FlowResponse::new)
+                    .map(flowOperationsService::buildFlowResponse)
                     .collect(Collectors.toList());
         } catch (IslNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
@@ -152,9 +148,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         try {
             return flowOperationsService.getFlowsForEndpoint(srcSwitch, srcPort).stream()
                     .distinct()
-                    .map(f -> FlowMapper.INSTANCE.map(f, flowOperationsService.getDiverseFlowsId(f),
-                            flowOperationsService.getFlowMirrorPaths(f)))
-                    .map(FlowResponse::new)
+                    .map(flowOperationsService::buildFlowResponse)
                     .collect(Collectors.toList());
         } catch (SwitchNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch was not found.");
@@ -252,9 +246,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
             String flowId = readRequest.getFlowId();
             Flow flow = flowOperationsService.getFlow(flowId);
             FlowStats flowStats = flowOperationsService.getFlowStats(flowId);
-            FlowDto dto = FlowMapper.INSTANCE.map(flow, flowOperationsService.getDiverseFlowsId(flow),
-                    flowOperationsService.getFlowMirrorPaths(flow), flowStats);
-            FlowResponse response = new FlowResponse(dto);
+            FlowResponse response = flowOperationsService.buildFlowResponse(flow, flowStats);
             return Collections.singletonList(response);
         } catch (FlowNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, "Can not get flow: " + e.getMessage(),
@@ -271,10 +263,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
             Map<String, FlowStats> flowStats = flowOperationsService.getFlowStats()
                     .stream().collect(toMap(FlowStats::getFlowId, Function.identity()));
             return flowOperationsService.getAllFlows(request).stream()
-                    .map(f -> FlowMapper.INSTANCE.map(f, flowOperationsService.getDiverseFlowsId(f),
-                            flowOperationsService.getFlowMirrorPaths(f),
+                    .map(f -> flowOperationsService.buildFlowResponse(f,
                             flowStats.getOrDefault(f.getFlowId(), FlowStats.EMPTY)))
-                    .map(FlowResponse::new)
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Can not dump flows", e);

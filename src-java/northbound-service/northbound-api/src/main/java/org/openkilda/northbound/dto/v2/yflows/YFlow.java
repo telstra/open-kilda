@@ -27,6 +27,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Set;
 
 @Data
 @Builder
@@ -51,11 +52,16 @@ public class YFlow {
     Integer priority;
     boolean strictBandwidth;
     String description;
+    boolean allocateProtectedPath;
 
     @JsonProperty("y_point")
     SwitchId yPoint;
     @JsonProperty("protected_path_y_point")
     SwitchId protectedPathYPoint;
+
+    Set<String> diverseWithFlows;
+    @JsonProperty("diverse_with_y_flows")
+    Set<String> diverseWithYFlows;
 
     List<SubFlow> subFlows;
 

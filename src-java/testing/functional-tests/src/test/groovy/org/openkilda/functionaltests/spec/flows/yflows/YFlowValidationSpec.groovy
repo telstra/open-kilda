@@ -63,7 +63,7 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         northbound.synchronizeSwitch(swIdToManipulate, false)
 
         then: "Y-Flow/subFlow passes flow validation"
-        northboundV2.validateYFlow(yFlow.YFlowId).each { direction -> assert direction.asExpected }
+        northboundV2.validateYFlow(yFlow.YFlowId).asExpected
         yFlow.subFlows.each {
             northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
         }

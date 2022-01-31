@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.rulemanager;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.converter.rulemanager.OfFlowModConverter;
 import org.openkilda.floodlight.converter.rulemanager.OfGroupConverter;
@@ -29,6 +31,7 @@ import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterSpeakerData;
 
+import com.google.common.base.Joiner;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -40,6 +43,7 @@ import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -98,7 +102,10 @@ public class OfBatchExecutor {
                 hasGroups |= batchData.isGroup();
                 ofMessages.add(batchData.getMessage());
             } else {
-                holder.recordFailedUuid(uuid, "Not all dependencies are satisfied");
+                Map<UUID, String> blockingDependencies = holder.getBlockingDependencies(uuid);
+                holder.recordFailedUuid(uuid, "Not all dependencies are satisfied: "
+                        + (blockingDependencies.isEmpty() ? "can't execute"
+                        : Joiner.on(",").withKeyValueSeparator("=").join(blockingDependencies)));
             }
         }
         List<CompletableFuture<Optional<OFMessage>>> requests = new ArrayList<>();
@@ -191,7 +198,9 @@ public class OfBatchExecutor {
                     if (switchFlow.equals(expectedFlow)) {
                         holder.recordSuccessUuid(expectedFlow.getUuid());
                     } else {
-                        holder.recordFailedUuid(expectedFlow.getUuid(), "Failed to validate flow on a switch");
+                        holder.recordFailedUuid(expectedFlow.getUuid(),
+                                format("Failed to validate flow on a switch. Expected: %s, actual: %s", expectedFlow,
+                                        switchFlow));
                     }
                 }
             }
@@ -218,7 +227,9 @@ public class OfBatchExecutor {
                     if (switchMeter.equals(expectedMeter)) {
                         holder.recordSuccessUuid(expectedMeter.getUuid());
                     } else {
-                        holder.recordFailedUuid(expectedMeter.getUuid(), "Failed to validate meter on a switch");
+                        holder.recordFailedUuid(expectedMeter.getUuid(),
+                                format("Failed to validate meter on a switch. Expected: %s, actual: %s. "
+                                        + "Switch features: %s.", expectedMeter, switchMeter, switchFeatures));
                     }
                 }
             }
@@ -245,7 +256,9 @@ public class OfBatchExecutor {
                     if (switchGroup.equals(expectedGroup)) {
                         holder.recordSuccessUuid(expectedGroup.getUuid());
                     } else {
-                        holder.recordFailedUuid(expectedGroup.getUuid(), "Failed to validate group on a switch");
+                        holder.recordFailedUuid(expectedGroup.getUuid(),
+                                format("Failed to validate group on a switch. Expected: %s, actual: %s", expectedGroup,
+                                        switchGroup));
                     }
                 }
             }

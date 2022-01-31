@@ -32,7 +32,6 @@ import org.openkilda.messaging.swmanager.request.DeleteLagPortRequest;
 import org.openkilda.messaging.swmanager.response.LagPortResponse;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PhysicalPort;
-import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.InvalidDataException;
@@ -54,8 +53,7 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.StateMachineStatus;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
-import java.util.ArrayList;
-import java.util.Optional;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -124,14 +122,14 @@ public class DeleteLagPortFsm extends AbstractStateMachine<
     void createGrpcRequest(DeleteLagState from, DeleteLagState to, DeleteLagEvent event, DeleteLagContext context) {
         log.info("Removing LAG {} on switch {}. Key={}", request, switchId, key);
         try {
-            Switch sw = lagPortOperationService.getSwitch(switchId);
-            String ipAddress = lagPortOperationService.getSwitchIpAddress(sw);
-            lagPortOperationService.validateLagBeforeDelete(switchId, request.getLogicalPortNumber());
+            lagPortOperationService.ensureDeleteIsPossible(switchId, request.getLogicalPortNumber());
+
+            String ipAddress = lagPortOperationService.getSwitchIpAddress(switchId);
             grpcRequest = new DeleteLogicalPortRequest(ipAddress, request.getLogicalPortNumber());
         } catch (LagPortNotFoundException | InvalidDataException | SwitchNotFoundException
                 | InconsistentDataException e) {
-            log.error(format("Enable to delete LAG port %s from switch %s. Error: %s", request.getLogicalPortNumber(),
-                    switchId, e.getMessage()), e);
+            log.error(format("Unable to delete LAG logical port %d on switch %s. Error: %s",
+                    request.getLogicalPortNumber(), switchId, e.getMessage()), e);
             fire(ERROR, DeleteLagContext.builder().error(e).build());
         }
     }
@@ -143,22 +141,29 @@ public class DeleteLagPortFsm extends AbstractStateMachine<
 
     void removeDbLag(DeleteLagState from, DeleteLagState to, DeleteLagEvent event, DeleteLagContext context) {
         log.info("Removing LAG  port {} from database. Switch {}. Key={}", context.deletedLogicalPort, switchId, key);
-        Optional<LagLogicalPort> lagPort = lagPortOperationService.removeLagPort(
-                switchId, request.getLogicalPortNumber());
-
-        if (lagPort.isPresent()) {
-            log.info("Successfully removed LAG {} from DB", lagPort.get());
-            removedLagPort = lagPort.get();
-        } else {
-            log.warn("Can't remove LAG {} from DB because LAG is not found", lagPort);
-            removedLagPort = new LagLogicalPort(switchId, request.getLogicalPortNumber(), new ArrayList<Integer>());
+        Integer portNumber = request.getLogicalPortNumber();
+        try {
+            removedLagPort = lagPortOperationService.removeLagPort(switchId, portNumber);
+            log.info("Successfully removed LAG logical port {} on switch {} from DB", portNumber, switchId);
+        } catch (LagPortNotFoundException | InvalidDataException e) {
+            log.error(
+                    "Can't remove LAG logical port {} on switch {} from DB: {}", portNumber, switchId, e.getMessage());
         }
     }
 
     void finishedEnter(DeleteLagState from, DeleteLagState to, DeleteLagEvent event, DeleteLagContext context) {
-        LagPortResponse response = new LagPortResponse(
-                removedLagPort.getLogicalPortNumber(), removedLagPort.getPhysicalPorts().stream()
-                .map(PhysicalPort::getPortNumber).collect(Collectors.toList()));
+        LagPortResponse response;
+        if (removedLagPort != null) {
+            response = new LagPortResponse(
+                    removedLagPort.getLogicalPortNumber(), removedLagPort.getPhysicalPorts().stream()
+                    .map(PhysicalPort::getPortNumber).collect(Collectors.toList()));
+
+        } else {
+            // dummy response entity
+            // TODO(surabujin): weird behaviour, can we be more correct?
+            response = new LagPortResponse(request.getLogicalPortNumber(), Collections.emptyList());
+        }
+
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
 
         carrier.cancelTimeoutCallback(key);

@@ -52,6 +52,7 @@ public abstract class YFlowRequestMapper {
     @Mapping(target = "sharedEndpoint.innerVlanId", ignore = true)
     @Mapping(target = "sharedEndpoint.trackLldpConnectedDevices", ignore = true)
     @Mapping(target = "sharedEndpoint.trackArpConnectedDevices", ignore = true)
+    @Mapping(target = "diverseFlowId", ignore = true)
     public abstract YFlowRequest toYFlowRequest(YFlow yFlow);
 
     @Mapping(target = "flowId", source = "subFlowId")

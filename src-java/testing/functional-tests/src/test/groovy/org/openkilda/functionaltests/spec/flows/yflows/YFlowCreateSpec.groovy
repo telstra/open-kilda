@@ -23,6 +23,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.switches.CreateLagPortDto
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
@@ -76,12 +77,23 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         and: "User is able to view y-flow paths"
         def paths = northboundV2.getYFlowPaths(yFlow.YFlowId)
 
-//        and: "Y-flow passes flow validation"
-//        northbound.validateFlow(yFlow.YFlowId)
+        and: "Y-flow passes flow validation"
+        with(northboundV2.validateYFlow(yFlow.YFlowId)) {
+            it.asExpected
+            it.subFlowValidationResults.each { assert it.asExpected }
+        }
 
         and: "Both sub-flows pass flow validation"
         yFlow.subFlows.each {
             assert northbound.validateFlow(it.flowId).every { it.asExpected }
+        }
+
+        and: "YFlow is pingable"
+        def response = northboundV2.pingYFlow(yFlow.YFlowId, new YFlowPingPayload(2000))
+        !response.error
+        response.subFlows.each {
+            assert it.forward.pingSuccess
+            assert it.reverse.pingSuccess
         }
 
         and: "All involved switches pass switch validation"

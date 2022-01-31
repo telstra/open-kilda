@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,26 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.wfm.error;
 
-import org.openkilda.model.YFlow;
-
-import java.util.Collection;
-import java.util.Optional;
-
-public interface YFlowRepository extends Repository<YFlow> {
-    /**
-     * Fetches all y-flows.
-     */
-    Collection<YFlow> findAll();
-
-    boolean exists(String yFlowId);
-
-    Optional<YFlow> findById(String yFlowId);
-
-    boolean isSubFlow(String flowId);
-
-    Optional<String> findYFlowId(String subFlowId);
-
-    Optional<YFlow> remove(String yFlowId);
+public class NoPoolResourcesAvailableException extends Exception {
+    public NoPoolResourcesAvailableException() {
+        super("Unable to allocate pool entity - all entity slots are busy");
+    }
 }

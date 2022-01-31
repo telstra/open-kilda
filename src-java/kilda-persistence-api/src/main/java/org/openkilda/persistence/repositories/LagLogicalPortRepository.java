@@ -27,4 +27,6 @@ public interface LagLogicalPortRepository extends Repository<LagLogicalPort> {
     Collection<LagLogicalPort> findBySwitchId(SwitchId switchId);
 
     Optional<LagLogicalPort> findBySwitchIdAndPortNumber(SwitchId switchId, int portNumber);
+
+    Optional<Integer> findUnassignedPortInRange(SwitchId switchId, int portFirst, int portLast);
 }

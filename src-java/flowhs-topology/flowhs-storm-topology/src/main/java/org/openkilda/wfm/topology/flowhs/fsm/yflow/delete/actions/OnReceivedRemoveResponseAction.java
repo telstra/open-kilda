@@ -68,7 +68,7 @@ public class OnReceivedRemoveResponseAction extends
                 response.getFailedCommandIds().forEach((uuid, message) ->
                         stateMachine.saveErrorToHistory(FAILED_TO_REMOVE_RULE_ACTION,
                                 format("Failed to remove the rule: commandId %s, ruleId %s, switch %s. "
-                                                + "Error %s. Retrying (attempt %d)",
+                                                + "Error: %s. Retrying (attempt %d)",
                                         commandId, uuid, response.getSwitchId(), message, attempt)));
 
                 Set<UUID> failedUuids = response.getFailedCommandIds().keySet();

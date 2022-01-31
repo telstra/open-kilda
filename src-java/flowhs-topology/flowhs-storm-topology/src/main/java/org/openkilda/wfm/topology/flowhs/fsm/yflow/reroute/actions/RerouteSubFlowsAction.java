@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -47,6 +47,7 @@ public class RerouteSubFlowsAction extends HistoryRecordingAction<YFlowRerouteFs
         boolean isMainAffinityFlowRequestSent = false;
         String yFlowId = stateMachine.getYFlowId();
         for (String subFlowId : targetSubFlowIds) {
+            stateMachine.addSubFlow(subFlowId);
             FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(subFlowId, stateMachine.isForceReroute(), false,
                     stateMachine.isIgnoreBandwidth(), stateMachine.getAffectedIsls(),
                     stateMachine.getRerouteReason(), false);
@@ -67,7 +68,6 @@ public class RerouteSubFlowsAction extends HistoryRecordingAction<YFlowRerouteFs
 
     private void sendRerouteRequest(YFlowRerouteFsm stateMachine, FlowRerouteRequest rerouteRequest, String yFlowId) {
         String subFlowId = rerouteRequest.getFlowId();
-        stateMachine.addSubFlow(subFlowId);
         stateMachine.addReroutingSubFlow(subFlowId);
         stateMachine.notifyEventListeners(listener ->
                 listener.onSubFlowProcessingStart(yFlowId, subFlowId));

@@ -68,7 +68,7 @@ public class OnReceivedInstallResponseAction extends
                 response.getFailedCommandIds().forEach((uuid, message) ->
                         stateMachine.saveErrorToHistory(FAILED_TO_INSTALL_RULE_ACTION,
                                 format("Failed to install the rule: commandId %s, ruleId %s, switch %s. "
-                                                + "Error %s. Retrying (attempt %d)",
+                                                + "Error: %s. Retrying (attempt %d)",
                                         commandId, uuid, response.getSwitchId(), message, attempt)));
 
                 Set<UUID> failedUuids = response.getFailedCommandIds().keySet();
