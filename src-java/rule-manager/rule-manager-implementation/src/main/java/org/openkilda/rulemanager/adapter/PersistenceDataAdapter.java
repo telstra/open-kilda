@@ -22,12 +22,14 @@ import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -51,6 +53,7 @@ import java.util.Set;
  */
 public class PersistenceDataAdapter implements DataAdapter {
 
+    private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
     private final SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
@@ -71,10 +74,14 @@ public class PersistenceDataAdapter implements DataAdapter {
     private KildaFeatureToggles featureToggles;
     private Map<PathId, YFlow> yFlowCache;
 
+    @Builder.Default
+    private boolean keepMultitableForFlow = false;
+
     @Builder
     public PersistenceDataAdapter(PersistenceManager persistenceManager,
-                                  Set<PathId> pathIds, Set<SwitchId> switchIds) {
+                                  Set<PathId> pathIds, Set<SwitchId> switchIds, boolean keepMultitableForFlow) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
@@ -87,6 +94,8 @@ public class PersistenceDataAdapter implements DataAdapter {
         this.switchIds = switchIds;
 
         encapsulationCache = new HashMap<>();
+
+        this.keepMultitableForFlow = keepMultitableForFlow;
     }
 
     @Override
@@ -135,6 +144,20 @@ public class PersistenceDataAdapter implements DataAdapter {
     public SwitchProperties getSwitchProperties(SwitchId switchId) {
         if (switchPropertiesCache == null) {
             switchPropertiesCache = switchPropertiesRepository.findBySwitchIds(switchIds);
+
+            if (keepMultitableForFlow) {
+                // Override the multitable flag with actual flow data.
+                for (SwitchProperties switchProps : switchPropertiesCache.values()) {
+                    SwitchId swId = switchProps.getSwitchId();
+                    Switch sw = switchProps.getSwitchObj();
+                    if (!switchProps.isMultiTable() && sw.supports(SwitchFeature.MULTI_TABLE)
+                            && (!flowPathRepository.findBySegmentSwitchWithMultiTable(swId, true).isEmpty()
+                            || !flowRepository.findByEndpointSwitchWithMultiTableSupport(swId).isEmpty())) {
+                        switchPropertiesRepository.detach(switchProps);
+                        switchProps.setMultiTable(true);
+                    }
+                }
+            }
         }
         return switchPropertiesCache.get(switchId);
     }

@@ -280,6 +280,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 .persistenceManager(persistenceManager)
                 .switchIds(Collections.singleton(switchId))
                 .pathIds(flowPathIds)
+                .keepMultitableForFlow(true)
                 .build();
         List<SpeakerData> expectedEntities = ruleManager.buildRulesForSwitch(switchId, dataAdapter);
         List<FlowSpeakerData> expectedRules = filterSpeakerData(expectedEntities, FlowSpeakerData.class);
