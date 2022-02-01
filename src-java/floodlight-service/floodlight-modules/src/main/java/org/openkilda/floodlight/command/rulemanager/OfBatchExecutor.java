@@ -16,6 +16,9 @@
 package org.openkilda.floodlight.command.rulemanager;
 
 import static java.lang.String.format;
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.counting;
+import static java.util.stream.Collectors.groupingBy;
 
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.converter.rulemanager.OfFlowConverter;
@@ -194,15 +197,27 @@ public class OfBatchExecutor {
             replies.forEach(reply -> switchFlows.addAll(
                     OfFlowConverter.INSTANCE.convertToFlowSpeakerData(reply,
                             new SwitchId(iofSwitch.getId().getLong()))));
+            Map<Long, Long> cookieCounts = switchFlows.stream()
+                    .map(v -> v.getCookie().getValue())
+                    .collect(groupingBy(identity(), counting()));
+
             for (FlowSpeakerData switchFlow : switchFlows) {
                 FlowSpeakerData expectedFlow = holder.getByCookie(switchFlow.getCookie());
                 if (expectedFlow != null) {
                     if (switchFlow.equals(expectedFlow)) {
                         holder.recordSuccessUuid(expectedFlow.getUuid());
                     } else {
-                        holder.recordFailedUuid(expectedFlow.getUuid(),
-                                format("Failed to validate flow on a switch. Expected: %s, actual: %s", expectedFlow,
-                                        switchFlow));
+                        long cookie = switchFlow.getCookie().getValue();
+                        // Go through all duplicate cookies, and fail on the last one.
+                        if (cookieCounts.get(cookie) > 1) {
+                            log.debug("Detected duplicate cookies {} on switch {}, skipping...", switchFlow.getCookie(),
+                                    switchFlow.getSwitchId());
+                            cookieCounts.compute(cookie, (k, v) -> v - 1);
+                        } else {
+                            holder.recordFailedUuid(expectedFlow.getUuid(),
+                                    format("Failed to validate flow on a switch. Expected: %s, actual: %s",
+                                            expectedFlow, switchFlow));
+                        }
                     }
                 }
             }
