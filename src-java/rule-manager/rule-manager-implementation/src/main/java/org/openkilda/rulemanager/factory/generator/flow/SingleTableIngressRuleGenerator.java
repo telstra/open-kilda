@@ -120,7 +120,7 @@ public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
 
         List<Action> transformActions = new ArrayList<>(Utils.makeVlanReplaceActions(currentStack, targetStack));
 
-        if (encapsulation.getType() == VXLAN && !flowPath.isOneSwitchFlow()) {
+        if (!flowPath.isOneSwitchFlow() && encapsulation.getType() == VXLAN) {
             transformActions.add(buildPushVxlan(
                     encapsulation.getId(), flowPath.getSrcSwitchId(), flowPath.getDestSwitchId(), VXLAN_UDP_SRC,
                     features));
