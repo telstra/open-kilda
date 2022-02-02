@@ -42,8 +42,6 @@ import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
-import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PopVlanAction;
@@ -166,12 +164,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
         // TODO should we check if switch supports encapsulation?
         List<Action> actions = new ArrayList<>(buildTransformActions(
                 ingressEndpoint.getInnerVlanId(), sw.getFeatures()));
-        // todo do we need this special case?
-        if (flowPath.isOneSwitchFlow() && flow.getSrcPort() == flow.getDestPort()) {
-            actions.add(new PortOutAction(new PortNumber(SpecialPortType.IN_PORT)));
-        } else {
-            actions.add(new PortOutAction(new PortNumber(getOutPort(flowPath, flow))));
-        }
+        actions.add(new PortOutAction(getOutPort(flowPath, flow)));
 
         FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(ingressEndpoint.getSwitchId())

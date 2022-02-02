@@ -31,7 +31,6 @@ import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
-import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
@@ -82,7 +81,7 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
                 .applyActions(actions)
                 .build();
         actions.addAll(buildTransformActions(ingressEndpoint.getOuterVlanId(), sw.getFeatures()));
-        actions.add(new PortOutAction(new PortNumber(getOutPort(flowPath, flow))));
+        actions.add(new PortOutAction(getOutPort(flowPath, flow)));
         addMeterToInstructions(sharedMeterId, sw, instructions);
 
         FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()

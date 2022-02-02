@@ -36,6 +36,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
+import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
@@ -110,16 +111,21 @@ public final class Utils {
     /**
      * Returns port to which packets must be sent by first path switch.
      */
-    public static int getOutPort(FlowPath path, Flow flow) {
+    public static PortNumber getOutPort(FlowPath path, Flow flow) {
         if (path.isOneSwitchFlow()) {
             FlowEndpoint endpoint = FlowSideAdapter.makeEgressAdapter(flow, path).getEndpoint();
-            return endpoint.getPortNumber();
+            if (flow.getSrcPort() == flow.getDestPort()) {
+                // the case of a single switch & same port flow.
+                return new PortNumber(SpecialPortType.IN_PORT);
+            } else {
+                return new PortNumber(endpoint.getPortNumber());
+            }
         } else {
             if (path.getSegments().isEmpty()) {
                 throw new IllegalStateException(
                         format("Multi switch flow path %s has no segments", path.getPathId()));
             }
-            return path.getSegments().get(0).getSrcPort();
+            return new PortNumber(path.getSegments().get(0).getSrcPort());
         }
     }
 
