@@ -7,7 +7,9 @@ description = 'Kilda Blue Green'
 dependencies {
     implementation 'com.google.guava:guava'
     implementation 'org.apache.commons:commons-lang3'
-    implementation 'com.esotericsoftware:kryo'
+    // current storm version is 1.2.1.
+    // kryo package with version >= 5.0 is not compatible with old storm serialization
+    implementation 'com.esotericsoftware:kryo:4.0.3'
     implementation 'net.jodah:failsafe'
 
     implementation 'org.mapstruct:mapstruct'

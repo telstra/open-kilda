@@ -18,10 +18,11 @@ package org.openkilda.model;
 import lombok.Builder;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.time.Duration;
 
 @Data
 @Builder(toBuilder = true)
-public class IslConfig {
+public class IslConfig implements Serializable {
     private Duration unstableIslTimeout;
 }

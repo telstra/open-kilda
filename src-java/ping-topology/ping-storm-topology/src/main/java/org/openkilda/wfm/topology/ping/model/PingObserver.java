@@ -20,8 +20,10 @@ import org.openkilda.messaging.model.Ping;
 import lombok.Builder;
 import lombok.Data;
 
+import java.io.Serializable;
+
 @Data
-public class PingObserver {
+public class PingObserver implements Serializable {
     private final long failDelay;
     private final long failReset;
     private final long garbageDelay;

@@ -23,11 +23,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
+import java.io.Serializable;
+
 @Data
 @Builder
 @AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class UniSubFlowPingPayload {
+public class UniSubFlowPingPayload implements Serializable {
     private boolean pingSuccess;
     private Errors error;
     private long latency;

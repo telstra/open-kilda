@@ -15,7 +15,9 @@
 
 package org.openkilda.messaging.model.grpc;
 
-public enum PortMode {
+import java.io.Serializable;
+
+public enum PortMode implements Serializable {
     PORT_MODE_RESERVED(0),
 
     PORT_MODE_SGMII(1),

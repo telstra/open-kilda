@@ -506,7 +506,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         Flow flow = createOneSwitchFlow(SWITCH_ID_1);
         sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
 
-        FlowStatsEntry flowStats = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 150L, 300L, 10, 10);
+        FlowStatsEntry flowStats = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 180L, 330L, 10, 10);
 
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(flowStats)));
         validateFlowStats(flowStats, MAIN_FORWARD_COOKIE, SWITCH_ID_1, true, true);
@@ -1098,19 +1098,19 @@ public class StatsTopologyTest extends AbstractStormTest {
         sendUpdateHaFlowPathInfo(haFlow);
         //forward
         FlowStatsEntry forwardIngress = new FlowStatsEntry(1, haFlow.getForwardPath().getCookie().getValue(),
-                150L, 300L, 10, 10);
+                170L, 320L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(forwardIngress)));
         validateHaFlowStats(HA_FLOW_ID_3, forwardIngress, haFlow.getForwardPath().getCookie(), SWITCH_ID_1,
                 true, false, false, SUB_FLOW_ID_SHARED);
 
         FlowStatsEntry forwardYPoint = new FlowStatsEntry(1, haFlow.getForwardPath().getCookie().getValue(),
-                150L, 300L, 10, 10);
+                171L, 321L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(forwardYPoint)));
         validateHaFlowStats(HA_FLOW_ID_3, forwardYPoint, haFlow.getForwardPath().getCookie(), SWITCH_ID_2,
                 false, true, true, SUB_FLOW_ID_SHARED);
 
         FlowStatsEntry forwardEgressPoint1 = new FlowStatsEntry(1, COOKIE_FORWARD_SUBFLOW_1.getValue(),
-                150L, 300L, 10, 10);
+                172L, 322L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(forwardEgressPoint1)));
         validateHaFlowStats(HA_FLOW_ID_3, forwardEgressPoint1, COOKIE_FORWARD_SUBFLOW_1, SWITCH_ID_3,
                 false, true, false, SUB_FLOW_ID_1);
@@ -1119,25 +1119,25 @@ public class StatsTopologyTest extends AbstractStormTest {
         FlowSegmentCookie cookieReverse = haFlow.getReversePath().getCookie();
 
         FlowStatsEntry reverseIngressPoint1 = new FlowStatsEntry(1, COOKIE_REVERSE_SUBFLOW_1.getValue(),
-                150L, 300L, 10, 10);
+                173L, 323L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(reverseIngressPoint1)));
         validateHaFlowStats(HA_FLOW_ID_3, reverseIngressPoint1, COOKIE_REVERSE_SUBFLOW_1, SWITCH_ID_3,
                 true, false, false, SUB_FLOW_ID_1);
 
         FlowStatsEntry reverseYPoint1 = new FlowStatsEntry(1, COOKIE_REVERSE_SUBFLOW_1.getValue(),
-                150L, 300L, 10, 10);
+                174L, 324L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(reverseYPoint1)));
         validateHaFlowStats(HA_FLOW_ID_3, reverseYPoint1, COOKIE_REVERSE_SUBFLOW_1, SWITCH_ID_2,
                 false, false, true, SUB_FLOW_ID_1);
 
         FlowStatsEntry reverseEgress = new FlowStatsEntry(1, cookieReverse.getValue(),
-                150L, 300L, 10, 10);
+                175L, 325L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(reverseEgress)));
         validateHaFlowStats(HA_FLOW_ID_3, reverseEgress, cookieReverse, SWITCH_ID_1,
                 false, true, false, SUB_FLOW_ID_SHARED);
 
         FlowStatsEntry reverseYPoint2 = new FlowStatsEntry(1, COOKIE_REVERSE_SUBFLOW_2.getValue(),
-                150L, 300L, 10, 10);
+                176L, 326L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(reverseYPoint2)));
         validateHaFlowStats(HA_FLOW_ID_3, reverseYPoint2, COOKIE_REVERSE_SUBFLOW_2, SWITCH_ID_2,
                 true, false, true, SUB_FLOW_ID_2);
@@ -1182,13 +1182,13 @@ public class StatsTopologyTest extends AbstractStormTest {
         sendUpdateHaFlowPathInfo(haFlow);
         //forward
         FlowStatsEntry forwardIngress = new FlowStatsEntry(1, haFlow.getForwardPath().getCookie().getValue(),
-                150L, 300L, 10, 10);
+                149L, 299L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(forwardIngress)));
         validateHaFlowStats(HA_FLOW_ID_4, forwardIngress, haFlow.getForwardPath().getCookie(), SWITCH_ID_1, true,
                 false, false, SUB_FLOW_ID_SHARED);
 
         FlowStatsEntry forwardYPoint = new FlowStatsEntry(1, haFlow.getForwardPath().getCookie().getValue(),
-                150L, 300L, 10, 10);
+                151L, 301L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(forwardYPoint)));
         validateHaFlowStats(HA_FLOW_ID_4, forwardYPoint, haFlow.getForwardPath().getCookie(), SWITCH_ID_2, false,
                 true, true, SUB_FLOW_ID_SHARED);
@@ -1199,20 +1199,20 @@ public class StatsTopologyTest extends AbstractStormTest {
 
         FlowStatsEntry reverseYPoint1 = new FlowStatsEntry(1,
                 COOKIE_REVERSE_SUBFLOW_1.getValue(),
-                150L, 300L, 10, 10);
+                152L, 302L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(reverseYPoint1)));
         validateHaFlowStats(HA_FLOW_ID_4, reverseYPoint1, COOKIE_REVERSE_SUBFLOW_1, SWITCH_ID_2, true,
                 false, true, SUB_FLOW_ID_1);
 
         FlowStatsEntry reverseYPoint2 = new FlowStatsEntry(1,
                 COOKIE_REVERSE_SUBFLOW_2.getValue(),
-                150L, 300L, 10, 10);
+                153L, 303L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(reverseYPoint2)));
         validateHaFlowStats(HA_FLOW_ID_4, reverseYPoint2, COOKIE_REVERSE_SUBFLOW_2, SWITCH_ID_2, true,
                 false, true, SUB_FLOW_ID_2);
 
         FlowStatsEntry reverseEgress = new FlowStatsEntry(1, cookieReverse.getValue(),
-                150L, 300L, 10, 10);
+                154L, 304L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(reverseEgress)));
         validateHaFlowStats(HA_FLOW_ID_4, reverseEgress, cookieReverse, SWITCH_ID_1, false,
                 true, false, SUB_FLOW_ID_SHARED);
@@ -1259,13 +1259,13 @@ public class StatsTopologyTest extends AbstractStormTest {
         sendUpdateHaFlowPathInfo(haFlow);
         //forward
         FlowStatsEntry forwardYPoint = new FlowStatsEntry(1, COOKIE_FORWARD.getValue(),
-                150L, 300L, 10, 10);
+                160L, 310L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(forwardYPoint)));
         validateHaFlowStats(HA_FLOW_ID_5, forwardYPoint, COOKIE_FORWARD, SWITCH_ID_1,
                 true, true, true, SUB_FLOW_ID_SHARED);
 
         FlowStatsEntry forwardEgress1 = new FlowStatsEntry(1, COOKIE_FORWARD_SUBFLOW_1.getValue(),
-                150L, 300L, 10, 10);
+                161L, 311L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(forwardEgress1)));
         validateHaFlowStats(HA_FLOW_ID_5, forwardEgress1, COOKIE_FORWARD_SUBFLOW_1, SWITCH_ID_2,
                 false, true, false, SUB_FLOW_ID_1);
@@ -1274,21 +1274,21 @@ public class StatsTopologyTest extends AbstractStormTest {
         //reverse:
 
         FlowStatsEntry reverseIngress = new FlowStatsEntry(1,
-                COOKIE_REVERSE_SUBFLOW_1.getValue(), 150L, 300L, 10, 10);
+                COOKIE_REVERSE_SUBFLOW_1.getValue(), 162L, 312L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(reverseIngress)));
         validateHaFlowStats(HA_FLOW_ID_5, reverseIngress, COOKIE_REVERSE_SUBFLOW_1, SWITCH_ID_2, true,
                 false, false, SUB_FLOW_ID_1);
 
         FlowStatsEntry reverseYPoint1 = new FlowStatsEntry(1,
                 COOKIE_REVERSE_SUBFLOW_1.getValue(),
-                150L, 300L, 10, 10);
+                163L, 313L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(reverseYPoint1)));
         validateHaFlowStats(HA_FLOW_ID_5, reverseYPoint1, COOKIE_REVERSE_SUBFLOW_1, SWITCH_ID_1, false,
                 true, true, SUB_FLOW_ID_1);
 
         FlowStatsEntry reverseYPoint2 = new FlowStatsEntry(1,
                 COOKIE_REVERSE_SUBFLOW_2.getValue(),
-                150L, 300L, 10, 10);
+                164L, 314L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(reverseYPoint2)));
         validateHaFlowStats(HA_FLOW_ID_5, reverseYPoint2, COOKIE_REVERSE_SUBFLOW_2, SWITCH_ID_1, true,
                 true, true, SUB_FLOW_ID_2);

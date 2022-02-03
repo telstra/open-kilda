@@ -25,6 +25,7 @@ import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Value
@@ -38,7 +39,7 @@ public class FlowMirrorPointsDumpResponse extends InfoData {
     @Value
     @Builder
     @JsonNaming(value = SnakeCaseStrategy.class)
-    public static class FlowMirrorPoint {
+    public static class FlowMirrorPoint implements Serializable {
         String mirrorPointId;
         String mirrorPointDirection;
 

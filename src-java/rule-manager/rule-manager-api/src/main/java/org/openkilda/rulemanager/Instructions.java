@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
 
@@ -33,7 +34,7 @@ import java.util.Set;
 @Builder
 @Data
 @JsonNaming(SnakeCaseStrategy.class)
-public class Instructions {
+public class Instructions implements Serializable {
 
     List<Action> applyActions;
     Set<Action> writeActions;

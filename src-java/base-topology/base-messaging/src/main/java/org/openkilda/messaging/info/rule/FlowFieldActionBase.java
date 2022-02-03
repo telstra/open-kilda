@@ -20,10 +20,12 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.io.Serializable;
+
 @Data
 @AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowFieldActionBase {
+public class FlowFieldActionBase implements Serializable {
 
     protected String bits;
     protected String srcOffset;

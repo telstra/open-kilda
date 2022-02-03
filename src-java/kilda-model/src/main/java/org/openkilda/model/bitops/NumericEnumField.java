@@ -15,10 +15,12 @@
 
 package org.openkilda.model.bitops;
 
+import java.io.Serializable;
+
 /**
  * Interface used by {@code org.openkilda.model.cookie.Cookie.resolveEnum} to map fields numeric representation
  * into enum constant.
  */
-public interface NumericEnumField {
+public interface NumericEnumField extends Serializable {
     int getValue();
 }

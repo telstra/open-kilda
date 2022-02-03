@@ -20,8 +20,10 @@ import org.openkilda.model.SwitchId;
 import lombok.NonNull;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
-public class CookieCacheKey {
+public class CookieCacheKey implements Serializable {
     @NonNull
     SwitchId switchId;
     long cookie;

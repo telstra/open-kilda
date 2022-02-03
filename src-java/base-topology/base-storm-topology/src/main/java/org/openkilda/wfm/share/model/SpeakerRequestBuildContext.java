@@ -22,11 +22,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.io.Serializable;
+
 @Data
 @Builder
 @AllArgsConstructor
 @EqualsAndHashCode
-public class SpeakerRequestBuildContext {
+public class SpeakerRequestBuildContext implements Serializable {
     /**
      * Returns empty build context.
      */
@@ -44,7 +46,7 @@ public class SpeakerRequestBuildContext {
 
     @Data
     @Builder
-    public static class PathContext {
+    public static class PathContext implements Serializable {
         private boolean removeCustomerPortRule;
         private boolean removeCustomerPortLldpRule;
         private boolean removeCustomerPortArpRule;

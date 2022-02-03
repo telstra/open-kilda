@@ -18,9 +18,11 @@ package org.openkilda.wfm.topology.ping.model;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.io.Serializable;
+
 @Data
 @EqualsAndHashCode
-public abstract class Expirable<K> {
+public abstract class Expirable<K> implements Serializable {
     private boolean active = true;
     private final long expireAt;
 

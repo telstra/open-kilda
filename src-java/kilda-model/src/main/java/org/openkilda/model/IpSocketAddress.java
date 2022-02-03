@@ -18,8 +18,10 @@ package org.openkilda.model;
 import lombok.NonNull;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
-public class IpSocketAddress {
+public class IpSocketAddress implements Serializable {
     @NonNull
     String address;
     int port;

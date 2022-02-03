@@ -17,8 +17,10 @@ package org.openkilda.wfm.topology.network.model;
 
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
-public class PortDataHolder {
+public class PortDataHolder implements Serializable {
     long maxSpeed;
     long currentSpeed;
 }

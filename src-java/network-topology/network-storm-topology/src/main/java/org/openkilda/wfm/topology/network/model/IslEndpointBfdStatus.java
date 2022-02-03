@@ -21,10 +21,12 @@ import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
 @EqualsAndHashCode(exclude = {"enabled"})
 @AllArgsConstructor
-public class IslEndpointBfdStatus {
+public class IslEndpointBfdStatus implements Serializable {
     boolean enabled;
 
     BfdSessionStatus status;
