@@ -234,6 +234,9 @@ kilda_storm_flow_hs_ha_flow_path_swap_hub_parallelism: 2
 kilda_storm_flow_hs_ha_flow_read_hub_parallelism: 2
 kilda_storm_flow_hs_router_bolt_parallelism: 2
 
+# NB worker
+kilda_storm_nbworker_workers_count: 2
+
 # Flow HS kafka bolts
 kilda_storm_flow_hs_history_bolt_parallelism: 2
 kilda_storm_flow_hs_metrics_bolt_parallelism: 2
