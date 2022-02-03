@@ -24,6 +24,8 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
+import java.io.Serializable;
+
 public final class ProtoConstants {
 
     public static final class EthType {
@@ -45,7 +47,7 @@ public final class ProtoConstants {
     @EqualsAndHashCode(of = {"portNumber", "portType"})
     @ToString
     @JsonNaming(SnakeCaseStrategy.class)
-    public static class PortNumber {
+    public static class PortNumber implements Serializable {
         private int portNumber;
         private SpecialPortType portType;
 

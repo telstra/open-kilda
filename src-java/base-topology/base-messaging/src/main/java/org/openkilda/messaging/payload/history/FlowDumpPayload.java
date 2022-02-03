@@ -22,9 +22,11 @@ import org.openkilda.model.SwitchId;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+
 @Data
 @NoArgsConstructor
-public class FlowDumpPayload {
+public class FlowDumpPayload implements Serializable {
     private String type;
 
     private long bandwidth;

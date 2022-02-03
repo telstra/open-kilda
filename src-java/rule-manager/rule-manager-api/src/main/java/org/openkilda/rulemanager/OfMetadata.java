@@ -22,9 +22,11 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
 @JsonNaming(SnakeCaseStrategy.class)
-public class OfMetadata {
+public class OfMetadata implements Serializable {
     long value;
     long mask;
 

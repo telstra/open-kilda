@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.base.MoreObjects;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -30,7 +31,7 @@ import java.util.Objects;
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class Metric {
+public class Metric implements Serializable {
     /**
      * Serialization version number constant.
      */
@@ -170,10 +171,10 @@ public class Metric {
         }
 
         Metric that = (Metric) object;
-        return Objects.equals(getMetric(), that.getMetric()) &&
-                Objects.equals(getTags(), that.getTags()) &&
-                Objects.equals(getAggregateTags(), that.getAggregateTags()) &&
-                Objects.equals(getDps(), that.getDps());
+        return Objects.equals(getMetric(), that.getMetric())
+                && Objects.equals(getTags(), that.getTags())
+                && Objects.equals(getAggregateTags(), that.getAggregateTags())
+                && Objects.equals(getDps(), that.getDps());
     }
 
     /**

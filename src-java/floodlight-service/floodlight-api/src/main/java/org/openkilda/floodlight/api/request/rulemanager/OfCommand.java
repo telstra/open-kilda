@@ -22,6 +22,8 @@ import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 
+import java.io.Serializable;
+
 @JsonTypeInfo(use = Id.NAME, property = "clazz")
 @JsonSubTypes({
         @Type(value = FlowCommand.class,
@@ -31,7 +33,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
         @Type(value = GroupCommand.class,
                 name = "org.openkilda.floodlight.api.request.rulemanager.GroupCommand")
 })
-public abstract class OfCommand {
+public abstract class OfCommand implements Serializable {
 
     public abstract void buildInstall(OfEntityBatch builder, SwitchId switchId);
 

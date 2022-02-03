@@ -27,6 +27,7 @@ import lombok.Getter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.UUID;
@@ -38,7 +39,7 @@ import java.util.UUID;
 @JsonNaming(SnakeCaseStrategy.class)
 @EqualsAndHashCode(of = {"switchId", "ofVersion"})
 @ToString
-public abstract class SpeakerData {
+public abstract class SpeakerData implements Serializable {
 
     @Builder.Default
     protected UUID uuid = UUID.randomUUID();

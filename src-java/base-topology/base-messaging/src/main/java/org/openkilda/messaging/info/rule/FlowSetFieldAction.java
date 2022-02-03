@@ -20,9 +20,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
 @Builder
-public class FlowSetFieldAction {
+public class FlowSetFieldAction implements Serializable {
 
     @JsonProperty("key")
     private String fieldName;

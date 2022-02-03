@@ -22,6 +22,8 @@ import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 
+import java.io.Serializable;
+
 @JsonTypeInfo(use = Id.NAME, property = "clazz")
 @JsonSubTypes({
         @Type(value = CopyFieldAction.class,
@@ -45,7 +47,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
         @Type(value = SwapFieldAction.class,
                 name = "org.openkilda.rulemanager.action.SwapFieldAction"),
 })
-public interface Action {
+public interface Action extends Serializable {
 
     ActionType getType();
 }

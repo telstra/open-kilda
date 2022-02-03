@@ -18,9 +18,11 @@ package org.openkilda.messaging.payload.history;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+
 @Data
 @NoArgsConstructor
-public class FlowHistoryPayload {
+public class FlowHistoryPayload implements Serializable {
     private long timestamp;
 
     private String action;

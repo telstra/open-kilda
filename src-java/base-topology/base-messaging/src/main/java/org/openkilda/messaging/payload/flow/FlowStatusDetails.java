@@ -22,13 +22,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.io.Serializable;
+
 /**
  * Class contains main and protected flow path statuses.
  */
 @Data
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class FlowStatusDetails {
+public class FlowStatusDetails implements Serializable {
 
     /**
      * Main flow path status.

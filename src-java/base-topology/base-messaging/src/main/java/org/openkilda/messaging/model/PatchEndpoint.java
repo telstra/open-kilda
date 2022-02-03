@@ -22,10 +22,12 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
 
+import java.io.Serializable;
+
 @Data
 @Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class PatchEndpoint {
+public class PatchEndpoint implements Serializable {
     private SwitchId switchId;
     private Integer portNumber;
     private Integer vlanId;
