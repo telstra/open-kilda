@@ -20,9 +20,11 @@ import lombok.Value;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
+import java.io.Serializable;
+
 @Value
 @Builder
-public class MeterSchemaBand {
+public class MeterSchemaBand implements Serializable {
     private static final long INACCURATE_RATE_ALLOWED_DEVIATION = 1;
     private static final long INACCURATE_BURST_ALLOWED_DEVIATION = 1;
     private static final float INACCURATE_RATE_ALLOWED_RELATIVE_DEVIATION = 0.01f;

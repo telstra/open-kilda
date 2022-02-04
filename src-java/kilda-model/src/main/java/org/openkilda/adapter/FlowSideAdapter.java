@@ -22,7 +22,9 @@ import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaSubFlow;
 
-public abstract class FlowSideAdapter {
+import java.io.Serializable;
+
+public abstract class FlowSideAdapter implements Serializable {
 
     /**
      * Determine "forward" direction for provided flow/path pair and create adapter to access source endpoint.

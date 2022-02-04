@@ -189,6 +189,7 @@ kilda_storm_floodlight_router_parallelism: 2
 # NB worker
 kilda_storm_nb_worker_parallelism: 2
 kilda_storm_nb_worker_flow_operations_parallelism: 2
+kilda_storm_nbworker_workers_count: 2
 
 # Server42 control
 kilda_storm_server42_control_parallelism: 2
@@ -233,9 +234,6 @@ kilda_storm_flow_hs_ha_flow_reroute_hub_parallelism: 2
 kilda_storm_flow_hs_ha_flow_path_swap_hub_parallelism: 2
 kilda_storm_flow_hs_ha_flow_read_hub_parallelism: 2
 kilda_storm_flow_hs_router_bolt_parallelism: 2
-
-# NB worker
-kilda_storm_nbworker_workers_count: 2
 
 # Flow HS kafka bolts
 kilda_storm_flow_hs_history_bolt_parallelism: 2

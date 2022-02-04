@@ -17,13 +17,14 @@ package org.openkilda.model.history;
 
 import lombok.Value;
 
+import java.io.Serializable;
 import java.time.Instant;
 
 /**
  * Represent {@link org.openkilda.model.Flow} status update event.
  */
 @Value
-public class FlowStatusView {
+public class FlowStatusView implements Serializable {
     Instant timestamp;
 
     String statusBecome;
