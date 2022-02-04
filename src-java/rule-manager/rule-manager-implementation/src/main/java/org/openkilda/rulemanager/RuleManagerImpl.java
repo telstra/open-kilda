@@ -55,7 +55,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -75,15 +74,17 @@ public class RuleManagerImpl implements RuleManager {
             FlowPath flowPath, boolean filterOutUsedSharedRules, DataAdapter adapter) {
         List<SpeakerData> result = new ArrayList<>();
         Flow flow = adapter.getFlow(flowPath.getPathId());
-        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(flowPath.getPathId());
+        PathId oppositePathId = flow.getOppositePathId(flowPath.getPathId()).orElse(null);
+        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(flowPath.getPathId(), oppositePathId);
 
         if (!flow.isProtectedPath(flowPath.getPathId())) {
             Set<FlowSideAdapter> overlappingAdapters = new HashSet<>();
             if (filterOutUsedSharedRules) {
                 overlappingAdapters = getOverlappingMultiTableIngressAdapters(flowPath, adapter);
             }
-            buildIngressCommands(
-                    adapter.getSwitch(flowPath.getSrcSwitchId()), flowPath, flow, encapsulation, overlappingAdapters);
+            buildIngressCommands(adapter.getSwitch(flowPath.getSrcSwitchId()), flowPath, flow, encapsulation,
+                    overlappingAdapters, adapter.getSwitchProperties(flowPath.getSrcSwitchId()),
+                    adapter.getFeatureToggles());
         }
 
         if (flowPath.isOneSwitchFlow()) {
@@ -244,11 +245,13 @@ public class RuleManagerImpl implements RuleManager {
         List<SpeakerData> result = new ArrayList<>();
         Flow flow = adapter.getFlow(flowPath.getPathId());
         Switch sw = adapter.getSwitch(switchId);
-        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(flowPath.getPathId());
+        PathId oppositePathId = flow.getOppositePathId(flowPath.getPathId()).orElse(null);
+        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(flowPath.getPathId(), oppositePathId);
 
         if (switchId.equals(flowPath.getSrcSwitchId()) && !flow.isProtectedPath(flowPath.getPathId())) {
             // TODO filter out equal shared rules from the result list
-            result.addAll(buildIngressCommands(sw, flowPath, flow, encapsulation, new HashSet<>()));
+            result.addAll(buildIngressCommands(sw, flowPath, flow, encapsulation, new HashSet<>(),
+                    adapter.getSwitchProperties(switchId), adapter.getFeatureToggles()));
         }
 
         if (!flowPath.isOneSwitchFlow()) {
@@ -265,7 +268,8 @@ public class RuleManagerImpl implements RuleManager {
                 }
             }
 
-            if (flow.isLooped() && sw.getSwitchId().equals(flow.getLoopSwitchId())) {
+            if (flow.isLooped() && sw.getSwitchId().equals(flow.getLoopSwitchId())
+                    && !flow.isProtectedPath(flowPath.getPathId())) {
                 result.addAll(buildTransitLoopCommands(sw, flowPath, flow, encapsulation));
             }
         }
@@ -275,13 +279,19 @@ public class RuleManagerImpl implements RuleManager {
 
     private List<SpeakerData> buildIngressCommands(Switch sw, FlowPath flowPath, Flow flow,
                                                    FlowTransitEncapsulation encapsulation,
-                                                   Set<FlowSideAdapter> overlappingIngressAdapters) {
+                                                   Set<FlowSideAdapter> overlappingIngressAdapters,
+                                                   SwitchProperties switchProperties,
+                                                   KildaFeatureToggles featureToggles) {
         List<SpeakerData> ingressCommands = flowRulesFactory.getIngressRuleGenerator(
                 flowPath, flow, encapsulation, overlappingIngressAdapters).generateCommands(sw);
         UUID ingressMeterCommandUuid = Utils.getCommand(MeterSpeakerData.class, ingressCommands)
                 .map(SpeakerData::getUuid).orElse(null);
 
         List<RuleGenerator> generators = new ArrayList<>();
+        if (featureToggles.getServer42FlowRtt()) {
+            generators.add(flowRulesFactory.getServer42IngressRuleGenerator(flowPath, flow, encapsulation,
+                    switchProperties));
+        }
         generators.add(flowRulesFactory.getInputLldpRuleGenerator(flowPath, flow, overlappingIngressAdapters));
         generators.add(flowRulesFactory.getInputArpRuleGenerator(flowPath, flow, overlappingIngressAdapters));
 
@@ -507,14 +517,8 @@ public class RuleManagerImpl implements RuleManager {
     }
 
     private FlowTransitEncapsulation getFlowTransitEncapsulation(PathId pathId, Flow flow, DataAdapter adapter) {
-        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(pathId);
-        if (encapsulation == null) {
-            Optional<PathId> oppositePathId = flow.getOppositePathId(pathId);
-            if (oppositePathId.isPresent()) {
-                encapsulation = adapter.getTransitEncapsulation(oppositePathId.get());
-            }
-        }
-        return encapsulation;
+        PathId oppositePathId = flow.getOppositePathId(pathId).orElse(null);
+        return adapter.getTransitEncapsulation(pathId, oppositePathId);
     }
 
     @Data

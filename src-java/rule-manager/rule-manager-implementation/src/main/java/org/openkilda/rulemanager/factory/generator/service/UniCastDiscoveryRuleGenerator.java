@@ -34,6 +34,7 @@ import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.PortOutAction;
+import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import lombok.Builder;
@@ -72,6 +73,11 @@ public class UniCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator {
             addMeterToInstructions(meterId, sw, instructions);
         }
         instructions.getApplyActions().add(new PortOutAction(new PortNumber(SpecialPortType.CONTROLLER)));
+        // todo remove useless set field action
+        instructions.getApplyActions().add(SetFieldAction.builder()
+                .field(Field.ETH_DST)
+                .value(sw.getSwitchId().toLong())
+                .build());
 
         if (meterCommand != null) {
             flowCommand.getDependsOn().add(meterCommand.getUuid());

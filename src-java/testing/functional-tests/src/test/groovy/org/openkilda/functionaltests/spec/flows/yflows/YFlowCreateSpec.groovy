@@ -116,6 +116,10 @@ class YFlowCreateSpec extends HealthCheckSpecification {
             }
         }
 
+        and: "YFlow is pingable #2"
+        //TODO: remove this quickfix for failing traffexam
+        !northboundV2.pingYFlow(yFlow.YFlowId, new YFlowPingPayload(2000)).error
+
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
         def beforeTraffic = new Date()
         def traffExam = traffExamProvider.get()
@@ -518,7 +522,7 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
                 [name     : "ep+yp on non-wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2) }],
+                     !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2) }]
         ]
         requiredCases.each { it.picked = false }
         //match all triplets to the list of requirements that it satisfies

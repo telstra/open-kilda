@@ -122,6 +122,7 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
                 .toListExplicit(FlowPathFrame.class);
         return flowPathFrames.stream()
                 .map(FlowPath::new)
+                .filter(flowPath -> flowPath.getFlow().getYFlow() != null)
                 .collect(Collectors.toMap(FlowPath::getPathId, flowPath -> flowPath.getFlow().getYFlow()));
     }
 

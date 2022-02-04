@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.GroupId;
 import org.openkilda.model.MeterId;
+import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.Instructions.InstructionsBuilder;
 import org.openkilda.rulemanager.OfMetadata;
@@ -30,6 +31,7 @@ import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.GroupAction;
 import org.openkilda.rulemanager.action.MeterAction;
 import org.openkilda.rulemanager.action.PopVlanAction;
+import org.openkilda.rulemanager.action.PopVxlanAction;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.action.PushVlanAction;
 import org.openkilda.rulemanager.action.PushVxlanAction;
@@ -41,18 +43,26 @@ import org.openkilda.rulemanager.action.noviflow.OpenFlowOxms;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 import org.projectfloodlight.openflow.protocol.OFFactory;
-import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionGroup;
+import org.projectfloodlight.openflow.protocol.action.OFActionKildaPopVxlanField;
+import org.projectfloodlight.openflow.protocol.action.OFActionKildaPushVxlanField;
+import org.projectfloodlight.openflow.protocol.action.OFActionKildaSwapField;
 import org.projectfloodlight.openflow.protocol.action.OFActionMeter;
 import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowCopyField;
+import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowPopVxlanTunnel;
+import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowPushVxlanTunnel;
+import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowSwapField;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetVlanVid;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
@@ -69,7 +79,6 @@ import org.projectfloodlight.openflow.types.U64;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -86,12 +95,12 @@ public class OfInstructionsConverter {
         for (OFInstruction ofInstruction : ofInstructions) {
             if (ofInstruction instanceof OFInstructionApplyActions) {
                 List<OFAction> ofActions = ((OFInstructionApplyActions) ofInstruction).getActions();
-                List<Action> actions = ofActions.stream().map(ofAction -> convertToRuleManagerAction(ofAction))
+                List<Action> actions = ofActions.stream().map(this::convertToRuleManagerAction)
                         .collect(Collectors.toList());
                 builder.applyActions(actions);
             } else if (ofInstruction instanceof OFInstructionWriteActions) {
                 List<OFAction> ofActions = ((OFInstructionWriteActions) ofInstruction).getActions();
-                Set<Action> actions = ofActions.stream().map(ofAction -> convertToRuleManagerAction(ofAction))
+                Set<Action> actions = ofActions.stream().map(this::convertToRuleManagerAction)
                         .collect(Collectors.toSet());
                 builder.writeActions(actions);
             } else if (ofInstruction instanceof OFInstructionMeter) {
@@ -110,11 +119,13 @@ public class OfInstructionsConverter {
         return builder.build();
     }
 
-
-    Action convertToRuleManagerAction(OFAction action) {
+    /**
+     * Converts action.
+     */
+    public Action convertToRuleManagerAction(OFAction action) {
         switch (action.getType()) {
             case PUSH_VLAN:
-                return PushVlanAction.builder().build();
+                return new PushVlanAction();
             case POP_VLAN:
                 return new PopVlanAction();
             case METER:
@@ -129,14 +140,78 @@ public class OfInstructionsConverter {
                 OFActionOutput outputAction = (OFActionOutput) action;
                 PortNumber portNumber = convertPort(outputAction.getPort());
                 return new PortOutAction(portNumber);
-
-
-            // todo (rule-manager-fl-integration): add other port types
+            case EXPERIMENTER:
+                if (action instanceof OFActionNoviflowPushVxlanTunnel) {
+                    OFActionNoviflowPushVxlanTunnel pushNoviVxlan = (OFActionNoviflowPushVxlanTunnel) action;
+                    return PushVxlanAction.builder()
+                            .type(ActionType.PUSH_VXLAN_NOVIFLOW)
+                            .vni((int) pushNoviVxlan.getVni())
+                            .srcMacAddress(convertMac(pushNoviVxlan.getEthSrc()))
+                            .dstMacAddress(convertMac(pushNoviVxlan.getEthDst()))
+                            .srcIpv4Address(convertIPv4Address(pushNoviVxlan.getIpv4Src()))
+                            .dstIpv4Address(convertIPv4Address(pushNoviVxlan.getIpv4Dst()))
+                            .udpSrc(pushNoviVxlan.getUdpSrc())
+                            .build();
+                } else if (action instanceof OFActionKildaPushVxlanField) {
+                    OFActionKildaPushVxlanField pushKildaVxlan = (OFActionKildaPushVxlanField) action;
+                    return PushVxlanAction.builder()
+                            .type(ActionType.PUSH_VXLAN_OVS)
+                            .vni((int) pushKildaVxlan.getVni())
+                            .srcMacAddress(convertMac(pushKildaVxlan.getEthSrc()))
+                            .dstMacAddress(convertMac(pushKildaVxlan.getEthDst()))
+                            .srcIpv4Address(convertIPv4Address(pushKildaVxlan.getIpv4Src()))
+                            .dstIpv4Address(convertIPv4Address(pushKildaVxlan.getIpv4Dst()))
+                            .udpSrc(pushKildaVxlan.getUdpSrc())
+                            .build();
+                } else if (action instanceof OFActionNoviflowCopyField) {
+                    OFActionNoviflowCopyField copyField = (OFActionNoviflowCopyField) action;
+                    return CopyFieldAction.builder()
+                            .numberOfBits(copyField.getNBits())
+                            .srcOffset(copyField.getSrcOffset())
+                            .dstOffset(copyField.getDstOffset())
+                            .oxmSrcHeader(convertOxmHeader(copyField.getOxmSrcHeader()))
+                            .oxmDstHeader(convertOxmHeader(copyField.getOxmDstHeader()))
+                            .build();
+                } else if (action instanceof OFActionNoviflowSwapField) {
+                    OFActionNoviflowSwapField swapField = (OFActionNoviflowSwapField) action;
+                    return SwapFieldAction.builder()
+                            .type(ActionType.NOVI_SWAP_FIELD)
+                            .numberOfBits(swapField.getNBits())
+                            .srcOffset(swapField.getSrcOffset())
+                            .dstOffset(swapField.getDstOffset())
+                            .oxmSrcHeader(convertOxmHeader(swapField.getOxmSrcHeader()))
+                            .oxmDstHeader(convertOxmHeader(swapField.getOxmDstHeader()))
+                            .build();
+                } else if (action instanceof OFActionKildaSwapField) {
+                    OFActionKildaSwapField swapField = (OFActionKildaSwapField) action;
+                    return SwapFieldAction.builder()
+                            .type(ActionType.KILDA_SWAP_FIELD)
+                            .numberOfBits(swapField.getNBits())
+                            .srcOffset(swapField.getSrcOffset())
+                            .dstOffset(swapField.getDstOffset())
+                            .oxmSrcHeader(convertOxmHeader(swapField.getOxmSrcHeader()))
+                            .oxmDstHeader(convertOxmHeader(swapField.getOxmDstHeader()))
+                            .build();
+                } else if (action instanceof OFActionNoviflowPopVxlanTunnel) {
+                    return new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW);
+                } else if (action instanceof OFActionKildaPopVxlanField) {
+                    return new PopVxlanAction(ActionType.POP_VXLAN_OVS);
+                } else {
+                    throw new IllegalStateException(format("Unknown experimenter action %s", action.getType()));
+                }
+            case SET_FIELD:
+                OFActionSetField setFieldAction = (OFActionSetField) action;
+                return convertOxm(setFieldAction.getField());
+            case SET_VLAN_VID:
+                OFActionSetVlanVid setVlanVid = (OFActionSetVlanVid) action;
+                return SetFieldAction.builder()
+                        .field(Field.VLAN_VID)
+                        .value(setVlanVid.getVlanVid().getVlan())
+                        .build();
             default:
                 throw new IllegalStateException(format("Unknown action type %s", action.getType()));
         }
     }
-
 
     /**
      * Convert instructions.
@@ -158,7 +233,7 @@ public class OfInstructionsConverter {
                     .build());
         }
         if (instructions.getApplyActions() != null) {
-            List<OFAction> applyActions =  convertActions(instructions.getApplyActions(), ofFactory);
+            List<OFAction> applyActions = convertActions(instructions.getApplyActions(), ofFactory);
             result.add(ofFactory.instructions().applyActions(applyActions));
         }
         return result;
@@ -167,47 +242,33 @@ public class OfInstructionsConverter {
     List<OFAction> convertActions(Collection<Action> actions, OFFactory ofFactory) {
         return actions.stream()
                 .map(action -> convertAction(action, ofFactory))
-                .flatMap(Collection::stream)
                 .collect(Collectors.toList());
     }
 
-    private List<OFAction> convertAction(Action action, OFFactory ofFactory) {
+    private OFAction convertAction(Action action, OFFactory ofFactory) {
         switch (action.getType()) {
             case GROUP:
                 GroupAction groupAction = (GroupAction) action;
-                OFAction ofGroup = ofFactory.actions()
+                return ofFactory.actions()
                         .group(OFGroup.of(groupAction.getGroupId().intValue()));
-                return Collections.singletonList(ofGroup);
             case PORT_OUT:
                 PortOutAction portOutAction = (PortOutAction) action;
-                OFAction ofPortOutput = ofFactory.actions().buildOutput()
+                return ofFactory.actions().buildOutput()
                         .setPort(convertPort(portOutAction.getPortNumber()))
                         .build();
-                return Collections.singletonList(ofPortOutput);
             case POP_VLAN:
-                return Collections.singletonList(ofFactory.actions().popVlan());
+                return ofFactory.actions().popVlan();
             case PUSH_VLAN:
-                PushVlanAction pushVlanAction = (PushVlanAction) action;
-                short vlanId = pushVlanAction.getVlanId();
-                List<OFAction> ofActions = new ArrayList<>();
-                ofActions.add(ofFactory.actions().pushVlan(EthType.VLAN_FRAME));
-                if (vlanId > 0) {
-                    OFVlanVidMatch vlanMatch = ofFactory.getVersion() == OFVersion.OF_12
-                            ? OFVlanVidMatch.ofRawVid((short) vlanId) : OFVlanVidMatch.ofVlan(vlanId);
-
-                    ofActions.add(ofFactory.actions().setField(ofFactory.oxms().vlanVid(vlanMatch)));
-                }
-                return ofActions;
+                return ofFactory.actions().pushVlan(EthType.VLAN_FRAME);
             case POP_VXLAN_NOVIFLOW:
-                return Collections.singletonList(ofFactory.actions().noviflowPopVxlanTunnel());
+                return ofFactory.actions().noviflowPopVxlanTunnel();
             case POP_VXLAN_OVS:
-                return Collections.singletonList(ofFactory.actions().kildaPopVxlanField());
+                return ofFactory.actions().kildaPopVxlanField();
             case PUSH_VXLAN_NOVIFLOW:
             case PUSH_VXLAN_OVS:
                 PushVxlanAction pushVxlanAction = (PushVxlanAction) action;
-                OFAction vxlanAction;
                 if (pushVxlanAction.getType().equals(ActionType.PUSH_VXLAN_OVS)) {
-                    vxlanAction = ofFactory.actions().buildKildaPushVxlanField()
+                    return ofFactory.actions().buildKildaPushVxlanField()
                             .setEthDst(MacAddress.of(pushVxlanAction.getDstMacAddress().toLong()))
                             .setEthSrc(MacAddress.of(pushVxlanAction.getSrcMacAddress().toLong()))
                             .setIpv4Src(IPv4Address.of(pushVxlanAction.getSrcIpv4Address().getAddress()))
@@ -216,7 +277,7 @@ public class OfInstructionsConverter {
                             .setVni(pushVxlanAction.getVni())
                             .build();
                 } else {
-                    vxlanAction = ofFactory.actions().buildNoviflowPushVxlanTunnel()
+                    return ofFactory.actions().buildNoviflowPushVxlanTunnel()
                             .setEthDst(MacAddress.of(pushVxlanAction.getDstMacAddress().toLong()))
                             .setEthSrc(MacAddress.of(pushVxlanAction.getSrcMacAddress().toLong()))
                             .setIpv4Src(IPv4Address.of(pushVxlanAction.getSrcIpv4Address().getAddress()))
@@ -225,27 +286,23 @@ public class OfInstructionsConverter {
                             .setVni(pushVxlanAction.getVni())
                             .build();
                 }
-                return Collections.singletonList(vxlanAction);
             case METER:
                 MeterAction meterAction = (MeterAction) action;
-                OFActionMeter meter = ofFactory.actions().meter(meterAction.getMeterId().getValue());
-                return Collections.singletonList(meter);
+                return ofFactory.actions().meter(meterAction.getMeterId().getValue());
             case NOVI_COPY_FIELD:
                 CopyFieldAction copyFieldAction = (CopyFieldAction) action;
-                OFActionNoviflowCopyField copyField = ofFactory.actions().buildNoviflowCopyField()
+                return ofFactory.actions().buildNoviflowCopyField()
                         .setNBits(copyFieldAction.getNumberOfBits())
                         .setDstOffset(copyFieldAction.getDstOffset())
                         .setSrcOffset(copyFieldAction.getSrcOffset())
                         .setOxmDstHeader(getOxmsForCopyAndSwap(ofFactory, copyFieldAction.getOxmDstHeader()))
                         .setOxmSrcHeader(getOxmsForCopyAndSwap(ofFactory, copyFieldAction.getOxmSrcHeader()))
                         .build();
-                return Collections.singletonList(copyField);
             case NOVI_SWAP_FIELD:
             case KILDA_SWAP_FIELD:
                 SwapFieldAction swapFieldAction = (SwapFieldAction) action;
-                OFAction swapField;
                 if (swapFieldAction.getType().equals(ActionType.NOVI_SWAP_FIELD)) {
-                    swapField = ofFactory.actions().buildNoviflowSwapField()
+                    return ofFactory.actions().buildNoviflowSwapField()
                             .setNBits(swapFieldAction.getNumberOfBits())
                             .setDstOffset(swapFieldAction.getDstOffset())
                             .setSrcOffset(swapFieldAction.getSrcOffset())
@@ -253,7 +310,7 @@ public class OfInstructionsConverter {
                             .setOxmDstHeader(getOxmsForCopyAndSwap(ofFactory, swapFieldAction.getOxmDstHeader()))
                             .build();
                 } else {
-                    swapField = ofFactory.actions().buildKildaSwapField()
+                    return ofFactory.actions().buildKildaSwapField()
                             .setNBits(swapFieldAction.getNumberOfBits())
                             .setDstOffset(swapFieldAction.getDstOffset())
                             .setSrcOffset(swapFieldAction.getSrcOffset())
@@ -261,16 +318,15 @@ public class OfInstructionsConverter {
                             .setOxmDstHeader(getOxmsForCopyAndSwap(ofFactory, swapFieldAction.getOxmDstHeader()))
                             .build();
                 }
-                return Collections.singletonList(swapField);
             case SET_FIELD:
                 SetFieldAction setFieldAction = (SetFieldAction) action;
-                return Collections.singletonList(ofFactory.actions().setField(getOxm(ofFactory, setFieldAction)));
+                return ofFactory.actions().setField(getOxm(ofFactory, setFieldAction));
             default:
                 throw new IllegalStateException(format("Unknown action type %s", action.getType()));
         }
     }
 
-    private OFOxm getOxm(OFFactory ofFactory, SetFieldAction action) {
+    private OFOxm<?> getOxm(OFFactory ofFactory, SetFieldAction action) {
         switch (action.getField()) {
             case ETH_DST:
                 return ofFactory.oxms().ethDst(MacAddress.of(action.getValue()));
@@ -302,27 +358,20 @@ public class OfInstructionsConverter {
     private long getOxmsForCopyAndSwap(OFFactory factory, OpenFlowOxms oxms) {
         switch (oxms) {
             case ETH_DST:
-                factory.oxms().buildEthDst().getTypeLen();
-                break;
+                return factory.oxms().buildEthDst().getTypeLen();
             case ETH_SRC:
-                factory.oxms().buildEthSrc().getTypeLen();
-                break;
+                return factory.oxms().buildEthSrc().getTypeLen();
             case NOVIFLOW_PACKET_OFFSET:
-                factory.oxms().buildNoviflowPacketOffset().getTypeLen();
-                break;
+                return factory.oxms().buildNoviflowPacketOffset().getTypeLen();
             case NOVIFLOW_RX_TIMESTAMP:
-                factory.oxms().buildNoviflowRxtimestamp().getTypeLen();
-                break;
+                return factory.oxms().buildNoviflowRxtimestamp().getTypeLen();
             case NOVIFLOW_TX_TIMESTAMP:
-                factory.oxms().buildNoviflowTxtimestamp().getTypeLen();
-                break;
+                return factory.oxms().buildNoviflowTxtimestamp().getTypeLen();
             case NOVIFLOW_UDP_PAYLOAD_OFFSET:
-                factory.oxms().buildNoviflowUpdPayload().getTypeLen();
-                break;
+                return factory.oxms().buildNoviflowUpdPayload().getTypeLen();
             default:
-                throw new IllegalArgumentException("Unknown oxm");
+                throw new IllegalArgumentException(format("Unknown oxm %s", oxms));
         }
-        return 0;
     }
 
     private PortNumber convertPort(OFPort ofPort) {
@@ -355,6 +404,98 @@ public class OfInstructionsConverter {
                 default:
                     throw new IllegalStateException(format("Unknown port type %s", portNumber.getPortType()));
             }
+        }
+    }
+
+    private org.openkilda.model.MacAddress convertMac(MacAddress macAddress) {
+        return new org.openkilda.model.MacAddress(macAddress.toString());
+    }
+
+    private org.openkilda.model.IPv4Address convertIPv4Address(IPv4Address address) {
+        return new org.openkilda.model.IPv4Address(address.toString());
+    }
+
+    private SetFieldAction convertOxm(OFOxm<?> field) {
+        if (field.getMatchField() == MatchField.ETH_SRC) {
+            MacAddress ethSrcMatch = (MacAddress) field.getValue();
+            return SetFieldAction.builder()
+                    .field(Field.ETH_SRC)
+                    .value(ethSrcMatch.getLong())
+                    .build();
+        } else if (field.getMatchField() == MatchField.ETH_DST) {
+            MacAddress ethDstMatch = (MacAddress) field.getValue();
+            return SetFieldAction.builder()
+                    .field(Field.ETH_DST)
+                    .value(ethDstMatch.getLong())
+                    .build();
+        } else if (field.getMatchField() == MatchField.IN_PORT) {
+            OFPort inPortMatch = (OFPort) field.getValue();
+            return SetFieldAction.builder()
+                    .field(Field.IN_PORT)
+                    .value(inPortMatch.getPortNumber())
+                    .build();
+        } else if (field.getMatchField() == MatchField.UDP_SRC) {
+            TransportPort udpSrcMatch = (TransportPort) field.getValue();
+            return SetFieldAction.builder()
+                    .field(Field.UDP_SRC)
+                    .value(udpSrcMatch.getPort())
+                    .build();
+        } else if (field.getMatchField() == MatchField.UDP_DST) {
+            TransportPort udpDstMatch = (TransportPort) field.getValue();
+            return SetFieldAction.builder()
+                    .field(Field.UDP_DST)
+                    .value(udpDstMatch.getPort())
+                    .build();
+        } else if (field.getMatchField() == MatchField.ETH_TYPE) {
+            EthType ethTypeMatch = (EthType) field.getValue();
+            return SetFieldAction.builder()
+                    .field(Field.ETH_TYPE)
+                    .value(ethTypeMatch.getValue())
+                    .build();
+        } else if (field.getMatchField() == MatchField.IP_PROTO) {
+            IpProtocol ipProtocolMatch = (IpProtocol) field.getValue();
+            return SetFieldAction.builder()
+                    .field(Field.IP_PROTO)
+                    .value(ipProtocolMatch.getIpProtocolNumber())
+                    .build();
+        } else if (field.getMatchField() == MatchField.VLAN_VID) {
+            OFVlanVidMatch vlanMatch = (OFVlanVidMatch) field.getValue();
+            return SetFieldAction.builder()
+                    .field(Field.VLAN_VID)
+                    .value(vlanMatch.getVlan())
+                    .build();
+        } else if (field.getMatchField() == MatchField.TUNNEL_ID) {
+            U64 tunnelIdMatch = (U64) field.getValue();
+            return SetFieldAction.builder()
+                    .field(Field.NOVIFLOW_TUNNEL_ID)
+                    .value(tunnelIdMatch.getValue())
+                    .build();
+        } else if (field.getMatchField() == MatchField.KILDA_VXLAN_VNI) {
+            U32 kildaVxlanVni = (U32) field.getValue();
+            return SetFieldAction.builder()
+                    .field(Field.OVS_VXLAN_VNI)
+                    .value(kildaVxlanVni.getValue())
+                    .build();
+        } else {
+            throw new IllegalArgumentException(format("Unknown match %s", field.getMatchField()));
+        }
+    }
+
+    private OpenFlowOxms convertOxmHeader(long value) {
+        if (value == 2147485702L) { // value from OFOxmEthSrcVer13
+            return OpenFlowOxms.ETH_SRC;
+        } else if (value == 2147485190L) { // value from OFOxmEthDstVer13
+            return OpenFlowOxms.ETH_DST;
+        } else if (value == 4294905860L) { // value from OFOxmNoviflowPacketOffsetVer13
+            return OpenFlowOxms.NOVIFLOW_PACKET_OFFSET;
+        } else if (value == 4294902276L) { // value from OFOxmNoviflowUpdPayloadVer13
+            return OpenFlowOxms.NOVIFLOW_UDP_PAYLOAD_OFFSET;
+        } else if (value == 4294904836L) { // value from OFOxmNoviflowRxtimestampVer13
+            return OpenFlowOxms.NOVIFLOW_RX_TIMESTAMP;
+        } else if (value == 4294905348L) { // value from OFOxmNoviflowTxtimestampVer13
+            return OpenFlowOxms.NOVIFLOW_TX_TIMESTAMP;
+        } else {
+            throw new IllegalArgumentException(format("Unknown Oxm header %s", value));
         }
     }
 }

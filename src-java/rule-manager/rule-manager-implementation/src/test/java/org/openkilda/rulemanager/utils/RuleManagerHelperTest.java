@@ -317,7 +317,7 @@ public class RuleManagerHelperTest {
         actions.add(new PopVlanAction());
         actions.add(new PopVxlanAction(ActionType.POP_VXLAN_OVS));
         actions.add(new PortOutAction(PORT_NUMBER));
-        actions.add(PushVlanAction.builder().vlanId(VLAN_ID).build());
+        actions.add(new PushVlanAction());
         actions.add(SetFieldAction.builder().field(Field.VLAN_VID).value(VLAN_ID).build());
         actions.add(CopyFieldAction.builder()
                 .srcOffset(0)

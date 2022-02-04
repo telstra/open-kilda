@@ -154,7 +154,8 @@ public class SingleTableIngressYRuleGeneratorTest {
         SingleTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
-                PushVlanAction.builder().vlanId((short) TRANSIT_VLAN_ID).build()
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build()
         );
         assertEquals(expectedActions, transformActions);
     }
@@ -211,7 +212,8 @@ public class SingleTableIngressYRuleGeneratorTest {
         SingleTableIngressYRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID_2).build()
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build()
         );
         assertEquals(expectedActions, transformActions);
     }

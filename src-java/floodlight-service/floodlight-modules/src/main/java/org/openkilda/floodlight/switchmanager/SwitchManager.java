@@ -80,7 +80,6 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
-import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.OfInstallException;
@@ -106,7 +105,6 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.Meter;
@@ -523,86 +521,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .build();
 
         pushFlow(sw, "--server 42 shared rule--", flow);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<OFFlowMod> getExpectedDefaultFlows(DatapathId dpid, boolean multiTable, boolean switchLldp,
-                                                   boolean switchArp)
-            throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        List<SwitchFlowGenerator> defaultFlowGenerators = getDefaultSwitchFlowGenerators(
-                multiTable, switchLldp, switchArp);
-
-        return defaultFlowGenerators.stream()
-                .map(g -> g.generateFlow(sw))
-                .map(SwitchFlowTuple::getFlow)
-                .filter(Objects::nonNull)
-                .collect(toList());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<MeterEntry> getExpectedDefaultMeters(DatapathId dpid, boolean multiTable, boolean switchLldp,
-                                                     boolean switchArp)
-            throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        List<SwitchFlowGenerator> defaultFlowGenerators = getDefaultSwitchFlowGenerators(
-                multiTable, switchLldp, switchArp);
-
-        return defaultFlowGenerators.stream()
-                .map(g -> g.generateFlow(sw))
-                .map(SwitchFlowTuple::getMeter)
-                .filter(Objects::nonNull)
-                .map(OfMeterConverter::toMeterEntry)
-                .collect(toList());
-    }
-
-    private List<SwitchFlowGenerator> getDefaultSwitchFlowGenerators(boolean multiTable, boolean switchLldp,
-                                                                     boolean switchArp) {
-        List<SwitchFlowGenerator> defaultFlowGenerators = new ArrayList<>();
-        defaultFlowGenerators.add(switchFlowFactory.getDropFlowGenerator(DROP_RULE_COOKIE, INPUT_TABLE_ID));
-        defaultFlowGenerators.add(switchFlowFactory.getVerificationFlow(true));
-        defaultFlowGenerators.add(switchFlowFactory.getVerificationFlow(false));
-        defaultFlowGenerators.add(switchFlowFactory.getDropLoopFlowGenerator());
-        defaultFlowGenerators.add(switchFlowFactory.getBfdCatchFlowGenerator());
-        defaultFlowGenerators.add(switchFlowFactory.getRoundTripLatencyFlowGenerator());
-        defaultFlowGenerators.add(switchFlowFactory.getUnicastVerificationVxlanFlowGenerator());
-
-        if (multiTable) {
-            defaultFlowGenerators.add(
-                    switchFlowFactory.getDropFlowGenerator(MULTITABLE_INGRESS_DROP_COOKIE, INGRESS_TABLE_ID));
-            defaultFlowGenerators.add(
-                    switchFlowFactory.getDropFlowGenerator(MULTITABLE_TRANSIT_DROP_COOKIE, TRANSIT_TABLE_ID));
-            defaultFlowGenerators.add(
-                    switchFlowFactory.getDropFlowGenerator(MULTITABLE_POST_INGRESS_DROP_COOKIE, POST_INGRESS_TABLE_ID));
-            defaultFlowGenerators.add(switchFlowFactory.getTablePassThroughDefaultFlowGenerator(
-                    MULTITABLE_EGRESS_PASS_THROUGH_COOKIE, TRANSIT_TABLE_ID, EGRESS_TABLE_ID));
-            defaultFlowGenerators.add(switchFlowFactory.getTablePassThroughDefaultFlowGenerator(
-                    MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, INGRESS_TABLE_ID, PRE_INGRESS_TABLE_ID));
-            defaultFlowGenerators.add(switchFlowFactory.getLldpPostIngressFlowGenerator());
-            defaultFlowGenerators.add(switchFlowFactory.getLldpPostIngressVxlanFlowGenerator());
-            defaultFlowGenerators.add(switchFlowFactory.getLldpPostIngressOneSwitchFlowGenerator());
-            defaultFlowGenerators.add(switchFlowFactory.getArpPostIngressFlowGenerator());
-            defaultFlowGenerators.add(switchFlowFactory.getArpPostIngressVxlanFlowGenerator());
-            defaultFlowGenerators.add(switchFlowFactory.getArpPostIngressOneSwitchFlowGenerator());
-
-            if (switchLldp) {
-                defaultFlowGenerators.add(switchFlowFactory.getLldpTransitFlowGenerator());
-                defaultFlowGenerators.add(switchFlowFactory.getLldpInputPreDropFlowGenerator());
-                defaultFlowGenerators.add(switchFlowFactory.getLldpIngressFlowGenerator());
-            }
-            if (switchArp) {
-                defaultFlowGenerators.add(switchFlowFactory.getArpTransitFlowGenerator());
-                defaultFlowGenerators.add(switchFlowFactory.getArpInputPreDropFlowGenerator());
-                defaultFlowGenerators.add(switchFlowFactory.getArpIngressFlowGenerator());
-            }
-        }
-        return defaultFlowGenerators;
     }
 
     @Override

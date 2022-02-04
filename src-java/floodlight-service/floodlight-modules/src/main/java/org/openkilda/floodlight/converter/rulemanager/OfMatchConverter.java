@@ -34,7 +34,6 @@ import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.Masked;
 import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.OFValueType;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U32;
@@ -48,13 +47,12 @@ import java.util.Set;
 public class OfMatchConverter {
     public static final OfMatchConverter INSTANCE = Mappers.getMapper(OfMatchConverter.class);
 
-
     /**
      * Convert match.
      */
     public Set<FieldMatch> convertToRuleManagerMatch(Match match) {
         Set<FieldMatch> fieldMatches = new HashSet<>();
-        for (MatchField field : match.getMatchFields()) {
+        for (MatchField<?> field : match.getMatchFields()) {
             if (match.isExact(field)) {
                 fieldMatches.add(getExact(match, field));
             } else {
@@ -64,9 +62,7 @@ public class OfMatchConverter {
         return fieldMatches;
     }
 
-    private FieldMatch getExact(Match match, MatchField field) {
-        OFValueType ofValueType = match.get(field);
-
+    private FieldMatch getExact(Match match, MatchField<?> field) {
         FieldMatchBuilder builder = FieldMatch.builder();
         switch (field.id) {
             case ETH_SRC:
@@ -115,13 +111,13 @@ public class OfMatchConverter {
                 break;
             default:
                 throw new IllegalArgumentException(
-                        String.format("Unexpected match field id=%s, for class=%s of a match", field.id,
+                        String.format("Unexpected match field id=%s, for class=%s of a match %s", field.id,
                                 field.getClass().getName(), match));
         }
         return builder.build();
     }
 
-    private FieldMatch getMasked(Match match, MatchField field) {
+    private FieldMatch getMasked(Match match, MatchField<?> field) {
         FieldMatchBuilder builder = FieldMatch.builder();
         switch (field.id) {
             case ETH_SRC:
@@ -192,7 +188,7 @@ public class OfMatchConverter {
                 break;
             default:
                 throw new IllegalArgumentException(
-                        String.format("Unexpected match field id=%s, for class=%s of a match", field.id,
+                        String.format("Unexpected match field id=%s, for class=%s of a match %s", field.id,
                                 field.getClass().getName(), match));        }
         return builder.build();
     }

@@ -15,7 +15,9 @@
 
 package org.openkilda.rulemanager.adapter;
 
+import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -30,6 +32,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
@@ -38,6 +41,7 @@ import org.openkilda.model.YFlow;
 import org.openkilda.model.YFlow.SharedEndpoint;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -54,7 +58,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -62,6 +65,8 @@ public class PersistenceDataAdapterTest {
 
     @Mock
     private PersistenceManager persistenceManager;
+    @Mock
+    private FlowRepository flowRepository;
     @Mock
     private FlowPathRepository flowPathRepository;
     @Mock
@@ -81,6 +86,7 @@ public class PersistenceDataAdapterTest {
     @Before
     public void setup() {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
+        when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
@@ -195,6 +201,30 @@ public class PersistenceDataAdapterTest {
     }
 
     @Test
+    public void shouldKeepMultitableForFlowInSwitchProperties() {
+        Set<SwitchId> switchIds = Sets.newHashSet(SWITCH_ID_1, SWITCH_ID_2);
+        Switch sw1 = buildSwitch(SWITCH_ID_1, singleton(SwitchFeature.MULTI_TABLE));
+        SwitchProperties switchProperties1 = buildSwitchProperties(sw1, false);
+        Switch sw2 = buildSwitch(SWITCH_ID_2, singleton(SwitchFeature.MULTI_TABLE));
+        SwitchProperties switchProperties2 = buildSwitchProperties(sw2, true);
+        Map<SwitchId, SwitchProperties> switchProperties = new HashMap<>();
+        switchProperties.put(SWITCH_ID_1, switchProperties1);
+        switchProperties.put(SWITCH_ID_2, switchProperties2);
+        when(switchPropertiesRepository.findBySwitchIds(switchIds)).thenReturn(switchProperties);
+        when(flowRepository.findByEndpointSwitchWithMultiTableSupport(SWITCH_ID_1))
+                .thenReturn(singleton(mock(Flow.class)));
+
+        adapter = PersistenceDataAdapter.builder()
+                .switchIds(switchIds)
+                .persistenceManager(persistenceManager)
+                .keepMultitableForFlow(true)
+                .build();
+
+        assertTrue(adapter.getSwitchProperties(SWITCH_ID_1).isMultiTable());
+        assertTrue(adapter.getSwitchProperties(SWITCH_ID_2).isMultiTable());
+    }
+
+    @Test
     public void shouldProvideCorrectVlanEncapsulation() {
         PathId pathId = new PathId("path1");
         Set<PathId> pathIds = Sets.newHashSet(pathId);
@@ -203,21 +233,21 @@ public class PersistenceDataAdapterTest {
                 .pathId(pathId)
                 .vlan(8)
                 .build();
-        when(transitVlanRepository.findByPathId(pathId)).thenReturn(Optional.of(transitVlan));
+        when(transitVlanRepository.findByPathId(pathId, null)).thenReturn(Collections.singletonList(transitVlan));
 
         adapter = PersistenceDataAdapter.builder()
                 .pathIds(pathIds)
                 .persistenceManager(persistenceManager)
                 .build();
 
-        FlowTransitEncapsulation actual = adapter.getTransitEncapsulation(pathId);
+        FlowTransitEncapsulation actual = adapter.getTransitEncapsulation(pathId, null);
 
         assertEquals(FlowEncapsulationType.TRANSIT_VLAN, actual.getType());
         assertEquals(transitVlan.getVlan(), actual.getId().intValue());
 
-        adapter.getTransitEncapsulation(pathId);
+        adapter.getTransitEncapsulation(pathId, null);
 
-        verify(transitVlanRepository).findByPathId(pathId);
+        verify(transitVlanRepository).findByPathId(pathId, null);
         verifyNoMoreInteractions(transitVlanRepository);
         verifyNoInteractions(vxlanRepository);
     }
@@ -238,14 +268,14 @@ public class PersistenceDataAdapterTest {
                 .persistenceManager(persistenceManager)
                 .build();
 
-        FlowTransitEncapsulation actual = adapter.getTransitEncapsulation(pathId);
+        FlowTransitEncapsulation actual = adapter.getTransitEncapsulation(pathId, null);
 
         assertEquals(FlowEncapsulationType.VXLAN, actual.getType());
         assertEquals(vxlan.getVni(), actual.getId().intValue());
 
-        adapter.getTransitEncapsulation(pathId);
+        adapter.getTransitEncapsulation(pathId, null);
 
-        verify(transitVlanRepository).findByPathId(pathId);
+        verify(transitVlanRepository).findByPathId(pathId, null);
         verify(vxlanRepository).findByPathId(pathId, null);
         verifyNoMoreInteractions(transitVlanRepository);
         verifyNoMoreInteractions(vxlanRepository);

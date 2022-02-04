@@ -34,7 +34,6 @@ import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
@@ -96,7 +95,7 @@ public class InputLldpRuleGeneratorTest {
                 .goToTable(OfTable.PRE_INGRESS)
                 .build();
         assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
+        assertTrue(flowCommandData.getFlags().isEmpty());
     }
 
     @Test

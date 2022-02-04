@@ -38,7 +38,6 @@ import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
@@ -93,7 +92,8 @@ public class EgressRuleGeneratorTest {
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID).build(),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions);
@@ -135,7 +135,8 @@ public class EgressRuleGeneratorTest {
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions);
@@ -205,8 +206,10 @@ public class EgressRuleGeneratorTest {
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                PushVlanAction.builder().vlanId((short) INNER_VLAN_ID).build(),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions);
@@ -221,7 +224,8 @@ public class EgressRuleGeneratorTest {
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions);
@@ -250,7 +254,8 @@ public class EgressRuleGeneratorTest {
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.INPUT, VXLAN_ENCAPSULATION, expectedApplyActions);
@@ -296,7 +301,7 @@ public class EgressRuleGeneratorTest {
                 .applyActions(expectedApplyActions)
                 .build();
         assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
+        assertTrue(flowCommandData.getFlags().isEmpty());
     }
 
     @Test

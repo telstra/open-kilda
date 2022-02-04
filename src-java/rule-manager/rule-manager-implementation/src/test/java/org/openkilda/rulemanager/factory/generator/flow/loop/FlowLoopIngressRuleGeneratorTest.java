@@ -35,7 +35,6 @@ import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
@@ -43,6 +42,7 @@ import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.action.PushVlanAction;
+import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
 
@@ -85,7 +85,8 @@ public class FlowLoopIngressRuleGeneratorTest {
                         FieldMatch.builder().field(Field.VLAN_VID).value(INNER_VLAN_1).build(),
                         buildMetadataMatch(OUTER_VLAN_1)),
                 newArrayList(
-                        PushVlanAction.builder().vlanId((short) OUTER_VLAN_1).build(),
+                        new PushVlanAction(),
+                        SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_1).build(),
                         new PortOutAction(new PortNumber(SpecialPortType.IN_PORT))));
     }
 
@@ -98,7 +99,8 @@ public class FlowLoopIngressRuleGeneratorTest {
                         FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
                         buildMetadataMatch(OUTER_VLAN_1)),
                 newArrayList(
-                        PushVlanAction.builder().vlanId((short) OUTER_VLAN_1).build(),
+                        new PushVlanAction(),
+                        SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_1).build(),
                         new PortOutAction(new PortNumber(SpecialPortType.IN_PORT))));
     }
 
@@ -161,7 +163,7 @@ public class FlowLoopIngressRuleGeneratorTest {
 
         Instructions expectedInstructions = Instructions.builder().applyActions(expectedApplyActions).build();
         assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertEquals(newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
+        assertTrue(flowCommandData.getFlags().isEmpty());
     }
 
     private Flow buildFlow(FlowPath path, int srcOuterVlan, int srcInnerVlan, int dstOuterVlan, int dstInnerVlan) {

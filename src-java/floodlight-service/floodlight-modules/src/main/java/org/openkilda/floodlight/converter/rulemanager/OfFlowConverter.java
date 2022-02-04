@@ -17,11 +17,14 @@ package org.openkilda.floodlight.converter.rulemanager;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
+import org.openkilda.rulemanager.OfVersion;
 
+import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -32,37 +35,47 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Mapper
-public abstract class OfFlowModConverter {
-    public static final OfFlowModConverter INSTANCE = Mappers.getMapper(OfFlowModConverter.class);
-
+@Slf4j
+public abstract class OfFlowConverter {
+    public static final OfFlowConverter INSTANCE = Mappers.getMapper(OfFlowConverter.class);
 
     /**
      * Convert stats reply.
      */
-    public List<FlowSpeakerData> convertToFlowSpeakerData(OFFlowStatsReply statsReply) {
-        List<FlowSpeakerData> flowSpeakerData = new ArrayList<>();
-        for (OFFlowStatsEntry entry : statsReply.getEntries()) {
-            FlowSpeakerData speakerData = FlowSpeakerData.builder()
-                    .cookie(new Cookie(entry.getCookie().getValue()))
-                    .flags(convertToRuleManagerFlags(entry.getFlags()))
-                    .priority(entry.getPriority())
-                    .table(OfTable.fromInt(entry.getTableId().getValue()))
-                    .match(OfMatchConverter.INSTANCE.convertToRuleManagerMatch(entry.getMatch()))
-                    .instructions(
-                            OfInstructionsConverter.INSTANCE.convertToRuleManagerInstructions(entry.getInstructions()))
-                    .build();
-            flowSpeakerData.add(speakerData);
-        }
-        return flowSpeakerData;
+    public List<FlowSpeakerData> convertToFlowSpeakerData(OFFlowStatsReply statsReply, SwitchId switchId) {
+        return statsReply.getEntries().stream()
+                .map(entry -> convertToFlowSpeakerData(entry, switchId))
+                .collect(Collectors.toList());
     }
 
-
+    /**
+     * Convert stats entry.
+     */
+    public FlowSpeakerData convertToFlowSpeakerData(OFFlowStatsEntry entry, SwitchId switchId) {
+        return FlowSpeakerData.builder()
+                .switchId(switchId)
+                .ofVersion(OfVersion.of(entry.getVersion().name()))
+                .cookie(new Cookie(entry.getCookie().getValue()))
+                .flags(convertToRuleManagerFlags(entry.getFlags()))
+                .priority(entry.getPriority())
+                .table(OfTable.fromInt(entry.getTableId().getValue()))
+                .match(OfMatchConverter.INSTANCE.convertToRuleManagerMatch(entry.getMatch()))
+                .instructions(
+                        OfInstructionsConverter.INSTANCE.convertToRuleManagerInstructions(entry.getInstructions()))
+                .durationSeconds(entry.getDurationSec())
+                .durationNanoSeconds(entry.getDurationNsec())
+                .packetCount(entry.getPacketCount().getValue())
+                .idleTimeout(entry.getIdleTimeout())
+                .hardTimeout(entry.getHardTimeout())
+                .byteCount(entry.getByteCount().getValue())
+                .build();
+    }
 
     /**
      * Convert flow speaker command data into OfFlowMod representation.

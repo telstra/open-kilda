@@ -241,7 +241,8 @@ public class IngressMirrorRuleGeneratorTest {
         List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID_2).build(),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID_2).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build(),
                 new GroupAction(GROUP_ID));
         assertEquals(expectedActions, transformActions);
     }
@@ -272,8 +273,10 @@ public class IngressMirrorRuleGeneratorTest {
         IngressMirrorRuleGenerator generator = buildGenerator(MULTI_TABLE_ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
         List<Action> expectedActions = newArrayList(
-                PushVlanAction.builder().vlanId((short) INNER_VLAN_ID_2).build(),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID_2).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID_2).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build(),
                 new GroupAction(GROUP_ID));
         assertEquals(expectedActions, transformActions);
     }
@@ -284,7 +287,8 @@ public class IngressMirrorRuleGeneratorTest {
         IngressMirrorRuleGenerator generator = buildGenerator(MULTI_TABLE_ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
         List<Action> expectedActions = newArrayList(
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID_2).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build(),
                 new GroupAction(GROUP_ID));
         assertEquals(expectedActions, transformActions);
     }
@@ -304,8 +308,10 @@ public class IngressMirrorRuleGeneratorTest {
         IngressMirrorRuleGenerator generator = buildGenerator(MULTI_TABLE_ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
         List<Action> expectedActions = newArrayList(
-                PushVlanAction.builder().vlanId((short) INNER_VLAN_ID_2).build(),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID_2).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID_2).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build(),
                 new GroupAction(GROUP_ID));
         assertEquals(expectedActions, transformActions);
     }
@@ -316,7 +322,8 @@ public class IngressMirrorRuleGeneratorTest {
         IngressMirrorRuleGenerator generator = buildGenerator(MULTI_TABLE_ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
         List<Action> expectedActions = newArrayList(
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID_2).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build(),
                 new GroupAction(GROUP_ID));
         assertEquals(expectedActions, transformActions);
     }
@@ -358,7 +365,8 @@ public class IngressMirrorRuleGeneratorTest {
         IngressMirrorRuleGenerator generator = buildGenerator(SINGLE_TABLE_ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
         List<Action> expectedActions = newArrayList(
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID_2).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build(),
                 new GroupAction(GROUP_ID));
         assertEquals(expectedActions, transformActions);
     }
@@ -385,7 +393,8 @@ public class IngressMirrorRuleGeneratorTest {
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build());
         List<Action> expectedIngressActions = newArrayList(
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID_2).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build(),
                 new GroupAction(GROUP_ID));
         assertIngressCommand(ingressCommand, Priority.MIRROR_DEFAULT_FLOW_PRIORITY, INGRESS, expectedIngressMatch,
                 expectedIngressActions, null, groupCommand.getUuid());
@@ -439,7 +448,8 @@ public class IngressMirrorRuleGeneratorTest {
                 expectedIngressActions, METER_ID, groupCommand.getUuid());
 
         Set<Action> expectedFlowBucketActions = newHashSet(
-                PushVlanAction.builder().vlanId((short) TRANSIT_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2)));
         assertGroupCommand(groupCommand, expectedFlowBucketActions);
     }
@@ -495,7 +505,8 @@ public class IngressMirrorRuleGeneratorTest {
 
         Bucket mirrorBucket = command.getBuckets().get(1);
         assertBucketCommon(mirrorBucket);
-        assertEquals(newHashSet(PushVlanAction.builder().vlanId(MIRROR_VLAN).build(),
+        assertEquals(newHashSet(new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(MIRROR_VLAN).build(),
                 new PortOutAction(new PortNumber(MIRROR_PORT))), mirrorBucket.getWriteActions());
     }
 

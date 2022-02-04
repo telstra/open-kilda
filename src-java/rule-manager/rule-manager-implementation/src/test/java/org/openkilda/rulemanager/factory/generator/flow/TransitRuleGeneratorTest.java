@@ -35,7 +35,6 @@ import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
@@ -157,7 +156,7 @@ public class TransitRuleGeneratorTest {
                 .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(PORT_NUMBER_2))))
                 .build();
         assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
+        assertTrue(flowCommandData.getFlags().isEmpty());
     }
 
     private Set<FieldMatch> buildExpectedVlanMatch(int port, int vlanId) {

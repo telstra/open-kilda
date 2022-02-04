@@ -54,6 +54,8 @@ import org.junit.Test;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
@@ -592,6 +594,20 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
 
         Isl islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
         assertEquals(100, islAfter.getAvailableBandwidth());
+    }
+
+    @Test
+    public void shouldFindIslsBySwitch() {
+        createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE);
+        createIsl(switchB, 10, switchA, 20, IslStatus.ACTIVE);
+        createIsl(switchB, 30, switchC, 40, IslStatus.ACTIVE);
+
+        Map<SwitchId, Set<Integer>> islPortsBySwitchIds = islRepository
+                .findIslPortsBySwitchIds(Collections.singleton(switchA.getSwitchId()));
+        assertEquals(1, islPortsBySwitchIds.keySet().size());
+        Set<Integer> islPorts = islPortsBySwitchIds.get(switchA.getSwitchId());
+        assertEquals(1, islPorts.size());
+        assertTrue(islPorts.contains(1));
     }
 
     private Isl createIsl(Switch srcSwitch, Switch destSwitch) {

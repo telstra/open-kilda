@@ -51,18 +51,27 @@ public class OfGroupConverter {
      * Convert stats reply.
      */
     public List<GroupSpeakerData> convertToGroupSpeakerData(OFGroupDescStatsReply statsReply) {
-        List<GroupSpeakerData> commandData = new ArrayList<>();
-        for (OFGroupDescStatsEntry entry : statsReply.getEntries()) {
-            GroupId groupId = new GroupId(entry.getGroup().getGroupNumber());
-            GroupType type = fromOfGroupType(entry.getGroupType());
-            List<Bucket> buckets = new ArrayList<>();
-            List<OFBucket> ofBuckets = entry.getBuckets();
-            for (OFBucket bucket : ofBuckets) {
-                buckets.add(fromOfBucket(bucket));
-            }
-            commandData.add(GroupSpeakerData.builder().groupId(groupId).type(type).buckets(buckets).build());
+        return statsReply.getEntries().stream()
+                .map(this::convertToGroupSpeakerData)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convert stats entry.
+     */
+    public GroupSpeakerData convertToGroupSpeakerData(OFGroupDescStatsEntry entry) {
+        GroupId groupId = new GroupId(entry.getGroup().getGroupNumber());
+        GroupType type = fromOfGroupType(entry.getGroupType());
+        List<Bucket> buckets = new ArrayList<>();
+        List<OFBucket> ofBuckets = entry.getBuckets();
+        for (OFBucket bucket : ofBuckets) {
+            buckets.add(fromOfBucket(bucket));
         }
-        return commandData;
+        return GroupSpeakerData.builder()
+                .groupId(groupId)
+                .type(type)
+                .buckets(buckets)
+                .build();
     }
 
     /**

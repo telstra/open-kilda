@@ -79,12 +79,12 @@ public class UtilsTest {
     @Test
     public void oneSwitchFlowOutPortTest() {
         Flow flow = buildFlow(ONE_SWITCH_PATH, PORT_NUMBER_1, PORT_NUMBER_3);
-        assertEquals(PORT_NUMBER_3, Utils.getOutPort(ONE_SWITCH_PATH, flow));
+        assertEquals(PORT_NUMBER_3, Utils.getOutPort(ONE_SWITCH_PATH, flow).getPortNumber());
     }
 
     @Test
     public void multiSwitchFlowOutPortTest() {
-        assertEquals(PORT_NUMBER_2, Utils.getOutPort(PATH, null));
+        assertEquals(PORT_NUMBER_2, Utils.getOutPort(PATH, null).getPortNumber());
     }
 
     @Test(expected = IllegalStateException.class)

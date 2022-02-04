@@ -24,6 +24,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
 @EqualsAndHashCode(of = {"switchId", "ofVersion"})
+@ToString
 public abstract class SpeakerData {
 
     @Builder.Default
