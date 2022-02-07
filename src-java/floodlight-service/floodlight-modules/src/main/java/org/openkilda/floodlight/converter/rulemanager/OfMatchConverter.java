@@ -52,8 +52,8 @@ public class OfMatchConverter {
      */
     public Set<FieldMatch> convertToRuleManagerMatch(Match match) {
         Set<FieldMatch> fieldMatches = new HashSet<>();
-        for (MatchField<?> field : match.getMatchFields()) {
-            if (match.isExact(field)) {
+        for (MatchField<?> field : match.getMatchFieldsWithoutPrerequisitesCheck()) {
+            if (match.isExactWithoutPrerequisitesCheck(field)) {
                 fieldMatches.add(getExact(match, field));
             } else {
                 fieldMatches.add(getMasked(match, field));
@@ -67,47 +67,47 @@ public class OfMatchConverter {
         switch (field.id) {
             case ETH_SRC:
                 builder.field(Field.ETH_SRC);
-                builder.value(match.get(MatchField.ETH_SRC).getLong());
+                builder.value(match.getWithoutPrerequisitesCheck(MatchField.ETH_SRC).getLong());
                 break;
             case ETH_DST:
                 builder.field(Field.ETH_DST);
-                builder.value(match.get(MatchField.ETH_DST).getLong());
+                builder.value(match.getWithoutPrerequisitesCheck(MatchField.ETH_DST).getLong());
                 break;
             case ETH_TYPE:
                 builder.field(Field.ETH_TYPE);
-                builder.value(match.get(MatchField.ETH_TYPE).getValue());
+                builder.value(match.getWithoutPrerequisitesCheck(MatchField.ETH_TYPE).getValue());
                 break;
             case IP_PROTO:
                 builder.field(Field.IP_PROTO);
-                builder.value(match.get(MatchField.IP_PROTO).getIpProtocolNumber());
+                builder.value(match.getWithoutPrerequisitesCheck(MatchField.IP_PROTO).getIpProtocolNumber());
                 break;
             case UDP_SRC:
                 builder.field(Field.UDP_SRC);
-                builder.value(match.get(MatchField.UDP_SRC).getPort());
+                builder.value(match.getWithoutPrerequisitesCheck(MatchField.UDP_SRC).getPort());
                 break;
             case UDP_DST:
                 builder.field(Field.UDP_DST);
-                builder.value(match.get(MatchField.UDP_DST).getPort());
+                builder.value(match.getWithoutPrerequisitesCheck(MatchField.UDP_DST).getPort());
                 break;
             case METADATA:
                 builder.field(Field.METADATA);
-                builder.value(match.get(MatchField.METADATA).getValue().getValue());
+                builder.value(match.getWithoutPrerequisitesCheck(MatchField.METADATA).getValue().getValue());
                 break;
             case IN_PORT:
                 builder.field(Field.IN_PORT);
-                builder.value(match.get(MatchField.IN_PORT).getPortNumber());
+                builder.value(match.getWithoutPrerequisitesCheck(MatchField.IN_PORT).getPortNumber());
                 break;
             case VLAN_VID:
                 builder.field(Field.VLAN_VID);
-                builder.value(match.get(MatchField.VLAN_VID).getVlan());
+                builder.value(match.getWithoutPrerequisitesCheck(MatchField.VLAN_VID).getVlan());
                 break;
             case TUNNEL_ID:
                 builder.field(Field.NOVIFLOW_TUNNEL_ID);
-                builder.value(match.get(MatchField.TUNNEL_ID).getValue());
+                builder.value(match.getWithoutPrerequisitesCheck(MatchField.TUNNEL_ID).getValue());
                 break;
             case KILDA_VXLAN_VNI:
                 builder.field(Field.OVS_VXLAN_VNI);
-                builder.value(match.get(MatchField.KILDA_VXLAN_VNI).getValue());
+                builder.value(match.getWithoutPrerequisitesCheck(MatchField.KILDA_VXLAN_VNI).getValue());
                 break;
             default:
                 throw new IllegalArgumentException(
@@ -121,67 +121,67 @@ public class OfMatchConverter {
         FieldMatchBuilder builder = FieldMatch.builder();
         switch (field.id) {
             case ETH_SRC:
-                Masked<MacAddress> ethSrcMasked = match.getMasked(MatchField.ETH_SRC);
+                Masked<MacAddress> ethSrcMasked = match.getMaskedWithoutPrerequisitesCheck(MatchField.ETH_SRC);
                 builder.field(Field.ETH_SRC);
                 builder.value(ethSrcMasked.getValue().getLong());
                 builder.mask(ethSrcMasked.getMask().getLong());
                 break;
             case ETH_DST:
-                Masked<MacAddress> ethDstMasked = match.getMasked(MatchField.ETH_DST);
+                Masked<MacAddress> ethDstMasked = match.getMaskedWithoutPrerequisitesCheck(MatchField.ETH_DST);
                 builder.field(Field.ETH_DST);
                 builder.value(ethDstMasked.getValue().getLong());
                 builder.mask(ethDstMasked.getMask().getLong());
                 break;
             case ETH_TYPE:
-                Masked<EthType> ethTypeMasked = match.getMasked(MatchField.ETH_TYPE);
+                Masked<EthType> ethTypeMasked = match.getMaskedWithoutPrerequisitesCheck(MatchField.ETH_TYPE);
                 builder.field(Field.ETH_TYPE);
                 builder.value(ethTypeMasked.getValue().getValue());
                 builder.mask((long) ethTypeMasked.getMask().getValue());
                 break;
             case IP_PROTO:
-                Masked<IpProtocol> ipProtocolMasked = match.getMasked(MatchField.IP_PROTO);
+                Masked<IpProtocol> ipProtocolMasked = match.getMaskedWithoutPrerequisitesCheck(MatchField.IP_PROTO);
                 builder.field(Field.IP_PROTO);
                 builder.value(ipProtocolMasked.getValue().getIpProtocolNumber());
                 builder.mask((long) ipProtocolMasked.getMask().getIpProtocolNumber());
                 break;
             case UDP_SRC:
-                Masked<TransportPort> udpSrcMasked = match.getMasked(MatchField.UDP_SRC);
+                Masked<TransportPort> udpSrcMasked = match.getMaskedWithoutPrerequisitesCheck(MatchField.UDP_SRC);
                 builder.field(Field.UDP_SRC);
                 builder.value(udpSrcMasked.getValue().getPort());
                 builder.mask((long) udpSrcMasked.getMask().getPort());
                 break;
             case UDP_DST:
-                Masked<TransportPort> udpDstMasked = match.getMasked(MatchField.UDP_DST);
+                Masked<TransportPort> udpDstMasked = match.getMaskedWithoutPrerequisitesCheck(MatchField.UDP_DST);
                 builder.field(Field.UDP_DST);
                 builder.value(udpDstMasked.getValue().getPort());
                 builder.mask((long) udpDstMasked.getMask().getPort());
                 break;
             case METADATA:
-                Masked<OFMetadata> metadataMasked = match.getMasked(MatchField.METADATA);
+                Masked<OFMetadata> metadataMasked = match.getMaskedWithoutPrerequisitesCheck(MatchField.METADATA);
                 builder.field(Field.METADATA);
                 builder.value(metadataMasked.getValue().getValue().getValue());
                 builder.mask(metadataMasked.getMask().getValue().getValue());
                 break;
             case IN_PORT:
-                Masked<OFPort> inPortMasked = match.getMasked(MatchField.IN_PORT);
+                Masked<OFPort> inPortMasked = match.getMaskedWithoutPrerequisitesCheck(MatchField.IN_PORT);
                 builder.field(Field.IN_PORT);
                 builder.value(inPortMasked.getValue().getPortNumber());
                 builder.mask((long) inPortMasked.getMask().getPortNumber());
                 break;
             case VLAN_VID:
-                Masked<OFVlanVidMatch> vlanVidMasked = match.getMasked(MatchField.VLAN_VID);
+                Masked<OFVlanVidMatch> vlanVidMasked = match.getMaskedWithoutPrerequisitesCheck(MatchField.VLAN_VID);
                 builder.field(Field.VLAN_VID);
                 builder.value(vlanVidMasked.getValue().getVlan());
                 builder.mask((long) vlanVidMasked.getMask().getVlan());
                 break;
             case TUNNEL_ID:
-                Masked<U64> tunnelIdMasked = match.getMasked(MatchField.TUNNEL_ID);
+                Masked<U64> tunnelIdMasked = match.getMaskedWithoutPrerequisitesCheck(MatchField.TUNNEL_ID);
                 builder.field(Field.NOVIFLOW_TUNNEL_ID);
                 builder.value(tunnelIdMasked.getValue().getValue());
                 builder.mask(tunnelIdMasked.getMask().getValue());
                 break;
             case KILDA_VXLAN_VNI:
-                Masked<U32> masked = match.getMasked(MatchField.KILDA_VXLAN_VNI);
+                Masked<U32> masked = match.getMaskedWithoutPrerequisitesCheck(MatchField.KILDA_VXLAN_VNI);
                 builder.field(Field.OVS_VXLAN_VNI);
                 builder.value(masked.getValue().getValue());
                 builder.mask(masked.getMask().getValue());

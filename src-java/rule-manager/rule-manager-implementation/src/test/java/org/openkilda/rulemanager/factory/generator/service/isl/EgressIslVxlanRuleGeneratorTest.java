@@ -79,7 +79,7 @@ public class EgressIslVxlanRuleGeneratorTest {
         assertEquals(ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE, flowCommandData.getPriority());
 
         Set<FieldMatch> match = flowCommandData.getMatch();
-        assertEquals(5, match.size());
+        assertEquals(6, match.size());
         checkMatch(match, sw.getSwitchId());
 
         Instructions instructions = flowCommandData.getInstructions();
@@ -127,6 +127,10 @@ public class EgressIslVxlanRuleGeneratorTest {
         FieldMatch ethDstMatch = getMatchByField(Field.ETH_DST, match);
         assertEquals(switchId.toLong(), ethDstMatch.getValue());
         assertFalse(ethDstMatch.isMasked());
+
+        FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, match);
+        assertEquals(EthType.IPv4, ethTypeMatch.getValue());
+        assertFalse(ethTypeMatch.isMasked());
 
         FieldMatch ipProtoMatch = getMatchByField(Field.IP_PROTO, match);
         assertEquals(IpProto.UDP, ipProtoMatch.getValue());

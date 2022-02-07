@@ -55,7 +55,7 @@ public class TransitIslVxlanRuleGenerator implements RuleGenerator {
             return Collections.emptyList();
         }
 
-        Set<FieldMatch> match = buildTransitIslVxlanRuleMatch(features);
+        Set<FieldMatch> match = buildTransitIslVxlanRuleMatch();
         Instructions instructions = Instructions.builder()
                 .goToTable(OfTable.TRANSIT)
                 .build();
@@ -70,18 +70,14 @@ public class TransitIslVxlanRuleGenerator implements RuleGenerator {
                 .build());
     }
 
-    private Set<FieldMatch> buildTransitIslVxlanRuleMatch(Set<SwitchFeature> features) {
-        Set<FieldMatch> match = Sets.newHashSet(
+    private Set<FieldMatch> buildTransitIslVxlanRuleMatch() {
+        return Sets.newHashSet(
+                FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.IPv4).build(),
                 FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP).build(),
                 FieldMatch.builder().field(Field.IN_PORT).value(islPort).build(),
                 FieldMatch.builder().field(Field.UDP_SRC).value(STUB_VXLAN_UDP_SRC).build(),
                 FieldMatch.builder().field(Field.UDP_DST).value(VXLAN_UDP_DST).build()
         );
-
-        if (features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-            match.add(FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.IPv4).build());
-        }
-        return match;
     }
 
 }

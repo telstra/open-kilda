@@ -99,6 +99,7 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
                 if (!getCommand().getMetadata().isMultiTable() && switchFeatures.contains(NOVIFLOW_COPY_FIELD)) {
                     actions.add(buildServer42CopyFirstTimestamp(of));
                 }
+                actions.addAll(OfAdapter.INSTANCE.makeVlanReplaceActions(of, vlanStack, Collections.emptyList()));
                 actions.add(pushVxlanAction(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT));
                 break;
             default:

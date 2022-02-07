@@ -164,6 +164,7 @@ public interface OutputCommands {
     default OFFlowAdd installEgressIslVxlanRule(DatapathId dpid, int port) {
         Match match = ofFactory.buildMatch()
                 .setExact(MatchField.ETH_DST, MacAddress.of(Arrays.copyOfRange(dpid.getBytes(), 2, 8)))
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                 .setExact(MatchField.IN_PORT, OFPort.of(port))
                 .setExact(MatchField.UDP_SRC, TransportPort.of(SwitchManager.STUB_VXLAN_UDP_SRC))
@@ -190,6 +191,7 @@ public interface OutputCommands {
      */
     default OFFlowAdd installTransitIslVxlanRule(DatapathId dpid, int port) {
         Match match = ofFactory.buildMatch()
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                 .setExact(MatchField.IN_PORT, OFPort.of(port))
                 .setExact(MatchField.UDP_SRC, TransportPort.of(SwitchManager.STUB_VXLAN_UDP_SRC))
