@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ public class SwitchId implements Comparable<SwitchId>, Serializable {
         Objects.requireNonNull(switchId, "Switch id must not be null");
 
         try {
-            this.id = Long.parseUnsignedLong(switchId.replaceAll("[-:]", ""), 16);
+            this.id = Long.parseUnsignedLong(switchId.replaceAll("[-:]", "").trim(), 16);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(String.format("Can not parse input string: \"%s\"", switchId));
         }
