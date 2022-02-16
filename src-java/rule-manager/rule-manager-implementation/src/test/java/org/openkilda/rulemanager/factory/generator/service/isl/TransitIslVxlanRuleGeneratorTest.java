@@ -78,7 +78,7 @@ public class TransitIslVxlanRuleGeneratorTest {
         assertEquals(ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE, flowCommandData.getPriority());
 
         Set<FieldMatch> match = flowCommandData.getMatch();
-        assertEquals(4, match.size());
+        assertEquals(5, match.size());
         checkMatch(match);
 
         Instructions instructions = flowCommandData.getInstructions();
@@ -123,6 +123,10 @@ public class TransitIslVxlanRuleGeneratorTest {
     }
 
     private void checkMatch(Set<FieldMatch> match) {
+        FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, match);
+        assertEquals(EthType.IPv4, ethTypeMatch.getValue());
+        assertFalse(ethTypeMatch.isMasked());
+
         FieldMatch ipProtoMatch = getMatchByField(Field.IP_PROTO, match);
         assertEquals(IpProto.UDP, ipProtoMatch.getValue());
         assertFalse(ipProtoMatch.isMasked());

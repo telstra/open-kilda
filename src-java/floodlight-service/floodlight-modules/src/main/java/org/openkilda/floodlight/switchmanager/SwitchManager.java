@@ -530,8 +530,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFactory ofFactory = sw.getOFFactory();
         Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
         if (features.contains(NOVIFLOW_PUSH_POP_VXLAN) || features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-            flows.add(buildEgressIslVxlanRule(ofFactory, features, dpid, port));
-            flows.add(buildTransitIslVxlanRule(ofFactory, features, port));
+            flows.add(buildEgressIslVxlanRule(ofFactory, dpid, port));
+            flows.add(buildTransitIslVxlanRule(ofFactory, port));
         }
         flows.add(buildEgressIslVlanRule(ofFactory, port));
         return flows;
@@ -1097,15 +1097,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public long installEgressIslVxlanRule(DatapathId dpid, int port) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
-        OFFlowMod flowMod = buildEgressIslVxlanRule(ofFactory, featureDetectorService.detectSwitch(sw), dpid, port);
+        OFFlowMod flowMod = buildEgressIslVxlanRule(ofFactory, dpid, port);
         String flowName = "--Isl egress rule for VXLAN--" + dpid.toString();
         pushFlow(sw, flowName, flowMod);
         return flowMod.getCookie().getValue();
     }
 
-    private OFFlowMod buildEgressIslVxlanRule(OFFactory ofFactory, Set<SwitchFeature> features, DatapathId dpid,
-                                              int port) {
-        Match match = buildEgressIslVxlanRuleMatch(dpid, port, ofFactory, features);
+    private OFFlowMod buildEgressIslVxlanRule(OFFactory ofFactory, DatapathId dpid, int port) {
+        Match match = buildEgressIslVxlanRuleMatch(dpid, port, ofFactory);
         OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(EGRESS_TABLE_ID));
         return prepareFlowModBuilder(
                 ofFactory, Cookie.encodeIslVxlanEgress(port),
@@ -1122,7 +1121,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         long cookie = Cookie.encodeIslVxlanEgress(port);
         builder.setCookie(U64.of(cookie));
         builder.setCookieMask(U64.NO_MASK);
-        Match match = buildEgressIslVxlanRuleMatch(dpid, port, ofFactory, featureDetectorService.detectSwitch(sw));
+        Match match = buildEgressIslVxlanRuleMatch(dpid, port, ofFactory);
         builder.setMatch(match);
         builder.setPriority(ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE);
 
@@ -1130,32 +1129,29 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return cookie;
     }
 
-    private Match buildEgressIslVxlanRuleMatch(DatapathId dpid, int port, OFFactory ofFactory,
-                                               Set<SwitchFeature> features) {
-        Builder builder = ofFactory.buildMatch()
+    private Match buildEgressIslVxlanRuleMatch(DatapathId dpid, int port, OFFactory ofFactory) {
+        return ofFactory.buildMatch()
                 .setExact(MatchField.ETH_DST, convertDpIdToMac(dpid))
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                 .setExact(MatchField.IN_PORT, OFPort.of(port))
                 .setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC))
-                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST));
-        if (features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-            builder.setExact(MatchField.ETH_TYPE, EthType.IPv4);
-        }
-        return builder.build();
+                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST))
+                .build();
     }
 
     @Override
     public long installTransitIslVxlanRule(DatapathId dpid, int port) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
-        OFFlowMod flowMod = buildTransitIslVxlanRule(ofFactory, featureDetectorService.detectSwitch(sw), port);
+        OFFlowMod flowMod = buildTransitIslVxlanRule(ofFactory, port);
         String flowName = "--Isl transit rule for VXLAN--" + dpid.toString();
         pushFlow(sw, flowName, flowMod);
         return flowMod.getCookie().getValue();
     }
 
-    private OFFlowMod buildTransitIslVxlanRule(OFFactory ofFactory, Set<SwitchFeature> features, int port) {
-        Match match = buildTransitIslVxlanRuleMatch(port, ofFactory, features);
+    private OFFlowMod buildTransitIslVxlanRule(OFFactory ofFactory, int port) {
+        Match match = buildTransitIslVxlanRuleMatch(port, ofFactory);
         OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(TRANSIT_TABLE_ID));
         return prepareFlowModBuilder(
                 ofFactory, Cookie.encodeIslVxlanTransit(port),
@@ -1172,24 +1168,21 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         long cookie = Cookie.encodeIslVxlanTransit(port);
         builder.setCookie(U64.of(cookie));
         builder.setCookieMask(U64.NO_MASK);
-        Match match = buildTransitIslVxlanRuleMatch(port, ofFactory, featureDetectorService.detectSwitch(sw));
+        Match match = buildTransitIslVxlanRuleMatch(port, ofFactory);
         builder.setMatch(match);
         builder.setPriority(ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE);
         removeFlowByOfFlowDelete(dpid, INPUT_TABLE_ID, builder.build());
         return cookie;
     }
 
-    private Match buildTransitIslVxlanRuleMatch(int port, OFFactory ofFactory, Set<SwitchFeature> features) {
-        Builder builder = ofFactory.buildMatch()
+    private Match buildTransitIslVxlanRuleMatch(int port, OFFactory ofFactory) {
+        return ofFactory.buildMatch()
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                 .setExact(MatchField.IN_PORT, OFPort.of(port))
                 .setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC))
-                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST));
-
-        if (features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-            builder.setExact(MatchField.ETH_TYPE, EthType.IPv4);
-        }
-        return builder.build();
+                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST))
+                .build();
     }
 
     @Override

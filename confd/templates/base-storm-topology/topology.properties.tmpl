@@ -167,3 +167,8 @@ flow.rtt.stats.expiration.seconds = {{ getv "/kilda_flow_rtt_stats_expiration_se
 isl.rtt.latency.expiration.seconds = {{ getv "/kilda_isl_rtt_latency_expiration_seconds" }}
 flow.latency.sla.timeout.seconds = {{ getv "/kilda_flow_latency_sla_timeout_seconds" }}
 flow.latency.sla.threshold.percent = {{ getv "/kilda_flow_latency_sla_threshold_percent" }}
+
+# rule-manager
+flow-ping-magic-src-mac-address = {{ getv "/kilda_floodlight_flow_ping_magic_src_mac_address" }}
+discovery-bcast-packet-dst = {{ getv "/kilda_floodlight_broadcast_mac_address" }}
+server42-isl-rtt-magic-mac-address = {{ getv "/kilda_floodlight_server42_isl_rtt_magic_mac_address" }}
