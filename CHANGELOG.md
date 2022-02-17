@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.115.0 (17/02/2022)
+
+### Features:
+-  [#4649](https://github.com/telstra/open-kilda/pull/4649) Rule manager integration into switch validation (Issue: [#4587](https://github.com/telstra/open-kilda/issues/4587)) [**storm-topologies**]
+-  [#4685](https://github.com/telstra/open-kilda/pull/4685) [test] add yFlowDiversitySpec [**tests**]
+
+### Bug Fixes:
+-  [#4686](https://github.com/telstra/open-kilda/pull/4686) Enforce switch multi-table flag in RuleManager if there's existing multi-table flow 
+-  [#4688](https://github.com/telstra/open-kilda/pull/4688) Allow cookie duplication for RuleManager rule checks 
+-  [#4689](https://github.com/telstra/open-kilda/pull/4689) Fix NPE in ingress rule generator for single switch flow 
+-  [#4691](https://github.com/telstra/open-kilda/pull/4691) Fix the output port for a single switch and same port flow 
+-  [#4697](https://github.com/telstra/open-kilda/pull/4697) Fix rule manager switch validation [**storm-topologies**]
+
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.114.0...v1.115.0).
+
+### Affected Components:
+swmanager
+
+---
+
 ## v1.114.0 (31/01/2022)
 
 ### Features:
