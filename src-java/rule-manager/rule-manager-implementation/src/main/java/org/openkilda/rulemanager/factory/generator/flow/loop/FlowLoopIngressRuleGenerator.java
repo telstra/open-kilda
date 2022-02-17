@@ -15,7 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.flow.loop;
 
-import static com.google.common.collect.Sets.newHashSet;
 import static org.openkilda.model.FlowEndpoint.isVlanIdSet;
 import static org.openkilda.rulemanager.utils.Utils.checkAndBuildIngressEndpoint;
 import static org.openkilda.rulemanager.utils.Utils.makeIngressMatch;
@@ -24,12 +23,10 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
@@ -72,9 +69,7 @@ public class FlowLoopIngressRuleGenerator implements RuleGenerator {
                 .match(makeIngressMatch(ingressEndpoint, multiTable, sw.getFeatures()))
                 .instructions(makeIngressFlowLoopInstructions(ingressEndpoint));
 
-        if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
-            builder.flags(newHashSet(OfFlowFlag.RESET_COUNTERS));
-        }
+        // todo add RESET_COUNTERS flag
         return builder.build();
     }
 

@@ -49,7 +49,6 @@ import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
-import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PopVlanAction;
@@ -63,6 +62,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import lombok.Builder.Default;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -70,6 +70,7 @@ import java.util.List;
 import java.util.Set;
 
 @SuperBuilder
+@Slf4j
 public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleGenerator {
 
     /*
@@ -219,7 +220,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
 
     private Instructions buildIngressInstructions(Switch sw, int innerVlan) {
         List<Action> applyActions = new ArrayList<>(buildTransformActions(innerVlan, sw.getFeatures()));
-        applyActions.add(new PortOutAction(new PortNumber(getOutPort(flowPath, flow))));
+        applyActions.add(new PortOutAction(getOutPort(flowPath, flow)));
         return Instructions.builder()
                 .applyActions(applyActions)
                 .build();
@@ -273,15 +274,14 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
                 .writeMetadata(mapMetadata(RoutingMetadata.builder().inputPort(inPort).build(sw.getFeatures())))
                 .build();
 
-        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
+        return FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(cookie)
                 .table(OfTable.INPUT)
                 .priority(Priority.SERVER_42_FLOW_RTT_INPUT_PRIORITY)
                 .match(match)
-                .instructions(instructions);
-
-        return builder.build();
+                .instructions(instructions)
+                .build();
     }
 }

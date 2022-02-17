@@ -70,7 +70,8 @@ public class Server42FlowRttOutputVlanRuleGenerator implements RuleGenerator {
     public List<SpeakerData> generateCommands(Switch sw) {
         List<Action> actions = new ArrayList<>();
         if (server42Vlan > 0) {
-            actions.add(PushVlanAction.builder().vlanId((short) server42Vlan).build());
+            actions.add(new PushVlanAction());
+            actions.add(SetFieldAction.builder().field(Field.VLAN_VID).value(server42Vlan).build());
         }
         actions.add(SetFieldAction.builder().field(Field.ETH_SRC).value(sw.getSwitchId().toLong()).build());
         actions.add(SetFieldAction.builder().field(Field.ETH_DST).value(server42MacAddress.toLong()).build());

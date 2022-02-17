@@ -16,6 +16,7 @@
 package org.openkilda.rulemanager.match;
 
 import org.openkilda.rulemanager.Field;
+import org.openkilda.rulemanager.ProtoConstants.Mask;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -25,6 +26,8 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
 import lombok.Value;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 @Value
 @JsonSerialize
@@ -48,5 +51,37 @@ public class FieldMatch {
 
     public boolean isMasked() {
         return mask != null;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        FieldMatch that = (FieldMatch) o;
+
+        long thisEffectiveMask = getEffectiveMask(mask);
+        long thatEffectiveMask = getEffectiveMask(that.getMask());
+        return new EqualsBuilder()
+                .append(value, that.value)
+                .append(thisEffectiveMask, thatEffectiveMask)
+                .append(field, that.field)
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        long effectiveMask = getEffectiveMask(mask);
+        return new HashCodeBuilder(17, 37).append(value).append(effectiveMask).append(field).toHashCode();
+    }
+
+    // Masked match with NO_MASK is treated as not masked match in OVS
+    private long getEffectiveMask(Long mask) {
+        return mask == null ? Mask.NO_MASK : mask;
     }
 }

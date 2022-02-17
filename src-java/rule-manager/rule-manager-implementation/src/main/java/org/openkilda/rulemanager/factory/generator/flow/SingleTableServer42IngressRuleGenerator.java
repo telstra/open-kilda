@@ -40,7 +40,6 @@ import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
-import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
@@ -110,7 +109,7 @@ public class SingleTableServer42IngressRuleGenerator extends Server42IngressRule
 
     private Instructions buildIngressInstructions(Switch sw, int outerVlan) {
         List<Action> applyActions = new ArrayList<>(buildTransformActions(outerVlan, sw.getFeatures()));
-        applyActions.add(new PortOutAction(new PortNumber(getOutPort(flowPath, flow))));
+        applyActions.add(new PortOutAction(getOutPort(flowPath, flow)));
         return Instructions.builder()
                 .applyActions(applyActions)
                 .build();

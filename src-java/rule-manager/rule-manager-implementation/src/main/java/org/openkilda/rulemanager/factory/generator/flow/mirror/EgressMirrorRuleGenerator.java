@@ -24,13 +24,11 @@ import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
@@ -92,9 +90,7 @@ public class EgressMirrorRuleGenerator extends EgressRuleGenerator {
                         .applyActions(buildApplyActions(egressEndpoint, sw, groupId))
                         .build());
 
-        if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
-            builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
-        }
+        // todo add RESET_COUNTERS flag
         return builder.build();
     }
 

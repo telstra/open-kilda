@@ -84,7 +84,8 @@ public final class Constants {
 
         public static final int MIRROR_FLOW_PRIORITY = FLOW_PRIORITY + 50;
         public static final int MIRROR_DOUBLE_VLAN_FLOW_PRIORITY = MIRROR_FLOW_PRIORITY + 10;
-        public static final int MIRROR_DEFAULT_FLOW_PRIORITY = MIRROR_FLOW_PRIORITY - 10;
+        //todo change -1 to -10
+        public static final int MIRROR_DEFAULT_FLOW_PRIORITY = MIRROR_FLOW_PRIORITY - 1;
 
         public static final int LOOP_FLOW_PRIORITY = FLOW_PRIORITY + 100;
         public static final int LOOP_DOUBLE_VLAN_FLOW_PRIORITY = LOOP_FLOW_PRIORITY + 10;

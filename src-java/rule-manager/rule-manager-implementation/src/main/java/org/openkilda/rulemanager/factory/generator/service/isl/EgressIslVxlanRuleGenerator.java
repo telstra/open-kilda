@@ -56,7 +56,7 @@ public class EgressIslVxlanRuleGenerator implements RuleGenerator {
             return Collections.emptyList();
         }
 
-        Set<FieldMatch> match = buildEgressIslVxlanRuleMatch(sw.getSwitchId(), features);
+        Set<FieldMatch> match = buildEgressIslVxlanRuleMatch(sw.getSwitchId());
         Instructions instructions = Instructions.builder()
                 .goToTable(OfTable.EGRESS)
                 .build();
@@ -72,17 +72,14 @@ public class EgressIslVxlanRuleGenerator implements RuleGenerator {
                 .build());
     }
 
-    private Set<FieldMatch> buildEgressIslVxlanRuleMatch(SwitchId switchId, Set<SwitchFeature> features) {
-        Set<FieldMatch> match = Sets.newHashSet(
+    private Set<FieldMatch> buildEgressIslVxlanRuleMatch(SwitchId switchId) {
+        return Sets.newHashSet(
                 FieldMatch.builder().field(Field.ETH_DST).value(switchId.toLong()).build(),
+                FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.IPv4).build(),
                 FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP).build(),
                 FieldMatch.builder().field(Field.IN_PORT).value(islPort).build(),
                 FieldMatch.builder().field(Field.UDP_SRC).value(STUB_VXLAN_UDP_SRC).build(),
                 FieldMatch.builder().field(Field.UDP_DST).value(VXLAN_UDP_DST).build()
         );
-        if (features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-            match.add(FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.IPv4).build());
-        }
-        return match;
     }
 }

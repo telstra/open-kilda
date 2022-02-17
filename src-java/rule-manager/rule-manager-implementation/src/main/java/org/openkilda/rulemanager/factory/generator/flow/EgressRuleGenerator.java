@@ -28,12 +28,10 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
@@ -45,13 +43,14 @@ import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.utils.Utils;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @SuperBuilder
+@Slf4j
 public class EgressRuleGenerator extends NotIngressRuleGenerator {
 
     protected final FlowPath flowPath;
@@ -81,9 +80,7 @@ public class EgressRuleGenerator extends NotIngressRuleGenerator {
                         .applyActions(buildApplyActions(egressEndpoint, sw))
                         .build());
 
-        if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
-            builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
-        }
+        // todo add RESET COUNTERS flag
         return builder.build();
     }
 

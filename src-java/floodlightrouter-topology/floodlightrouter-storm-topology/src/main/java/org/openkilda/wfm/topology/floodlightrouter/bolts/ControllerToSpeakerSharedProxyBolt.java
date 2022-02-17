@@ -32,7 +32,6 @@ import org.openkilda.messaging.command.switches.DumpRulesForFlowHsRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
-import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -92,7 +91,6 @@ public class ControllerToSpeakerSharedProxyBolt extends ControllerToSpeakerProxy
                     commandMessage.getCorrelationId(), result));
         } else if (commandMessage.getData() instanceof DumpRulesForSwitchManagerRequest
                 || commandMessage.getData() instanceof DumpMetersForSwitchManagerRequest
-                || commandMessage.getData() instanceof GetExpectedDefaultRulesRequest
                 || commandMessage.getData() instanceof InstallFlowForSwitchManagerRequest
                 || commandMessage.getData() instanceof RemoveFlowForSwitchManagerRequest
                 || commandMessage.getData() instanceof ReinstallDefaultFlowForSwitchManagerRequest) {

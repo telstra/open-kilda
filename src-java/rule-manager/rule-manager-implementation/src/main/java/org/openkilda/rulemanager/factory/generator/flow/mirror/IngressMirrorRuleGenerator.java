@@ -41,7 +41,6 @@ import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
-import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.GroupAction;
@@ -168,7 +167,7 @@ public class IngressMirrorRuleGenerator extends IngressRuleGenerator {
             }
         }
 
-        actions.add(new PortOutAction(new PortNumber(getOutPort(flowPath, flow))));
+        actions.add(new PortOutAction(getOutPort(flowPath, flow)));
 
         return Bucket.builder()
                 .watchGroup(WatchGroup.ANY)

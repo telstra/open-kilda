@@ -31,7 +31,6 @@ import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
-import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
@@ -79,7 +78,7 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
     private FlowSpeakerData buildFlowIngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
         List<Action> actions = new ArrayList<>(buildTransformActions(
                 ingressEndpoint.getInnerVlanId(), sw.getFeatures()));
-        actions.add(new PortOutAction(new PortNumber(getOutPort(flowPath, flow))));
+        actions.add(new PortOutAction(getOutPort(flowPath, flow)));
 
         FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(ingressEndpoint.getSwitchId())

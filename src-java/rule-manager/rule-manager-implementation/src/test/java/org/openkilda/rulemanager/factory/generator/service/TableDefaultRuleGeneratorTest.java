@@ -56,7 +56,11 @@ public class TableDefaultRuleGeneratorTest {
         assertEquals(OfTable.INPUT, flowCommandData.getTable());
         assertEquals(MINIMAL_POSITIVE_PRIORITY, flowCommandData.getPriority());
 
-        assertNull(flowCommandData.getMatch());
-        assertNull(flowCommandData.getInstructions());
+        assertTrue(flowCommandData.getMatch().isEmpty());
+        assertNull(flowCommandData.getInstructions().getApplyActions());
+        assertNull(flowCommandData.getInstructions().getGoToTable());
+        assertNull(flowCommandData.getInstructions().getGoToMeter());
+        assertNull(flowCommandData.getInstructions().getWriteActions());
+        assertNull(flowCommandData.getInstructions().getWriteMetadata());
     }
 }

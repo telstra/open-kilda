@@ -18,7 +18,6 @@ package org.openkilda.rulemanager.factory.generator.flow;
 import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -174,7 +173,8 @@ public class MultiTableServer42IngressRuleGeneratorTest {
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
                 SetFieldAction.builder().field(Field.ETH_DST).value(SWITCH_ID_2.toMacAddressAsLong()).build(),
-                PushVlanAction.builder().vlanId((short) TRANSIT_VLAN_ID).build());
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
         assertEquals(expectedActions, transformActions);
     }
 
@@ -186,7 +186,8 @@ public class MultiTableServer42IngressRuleGeneratorTest {
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
                 SetFieldAction.builder().field(Field.ETH_DST).value(SWITCH_ID_2.toMacAddressAsLong()).build(),
-                PushVlanAction.builder().vlanId((short) TRANSIT_VLAN_ID).build());
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
         assertEquals(expectedActions, transformActions);
     }
 
@@ -342,7 +343,8 @@ public class MultiTableServer42IngressRuleGeneratorTest {
         List<Action> expectedIngressActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
                 SetFieldAction.builder().field(Field.ETH_DST).value(SWITCH_ID_2.toMacAddressAsLong()).build(),
-                PushVlanAction.builder().vlanId((short) TRANSIT_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2)));
         assertIngressCommand(ingressCommand, Priority.SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY,
                 expectedIngressMatch, expectedIngressActions);
@@ -453,7 +455,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
                 .goToTable(OfTable.INGRESS)
                 .build();
         assertEquals(expectedInstructions, command.getInstructions());
-        assertNull(command.getFlags());
+        assertTrue(command.getFlags().isEmpty());
     }
 
     private void assertInputCommand(FlowSpeakerData command) {
@@ -484,7 +486,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
                         .build(SWITCH_1.getFeatures())))
                 .build();
         assertEquals(expectedInstructions, command.getInstructions());
-        assertNull(command.getFlags());
+        assertTrue(command.getFlags().isEmpty());
     }
 
     private MultiTableServer42IngressRuleGenerator buildGenerator(

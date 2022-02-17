@@ -83,7 +83,11 @@ public class DropDiscoveryLoopRuleGeneratorTest {
         assertEquals(sw.getSwitchId().toLong(), ethSrcMatch.getValue());
         assertFalse(ethSrcMatch.isMasked());
 
-        assertNull(flowCommandData.getInstructions());
+        assertNull(flowCommandData.getInstructions().getApplyActions());
+        assertNull(flowCommandData.getInstructions().getGoToMeter());
+        assertNull(flowCommandData.getInstructions().getGoToTable());
+        assertNull(flowCommandData.getInstructions().getWriteMetadata());
+        assertNull(flowCommandData.getInstructions().getWriteActions());
     }
 
     @Test

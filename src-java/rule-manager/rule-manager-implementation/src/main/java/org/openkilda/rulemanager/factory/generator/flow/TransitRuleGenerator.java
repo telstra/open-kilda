@@ -18,12 +18,10 @@ package org.openkilda.rulemanager.factory.generator.flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
@@ -31,7 +29,6 @@ import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.PortOutAction;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
@@ -67,9 +64,7 @@ public class TransitRuleGenerator extends NotIngressRuleGenerator {
                         .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(outPort))))
                         .build());
 
-        if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
-            builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
-        }
+        // todo add RESET_COUNTER flag
         return builder.build();
     }
 }

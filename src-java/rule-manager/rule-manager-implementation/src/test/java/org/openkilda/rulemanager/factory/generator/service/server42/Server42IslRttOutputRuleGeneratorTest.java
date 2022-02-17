@@ -95,7 +95,8 @@ public class Server42IslRttOutputRuleGeneratorTest {
         assertEquals(expectedMatch, flowCommandData.getMatch());
 
         List<Action> expectedApplyActions = Lists.newArrayList(
-                PushVlanAction.builder().vlanId((short) Utils.SERVER_42_VLAN).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(Utils.SERVER_42_VLAN).build(),
                 SetFieldAction.builder().field(Field.ETH_SRC).value(sw.getSwitchId().toMacAddressAsLong()).build(),
                 SetFieldAction.builder().field(Field.ETH_DST).value(Utils.SERVER_42_MAC_ADDRESS.toLong()).build(),
                 new PortOutAction(new PortNumber(Utils.SERVER_42_PORT)));

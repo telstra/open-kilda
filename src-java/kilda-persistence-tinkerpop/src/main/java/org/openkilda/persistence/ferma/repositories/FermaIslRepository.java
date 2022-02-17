@@ -457,12 +457,13 @@ public class FermaIslRepository extends FermaGenericRepository<Isl, IslData, Isl
         Set<String> graphSwitchIds = switchIds.stream()
                 .map(SwitchIdConverter.INSTANCE::toGraphProperty)
                 .collect(toSet());
-        List<? extends IslFrame> islsFrames = framedGraph().traverse(g -> g.V()
+        List<Isl> result = new ArrayList<>();
+        framedGraph().traverse(g -> g.E()
                         .hasLabel(IslFrame.FRAME_LABEL)
                         .has(IslFrame.SRC_SWITCH_ID_PROPERTY, P.within(graphSwitchIds)))
-                .toListExplicit(IslFrame.class);
-        return islsFrames.stream()
-                .map(Isl::new)
+                .frameExplicit(IslFrame.class)
+                .forEachRemaining(frame -> result.add(addIslConfigToIsl(new Isl(frame))));
+        return result.stream()
                 .collect(groupingBy(Isl::getSrcSwitchId, mapping(Isl::getSrcPort, toSet())));
     }
 

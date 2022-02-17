@@ -80,7 +80,6 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
-import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.OfInstallException;
@@ -106,7 +105,6 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.Meter;
@@ -525,86 +523,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         pushFlow(sw, "--server 42 shared rule--", flow);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<OFFlowMod> getExpectedDefaultFlows(DatapathId dpid, boolean multiTable, boolean switchLldp,
-                                                   boolean switchArp)
-            throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        List<SwitchFlowGenerator> defaultFlowGenerators = getDefaultSwitchFlowGenerators(
-                multiTable, switchLldp, switchArp);
-
-        return defaultFlowGenerators.stream()
-                .map(g -> g.generateFlow(sw))
-                .map(SwitchFlowTuple::getFlow)
-                .filter(Objects::nonNull)
-                .collect(toList());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<MeterEntry> getExpectedDefaultMeters(DatapathId dpid, boolean multiTable, boolean switchLldp,
-                                                     boolean switchArp)
-            throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        List<SwitchFlowGenerator> defaultFlowGenerators = getDefaultSwitchFlowGenerators(
-                multiTable, switchLldp, switchArp);
-
-        return defaultFlowGenerators.stream()
-                .map(g -> g.generateFlow(sw))
-                .map(SwitchFlowTuple::getMeter)
-                .filter(Objects::nonNull)
-                .map(OfMeterConverter::toMeterEntry)
-                .collect(toList());
-    }
-
-    private List<SwitchFlowGenerator> getDefaultSwitchFlowGenerators(boolean multiTable, boolean switchLldp,
-                                                                     boolean switchArp) {
-        List<SwitchFlowGenerator> defaultFlowGenerators = new ArrayList<>();
-        defaultFlowGenerators.add(switchFlowFactory.getDropFlowGenerator(DROP_RULE_COOKIE, INPUT_TABLE_ID));
-        defaultFlowGenerators.add(switchFlowFactory.getVerificationFlow(true));
-        defaultFlowGenerators.add(switchFlowFactory.getVerificationFlow(false));
-        defaultFlowGenerators.add(switchFlowFactory.getDropLoopFlowGenerator());
-        defaultFlowGenerators.add(switchFlowFactory.getBfdCatchFlowGenerator());
-        defaultFlowGenerators.add(switchFlowFactory.getRoundTripLatencyFlowGenerator());
-        defaultFlowGenerators.add(switchFlowFactory.getUnicastVerificationVxlanFlowGenerator());
-
-        if (multiTable) {
-            defaultFlowGenerators.add(
-                    switchFlowFactory.getDropFlowGenerator(MULTITABLE_INGRESS_DROP_COOKIE, INGRESS_TABLE_ID));
-            defaultFlowGenerators.add(
-                    switchFlowFactory.getDropFlowGenerator(MULTITABLE_TRANSIT_DROP_COOKIE, TRANSIT_TABLE_ID));
-            defaultFlowGenerators.add(
-                    switchFlowFactory.getDropFlowGenerator(MULTITABLE_POST_INGRESS_DROP_COOKIE, POST_INGRESS_TABLE_ID));
-            defaultFlowGenerators.add(switchFlowFactory.getTablePassThroughDefaultFlowGenerator(
-                    MULTITABLE_EGRESS_PASS_THROUGH_COOKIE, TRANSIT_TABLE_ID, EGRESS_TABLE_ID));
-            defaultFlowGenerators.add(switchFlowFactory.getTablePassThroughDefaultFlowGenerator(
-                    MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, INGRESS_TABLE_ID, PRE_INGRESS_TABLE_ID));
-            defaultFlowGenerators.add(switchFlowFactory.getLldpPostIngressFlowGenerator());
-            defaultFlowGenerators.add(switchFlowFactory.getLldpPostIngressVxlanFlowGenerator());
-            defaultFlowGenerators.add(switchFlowFactory.getLldpPostIngressOneSwitchFlowGenerator());
-            defaultFlowGenerators.add(switchFlowFactory.getArpPostIngressFlowGenerator());
-            defaultFlowGenerators.add(switchFlowFactory.getArpPostIngressVxlanFlowGenerator());
-            defaultFlowGenerators.add(switchFlowFactory.getArpPostIngressOneSwitchFlowGenerator());
-
-            if (switchLldp) {
-                defaultFlowGenerators.add(switchFlowFactory.getLldpTransitFlowGenerator());
-                defaultFlowGenerators.add(switchFlowFactory.getLldpInputPreDropFlowGenerator());
-                defaultFlowGenerators.add(switchFlowFactory.getLldpIngressFlowGenerator());
-            }
-            if (switchArp) {
-                defaultFlowGenerators.add(switchFlowFactory.getArpTransitFlowGenerator());
-                defaultFlowGenerators.add(switchFlowFactory.getArpInputPreDropFlowGenerator());
-                defaultFlowGenerators.add(switchFlowFactory.getArpIngressFlowGenerator());
-            }
-        }
-        return defaultFlowGenerators;
-    }
-
     @Override
     public List<OFFlowMod> getExpectedIslFlowsForPort(DatapathId dpid, int port) throws SwitchOperationException {
         List<OFFlowMod> flows = new ArrayList<>();
@@ -612,8 +530,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFactory ofFactory = sw.getOFFactory();
         Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
         if (features.contains(NOVIFLOW_PUSH_POP_VXLAN) || features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-            flows.add(buildEgressIslVxlanRule(ofFactory, features, dpid, port));
-            flows.add(buildTransitIslVxlanRule(ofFactory, features, port));
+            flows.add(buildEgressIslVxlanRule(ofFactory, dpid, port));
+            flows.add(buildTransitIslVxlanRule(ofFactory, port));
         }
         flows.add(buildEgressIslVlanRule(ofFactory, port));
         return flows;
@@ -1179,15 +1097,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public long installEgressIslVxlanRule(DatapathId dpid, int port) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
-        OFFlowMod flowMod = buildEgressIslVxlanRule(ofFactory, featureDetectorService.detectSwitch(sw), dpid, port);
+        OFFlowMod flowMod = buildEgressIslVxlanRule(ofFactory, dpid, port);
         String flowName = "--Isl egress rule for VXLAN--" + dpid.toString();
         pushFlow(sw, flowName, flowMod);
         return flowMod.getCookie().getValue();
     }
 
-    private OFFlowMod buildEgressIslVxlanRule(OFFactory ofFactory, Set<SwitchFeature> features, DatapathId dpid,
-                                              int port) {
-        Match match = buildEgressIslVxlanRuleMatch(dpid, port, ofFactory, features);
+    private OFFlowMod buildEgressIslVxlanRule(OFFactory ofFactory, DatapathId dpid, int port) {
+        Match match = buildEgressIslVxlanRuleMatch(dpid, port, ofFactory);
         OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(EGRESS_TABLE_ID));
         return prepareFlowModBuilder(
                 ofFactory, Cookie.encodeIslVxlanEgress(port),
@@ -1204,7 +1121,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         long cookie = Cookie.encodeIslVxlanEgress(port);
         builder.setCookie(U64.of(cookie));
         builder.setCookieMask(U64.NO_MASK);
-        Match match = buildEgressIslVxlanRuleMatch(dpid, port, ofFactory, featureDetectorService.detectSwitch(sw));
+        Match match = buildEgressIslVxlanRuleMatch(dpid, port, ofFactory);
         builder.setMatch(match);
         builder.setPriority(ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE);
 
@@ -1212,32 +1129,29 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return cookie;
     }
 
-    private Match buildEgressIslVxlanRuleMatch(DatapathId dpid, int port, OFFactory ofFactory,
-                                               Set<SwitchFeature> features) {
-        Builder builder = ofFactory.buildMatch()
+    private Match buildEgressIslVxlanRuleMatch(DatapathId dpid, int port, OFFactory ofFactory) {
+        return ofFactory.buildMatch()
                 .setExact(MatchField.ETH_DST, convertDpIdToMac(dpid))
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                 .setExact(MatchField.IN_PORT, OFPort.of(port))
                 .setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC))
-                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST));
-        if (features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-            builder.setExact(MatchField.ETH_TYPE, EthType.IPv4);
-        }
-        return builder.build();
+                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST))
+                .build();
     }
 
     @Override
     public long installTransitIslVxlanRule(DatapathId dpid, int port) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
         OFFactory ofFactory = sw.getOFFactory();
-        OFFlowMod flowMod = buildTransitIslVxlanRule(ofFactory, featureDetectorService.detectSwitch(sw), port);
+        OFFlowMod flowMod = buildTransitIslVxlanRule(ofFactory, port);
         String flowName = "--Isl transit rule for VXLAN--" + dpid.toString();
         pushFlow(sw, flowName, flowMod);
         return flowMod.getCookie().getValue();
     }
 
-    private OFFlowMod buildTransitIslVxlanRule(OFFactory ofFactory, Set<SwitchFeature> features, int port) {
-        Match match = buildTransitIslVxlanRuleMatch(port, ofFactory, features);
+    private OFFlowMod buildTransitIslVxlanRule(OFFactory ofFactory, int port) {
+        Match match = buildTransitIslVxlanRuleMatch(port, ofFactory);
         OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(TRANSIT_TABLE_ID));
         return prepareFlowModBuilder(
                 ofFactory, Cookie.encodeIslVxlanTransit(port),
@@ -1254,24 +1168,21 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         long cookie = Cookie.encodeIslVxlanTransit(port);
         builder.setCookie(U64.of(cookie));
         builder.setCookieMask(U64.NO_MASK);
-        Match match = buildTransitIslVxlanRuleMatch(port, ofFactory, featureDetectorService.detectSwitch(sw));
+        Match match = buildTransitIslVxlanRuleMatch(port, ofFactory);
         builder.setMatch(match);
         builder.setPriority(ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE);
         removeFlowByOfFlowDelete(dpid, INPUT_TABLE_ID, builder.build());
         return cookie;
     }
 
-    private Match buildTransitIslVxlanRuleMatch(int port, OFFactory ofFactory, Set<SwitchFeature> features) {
-        Builder builder = ofFactory.buildMatch()
+    private Match buildTransitIslVxlanRuleMatch(int port, OFFactory ofFactory) {
+        return ofFactory.buildMatch()
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
                 .setExact(MatchField.IN_PORT, OFPort.of(port))
                 .setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC))
-                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST));
-
-        if (features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-            builder.setExact(MatchField.ETH_TYPE, EthType.IPv4);
-        }
-        return builder.build();
+                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST))
+                .build();
     }
 
     @Override

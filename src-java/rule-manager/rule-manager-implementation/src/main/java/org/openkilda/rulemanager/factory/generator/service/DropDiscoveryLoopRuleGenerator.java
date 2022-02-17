@@ -24,6 +24,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.RuleManagerConfig;
@@ -57,12 +58,13 @@ public class DropDiscoveryLoopRuleGenerator implements RuleGenerator {
         );
 
         return Collections.singletonList(FlowSpeakerData.builder()
-                        .switchId(sw.getSwitchId())
-                        .ofVersion(ofVersion)
-                        .cookie(new Cookie(DROP_VERIFICATION_LOOP_RULE_COOKIE))
-                        .table(OfTable.INPUT)
-                        .priority(DROP_DISCOVERY_LOOP_RULE_PRIORITY)
-                        .match(match)
+                .switchId(sw.getSwitchId())
+                .ofVersion(ofVersion)
+                .cookie(new Cookie(DROP_VERIFICATION_LOOP_RULE_COOKIE))
+                .table(OfTable.INPUT)
+                .priority(DROP_DISCOVERY_LOOP_RULE_PRIORITY)
+                .match(match)
+                .instructions(Instructions.builder().build())
                 .build());
     }
 }

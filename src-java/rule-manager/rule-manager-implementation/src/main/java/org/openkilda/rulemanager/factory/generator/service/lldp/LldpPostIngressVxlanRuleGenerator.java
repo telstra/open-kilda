@@ -15,11 +15,13 @@
 
 package org.openkilda.rulemanager.factory.generator.service.lldp;
 
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
 import static org.openkilda.rulemanager.Constants.STUB_VXLAN_UDP_SRC;
 import static org.openkilda.rulemanager.Constants.VXLAN_UDP_DST;
 import static org.openkilda.rulemanager.action.ActionType.POP_VXLAN_NOVIFLOW;
+import static org.openkilda.rulemanager.action.ActionType.POP_VXLAN_OVS;
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.cookie.Cookie;
@@ -27,6 +29,7 @@ import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
+import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
@@ -38,10 +41,10 @@ import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import lombok.Builder;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -55,7 +58,8 @@ public class LldpPostIngressVxlanRuleGenerator extends LldpRuleGenerator {
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
-        if (!sw.getFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+        if (!(sw.getFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)
+                || sw.getFeatures().contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN))) {
             return Collections.emptyList();
         }
 
@@ -66,11 +70,17 @@ public class LldpPostIngressVxlanRuleGenerator extends LldpRuleGenerator {
                 FieldMatch.builder().field(Field.UDP_SRC).value(STUB_VXLAN_UDP_SRC).build(),
                 FieldMatch.builder().field(Field.UDP_DST).value(VXLAN_UDP_DST).build()
         );
+        if (sw.getFeatures().contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+            match.add(FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.IPv4).build());
+        }
 
-        List<Action> actions = Lists.newArrayList(
-                new PopVxlanAction(POP_VXLAN_NOVIFLOW),
-                new PortOutAction(new PortNumber(SpecialPortType.CONTROLLER))
-        );
+        List<Action> actions = new ArrayList<>();
+        if (sw.getFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+            actions.add(new PopVxlanAction(POP_VXLAN_NOVIFLOW));
+        } else {
+            actions.add(new PopVxlanAction(POP_VXLAN_OVS));
+        }
+        actions.add(new PortOutAction(new PortNumber(SpecialPortType.CONTROLLER)));
         Instructions instructions = Instructions.builder()
                 .applyActions(actions)
                 .build();

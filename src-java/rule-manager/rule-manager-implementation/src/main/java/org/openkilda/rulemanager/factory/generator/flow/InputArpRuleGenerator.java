@@ -18,7 +18,6 @@ package org.openkilda.rulemanager.factory.generator.flow;
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.PortColourCookie;
 import org.openkilda.rulemanager.Constants.Priority;
@@ -26,7 +25,6 @@ import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
@@ -80,9 +78,7 @@ public class InputArpRuleGenerator implements RuleGenerator {
                         .writeMetadata(new OfMetadata(metadata.getValue(), metadata.getMask()))
                         .build());
 
-        if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
-            builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
-        }
+        //todo add RESET_COUNTERS flag
         return builder.build();
     }
 }

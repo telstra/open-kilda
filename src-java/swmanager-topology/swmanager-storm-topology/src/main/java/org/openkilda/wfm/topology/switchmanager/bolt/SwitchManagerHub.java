@@ -27,19 +27,17 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
 import org.openkilda.messaging.info.flow.FlowInstallResponse;
 import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.flow.FlowRemoveResponse;
+import org.openkilda.messaging.info.group.GroupDumpResponse;
 import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterData;
-import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchExpectedDefaultMeterEntries;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.messaging.info.switches.DeleteGroupResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
 import org.openkilda.messaging.info.switches.InstallGroupResponse;
@@ -49,6 +47,8 @@ import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
 import org.openkilda.messaging.swmanager.request.DeleteLagPortRequest;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
@@ -95,6 +95,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     private final FlowResourcesConfig flowResourcesConfig;
     private final SwitchManagerTopologyConfig topologyConfig;
+    private final RuleManagerConfig ruleManagerConfig;
     private transient SwitchValidateService validateService;
     private transient SwitchSyncService syncService;
     private transient SwitchRuleService switchRuleService;
@@ -105,10 +106,12 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     public SwitchManagerHub(HubBolt.Config hubConfig, PersistenceManager persistenceManager,
                             SwitchManagerTopologyConfig topologyConfig,
-                            FlowResourcesConfig flowResourcesConfig) {
+                            FlowResourcesConfig flowResourcesConfig,
+                            RuleManagerConfig ruleManagerConfig) {
         super(persistenceManager, hubConfig);
         this.topologyConfig = topologyConfig;
         this.flowResourcesConfig = flowResourcesConfig;
+        this.ruleManagerConfig = ruleManagerConfig;
 
         enableMeterRegistry("kilda.switch_validate", StreamType.HUB_TO_METRICS_BOLT.name());
     }
@@ -118,7 +121,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         super.init();
 
         validateService = new SwitchValidateServiceImpl(this, persistenceManager,
-                new ValidationServiceImpl(persistenceManager, topologyConfig, flowResourcesConfig));
+                new ValidationServiceImpl(persistenceManager),
+                new RuleManagerImpl(ruleManagerConfig));
         syncService = new SwitchSyncServiceImpl(this, persistenceManager, flowResourcesConfig);
         switchRuleService = new SwitchRuleServiceImpl(this, persistenceManager.getRepositoryFactory());
 
@@ -159,9 +163,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     }
 
     private void handleMetersResponse(String key, SwitchMeterData data) {
-        if (data instanceof SwitchMeterEntries) {
-            validateService.handleMeterEntriesResponse(key, (SwitchMeterEntries) data);
-        } else if (data instanceof SwitchMeterUnsupported) {
+        if (data instanceof SwitchMeterUnsupported) {
             validateService.handleMetersUnsupportedResponse(key);
         } else {
             log.warn("Receive unexpected SwitchMeterData for key {}: {}", key, data);
@@ -175,17 +177,14 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
         if (message instanceof InfoMessage) {
             InfoData data = ((InfoMessage) message).getData();
-            if (data instanceof SwitchFlowEntries) {
-                validateService.handleFlowEntriesResponse(key, (SwitchFlowEntries) data);
-            } else if (data instanceof SwitchExpectedDefaultFlowEntries) {
-                validateService.handleExpectedDefaultFlowEntriesResponse(key, (SwitchExpectedDefaultFlowEntries) data);
-            } else if (data instanceof SwitchExpectedDefaultMeterEntries) {
-                validateService.handleExpectedDefaultMeterEntriesResponse(key,
-                        (SwitchExpectedDefaultMeterEntries) data);
-            } else if (data instanceof SwitchGroupEntries) {
-                validateService.handleGroupEntriesResponse(key, (SwitchGroupEntries) data);
+            if (data instanceof FlowDumpResponse) {
+                validateService.handleFlowEntriesResponse(key, (FlowDumpResponse) data);
+            } else if (data instanceof GroupDumpResponse) {
+                validateService.handleGroupEntriesResponse(key, (GroupDumpResponse) data);
             } else if (data instanceof DumpLogicalPortsResponse) {
                 validateService.handleLogicalPortResponse(key, (DumpLogicalPortsResponse) data);
+            } else if (data instanceof MeterDumpResponse) {
+                validateService.handleMeterEntriesResponse(key, (MeterDumpResponse) data);
             } else if (data instanceof SwitchMeterData) {
                 handleMetersResponse(key, (SwitchMeterData) data);
             } else if (data instanceof FlowInstallResponse) {

@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
@@ -39,6 +40,7 @@ import java.util.UUID;
 @Value
 @SuperBuilder
 @JsonNaming(SnakeCaseStrategy.class)
+@ToString(callSuper = true)
 public class FlowSpeakerData extends SpeakerData {
 
     CookieBase cookie;
@@ -47,6 +49,19 @@ public class FlowSpeakerData extends SpeakerData {
     Set<FieldMatch> match;
     Instructions instructions;
     Set<OfFlowFlag> flags;
+
+    @EqualsAndHashCode.Exclude
+    long durationSeconds;
+    @EqualsAndHashCode.Exclude
+    long durationNanoSeconds;
+    @EqualsAndHashCode.Exclude
+    long packetCount;
+    @EqualsAndHashCode.Exclude
+    long idleTimeout;
+    @EqualsAndHashCode.Exclude
+    long hardTimeout;
+    @EqualsAndHashCode.Exclude
+    long byteCount;
 
     @JsonCreator
     public FlowSpeakerData(@JsonProperty("uuid") UUID uuid,
@@ -58,7 +73,13 @@ public class FlowSpeakerData extends SpeakerData {
                            @JsonProperty("priority") int priority,
                            @JsonProperty("match") Set<FieldMatch> match,
                            @JsonProperty("instructions") Instructions instructions,
-                           @JsonProperty("flags") Set<OfFlowFlag> flags) {
+                           @JsonProperty("flags") Set<OfFlowFlag> flags,
+                           @JsonProperty("duration_seconds") long durationSeconds,
+                           @JsonProperty("duration_nano_seconds") long durationNanoSeconds,
+                           @JsonProperty("packet_count") long packetCount,
+                           @JsonProperty("idle_timeout") long idleTimeout,
+                           @JsonProperty("hard_timeout") long hardTimeout,
+                           @JsonProperty("byte_count") long byteCount) {
         super(uuid, switchId, dependsOn, ofVersion);
         this.cookie = new Cookie(cookie);
         this.table = table;
@@ -66,11 +87,18 @@ public class FlowSpeakerData extends SpeakerData {
         this.match = match;
         this.instructions = instructions;
         this.flags = flags;
+        this.durationSeconds = durationSeconds;
+        this.durationNanoSeconds = durationNanoSeconds;
+        this.packetCount = packetCount;
+        this.idleTimeout = idleTimeout;
+        this.hardTimeout = hardTimeout;
+        this.byteCount = byteCount;
     }
 
     public abstract static class FlowSpeakerDataBuilder<C extends FlowSpeakerData,
             B extends FlowSpeakerDataBuilder<C, B>>  extends SpeakerDataBuilder<C, B> {
-        private Set<FieldMatch> match;
+        private Set<FieldMatch> match = new HashSet<>();
+        private Set<OfFlowFlag> flags = new HashSet<>();
 
         /**
          * If two FieldMatches have same field type for matching only one of them will be added into match set.
@@ -81,6 +109,11 @@ public class FlowSpeakerData extends SpeakerData {
                 map.put(fieldMatch.getField(), fieldMatch);
             }
             this.match = new HashSet<>(map.values());
+            return self();
+        }
+
+        public B flags(Set<OfFlowFlag> flags) {
+            this.flags.addAll(flags);
             return self();
         }
     }

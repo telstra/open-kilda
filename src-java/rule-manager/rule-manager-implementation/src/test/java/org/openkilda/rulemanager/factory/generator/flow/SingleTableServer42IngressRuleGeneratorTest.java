@@ -178,7 +178,8 @@ public class SingleTableServer42IngressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.UDP_SRC).value(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT).build(),
                 SetFieldAction.builder().field(Field.UDP_DST).value(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT).build(),
                 COPY_FIELD_ACTION,
-                PushVlanAction.builder().vlanId((short) TRANSIT_VLAN_ID).build());
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
         assertEquals(expectedActions, transformActions);
     }
 
@@ -192,7 +193,8 @@ public class SingleTableServer42IngressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.ETH_DST).value(SWITCH_ID_2.toMacAddressAsLong()).build(),
                 SetFieldAction.builder().field(Field.UDP_SRC).value(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT).build(),
                 SetFieldAction.builder().field(Field.UDP_DST).value(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT).build(),
-                PushVlanAction.builder().vlanId((short) TRANSIT_VLAN_ID).build());
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
         assertEquals(expectedActions, transformActions);
     }
 
@@ -295,7 +297,8 @@ public class SingleTableServer42IngressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.UDP_SRC).value(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT).build(),
                 SetFieldAction.builder().field(Field.UDP_DST).value(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT).build(),
                 COPY_FIELD_ACTION,
-                PushVlanAction.builder().vlanId((short) TRANSIT_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2)));
         assertIngressCommand(ingressCommand, Priority.SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY, expectedIngressMatch,
                 expectedIngressActions);

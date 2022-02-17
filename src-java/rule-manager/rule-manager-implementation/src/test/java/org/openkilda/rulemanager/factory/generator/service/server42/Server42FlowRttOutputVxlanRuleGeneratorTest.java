@@ -106,7 +106,8 @@ public class Server42FlowRttOutputVxlanRuleGeneratorTest {
 
         List<Action> expectedApplyActions = Lists.newArrayList(
                 expectedPopVxlan,
-                PushVlanAction.builder().vlanId((short) Utils.SERVER_42_VLAN).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(Utils.SERVER_42_VLAN).build(),
                 SetFieldAction.builder().field(Field.ETH_SRC).value(sw.getSwitchId().toMacAddressAsLong()).build(),
                 SetFieldAction.builder().field(Field.ETH_DST).value(Utils.SERVER_42_MAC_ADDRESS.toLong()).build(),
                 SetFieldAction.builder().field(Field.UDP_SRC).value(SERVER_42_FLOW_RTT_REVERSE_UDP_PORT).build());

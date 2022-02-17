@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
@@ -107,6 +108,44 @@ public class UnicastVerificationVxlanRuleGeneratorTest {
     }
 
     @Test
+    public void shouldBuildCorrectRuleWithMeterForOf13WithOvsVxlan() {
+        sw = buildSwitch("OF_13", Sets.newHashSet(KILDA_OVS_PUSH_POP_MATCH_VXLAN, METERS, PKTPS_FLAG));
+        List<SpeakerData> commands = generator.generateCommands(sw);
+
+        assertEquals(2, commands.size());
+        commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
+        commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
+
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
+        MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
+
+        assertEquals(1, flowCommandData.getDependsOn().size());
+        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+
+        // Check flow command
+        checkFlowCommandBaseProperties(flowCommandData);
+        checkMatch(flowCommandData.getMatch());
+        Instructions instructions = flowCommandData.getInstructions();
+        assertEquals(3, instructions.getApplyActions().size());
+        Action first = instructions.getApplyActions().get(0);
+        assertTrue(first instanceof PopVxlanAction);
+        PopVxlanAction popVxlanAction = (PopVxlanAction) first;
+        assertEquals(ActionType.POP_VXLAN_OVS, popVxlanAction.getType());
+
+        Action second = instructions.getApplyActions().get(1);
+        assertTrue(second instanceof PortOutAction);
+        PortOutAction sendToControllerAction = (PortOutAction) second;
+        assertEquals(SpecialPortType.CONTROLLER, sendToControllerAction.getPortNumber().getPortType());
+
+        assertNull(instructions.getWriteActions());
+        assertEquals(instructions.getGoToMeter(), meterCommandData.getMeterId());
+        assertNull(instructions.getGoToTable());
+
+        // Check meter command
+        checkMeterCommand(meterCommandData);
+    }
+
+    @Test
     public void shouldBuildCorrectRuleWithMeterForOf15() {
         sw = buildSwitch("OF_15", Sets.newHashSet(NOVIFLOW_PUSH_POP_VXLAN, METERS, PKTPS_FLAG));
         List<SpeakerData> commands = generator.generateCommands(sw);
@@ -127,7 +166,7 @@ public class UnicastVerificationVxlanRuleGeneratorTest {
 
         // Check flow command has correct instructions for OF 1.5
         Instructions instructions = flowCommandData.getInstructions();
-        assertEquals(3, instructions.getApplyActions().size());
+        assertEquals(4, instructions.getApplyActions().size());
         Action first = instructions.getApplyActions().get(0);
         assertTrue(first instanceof PopVxlanAction);
         PopVxlanAction popVxlanAction = (PopVxlanAction) first;
@@ -138,7 +177,7 @@ public class UnicastVerificationVxlanRuleGeneratorTest {
         PortOutAction sendToControllerAction = (PortOutAction) second;
         assertEquals(SpecialPortType.CONTROLLER, sendToControllerAction.getPortNumber().getPortType());
 
-        Action third = instructions.getApplyActions().get(2);
+        Action third = instructions.getApplyActions().get(3);
         assertTrue(third instanceof MeterAction);
         MeterAction meterAction = (MeterAction) third;
         assertEquals(meterCommandData.getMeterId(), meterAction.getMeterId());
@@ -170,7 +209,7 @@ public class UnicastVerificationVxlanRuleGeneratorTest {
 
         // Check instructions without meter
         Instructions instructions = flowCommandData.getInstructions();
-        assertEquals(2, instructions.getApplyActions().size());
+        assertEquals(3, instructions.getApplyActions().size());
         Action first = instructions.getApplyActions().get(0);
         assertTrue(first instanceof PopVxlanAction);
         PopVxlanAction popVxlanAction = (PopVxlanAction) first;
@@ -260,7 +299,7 @@ public class UnicastVerificationVxlanRuleGeneratorTest {
     }
 
     private void checkInstructions(Instructions instructions, MeterId meterId) {
-        assertEquals(2, instructions.getApplyActions().size());
+        assertEquals(3, instructions.getApplyActions().size());
         Action first = instructions.getApplyActions().get(0);
         assertTrue(first instanceof PopVxlanAction);
         PopVxlanAction popVxlanAction = (PopVxlanAction) first;

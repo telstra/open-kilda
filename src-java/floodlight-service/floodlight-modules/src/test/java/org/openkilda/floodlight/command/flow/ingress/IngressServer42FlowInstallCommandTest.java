@@ -170,9 +170,10 @@ public class IngressServer42FlowInstallCommandTest {
         assertMetadata(mod, VLAN_1, CUSTOMER_PORT);
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
-        assertEquals(2, applyActions.size());
-        assertPushVxlanAction(applyActions.get(0));
-        assertOutputAction(applyActions.get(1));
+        assertEquals(3, applyActions.size());
+        assertPopVlanAction(applyActions.get(0));
+        assertPushVxlanAction(applyActions.get(1));
+        assertOutputAction(applyActions.get(2));
     }
 
     @Test
@@ -256,9 +257,10 @@ public class IngressServer42FlowInstallCommandTest {
         assertEquals(VLAN_1, mod.getMatch().get(MatchField.VLAN_VID).getVlan());
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
-        assertEquals(2, applyActions.size());
-        assertPushVxlanAction(applyActions.get(0));
-        assertOutputAction(applyActions.get(1));
+        assertEquals(3, applyActions.size());
+        assertPopVlanAction(applyActions.get(0));
+        assertPushVxlanAction(applyActions.get(1));
+        assertOutputAction(applyActions.get(2));
     }
 
     @Test
@@ -326,6 +328,10 @@ public class IngressServer42FlowInstallCommandTest {
     private void assertPushVlanAction(OFAction action) {
         assertEquals(OFActionType.PUSH_VLAN, action.getType());
         assertEquals(EthType.VLAN_FRAME, ((OFActionPushVlan) action).getEthertype());
+    }
+
+    private void assertPopVlanAction(OFAction action) {
+        assertEquals(OFActionType.POP_VLAN, action.getType());
     }
 
     private void assertSetField(OFAction action, Class<? extends OFOxm> type, Object value) {

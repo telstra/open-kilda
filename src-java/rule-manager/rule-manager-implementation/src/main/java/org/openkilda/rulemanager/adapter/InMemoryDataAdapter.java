@@ -84,8 +84,11 @@ public class InMemoryDataAdapter implements DataAdapter {
     }
 
     @Override
-    public FlowTransitEncapsulation getTransitEncapsulation(PathId pathId) {
+    public FlowTransitEncapsulation getTransitEncapsulation(PathId pathId, PathId oppositePathId) {
         FlowTransitEncapsulation result = transitEncapsulations.get(pathId);
+        if (result == null) {
+            result = transitEncapsulations.get(oppositePathId);
+        }
         if (result == null) {
             throw new IllegalArgumentException(format("Transit encapsulation for path id '%s' not found.", pathId));
         }

@@ -17,7 +17,7 @@ package org.openkilda.floodlight.command.rulemanager;
 
 import org.openkilda.floodlight.api.request.rulemanager.OfEntityBatch;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
-import org.openkilda.floodlight.converter.rulemanager.OfFlowModConverter;
+import org.openkilda.floodlight.converter.rulemanager.OfFlowConverter;
 import org.openkilda.floodlight.converter.rulemanager.OfGroupConverter;
 import org.openkilda.floodlight.converter.rulemanager.OfMeterConverter;
 import org.openkilda.messaging.MessageContext;
@@ -159,7 +159,7 @@ public class OfBatchHolder implements OfEntityBatch {
     public void addInstallFlow(FlowSpeakerData data, SwitchId switchId) {
         DatapathId dpId = DatapathId.of(switchId.toLong());
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
-        OFMessage message = OfFlowModConverter.INSTANCE.convertInstallFlowCommand(data, factory);
+        OFMessage message = OfFlowConverter.INSTANCE.convertInstallFlowCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
         commandMap.put(data.getUuid(), BatchData.builder().flow(true).message(message).build());
         flowsMap.put(data.getCookie(), data);
@@ -170,7 +170,7 @@ public class OfBatchHolder implements OfEntityBatch {
     public void addDeleteFlow(FlowSpeakerData data, SwitchId switchId) {
         DatapathId dpId = DatapathId.of(switchId.toLong());
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
-        OFMessage message = OfFlowModConverter.INSTANCE.convertDeleteFlowCommand(data, factory);
+        OFMessage message = OfFlowConverter.INSTANCE.convertDeleteFlowCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
         commandMap.put(data.getUuid(), BatchData.builder().flow(true).message(message).build());
         flowsMap.put(data.getCookie(), data);

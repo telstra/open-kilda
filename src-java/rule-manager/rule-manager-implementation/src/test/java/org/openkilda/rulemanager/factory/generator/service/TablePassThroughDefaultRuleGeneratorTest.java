@@ -58,7 +58,7 @@ public class TablePassThroughDefaultRuleGeneratorTest {
         assertEquals(OfTable.EGRESS, flowCommandData.getTable());
         assertEquals(MINIMAL_POSITIVE_PRIORITY, flowCommandData.getPriority());
 
-        assertNull(flowCommandData.getMatch());
+        assertTrue(flowCommandData.getMatch().isEmpty());
 
         Instructions instructions = flowCommandData.getInstructions();
         assertNull(instructions.getApplyActions());

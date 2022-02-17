@@ -42,7 +42,6 @@ import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
-import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PopVlanAction;
@@ -56,6 +55,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import lombok.Builder.Default;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -64,6 +64,7 @@ import java.util.List;
 import java.util.Set;
 
 @SuperBuilder
+@Slf4j
 public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
 
     /*
@@ -155,9 +156,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
                 .match(buildPreIngressMatch(endpoint))
                 .instructions(instructions);
 
-        if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
-            builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
-        }
+        // todo add RESET_COUNTERS flag
         return builder.build();
     }
 
@@ -165,7 +164,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
         // TODO should we check if switch supports encapsulation?
         List<Action> actions = new ArrayList<>(buildTransformActions(
                 ingressEndpoint.getInnerVlanId(), sw.getFeatures()));
-        actions.add(new PortOutAction(new PortNumber(getOutPort(flowPath, flow))));
+        actions.add(new PortOutAction(getOutPort(flowPath, flow)));
 
         FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(ingressEndpoint.getSwitchId())
@@ -232,7 +231,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
 
         List<Action> transformActions = new ArrayList<>(Utils.makeVlanReplaceActions(currentStack, targetStack));
 
-        if (encapsulation.getType() == VXLAN && !flowPath.isOneSwitchFlow()) {
+        if (encapsulation != null && encapsulation.getType() == VXLAN && !flowPath.isOneSwitchFlow()) {
             transformActions.add(buildPushVxlan(encapsulation.getId(), flowPath.getSrcSwitchId(),
                     flowPath.getDestSwitchId(), VXLAN_UDP_SRC, features));
         }

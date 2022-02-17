@@ -16,6 +16,7 @@
 package org.openkilda.rulemanager.factory.generator.service;
 
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import static org.openkilda.rulemanager.Constants.Priority.VERIFICATION_RULE_VXLAN_PRIORITY;
@@ -46,6 +47,7 @@ import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PopVxlanAction;
 import org.openkilda.rulemanager.action.PortOutAction;
+import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
@@ -66,7 +68,8 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredServiceRuleGen
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
         // should be replaced with fair feature detection based on ActionId's during handshake
-        if (!sw.getFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+        if (!(sw.getFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)
+                || sw.getFeatures().contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN))) {
             return Collections.emptyList();
         }
 
@@ -89,6 +92,19 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredServiceRuleGen
     }
 
     private FlowSpeakerData buildUnicastVerificationRuleVxlan(Switch sw, Cookie cookie) {
+        List<Action> actions = new ArrayList<>();
+        if (sw.getFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+            actions.add(new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW));
+        } else {
+            actions.add(new PopVxlanAction(ActionType.POP_VXLAN_OVS));
+        }
+        actions.add(new PortOutAction(new PortNumber(SpecialPortType.CONTROLLER)));
+        // todo remove unnecessary action
+        actions.add(SetFieldAction.builder().field(ETH_DST).value(sw.getSwitchId().toLong()).build());
+
+        Instructions instructions = Instructions.builder()
+                .applyActions(actions)
+                .build();
         long ethSrc = new SwitchId(config.getFlowPingMagicSrcMacAddress()).toLong();
         Set<FieldMatch> match = Sets.newHashSet(
                 FieldMatch.builder().field(ETH_SRC).value(ethSrc).mask(NO_MASK).build(),
@@ -97,14 +113,6 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredServiceRuleGen
                 FieldMatch.builder().field(IP_PROTO).value(IpProto.UDP).build(),
                 FieldMatch.builder().field(UDP_SRC).value(STUB_VXLAN_UDP_SRC).build()
         );
-
-        List<Action> actions = new ArrayList<>();
-        actions.add(new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW));
-        actions.add(new PortOutAction(new PortNumber(SpecialPortType.CONTROLLER)));
-
-        Instructions instructions = Instructions.builder()
-                .applyActions(actions)
-                .build();
 
         return FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
