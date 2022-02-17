@@ -20,60 +20,62 @@ import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.grpc.GrpcBaseRequest;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.switchmanager.StreamType;
-import org.openkilda.wfm.topology.switchmanager.service.SpeakerCommandCarrier;
-import org.openkilda.wfm.topology.switchmanager.service.impl.SpeakerWorkerService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import lombok.Value;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarrier {
-
+public class SpeakerWorkerBolt extends WorkerBolt {
     public static final String ID = "speaker.worker.bolt";
     public static final String INCOME_STREAM = "speaker.worker.stream";
 
     public static final String FIELD_ID_COOKIE = "cookie";
-
-    private transient SpeakerWorkerService service;
 
     public SpeakerWorkerBolt(Config config) {
         super(config);
     }
 
     @Override
-    protected void init() {
-        super.init();
-        service = new SpeakerWorkerService(this);
-    }
-
-    @Override
     protected void onHubRequest(Tuple input) throws PipelineException {
-        String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
-        CommandData command = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, CommandData.class);
-        MessageCookie cookie = pullValue(input, FIELD_ID_COOKIE, MessageCookie.class);
-
-        if (command instanceof GrpcBaseRequest) {
-            service.sendGrpcCommand(key, command, cookie);
+        HubRequest request = unpackHubRequest(input);
+        CommandData payload = request.getPayload();
+        if (payload instanceof GrpcBaseRequest) {
+            sendGrpcCommand(request);
         } else {
-            service.sendFloodlightCommand(key, command, cookie);
+            sendFloodlightCommand(request);
         }
     }
 
     @Override
-    protected void onAsyncResponse(Tuple request, Tuple response) throws Exception {
+    protected void onAsyncResponse(Tuple requestTuple, Tuple responseTuple) throws Exception {
         String key = pullKey();
-        Message message = pullValue(response, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
+        Message message = pullValue(responseTuple, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
 
-        service.handleResponse(key, message);
+        log.debug("Got a response from speaker {}", message);
+        if (message.getCookie() == null) {
+            message.setCookie(unpackHubRequest(requestTuple).getCookie());
+        }
+        emitResponseToHub(getCurrentTuple(), makeHubTuple(key, message));
     }
 
     @Override
-    protected void onRequestTimeout(Tuple request) throws PipelineException {
-        service.handleTimeout(pullKey(request));
+    protected void onRequestTimeout(Tuple requestTuple) throws PipelineException {
+        HubRequest request = unpackHubRequest(requestTuple);
+
+        log.debug("Send timeout error to hub {}", request.getRequestKey());
+        ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT,
+                String.format("Timeout for waiting response on %s", request.getPayload()),
+                "Error in SpeakerWorkerService");
+        ErrorMessage message = new ErrorMessage(errorData, request.getRequestKey(), request.getCookie());
+        emitResponseToHub(getCurrentTuple(), makeHubTuple(request.getRequestKey(), message));
     }
 
     @Override
@@ -83,19 +85,43 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
         declarer.declareStream(StreamType.TO_GRPC.toString(), MessageKafkaTranslator.STREAM_FIELDS);
     }
 
-    @Override
-    public void sendFloodlightCommand(String key, CommandMessage command) {
-        emitWithContext(StreamType.TO_FLOODLIGHT.toString(), getCurrentTuple(), new Values(key, command));
+    private void sendFloodlightCommand(HubRequest request) {
+        log.debug("Got Floodlight request from hub bolt {}", request.getPayload());
+        CommandMessage message = new CommandMessage(
+                request.getPayload(), System.currentTimeMillis(), request.getRequestKey());
+        emit(StreamType.TO_FLOODLIGHT.toString(), getCurrentTuple(), makeFloodlightTuple(
+                request.getRequestKey(), message));
     }
 
-    @Override
-    public void sendGrpcCommand(String key, CommandMessage command) {
-        emitWithContext(StreamType.TO_GRPC.toString(), getCurrentTuple(), new Values(key, command));
+    private void sendGrpcCommand(HubRequest request) {
+        log.debug("Got GRPC request from hub bolt {}", request.getPayload());
+        CommandMessage message = new CommandMessage(request.getPayload(), request.getRequestKey(), request.getCookie());
+        emit(StreamType.TO_GRPC.toString(), getCurrentTuple(), makeGrpcTuple(request.getRequestKey(), message));
     }
 
-    @Override
-    public void sendResponse(String key, Message response) {
-        Values values = new Values(key, response, getCommandContext());
-        emitResponseToHub(getCurrentTuple(), values);
+    private HubRequest unpackHubRequest(Tuple tuple) throws PipelineException {
+        String requestKey = tuple.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
+        CommandData payload = pullValue(tuple, MessageKafkaTranslator.FIELD_ID_PAYLOAD, CommandData.class);
+        MessageCookie cookie = pullValue(tuple, FIELD_ID_COOKIE, MessageCookie.class);
+        return new HubRequest(requestKey, payload, cookie);
+    }
+
+    private Values makeHubTuple(String key, Message message) {
+        return new Values(key, message, getCommandContext());
+    }
+
+    private Values makeFloodlightTuple(String key, CommandMessage message) {
+        return new Values(key, message, getCommandContext());
+    }
+
+    private Values makeGrpcTuple(String key, CommandMessage message) {
+        return new Values(key, message, getCommandContext());
+    }
+
+    @Value
+    private static class HubRequest {
+        String requestKey;
+        CommandData payload;
+        MessageCookie cookie;
     }
 }
