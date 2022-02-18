@@ -155,7 +155,7 @@ services:
   db_migration:
     container_name: db_migration
     build: docker/db-migration
-    image: kilda/db_migration:"${TAG:-latest}"
+    image: "kilda/db_migration:${TAG:-latest}"
     command: /kilda/migrate-develop.sh
     depends_on:
       odb1:
