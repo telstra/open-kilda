@@ -49,7 +49,7 @@ services:
   odb1:
     container_name: odb1
     hostname: odb1.pendev
-    image: "orientdb:${ORIENTDB_TAG:-3.0.34}"
+    image: "orientdb:${ORIENTDB_TAG:?Error orientdb version tag is not defined}"
     command: dserver.sh
     volumes:
       - ./docker/orientdb/config/odb1:/orientdb/config
@@ -76,7 +76,7 @@ services:
   odb2:
     container_name: odb2
     hostname: odb2.pendev
-    image: "orientdb:${ORIENTDB_TAG:-3.0.34}"
+    image: "orientdb:${ORIENTDB_TAG:?Error orientdb version tag is not defined}"
     command: dserver.sh
     volumes:
       - ./docker/orientdb/config/odb2:/orientdb/config
@@ -102,7 +102,7 @@ services:
   odb3:
     container_name: odb3
     hostname: odb3.pendev
-    image: "orientdb:${ORIENTDB_TAG:-3.0.34}"
+    image: "orientdb:${ORIENTDB_TAG:?Error orientdb version tag is not defined}"
     command: dserver.sh
     volumes:
       - ./docker/orientdb/config/odb3:/orientdb/config
@@ -152,6 +152,7 @@ services:
   db_migration:
     container_name: db_migration
     build: docker/db-migration
+    image: kilda/db_migration:"${TAG:-latest}"
     command: /kilda/migrate-develop.sh
     depends_on:
       odb1:
