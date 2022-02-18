@@ -8,6 +8,7 @@ services:
   grpc-stub:
     container_name: grpc-stub
     image: "kilda/grpc-stub:${TAG:-latest}"
+    hostname: grpc-stub.pendev
     build:
       context: docker/grpc-stub/
       dockerfile: Dockerfile
@@ -24,6 +25,7 @@ services:
   lab-api:
     container_name: lab-api
     image: "kilda_lab-service:${TAG:-latest}"
+    hostname: lab-api.pendev
     build:
       context: docker/lab-service/
       dockerfile: Dockerfile
@@ -127,6 +129,7 @@ services:
 {{end}}
 
   mysql_db:
+    container_name: mysql_db
     hostname: mysql.pendev
     image: "mysql:${MYSQL_TAG:-5.7.34}"
     command: --default-authentication-plugin=mysql_native_password
@@ -683,6 +686,8 @@ services:
 {{if not (exists "/no_gui")}}
   gui:
     container_name: gui
+    image: "kilda/gui:${TAG:-latest}"
+    hostname: gui.pendev
     build:
       context: src-gui
       dockerfile: Dockerfile
