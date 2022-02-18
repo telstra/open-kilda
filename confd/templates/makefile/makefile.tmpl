@@ -1,6 +1,10 @@
 TASK := functionalTest
 STABLE_TAG ?= "stable"
+LATEST_TAG ?= "latest"
+
 BASE_UBUNTU ?= "ubuntu:20.04"
+
+ORIENTDB_TAG ?= "3.0.34"
 
 build-base: {{if not (exists "/no_grpc_stub")}}build-grpc-stub {{end}}build-lock-keeper update-props docker/storm/lib {{if not (exists "/no_server42_server")}}build-server42dpdk{{end}}
 	$(MAKE) -C src-python/lab-service find-python-requirements
@@ -25,10 +29,14 @@ docker/storm/lib:
 	docker/base/hacks/storm.requirements.download.sh
 
 build-latest: build-base compile-green
+	TAG=$(LATEST_TAG) \
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	docker-compose build
 
 build-stable: build-base compile-blue
-	TAG=$(STABLE_TAG) docker-compose build
+	TAG=$(STABLE_TAG) \
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	docker-compose build
 
 run-dev:
 	docker-compose up
@@ -40,28 +48,37 @@ up-test-mode:
 	@echo ~~
 	@echo
 	cp -n .env.example .env
-	TAG=$(STABLE_TAG) docker-compose up -d --scale northbound-blue-green=0 {{if not (exists "/no_grpc_speaker")}}--scale grpc-speaker-blue-green=0{{end}}
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	TAG=$(STABLE_TAG) \
+	docker-compose up -d --scale northbound-blue-green=0 {{if not (exists "/no_grpc_speaker")}}--scale grpc-speaker-blue-green=0{{end}}
 	docker-compose logs -f wfm
 	$(MAKE) -C tools/elk-dashboards
 
 up-stable:
 	cp -n .env.example .env
 	docker-compose stop northbound-blue-green
-	TAG=$(STABLE_TAG) WFM_TOPOLOGIES_MODE=blue docker-compose up -d --scale northbound-blue-green=0 {{if not (exists "/no_grpc_speaker")}}--scale grpc-speaker-blue-green=0{{end}}
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	TAG=$(STABLE_TAG) \
+	WFM_TOPOLOGIES_MODE=blue \
+	docker-compose up -d --scale northbound-blue-green=0 {{if not (exists "/no_grpc_speaker")}}--scale grpc-speaker-blue-green=0{{end}}
 	docker-compose logs -f wfm
 	$(MAKE) -C tools/elk-dashboards
 
 up-green:
 	cp -n .env.example .env
 	docker-compose stop northbound
-	WFM_TOPOLOGIES_MODE=green docker-compose up -d --scale northbound=0 floodlight_2 northbound-blue-green wfm {{if not (exists "/no_grpc_speaker")}}grpc-speaker-blue-green{{end}}
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	WFM_TOPOLOGIES_MODE=green \
+	docker-compose up -d --scale northbound=0 floodlight_2 northbound-blue-green wfm {{if not (exists "/no_grpc_speaker")}}grpc-speaker-blue-green{{end}}
 	docker-compose logs -f wfm
 	$(MAKE) -C tools/elk-dashboards
 
 up-blue:
 	cp -n .env.example .env
 	docker-compose stop northbound-blue-green
-	TAG=$(STABLE_TAG) WFM_TOPOLOGIES_MODE=blue docker-compose up -d --scale northbound-blue-green=0 floodlight_1 wfm
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	TAG=$(STABLE_TAG) \
+	WFM_TOPOLOGIES_MODE=blue docker-compose up -d --scale northbound-blue-green=0 floodlight_1 wfm
 	docker-compose logs -f wfm
 	$(MAKE) -C tools/elk-dashboards
 
