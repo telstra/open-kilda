@@ -691,6 +691,8 @@ services:
     build:
       context: src-gui
       dockerfile: Dockerfile
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     ports:
       - "8010:1010"
     depends_on:
