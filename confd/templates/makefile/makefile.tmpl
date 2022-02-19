@@ -41,6 +41,7 @@ build-stable: build-base compile-blue
 	docker-compose build
 
 run-dev:
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	docker-compose up
 
 up-test-mode:
@@ -53,38 +54,51 @@ up-test-mode:
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	TAG=$(STABLE_TAG) \
 	docker-compose up -d --scale northbound-blue-green=0 {{if not (exists "/no_grpc_speaker")}}--scale grpc-speaker-blue-green=0{{end}}
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	TAG=$(STABLE_TAG) \
 	docker-compose logs -f wfm
 	$(MAKE) -C tools/elk-dashboards
 
 up-stable:
 	cp -n .env.example .env
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	TAG=$(STABLE_TAG) \
 	docker-compose stop northbound-blue-green
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	TAG=$(STABLE_TAG) \
 	WFM_TOPOLOGIES_MODE=blue \
 	docker-compose up -d --scale northbound-blue-green=0 {{if not (exists "/no_grpc_speaker")}}--scale grpc-speaker-blue-green=0{{end}}
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	TAG=$(STABLE_TAG) \
 	docker-compose logs -f wfm
 	$(MAKE) -C tools/elk-dashboards
 
 up-green:
 	cp -n .env.example .env
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	docker-compose stop northbound
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	WFM_TOPOLOGIES_MODE=green \
 	docker-compose up -d --scale northbound=0 floodlight_2 northbound-blue-green wfm {{if not (exists "/no_grpc_speaker")}}grpc-speaker-blue-green{{end}}
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	docker-compose logs -f wfm
 	$(MAKE) -C tools/elk-dashboards
 
 up-blue:
 	cp -n .env.example .env
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	TAG=$(STABLE_TAG) \
 	docker-compose stop northbound-blue-green
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	TAG=$(STABLE_TAG) \
 	WFM_TOPOLOGIES_MODE=blue docker-compose up -d --scale northbound-blue-green=0 floodlight_1 wfm
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	TAG=$(STABLE_TAG) \
 	docker-compose logs -f wfm
 	$(MAKE) -C tools/elk-dashboards
 
 up-log-mode: up-test-mode
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	docker-compose logs -f
 
 # keeping run-test for backwards compatibility (documentation) .. should deprecate
@@ -128,7 +142,11 @@ sonar: update-props
 
 .PHONY: clean-test
 clean-test:
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	TAG=$(STABLE_TAG) \
 	docker-compose down
+	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	TAG=$(STABLE_TAG) \
 	docker-compose rm -fv
 	docker volume list -q | grep kilda | xargs -r docker volume  rm
 
