@@ -230,6 +230,7 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
                 SwitchSyncState.RULES_COMMANDS_SEND,
                 SwitchSyncState.METERS_COMMANDS_SEND,
                 SwitchSyncState.GROUPS_COMMANDS_SEND,
+                SwitchSyncState.LOGICAL_PORTS_COMMANDS_SEND,
                 SwitchSyncState.FINISHED,
                 SwitchSyncState.FINISHED_WITH_ERROR
         );

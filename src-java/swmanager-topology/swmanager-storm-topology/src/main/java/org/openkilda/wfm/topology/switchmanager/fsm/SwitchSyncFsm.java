@@ -29,7 +29,6 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchS
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.MISCONFIGURED_RULES_REINSTALLED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.MISSING_RULES_INSTALLED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.NEXT;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.RULES_SYNCHRONIZED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.TIMEOUT;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_EXCESS_METERS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_EXCESS_RULES;
@@ -224,7 +223,18 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         builder.externalTransition().from(GROUPS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(GROUPS_COMMANDS_SEND).to(RULES_COMMANDS_SEND).on(NEXT)
+        builder.externalTransition().from(GROUPS_COMMANDS_SEND).to(METERS_COMMANDS_SEND).on(NEXT)
+                .callMethod("sendMetersCommands");
+        builder.internalTransition().within(METERS_COMMANDS_SEND).on(METERS_REMOVED).callMethod("meterRemoved");
+        builder.internalTransition().within(METERS_COMMANDS_SEND).on(MISCONFIGURED_METERS_MODIFIED)
+                .callMethod("meterModified");
+
+        builder.externalTransition().from(METERS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
+                .callMethod(COMMANDS_PROCESSING_FAILED_BY_TIMEOUT_METHOD_NAME);
+        builder.externalTransition().from(METERS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+
+        builder.externalTransition().from(METERS_COMMANDS_SEND).to(RULES_COMMANDS_SEND).on(NEXT)
                 .callMethod("sendRulesCommands");
         builder.internalTransition().within(RULES_COMMANDS_SEND).on(MISSING_RULES_INSTALLED)
                 .callMethod("missingRuleInstalled");
@@ -237,20 +247,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                 .callMethod(COMMANDS_PROCESSING_FAILED_BY_TIMEOUT_METHOD_NAME);
         builder.externalTransition().from(RULES_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
-
-        builder.externalTransition().from(RULES_COMMANDS_SEND).to(METERS_COMMANDS_SEND).on(RULES_SYNCHRONIZED)
-                .callMethod("sendMetersCommands");
-        builder.internalTransition().within(METERS_COMMANDS_SEND).on(METERS_REMOVED).callMethod("meterRemoved");
-        builder.internalTransition().within(METERS_COMMANDS_SEND).on(MISCONFIGURED_METERS_MODIFIED)
-                .callMethod("meterModified");
-
-        builder.externalTransition().from(METERS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
-                .callMethod(COMMANDS_PROCESSING_FAILED_BY_TIMEOUT_METHOD_NAME);
-        builder.externalTransition().from(METERS_COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
-                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
-        builder.externalTransition().from(METERS_COMMANDS_SEND).to(FINISHED).on(NEXT)
+        builder.externalTransition().from(RULES_COMMANDS_SEND).to(FINISHED).on(NEXT)
                 .callMethod(FINISHED_METHOD_NAME);
-
         return builder;
     }
 
@@ -342,9 +340,10 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     protected void sendRulesCommands(SwitchSyncState from, SwitchSyncState to,
                                      SwitchSyncEvent event, Object context) {
-        if (missingRules.isEmpty() && excessRules.isEmpty()) {
+        if (missingRules.isEmpty() && excessRules.isEmpty() && misconfiguredRules.isEmpty()) {
             log.info("Nothing to do with rules (switch={}, key={})", switchId, key);
             fire(NEXT);
+            return;
         }
 
         if (!missingRules.isEmpty()) {
@@ -398,7 +397,6 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
         return validationResult.getValidateMetersResult().getMisconfiguredMeters().stream()
                 .filter(meter -> MeterId.isMeterIdOfFlowRule(meter.getMeterId()))
-                .filter(meter -> !validateRulesResult.getMissingRules().contains(meter.getCookie()))
                 .collect(Collectors.toList());
     }
 
@@ -511,6 +509,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         if (missingLogicalPorts.isEmpty() && excessLogicalPorts.isEmpty()) {
             log.info("Nothing to do with logical ports (switch={}, key={})", switchId, key);
             fire(NEXT);
+            return;
         }
 
         if (!missingLogicalPorts.isEmpty()) {
@@ -588,6 +587,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         if (missingGroups.isEmpty() && misconfiguredGroups.isEmpty() && excessGroups.isEmpty()) {
             log.info("Nothing to do with groups (switch={}, key={})", switchId, key);
             fire(NEXT);
+            return;
         }
 
         if (!missingGroups.isEmpty()) {
@@ -648,7 +648,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         if (missingRulesPendingResponsesCount == 0
                 && excessRulesPendingResponsesCount == 0
                 && reinstallDefaultRulesPendingResponsesCount == 0) {
-            fire(RULES_SYNCHRONIZED);
+            fire(NEXT);
         }
     }
 
@@ -788,7 +788,6 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         MISSING_RULES_INSTALLED,
         EXCESS_RULES_REMOVED,
         MISCONFIGURED_RULES_REINSTALLED,
-        RULES_SYNCHRONIZED,
         METERS_REMOVED,
         MISCONFIGURED_METERS_MODIFIED,
         GROUPS_INSTALLED,
