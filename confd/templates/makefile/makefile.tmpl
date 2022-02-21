@@ -6,6 +6,10 @@ BASE_UBUNTU ?= "ubuntu:20.04"
 
 ORIENTDB_TAG ?= "3.0.34"
 
+ELASTICSEARCH_TAG ?= "7.14.0"
+LOGSTASH_TAG ?= "7.14.0"
+KIBANA_TAG ?= "7.14.0"
+
 build-base: {{if not (exists "/no_grpc_stub")}}build-grpc-stub {{end}}build-lock-keeper update-props docker/storm/lib {{if not (exists "/no_server42_server")}}build-server42dpdk{{end}}
 	$(MAKE) -C src-python/lab-service find-python-requirements
 	docker build -t kilda/base-ubuntu:$(STABLE_TAG)      --build-arg base_image=$(BASE_UBUNTU) docker/base/kilda-base-ubuntu/
@@ -52,6 +56,9 @@ up-test-mode:
 	@echo
 	cp -n .env.example .env
 	echo ORIENTDB_TAG=$(ORIENTDB_TAG) >> .env
+	echo ELASTICSEARCH_TAG=$(ELASTICSEARCH_TAG) >> .env
+	echo LOGSTASH_TAG=$(LOGSTASH_TAG) >> .env
+	echo KIBANA_TAG=$(KIBANA_TAG) >> .env
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	TAG=$(STABLE_TAG) \
 	docker-compose up -d --scale northbound-blue-green=0 {{if not (exists "/no_grpc_speaker")}}--scale grpc-speaker-blue-green=0{{end}}
@@ -63,6 +70,9 @@ up-test-mode:
 up-stable:
 	cp -n .env.example .env
 	echo ORIENTDB_TAG=$(ORIENTDB_TAG) >> .env
+	echo ELASTICSEARCH_TAG=$(ELASTICSEARCH_TAG) >> .env
+	echo LOGSTASH_TAG=$(LOGSTASH_TAG) >> .env
+	echo KIBANA_TAG=$(KIBANA_TAG) >> .env
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	TAG=$(STABLE_TAG) \
 	docker-compose stop northbound-blue-green
@@ -78,6 +88,9 @@ up-stable:
 up-green:
 	cp -n .env.example .env
 	echo ORIENTDB_TAG=$(ORIENTDB_TAG) >> .env
+	echo ELASTICSEARCH_TAG=$(ELASTICSEARCH_TAG) >> .env
+	echo LOGSTASH_TAG=$(LOGSTASH_TAG) >> .env
+	echo KIBANA_TAG=$(KIBANA_TAG) >> .env
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	docker-compose stop northbound
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
@@ -90,6 +103,9 @@ up-green:
 up-blue:
 	cp -n .env.example .env
 	echo ORIENTDB_TAG=$(ORIENTDB_TAG) >> .env
+	echo ELASTICSEARCH_TAG=$(ELASTICSEARCH_TAG) >> .env
+	echo LOGSTASH_TAG=$(LOGSTASH_TAG) >> .env
+	echo KIBANA_TAG=$(KIBANA_TAG) >> .env
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	TAG=$(STABLE_TAG) \
 	docker-compose stop northbound-blue-green

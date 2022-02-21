@@ -710,10 +710,12 @@ services:
 {{if not (exists "/no_elasticsearch")}}
   elasticsearch:
     container_name: elasticsearch
-    image: "kilda/elasticsearch:${TAG:-latest}"
+    image: "kilda/elasticsearch:${ELASTICSEARCH_TAG:?ERROR! Elasticsearch version tag is not defined}"
     build:
       context: docker/elasticsearch
       dockerfile: Dockerfile
+      args:
+        base_image: "elasticsearch:${ELASTICSEARCH_TAG:ERROR! Elasticsearch version tag is not defined}"
     hostname: elasticsearch.pendev
     ports:
       - "9200:9200"
@@ -728,7 +730,7 @@ services:
 {{end}}
 {{if not (exists "/no_kibana")}}
   kibana:
-    image: "kibana:${KIBANA_TAG:-5.6.12}"
+    image: "kibana:${KIBANA_TAG:ERROR! Kibana version tag is not defined}"
     container_name: kibana
     hostname: kibana.pendev{{if not (exists "/no_elasticsearch")}}
     depends_on:
@@ -746,13 +748,15 @@ services:
   logstash:
     container_name: logstash
     hostname: logstash.pendev
-    image: "kilda/logstash:${TAG:-latest}"{{if not (exists "/no_elasticsearch")}}
+    image: "kilda/logstash:${TAG:?ERROR! Logstash version tag is not defined}"{{if not (exists "/no_elasticsearch")}}
     depends_on:
       elasticsearch:
         condition: service_started{{end}}
     build:
       context: docker/logstash
       dockerfile: Dockerfile
+      args:
+        base_image: "logstash:${TAG:?ERROR Logstash version tag is not defined}"
     ports:
       - 9600:9600
       - {{ getv "/kilda_logging_port_tests" }}:{{ getv "/kilda_logging_port_tests" }}
