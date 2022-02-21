@@ -40,6 +40,7 @@ import org.openkilda.wfm.topology.flowmonitoring.fsm.FlowLatencyMonitoringFsm.St
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Clock;
@@ -55,21 +56,21 @@ public class ActionService implements FlowSlaMonitoringCarrier {
     private static final Set<PathComputationStrategy> LATENCY_BASED_STRATEGIES =
             Sets.newHashSet(PathComputationStrategy.LATENCY, PathComputationStrategy.MAX_LATENCY);
 
-    private FlowOperationsCarrier carrier;
-    private FlowRepository flowRepository;
-    private FlowStatsRepository flowStatsRepository;
-    private KildaFeatureTogglesRepository featureTogglesRepository;
-    private TransactionManager transactionManager;
-    private FlowLatencyMonitoringFsmFactory fsmFactory;
-    private FsmExecutor<FlowLatencyMonitoringFsm, State, Event, Context> fsmExecutor;
+    private final FlowOperationsCarrier carrier;
+    private final FlowRepository flowRepository;
+    private final FlowStatsRepository flowStatsRepository;
+    private final KildaFeatureTogglesRepository featureTogglesRepository;
+    private final TransactionManager transactionManager;
+    private final FlowLatencyMonitoringFsmFactory fsmFactory;
+    private final FsmExecutor<FlowLatencyMonitoringFsm, State, Event, Context> fsmExecutor;
 
-    private float threshold;
+    private final int shardCount;
 
     @VisibleForTesting
-    protected Map<String, FlowLatencyMonitoringFsm> fsms = new HashMap<>();
+    protected Map<FsmKey, FlowLatencyMonitoringFsm> fsms = new HashMap<>();
 
     public ActionService(FlowOperationsCarrier carrier, PersistenceManager persistenceManager,
-                         Clock clock, Duration timeout, float threshold) {
+                         Clock clock, Duration timeout, float threshold, int shardCount) {
         this.carrier = carrier;
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         flowStatsRepository = persistenceManager.getRepositoryFactory().createFlowStatsRepository();
@@ -77,7 +78,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
         transactionManager = persistenceManager.getTransactionManager();
         fsmFactory = FlowLatencyMonitoringFsm.factory(clock, timeout, threshold);
         fsmExecutor = fsmFactory.produceExecutor();
-        this.threshold = threshold;
+        this.shardCount = shardCount;
     }
 
     /**
@@ -103,7 +104,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
      * Check flow SLA is violated.
      */
     public void processFlowLatencyMeasurement(String flowId, FlowDirection direction, Duration latency) {
-        String key = getFsmKey(flowId, direction);
+        FsmKey key = getFsmKey(flowId, direction);
         FlowLatencyMonitoringFsm fsm = fsms.get(key);
         if (fsm == null) {
             Flow flow = flowRepository.findById(flowId)
@@ -126,15 +127,25 @@ public class ActionService implements FlowSlaMonitoringCarrier {
     /**
      * Process tick.
      */
-    public void processTick() {
+    public void processTick(int shardNumber) {
         Context context = Context.builder()
                 .carrier(this)
                 .build();
-        fsms.values().forEach(fsm -> fsmExecutor.fire(fsm, Event.TICK, context));
+        if (log.isDebugEnabled()) {
+            log.debug("Processing flow SLA checks for shard {}", shardNumber);
+        }
+        for (FsmKey key : fsms.keySet()) {
+            if (key.flowId.hashCode() % shardCount == shardNumber) {
+                if (log.isTraceEnabled()) {
+                    log.trace("Processing SLA check for flow FSM {}: Shard number: {}", key, shardNumber);
+                }
+                fsmExecutor.fire(fsms.get(key), Event.TICK, context);
+            }
+        }
     }
 
-    private String getFsmKey(String flowId, FlowDirection direction) {
-        return format("%s_%s", flowId, direction.name().toLowerCase());
+    private FsmKey getFsmKey(String flowId, FlowDirection direction) {
+        return new FsmKey(flowId, direction);
     }
 
     /**
@@ -199,5 +210,11 @@ public class ActionService implements FlowSlaMonitoringCarrier {
 
     private boolean isReactionsEnabled() {
         return featureTogglesRepository.getOrDefault().getFlowLatencyMonitoringReactions();
+    }
+
+    @Value
+    private static class FsmKey {
+        String flowId;
+        FlowDirection direction;
     }
 }

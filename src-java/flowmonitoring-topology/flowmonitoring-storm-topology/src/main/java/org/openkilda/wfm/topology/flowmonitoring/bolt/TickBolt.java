@@ -19,9 +19,19 @@ import org.openkilda.wfm.share.bolt.MonotonicClock;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.TickBolt.TickId;
 
 public class TickBolt extends MonotonicClock<TickId> {
-    public TickBolt(Integer interval) {
-        super(new MonotonicClock.ClockConfig<>(), interval);
+    public TickBolt(int cacheCheckInterval, int slaCheckInterval) {
+        super(createConfig(cacheCheckInterval, slaCheckInterval));
     }
 
-    enum TickId {}
+    private static ClockConfig<TickId> createConfig(int cacheCheckInterval, int slaCheckInterval) {
+        ClockConfig<TickId> config = new ClockConfig<>();
+        config.addTickInterval(TickId.CACHE_UPDATE, cacheCheckInterval);
+        config.addTickInterval(TickId.SLA_CHECK, slaCheckInterval);
+        return config;
+    }
+
+    enum TickId {
+        CACHE_UPDATE,
+        SLA_CHECK
+    }
 }

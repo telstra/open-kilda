@@ -66,6 +66,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(30);
     private static final float THRESHOLD = 0.1f;
+    public static final int SHARD_COUNT = 1;
 
     private PersistenceDummyEntityFactory dummyFactory;
     private FlowRepository flowRepository;
@@ -95,7 +96,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
         flow = dummyFactory.makeFlow(new FlowEndpoint(SRC_SWITCH, IN_PORT),
                 new FlowEndpoint(DST_SWITCH, OUT_PORT));
 
-        service = new ActionService(carrier, persistenceManager, clock, TIMEOUT, THRESHOLD);
+        service = new ActionService(carrier, persistenceManager, clock, TIMEOUT, THRESHOLD, SHARD_COUNT);
     }
 
     @Test
@@ -111,7 +112,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
             clock.adjust(Duration.ofSeconds(10));
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.FORWARD, latency);
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.REVERSE, latency.minus(NANOSECOND));
-            service.processTick();
+            service.processTick(0);
         }
 
         assertEquals(2, service.fsms.values().size());
@@ -135,7 +136,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
             clock.adjust(Duration.ofSeconds(10));
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.FORWARD, latency);
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.REVERSE, latency.minus(NANOSECOND));
-            service.processTick();
+            service.processTick(0);
             if (i == 0) {
                 assertTrue(service.fsms.values().stream().allMatch(fsm -> UNSTABLE.equals(fsm.getCurrentState())));
             }
@@ -169,7 +170,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
             clock.adjust(Duration.ofSeconds(10));
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.FORWARD, latency);
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.REVERSE, latency.minus(NANOSECOND));
-            service.processTick();
+            service.processTick(0);
             if (i == 0) {
                 assertTrue(service.fsms.values().stream().allMatch(fsm -> UNSTABLE.equals(fsm.getCurrentState())));
             }
@@ -202,7 +203,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
             clock.adjust(Duration.ofSeconds(10));
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.FORWARD, latency);
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.REVERSE, latency.minus(NANOSECOND));
-            service.processTick();
+            service.processTick(0);
             if (i == 0) {
                 assertTrue(service.fsms.values().stream().allMatch(fsm -> UNSTABLE.equals(fsm.getCurrentState())));
             }
@@ -235,7 +236,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
             clock.adjust(Duration.ofSeconds(10));
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.FORWARD, latency);
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.REVERSE, latency.minus(NANOSECOND));
-            service.processTick();
+            service.processTick(0);
             if (i == 0) {
                 assertTrue(service.fsms.values().stream().allMatch(fsm -> UNSTABLE.equals(fsm.getCurrentState())));
             }
@@ -269,7 +270,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
             clock.adjust(Duration.ofSeconds(10));
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.FORWARD, latency);
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.REVERSE, latency.minus(NANOSECOND));
-            service.processTick();
+            service.processTick(0);
             if (i == 0) {
                 assertTrue(service.fsms.values().stream().allMatch(fsm -> UNSTABLE.equals(fsm.getCurrentState())));
             }
@@ -297,7 +298,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
             clock.adjust(Duration.ofSeconds(10));
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.FORWARD, healthy);
             service.processFlowLatencyMeasurement(flow.getFlowId(), FlowDirection.REVERSE, healthy.minus(NANOSECOND));
-            service.processTick();
+            service.processTick(0);
             if (i == 0) {
                 assertTrue(service.fsms.values().stream().allMatch(fsm -> UNSTABLE.equals(fsm.getCurrentState())));
             }

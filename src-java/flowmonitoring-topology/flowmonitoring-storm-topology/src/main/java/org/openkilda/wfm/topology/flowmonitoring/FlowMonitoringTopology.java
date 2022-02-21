@@ -117,7 +117,8 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
     }
 
     private void tickBolt(TopologyBuilder topologyBuilder) {
-        declareBolt(topologyBuilder, new TickBolt(getConfig().getFlowSlaCheckIntervalSeconds()),
+        declareBolt(topologyBuilder, new TickBolt(getConfig().getFlowSlaCheckIntervalSeconds(),
+                        getConfig().getFlowSlaCheckIntervalSeconds() / getConfig().getFlowSlaCheckShardCount()),
                 ComponentId.TICK_BOLT.name());
     }
 
@@ -156,7 +157,8 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
     private void actionBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         declareBolt(topologyBuilder, new ActionBolt(persistenceManager,
                         Duration.ofSeconds(getConfig().getFlowLatencySlaTimeoutSeconds()),
-                        getConfig().getFlowLatencySlaThresholdPercent(), ZooKeeperSpout.SPOUT_ID),
+                        getConfig().getFlowLatencySlaThresholdPercent(), ZooKeeperSpout.SPOUT_ID,
+                        getConfig().getFlowSlaCheckShardCount()),
                 ComponentId.ACTION_BOLT.name())
                 .fieldsGrouping(ComponentId.FLOW_CACHE_BOLT.name(), ACTION_STREAM_ID.name(), FLOW_ID_FIELDS)
                 .fieldsGrouping(ComponentId.FLOW_CACHE_BOLT.name(), FLOW_UPDATE_STREAM_ID.name(), FLOW_ID_FIELDS)
