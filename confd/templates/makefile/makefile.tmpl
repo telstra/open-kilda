@@ -37,15 +37,24 @@ docker/storm/lib:
 build-latest: build-base compile-green
 	TAG=$(LATEST_TAG) \
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	ELASTICSEARCH_TAG=$(ELASTICSEARCH_TAG) \
+	KIBANA_TAG=$(KIBANA_TAG) \
+	LOGSTASH_TAG=$(LOGSTASH_TAG) \
 	docker-compose build
 
 build-stable: build-base compile-blue
 	TAG=$(STABLE_TAG) \
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	ELASTICSEARCH_TAG=$(ELASTICSEARCH_TAG) \
+	KIBANA_TAG=$(KIBANA_TAG) \
+	LOGSTASH_TAG=$(LOGSTASH_TAG) \
 	docker-compose build
 
 run-dev:
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
+	ELASTICSEARCH_TAG=$(ELASTICSEARCH_TAG) \
+	KIBANA_TAG=$(KIBANA_TAG) \
+	LOGSTASH_TAG=$(LOGSTASH_TAG) \
 	docker-compose up
 
 up-test-mode:
