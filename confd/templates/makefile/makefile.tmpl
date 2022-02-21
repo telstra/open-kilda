@@ -164,9 +164,15 @@ sonar: update-props
 clean-test:
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	TAG=$(STABLE_TAG) \
+	ELASTICSEARCH_TAG=$(ELASTICSEARCH_TAG) \
+	KIBANA_TAG=$(KIBANA_TAG) \
+	LOGSTASH_TAG=$(LOGSTASH_TAG) \
 	docker-compose down
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	TAG=$(STABLE_TAG) \
+	ELASTICSEARCH_TAG=$(ELASTICSEARCH_TAG) \
+	KIBANA_TAG=$(KIBANA_TAG) \
+	LOGSTASH_TAG=$(LOGSTASH_TAG) \
 	docker-compose rm -fv
 	docker volume list -q | grep kilda | xargs -r docker volume  rm
 
