@@ -51,6 +51,7 @@ up-test-mode:
 	@echo ~~
 	@echo
 	cp -n .env.example .env
+	echo ORIENTDB_TAG=$(ORIENTDB_TAG) >> .env
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	TAG=$(STABLE_TAG) \
 	docker-compose up -d --scale northbound-blue-green=0 {{if not (exists "/no_grpc_speaker")}}--scale grpc-speaker-blue-green=0{{end}}
@@ -61,6 +62,7 @@ up-test-mode:
 
 up-stable:
 	cp -n .env.example .env
+	echo ORIENTDB_TAG=$(ORIENTDB_TAG) >> .env
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	TAG=$(STABLE_TAG) \
 	docker-compose stop northbound-blue-green
@@ -75,6 +77,7 @@ up-stable:
 
 up-green:
 	cp -n .env.example .env
+	echo ORIENTDB_TAG=$(ORIENTDB_TAG) >> .env
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	docker-compose stop northbound
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
@@ -86,6 +89,7 @@ up-green:
 
 up-blue:
 	cp -n .env.example .env
+	echo ORIENTDB_TAG=$(ORIENTDB_TAG) >> .env
 	ORIENTDB_TAG=$(ORIENTDB_TAG) \
 	TAG=$(STABLE_TAG) \
 	docker-compose stop northbound-blue-green
