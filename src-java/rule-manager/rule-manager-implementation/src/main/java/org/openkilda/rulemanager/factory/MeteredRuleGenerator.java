@@ -15,6 +15,7 @@
 
 package org.openkilda.rulemanager.factory;
 
+import static org.openkilda.model.SwitchFeature.INACCURATE_METER;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.rulemanager.factory.generator.flow.IngressRuleGenerator.FLOW_METER_STATS;
 
@@ -22,6 +23,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.OfVersion;
@@ -29,6 +31,7 @@ import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.MeterAction;
 
+import java.util.Set;
 import java.util.UUID;
 
 public interface MeteredRuleGenerator extends RuleGenerator {
@@ -61,7 +64,8 @@ public interface MeteredRuleGenerator extends RuleGenerator {
      */
     default SpeakerData buildMeter(UUID uuid, FlowPath flowPath, RuleManagerConfig config, MeterId meterId,
                                    Switch sw) {
-        if (meterId == null || !sw.getFeatures().contains(METERS)) {
+        Set<SwitchFeature> switchFeatures = sw.getFeatures();
+        if (meterId == null || !switchFeatures.contains(METERS)) {
             return null;
         }
 
@@ -78,6 +82,7 @@ public interface MeteredRuleGenerator extends RuleGenerator {
                 .rate(flowPath.getBandwidth())
                 .burst(burstSize)
                 .flags(FLOW_METER_STATS)
+                .inaccurate(switchFeatures.contains(INACCURATE_METER))
                 .build();
     }
 
