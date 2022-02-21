@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowmonitoring.bolt;
 
 import static org.openkilda.wfm.share.bolt.KafkaEncoder.FIELD_ID_PAYLOAD;
+import static org.openkilda.wfm.share.bolt.MonotonicClock.FIELD_ID_TICK_IDENTIFIER;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_REMOVE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
@@ -47,22 +48,26 @@ import java.util.Collections;
 
 public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
 
-    private Duration timeout;
-    private float threshold;
+    private final Duration timeout;
+    private final float threshold;
+    private final int shardCount;
+    private int currentShardNumber;
     private transient ActionService actionService;
 
     public ActionBolt(
             PersistenceManager persistenceManager, Duration timeout, float threshold,
-            String lifeCycleEventSourceComponent) {
+            String lifeCycleEventSourceComponent, int shardCount) {
         super(persistenceManager, lifeCycleEventSourceComponent);
         this.timeout = timeout;
         this.threshold = threshold;
+        this.currentShardNumber = 0;
+        this.shardCount = shardCount;
     }
 
     @Override
     protected void init() {
         super.init();
-        actionService = new ActionService(this, persistenceManager, Clock.systemUTC(), timeout, threshold);
+        actionService = new ActionService(this, persistenceManager, Clock.systemUTC(), timeout, threshold, shardCount);
     }
 
     @Override
@@ -91,7 +96,11 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
         }
 
         if (ComponentId.TICK_BOLT.name().equals(input.getSourceComponent())) {
-            actionService.processTick();
+            TickBolt.TickId tickId = pullValue(input, FIELD_ID_TICK_IDENTIFIER, TickBolt.TickId.class);
+            if (TickBolt.TickId.SLA_CHECK.equals(tickId)) {
+                actionService.processTick(currentShardNumber);
+                currentShardNumber = (currentShardNumber + 1) % shardCount;
+            }
         } else {
             unhandledInput(input);
         }
