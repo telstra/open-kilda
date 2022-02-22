@@ -726,6 +726,8 @@ services:
          - elasticsearch.pendev
     environment:
       ES_JAVA_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseContainerSupport"
+      "node.name": "kilda-elastic"
+      "discovery.type": "single-node"
     mem_limit: ${ELASTIC_MEM_LIMIT:-1073741824}
 {{end}}
 {{if not (exists "/no_kibana")}}
