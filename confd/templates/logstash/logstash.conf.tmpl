@@ -144,10 +144,20 @@ filter {
   mutate {
     rename => { "@timestamp" => "@timestamp_original" }
   }
-  date {
-    match => [ "timeMillis", "UNIX_MS" ]
-      target => "@timestamp"
-      add_tag => "timestamp_changed"
+
+  # if timeMillis defined and positive
+  # build new timestamp based on timeMillis
+  # else live timespamp as-is
+  if [timeMillis] > 0 {
+    date {
+      match => [ "timeMillis", "UNIX_MS" ]
+        target => "@timestamp"
+        add_tag => "timestamp_changed"
+    }
+  } else {
+    mutate {
+      copy => { "@timestamp_original" => "@timestamp" }
+    }
   }
 }
 output {
