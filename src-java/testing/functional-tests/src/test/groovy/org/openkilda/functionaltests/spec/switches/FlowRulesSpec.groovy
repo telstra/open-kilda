@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.spec.switches
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -856,7 +855,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([HARDWARE, LOW_PRIORITY, SMOKE_SWITCHES])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
+    @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY, SMOKE_SWITCHES])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
