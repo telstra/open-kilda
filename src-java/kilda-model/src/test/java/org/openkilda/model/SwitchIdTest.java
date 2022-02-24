@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@
 
 package org.openkilda.model;
 
-import org.junit.Assert;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -59,13 +60,21 @@ public class SwitchIdTest {
 
         char[] hexArray = String.format("%016x", switchId.toLong()).toCharArray();
 
-        Assert.assertEquals(switchIdString, switchId.colonSeparatedBytes(hexArray, 0));
-        Assert.assertEquals(switchIdString.substring(3), switchId.colonSeparatedBytes(hexArray, 2));
-        Assert.assertEquals(switchIdString.substring(6), switchId.colonSeparatedBytes(hexArray, 4));
-        Assert.assertEquals(switchIdString.substring(9), switchId.colonSeparatedBytes(hexArray, 6));
-        Assert.assertEquals(switchIdString.substring(12), switchId.colonSeparatedBytes(hexArray, 8));
-        Assert.assertEquals(switchIdString.substring(15), switchId.colonSeparatedBytes(hexArray, 10));
-        Assert.assertEquals(switchIdString.substring(18), switchId.colonSeparatedBytes(hexArray, 12));
-        Assert.assertEquals(switchIdString.substring(21), switchId.colonSeparatedBytes(hexArray, 14));
+        assertEquals(switchIdString, switchId.colonSeparatedBytes(hexArray, 0));
+        assertEquals(switchIdString.substring(3), switchId.colonSeparatedBytes(hexArray, 2));
+        assertEquals(switchIdString.substring(6), switchId.colonSeparatedBytes(hexArray, 4));
+        assertEquals(switchIdString.substring(9), switchId.colonSeparatedBytes(hexArray, 6));
+        assertEquals(switchIdString.substring(12), switchId.colonSeparatedBytes(hexArray, 8));
+        assertEquals(switchIdString.substring(15), switchId.colonSeparatedBytes(hexArray, 10));
+        assertEquals(switchIdString.substring(18), switchId.colonSeparatedBytes(hexArray, 12));
+        assertEquals(switchIdString.substring(21), switchId.colonSeparatedBytes(hexArray, 14));
+    }
+
+    @Test
+    public void trimStringForSwitchId() {
+        String switchIdString = "  fe:dc:ba:98:76:54:32:10  ";
+        SwitchId switchId = new SwitchId(switchIdString);
+
+        assertEquals(new SwitchId("fe:dc:ba:98:76:54:32:10"), switchId);
     }
 }
