@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowmonitoring.bolt;
 
+import static org.openkilda.wfm.share.bolt.MonotonicClock.FIELD_ID_TICK_IDENTIFIER;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_REMOVE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_ID_FIELD;
@@ -29,6 +30,7 @@ import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.ComponentId;
+import org.openkilda.wfm.topology.flowmonitoring.bolt.TickBolt.TickId;
 import org.openkilda.wfm.topology.flowmonitoring.service.FlowStateCacheService;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -52,8 +54,11 @@ public class FlowStateCacheBolt extends AbstractBolt {
     protected void handleInput(Tuple input) throws PipelineException {
         if (active) {
             if (ComponentId.TICK_BOLT.name().equals(input.getSourceComponent())) {
-                flowStateCacheService.getFlows()
-                        .forEach(flowId -> emit(input, new Values(flowId, getCommandContext())));
+                TickId tickId = pullValue(input, FIELD_ID_TICK_IDENTIFIER, TickId.class);
+                if (TickId.CACHE_UPDATE.equals(tickId)) {
+                    flowStateCacheService.getFlows()
+                            .forEach(flowId -> emit(input, new Values(flowId, getCommandContext())));
+                }
                 return;
             }
 
