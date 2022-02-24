@@ -37,6 +37,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SpeakerRepository;
 import org.openkilda.persistence.repositories.SwitchConnectRepository;
@@ -87,6 +88,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private final SwitchConnectRepository switchConnectRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
+    private final KildaFeatureTogglesRepository kildaFeatureTogglesRepository;
     private final SpeakerRepository speakerRepository;
 
     @Getter
@@ -120,8 +122,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.switchConnectRepository = repositoryFactory.createSwitchConnectRepository();
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
-        this.kildaConfigurationRepository = repositoryFactory
-                .createKildaConfigurationRepository();
+        this.kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
+        this.kildaFeatureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
         this.speakerRepository = repositoryFactory.createSpeakerRepository();
 
         this.switchId = switchId;
@@ -383,7 +385,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     private void performActionsDependingOnAttemptsCount(SwitchFsmContext context) {
-        if (syncAttempts <= 0) {
+        if (syncAttempts <= 0 || !kildaFeatureTogglesRepository.getOrDefault().getSyncSwitchOnConnect()) {
             fire(SwitchFsmEvent.SYNC_ENDED, context);
         } else {
             initSync(context);

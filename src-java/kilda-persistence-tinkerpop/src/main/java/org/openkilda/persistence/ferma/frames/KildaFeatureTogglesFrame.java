@@ -117,4 +117,12 @@ public abstract class KildaFeatureTogglesFrame extends KildaBaseVertexFrame impl
     @Override
     @Property("modify_y_flow_enabled")
     public abstract void setModifyYFlowEnabled(Boolean modifyYFlowEnabled);
+
+    @Override
+    @Property("sync_switch_on_connect")
+    public abstract Boolean getSyncSwitchOnConnect();
+
+    @Override
+    @Property("sync_switch_on_connect")
+    public abstract void setSyncSwitchOnConnect(Boolean syncSwitchOnConnect);
 }
