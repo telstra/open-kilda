@@ -23,7 +23,7 @@ import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRe
 import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseSpeakerResponseProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.Event;
@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class OnReceivedInstallResponseAction extends
-        HistoryRecordingAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
+        BaseSpeakerResponseProcessingAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
     private static final String FAILED_TO_INSTALL_RULE_ACTION = "Failed to install rule";
 
     private final int speakerCommandRetriesLimit;
@@ -81,7 +81,9 @@ public class OnReceivedInstallResponseAction extends
                                 || command instanceof GroupCommand
                                 && failedUuids.contains(((GroupCommand) command).getData().getUuid()))
                         .collect(Collectors.toList());
-                stateMachine.getCarrier().sendSpeakerRequest(installRequest.toBuilder().commands(commands).build());
+                InstallSpeakerCommandsRequest retryRequest = installRequest.toBuilder()
+                        .commands(removeExcessDependencies(commands)).build();
+                stateMachine.getCarrier().sendSpeakerRequest(retryRequest);
             } else {
                 stateMachine.addFailedCommand(commandId, response);
                 stateMachine.removePendingCommand(commandId);

@@ -116,15 +116,21 @@ public class OfBatchExecutor {
         try (Session session = sessionService.open(messageContext, iofSwitch)) {
             for (OFMessage message : ofMessages) {
                 requests.add(session.write(message).whenComplete((res, ex) -> {
-                    log.debug("Check responses (key={})", kafkaKey);
+                    log.debug("Check responses (key={}, xid={}, res={}, ex={})", kafkaKey, message.getXid(), res, ex);
                     if (ex == null) {
                         res.ifPresent(ofMessage -> {
-                            UUID uuid = holder.popAwaitingXid(ofMessage.getXid());
                             if (ofMessage instanceof OFErrorMsg) {
+                                UUID uuid = holder.popAwaitingXid(ofMessage.getXid());
                                 OFErrorMsg errorMsg = (OFErrorMsg) ofMessage;
                                 holder.recordFailedUuid(uuid, errorMsg.getErrType().toString());
+                            } else {
+                                onSuccessfulOfMessage(ofMessage);
                             }
                         });
+                        // session.write() completes successfully with no result.
+                        if (!res.isPresent()) {
+                            onSuccessfulOfMessage(message);
+                        }
                     } else {
                         log.error("Received error {}", ex.getMessage(), ex);
                     }
@@ -134,6 +140,17 @@ public class OfBatchExecutor {
 
         CompletableFuture.allOf(requests.toArray(new CompletableFuture<?>[0]))
                 .thenAccept(ignore -> checkOfResponses());
+    }
+
+    private void onSuccessfulOfMessage(OFMessage ofMessage) {
+        UUID uuid = holder.popAwaitingXid(ofMessage.getXid());
+        BatchData batchData = holder.getByUUid(uuid);
+        if (batchData != null && !batchData.isPresenceBeVerified()) {
+            holder.recordSuccessUuid(uuid);
+        } else {
+            log.debug("Received a response for {} / {}. Batch is to be verified...",
+                    ofMessage.getXid(), uuid);
+        }
     }
 
     private void checkOfResponses() {
@@ -172,7 +189,6 @@ public class OfBatchExecutor {
         verifyGroups();
         if (holder.nextStage()) {
             log.debug("Proceed next stage (key={})", kafkaKey);
-            holder.resetXids();
             meterStats = CompletableFuture.completedFuture(null);
             groupStats = CompletableFuture.completedFuture(null);
             flowStats = CompletableFuture.completedFuture(null);
@@ -183,7 +199,6 @@ public class OfBatchExecutor {
         } else {
             sendResponse();
         }
-
     }
 
     private void verifyFlows() {
@@ -204,19 +219,22 @@ public class OfBatchExecutor {
             for (FlowSpeakerData switchFlow : switchFlows) {
                 FlowSpeakerData expectedFlow = holder.getByCookie(switchFlow.getCookie());
                 if (expectedFlow != null) {
-                    if (switchFlow.equals(expectedFlow)) {
-                        holder.recordSuccessUuid(expectedFlow.getUuid());
-                    } else {
-                        long cookie = switchFlow.getCookie().getValue();
-                        // Go through all duplicate cookies, and fail on the last one.
-                        if (cookieCounts.get(cookie) > 1) {
-                            log.debug("Detected duplicate cookies {} on switch {}, skipping...", switchFlow.getCookie(),
-                                    switchFlow.getSwitchId());
-                            cookieCounts.compute(cookie, (k, v) -> v - 1);
+                    BatchData batchData = holder.getByUUid(expectedFlow.getUuid());
+                    if (batchData != null && batchData.isPresenceBeVerified()) {
+                        if (switchFlow.equals(expectedFlow)) {
+                            holder.recordSuccessUuid(expectedFlow.getUuid());
                         } else {
-                            holder.recordFailedUuid(expectedFlow.getUuid(),
-                                    format("Failed to validate flow on a switch. Expected: %s, actual: %s",
-                                            expectedFlow, switchFlow));
+                            long cookie = switchFlow.getCookie().getValue();
+                            // Go through all duplicate cookies, and fail on the last one.
+                            if (cookieCounts.get(cookie) > 1) {
+                                log.debug("Detected duplicate cookies {} on switch {}, skipping...",
+                                        switchFlow.getCookie(), switchFlow.getSwitchId());
+                                cookieCounts.compute(cookie, (k, v) -> v - 1);
+                            } else {
+                                holder.recordFailedUuid(expectedFlow.getUuid(),
+                                        format("Failed to validate flow on a switch. Expected: %s, actual: %s",
+                                                expectedFlow, switchFlow));
+                            }
                         }
                     }
                 }
@@ -241,12 +259,15 @@ public class OfBatchExecutor {
             for (MeterSpeakerData switchMeter : switchMeters) {
                 MeterSpeakerData expectedMeter = holder.getByMeterId(switchMeter.getMeterId());
                 if (expectedMeter != null) {
-                    if (switchMeter.equals(expectedMeter)) {
-                        holder.recordSuccessUuid(expectedMeter.getUuid());
-                    } else {
-                        holder.recordFailedUuid(expectedMeter.getUuid(),
-                                format("Failed to validate meter on a switch. Expected: %s, actual: %s. "
-                                        + "Switch features: %s.", expectedMeter, switchMeter, switchFeatures));
+                    BatchData batchData = holder.getByUUid(expectedMeter.getUuid());
+                    if (batchData != null && batchData.isPresenceBeVerified()) {
+                        if (switchMeter.equals(expectedMeter)) {
+                            holder.recordSuccessUuid(expectedMeter.getUuid());
+                        } else {
+                            holder.recordFailedUuid(expectedMeter.getUuid(),
+                                    format("Failed to validate meter on a switch. Expected: %s, actual: %s. "
+                                            + "Switch features: %s.", expectedMeter, switchMeter, switchFeatures));
+                        }
                     }
                 }
             }
@@ -270,12 +291,15 @@ public class OfBatchExecutor {
             for (GroupSpeakerData switchGroup : switchGroups) {
                 GroupSpeakerData expectedGroup = holder.getByGroupId(switchGroup.getGroupId());
                 if (expectedGroup != null) {
-                    if (switchGroup.equals(expectedGroup)) {
-                        holder.recordSuccessUuid(expectedGroup.getUuid());
-                    } else {
-                        holder.recordFailedUuid(expectedGroup.getUuid(),
-                                format("Failed to validate group on a switch. Expected: %s, actual: %s", expectedGroup,
-                                        switchGroup));
+                    BatchData batchData = holder.getByUUid(expectedGroup.getUuid());
+                    if (batchData != null && batchData.isPresenceBeVerified()) {
+                        if (switchGroup.equals(expectedGroup)) {
+                            holder.recordSuccessUuid(expectedGroup.getUuid());
+                        } else {
+                            holder.recordFailedUuid(expectedGroup.getUuid(),
+                                    format("Failed to validate group on a switch. Expected: %s, actual: %s",
+                                            expectedGroup, switchGroup));
+                        }
                     }
                 }
             }

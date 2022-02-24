@@ -38,7 +38,7 @@ import java.util.UUID;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 @JsonNaming(SnakeCaseStrategy.class)
 @ToString(callSuper = true)
 public class FlowSpeakerData extends SpeakerData {

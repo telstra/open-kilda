@@ -26,4 +26,5 @@ public class BatchData {
     private boolean group;
     private boolean flow;
     private OFMessage message;
+    private boolean presenceBeVerified;
 }

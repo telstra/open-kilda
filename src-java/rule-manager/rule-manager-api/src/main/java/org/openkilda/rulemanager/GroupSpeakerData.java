@@ -36,7 +36,7 @@ import java.util.UUID;
 @EqualsAndHashCode(callSuper = true)
 @Value
 @JsonSerialize
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 @JsonNaming(SnakeCaseStrategy.class)
 public class GroupSpeakerData extends SpeakerData {
     GroupId groupId;

@@ -102,6 +102,7 @@ public abstract class OfFlowConverter {
     public OFFlowMod convertDeleteFlowCommand(FlowSpeakerData commandData, OFFactory ofFactory) {
         return ofFactory.buildFlowDeleteStrict()
                 .setCookie(U64.of(commandData.getCookie().getValue()))
+                .setCookieMask(U64.NO_MASK)
                 .setTableId(TableId.of(commandData.getTable().getTableId()))
                 .setPriority(commandData.getPriority())
                 .setMatch(OfMatchConverter.INSTANCE.convertMatch(commandData.getMatch(), ofFactory))
