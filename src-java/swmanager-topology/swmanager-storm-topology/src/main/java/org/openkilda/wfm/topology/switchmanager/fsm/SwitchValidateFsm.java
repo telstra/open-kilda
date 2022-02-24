@@ -33,6 +33,7 @@ import org.openkilda.messaging.command.switches.DumpGroupsForSwitchManagerReques
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
@@ -314,12 +315,21 @@ public class SwitchValidateFsm extends AbstractStateMachine<
 
     protected void finishedWithErrorEnter(SwitchValidateState from, SwitchValidateState to,
                                           SwitchValidateEvent event, SwitchValidateContext context) {
-        @SuppressWarnings("ThrowableNotThrown")
+        ErrorType type;
+        String description;
         SwitchManagerException error = context.getError();
-        log.error("Switch {} (key: {}) validation failed - {}", getSwitchId(), key, error.getMessage());
+        if (error != null) {
+            log.error("Switch {} (key: {}) validation failed - {}", getSwitchId(), key, error.getMessage());
+            type = error.getError();
+            description = error.getMessage();
+        } else {
+            log.error("Switch {} (key: {}) validation failed - timeout", getSwitchId(), key);
+            type = ErrorType.OPERATION_TIMED_OUT;
+            description = String.format("Switch %s validate/sync operation have timed out", getSwitchId());
+        }
 
         carrier.cancelTimeoutCallback(key);
-        carrier.errorResponse(key, error.getError(), error.getMessage(), "Error in switch validation");
+        carrier.errorResponse(key, type, description, "Error in switch validation");
     }
 
     // -- private/service methods --

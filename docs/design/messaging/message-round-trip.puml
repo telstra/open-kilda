@@ -1,0 +1,52 @@
+@startuml
+title message round trip
+
+collections handler
+collections service
+participant application
+participant transport
+participant remote
+collections remote_handler
+
+activate handler
+handler -> handler : produce message payload\nand message cookie\nwith unique request id\n[payload, cookie[0]]
+handler -> service : [payload, cookie[0]]
+deactivate handler
+service -> application : add handler-id layer\n[payload, cookie[1]]
+application -> transport : add service name layer\n[payload, cookie[2]]
+
+activate transport
+transport -> transport : [payload, cookie[2]] => [request_message]
+transport -> remote: [request_message]
+deactivate transport
+
+activate remote
+remote -> remote : [request_message] => [payload, cookie[2]]
+remote -> remote_handler : [payload]
+activate remote_handler
+remote_handler -> remote : [response]
+deactivate remote_handler
+remote -> remote : response + cookie[2] => [response_message]
+remote -> transport : [response_message]
+deactivate remote
+
+activate transport
+transport -> transport : [response_message] => [response, cookie[2]]
+transport -> application : [response, cookie[2]]
+deactivate transport
+
+activate application
+application -> application : select service by cookie[2]\nunwrap
+application -> service : [response, cookie[1]]
+deactivate application
+
+activate service
+service -> service : select handler by cookie[1]\nunwrap
+service -> handler : [response, cookie[0]]
+deactivate service
+
+activate handler
+handler -> handler : identify request by cookie[0]\nhandle response
+deactivate handler
+
+@enduml

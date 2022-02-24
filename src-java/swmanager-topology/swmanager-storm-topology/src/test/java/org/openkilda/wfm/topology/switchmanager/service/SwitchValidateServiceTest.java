@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.service.impl.fsmhandlers;
+package org.openkilda.wfm.topology.switchmanager.service;
 
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptyList;
@@ -26,10 +26,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.LAG;
 
+import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -39,6 +39,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowDumpResponse;
 import org.openkilda.messaging.info.group.GroupDumpResponse;
 import org.openkilda.messaging.info.meter.MeterDumpResponse;
+import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
@@ -56,10 +57,11 @@ import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.wfm.error.MessageDispatchException;
+import org.openkilda.wfm.error.UnexpectedInputException;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
-import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceImpl;
 
 import com.google.common.collect.Sets;
@@ -74,8 +76,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import java.util.Optional;
 
 @RunWith(MockitoJUnitRunner.class)
-public class SwitchValidateServiceImplTest {
-
+public class SwitchValidateServiceTest {
     private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
     private static final SwitchId SWITCH_ID_MISSING = new SwitchId(0x0000000000000002L);
     private static final Switch SWITCH_1 = Switch.builder().switchId(SWITCH_ID).features(Sets.newHashSet(LAG)).build();
@@ -93,7 +94,7 @@ public class SwitchValidateServiceImplTest {
     @Mock
     private SwitchManagerCarrier carrier;
 
-    private SwitchValidateServiceImpl service;
+    private SwitchValidateService service;
     private SwitchValidateRequest request;
 
     private FlowSpeakerData flowSpeakerData;
@@ -111,7 +112,7 @@ public class SwitchValidateServiceImplTest {
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
-        service = new SwitchValidateServiceImpl(carrier, persistenceManager, validationService, ruleManager);
+        service = new SwitchValidateService(carrier, persistenceManager, validationService, ruleManager);
 
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).processMeters(true).build();
         flowSpeakerData = FlowSpeakerData.builder()
@@ -144,21 +145,23 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void receiveOnlyRules() {
+    public void receiveOnlyRules() throws UnexpectedInputException, MessageDispatchException {
         handleRequestAndInitDataReceive();
 
-        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
+        service.dispatchWorkerMessage(
+                new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
     }
 
     @Test
-    public void receiveTaskTimeout() {
+    public void receiveTaskTimeout() throws UnexpectedInputException, MessageDispatchException {
         handleRequestAndInitDataReceive();
 
-        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
-        service.handleTaskTimeout(KEY);
+        service.dispatchWorkerMessage(
+                new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
+        service.timeout(new MessageCookie(KEY));
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).errorResponse(eq(KEY), eq(ErrorType.OPERATION_TIMED_OUT), any(String.class), any(String.class));
@@ -167,12 +170,13 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void receiveTaskError() {
+    public void receiveTaskError() throws UnexpectedInputException, MessageDispatchException {
         handleRequestAndInitDataReceive();
 
-        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
+        service.dispatchWorkerMessage(
+                new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
         ErrorMessage errorMessage = getErrorMessage();
-        service.handleTaskError(KEY, errorMessage);
+        service.dispatchWorkerMessage(errorMessage.getData(), new MessageCookie(KEY));
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).errorResponse(eq(KEY), eq(errorMessage.getData().getErrorType()), any(String.class),
@@ -183,7 +187,7 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void validationSuccess() {
+    public void validationSuccess() throws UnexpectedInputException, MessageDispatchException {
         handleRequestAndInitDataReceive();
         handleDataReceiveAndValidate();
 
@@ -198,14 +202,15 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void validationWithoutMetersSuccess() {
+    public void validationWithoutMetersSuccess() throws UnexpectedInputException, MessageDispatchException {
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).build();
 
         service.handleSwitchValidateRequest(KEY, request);
         verify(carrier, times(2)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
 
-        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
-        service.handleGroupEntriesResponse(KEY, new GroupDumpResponse(SWITCH_ID, emptyList()));
+        service.dispatchWorkerMessage(
+                new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new GroupDumpResponse(SWITCH_ID, emptyList()), new MessageCookie(KEY));
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
         verify(validationService).validateGroups(eq(SWITCH_ID), any(), any());
         verify(carrier).cancelTimeoutCallback(eq(KEY));
@@ -221,11 +226,12 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void validationSuccessWithUnsupportedMeters() {
+    public void validationSuccessWithUnsupportedMeters() throws UnexpectedInputException, MessageDispatchException {
         handleRequestAndInitDataReceive();
-        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
-        service.handleMetersUnsupportedResponse(KEY);
-        service.handleGroupEntriesResponse(KEY, new GroupDumpResponse(SWITCH_ID, emptyList()));
+        service.dispatchWorkerMessage(
+                new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new SwitchMeterUnsupported(SWITCH_ID), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new GroupDumpResponse(SWITCH_ID, emptyList()), new MessageCookie(KEY));
 
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
         verify(validationService).validateGroups(eq(SWITCH_ID), any(), any());
@@ -242,7 +248,7 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
-    public void exceptionWhileValidation() {
+    public void exceptionWhileValidation() throws UnexpectedInputException, MessageDispatchException {
         handleRequestAndInitDataReceive();
 
         String errorMessage = "test error";
@@ -259,16 +265,14 @@ public class SwitchValidateServiceImplTest {
         verifyNoMoreInteractions(validationService);
     }
 
-    @Test
-    public void doNothingWhenFsmNotFound() {
-        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
-
-        verifyZeroInteractions(carrier);
-        verifyZeroInteractions(validationService);
+    @Test(expected = MessageDispatchException.class)
+    public void doNothingWhenFsmNotFound() throws UnexpectedInputException, MessageDispatchException {
+        service.dispatchWorkerMessage(
+                new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
     }
 
     @Test
-    public void validationPerformSync() {
+    public void validationPerformSync() throws UnexpectedInputException, MessageDispatchException {
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).processMeters(true).build();
 
         handleRequestAndInitDataReceive();
@@ -301,10 +305,12 @@ public class SwitchValidateServiceImplTest {
         verifyNoMoreInteractions(carrier);
     }
 
-    private void handleDataReceiveAndValidate() {
-        service.handleFlowEntriesResponse(KEY, new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)));
-        service.handleMeterEntriesResponse(KEY, new MeterDumpResponse(SWITCH_ID, singletonList(meterSpeakerData)));
-        service.handleGroupEntriesResponse(KEY, new GroupDumpResponse(SWITCH_ID, emptyList()));
+    private void handleDataReceiveAndValidate() throws UnexpectedInputException, MessageDispatchException {
+        service.dispatchWorkerMessage(
+                new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(
+                new MeterDumpResponse(SWITCH_ID, singletonList(meterSpeakerData)), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new GroupDumpResponse(SWITCH_ID, emptyList()), new MessageCookie(KEY));
 
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
         verify(validationService).validateMeters(eq(SWITCH_ID), any(), any());

@@ -20,6 +20,7 @@ import org.openkilda.grpc.speaker.mapper.NoviflowResponseMapper;
 import org.openkilda.grpc.speaker.mapper.RequestMapper;
 import org.openkilda.grpc.speaker.service.GrpcSenderService;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -101,7 +102,7 @@ public class MessageProcessor {
             result = unhandledMessage(command);
         }
 
-        result.thenAccept(response -> sendResponse(response, correlationId, key));
+        result.thenAccept(response -> sendResponse(response, correlationId, key, command.getCookie()));
     }
 
     private CompletableFuture<Response> handleCreateLogicalPortRequest(CreateLogicalPortRequest request) {
@@ -186,16 +187,18 @@ public class MessageProcessor {
         }
     }
 
-    private void sendResponse(Response response, String correlationId, String key) {
-        Message message = makeMessage(response.getPayload(), correlationId);
+    private void sendResponse(Response response, String correlationId, String key, MessageCookie cookie) {
+        log.debug("GRPC speaker is sending response on request {} with cookie {}: {}", key, cookie, response);
+        Message message = makeMessage(response, correlationId, cookie);
         messageProducer.send(response.getTopic(), key, message);
     }
 
-    private Message makeMessage(MessageData payload, String correlationId) {
+    private Message makeMessage(Response response, String correlationId, MessageCookie cookie) {
+        MessageData payload = response.getPayload();
         if (payload instanceof InfoData) {
-            return new InfoMessage((InfoData) payload, System.currentTimeMillis(), correlationId);
+            return new InfoMessage((InfoData) payload, correlationId, cookie);
         } else if (payload instanceof ErrorData) {
-            return new ErrorMessage((ErrorData) payload, System.currentTimeMillis(), correlationId);
+            return new ErrorMessage((ErrorData) payload, correlationId, cookie);
         } else {
             throw new IllegalArgumentException(String.format(
                     "Unexpected/unsupported message payload type: %s", payload.getClass().getName()));
