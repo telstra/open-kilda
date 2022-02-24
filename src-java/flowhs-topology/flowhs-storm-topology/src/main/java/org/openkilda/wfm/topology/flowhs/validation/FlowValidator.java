@@ -202,10 +202,29 @@ public class FlowValidator {
     }
 
     @VisibleForTesting
-    void checkBandwidth(RequestedFlow flow) throws InvalidFlowException {
+    void checkBandwidth(RequestedFlow flow) throws InvalidFlowException, UnavailableFlowEndpointException {
         if (flow.getBandwidth() < 0) {
             throw new InvalidFlowException(
-                    format("The flow '%s' has invalid bandwidth %d provided.",
+                    format("The flow '%s' has invalid bandwidth %d provided. Bandwidth cannot be less than 0 kbps.",
+                            flow.getFlowId(),
+                            flow.getBandwidth()),
+                    ErrorType.DATA_INVALID);
+        }
+
+        Switch srcSwitch = switchRepository.findById(flow.getSrcSwitch())
+                .orElseThrow(() -> new UnavailableFlowEndpointException(format("Endpoint switch not found %s",
+                        flow.getSrcSwitch())));
+
+        Switch destSwitch = switchRepository.findById(flow.getDestSwitch())
+                .orElseThrow(() -> new UnavailableFlowEndpointException(format("Endpoint switch not found %s",
+                        flow.getDestSwitch())));
+
+        if ((Switch.isNoviflowSwitch(srcSwitch.getOfDescriptionSoftware())
+                || Switch.isNoviflowSwitch(destSwitch.getOfDescriptionSoftware()))
+                && flow.getBandwidth() < 64) {
+            // Min rate that the NoviFlow switches allows is 64 kbps.
+            throw new InvalidFlowException(
+                    format("The flow '%s' has invalid bandwidth %d provided. Bandwidth cannot be less than 64 kbps.",
                             flow.getFlowId(),
                             flow.getBandwidth()),
                     ErrorType.DATA_INVALID);
