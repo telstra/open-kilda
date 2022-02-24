@@ -25,6 +25,6 @@ import lombok.Value;
 @EqualsAndHashCode(callSuper = false)
 public class DeleteLagPortRequest extends CommandData {
     SwitchId switchId;
-    Integer logicalPortNumber;
+    int logicalPortNumber;
 }
 

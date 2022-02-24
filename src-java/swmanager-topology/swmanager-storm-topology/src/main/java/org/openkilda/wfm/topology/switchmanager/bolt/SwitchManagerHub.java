@@ -30,6 +30,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
 import org.openkilda.messaging.swmanager.request.DeleteLagPortRequest;
+import org.openkilda.messaging.swmanager.request.UpdateLagPortRequest;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.RuleManagerImpl;
@@ -54,6 +55,7 @@ import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerHubService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchRuleService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
+import org.openkilda.wfm.topology.switchmanager.service.UpdateLagPortService;
 import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceImpl;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
@@ -98,6 +100,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     private transient SwitchSyncService syncService;
     private transient SwitchRuleService switchRuleService;
     private transient CreateLagPortService createLagPortService;
+    private transient UpdateLagPortService updateLagPortService;
     private transient DeleteLagPortService deleteLagPortService;
 
     private transient Map<String, MessageCookie> timeoutDispatchMap;
@@ -147,6 +150,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                 carrier -> new SwitchRuleService(carrier, persistenceManager.getRepositoryFactory()));
         createLagPortService = registerService(
                 serviceRegistry, "lag-create", this, carrier -> new CreateLagPortService(carrier, config));
+        updateLagPortService = registerService(
+                serviceRegistry, "lag-update", this, carrier -> new UpdateLagPortService(carrier, config));
         deleteLagPortService = registerService(
                 serviceRegistry, "lag-delete", this, carrier -> new DeleteLagPortService(carrier, config));
     }
@@ -211,6 +216,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
             dispatchRequest(
                     createLagPortService, key,
                     service -> service.handleCreateLagRequest(key, (CreateLagPortRequest) data));
+        } else if (data instanceof UpdateLagPortRequest) {
+            dispatchRequest(updateLagPortService, key, service -> service.update(key, (UpdateLagPortRequest) data));
         } else if (data instanceof DeleteLagPortRequest) {
             dispatchRequest(
                     deleteLagPortService, key,

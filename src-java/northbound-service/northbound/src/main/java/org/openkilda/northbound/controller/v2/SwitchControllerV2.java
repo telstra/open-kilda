@@ -19,8 +19,8 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.BaseController;
-import org.openkilda.northbound.dto.v2.switches.CreateLagPortDto;
-import org.openkilda.northbound.dto.v2.switches.LagPortDto;
+import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
+import org.openkilda.northbound.dto.v2.switches.LagPortResponse;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
@@ -192,13 +192,14 @@ public class SwitchControllerV2 extends BaseController {
      *
      * @param switchId the switch
      */
-    @ApiOperation(value = "Create LAG logical port", response = LagPortDto.class)
+    @ApiOperation(value = "Create LAG logical port", response = LagPortResponse.class)
     @PostMapping(value = "/{switch_id}/lags")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<LagPortDto> createLagPort(@PathVariable("switch_id") SwitchId switchId,
-                                                       @ApiParam(value = "Physical ports which will be grouped")
-                                                       @RequestBody CreateLagPortDto createLagPortDto) {
-        return switchService.createLag(switchId, createLagPortDto);
+    public CompletableFuture<LagPortResponse> createLagPort(
+            @PathVariable("switch_id") SwitchId switchId,
+            @ApiParam(value = "Physical ports which will be grouped")
+            @RequestBody LagPortRequest lagPortRequest) {
+        return switchService.createLag(switchId, lagPortRequest);
     }
 
     /**
@@ -206,11 +207,24 @@ public class SwitchControllerV2 extends BaseController {
      *
      * @param switchId the switch
      */
-    @ApiOperation(value = "Get LAG logical ports", response = LagPortDto.class)
+    @ApiOperation(value = "Read all LAG logical ports on specific switch", response = LagPortResponse.class)
     @GetMapping(value = "/{switch_id}/lags")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<List<LagPortDto>> getLagPorts(@PathVariable("switch_id") SwitchId switchId) {
+    public CompletableFuture<List<LagPortResponse>> getLagPorts(@PathVariable("switch_id") SwitchId switchId) {
         return switchService.getLagPorts(switchId);
+    }
+
+    /**
+     * Update LAG logical port.
+     */
+    @ApiOperation(value = "Update LAG logical port", response = LagPortResponse.class)
+    @PutMapping(value = "/{switch_id}/lags/{logical_port_number}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<LagPortResponse> updateLagPort(
+            @PathVariable("switch_id") SwitchId switchId,
+            @PathVariable("logical_port_number") int logicalPortNumber,
+            @RequestBody LagPortRequest payload) {
+        return switchService.updateLagPort(switchId, logicalPortNumber, payload);
     }
 
     /**
@@ -219,11 +233,12 @@ public class SwitchControllerV2 extends BaseController {
      * @param switchId the switch
      * @param logicalPortNumber the switch
      */
-    @ApiOperation(value = "Delete LAG logical port", response = LagPortDto.class)
+    @ApiOperation(value = "Delete LAG logical port", response = LagPortResponse.class)
     @DeleteMapping(value = "/{switch_id}/lags/{logical_port_number}")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<LagPortDto> deleteLagPort(@PathVariable("switch_id") SwitchId switchId,
-                                                   @PathVariable("logical_port_number") Integer logicalPortNumber) {
+    public CompletableFuture<LagPortResponse> deleteLagPort(
+            @PathVariable("switch_id") SwitchId switchId,
+            @PathVariable("logical_port_number") int logicalPortNumber) {
         return switchService.deleteLagPort(switchId, logicalPortNumber);
     }
 }

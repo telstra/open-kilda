@@ -13,18 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.northbound.dto.v2.switches;
 
-import org.openkilda.model.PhysicalPort;
-import org.openkilda.model.SwitchId;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.util.Collection;
-import java.util.Optional;
+import java.util.List;
 
-public interface PhysicalPortRepository extends Repository<PhysicalPort> {
-    Collection<PhysicalPort> findAll();
-
-    Collection<PhysicalPort> findBySwitchId(SwitchId switchId);
-
-    Optional<PhysicalPort> findBySwitchIdAndPortNumber(SwitchId switchId, int portNumber);
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class LagPortResponse {
+    private int logicalPortNumber;
+    private List<Integer> portNumbers;
 }

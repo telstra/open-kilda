@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.network.storm.bolt.bfd.worker.command;
 
 import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.worker.BfdWorker;
@@ -31,7 +31,7 @@ abstract class BfdWorkerPortCrudCommand extends BfdWorkerCommand {
     }
 
     @Override
-    public void consumeResponse(BfdWorker handler, CreateLogicalPortResponse response) {
+    public void consumeResponse(BfdWorker handler, CreateOrUpdateLogicalPortResponse response) {
         handler.processPortCreateResponse(getRequestId(), logical, response);
     }
 

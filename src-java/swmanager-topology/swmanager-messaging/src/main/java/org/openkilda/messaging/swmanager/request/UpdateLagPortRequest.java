@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,20 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.switches;
+package org.openkilda.messaging.swmanager.request;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.SwitchId;
+
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
 import java.util.List;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
-public class CreateLagPortDto {
-    private List<Integer> portNumbers;
+@Value
+@EqualsAndHashCode(callSuper = false)
+public class UpdateLagPortRequest extends CommandData {
+    SwitchId switchId;
+    int logicalPortNumber;
+    List<Integer> targetPorts;
 }

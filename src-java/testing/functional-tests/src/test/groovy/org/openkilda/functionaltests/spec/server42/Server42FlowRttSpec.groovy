@@ -31,7 +31,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
-import org.openkilda.northbound.dto.v2.switches.CreateLagPortDto
+import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.time.TimeCategory
@@ -906,7 +906,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         when: "Create a LAG port on the src switch"
         def portsForLag = topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1]
-        def payload = new CreateLagPortDto(portNumbers: portsForLag)
+        def payload = new LagPortRequest(portNumbers: portsForLag)
         def lagPort = northboundV2.createLagLogicalPort(switchPair.src.dpId, payload).logicalPortNumber
 
         and: "Create a flow"

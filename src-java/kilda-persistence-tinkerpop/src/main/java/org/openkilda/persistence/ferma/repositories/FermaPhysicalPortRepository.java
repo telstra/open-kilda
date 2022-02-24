@@ -27,7 +27,6 @@ import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -50,14 +49,14 @@ public class FermaPhysicalPortRepository
     }
 
     @Override
-    public Set<Integer> findPortNumbersBySwitchId(SwitchId switchId) {
+    public Collection<PhysicalPort> findBySwitchId(SwitchId switchId) {
         return framedGraph().traverse(g -> g.V()
                 .hasLabel(PhysicalPortFrame.FRAME_LABEL)
                 .has(PhysicalPortFrame.SWITCH_ID_PROPERTY,
                         SwitchIdConverter.INSTANCE.toGraphProperty(switchId)))
                 .toListExplicit(PhysicalPortFrame.class).stream()
-                .map(PhysicalPortFrame::getPortNumber)
-                .collect(Collectors.toSet());
+                .map(PhysicalPort::new)
+                .collect(Collectors.toList());
     }
 
     @Override
