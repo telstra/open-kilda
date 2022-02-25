@@ -375,11 +375,12 @@ public class FlowServiceImpl implements FlowService {
         logger.warn("Delete all flows request");
         // TODO: Need a getFlowIDs .. since that is all we need
         CompletableFuture<List<FlowResponsePayload>> getFlowsStage = this.getAllFlows();
+        final String correlationId = RequestCorrelationId.getId();
 
         getFlowsStage.thenApply(flows -> {
             List<CompletableFuture<?>> deletionRequests = new ArrayList<>();
             for (int i = 0; i < flows.size(); i++) {
-                String requestId = idFactory.produceChained(String.valueOf(i));
+                String requestId = idFactory.produceChained(correlationId);
                 FlowResponsePayload flow = flows.get(i);
                 if (flow.getYFlowId() != null) {
                     // Skip y-sub-flows.
