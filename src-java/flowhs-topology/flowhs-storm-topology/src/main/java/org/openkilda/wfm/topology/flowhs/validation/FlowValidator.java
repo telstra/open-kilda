@@ -221,7 +221,7 @@ public class FlowValidator {
 
         if ((Switch.isNoviflowSwitch(srcSwitch.getOfDescriptionSoftware())
                 || Switch.isNoviflowSwitch(destSwitch.getOfDescriptionSoftware()))
-                && flow.getBandwidth() < 64) {
+                && flow.getBandwidth() != 0 && flow.getBandwidth() < 64) {
             // Min rate that the NoviFlow switches allows is 64 kbps.
             throw new InvalidFlowException(
                     format("The flow '%s' has invalid bandwidth %d provided. Bandwidth cannot be less than 64 kbps.",
