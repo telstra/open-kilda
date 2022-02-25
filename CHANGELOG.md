@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.116.0 (04/03/2022)
+
+### Features:
+-  [#4698](https://github.com/telstra/open-kilda/pull/4698) Added sync switch on connect toggle [**storm-topologies**]
+
+### Bug Fixes:
+-  [#4709](https://github.com/telstra/open-kilda/pull/4709) Fix: add inaccurate flag to MeterSpeakerData.
+-  [#4714](https://github.com/telstra/open-kilda/pull/4714) Fix unmetered bw for noviflow switches
+-  [#4444](https://github.com/telstra/open-kilda/pull/4444) GRPC: Fixed changing of logical port type (Issues: [#4693](https://github.com/telstra/open-kilda/issues/4693) [#4694](https://github.com/telstra/open-kilda/issues/4694))
+-  [#4701](https://github.com/telstra/open-kilda/pull/4701) Fix the minimum bandwidth value for the flow
+-  [#4702](https://github.com/telstra/open-kilda/pull/4702) Fix excess y-flow meters (proper building & handing of DeleteSpeakerCommandsRequest) [**floodlight**]
+
+### Improvements:
+-  [#4680](https://github.com/telstra/open-kilda/pull/4680) LAG logical port update operation
+-  [#4699](https://github.com/telstra/open-kilda/pull/4699) Rework events routing inside SwitchManagerHub [**storm-topologies**]
+-  [#4700](https://github.com/telstra/open-kilda/pull/4700) Ignore leading and trailing spaces in a string for the SwitchId class.
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.115.2...v1.116.0).
+
+### Affected Components:
+flow-monitor, network, grpc, flow-hs, swmanager, fl
+
+---
+
 ## v1.115.2 (02/03/2022)
 
 ### Improvements:
