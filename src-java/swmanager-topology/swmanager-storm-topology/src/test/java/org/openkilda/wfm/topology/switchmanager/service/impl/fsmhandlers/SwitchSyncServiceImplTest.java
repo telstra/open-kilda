@@ -34,6 +34,7 @@ import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -287,13 +288,15 @@ public class SwitchSyncServiceImplTest {
         verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
         verify(commandBuilder).buildCommandsToRemoveExcessRules(
                 eq(SWITCH_ID), eq(singletonList(flowEntry)), eq(excessRules));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(DeleterMeterForSwitchManagerRequest.class));
+
+        service.handleRemoveMetersResponse(KEY);
         verify(carrier).sendCommandToSpeaker(eq(KEY), any(InstallFlowForSwitchManagerRequest.class));
         verify(carrier).sendCommandToSpeaker(eq(KEY), any(RemoveFlowForSwitchManagerRequest.class));
 
         service.handleInstallRulesResponse(KEY);
         service.handleRemoveRulesResponse(KEY);
 
-        service.handleRemoveMetersResponse(KEY);
         verify(carrier, times(3)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
