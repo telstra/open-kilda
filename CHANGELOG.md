@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.115.1 (21/02/2022)
+
+### Bug Fixes:
+-  [#4705](https://github.com/telstra/open-kilda/pull/4705) Sync misconfigured and excess meters [**storm-topologies**]
+-  [#4706](https://github.com/telstra/open-kilda/pull/4706) Fix build by pinning markupsafe version
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.115.0...v1.115.1).
+
+### Affected Components:
+swmanager
+
+---
+
 ## v1.115.0 (17/02/2022)
 
 ### Features:
@@ -12,8 +25,6 @@
 -  [#4689](https://github.com/telstra/open-kilda/pull/4689) Fix NPE in ingress rule generator for single switch flow 
 -  [#4691](https://github.com/telstra/open-kilda/pull/4691) Fix the output port for a single switch and same port flow 
 -  [#4697](https://github.com/telstra/open-kilda/pull/4697) Fix rule manager switch validation [**storm-topologies**]
-
-
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.114.0...v1.115.0).
 
