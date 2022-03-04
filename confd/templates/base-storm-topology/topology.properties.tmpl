@@ -162,7 +162,13 @@ flow.delete.speaker.command.retries = 3
 blue.green.mode = {{ getv "/kilda_blue_green_mode" "blue" }}
 
 # flow-monitoring topology
+#
+# flow.sla.check.shard.count parameter is needed to distribute load of Flow SLA
+# check operation. Instead of checking of all flows ones in flow.sla.check.interval.seconds
+# flows will be checked by chunks. That is why parameter flow.sla.check.interval.seconds
+# must be divisible by flow.sla.check.shard.count
 flow.sla.check.interval.seconds = {{ getv "/kilda_flow_sla_check_interval_seconds" }}
+flow.sla.check.shard.count = {{ getv "/kilda_flow_sla_check_shard_count" }}
 flow.rtt.stats.expiration.seconds = {{ getv "/kilda_flow_rtt_stats_expiration_seconds" }}
 isl.rtt.latency.expiration.seconds = {{ getv "/kilda_isl_rtt_latency_expiration_seconds" }}
 flow.latency.sla.timeout.seconds = {{ getv "/kilda_flow_latency_sla_timeout_seconds" }}
