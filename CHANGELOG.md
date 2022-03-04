@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.115.2 (02/03/2022)
+
+### Improvements:
+- [#4710](https://github.com/telstra/open-kilda/pull/4710) Added SLA check sharding for Flow Monitoring
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.115.1...v1.115.2).
+
+### Affected Components:
+flow-monitor
+
+---
 ## v1.115.1 (21/02/2022)
 
 ### Bug Fixes:
