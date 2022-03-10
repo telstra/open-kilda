@@ -404,7 +404,7 @@ public class FlowServiceImpl implements FlowService {
                                 System.currentTimeMillis(),
                                 ErrorType.REQUEST_INVALID,
                                 "Couldn't delete flow",
-                                errorBuilder.append(String.join(",", failedFlows))
+                                errorBuilder.append(String.join(", ", failedFlows))
                                         .toString()));
                     }
                     return result.complete(results);
