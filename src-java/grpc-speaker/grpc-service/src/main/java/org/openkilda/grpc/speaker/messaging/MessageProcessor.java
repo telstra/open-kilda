@@ -20,10 +20,11 @@ import org.openkilda.grpc.speaker.mapper.NoviflowResponseMapper;
 import org.openkilda.grpc.speaker.mapper.RequestMapper;
 import org.openkilda.grpc.speaker.service.GrpcSenderService;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
+import org.openkilda.messaging.command.grpc.CreateOrUpdateLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DeleteLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DumpLogicalPortsRequest;
 import org.openkilda.messaging.command.grpc.GetPacketInOutStatsRequest;
@@ -33,7 +34,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.grpc.GetPacketInOutStatsResponse;
@@ -87,29 +88,31 @@ public class MessageProcessor {
         String correlationId = command.getCorrelationId();
         CompletableFuture<Response> result;
 
-        if (data instanceof CreateLogicalPortRequest) {
-            result = handleCreateLogicalPortRequest((CreateLogicalPortRequest) data);
+        if (data instanceof CreateOrUpdateLogicalPortRequest) {
+            result = handleCreateOrUpdateLogicalPortRequest((CreateOrUpdateLogicalPortRequest) data);
         } else if (data instanceof DumpLogicalPortsRequest) {
             result = handleDumpLogicalPortsRequest((DumpLogicalPortsRequest) data);
+        } else if (data instanceof DeleteLogicalPortRequest) {
+            result = handleDeleteLogicalPortRequest((DeleteLogicalPortRequest) data);
         } else if (data instanceof GetSwitchInfoRequest) {
             result = handleGetSwitchInfoRequest((GetSwitchInfoRequest) data);
         } else if (data instanceof GetPacketInOutStatsRequest) {
             result = handleGetPacketInOutStatsRequest((GetPacketInOutStatsRequest) data);
-        } else if (data instanceof DeleteLogicalPortRequest) {
-            result = handleDeleteLogicalPortRequest((DeleteLogicalPortRequest) data);
         } else {
             result = unhandledMessage(command);
         }
 
-        result.thenAccept(response -> sendResponse(response, correlationId, key));
+        result.thenAccept(response -> sendResponse(response, correlationId, key, command.getCookie()));
     }
 
-    private CompletableFuture<Response> handleCreateLogicalPortRequest(CreateLogicalPortRequest request) {
+    private CompletableFuture<Response> handleCreateOrUpdateLogicalPortRequest(
+            CreateOrUpdateLogicalPortRequest request) {
         CompletableFuture<InfoData> future = service
-                .createLogicalPort(request.getAddress(), requestMapper.toLogicalPort(request))
-                .thenApply(result -> new CreateLogicalPortResponse(request.getAddress(), result, true));
+                .createOrUpdateLogicalPort(request.getAddress(), requestMapper.toLogicalPort(request))
+                .thenApply(result -> new CreateOrUpdateLogicalPortResponse(request.getAddress(), result, true));
         return makeResponse(future, String.format(
-                "Creating logical port %s on switch %s", request.getLogicalPortNumber(), request.getAddress()));
+                "Creating or update %s logical port %s on switch %s",
+                request.getType(), request.getLogicalPortNumber(), request.getAddress()));
     }
 
     private CompletableFuture<Response> handleDumpLogicalPortsRequest(DumpLogicalPortsRequest request) {
@@ -186,16 +189,18 @@ public class MessageProcessor {
         }
     }
 
-    private void sendResponse(Response response, String correlationId, String key) {
-        Message message = makeMessage(response.getPayload(), correlationId);
+    private void sendResponse(Response response, String correlationId, String key, MessageCookie cookie) {
+        log.debug("GRPC speaker is sending response on request {} with cookie {}: {}", key, cookie, response);
+        Message message = makeMessage(response, correlationId, cookie);
         messageProducer.send(response.getTopic(), key, message);
     }
 
-    private Message makeMessage(MessageData payload, String correlationId) {
+    private Message makeMessage(Response response, String correlationId, MessageCookie cookie) {
+        MessageData payload = response.getPayload();
         if (payload instanceof InfoData) {
-            return new InfoMessage((InfoData) payload, System.currentTimeMillis(), correlationId);
+            return new InfoMessage((InfoData) payload, correlationId, cookie);
         } else if (payload instanceof ErrorData) {
-            return new ErrorMessage((ErrorData) payload, System.currentTimeMillis(), correlationId);
+            return new ErrorMessage((ErrorData) payload, correlationId, cookie);
         } else {
             throw new IllegalArgumentException(String.format(
                     "Unexpected/unsupported message payload type: %s", payload.getClass().getName()));

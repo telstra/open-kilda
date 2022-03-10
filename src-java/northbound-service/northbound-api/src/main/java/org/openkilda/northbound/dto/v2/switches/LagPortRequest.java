@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,9 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.meter;
+package org.openkilda.northbound.dto.v2.switches;
 
-import org.openkilda.messaging.info.InfoData;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public class SwitchMeterData extends InfoData {
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class LagPortRequest {
+    private List<Integer> portNumbers;
 }

@@ -46,6 +46,7 @@ import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Isl;
 import org.openkilda.model.KildaConfiguration;
+import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
@@ -54,6 +55,7 @@ import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SpeakerRepository;
 import org.openkilda.persistence.repositories.SwitchConnectRepository;
@@ -130,6 +132,9 @@ public class NetworkSwitchServiceTest {
     private SwitchPropertiesRepository switchPropertiesRepository;
 
     @Mock
+    private KildaFeatureTogglesRepository featureTogglesRepository;
+
+    @Mock
     private SpeakerRepository speakerRepository;
 
     private final SpeakerSwitchDescription switchDescription = SpeakerSwitchDescription.builder()
@@ -187,6 +192,7 @@ public class NetworkSwitchServiceTest {
         doAnswer(invocation -> invocation.getArgument(0)).when(switchRepository).add(any());
 
         when(kildaConfigurationRepository.getOrDefault()).thenReturn(KildaConfiguration.DEFAULTS);
+        when(featureTogglesRepository.getOrDefault()).thenReturn(KildaFeatureToggles.DEFAULTS);
 
         reset(repositoryFactory);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
@@ -194,6 +200,7 @@ public class NetworkSwitchServiceTest {
         when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
         when(repositoryFactory.createKildaConfigurationRepository()).thenReturn(kildaConfigurationRepository);
         when(repositoryFactory.createSpeakerRepository()).thenReturn(speakerRepository);
+        when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
     }
 
     @Test

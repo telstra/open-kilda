@@ -26,7 +26,7 @@ import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class CreateLogicalPortRequest extends GrpcBaseRequest {
+public class CreateOrUpdateLogicalPortRequest extends GrpcBaseRequest {
 
     @JsonProperty("port_numbers")
     private List<Integer> portNumbers;
@@ -38,10 +38,10 @@ public class CreateLogicalPortRequest extends GrpcBaseRequest {
     private LogicalPortType type;
 
     @JsonCreator
-    public CreateLogicalPortRequest(@JsonProperty("address") String address,
-                                    @JsonProperty("port_numbers") List<Integer> portNumbers,
-                                    @JsonProperty("logical_port_number") int logicalPortNumber,
-                                    @JsonProperty("type") LogicalPortType type) {
+    public CreateOrUpdateLogicalPortRequest(@JsonProperty("address") String address,
+                                            @JsonProperty("port_numbers") List<Integer> portNumbers,
+                                            @JsonProperty("logical_port_number") int logicalPortNumber,
+                                            @JsonProperty("type") LogicalPortType type) {
         super(address);
         this.portNumbers = portNumbers;
         this.logicalPortNumber = logicalPortNumber;

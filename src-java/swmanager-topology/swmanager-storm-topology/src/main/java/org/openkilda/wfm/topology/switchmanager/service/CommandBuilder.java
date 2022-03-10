@@ -19,7 +19,7 @@ import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.ModifyDefaultMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
+import org.openkilda.messaging.command.grpc.CreateOrUpdateLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DeleteLogicalPortRequest;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
@@ -45,7 +45,7 @@ public interface CommandBuilder {
 
     List<GroupInstallContext> buildGroupInstallContexts(SwitchId switchId, List<Integer> groupIds);
 
-    List<CreateLogicalPortRequest> buildLogicalPortInstallCommands(
+    List<CreateOrUpdateLogicalPortRequest> buildLogicalPortInstallCommands(
             SwitchId switchId, List<LogicalPortInfoEntry> missingLogicalPorts);
 
     List<DeleteLogicalPortRequest> buildLogicalPortDeleteCommands(SwitchId switchId, List<Integer> excessLogicalPorts);

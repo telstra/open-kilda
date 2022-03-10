@@ -21,7 +21,7 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchFeature
-import org.openkilda.northbound.dto.v2.switches.CreateLagPortDto
+import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload
 import org.openkilda.northbound.dto.v2.yflows.YFlowPingPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -400,7 +400,7 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
         def swT = topologyHelper.switchTriplets.find { it.shared.features.contains(SwitchFeature.LAG) }
         assumeTrue(swT != null, "Unable to find a switch that supports LAG")
         def portsArray = topology.getAllowedPortsForSwitch(swT.shared)[-2, -1]
-        def payload = new CreateLagPortDto(portNumbers: portsArray)
+        def payload = new LagPortRequest(portNumbers: portsArray)
         def lagPort = northboundV2.createLagLogicalPort(swT.shared.dpId, payload).logicalPortNumber
 
         when: "Try creating a y-flow with shared endpoint port being inside LAG"

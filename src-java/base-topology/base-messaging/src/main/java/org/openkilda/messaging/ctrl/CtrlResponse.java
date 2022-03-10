@@ -48,7 +48,7 @@ public class CtrlResponse extends Message {
                         @JsonProperty(TIMESTAMP) final long timestamp,
                         @JsonProperty(CORRELATION_ID) final String correlationId,
                         @JsonProperty(DESTINATION) final Destination destination) {
-        super(timestamp, correlationId, destination);
+        super(timestamp, correlationId, destination, null);
         this.data = data;
     }
 

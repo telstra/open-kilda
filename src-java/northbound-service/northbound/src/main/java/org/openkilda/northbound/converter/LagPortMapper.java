@@ -15,14 +15,14 @@
 
 package org.openkilda.northbound.converter;
 
-import org.openkilda.messaging.swmanager.response.LagPortResponse;
-import org.openkilda.northbound.dto.v2.switches.LagPortDto;
+import org.openkilda.messaging.nbtopology.response.LagPortDto;
+import org.openkilda.northbound.dto.v2.switches.LagPortResponse;
 
 import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface LagPortMapper {
-    LagPortDto map(LagPortResponse response);
+    LagPortResponse map(org.openkilda.messaging.swmanager.response.LagPortResponse response);
 
-    LagPortDto map(org.openkilda.messaging.nbtopology.response.LagPortDto response);
+    LagPortResponse map(LagPortDto response);
 }

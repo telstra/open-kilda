@@ -30,7 +30,7 @@ import org.openkilda.messaging.command.flow.ModifyFlowMeterForSwitchManagerReque
 import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.ReinstallServer42FlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
+import org.openkilda.messaging.command.grpc.CreateOrUpdateLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DeleteLogicalPortRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
@@ -467,13 +467,13 @@ public class CommandBuilderImpl implements CommandBuilder {
     }
 
     @Override
-    public List<CreateLogicalPortRequest> buildLogicalPortInstallCommands(
+    public List<CreateOrUpdateLogicalPortRequest> buildLogicalPortInstallCommands(
             SwitchId switchId, List<LogicalPortInfoEntry> missingLogicalPorts) {
         String ipAddress = getSwitchIpAddress(switchId);
 
-        List<CreateLogicalPortRequest> requests = new ArrayList<>();
+        List<CreateOrUpdateLogicalPortRequest> requests = new ArrayList<>();
         for (LogicalPortInfoEntry port : missingLogicalPorts) {
-            requests.add(new CreateLogicalPortRequest(
+            requests.add(new CreateOrUpdateLogicalPortRequest(
                     ipAddress, port.getPhysicalPorts(), port.getLogicalPortNumber(),
                     LogicalPortMapper.INSTANCE.map(port.getType())));
         }

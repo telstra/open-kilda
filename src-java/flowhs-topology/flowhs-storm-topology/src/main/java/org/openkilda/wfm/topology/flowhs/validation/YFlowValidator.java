@@ -20,7 +20,9 @@ import static java.lang.String.format;
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.mapper.YFlowRequestMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
@@ -32,9 +34,11 @@ import java.util.List;
  */
 public class YFlowValidator {
     private final FlowValidator flowValidator;
+    private final SwitchRepository switchRepository;
 
     public YFlowValidator(PersistenceManager persistenceManager) {
         flowValidator = new FlowValidator(persistenceManager);
+        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
     }
 
     /**
@@ -126,10 +130,33 @@ public class YFlowValidator {
         }
     }
 
-    private void checkBandwidth(YFlowRequest yFlowRequest) throws InvalidFlowException {
+    private void checkBandwidth(YFlowRequest yFlowRequest)
+            throws InvalidFlowException, UnavailableFlowEndpointException {
         if (yFlowRequest.getMaximumBandwidth() < 0) {
             throw new InvalidFlowException(
-                    format("The y-flow %s has invalid bandwidth %d provided.",
+                    format("The y-flow %s has invalid bandwidth %d provided. Bandwidth cannot be less than 0 kbps.",
+                            yFlowRequest.getYFlowId(),
+                            yFlowRequest.getMaximumBandwidth()),
+                    ErrorType.DATA_INVALID);
+        }
+
+        Switch sharedSwitch = switchRepository.findById(yFlowRequest.getSharedEndpoint().getSwitchId())
+                .orElseThrow(() -> new UnavailableFlowEndpointException(format("Endpoint switch not found %s",
+                        yFlowRequest.getSharedEndpoint().getSwitchId())));
+
+        boolean isNoviFlowSwitch = Switch.isNoviflowSwitch(sharedSwitch.getOfDescriptionSoftware());
+
+        for (SubFlowDto subFlow : yFlowRequest.getSubFlows()) {
+            Switch switchId = switchRepository.findById(subFlow.getEndpoint().getSwitchId())
+                    .orElseThrow(() -> new UnavailableFlowEndpointException(format("Endpoint switch not found %s",
+                            subFlow.getEndpoint().getSwitchId())));
+            isNoviFlowSwitch |= Switch.isNoviflowSwitch(switchId.getOfDescriptionSoftware());
+        }
+
+        if (isNoviFlowSwitch && yFlowRequest.getMaximumBandwidth() != 0 && yFlowRequest.getMaximumBandwidth() < 64) {
+            // Min rate that the NoviFlow switches allows is 64 kbps.
+            throw new InvalidFlowException(
+                    format("The flow '%s' has invalid bandwidth %d provided. Bandwidth cannot be less than 64 kbps.",
                             yFlowRequest.getYFlowId(),
                             yFlowRequest.getMaximumBandwidth()),
                     ErrorType.DATA_INVALID);

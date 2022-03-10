@@ -33,7 +33,7 @@ import java.util.UUID;
 
 @JsonSerialize
 @Getter
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
 @EqualsAndHashCode(of = {"switchId", "ofVersion"})

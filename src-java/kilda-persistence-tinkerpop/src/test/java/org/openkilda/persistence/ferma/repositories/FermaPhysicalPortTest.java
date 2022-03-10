@@ -29,11 +29,13 @@ import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mapstruct.ap.internal.util.Collections;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class FermaPhysicalPortTest extends InMemoryGraphBasedTest {
     static final SwitchId SWITCH_ID_1 = new SwitchId(1);
@@ -109,12 +111,12 @@ public class FermaPhysicalPortTest extends InMemoryGraphBasedTest {
         createPhysicalPort(SWITCH_ID_1, PHYSICAL_PORT_NUMBER_2, logicalPort1);
         createPhysicalPort(SWITCH_ID_2, PHYSICAL_PORT_NUMBER_3, logicalPort3);
 
-        Set<Integer> portNumbers = physicalPortRepository.findPortNumbersBySwitchId(SWITCH_ID_1);
-        assertEquals(2, portNumbers.size());
-        assertTrue(portNumbers.contains(PHYSICAL_PORT_NUMBER_1));
-        assertTrue(portNumbers.contains(PHYSICAL_PORT_NUMBER_2));
+        Set<Integer> portNumbers = physicalPortRepository.findBySwitchId(SWITCH_ID_1).stream()
+                .map(PhysicalPort::getPortNumber)
+                .collect(Collectors.toSet());
+        assertEquals(Collections.asSet(PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2), portNumbers);
 
-        assertTrue(physicalPortRepository.findPortNumbersBySwitchId(SWITCH_ID_3).isEmpty());
+        assertTrue(physicalPortRepository.findBySwitchId(SWITCH_ID_3).isEmpty());
     }
 
     private LagLogicalPort createLogicalPort(SwitchId switchId, int logicalPortNumber) {

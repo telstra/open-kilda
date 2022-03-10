@@ -42,7 +42,7 @@ public class LagPortMapperTest {
         LagPortDto response = new LagPortDto(LOGICAL_PORT_NUMBER_1,
                 Lists.newArrayList(PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2));
 
-        org.openkilda.northbound.dto.v2.switches.LagPortDto dto = lagMapper.map(response);
+        org.openkilda.northbound.dto.v2.switches.LagPortResponse dto = lagMapper.map(response);
         assertEquals(LOGICAL_PORT_NUMBER_1, dto.getLogicalPortNumber());
         assertEquals(PHYSICAL_PORT_NUMBER_1, dto.getPortNumbers().get(0).intValue());
         assertEquals(PHYSICAL_PORT_NUMBER_2, dto.getPortNumbers().get(1).intValue());
@@ -53,7 +53,7 @@ public class LagPortMapperTest {
         LagPortResponse response = new LagPortResponse(LOGICAL_PORT_NUMBER_1,
                 Lists.newArrayList(PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2));
 
-        org.openkilda.northbound.dto.v2.switches.LagPortDto dto = lagMapper.map(response);
+        org.openkilda.northbound.dto.v2.switches.LagPortResponse dto = lagMapper.map(response);
         assertEquals(LOGICAL_PORT_NUMBER_1, dto.getLogicalPortNumber());
         assertEquals(PHYSICAL_PORT_NUMBER_1, dto.getPortNumbers().get(0).intValue());
         assertEquals(PHYSICAL_PORT_NUMBER_2, dto.getPortNumbers().get(1).intValue());

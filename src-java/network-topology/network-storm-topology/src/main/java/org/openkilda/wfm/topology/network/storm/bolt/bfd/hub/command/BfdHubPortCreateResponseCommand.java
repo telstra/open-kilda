@@ -15,16 +15,17 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command;
 
-import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.BfdHub;
 
 public class BfdHubPortCreateResponseCommand extends BfdHubPortCommand {
     private final String requestId;
 
-    private final CreateLogicalPortResponse response;
+    private final CreateOrUpdateLogicalPortResponse response;
 
-    public BfdHubPortCreateResponseCommand(String requestId, Endpoint endpoint, CreateLogicalPortResponse response) {
+    public BfdHubPortCreateResponseCommand(
+            String requestId, Endpoint endpoint, CreateOrUpdateLogicalPortResponse response) {
         super(endpoint);
         this.requestId = requestId;
         this.response = response;

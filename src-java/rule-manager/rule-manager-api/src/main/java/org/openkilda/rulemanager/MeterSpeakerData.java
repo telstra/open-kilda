@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
@@ -33,8 +34,9 @@ import java.util.UUID;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 @JsonNaming(SnakeCaseStrategy.class)
+@ToString(callSuper = true)
 public class MeterSpeakerData extends SpeakerData {
 
     private static final long INACCURATE_RATE_ALLOWED_DEVIATION = 1;

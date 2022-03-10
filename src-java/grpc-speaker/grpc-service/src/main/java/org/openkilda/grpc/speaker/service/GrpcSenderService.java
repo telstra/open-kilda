@@ -69,9 +69,9 @@ public class GrpcSenderService {
      * @param port the port data.
      * @return {@link CompletableFuture} with the execution result.
      */
-    public CompletableFuture<LogicalPort> createLogicalPort(String switchAddress, LogicalPortDto port) {
+    public CompletableFuture<LogicalPort> createOrUpdateLogicalPort(String switchAddress, LogicalPortDto port) {
         try (GrpcSession session = makeSession(switchAddress)) {
-            session.setLogicalPort(port);
+            session.setLogicalPort(port).join();
             return session.showConfigLogicalPort(port.getLogicalPortNumber())
                     .thenApply(portOptional -> portOptional
                             .map(mapper::map)

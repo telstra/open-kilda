@@ -77,9 +77,9 @@ public class OfBatchHolder implements OfEntityBatch {
         xidMapping = new HashMap<>();
     }
 
-    public void recordSuccessUuid(UUID failedUuid) {
-        log.debug("Record success for {}", failedUuid);
-        successUuids.add(failedUuid);
+    public void recordSuccessUuid(UUID successUuid) {
+        log.debug("Record success for {}", successUuid);
+        successUuids.add(successUuid);
     }
 
     /**
@@ -119,6 +119,8 @@ public class OfBatchHolder implements OfEntityBatch {
             if (!successUuids.contains(dep)) {
                 if (failedUuids.containsKey(dep)) {
                     result.put(dep, failedUuids.get(dep));
+                } else if (!commandMap.containsKey(dep)) {
+                    result.put(dep, "Missing in the batch");
                 } else {
                     result.put(dep, "Not executed yet");
                 }
@@ -144,6 +146,7 @@ public class OfBatchHolder implements OfEntityBatch {
     }
 
     public UUID popAwaitingXid(long xid) {
+        log.trace("popAwaitingXid for {}, current uuid: {}", xid, xidMapping.get(xid));
         return xidMapping.remove(xid);
     }
 
@@ -161,7 +164,8 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfFlowConverter.INSTANCE.convertInstallFlowCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        commandMap.put(data.getUuid(), BatchData.builder().flow(true).message(message).build());
+        BatchData batchData = BatchData.builder().flow(true).message(message).presenceBeVerified(true).build();
+        commandMap.put(data.getUuid(), batchData);
         flowsMap.put(data.getCookie(), data);
         executionGraph.add(data.getUuid(), data.getDependsOn());
     }
@@ -172,7 +176,8 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfFlowConverter.INSTANCE.convertDeleteFlowCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        commandMap.put(data.getUuid(), BatchData.builder().flow(true).message(message).build());
+        BatchData batchData = BatchData.builder().flow(true).message(message).presenceBeVerified(false).build();
+        commandMap.put(data.getUuid(), batchData);
         flowsMap.put(data.getCookie(), data);
         executionGraph.add(data.getUuid(), data.getDependsOn());
     }
@@ -183,7 +188,8 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfMeterConverter.INSTANCE.convertInstallMeterCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        commandMap.put(data.getUuid(), BatchData.builder().meter(true).message(message).build());
+        BatchData batchData = BatchData.builder().meter(true).message(message).presenceBeVerified(true).build();
+        commandMap.put(data.getUuid(), batchData);
         metersMap.put(data.getMeterId(), data);
         executionGraph.add(data.getUuid(), data.getDependsOn());
     }
@@ -194,7 +200,8 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfMeterConverter.INSTANCE.convertDeleteMeterCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        commandMap.put(data.getUuid(), BatchData.builder().meter(true).message(message).build());
+        BatchData batchData = BatchData.builder().meter(true).message(message).presenceBeVerified(false).build();
+        commandMap.put(data.getUuid(), batchData);
         metersMap.put(data.getMeterId(), data);
         executionGraph.add(data.getUuid(), data.getDependsOn());
     }
@@ -205,7 +212,8 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfGroupConverter.INSTANCE.convertInstallGroupCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        commandMap.put(data.getUuid(), BatchData.builder().group(true).message(message).build());
+        BatchData batchData = BatchData.builder().group(true).message(message).presenceBeVerified(true).build();
+        commandMap.put(data.getUuid(), batchData);
         groupsMap.put(data.getGroupId(), data);
         executionGraph.add(data.getUuid(), data.getDependsOn());
     }
@@ -216,7 +224,8 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfGroupConverter.INSTANCE.convertDeleteGroupCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        commandMap.put(data.getUuid(), BatchData.builder().group(true).message(message).build());
+        BatchData batchData = BatchData.builder().group(true).message(message).presenceBeVerified(false).build();
+        commandMap.put(data.getUuid(), batchData);
         groupsMap.put(data.getGroupId(), data);
         executionGraph.add(data.getUuid(), data.getDependsOn());
     }

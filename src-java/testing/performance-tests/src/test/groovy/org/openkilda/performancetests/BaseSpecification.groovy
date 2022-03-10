@@ -109,6 +109,7 @@ class BaseSpecification extends Specification {
                     .deleteFlowEnabled(true)
                     .flowsRerouteOnIslDiscoveryEnabled(true)
                     .useBfdForIslIntegrityCheck(true)
+                    .syncSwitchOnConnect(true)
                     .build()
             northbound.toggleFeature(features)
             northbound.updateKildaConfiguration(KildaConfigurationDto.builder().useMultiTable(useMultitable).build())

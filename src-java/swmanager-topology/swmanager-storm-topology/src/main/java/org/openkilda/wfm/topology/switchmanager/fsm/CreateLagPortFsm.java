@@ -26,7 +26,7 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.Crea
 import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState.GRPC_COMMAND_SEND;
 import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState.START;
 
-import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
+import org.openkilda.messaging.command.grpc.CreateOrUpdateLogicalPortRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
@@ -65,7 +65,7 @@ public class CreateLagPortFsm extends AbstractStateMachine<
     @Getter
     private final CreateLagPortRequest request;
     private final SwitchManagerCarrier carrier;
-    private CreateLogicalPortRequest grpcRequest;
+    private CreateOrUpdateLogicalPortRequest grpcRequest;
     private Integer lagLogicalPortNumber;
 
     public CreateLagPortFsm(SwitchManagerCarrier carrier, String key, CreateLagPortRequest request,
@@ -121,7 +121,8 @@ public class CreateLagPortFsm extends AbstractStateMachine<
             lagLogicalPortNumber = lagPortOperationService.createLagPort(switchId, targetPorts);
 
             String ipAddress = lagPortOperationService.getSwitchIpAddress(switchId);
-            grpcRequest = new CreateLogicalPortRequest(ipAddress, request.getPortNumbers(), lagLogicalPortNumber, LAG);
+            grpcRequest = new CreateOrUpdateLogicalPortRequest(
+                    ipAddress, request.getPortNumbers(), lagLogicalPortNumber, LAG);
         } catch (InvalidDataException | InconsistentDataException | SwitchNotFoundException e) {
             log.error(format("Unable to handle %s. Error: %s", request, e.getMessage()), e);
             fire(ERROR, CreateLagContext.builder().error(e).build());

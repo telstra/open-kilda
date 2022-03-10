@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
+import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 
 import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
@@ -45,6 +46,8 @@ import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -80,11 +83,38 @@ public abstract class YFlowRuleManagerProcessingAction<T extends YFlowProcessing
 
         return speakerData.entrySet().stream().map(entry -> {
             SwitchId switchId = entry.getKey();
-            List<SpeakerData> dataList = entry.getValue();
+            List<SpeakerData> dataList = reverseDependenciesForDeletion(entry.getValue());
             UUID commandId = commandIdGenerator.generate();
             MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
             return new DeleteSpeakerCommandsRequest(messageContext, switchId, commandId, mapToOfCommands(dataList));
         }).collect(Collectors.toList());
+    }
+
+    private List<SpeakerData> reverseDependenciesForDeletion(List<SpeakerData> source) {
+        Map<UUID, Set<UUID>> reversedDependencies = new HashMap<>();
+        source.forEach(data ->
+                data.getDependsOn().forEach(dependent ->
+                        reversedDependencies.computeIfAbsent(dependent, k -> new HashSet<>()).add(data.getUuid())));
+        return source.stream()
+                .map(data -> {
+                    Set<UUID> reversedDependsOn = reversedDependencies.getOrDefault(data.getUuid(), emptySet());
+                    if (data instanceof FlowSpeakerData) {
+                        return ((FlowSpeakerData) data).toBuilder()
+                                .dependsOn(reversedDependsOn)
+                                .build();
+                    } else if (data instanceof MeterSpeakerData) {
+                        return ((MeterSpeakerData) data).toBuilder()
+                                .dependsOn(reversedDependsOn)
+                                .build();
+                    } else if (data instanceof GroupSpeakerData) {
+                        return ((GroupSpeakerData) data).toBuilder()
+                                .dependsOn(reversedDependsOn)
+                                .build();
+                    } else {
+                        throw new IllegalArgumentException("Unknown speaker data type: " + data);
+                    }
+                })
+                .collect(toList());
     }
 
     private Map<SwitchId, List<SpeakerData>> buildYFlowSpeakerData(YFlow yFlow) {
