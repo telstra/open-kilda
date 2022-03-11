@@ -162,6 +162,8 @@ kilda_latency_update_interval: 120
 kilda_latency_update_time_range: 600
 kilda_latency_discovery_interval_multiplier: 3
 
+kilda_storm_swmanager_parallelism: 2
+kilda_storm_swmanager_heavy_operation_parallelism: 2
 kilda_storm_isl_latency_parallelism: 4
 kilda_storm_parallelism_level_new: 2
 kilda_storm_parallelism_level: 1

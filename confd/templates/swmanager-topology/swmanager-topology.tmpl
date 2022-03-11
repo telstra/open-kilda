@@ -1,6 +1,6 @@
 # topology configuration
 config:
-  topology.parallelism: {{ getv "/kilda_storm_parallelism_level_new" }}
+  topology.parallelism: {{ getv "/kilda_storm_swmanager_parallelism" }}
   topology.workers: {{ getv "/kilda_storm_parallelism_workers_count" }}
   topology.spouts.parallelism: 1
 
@@ -21,3 +21,5 @@ bolts:
     parallelism: 1
   - id: "zookeeper.bolt"
     parallelism: 1
+  - id: "heavy.operation.bolt"
+    parallelism: {{ getv "/kilda_storm_swmanager_heavy_operation_parallelism" }}

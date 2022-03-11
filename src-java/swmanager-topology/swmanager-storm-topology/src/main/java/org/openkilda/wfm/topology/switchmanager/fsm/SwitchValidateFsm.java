@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.switchmanager.fsm;
 
 import static org.openkilda.model.SwitchFeature.LAG;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.ERROR;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_ENTITIES_BUILT;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.GROUPS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.LOGICAL_PORTS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.METERS_RECEIVED;
@@ -38,21 +39,16 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.model.grpc.LogicalPort;
-import org.openkilda.model.FlowPath;
 import org.openkilda.model.IpSocketAddress;
-import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterSpeakerData;
-import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.SpeakerData;
-import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchManagerException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateContext;
@@ -77,7 +73,6 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.StateMachineStatus;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -88,36 +83,29 @@ import java.util.stream.Collectors;
 public class SwitchValidateFsm extends AbstractStateMachine<
         SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, SwitchValidateContext> {
 
-    private final PersistenceManager persistenceManager;
     private final SwitchRepository switchRepository;
-    private final FlowPathRepository flowPathRepository;
 
     private final String key;
     private final SwitchValidateRequest request;
     private final SwitchManagerCarrier carrier;
     private final ValidationService validationService;
-    private final RuleManager ruleManager;
 
     private SwitchValidationContext validationContext;
     private final Set<ExternalResources> pendingRequests = new HashSet<>();
 
     public SwitchValidateFsm(
             SwitchManagerCarrier carrier, String key, SwitchValidateRequest request,
-            ValidationService validationService, RuleManager ruleManager,
-            PersistenceManager persistenceManager) {
+            ValidationService validationService, PersistenceManager persistenceManager) {
         this.carrier = carrier;
         this.key = key;
         this.request = request;
         this.validationService = validationService;
-        this.ruleManager = ruleManager;
-        this.persistenceManager = persistenceManager;
 
         SwitchId switchId = request.getSwitchId();
         this.validationContext = SwitchValidationContext.builder(switchId).build();
 
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
-        flowPathRepository = repositoryFactory.createFlowPathRepository();
     }
 
     /**
@@ -135,7 +123,6 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 String.class,
                 SwitchValidateRequest.class,
                 ValidationService.class,
-                RuleManager.class,
                 PersistenceManager.class);
 
         // START
@@ -154,6 +141,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 .on(METERS_RECEIVED).callMethod("metersReceived");
         builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
                 .on(METERS_UNSUPPORTED).callMethod("metersUnsupported");
+        builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
+                .on(EXPECTED_ENTITIES_BUILT).callMethod("expectedEntitiesBuild");
         builder.externalTransition().from(SwitchValidateState.COLLECT_DATA).to(VALIDATE).on(READY);
         builder.externalTransition().from(SwitchValidateState.COLLECT_DATA).to(FINISHED_WITH_ERROR).on(ERROR);
 
@@ -192,6 +181,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 throw new SwitchNotFoundException(switchId);
             }
 
+            requestSwitchExpectedEntities();
             requestSwitchOfFlows();
 
             requestSwitchOfGroups();
@@ -268,22 +258,20 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         fireReadyIfAllResourcesReceived();
     }
 
+    protected void expectedEntitiesBuild(SwitchValidateState from, SwitchValidateState to,
+                                         SwitchValidateEvent event, SwitchValidateContext context) {
+        log.info("Expected entities built (switch={}, key={})", getSwitchId(), key);
+
+        validationContext = validationContext.toBuilder()
+                .expectedSwitchEntities(context.expectedEntities)
+                .build();
+        pendingRequests.remove(ExternalResources.EXPECTED_ENTITIES);
+        fireReadyIfAllResourcesReceived();
+    }
+
     protected void validateEnter(SwitchValidateState from, SwitchValidateState to,
                                  SwitchValidateEvent event, SwitchValidateContext context) {
-        SwitchId switchId = getSwitchId();
-        Set<PathId> flowPathIds = flowPathRepository.findBySegmentSwitch(switchId).stream()
-                .map(FlowPath::getPathId)
-                .collect(Collectors.toSet());
-        flowPathIds.addAll(flowPathRepository.findByEndpointSwitch(switchId).stream()
-                .map(FlowPath::getPathId)
-                .collect(Collectors.toSet()));
-        PersistenceDataAdapter dataAdapter = PersistenceDataAdapter.builder()
-                .persistenceManager(persistenceManager)
-                .switchIds(Collections.singleton(switchId))
-                .pathIds(flowPathIds)
-                .keepMultitableForFlow(true)
-                .build();
-        List<SpeakerData> expectedEntities = ruleManager.buildRulesForSwitch(switchId, dataAdapter);
+        List<SpeakerData> expectedEntities = validationContext.getExpectedSwitchEntities();
         List<FlowSpeakerData> expectedRules = filterSpeakerData(expectedEntities, FlowSpeakerData.class);
         List<MeterSpeakerData> expectedMeters = filterSpeakerData(expectedEntities, MeterSpeakerData.class);
         List<GroupSpeakerData> expectedGroups = filterSpeakerData(expectedEntities, GroupSpeakerData.class);
@@ -338,6 +326,14 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         if (pendingRequests.isEmpty()) {
             fire(SwitchValidateEvent.READY);
         }
+    }
+
+    private void requestSwitchExpectedEntities() {
+        SwitchId switchId = getSwitchId();
+        log.info("Sending request to build switch expected entities (switch={}, key={})", switchId, key);
+
+        carrier.runHeavyOperation(key, switchId);
+        pendingRequests.add(ExternalResources.EXPECTED_ENTITIES);
     }
 
     private void requestSwitchOfFlows() {
@@ -463,6 +459,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         GROUPS_RECEIVED,
         LOGICAL_PORTS_RECEIVED,
         METERS_UNSUPPORTED,
+        EXPECTED_ENTITIES_BUILT,
         ERROR
     }
 
@@ -470,7 +467,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         ACTUAL_OF_FLOWS,
         ACTUAL_METERS,
         ACTUAL_OF_GROUPS,
-        ACTUAL_LOGICAL_PORTS
+        ACTUAL_LOGICAL_PORTS,
+        EXPECTED_ENTITIES
     }
 
     @Value
@@ -480,6 +478,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         List<MeterSpeakerData> meterEntries;
         List<GroupSpeakerData> groupEntries;
         List<LogicalPort> logicalPortEntries;
+        List<SpeakerData> expectedEntities;
         SwitchManagerException error;
     }
 }

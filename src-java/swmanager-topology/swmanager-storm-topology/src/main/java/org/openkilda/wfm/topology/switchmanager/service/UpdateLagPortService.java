@@ -98,7 +98,7 @@ public class UpdateLagPortService implements SwitchManagerHubService {
     }
 
     @Override
-    public void dispatchWorkerMessage(ErrorData payload, MessageCookie cookie) throws MessageDispatchException {
+    public void dispatchErrorMessage(ErrorData payload, MessageCookie cookie) throws MessageDispatchException {
         process(cookie, (h,  nested) -> h.dispatchGrpcResponse(payload, nested));
     }
 

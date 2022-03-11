@@ -103,7 +103,7 @@ public class CreateLagPortService implements SwitchManagerHubService {
     }
 
     @Override
-    public void dispatchWorkerMessage(ErrorData payload, MessageCookie cookie)
+    public void dispatchErrorMessage(ErrorData payload, MessageCookie cookie)
             throws MessageDispatchException {
         CreateLagContext context = CreateLagContext.builder()
                 .error(new SpeakerFailureException(payload))
