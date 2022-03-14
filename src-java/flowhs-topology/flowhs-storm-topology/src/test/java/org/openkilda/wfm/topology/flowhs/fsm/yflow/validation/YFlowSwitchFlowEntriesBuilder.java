@@ -98,7 +98,7 @@ public final class YFlowSwitchFlowEntriesBuilder {
             PathSegment firstSegment = forwardPath.getSegments().get(0);
             FlowSegmentCookie forwardCookie = forwardPath.getCookie().toBuilder().yFlow(true).build();
             boolean isVxlan = flow.getEncapsulationType() == VXLAN;
-            flowEntries.put(forwardPath.getSrcSwitchId(),
+            flowEntries.put(yFlow.getSharedEndpoint().getSwitchId(),
                     builder.getFlowEntry(forwardCookie.getValue(), flow.getSrcPort(), flow.getSrcVlan(), null,
                             firstSegment.getSrcPort(), isVxlan ? null : forwardTransitEncId,
                             isVxlan ? forwardTransitEncId : null,
@@ -114,10 +114,10 @@ public final class YFlowSwitchFlowEntriesBuilder {
 
                     if (nsegment.getDestSwitchId().equals(yFlow.getYPoint())) {
                         flowEntries.put(yFlow.getYPoint(),
-                                builder.getFlowEntry(reverseCookie.getValue(), n1segment.getSrcPort(),
+                                builder.getFlowEntry(reverseCookie.getValue(), nsegment.getDestPort(),
                                         isVxlan ? null : reverseTransitEncId,
                                         isVxlan ? reverseTransitEncId : null,
-                                        nsegment.getDestPort(), null, null,
+                                        n1segment.getSrcPort(), null, null,
                                         yFlow.getMeterId().getValue()));
                     }
                 }
@@ -134,10 +134,10 @@ public final class YFlowSwitchFlowEntriesBuilder {
 
                     if (nsegment.getDestSwitchId().equals(yFlow.getProtectedPathYPoint())) {
                         flowEntries.put(yFlow.getProtectedPathYPoint(),
-                                builder.getFlowEntry(reverseCookie.getValue(), n1segment.getSrcPort(),
-                                        isVxlan ? null : reverseTransitEncId,
-                                        isVxlan ? reverseTransitEncId : null,
-                                        nsegment.getDestPort(), null, null,
+                                builder.getFlowEntry(reverseCookie.getValue(), nsegment.getDestPort(),
+                                        isVxlan ? null : protectedReverseTransitEncId,
+                                        isVxlan ? protectedReverseTransitEncId : null,
+                                        n1segment.getSrcPort(), null, null,
                                         yFlow.getProtectedPathMeterId().getValue()));
                     }
                 }
@@ -167,7 +167,7 @@ public final class YFlowSwitchFlowEntriesBuilder {
                     .forEach(entries -> meterEntries.putAll(entries.getSwitchId(), entries.getMeterEntries()));
 
             FlowPath forwardPath = flow.getForwardPath();
-            meterEntries.put(flow.getSrcSwitchId(), MeterEntry.builder()
+            meterEntries.put(yFlow.getSharedEndpoint().getSwitchId(), MeterEntry.builder()
                     .meterId(yFlow.getSharedEndpointMeterId().getValue())
                     .rate(forwardPath.getBandwidth())
                     .burstSize(Meter.calculateBurstSize(forwardPath.getBandwidth(),

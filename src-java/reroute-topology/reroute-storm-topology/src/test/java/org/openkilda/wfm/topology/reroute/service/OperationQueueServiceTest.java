@@ -48,7 +48,7 @@ public class OperationQueueServiceTest {
         assertEquals(TEST_CORRELATION_ID_A, flowQueueData.getTaskInProgress());
         assertEquals(1, flowQueueData.getQueue().size());
 
-        service.addFirst(TEST_FLOW_ID, TEST_CORRELATION_ID_B, new FlowPathSwapRequest(TEST_FLOW_ID, false));
+        service.addFirst(TEST_FLOW_ID, TEST_CORRELATION_ID_B, new FlowPathSwapRequest(TEST_FLOW_ID));
 
         service.operationCompleted(TEST_FLOW_ID, null);
 

@@ -15,6 +15,9 @@
 
 package org.openkilda.rulemanager;
 
+import static java.lang.String.format;
+import static java.util.Collections.emptyList;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.openkilda.adapter.FlowSideAdapter.makeIngressAdapter;
 import static org.openkilda.model.cookie.Cookie.DROP_RULE_COOKIE;
@@ -43,14 +46,17 @@ import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.factory.FlowRulesGeneratorFactory;
 import org.openkilda.rulemanager.factory.RuleGenerator;
 import org.openkilda.rulemanager.factory.ServiceRulesGeneratorFactory;
+import org.openkilda.rulemanager.factory.generator.flow.JointRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.JointRuleGenerator.JointRuleGeneratorBuilder;
+import org.openkilda.rulemanager.factory.generator.flow.TransitYRuleGenerator;
 import org.openkilda.rulemanager.utils.Utils;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -59,6 +65,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 public class RuleManagerImpl implements RuleManager {
 
     ServiceRulesGeneratorFactory serviceRulesFactory;
@@ -373,13 +380,11 @@ public class RuleManagerImpl implements RuleManager {
     @Override
     public List<SpeakerData> buildRulesForYFlow(List<FlowPath> flowPaths, DataAdapter adapter) {
         if (flowPaths == null) {
-            return Collections.emptyList();
+            return emptyList();
         }
 
-        FlowPath flowPathForIngress = null;
-        FlowPath altFlowPathForIngress = null;
-        FlowPath flowPathForTransit = null;
-        FlowPath altFlowPathForTransit = null;
+        List<FlowPath> flowPathsForIngress = new ArrayList<>();
+        List<FlowPath> flowPathsForTransit = new ArrayList<>();
 
         for (FlowPath flowPath : flowPaths) {
             YFlow yFlow = adapter.getYFlow(flowPath.getPathId());
@@ -389,117 +394,209 @@ public class RuleManagerImpl implements RuleManager {
             SwitchId sharedSwitchId = yFlow.getSharedEndpoint().getSwitchId();
 
             if (sharedSwitchId.equals(flowPath.getSrcSwitchId())) {
-                if (flowPathForIngress == null) {
-                    flowPathForIngress = flowPath;
-                } else if (altFlowPathForIngress == null) {
-                    altFlowPathForIngress = flowPath;
+                if (!flowPath.isProtected()) {
+                    flowPathsForIngress.add(flowPath);
+                } else {
+                    log.trace("Skip a protected path {}, as y-flow rules are not required for it.",
+                            flowPath.getPathId());
                 }
             } else {
-                if (flowPathForTransit == null) {
-                    flowPathForTransit = flowPath;
-                } else if (altFlowPathForTransit == null) {
-                    altFlowPathForTransit = flowPath;
-                }
+                flowPathsForTransit.add(flowPath);
             }
         }
 
-        if (flowPathForIngress == null || altFlowPathForIngress == null
-                || flowPathForTransit == null || altFlowPathForTransit == null) {
-            return Collections.emptyList();
+        List<SpeakerData> result = new ArrayList<>();
+        if (!flowPathsForIngress.isEmpty()) {
+            result.addAll(buildIngressYFlowCommands(flowPathsForIngress, adapter));
         }
-
-        List<SpeakerData> result =
-                new ArrayList<>(buildIngressYFlowCommands(flowPathForIngress, altFlowPathForIngress, adapter));
-        result.addAll(buildTransitYFlowCommands(flowPathForTransit, altFlowPathForTransit, adapter));
-
+        if (!flowPathsForTransit.isEmpty()) {
+            result.addAll(buildTransitYFlowCommands(flowPathsForTransit, adapter));
+        }
         return result;
     }
 
-    private List<SpeakerData> buildIngressYFlowCommands(FlowPath flowPath, FlowPath altFlowPath,
-                                                        DataAdapter adapter) {
-
-        Flow flow = adapter.getFlow(flowPath.getPathId());
-        Flow altFlow = adapter.getFlow(altFlowPath.getPathId());
-
-        if (flow.isProtectedPath(flowPath.getPathId()) || altFlow.isProtectedPath(altFlowPath.getPathId())) {
-            return Collections.emptyList();
+    private List<SpeakerData> buildIngressYFlowCommands(List<FlowPath> flowPaths, DataAdapter adapter) {
+        if (flowPaths.isEmpty()) {
+            return emptyList();
         }
-
-        YFlow yFlow = adapter.getYFlow(flowPath.getPathId());
+        PathId firstPathId = flowPaths.get(0).getPathId();
+        YFlow yFlow = adapter.getYFlow(firstPathId);
         if (yFlow == null) {
-            return Collections.emptyList();
+            throw new IllegalArgumentException(format("Corresponding y-flow can't be found for path %s", firstPathId));
         }
         SwitchId sharedSwitchId = yFlow.getSharedEndpoint().getSwitchId();
         Switch sharedSwitch = adapter.getSwitch(sharedSwitchId);
-
-        if (sharedSwitch == null
-                || !sharedSwitchId.equals(flowPath.getSrcSwitchId())
-                || !sharedSwitchId.equals(altFlowPath.getSrcSwitchId())) {
-            return Collections.emptyList();
+        if (sharedSwitch == null) {
+            log.debug("Skip commands for the y-flow {} as the shared endpoint {} can't be found",
+                    yFlow.getYFlowId(), sharedSwitchId);
+            return emptyList();
         }
-
-        FlowTransitEncapsulation encapsulation =
-                getFlowTransitEncapsulation(flowPath.getPathId(), flow, adapter);
-        FlowTransitEncapsulation altEncapsulation =
-                getFlowTransitEncapsulation(altFlowPath.getPathId(), altFlow, adapter);
-
-
         MeterId sharedMeterId = yFlow.getSharedEndpointMeterId();
 
-        RuleGenerator generator = flowRulesFactory.getIngressYRuleGenerator(flowPath, flow, encapsulation,
-                new HashSet<>(), altFlowPath, altFlow, altEncapsulation, new HashSet<>(), sharedMeterId);
+        UUID externalMeterCommandUuid = null;
+        JointRuleGeneratorBuilder builder = JointRuleGenerator.builder();
 
-        return generator.generateCommands(sharedSwitch);
+        for (FlowPath path : flowPaths) {
+            if (path.isProtected() || !path.isForward()) {
+                throw new IllegalArgumentException(
+                        format("Ingress rules must not be requested for protected or reverse path %s",
+                                path.getPathId()));
+            }
+            Flow flow = adapter.getFlow(path.getPathId());
+            if (flow == null) {
+                throw new IllegalArgumentException(format("Corresponding flow for path %s can't be found",
+                        path.getPathId()));
+            }
+            if (!yFlow.equals(adapter.getYFlow(path.getPathId()))) {
+                throw new IllegalArgumentException(format("Paths %s and %s have different y-flow",
+                        firstPathId, path.getPathId()));
+            }
+            if (!sharedSwitchId.equals(path.getSrcSwitchId())) {
+                throw new IllegalArgumentException(
+                        format("Requested path %s has the source different from the shared endpoint %s",
+                                path.getPathId(), sharedSwitchId));
+            }
+
+            boolean meterToBeAdded = externalMeterCommandUuid == null;
+            if (meterToBeAdded) {
+                externalMeterCommandUuid = UUID.randomUUID();
+            }
+            FlowTransitEncapsulation encapsulation =
+                    getFlowTransitEncapsulation(path.getPathId(), flow, adapter);
+            builder.generator(flowRulesFactory.getIngressYRuleGenerator(path, flow, encapsulation,
+                    new HashSet<>(), sharedMeterId, externalMeterCommandUuid, meterToBeAdded));
+        }
+
+        return builder.build().generateCommands(sharedSwitch);
     }
 
-    private List<SpeakerData> buildTransitYFlowCommands(FlowPath flowPath, FlowPath altFlowPath,
-                                                        DataAdapter adapter) {
-
-        Flow flow = adapter.getFlow(flowPath.getPathId());
-        Flow altFlow = adapter.getFlow(altFlowPath.getPathId());
-
-        YFlow yFlow = adapter.getYFlow(flowPath.getPathId());
+    private List<SpeakerData> buildTransitYFlowCommands(List<FlowPath> flowPaths, DataAdapter adapter) {
+        if (flowPaths.isEmpty()) {
+            return emptyList();
+        }
+        PathId firstPathId = flowPaths.get(0).getPathId();
+        YFlow yFlow = adapter.getYFlow(firstPathId);
         if (yFlow == null) {
-            return Collections.emptyList();
+            throw new IllegalArgumentException(format("Corresponding y-flow can't be found for path %s", firstPathId));
         }
-        SwitchId sharedSwitchId = yFlow.getSharedEndpoint().getSwitchId();
-
-        if (sharedSwitchId.equals(flowPath.getSrcSwitchId()) || sharedSwitchId.equals(altFlowPath.getSrcSwitchId())) {
-            return Collections.emptyList();
-        }
-
         SwitchId yPointSwitchId = yFlow.getYPoint();
-        MeterId yPointMeterId = yFlow.getMeterId();
-        if (flow.isProtectedPath(flowPath.getPathId()) && altFlow.isProtectedPath(altFlowPath.getPathId())) {
-            yPointSwitchId = yFlow.getProtectedPathYPoint();
-            yPointMeterId = yFlow.getProtectedPathMeterId();
-        }
-
         Switch yPointSwitch = adapter.getSwitch(yPointSwitchId);
-        if (yPointSwitch == null) {
-            return Collections.emptyList();
+        SwitchId protectedYPointSwitchId = yFlow.getProtectedPathYPoint();
+        Switch protectedYPointSwitch = adapter.getSwitch(protectedYPointSwitchId);
+
+        MeterId yPointMeterId = yFlow.getMeterId();
+        MeterId protectedYPointMeterId = yFlow.getProtectedPathMeterId();
+
+        UUID externalMeterCommandUuid = null;
+        UUID externalProtectedMeterCommandUuid = null;
+        JointRuleGeneratorBuilder builder = JointRuleGenerator.builder();
+        JointRuleGeneratorBuilder protectedBuilder = JointRuleGenerator.builder();
+
+        for (FlowPath path : flowPaths) {
+            if (path.isForward()) {
+                throw new IllegalArgumentException(
+                        format("Transit rules must not be requested for forward path %s", path.getPathId()));
+            }
+            Flow flow = adapter.getFlow(path.getPathId());
+            if (flow == null) {
+                throw new IllegalArgumentException(format("Corresponding flow for path %s can't be found",
+                        path.getPathId()));
+            }
+            if (!yFlow.equals(adapter.getYFlow(path.getPathId()))) {
+                throw new IllegalArgumentException(format("Paths %s and %s have different y-flow",
+                        firstPathId, path.getPathId()));
+            }
+            FlowTransitEncapsulation encapsulation =
+                    getFlowTransitEncapsulation(path.getPathId(), flow, adapter);
+
+            SwitchId sharedSwitchId = yFlow.getSharedEndpoint().getSwitchId();
+            if (path.isProtected()) {
+                requireNonNull(protectedYPointSwitchId, "The y-flow protected path y-point can't be null");
+                if (protectedYPointSwitch == null) {
+                    log.trace("Skip commands for the sub-flow {} as the protected path y-point {} can't be found",
+                            flow.getFlowId(), protectedYPointSwitchId);
+                    continue;
+                }
+                if (!doesPathGoThroughSwitch(protectedYPointSwitchId, path.getSegments())) {
+                    log.trace("Skip commands for the sub-flow {} as it doesn't go via the protected path y-point {}",
+                            flow.getFlowId(), protectedYPointSwitchId);
+                    continue;
+                }
+                if (protectedYPointSwitchId.equals(sharedSwitchId)) {
+                    log.trace("Skip commands for the protected path y-point as it's the same as the shared endpoint");
+                    continue;
+                }
+                requireNonNull(protectedYPointMeterId, "The y-flow protected path meterId can't be null");
+
+                boolean meterToBeAdded = externalProtectedMeterCommandUuid == null;
+                if (meterToBeAdded) {
+                    externalProtectedMeterCommandUuid = UUID.randomUUID();
+                }
+
+                protectedBuilder.generator(buildTransitYRuleGenerator(protectedYPointSwitch, path, flow, encapsulation,
+                        protectedYPointMeterId, externalProtectedMeterCommandUuid, meterToBeAdded));
+            } else {
+                requireNonNull(yPointSwitchId, "The y-flow y-point can't be null");
+                if (yPointSwitch == null) {
+                    log.trace("Skip commands for the sub-flow {} as the y-point {} can't be found",
+                            flow.getFlowId(), yPointSwitchId);
+                    continue;
+                }
+                if (!doesPathGoThroughSwitch(yPointSwitchId, path.getSegments())) {
+                    log.trace("Skip commands for the sub-flow {} as it doesn't go via the protected path y-point {}",
+                            flow.getFlowId(), yPointSwitchId);
+                    continue;
+                }
+                if (yPointSwitchId.equals(sharedSwitchId)) {
+                    log.trace("Skip commands for the y-point as it's the same as the shared endpoint");
+                    continue;
+                }
+                requireNonNull(yPointMeterId, "The y-flow meterId can't be null");
+
+                boolean meterToBeAdded = externalMeterCommandUuid == null;
+                if (meterToBeAdded) {
+                    externalMeterCommandUuid = UUID.randomUUID();
+                }
+
+                builder.generator(buildTransitYRuleGenerator(yPointSwitch, path, flow, encapsulation, yPointMeterId,
+                        externalMeterCommandUuid, meterToBeAdded));
+            }
         }
 
-        FlowTransitEncapsulation encapsulation =
-                getFlowTransitEncapsulation(flowPath.getPathId(), flow, adapter);
-        FlowTransitEncapsulation altEncapsulation =
-                getFlowTransitEncapsulation(altFlowPath.getPathId(), altFlow, adapter);
-
-        SwitchPathSegments switchPathSegments =
-                findPathSegmentsForSwitch(yPointSwitchId, flowPath.getSegments());
-        SwitchPathSegments altSwitchPathSegments =
-                findPathSegmentsForSwitch(yPointSwitchId, altFlowPath.getSegments());
-
-        if (switchPathSegments == null || altSwitchPathSegments == null) {
-            return Collections.emptyList();
+        List<SpeakerData> result = new ArrayList<>(builder.build().generateCommands(yPointSwitch));
+        if (yFlow.isAllocateProtectedPath() && protectedYPointSwitch != null) {
+            result.addAll(protectedBuilder.build().generateCommands(protectedYPointSwitch));
         }
+        return result;
+    }
 
-        RuleGenerator generator = flowRulesFactory.getTransitYRuleGenerator(flowPath, encapsulation,
-                switchPathSegments.getFirstPathSegment(), switchPathSegments.getSecondPathSegment(),
-                altFlowPath, altEncapsulation, altSwitchPathSegments.getFirstPathSegment(),
-                altSwitchPathSegments.getSecondPathSegment(), yPointMeterId);
+    private boolean doesPathGoThroughSwitch(SwitchId switchId,
+                                            List<PathSegment> pathSegments) {
+        return pathSegments.stream().anyMatch(segment ->
+                segment.getSrcSwitchId().equals(switchId) || segment.getDestSwitchId().equals(switchId));
+    }
 
-        return generator.generateCommands(yPointSwitch);
+    private TransitYRuleGenerator buildTransitYRuleGenerator(Switch yPointSwitch, FlowPath path,
+                                                             Flow flow, FlowTransitEncapsulation encapsulation,
+                                                             MeterId yPointMeterId, UUID externalMeterCommandUuid,
+                                                             boolean meterToBeAdded) {
+        SwitchId switchId = yPointSwitch.getSwitchId();
+        if (switchId.equals(flow.getDestSwitchId())) {
+            PathSegment lastSegment = path.getSegments().get(path.getSegments().size() - 1);
+            return flowRulesFactory.getEgressYRuleGenerator(path, encapsulation,
+                    lastSegment, flow.getDestPort(),
+                    yPointMeterId, externalMeterCommandUuid, meterToBeAdded);
+        } else {
+            SwitchPathSegments switchPathSegments = findPathSegmentsForSwitch(switchId, path.getSegments());
+            if (switchPathSegments == null) {
+                throw new IllegalArgumentException(
+                        format("The segment for endpoint %s can't be found among %s, %s / %s",
+                                switchId, path.getSegments().size(), flow.getSrcSwitchId(), flow.getDestSwitchId()));
+            }
+            return flowRulesFactory.getTransitYRuleGenerator(path, encapsulation,
+                    switchPathSegments.getFirstPathSegment(), switchPathSegments.getSecondPathSegment(),
+                    yPointMeterId, externalMeterCommandUuid, meterToBeAdded);
+        }
     }
 
     private SwitchPathSegments findPathSegmentsForSwitch(SwitchId switchId, List<PathSegment> pathSegments) {

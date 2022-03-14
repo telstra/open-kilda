@@ -49,15 +49,18 @@ public class RecalculateFlowStatusAction extends
 
         FlowStatus resultStatus = transactionManager.doInTransaction(() -> {
             Flow flow = getFlow(flowId);
-            FlowPathStatus pathStatus = stateMachine.getFailedCommands().isEmpty() ? FlowPathStatus.ACTIVE :
-                    FlowPathStatus.INACTIVE;
             flow.getPaths().forEach(flowPath -> {
+                FlowPathStatus pathStatus = stateMachine.getOldPathStatus(flowPath.getPathId());
+                if (!flowPath.isProtected() && !stateMachine.getFailedCommands().isEmpty()) {
+                    pathStatus = FlowPathStatus.INACTIVE;
+                }
                 flowPath.setStatus(pathStatus);
             });
-
             FlowStatus status = flow.computeFlowStatus();
-            flow.setStatus(status);
-
+            if (status != flow.getStatus()) {
+                dashboardLogger.onFlowStatusUpdate(flowId, status);
+                flow.setStatus(status);
+            }
             return status;
         });
 

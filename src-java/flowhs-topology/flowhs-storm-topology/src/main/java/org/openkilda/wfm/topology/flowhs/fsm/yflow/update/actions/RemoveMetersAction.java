@@ -44,12 +44,12 @@ public class RemoveMetersAction extends
         String yFlowId = stateMachine.getYFlowId();
         YFlow yFlow = getYFlow(yFlowId);
         Collection<DeleteSpeakerCommandsRequest> commands =
-                buildYFlowDeleteCommands(yFlow, stateMachine.getCommandContext());
+                buildYFlowDeleteRequests(yFlow, stateMachine.getCommandContext());
         commands.addAll(stateMachine.getDeleteOldYFlowCommands());
 
         if (commands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to remove y-flow meters");
-            stateMachine.fire(Event.YPOINT_METERS_REMOVED);
+            stateMachine.fire(Event.YFLOW_METERS_REMOVED);
         } else {
             // emitting
             commands.forEach(command -> {

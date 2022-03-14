@@ -21,6 +21,7 @@ import org.openkilda.messaging.command.yflow.SubFlowsReadRequest;
 import org.openkilda.messaging.command.yflow.SubFlowsResponse;
 import org.openkilda.messaging.command.yflow.YFlowDeleteRequest;
 import org.openkilda.messaging.command.yflow.YFlowPartialUpdateRequest;
+import org.openkilda.messaging.command.yflow.YFlowPathSwapRequest;
 import org.openkilda.messaging.command.yflow.YFlowPathsReadRequest;
 import org.openkilda.messaging.command.yflow.YFlowPathsResponse;
 import org.openkilda.messaging.command.yflow.YFlowReadRequest;
@@ -240,5 +241,17 @@ public class YFlowServiceImpl implements YFlowService {
         return messagingChannel.sendAndGet(pingTopic, command)
                 .thenApply(YFlowPingResponse.class::cast)
                 .thenApply(flowMapper::toPingResult);
+    }
+
+    @Override
+    public CompletableFuture<YFlow> swapYFlowPaths(String yFlowId) {
+        log.debug("Processing y-flow path swap: {}", yFlowId);
+
+        CommandMessage request = new CommandMessage(new YFlowPathSwapRequest(yFlowId),
+                System.currentTimeMillis(), RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(flowHsTopic, request)
+                .thenApply(YFlowResponse.class::cast)
+                .thenApply(YFlowResponse::getYFlow)
+                .thenApply(flowMapper::toYFlow);
     }
 }

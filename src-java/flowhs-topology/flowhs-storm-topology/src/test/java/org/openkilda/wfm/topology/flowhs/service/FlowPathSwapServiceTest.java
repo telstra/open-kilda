@@ -28,7 +28,6 @@ import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsReque
 import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
-import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
@@ -62,15 +61,14 @@ public class FlowPathSwapServiceTest extends AbstractFlowTest<SpeakerRequest> {
     }
 
     @Test
-    public void shouldSuccessfullySwapFlowPaths() {
+    public void shouldSuccessfullySwapFlowPaths() throws Exception {
         // given
         Flow origin = dummyFactory.makeFlowWithProtectedPath(flowSource, flowDestination,
                 singletonList(islSourceDest), singletonList(islSourceDestAlt));
 
         // when
         FlowPathSwapService service = makeService();
-        FlowPathSwapRequest request = new FlowPathSwapRequest(origin.getFlowId(), true);
-        service.handleRequest(dummyRequestKey, commandContext, request);
+        service.handleRequest(dummyRequestKey, commandContext, origin.getFlowId());
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
 
@@ -86,15 +84,14 @@ public class FlowPathSwapServiceTest extends AbstractFlowTest<SpeakerRequest> {
     }
 
     @Test
-    public void shouldFailSwapOnUnsuccessfulInstallation() {
+    public void shouldFailSwapOnUnsuccessfulInstallation() throws Exception {
         // given
         Flow origin = dummyFactory.makeFlowWithProtectedPath(flowSource, flowDestination,
                 singletonList(islSourceDest), singletonList(islSourceDestAlt));
 
         // when
         FlowPathSwapService service = makeService();
-        FlowPathSwapRequest request = new FlowPathSwapRequest(origin.getFlowId(), true);
-        service.handleRequest(dummyRequestKey, commandContext, request);
+        service.handleRequest(dummyRequestKey, commandContext, origin.getFlowId());
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
 
@@ -128,15 +125,14 @@ public class FlowPathSwapServiceTest extends AbstractFlowTest<SpeakerRequest> {
     }
 
     @Test
-    public void shouldFailSwapOnTimeoutDuringInstallation() {
+    public void shouldFailSwapOnTimeoutDuringInstallation() throws Exception {
         // given
         Flow origin = dummyFactory.makeFlowWithProtectedPath(flowSource, flowDestination,
                 singletonList(islSourceDest), singletonList(islSourceDestAlt));
 
         // when
         FlowPathSwapService service = makeService();
-        FlowPathSwapRequest request = new FlowPathSwapRequest(origin.getFlowId(), true);
-        service.handleRequest(dummyRequestKey, commandContext, request);
+        service.handleRequest(dummyRequestKey, commandContext, origin.getFlowId());
 
         verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
 
@@ -153,107 +149,8 @@ public class FlowPathSwapServiceTest extends AbstractFlowTest<SpeakerRequest> {
         verifyNorthboundSuccessResponse(carrier);
     }
 
-    @Test
-    public void shouldSuccessfullySwapYFlowPaths() {
-        // given
-        Flow origin = dummyFactory.makeFlowWithProtectedPath(flowSource, flowDestination,
-                singletonList(islSourceDest), singletonList(islSourceDestAlt));
-        createTestYFlowForSubFlow(origin);
-
-        // when
-        FlowPathSwapService service = makeService();
-        FlowPathSwapRequest request = new FlowPathSwapRequest(origin.getFlowId(), false);
-        service.handleRequest(dummyRequestKey, commandContext, request);
-
-        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
-
-        SpeakerRequest speakerRequest;
-        while ((speakerRequest = requests.poll()) != null) {
-            produceAsyncResponse(service, dummyRequestKey, speakerRequest);
-        }
-
-        // then
-        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
-        verifyPathSwapped(origin, result);
-        verifyNorthboundSuccessResponse(carrier);
-    }
-
-    @Test
-    public void shouldFailSwapOnUnsuccessfulYFlowRulesInstallation() {
-        // given
-        Flow origin = dummyFactory.makeFlowWithProtectedPath(flowSource, flowDestination,
-                singletonList(islSourceDest), singletonList(islSourceDestAlt));
-        createTestYFlowForSubFlow(origin);
-
-        // when
-        FlowPathSwapService service = makeService();
-        FlowPathSwapRequest request = new FlowPathSwapRequest(origin.getFlowId(), false);
-        service.handleRequest(dummyRequestKey, commandContext, request);
-
-        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
-
-        int failCounter = 1;
-        SpeakerRequest speakerRequest;
-        while ((speakerRequest = requests.poll()) != null) {
-            SpeakerResponse commandResponse;
-            if (speakerRequest instanceof FlowSegmentRequest) {
-                commandResponse = buildSpeakerResponse((FlowSegmentRequest) speakerRequest);
-            } else {
-                BaseSpeakerCommandsRequest speakerCommandsRequest = (BaseSpeakerCommandsRequest) speakerRequest;
-                if (failCounter > 0) {
-                    commandResponse = buildErrorYFlowSpeakerResponse(speakerCommandsRequest);
-                    failCounter--;
-                } else {
-                    commandResponse = buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest);
-                }
-            }
-            service.handleAsyncResponse(dummyRequestKey, commandResponse);
-        }
-
-        // then
-        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
-        verifyPathNotSwapped(origin, result);
-        verifyNorthboundSuccessResponse(carrier);
-    }
-
-    @Test
-    public void shouldFailSwapOnTimeoutDuringYFlowRulesInstallation() {
-        // given
-        Flow origin = dummyFactory.makeFlowWithProtectedPath(flowSource, flowDestination,
-                singletonList(islSourceDest), singletonList(islSourceDestAlt));
-        createTestYFlowForSubFlow(origin);
-
-        // when
-        FlowPathSwapService service = makeService();
-        FlowPathSwapRequest request = new FlowPathSwapRequest(origin.getFlowId(), false);
-        service.handleRequest(dummyRequestKey, commandContext, request);
-
-        verifyFlowStatus(origin.getFlowId(), FlowStatus.IN_PROGRESS);
-
-        int failCounter = 1;
-        SpeakerRequest speakerRequest;
-        while ((speakerRequest = requests.poll()) != null) {
-            if (speakerRequest instanceof FlowSegmentRequest) {
-                service.handleAsyncResponse(dummyRequestKey, buildSpeakerResponse((FlowSegmentRequest) speakerRequest));
-            } else {
-                if (failCounter > 0) {
-                    service.handleTimeout(dummyRequestKey);
-                    failCounter--;
-                } else {
-                    BaseSpeakerCommandsRequest speakerCommandsRequest = (BaseSpeakerCommandsRequest) speakerRequest;
-                    service.handleAsyncResponse(dummyRequestKey,
-                            buildSuccessfulYFlowSpeakerResponse(speakerCommandsRequest));
-                }
-            }
-        }
-
-        // then
-        Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
-        verifyPathNotSwapped(origin, result);
-        verifyNorthboundSuccessResponse(carrier);
-    }
-
-    private void produceAsyncResponse(FlowPathSwapService service, String fsmKey, SpeakerRequest speakerRequest) {
+    private void produceAsyncResponse(FlowPathSwapService service, String fsmKey, SpeakerRequest speakerRequest)
+            throws Exception {
         SpeakerResponse commandResponse;
         if (speakerRequest instanceof FlowSegmentRequest) {
             commandResponse = buildSpeakerResponse((FlowSegmentRequest) speakerRequest);
@@ -284,7 +181,7 @@ public class FlowPathSwapServiceTest extends AbstractFlowTest<SpeakerRequest> {
     }
 
     private FlowPathSwapService makeService() {
-        return new FlowPathSwapService(carrier, persistenceManager, ruleManager,
-                SPEAKER_COMMAND_RETRIES_LIMIT, flowResourcesManager);
+        return new FlowPathSwapService(carrier, persistenceManager, ruleManager, flowResourcesManager,
+                SPEAKER_COMMAND_RETRIES_LIMIT);
     }
 }

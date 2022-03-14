@@ -72,14 +72,16 @@ public class PostResourceAllocationAction extends
                 && stateMachine.getNewProtectedForwardPath() == null
                 && stateMachine.getNewProtectedReversePath() == null) {
             stateMachine.fireRerouteIsSkipped("Reroute is unsuccessful. Couldn't find new path(s)");
-        } else if (stateMachine.isEffectivelyDown()) {
-            log.warn("Flow {} is mentioned as effectively DOWN, so it will be forced to DOWN state if reroute fail",
-                     flowId);
-            stateMachine.setOriginalFlowStatus(FlowStatus.DOWN);
-        }
+        } else {
+            if (stateMachine.isEffectivelyDown()) {
+                log.warn("Flow {} is mentioned as effectively DOWN, so it will be forced to DOWN state if reroute fail",
+                        flowId);
+                stateMachine.setOriginalFlowStatus(FlowStatus.DOWN);
+            }
 
-        // Notify about successful allocation.
-        stateMachine.notifyEventListeners(listener -> listener.onResourcesAllocated(flowId));
+            // Notify about successful allocation.
+            stateMachine.notifyEventListeners(listener -> listener.onResourcesAllocated(flowId));
+        }
 
         return Optional.of(buildRerouteResponseMessage(currentForwardPath, newForwardPath,
                 stateMachine.getCommandContext()));

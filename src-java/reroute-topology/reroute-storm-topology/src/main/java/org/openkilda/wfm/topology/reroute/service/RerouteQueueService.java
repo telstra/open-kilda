@@ -23,9 +23,9 @@ import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
+import org.openkilda.messaging.info.reroute.error.FlowInProgressError;
 import org.openkilda.messaging.info.reroute.error.NoPathFoundError;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
-import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.messaging.info.reroute.error.SpeakerRequestError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathComputationStrategy;
@@ -229,7 +229,7 @@ public class RerouteQueueService {
         if (rerouteError instanceof NoPathFoundError) {
             log.info("Received no path found error for flow {}", flowId);
             return true;
-        } else if (rerouteError instanceof RerouteInProgressError) {
+        } else if (rerouteError instanceof FlowInProgressError) {
             log.info("Received reroute in progress error for flow {}", flowId);
             return true;
         } else if (rerouteError instanceof SpeakerRequestError) {

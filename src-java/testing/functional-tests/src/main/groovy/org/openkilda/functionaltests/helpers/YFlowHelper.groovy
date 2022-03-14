@@ -100,9 +100,11 @@ class YFlowHelper {
     YFlow addYFlow(YFlowCreatePayload flow) {
         log.debug("Adding y-flow")
         def response = northboundV2.addYFlow(flow)
+        assert response.YFlowId
         YFlow yFlow
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             yFlow = northboundV2.getYFlow(response.YFlowId)
+            assert yFlow
             assert yFlow.status == FlowState.UP.toString()
             assert northbound.getFlowHistory(response.YFlowId).last().payload.last().action == CREATE_SUCCESS_Y
         }

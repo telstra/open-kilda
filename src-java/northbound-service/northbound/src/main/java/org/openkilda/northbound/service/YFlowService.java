@@ -57,4 +57,6 @@ public interface YFlowService {
     CompletableFuture<YFlowSyncResult> synchronizeYFlow(String yFlowId);
 
     CompletableFuture<YFlowPingResult> pingYFlow(String yFlowId, YFlowPingPayload payload);
+
+    CompletableFuture<YFlow> swapYFlowPaths(String yFlowId);
 }

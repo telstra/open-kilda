@@ -50,7 +50,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnSubFlowRever
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnSubFlowUpdatedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.OnTimeoutOperationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.RemoveMetersAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.RemoveOldMeterAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.RemoveOldMetersAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.RevertSubFlowsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.RevertYFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions.UpdateSubFlowsAction;
@@ -230,7 +230,7 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
 
             builder.transition()
                     .from(State.NEW_YFLOW_RESOURCES_ALLOCATED)
-                    .to(State.INSTALLING_NEW_YPOINT_METERS)
+                    .to(State.INSTALLING_NEW_YFLOW_METERS)
                     .on(Event.NEXT)
                     .perform(new InstallNewMetersAction(persistenceManager, ruleManager));
             builder.transitions()
@@ -239,69 +239,68 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
                     .onEach(Event.ERROR, Event.TIMEOUT);
 
             builder.internalTransition()
-                    .within(State.INSTALLING_NEW_YPOINT_METERS)
+                    .within(State.INSTALLING_NEW_YFLOW_METERS)
                     .on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
             builder.transition()
-                    .from(State.INSTALLING_NEW_YPOINT_METERS)
-                    .to(State.NEW_YPOINT_METERS_INSTALLED)
+                    .from(State.INSTALLING_NEW_YFLOW_METERS)
+                    .to(State.NEW_YFLOW_METERS_INSTALLED)
                     .on(Event.ALL_YFLOW_METERS_INSTALLED);
             builder.transitions()
-                    .from(State.INSTALLING_NEW_YPOINT_METERS)
+                    .from(State.INSTALLING_NEW_YFLOW_METERS)
                     .toAmong(State.REVERTING_YFLOW, State.ALL_PENDING_OPERATIONS_COMPLETED)
                     .onEach(Event.ERROR, Event.TIMEOUT);
 
             builder.transition()
-                    .from(State.NEW_YPOINT_METERS_INSTALLED)
-                    .to(State.VALIDATING_NEW_YPOINT_METERS)
+                    .from(State.NEW_YFLOW_METERS_INSTALLED)
+                    .to(State.VALIDATING_NEW_YFLOW_METERS)
                     .on(Event.NEXT)
                     .perform(new ValidateNewMetersAction(persistenceManager));
             builder.transitions()
-                    .from(State.NEW_YPOINT_METERS_INSTALLED)
+                    .from(State.NEW_YFLOW_METERS_INSTALLED)
                     .toAmong(State.REVERTING_YFLOW, State.ALL_PENDING_OPERATIONS_COMPLETED)
                     .onEach(Event.ERROR, Event.TIMEOUT);
 
             builder.internalTransition()
-                    .within(State.VALIDATING_NEW_YPOINT_METERS)
+                    .within(State.VALIDATING_NEW_YFLOW_METERS)
                     .on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedValidateResponseAction(speakerCommandRetriesLimit));
             builder.transition()
-                    .from(State.VALIDATING_NEW_YPOINT_METERS)
-                    .to(State.NEW_YPOINT_METERS_VALIDATED)
-                    .on(Event.YPOINT_METERS_VALIDATED);
-
+                    .from(State.VALIDATING_NEW_YFLOW_METERS)
+                    .to(State.NEW_YFLOW_METERS_VALIDATED)
+                    .on(Event.YFLOW_METERS_VALIDATED);
             builder.transitions()
-                    .from(State.VALIDATING_NEW_YPOINT_METERS)
+                    .from(State.VALIDATING_NEW_YFLOW_METERS)
                     .toAmong(State.REVERTING_YFLOW, State.ALL_PENDING_OPERATIONS_COMPLETED)
                     .onEach(Event.ERROR, Event.TIMEOUT);
 
             builder.transition()
-                    .from(State.NEW_YPOINT_METERS_VALIDATED)
-                    .to(State.REMOVING_OLD_YPOINT_METERS)
+                    .from(State.NEW_YFLOW_METERS_VALIDATED)
+                    .to(State.REMOVING_OLD_YFLOW_METERS)
                     .on(Event.NEXT)
-                    .perform(new RemoveOldMeterAction(persistenceManager, ruleManager));
+                    .perform(new RemoveOldMetersAction(persistenceManager, ruleManager));
 
             builder.transitions()
-                    .from(State.NEW_YPOINT_METERS_VALIDATED)
+                    .from(State.NEW_YFLOW_METERS_VALIDATED)
                     .toAmong(State.REVERTING_YFLOW, State.ALL_PENDING_OPERATIONS_COMPLETED)
                     .onEach(Event.ERROR, Event.TIMEOUT);
 
             builder.internalTransition()
-                    .within(State.REMOVING_OLD_YPOINT_METERS)
+                    .within(State.REMOVING_OLD_YFLOW_METERS)
                     .on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedRemoveResponseAction(speakerCommandRetriesLimit));
             builder.transition()
-                    .from(State.REMOVING_OLD_YPOINT_METERS)
-                    .to(State.OLD_YPOINT_METER_REMOVED)
-                    .on(Event.YPOINT_METERS_REMOVED);
+                    .from(State.REMOVING_OLD_YFLOW_METERS)
+                    .to(State.OLD_YFLOW_METERS_REMOVED)
+                    .on(Event.YFLOW_METERS_REMOVED);
             builder.transition()
-                    .from(State.REMOVING_OLD_YPOINT_METERS)
-                    .to(State.OLD_YPOINT_METER_REMOVED)
+                    .from(State.REMOVING_OLD_YFLOW_METERS)
+                    .to(State.OLD_YFLOW_METERS_REMOVED)
                     .on(Event.ERROR)
                     .perform(new HandleNotCompletedCommandsAction());
 
             builder.transition()
-                    .from(State.OLD_YPOINT_METER_REMOVED)
+                    .from(State.OLD_YFLOW_METERS_REMOVED)
                     .to(State.YFLOW_INSTALLATION_COMPLETED)
                     .on(Event.NEXT)
                     .perform(new CompleteYFlowUpdatingAction(persistenceManager, dashboardLogger));
@@ -344,26 +343,26 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
 
             builder.transition()
                     .from(State.REVERTING_YFLOW)
-                    .to(State.REMOVING_YPOINT_METERS)
+                    .to(State.REMOVING_YFLOW_METERS)
                     .on(Event.NEXT)
                     .perform(new RemoveMetersAction(persistenceManager, ruleManager));
 
             builder.internalTransition()
-                    .within(State.REMOVING_YPOINT_METERS)
+                    .within(State.REMOVING_YFLOW_METERS)
                     .on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedRemoveResponseAction(speakerCommandRetriesLimit));
             builder.transition()
-                    .from(State.REMOVING_YPOINT_METERS)
-                    .to(State.YPOINT_METERS_REMOVED)
-                    .on(Event.YPOINT_METERS_REMOVED);
+                    .from(State.REMOVING_YFLOW_METERS)
+                    .to(State.YFLOW_METERS_REMOVED)
+                    .on(Event.YFLOW_METERS_REMOVED);
             builder.transition()
-                    .from(State.REMOVING_YPOINT_METERS)
-                    .to(State.YPOINT_METERS_REMOVED)
+                    .from(State.REMOVING_YFLOW_METERS)
+                    .to(State.YFLOW_METERS_REMOVED)
                     .on(Event.ERROR)
                     .perform(new HandleNotCompletedCommandsAction());
 
             builder.transition()
-                    .from(State.YPOINT_METERS_REMOVED)
+                    .from(State.YFLOW_METERS_REMOVED)
                     .to(State.DEALLOCATING_NEW_YFLOW_RESOURCES)
                     .on(Event.NEXT);
 
@@ -422,26 +421,26 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
 
             builder.transition()
                     .from(State.YFLOW_UPDATE_REVERTED)
-                    .to(State.INSTALLING_OLD_YPOINT_METER)
+                    .to(State.INSTALLING_OLD_YFLOW_METERS)
                     .on(Event.NEXT)
                     .perform(new InstallReallocatedMetersAction(persistenceManager, ruleManager));
 
             builder.internalTransition()
-                    .within(State.INSTALLING_OLD_YPOINT_METER)
+                    .within(State.INSTALLING_OLD_YFLOW_METERS)
                     .on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
             builder.transition()
-                    .from(State.INSTALLING_OLD_YPOINT_METER)
-                    .to(State.OLD_YPOINT_METER_INSTALLED)
+                    .from(State.INSTALLING_OLD_YFLOW_METERS)
+                    .to(State.OLD_YFLOW_METERS_INSTALLED)
                     .on(Event.ALL_YFLOW_METERS_INSTALLED);
             builder.transitions()
-                    .from(State.INSTALLING_OLD_YPOINT_METER)
-                    .toAmong(State.OLD_YPOINT_METER_INSTALLED, State.OLD_YPOINT_METER_INSTALLED)
+                    .from(State.INSTALLING_OLD_YFLOW_METERS)
+                    .toAmong(State.OLD_YFLOW_METERS_INSTALLED, State.OLD_YFLOW_METERS_INSTALLED)
                     .onEach(Event.ERROR, Event.TIMEOUT)
                     .perform(new HandleNotCompletedCommandsAction());
 
             builder.transition()
-                    .from(State.OLD_YPOINT_METER_INSTALLED)
+                    .from(State.OLD_YFLOW_METERS_INSTALLED)
                     .to(State.YFLOW_REVERTED)
                     .on(Event.NEXT)
                     .perform(new CompleteYFlowUpdatingAction(persistenceManager, dashboardLogger));
@@ -492,7 +491,6 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
 
     public enum State {
         INITIALIZED,
-        OLD_YFLOW_METERS_COMMANDS_COMPUTED,
         YFLOW_VALIDATED,
         YFLOW_UPDATED,
 
@@ -501,12 +499,12 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
         ALL_SUB_FLOWS_UPDATED,
 
         NEW_YFLOW_RESOURCES_ALLOCATED,
-        INSTALLING_NEW_YPOINT_METERS,
-        NEW_YPOINT_METERS_INSTALLED,
-        VALIDATING_NEW_YPOINT_METERS,
-        NEW_YPOINT_METERS_VALIDATED,
-        REMOVING_OLD_YPOINT_METERS,
-        OLD_YPOINT_METER_REMOVED,
+        INSTALLING_NEW_YFLOW_METERS,
+        NEW_YFLOW_METERS_INSTALLED,
+        VALIDATING_NEW_YFLOW_METERS,
+        NEW_YFLOW_METERS_VALIDATED,
+        REMOVING_OLD_YFLOW_METERS,
+        OLD_YFLOW_METERS_REMOVED,
         DEALLOCATING_OLD_YFLOW_RESOURCES,
         OLD_YFLOW_RESOURCES_DEALLOCATED,
         COMPLETE_YFLOW_INSTALLATION,
@@ -517,8 +515,8 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
 
         REVERTING_YFLOW,
         YFLOW_REVERTED,
-        REMOVING_YPOINT_METERS,
-        YPOINT_METERS_REMOVED,
+        REMOVING_YFLOW_METERS,
+        YFLOW_METERS_REMOVED,
         DEALLOCATING_NEW_YFLOW_RESOURCES,
         NEW_YFLOW_RESOURCES_DEALLOCATED,
 
@@ -530,8 +528,8 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
         ALL_SUB_FLOWS_REVERTED,
 
         YFLOW_RESOURCES_REALLOCATED,
-        INSTALLING_OLD_YPOINT_METER,
-        OLD_YPOINT_METER_INSTALLED,
+        INSTALLING_OLD_YFLOW_METERS,
+        OLD_YFLOW_METERS_INSTALLED,
 
         REVERTING_YFLOW_STATUS,
         FINISHED_WITH_ERROR;
@@ -548,8 +546,8 @@ public final class YFlowUpdateFsm extends YFlowProcessingFsm<YFlowUpdateFsm, Sta
         ALL_SUB_FLOWS_UPDATED,
         FAILED_TO_UPDATE_SUB_FLOWS,
         ALL_YFLOW_METERS_INSTALLED,
-        YPOINT_METERS_VALIDATED,
-        YPOINT_METERS_REMOVED,
+        YFLOW_METERS_VALIDATED,
+        YFLOW_METERS_REMOVED,
 
         SUB_FLOW_REVERTED,
         ALL_SUB_FLOWS_REVERTED,

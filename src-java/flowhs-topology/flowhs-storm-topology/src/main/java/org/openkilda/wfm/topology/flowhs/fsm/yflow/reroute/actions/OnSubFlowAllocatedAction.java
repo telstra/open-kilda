@@ -95,7 +95,7 @@ public class OnSubFlowAllocatedAction extends
             for (YSubFlow subFlow : yflow.getSubFlows()) {
                 Flow flow = subFlow.getFlow();
                 FlowPath flowPath = flow.getPaths().stream()
-                        .filter(path -> sharedSwitchId.equals(path.getSrcSwitchId()) 
+                        .filter(path -> sharedSwitchId.equals(path.getSrcSwitchId())
                                 && !path.isProtected()
                                 && !oldFlowPathCookies.contains(path.getCookie().getValue()))
                         .findFirst()

@@ -29,9 +29,9 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Collection;
 
 @Slf4j
-public class RemoveOldMeterAction extends
+public class RemoveOldMetersAction extends
         YFlowRuleManagerProcessingAction<YFlowUpdateFsm, State, Event, YFlowUpdateContext> {
-    public RemoveOldMeterAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
+    public RemoveOldMetersAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
         super(persistenceManager, ruleManager);
     }
 
@@ -44,7 +44,7 @@ public class RemoveOldMeterAction extends
 
         if (commands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to remove y-flow meters");
-            stateMachine.fire(Event.YPOINT_METERS_REMOVED);
+            stateMachine.fire(Event.YFLOW_METERS_REMOVED);
         } else {
             // emitting
             commands.forEach(command -> {

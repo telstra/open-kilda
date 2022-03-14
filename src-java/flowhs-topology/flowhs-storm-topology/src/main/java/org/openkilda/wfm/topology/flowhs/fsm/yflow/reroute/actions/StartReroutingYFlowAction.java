@@ -56,7 +56,7 @@ public class StartReroutingYFlowAction
         List<FlowPath> flowPaths = transactionManager.doInTransaction(() -> {
             YFlow yFlow = getYFlow(yFlowId);
             saveOldResources(stateMachine, yFlow);
-            stateMachine.setDeleteOldYFlowCommands(buildYFlowDeleteCommands(yFlow, stateMachine.getCommandContext()));
+            stateMachine.setDeleteOldYFlowCommands(buildYFlowDeleteRequests(yFlow, stateMachine.getCommandContext()));
 
             SwitchId sharedSwitchId = yFlow.getSharedEndpoint().getSwitchId();
             return yFlow.getSubFlows().stream()

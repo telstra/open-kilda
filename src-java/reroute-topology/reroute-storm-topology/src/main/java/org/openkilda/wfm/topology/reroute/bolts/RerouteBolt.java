@@ -25,6 +25,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteAffectedInactiveFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
+import org.openkilda.messaging.command.yflow.YFlowPathSwapRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
@@ -174,10 +175,26 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
     public void emitPathSwapCommand(String correlationId, String flowId, String reason) {
         CommandContext context = new CommandContext(correlationId).fork(UUID.randomUUID().toString());
         emit(STREAM_OPERATION_QUEUE_ID, getCurrentTuple(),
-                new Values(flowId, new FlowPathSwapRequest(flowId, false), context));
+                new Values(flowId, new FlowPathSwapRequest(flowId), context));
 
         log.warn("Flow {} swap path command message sent with correlationId {}, reason \"{}\"",
                 flowId, context.getCorrelationId(), reason);
+    }
+
+    /**
+     * Emit swap command for consumer.
+     *
+     * @param correlationId correlation id to pass through
+     * @param yFlowId yFlowId
+     */
+    @Override
+    public void emitYFlowPathSwapCommand(String correlationId, String yFlowId, String reason) {
+        CommandContext context = new CommandContext(correlationId).fork(UUID.randomUUID().toString());
+        emit(STREAM_OPERATION_QUEUE_ID, getCurrentTuple(),
+                new Values(yFlowId, new YFlowPathSwapRequest(yFlowId), context));
+
+        log.warn("Y-flow {} swap path command message sent with correlationId {}, reason \"{}\"",
+                yFlowId, context.getCorrelationId(), reason);
     }
 
     @Override

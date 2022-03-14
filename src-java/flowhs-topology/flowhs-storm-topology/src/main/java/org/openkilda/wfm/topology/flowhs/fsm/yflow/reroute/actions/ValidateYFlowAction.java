@@ -21,6 +21,7 @@ import static java.util.Collections.emptySet;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.reroute.error.FlowInProgressError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
@@ -90,36 +91,61 @@ public class ValidateYFlowAction extends
                     .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                             format("Y-flow %s not found", yFlowId)));
             if (result.getStatus() == FlowStatus.IN_PROGRESS) {
-                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
-                        format("Y-flow %s is in progress now", yFlowId));
+                String message = format("Y-flow %s is in progress now", yFlowId);
+                stateMachine.setRerouteError(new FlowInProgressError(message));
+                throw new FlowProcessingException(ErrorType.REQUEST_INVALID, message);
             }
+
+            Collection<Flow> subFlows = result.getSubFlows().stream()
+                    .map(YSubFlow::getFlow)
+                    .collect(Collectors.toList());
+
+            subFlows.forEach(subFlow -> {
+                if (subFlow.getStatus() == FlowStatus.IN_PROGRESS) {
+                    String message = format("Sub-flow %s of y-flow %s is in progress now", subFlow.getFlowId(),
+                            yFlowId);
+                    stateMachine.setRerouteError(new FlowInProgressError(message));
+                    throw new FlowProcessingException(ErrorType.REQUEST_INVALID, message);
+                }
+            });
+
+            Flow mainAffinitySubFlow = subFlows.stream()
+                    .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
+                    .findFirst()
+                    .orElseThrow(() -> new FlowProcessingException(ErrorType.DATA_INVALID,
+                            format("Main affinity sub-flow of the y-flow %s not found", yFlowId)));
+            stateMachine.setMainAffinityFlowId(mainAffinitySubFlow.getFlowId());
+
+            boolean mainAffinitySubFlowIsAffected = isFlowAffected(mainAffinitySubFlow, affectedIsls);
+            Set<String> affectedFlowIds = subFlows.stream()
+                    .filter(flow -> stateMachine.isForceReroute() || mainAffinitySubFlowIsAffected
+                            || isFlowAffected(flow, affectedIsls))
+                    .map(Flow::getFlowId)
+                    .collect(Collectors.toSet());
+            stateMachine.setTargetSubFlowIds(affectedFlowIds);
 
             // Keep it, just in case we have to revert it.
             stateMachine.setOriginalYFlowStatus(result.getStatus());
 
-            result.setStatus(FlowStatus.IN_PROGRESS);
-            return result;
+            if (affectedFlowIds.isEmpty()) {
+                // No sub-flows to be rerouted, so skip the whole y-flow reroute.
+                result.recalculateStatus();
+                dashboardLogger.onYFlowStatusUpdate(yFlowId, result.getStatus());
+                stateMachine.saveActionToHistory(format("The y-flow status was set to %s", result.getStatus()));
+                return null;
+            } else {
+                result.setStatus(FlowStatus.IN_PROGRESS);
+                return result;
+            }
         });
 
-        Collection<Flow> subFlows = yFlow.getSubFlows().stream()
-                .map(YSubFlow::getFlow)
-                .collect(Collectors.toList());
-
-        Flow mainAffinitySubFlow = subFlows.stream()
-                .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
-                .findFirst()
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.DATA_INVALID,
-                        format("Main affinity sub-flow of the y-flow %s not found", yFlowId)));
-        stateMachine.setMainAffinityFlowId(mainAffinitySubFlow.getFlowId());
-
-        boolean mainAffinitySubFlowIsAffected = isFlowAffected(mainAffinitySubFlow, affectedIsls);
-        Set<String> affectedFlowIds = subFlows.stream()
-                .filter(flow -> mainAffinitySubFlowIsAffected || isFlowAffected(flow, affectedIsls))
-                .map(Flow::getFlowId)
-                .collect(Collectors.toSet());
-        stateMachine.setTargetSubFlowIds(affectedFlowIds);
-
-        stateMachine.saveNewEventToHistory("Y-flow was validated successfully", FlowEventData.Event.REROUTE);
+        if (yFlow != null) {
+            stateMachine.saveNewEventToHistory("Y-flow was validated successfully", FlowEventData.Event.REROUTE);
+        } else {
+            stateMachine.saveNewEventToHistory("Y-flow was validated, no sub-flows to be rerouted",
+                    FlowEventData.Event.REROUTE);
+            stateMachine.fire(Event.YFLOW_REROUTE_SKIPPED);
+        }
 
         return Optional.empty();
     }
@@ -129,7 +155,9 @@ public class ValidateYFlowAction extends
             return true;
         }
         return isFlowPathAffected(flow.getForwardPath(), affectedIsls)
-                || isFlowPathAffected(flow.getReversePath(), affectedIsls);
+                || isFlowPathAffected(flow.getReversePath(), affectedIsls)
+                || isFlowPathAffected(flow.getProtectedForwardPath(), affectedIsls)
+                || isFlowPathAffected(flow.getProtectedReversePath(), affectedIsls);
     }
 
     private boolean isFlowPathAffected(FlowPath path, Set<IslEndpoint> affectedIsls) {

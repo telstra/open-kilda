@@ -15,12 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.service.yflow;
 
-import static java.util.Collections.emptyList;
-
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
 import org.openkilda.messaging.command.yflow.SubFlowsResponse;
-import org.openkilda.messaging.command.yflow.YFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowPathsResponse;
 import org.openkilda.messaging.command.yflow.YFlowResponse;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -47,8 +44,6 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -86,7 +81,7 @@ public class YFlowReadService {
         Collection<YFlow> yFlows = transactionManager.doInTransaction(getReadOperationRetryPolicy(),
                 yFlowRepository::findAll);
         return yFlows.stream()
-                .map(this::convertToYFlowDto)
+                .map(flow -> YFlowMapper.INSTANCE.toYFlowDto(flow, flowRepository))
                 .map(YFlowResponse::new)
                 .collect(Collectors.toList());
     }
@@ -97,7 +92,7 @@ public class YFlowReadService {
     public YFlowResponse getYFlow(@NonNull String yFlowId) throws FlowNotFoundException {
         return transactionManager.doInTransaction(getReadOperationRetryPolicy(), () ->
                         yFlowRepository.findById(yFlowId))
-                .map(this::convertToYFlowDto)
+                .map(flow -> YFlowMapper.INSTANCE.toYFlowDto(flow, flowRepository))
                 .map(YFlowResponse::new)
                 .orElseThrow(() -> new FlowNotFoundException(yFlowId));
     }
@@ -155,30 +150,5 @@ public class YFlowReadService {
                     .collect(Collectors.toList());
             return new SubFlowsResponse(subFlows);
         });
-    }
-
-    private YFlowDto convertToYFlowDto(YFlow yFlow) {
-        Optional<Flow> mainAffinityFlow = yFlow.getSubFlows().stream()
-                .map(YSubFlow::getFlow)
-                .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
-                .findFirst();
-        Collection<Flow> diverseWithFlow = mainAffinityFlow.map(this::getDiverseWithFlow).orElse(emptyList());
-        Set<String> diverseFlows = diverseWithFlow.stream()
-                .filter(flow -> flow.getYFlowId() == null)
-                .map(Flow::getFlowId)
-                .collect(Collectors.toSet());
-        Set<String> diverseYFlows = diverseWithFlow.stream()
-                .map(Flow::getYFlowId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        return YFlowMapper.INSTANCE.toYFlowDto(yFlow, diverseFlows, diverseYFlows);
-    }
-
-    private Collection<Flow> getDiverseWithFlow(Flow flow) {
-        return flow.getDiverseGroupId() == null ? emptyList() :
-                flowRepository.findByDiverseGroupId(flow.getDiverseGroupId()).stream()
-                        .filter(diverseFlow -> !flow.getYFlowId().equals(diverseFlow.getYFlowId()))
-                        .collect(Collectors.toSet());
     }
 }

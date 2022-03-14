@@ -49,7 +49,7 @@ public class UpdateYFlowAction extends
             YFlow yFlow = getYFlow(targetFlow.getYFlowId());
 
             saveOldResources(stateMachine, yFlow);
-            stateMachine.setDeleteOldYFlowCommands(buildYFlowDeleteCommands(yFlow, stateMachine.getCommandContext()));
+            stateMachine.setDeleteOldYFlowCommands(buildYFlowDeleteRequests(yFlow, stateMachine.getCommandContext()));
 
             updateFlow(yFlow, YFlowRequestMapper.INSTANCE.toYFlow(targetFlow));
             return yFlow.getStatus();

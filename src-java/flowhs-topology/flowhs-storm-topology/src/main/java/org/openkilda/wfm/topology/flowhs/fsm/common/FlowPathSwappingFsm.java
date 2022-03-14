@@ -16,10 +16,12 @@
 package org.openkilda.wfm.topology.flowhs.fsm.common;
 
 import static java.util.Collections.emptyList;
+import static java.util.Objects.requireNonNull;
 
 import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
@@ -62,13 +64,10 @@ public abstract class FlowPathSwappingFsm<T extends StateMachine<T, S, E, C>, S,
 
     protected final Collection<FlowResources> oldResources = new ArrayList<>();
     protected PathId oldPrimaryForwardPath;
-    protected FlowPathStatus oldPrimaryForwardPathStatus;
     protected PathId oldPrimaryReversePath;
-    protected FlowPathStatus oldPrimaryReversePathStatus;
     protected PathId oldProtectedForwardPath;
-    protected FlowPathStatus oldProtectedForwardPathStatus;
     protected PathId oldProtectedReversePath;
-    protected FlowPathStatus oldProtectedReversePathStatus;
+    protected final Map<PathId, FlowPathStatus> oldPathStatuses = new HashMap<>();
 
     protected final Collection<PathId> rejectedPaths = new ArrayList<>();
     protected final Collection<FlowResources> rejectedResources = new ArrayList<>();
@@ -157,5 +156,33 @@ public abstract class FlowPathSwappingFsm<T extends StateMachine<T, S, E, C>, S,
     public void notifyEventListenersOnError(ErrorType errorType, String errorMessage) {
         notifyEventListeners(listener ->
                 listener.onFailed(getFlowId(), errorMessage, errorType));
+    }
+
+    public void setOldPathStatuses(Collection<FlowPath> paths) {
+        paths.forEach(path -> oldPathStatuses.put(path.getPathId(), path.getStatus()));
+    }
+
+    public void setOldPathStatuses(FlowPath path) {
+        oldPathStatuses.put(path.getPathId(), path.getStatus());
+    }
+
+    public FlowPathStatus getOldPathStatus(PathId pathId) {
+        return requireNonNull(oldPathStatuses.get(pathId));
+    }
+
+    public FlowPathStatus getOldPrimaryForwardPathStatus() {
+        return getOldPathStatus(requireNonNull(oldPrimaryForwardPath));
+    }
+
+    public FlowPathStatus getOldPrimaryReversePathStatus() {
+        return getOldPathStatus(requireNonNull(oldPrimaryReversePath));
+    }
+
+    public FlowPathStatus getOldProtectedForwardPathStatus() {
+        return getOldPathStatus(requireNonNull(oldProtectedForwardPath));
+    }
+
+    public FlowPathStatus getOldProtectedReversePathStatus() {
+        return getOldPathStatus(requireNonNull(oldProtectedReversePath));
     }
 }

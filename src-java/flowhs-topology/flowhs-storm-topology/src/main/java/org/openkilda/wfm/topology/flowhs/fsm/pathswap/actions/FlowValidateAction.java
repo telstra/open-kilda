@@ -63,6 +63,10 @@ public class FlowValidateAction extends
                             format("Could not swap paths: Flow %s not found", flowId)));
             dashboardLogger.onFlowPathsSwap(flow);
             stateMachine.setPeriodicPingsEnabled(flow.isPeriodicPings());
+            if (flow.getStatus() == FlowStatus.IN_PROGRESS) {
+                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                        format("Flow %s is in progress now", flowId));
+            }
             if (!flow.isAllocateProtectedPath()) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
                         format("Could not swap paths: Flow %s doesn't have protected path", flowId));
@@ -73,16 +77,10 @@ public class FlowValidateAction extends
                         format("Could not swap paths: Protected flow path %s is not in ACTIVE state", flowId));
             }
             stateMachine.setOldPrimaryForwardPath(flow.getForwardPathId());
-            stateMachine.setOldPrimaryForwardPathStatus(flow.getForwardPath().getStatus());
-
             stateMachine.setOldPrimaryReversePath(flow.getReversePathId());
-            stateMachine.setOldPrimaryReversePathStatus(flow.getReversePath().getStatus());
-
             stateMachine.setOldProtectedForwardPath(flow.getProtectedForwardPathId());
-            stateMachine.setOldProtectedForwardPathStatus(flow.getProtectedForwardPath().getStatus());
-
             stateMachine.setOldPrimaryReversePath(flow.getProtectedReversePathId());
-            stateMachine.setOldProtectedReversePathStatus(flow.getProtectedReversePath().getStatus());
+            stateMachine.setOldPathStatuses(flow.getPaths());
 
 
             flow.setStatus(FlowStatus.IN_PROGRESS);
