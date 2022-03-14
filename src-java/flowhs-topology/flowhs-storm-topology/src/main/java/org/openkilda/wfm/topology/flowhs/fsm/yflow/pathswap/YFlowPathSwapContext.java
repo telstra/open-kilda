@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,17 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.reroute.bolts;
+package org.openkilda.wfm.topology.flowhs.fsm.yflow.pathswap;
 
-import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
+import org.openkilda.messaging.error.ErrorType;
 
-public interface MessageSender {
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-    void emitRerouteCommand(String flowId, FlowThrottlingData flowThrottlingData);
-
-    void emitManualRerouteCommand(String flowId, FlowThrottlingData flowThrottlingData);
-
-    void emitPathSwapCommand(String correlationId, String flowId, String reason);
-
-    void emitYFlowPathSwapCommand(String correlationId, String yFlowId, String reason);
+@Data
+@AllArgsConstructor
+@Builder
+@EqualsAndHashCode
+public class YFlowPathSwapContext {
+    private String subFlowId;
+    private SpeakerCommandResponse speakerResponse;
+    String error;
+    ErrorType errorType;
 }

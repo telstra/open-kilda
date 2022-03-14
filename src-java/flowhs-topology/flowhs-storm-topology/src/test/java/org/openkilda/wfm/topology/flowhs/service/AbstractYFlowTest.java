@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
@@ -284,9 +285,10 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
         return yFlowRepositorySpy;
     }
 
-    protected void verifyYFlowStatus(String yFlowId, FlowStatus expectedStatus) {
+    protected YFlow verifyYFlowStatus(String yFlowId, FlowStatus expectedStatus) {
         YFlow flow = getYFlow(yFlowId);
         assertEquals(expectedStatus, flow.getStatus());
+        return flow;
     }
 
     protected void verifyYFlowAndSubFlowStatus(String yFlowId, FlowStatus expectedStatus) {
@@ -320,7 +322,7 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
     protected YFlow getYFlow(String yFlowId) {
         YFlowRepository repository = persistenceManager.getRepositoryFactory().createYFlowRepository();
         return repository.findById(yFlowId)
-                .orElseThrow(() -> new AssertionError(String.format(
+                .orElseThrow(() -> new AssertionError(format(
                         "Y-flow %s not found in persistent storage", yFlowId)));
     }
 
@@ -700,18 +702,35 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
     protected YFlow createYFlowWithProtected(String yFlowId) {
         dummyFactory.getFlowDefaults().setAllocateProtectedPath(true);
         // Create sub-flows
-        Flow firstFlow = dummyFactory.makeMainAffinityFlowWithProtectedPath(firstSharedEndpoint, firstEndpoint,
+        String firstFlowId = format("%s_1", yFlowId);
+        Flow firstFlow = dummyFactory.makeFlowWithProtectedPath(firstFlowId,
+                firstSharedEndpoint, firstEndpoint,
+                firstFlowId,
                 asList(islSharedToTransit, islTransitToFirst),
                 asList(islSharedToAltTransit, islAltTransitToFirst));
-        Flow secondFlow = dummyFactory.makeFlowWithProtectedPath(secondSharedEndpoint, secondEndpoint,
+
+        String secondFlowId = format("%s_2", yFlowId);
+        Flow secondFlow = dummyFactory.makeFlowWithProtectedPath(secondFlowId,
+                secondSharedEndpoint, secondEndpoint,
                 firstFlow.getAffinityGroupId(),
                 asList(islSharedToTransit, islTransitToSecond),
                 asList(islSharedToAltTransit, islAltTransitToSecond));
+
+        SwitchId yPoint = SWITCH_TRANSIT;
+        SwitchId protectedPathYPoint = SWITCH_ALT_TRANSIT;
+        FlowMeter yPointMeter = dummyFactory.makeFlowMeter(yPoint, yFlowId, null);
+        FlowMeter protectedPathYPointMeter = dummyFactory.makeFlowMeter(protectedPathYPoint, yFlowId, null);
+        FlowMeter sharedEndpointMeter = dummyFactory.makeFlowMeter(firstSharedEndpoint.getSwitchId(), yFlowId, null);
 
         YFlow yFlow = YFlow.builder()
                 .yFlowId(yFlowId)
                 .sharedEndpoint(new SharedEndpoint(firstSharedEndpoint.getSwitchId(),
                         firstSharedEndpoint.getPortNumber()))
+                .sharedEndpointMeterId(sharedEndpointMeter.getMeterId())
+                .yPoint(yPoint)
+                .meterId(yPointMeter.getMeterId())
+                .protectedPathYPoint(protectedPathYPoint)
+                .protectedPathMeterId(protectedPathYPointMeter.getMeterId())
                 .allocateProtectedPath(true)
                 .status(FlowStatus.UP)
                 .build();

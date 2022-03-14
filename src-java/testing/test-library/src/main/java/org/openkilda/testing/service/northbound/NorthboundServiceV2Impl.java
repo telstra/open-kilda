@@ -463,6 +463,12 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
                 YFlowPingResult.class, yFlowId).getBody();
     }
 
+    @Override
+    public YFlow swapYFlowPaths(String yFlowId) {
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/swap", HttpMethod.POST,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), YFlow.class, yFlowId).getBody();
+    }
+
     private HttpHeaders buildHeadersWithCorrelationId() {
         HttpHeaders headers = new HttpHeaders();
         headers.set(Utils.CORRELATION_ID, "fn-tests-" + UUID.randomUUID().toString());

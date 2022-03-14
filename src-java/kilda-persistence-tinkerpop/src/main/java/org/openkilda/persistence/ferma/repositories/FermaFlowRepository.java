@@ -405,14 +405,15 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
         return getTransactionManager().doInTransaction(() -> findById(flowId)
                 .map(flow -> {
                     Flow diverseFlow = flow;
-                    if (diverseFlow.getAffinityGroupId() != null) {
+                    /*TODO: why is this required?
+                       if (diverseFlow.getAffinityGroupId() != null) {
                         Optional<Flow> mainAffinityFlow = findById(diverseFlow.getAffinityGroupId());
                         if (mainAffinityFlow.isPresent()) {
                             diverseFlow = mainAffinityFlow.get();
                         } else {
                             return null;
                         }
-                    }
+                    }*/
 
                     if (diverseFlow.getDiverseGroupId() == null) {
                         String groupId = UUID.randomUUID().toString();

@@ -71,7 +71,7 @@ class YFlowHelper {
             busyEndpoints << new SwitchPortVlan(se.switchId, se.portNumber, seVlan)
             def ep = SubFlowUpdatePayload.builder()
                     .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder().vlanId(seVlan).build())
-                    .endpoint(randomEndpoint(sw, busyEndpoints))
+                    .endpoint(randomEndpoint(sw, useTraffgenPorts, busyEndpoints))
                     .build()
             busyEndpoints << new SwitchPortVlan(ep.endpoint.switchId, ep.endpoint.portNumber, ep.endpoint.vlanId)
             ep
@@ -100,9 +100,11 @@ class YFlowHelper {
     YFlow addYFlow(YFlowCreatePayload flow) {
         log.debug("Adding y-flow")
         def response = northboundV2.addYFlow(flow)
+        assert response.YFlowId
         YFlow yFlow
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             yFlow = northboundV2.getYFlow(response.YFlowId)
+            assert yFlow
             assert yFlow.status == FlowState.UP.toString()
             assert northbound.getFlowHistory(response.YFlowId).last().payload.last().action == CREATE_SUCCESS_Y
         }
@@ -212,6 +214,11 @@ class YFlowHelper {
             List<Integer> tgPorts = sw.traffGens*.switchPort.findAll { allowedPorts.contains(it) }
             if (tgPorts) {
                 port = tgPorts[0]
+            } else {
+                tgPorts = sw.traffGens*.switchPort.findAll { topology.getAllowedPortsForSwitch(sw).contains(it) }
+                if (tgPorts) {
+                    port = tgPorts[0]
+                }
             }
         }
         return port

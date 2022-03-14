@@ -574,7 +574,7 @@ public class FlowServiceImpl implements FlowService {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Swapping paths for flow : {}", flowId);
 
-        FlowPathSwapRequest payload = new FlowPathSwapRequest(flowId, true);
+        FlowPathSwapRequest payload = new FlowPathSwapRequest(flowId);
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 

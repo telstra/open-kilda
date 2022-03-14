@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,28 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.messaging.command.yflow;
 
 import org.openkilda.messaging.command.CommandData;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NonNull;
-import lombok.Value;
 
-@Value
+/**
+ * Represents a path swap request for y-flow.
+ */
+@Data
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class FlowPathSwapRequest extends CommandData {
+@JsonNaming(SnakeCaseStrategy.class)
+public class YFlowPathSwapRequest extends CommandData {
     private static final long serialVersionUID = 1L;
 
-    @JsonProperty("flow_id")
-    String flowId;
-
-    @JsonCreator
-    public FlowPathSwapRequest(@NonNull @JsonProperty("flow_id") String flowId) {
-        this.flowId = flowId;
-    }
+    String yFlowId;
 }

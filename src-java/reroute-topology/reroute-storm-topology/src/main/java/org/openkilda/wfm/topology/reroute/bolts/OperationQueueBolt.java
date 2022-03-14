@@ -24,6 +24,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.yflow.YFlowPathSwapRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.info.reroute.PathSwapResult;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
@@ -71,6 +72,9 @@ public class OperationQueueBolt extends CoordinatedBolt implements OperationQueu
         if (data instanceof FlowPathSwapRequest) {
             FlowPathSwapRequest flowPathSwapRequest = (FlowPathSwapRequest) data;
             service.addFirst(flowPathSwapRequest.getFlowId(), context.getCorrelationId(), flowPathSwapRequest);
+        } else if (data instanceof YFlowPathSwapRequest) {
+            YFlowPathSwapRequest yFlowPathSwapRequest = (YFlowPathSwapRequest) data;
+            service.addFirst(yFlowPathSwapRequest.getYFlowId(), context.getCorrelationId(), yFlowPathSwapRequest);
         } else if (data instanceof FlowRerouteRequest) {
             FlowRerouteRequest flowRerouteRequest = (FlowRerouteRequest) data;
             service.addLast(flowRerouteRequest.getFlowId(), context.getCorrelationId(), flowRerouteRequest);
