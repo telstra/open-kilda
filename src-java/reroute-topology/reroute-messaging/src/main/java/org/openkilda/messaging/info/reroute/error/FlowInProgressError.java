@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,15 +16,18 @@
 package org.openkilda.messaging.info.reroute.error;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class RerouteInProgressError extends FlowInProgressError {
+public class FlowInProgressError extends RerouteError {
 
     @JsonCreator
-    public RerouteInProgressError() {
-        super("Reroute is in progress");
+    public FlowInProgressError(@JsonProperty("message") String message) {
+        super(message);
     }
 }

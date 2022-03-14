@@ -42,8 +42,11 @@ public class OnFinishedWithErrorAction extends
                            YFlowRerouteFsm stateMachine) {
         dashboardLogger.onFailedYFlowReroute(stateMachine.getYFlowId(), stateMachine.getErrorReason());
         stateMachine.saveActionToHistory("Failed to reroute the y-flow", stateMachine.getErrorReason());
-
-        carrier.sendYFlowRerouteResultStatus(stateMachine.getFlowId(), new RerouteError(stateMachine.getErrorReason()),
+        log.debug("Y-flow {} reroute result failed with error {} / reason {}", stateMachine.getYFlowId(),
+                stateMachine.getRerouteError(), stateMachine.getErrorReason());
+        RerouteError rerouteError = stateMachine.getRerouteError() != null
+                ? stateMachine.getRerouteError() : new RerouteError(stateMachine.getErrorReason());
+        carrier.sendYFlowRerouteResultStatus(stateMachine.getFlowId(), rerouteError,
                 stateMachine.getCommandContext().getCorrelationId());
     }
 }

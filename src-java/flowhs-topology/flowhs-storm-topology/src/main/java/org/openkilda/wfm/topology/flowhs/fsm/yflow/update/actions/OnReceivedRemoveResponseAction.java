@@ -23,7 +23,8 @@ import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
 import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseSpeakerResponseProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.converters.OfCommandConverter;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.Event;
@@ -39,7 +40,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class OnReceivedRemoveResponseAction extends
-        BaseSpeakerResponseProcessingAction<YFlowUpdateFsm, State, Event, YFlowUpdateContext> {
+        HistoryRecordingAction<YFlowUpdateFsm, State, Event, YFlowUpdateContext> {
     private static final String FAILED_TO_REMOVE_RULE_ACTION = "Failed to remove rule";
 
     private final int speakerCommandRetriesLimit;
@@ -82,7 +83,7 @@ public class OnReceivedRemoveResponseAction extends
                                 && failedUuids.contains(((GroupCommand) command).getData().getUuid()))
                         .collect(Collectors.toList());
                 DeleteSpeakerCommandsRequest retryRequest = deleteRequest.toBuilder()
-                        .commands(removeExcessDependencies(commands)).build();
+                        .commands(OfCommandConverter.INSTANCE.removeExcessDependencies(commands)).build();
                 stateMachine.getCarrier().sendSpeakerRequest(retryRequest);
             } else {
                 stateMachine.addFailedCommand(commandId, response);

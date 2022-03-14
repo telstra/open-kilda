@@ -48,7 +48,8 @@ public class RerouteSubFlowsAction extends HistoryRecordingAction<YFlowRerouteFs
         String yFlowId = stateMachine.getYFlowId();
         for (String subFlowId : targetSubFlowIds) {
             stateMachine.addSubFlow(subFlowId);
-            FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(subFlowId, stateMachine.isForceReroute(), false,
+            FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(subFlowId, stateMachine.isForceReroute(),
+                    false,
                     stateMachine.isIgnoreBandwidth(), stateMachine.getAffectedIsls(),
                     stateMachine.getRerouteReason(), false);
             rerouteRequests.add(rerouteRequest);

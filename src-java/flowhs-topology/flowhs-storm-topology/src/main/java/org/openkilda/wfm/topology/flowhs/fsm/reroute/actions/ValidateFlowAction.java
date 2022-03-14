@@ -20,6 +20,7 @@ import static java.util.Collections.emptySet;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.reroute.error.FlowInProgressError;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -82,7 +83,7 @@ public class ValidateFlowAction extends
             Flow foundFlow = getFlow(flowId);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
                 String message = format("Flow %s is in progress now", flowId);
-                stateMachine.setRerouteError(new RerouteError(message));
+                stateMachine.setRerouteError(new FlowInProgressError(message));
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID, message);
             }
 

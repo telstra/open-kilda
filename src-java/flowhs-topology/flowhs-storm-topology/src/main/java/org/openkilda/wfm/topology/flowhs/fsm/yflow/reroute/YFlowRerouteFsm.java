@@ -19,6 +19,7 @@ import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsReq
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
@@ -102,6 +103,8 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
 
     private Collection<DeleteSpeakerCommandsRequest> deleteOldYFlowCommands;
 
+    private RerouteError rerouteError;
+
     private YFlowRerouteFsm(@NonNull CommandContext commandContext, @NonNull YFlowRerouteHubCarrier carrier,
                             @NonNull String yFlowId, @NonNull Collection<YFlowEventListener> eventListeners) {
         super(Event.NEXT, Event.ERROR, commandContext, carrier, yFlowId, eventListeners);
@@ -133,6 +136,12 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
 
     public void addAllocatedSubFlow(String flowId) {
         allocatedSubFlows.add(flowId);
+    }
+
+    public void setRerouteError(RerouteError rerouteError) {
+        if (this.rerouteError == null) {
+            this.rerouteError = rerouteError;
+        }
     }
 
     @Override
@@ -173,8 +182,8 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
                     .perform(new StartReroutingYFlowAction(persistenceManager, ruleManager));
             builder.transitions()
                     .from(State.YFLOW_VALIDATED)
-                    .toAmong(State.REVERTING_YFLOW_STATUS, State.REVERTING_YFLOW_STATUS)
-                    .onEach(Event.TIMEOUT, Event.ERROR);
+                    .toAmong(State.FINISHED, State.REVERTING_YFLOW_STATUS, State.REVERTING_YFLOW_STATUS)
+                    .onEach(Event.YFLOW_REROUTE_SKIPPED, Event.TIMEOUT, Event.ERROR);
 
             builder.transitions()
                     .from(State.YFLOW_REROUTE_STARTED)
@@ -408,6 +417,8 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
         YPOINT_METER_REMOVED,
 
         YFLOW_REROUTE_FINISHED,
+
+        YFLOW_REROUTE_SKIPPED,
 
         TIMEOUT,
         PENDING_OPERATIONS_COMPLETED,

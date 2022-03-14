@@ -97,19 +97,25 @@ public class OfBatchExecutor {
         List<UUID> stageCommandsUuids = holder.getCurrentStage();
         List<OFMessage> ofMessages = new ArrayList<>();
         for (UUID uuid : stageCommandsUuids) {
-            log.debug("Start processing UUID: {} (key={})", uuid, kafkaKey);
             if (holder.canExecute(uuid)) {
                 BatchData batchData = holder.getByUUid(uuid);
+                OFMessage ofMessage = batchData.getMessage();
+                log.debug("Start processing UUID: {} (key={}, xid={})", uuid, kafkaKey, ofMessage.getXid());
 
                 hasFlows |= batchData.isFlow();
                 hasMeters |= batchData.isMeter();
                 hasGroups |= batchData.isGroup();
-                ofMessages.add(batchData.getMessage());
+                ofMessages.add(ofMessage);
             } else {
                 Map<UUID, String> blockingDependencies = holder.getBlockingDependencies(uuid);
-                holder.recordFailedUuid(uuid, "Not all dependencies are satisfied: "
-                        + (blockingDependencies.isEmpty() ? "can't execute"
-                        : Joiner.on(",").withKeyValueSeparator("=").join(blockingDependencies)));
+                if (!blockingDependencies.isEmpty()) {
+                    String errorMessage = Joiner.on(",").withKeyValueSeparator("=").join(blockingDependencies);
+                    holder.recordFailedUuid(uuid, "Not all dependencies are satisfied: " + errorMessage);
+                } else if (holder.getByUUid(uuid) == null) {
+                    holder.recordFailedUuid(uuid, "Missing in the batch");
+                } else {
+                    holder.recordFailedUuid(uuid, "Can't execute");
+                }
             }
         }
         List<CompletableFuture<Optional<OFMessage>>> requests = new ArrayList<>();

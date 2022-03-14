@@ -129,7 +129,7 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
-//    @Ignore("swap is not implemented")
+    @Ignore("Manual swap for y-flow is not implemented")
     def "Able to swap main and protected paths manually for sub-flow"() {
         given: "A protected y-flow"
         def swT = topologyHelper.switchTriplets.find {
@@ -245,11 +245,11 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
         wait(WAIT_OFFSET) {
             def newPath = northbound.getFlowPath(subFlow_1.flowId)
             assert pathHelper.convert(newPath) == originalProtectedPath  // mainPath swapped to protected <-- ok
-            assert pathHelper.convert(newPath.protectedPath) == originalProtectedPath  // protected is not swapped to main  <-- issue
+            assert pathHelper.convert(newPath.protectedPath) == originalMainPath  // protected is not swapped to main  <-- issue
             verifyAll(northbound.getFlow(subFlow_1.flowId)) {
-                status == FlowState.DEGRADED.toString()
                 flowStatusDetails.mainFlowPathStatus == "Up"
                 flowStatusDetails.protectedFlowPathStatus == "Down" //should be "Down"
+                status == FlowState.DEGRADED.toString()
             }
         }
 
@@ -271,7 +271,8 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
-    @Tidy //todo this test should be deleted
+    @Tidy
+    @Ignore //todo this test should be deleted
     def "Able to delete degraded y-flow"() {
         given: "A protected y-flow"
         def swT = topologyHelper.switchTriplets.find {

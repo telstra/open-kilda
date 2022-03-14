@@ -23,7 +23,6 @@ import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsReq
 import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
-import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
@@ -39,6 +38,8 @@ import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.converters.FlowRulesConverter;
+import org.openkilda.wfm.topology.flowhs.fsm.common.converters.OfCommandConverter;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.Event;
@@ -47,7 +48,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -99,19 +99,14 @@ public class UpdateYFlowRulesAction extends
     protected InstallSpeakerCommandsRequest buildYFlowInstallRequest(SwitchId switchId, PathId pathId,
                                                                      CommandContext context) {
         List<OfCommand> ofCommands = buildYFlowOfCommands(switchId, pathId);
-        UUID commandId = commandIdGenerator.generate();
-        MessageContext messageContext = new MessageContext(commandId.toString(),
-                context.getCorrelationId());
-        return new InstallSpeakerCommandsRequest(messageContext, switchId, commandId, ofCommands);
+        return FlowRulesConverter.INSTANCE.buildFlowInstallCommand(switchId, ofCommands, context);
     }
 
     protected DeleteSpeakerCommandsRequest buildYFlowDeleteRequest(SwitchId switchId, PathId pathId,
                                                                    CommandContext context) {
         List<OfCommand> ofCommands = buildYFlowOfCommands(switchId, pathId);
-        UUID commandId = commandIdGenerator.generate();
-        MessageContext messageContext = new MessageContext(commandId.toString(),
-                context.getCorrelationId());
-        return new DeleteSpeakerCommandsRequest(messageContext, switchId, commandId, ofCommands);
+        ofCommands = OfCommandConverter.INSTANCE.reverseDependenciesForDeletion(ofCommands);
+        return FlowRulesConverter.INSTANCE.buildFlowDeleteCommand(switchId, ofCommands, context);
     }
 
     private List<OfCommand> buildYFlowOfCommands(SwitchId switchId, PathId pathId) {
@@ -121,9 +116,11 @@ public class UpdateYFlowRulesAction extends
                 .pathIds(singleton(pathId))
                 .build();
         List<SpeakerData> speakerData = ruleManager.buildRulesForSwitch(switchId, dataAdapter);
-        return speakerData.stream()
+        List<OfCommand> ofCommands = speakerData.stream()
                 .filter(data -> data instanceof FlowSpeakerData)
                 .map(data -> new FlowCommand((FlowSpeakerData) data))
                 .collect(toList());
+        // We must remove excess deps as take FlowSpeakerData only.
+        return OfCommandConverter.INSTANCE.removeExcessDependencies(ofCommands);
     }
 }

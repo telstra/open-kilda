@@ -35,6 +35,7 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.types.DatapathId;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -60,7 +61,7 @@ public class OfBatchHolder implements OfEntityBatch {
     private final Map<CookieBase, FlowSpeakerData> flowsMap = new HashMap<>();
     private final Map<GroupId, GroupSpeakerData> groupsMap = new HashMap<>();
 
-    private Map<Long, UUID> xidMapping = new HashMap<>();
+    private final Map<Long, UUID> xidMapping = new HashMap<>();
 
     public List<UUID> getCurrentStage() {
         return executionGraph.getCurrent();
@@ -70,12 +71,6 @@ public class OfBatchHolder implements OfEntityBatch {
         return executionGraph.nextStage();
     }
 
-    /**
-     * Reset in-flight xids.
-     */
-    public void resetXids() {
-        xidMapping = new HashMap<>();
-    }
 
     public void recordSuccessUuid(UUID successUuid) {
         log.debug("Record success for {}", successUuid);
@@ -164,10 +159,9 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfFlowConverter.INSTANCE.convertInstallFlowCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        BatchData batchData = BatchData.builder().flow(true).message(message).presenceBeVerified(true).build();
-        commandMap.put(data.getUuid(), batchData);
         flowsMap.put(data.getCookie(), data);
-        executionGraph.add(data.getUuid(), data.getDependsOn());
+        BatchData batchData = BatchData.builder().flow(true).message(message).presenceBeVerified(true).build();
+        addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
     @Override
@@ -176,10 +170,9 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfFlowConverter.INSTANCE.convertDeleteFlowCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        BatchData batchData = BatchData.builder().flow(true).message(message).presenceBeVerified(false).build();
-        commandMap.put(data.getUuid(), batchData);
         flowsMap.put(data.getCookie(), data);
-        executionGraph.add(data.getUuid(), data.getDependsOn());
+        BatchData batchData = BatchData.builder().flow(true).message(message).presenceBeVerified(false).build();
+        addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
     @Override
@@ -188,10 +181,9 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfMeterConverter.INSTANCE.convertInstallMeterCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        BatchData batchData = BatchData.builder().meter(true).message(message).presenceBeVerified(true).build();
-        commandMap.put(data.getUuid(), batchData);
         metersMap.put(data.getMeterId(), data);
-        executionGraph.add(data.getUuid(), data.getDependsOn());
+        BatchData batchData = BatchData.builder().meter(true).message(message).presenceBeVerified(true).build();
+        addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
     @Override
@@ -200,10 +192,9 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfMeterConverter.INSTANCE.convertDeleteMeterCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        BatchData batchData = BatchData.builder().meter(true).message(message).presenceBeVerified(false).build();
-        commandMap.put(data.getUuid(), batchData);
         metersMap.put(data.getMeterId(), data);
-        executionGraph.add(data.getUuid(), data.getDependsOn());
+        BatchData batchData = BatchData.builder().meter(true).message(message).presenceBeVerified(false).build();
+        addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
     @Override
@@ -212,10 +203,9 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfGroupConverter.INSTANCE.convertInstallGroupCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        BatchData batchData = BatchData.builder().group(true).message(message).presenceBeVerified(true).build();
-        commandMap.put(data.getUuid(), batchData);
         groupsMap.put(data.getGroupId(), data);
-        executionGraph.add(data.getUuid(), data.getDependsOn());
+        BatchData batchData = BatchData.builder().group(true).message(message).presenceBeVerified(true).build();
+        addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
     @Override
@@ -224,10 +214,16 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfGroupConverter.INSTANCE.convertDeleteGroupCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        BatchData batchData = BatchData.builder().group(true).message(message).presenceBeVerified(false).build();
-        commandMap.put(data.getUuid(), batchData);
         groupsMap.put(data.getGroupId(), data);
-        executionGraph.add(data.getUuid(), data.getDependsOn());
+        BatchData batchData = BatchData.builder().group(true).message(message).presenceBeVerified(false).build();
+        addBatchData(data.getUuid(), batchData, data.getDependsOn());
+    }
+
+    private void addBatchData(UUID uuid, BatchData batchData, Collection<UUID> dependsOn) {
+        log.debug("Add batch data (uuid={}, xid={}) with dependencies: {}", uuid, batchData.getMessage().getXid(),
+                dependsOn);
+        commandMap.put(uuid, batchData);
+        executionGraph.add(uuid, dependsOn);
     }
 
     /**

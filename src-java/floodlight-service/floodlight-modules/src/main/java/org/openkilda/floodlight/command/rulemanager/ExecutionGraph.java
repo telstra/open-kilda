@@ -17,6 +17,7 @@ package org.openkilda.floodlight.command.rulemanager;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,6 +30,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 public class ExecutionGraph {
     private final Map<UUID, Node> nodes = new HashMap<>();
     private final List<UUID> topologicalOrder = new ArrayList<>();
@@ -124,6 +126,7 @@ public class ExecutionGraph {
         Node uuidNode = ensureNode(uuid);
         for (UUID dep : dependsOn) {
             Node depNode = ensureNode(dep);
+            log.debug("Add UUID {} as dependency for {}", dep, uuid);
             uuidNode.getDepends().add(depNode);
         }
 
