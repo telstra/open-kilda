@@ -23,8 +23,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.info.event.IslChangeType;
@@ -145,7 +145,7 @@ public class NetworkPortServiceTest {
         service.updateOnlineMode(port2, OnlineStatus.ONLINE);
 
         verify(carrier).setupUniIslHandler(Endpoint.of(alphaDatapath, 2), null);
-        verifyZeroInteractions(dashboardLogger);
+        verifyNoInteractions(dashboardLogger);
 
         resetMocks();
 
@@ -196,7 +196,7 @@ public class NetworkPortServiceTest {
         service.updateLinkStatus(endpoint, LinkStatus.UP);
         service.updateLinkStatus(endpoint, LinkStatus.DOWN);
 
-        verifyZeroInteractions(dashboardLogger);
+        verifyNoInteractions(dashboardLogger);
 
         verify(carrier, never()).enableDiscoveryPoll(endpoint);
         verify(carrier, never()).disableDiscoveryPoll(endpoint);

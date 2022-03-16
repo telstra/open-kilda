@@ -24,8 +24,8 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.error.rule.SwitchSyncErrorData;
@@ -907,7 +907,7 @@ public class NetworkSwitchServiceTest {
         SpeakerSwitchView alpha = getSpeakerSwitchView();
 
         service.switchAddWithHistory(new HistoryFacts(betaDatapath, SwitchStatus.ACTIVE));
-        verifyZeroInteractions(carrier);
+        verifyNoInteractions(carrier);
 
         service.switchBecomeManaged(alpha, "A-0");
         verify(carrier).sendSwitchSynchronizeRequest(any(), eq(alpha.getDatapath()));
