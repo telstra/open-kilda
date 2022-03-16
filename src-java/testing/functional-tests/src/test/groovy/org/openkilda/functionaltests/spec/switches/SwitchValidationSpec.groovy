@@ -2,9 +2,9 @@ package org.openkilda.functionaltests.spec.switches
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
@@ -763,7 +763,7 @@ misconfigured"
         producer && producer.close()
     }
 
-    @Tags(HARDWARE)
+    @Tags(TOPOLOGY_DEPENDENT)
     def "Able to validate and sync a switch with missing 'vxlan' ingress/transit/egress rule + meter"() {
         given: "Two active not neighboring VXLAN supported switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
