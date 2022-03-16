@@ -54,6 +54,7 @@ import org.apache.commons.collections4.map.LRUMap;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -230,7 +231,7 @@ public class LagPortOperationService {
         ensureLagDataValid(sw, targetPorts);
         ensureNoLagCollisions(sw.getSwitchId(), targetPorts);
 
-        LagLogicalPort port = queryPoolManager(switchId).allocate();
+        LagLogicalPort port = queryPoolManager(switchId).allocate(entityId -> newLagLogicalPort(switchId, entityId));
         replacePhysicalPorts(port, switchId, targetPorts);
 
         log.info("Adding new LAG logical port entry into DB: {}", port);
@@ -323,6 +324,10 @@ public class LagPortOperationService {
 
     private Switch querySwitch(SwitchId switchId) throws SwitchNotFoundException {
         return switchRepository.findById(switchId).orElseThrow(() -> new SwitchNotFoundException(switchId));
+    }
+
+    private LagLogicalPort newLagLogicalPort(SwitchId switchId, long portNumber) {
+        return new LagLogicalPort(switchId, (int) portNumber, Collections.<Integer>emptyList());
     }
 
     private LagLogicalPort queryLagPort(SwitchId switchId, int logicalPortNumber) {

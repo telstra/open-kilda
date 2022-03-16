@@ -13,44 +13,47 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.service;
+package org.openkilda.wfm.share.flow.resources;
 
-import org.openkilda.model.LagLogicalPort;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.repositories.LagLogicalPortRepository;
+import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.wfm.share.utils.PoolEntityAdapter;
+import org.openkilda.wfm.share.utils.PoolManager;
+import org.openkilda.wfm.share.utils.PoolManager.PoolConfig;
 
 import java.util.Optional;
 
-public class LagPortPoolEntityAdapter implements PoolEntityAdapter {
-    private final LagPortOperationConfig config;
-    private final LagLogicalPortRepository repository;
-
+public class MeterIdPoolEntityAdapter implements PoolEntityAdapter {
+    private final PoolManager.PoolConfig config;
     private final SwitchId switchId;
 
-    public LagPortPoolEntityAdapter(
-            LagPortOperationConfig config, LagLogicalPortRepository repository, SwitchId switchId) {
+    private final FlowMeterRepository flowMeterRepository;
+
+    public MeterIdPoolEntityAdapter(FlowMeterRepository flowMeterRepository, PoolConfig config, SwitchId switchId) {
         this.config = config;
-        this.repository = repository;
         this.switchId = switchId;
+        this.flowMeterRepository = flowMeterRepository;
     }
 
     @Override
     public boolean allocateSpecificId(long entityId) {
-        Optional<LagLogicalPort> existing = repository.findBySwitchIdAndPortNumber(switchId, (int) entityId);
-        return ! existing.isPresent();
+        MeterId entity = new MeterId(entityId);
+        return ! flowMeterRepository.exists(switchId, entity);
     }
 
     @Override
     public Optional<Long> allocateFirstInRange(long idMinimum, long idMaximum) {
-        return repository.findUnassignedPortInRange(switchId, (int) idMinimum, (int) idMaximum)
-                .map(Long.class::cast);
+        MeterId first = new MeterId(idMinimum);
+        MeterId last = new MeterId(idMaximum);
+        return flowMeterRepository.findFirstUnassignedMeter(switchId, first, last)
+                .map(MeterId::getValue);
     }
 
     @Override
     public String formatResourceNotAvailableMessage() {
         return String.format(
-                "Unable to find any unassigned LAG logical port number for switch %s in range from %d to %d",
-                switchId, config.getPoolConfig().getIdMinimum(), config.getPoolConfig().getIdMaximum());
+                "Unable to find any unassigned MeterId for switch %s in range from %d to %d",
+                switchId, config.getIdMinimum(), config.getIdMaximum());
     }
 }

@@ -32,12 +32,12 @@ public class PoolManagerTest {
         PoolConfig config = newConfig();
         PoolManager<Long> poolManager = newPoolManager(config, adapter);
 
-        Assert.assertEquals(0L, (long) poolManager.allocate());
+        Assert.assertEquals(0L, (long) poolManager.allocate(this::dummyAllocate));
         for (int idx = 1; idx <= config.getIdMaximum(); idx++) {
-            Assert.assertEquals(idx, (long) poolManager.allocate());
+            Assert.assertEquals(idx, (long) poolManager.allocate(this::dummyAllocate));
         }
 
-        Assert.assertThrows(ResourceNotAvailableException.class, poolManager::allocate);
+        Assert.assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
     }
 
     @Test
@@ -53,8 +53,8 @@ public class PoolManagerTest {
         }
 
         PoolManager<Long> poolManager = newPoolManager(config, adapter);
-        Assert.assertEquals(config.getIdMinimum(), (long) poolManager.allocate());
-        Assert.assertEquals(chunkSize + 1, (long) poolManager.allocate());
+        Assert.assertEquals(config.getIdMinimum(), (long) poolManager.allocate(this::dummyAllocate));
+        Assert.assertEquals(chunkSize + 1, (long) poolManager.allocate(this::dummyAllocate));
     }
 
     @Test
@@ -70,12 +70,12 @@ public class PoolManagerTest {
         }
 
         PoolManager<Long> poolManager = newPoolManager(config, adapter);
-        Assert.assertThrows(ResourceNotAvailableException.class, poolManager::allocate);
+        Assert.assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
 
         adapter.release(config.getIdMinimum() + 1);
-        Assert.assertEquals(config.getIdMinimum() + 1, (long) poolManager.allocate());
+        Assert.assertEquals(config.getIdMinimum() + 1, (long) poolManager.allocate(this::dummyAllocate));
 
-        Assert.assertThrows(ResourceNotAvailableException.class, poolManager::allocate);
+        Assert.assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
     }
 
     @Test
@@ -92,10 +92,10 @@ public class PoolManagerTest {
 
         PoolManager<Long> poolManager = newPoolManager(config, adapter);
         for (long idx = 0; idx <= config.getChunksCount(); idx++) {
-            Long entry = poolManager.allocate();
+            Long entry = poolManager.allocate(this::dummyAllocate);
             Assert.assertEquals(idx * chunkSize, (long) entry);
         }
-        Assert.assertThrows(ResourceNotAvailableException.class, poolManager::allocate);
+        Assert.assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
     }
 
     @Test
@@ -112,11 +112,11 @@ public class PoolManagerTest {
 
         PoolManager<Long> poolManager = newPoolManager(config, adapter);
         for (long idx = 0; idx < config.getChunksCount() - 1; idx++) {
-            Long entry = poolManager.allocate();
+            Long entry = poolManager.allocate(this::dummyAllocate);
             Assert.assertEquals((idx + 1) * chunkSize - 1, (long) entry);
         }
-        Assert.assertEquals(config.getIdMaximum(), (long) poolManager.allocate());
-        Assert.assertThrows(ResourceNotAvailableException.class, poolManager::allocate);
+        Assert.assertEquals(config.getIdMaximum(), (long) poolManager.allocate(this::dummyAllocate));
+        Assert.assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
     }
 
     @Test
@@ -125,16 +125,20 @@ public class PoolManagerTest {
         InMemorySetPoolEntityAdapter adapter = new InMemorySetPoolEntityAdapter();
         PoolManager<Long> poolManager = newPoolManager(config, adapter);
         for (int idx = 0; idx <= config.getIdMaximum(); idx++) {
-            Assert.assertEquals(idx, (long) poolManager.allocate());
+            Assert.assertEquals(idx, (long) poolManager.allocate(this::dummyAllocate));
         }
-        Assert.assertThrows(ResourceNotAvailableException.class, poolManager::allocate);
+        Assert.assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
+    }
+
+    private Long dummyAllocate(Long entityId) {
+        return entityId;
     }
 
     private PoolManager.PoolConfig newConfig() {
         return new PoolManager.PoolConfig(0, 20, 4);
     }
 
-    private PoolManager<Long> newPoolManager(PoolManager.PoolConfig config, PoolEntityAdapter<Long> adapter) {
+    private PoolManager<Long> newPoolManager(PoolManager.PoolConfig config, PoolEntityAdapter adapter) {
         return new PredictablePoolManager<>(config, adapter);
     }
 }
