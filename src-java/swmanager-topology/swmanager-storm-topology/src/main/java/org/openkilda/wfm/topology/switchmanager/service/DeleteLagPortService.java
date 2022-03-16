@@ -87,7 +87,7 @@ public class DeleteLagPortService implements SwitchManagerHubService {
     }
 
     @Override
-    public void dispatchWorkerMessage(ErrorData payload, MessageCookie cookie) throws MessageDispatchException {
+    public void dispatchErrorMessage(ErrorData payload, MessageCookie cookie) throws MessageDispatchException {
         DeleteLagContext context = DeleteLagContext.builder()
                 .error(new SpeakerFailureException(payload))
                 .build();

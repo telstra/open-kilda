@@ -25,7 +25,6 @@ import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.error.MessageDispatchException;
 import org.openkilda.wfm.error.UnexpectedInputException;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
@@ -35,6 +34,7 @@ import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateContext;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
+import org.openkilda.wfm.topology.switchmanager.model.SwitchEntities;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
@@ -55,7 +55,6 @@ public class SwitchValidateService implements SwitchManagerHubService {
     private final Map<String, SwitchValidateFsm> handlers = new HashMap<>();
 
     private final ValidationService validationService;
-    private final RuleManager ruleManager;
     private final StateMachineBuilder<
             SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, SwitchValidateContext> builder;
     private final FsmExecutor<
@@ -67,13 +66,11 @@ public class SwitchValidateService implements SwitchManagerHubService {
     private boolean active = true;
 
     public SwitchValidateService(
-            SwitchManagerCarrier carrier, PersistenceManager persistenceManager, ValidationService validationService,
-            RuleManager ruleManager) {
+            SwitchManagerCarrier carrier, PersistenceManager persistenceManager, ValidationService validationService) {
         this.carrier = carrier;
         this.builder = SwitchValidateFsm.builder();
         this.fsmExecutor = new FsmExecutor<>(SwitchValidateEvent.NEXT);
         this.validationService = validationService;
-        this.ruleManager = ruleManager;
         this.persistenceManager = persistenceManager;
     }
 
@@ -95,17 +92,29 @@ public class SwitchValidateService implements SwitchManagerHubService {
             handleMeterEntriesResponse((MeterDumpResponse) payload, cookie);
         } else if (payload instanceof SwitchMeterUnsupported) {
             handleMetersUnsupportedResponse(cookie);
+        } else if (payload instanceof SwitchEntities) {
+            handleExpectedSwitchEntities((SwitchEntities) payload, cookie);
         } else {
             throw new UnexpectedInputException(payload);
         }
     }
 
     @Override
-    public void dispatchWorkerMessage(ErrorData payload, MessageCookie cookie) throws MessageDispatchException {
+    public void dispatchErrorMessage(ErrorData payload, MessageCookie cookie) throws MessageDispatchException {
         SwitchValidateContext context = SwitchValidateContext.builder()
                 .error(new SpeakerFailureException(payload))
                 .build();
         handle(cookie, SwitchValidateEvent.ERROR, context);
+    }
+
+    @Override
+    public void dispatchHeavyOperationMessage(InfoData payload, MessageCookie cookie)
+            throws UnexpectedInputException, MessageDispatchException {
+        if (payload instanceof SwitchEntities) {
+            handleExpectedSwitchEntities((SwitchEntities) payload, cookie);
+        } else {
+            throw new UnexpectedInputException(payload);
+        }
     }
 
     /**
@@ -114,8 +123,7 @@ public class SwitchValidateService implements SwitchManagerHubService {
     public void handleSwitchValidateRequest(String key, SwitchValidateRequest request) {
         SwitchValidateFsm fsm =
                 builder.newStateMachine(
-                        SwitchValidateState.START, carrier, key, request, validationService, ruleManager,
-                        persistenceManager);
+                        SwitchValidateState.START, carrier, key, request, validationService, persistenceManager);
         MeterRegistryHolder.getRegistry().ifPresent(registry -> {
             Sample sample = LongTaskTimer.builder("fsm.active_execution")
                     .register(registry)
@@ -163,6 +171,12 @@ public class SwitchValidateService implements SwitchManagerHubService {
 
     private void handleMetersUnsupportedResponse(MessageCookie key) throws MessageDispatchException {
         handle(key, SwitchValidateEvent.METERS_UNSUPPORTED, SwitchValidateContext.builder().build());
+    }
+
+    private void handleExpectedSwitchEntities(SwitchEntities expectedSwitchEntities, MessageCookie key)
+            throws MessageDispatchException {
+        handle(key, SwitchValidateEvent.EXPECTED_ENTITIES_BUILT, SwitchValidateContext.builder()
+                .expectedEntities(expectedSwitchEntities.getEntities()).build());
     }
 
     private void handle(MessageCookie cookie, SwitchValidateEvent event, SwitchValidateContext context)

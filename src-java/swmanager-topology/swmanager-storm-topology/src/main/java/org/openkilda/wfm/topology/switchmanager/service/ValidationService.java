@@ -20,6 +20,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
@@ -38,4 +39,6 @@ public interface ValidationService {
 
     ValidateMetersResult validateMeters(SwitchId switchId, List<MeterSpeakerData> presentMeters,
                                         List<MeterSpeakerData> expectedMeters);
+
+    List<SpeakerData> buildExpectedEntities(SwitchId switchId);
 }

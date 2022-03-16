@@ -35,7 +35,10 @@ public interface SwitchManagerHubService {
     void dispatchWorkerMessage(InfoData payload, MessageCookie cookie)
             throws UnexpectedInputException, MessageDispatchException;
 
-    void dispatchWorkerMessage(ErrorData payload, MessageCookie cookie) throws MessageDispatchException;
+    void dispatchErrorMessage(ErrorData payload, MessageCookie cookie) throws MessageDispatchException;
+
+    default void dispatchHeavyOperationMessage(InfoData payload, MessageCookie cookie)
+            throws UnexpectedInputException, MessageDispatchException {}
 
     SwitchManagerCarrier getCarrier();
 }

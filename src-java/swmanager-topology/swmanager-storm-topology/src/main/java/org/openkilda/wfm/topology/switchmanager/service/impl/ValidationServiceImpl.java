@@ -29,6 +29,7 @@ import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.FlowMeter;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
@@ -40,6 +41,9 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.SpeakerData;
+import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.mappers.GroupEntryConverter;
 import org.openkilda.wfm.topology.switchmanager.mappers.LogicalPortMapper;
@@ -74,16 +78,37 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class ValidationServiceImpl implements ValidationService {
+    private final PersistenceManager persistenceManager;
     private final SwitchRepository switchRepository;
     private final LagLogicalPortRepository lagLogicalPortRepository;
     private final FlowMeterRepository flowMeterRepository;
     private final FlowPathRepository flowPathRepository;
+    private final RuleManager ruleManager;
 
-    public ValidationServiceImpl(PersistenceManager persistenceManager) {
+    public ValidationServiceImpl(PersistenceManager persistenceManager, RuleManager ruleManager) {
+        this.persistenceManager = persistenceManager;
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.lagLogicalPortRepository = persistenceManager.getRepositoryFactory().createLagLogicalPortRepository();
         this.flowMeterRepository = persistenceManager.getRepositoryFactory().createFlowMeterRepository();
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        this.ruleManager = ruleManager;
+    }
+
+    @Override
+    public List<SpeakerData> buildExpectedEntities(SwitchId switchId) {
+        Set<PathId> flowPathIds = flowPathRepository.findBySegmentSwitch(switchId).stream()
+                .map(FlowPath::getPathId)
+                .collect(Collectors.toSet());
+        flowPathIds.addAll(flowPathRepository.findByEndpointSwitch(switchId).stream()
+                .map(FlowPath::getPathId)
+                .collect(Collectors.toSet()));
+        PersistenceDataAdapter dataAdapter = PersistenceDataAdapter.builder()
+                .persistenceManager(persistenceManager)
+                .switchIds(Collections.singleton(switchId))
+                .pathIds(flowPathIds)
+                .keepMultitableForFlow(true)
+                .build();
+        return ruleManager.buildRulesForSwitch(switchId, dataAdapter);
     }
 
     @Override

@@ -191,7 +191,7 @@ public class SwitchSyncServiceTest {
         verify(carrier).sendCommandToSpeaker(eq(KEY), any(InstallFlowForSwitchManagerRequest.class));
 
         ErrorMessage errorMessage = getErrorMessage();
-        service.dispatchWorkerMessage(errorMessage.getData(), new MessageCookie(KEY));
+        service.dispatchErrorMessage(errorMessage.getData(), new MessageCookie(KEY));
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).response(eq(KEY), any(ErrorMessage.class));
@@ -210,7 +210,7 @@ public class SwitchSyncServiceTest {
         service.handleSwitchSync(KEY, request, makeValidationResult());
         verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
 
-        service.dispatchWorkerMessage(getErrorMessage().getData(), new MessageCookie(KEY));
+        service.dispatchErrorMessage(getErrorMessage().getData(), new MessageCookie(KEY));
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).response(eq(KEY), any(ErrorMessage.class));
