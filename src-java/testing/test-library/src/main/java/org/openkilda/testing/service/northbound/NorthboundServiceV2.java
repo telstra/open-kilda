@@ -122,6 +122,8 @@ public interface NorthboundServiceV2 {
 
     LagPortResponse createLagLogicalPort(SwitchId switchId, LagPortRequest payload);
 
+    LagPortResponse updateLagLogicalPort(SwitchId switchId, Integer logicalPortNumber, LagPortRequest payload);
+
     LagPortResponse deleteLagLogicalPort(SwitchId switchId, Integer logicalPortNumber);
 
     //links
