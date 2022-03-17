@@ -768,7 +768,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(LOW_PRIORITY)
-    @Ignore("https://github.com/telstra/open-kilda/issues/4411")
     def "Able to update vlanId via partialUpdate in case vlanId==0 and innerVlanId!=0"() {
         given: "A default flow"
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")

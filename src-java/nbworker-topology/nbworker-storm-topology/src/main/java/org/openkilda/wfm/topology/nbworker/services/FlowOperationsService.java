@@ -386,9 +386,9 @@ public class FlowOperationsService {
         Flow updatedFlow = updateFlowResult.getUpdatedFlow();
         if (updateFlowResult.isNeedUpdateFlow()) {
             FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(updatedFlow);
-            addChangedFields(flowRequest, flowPatch);
+            FlowRequest changedRequest = addChangedFields(flowRequest, flowPatch);
             flowDashboardLogger.onFlowPatchUpdate(RequestedFlowMapper.INSTANCE.toFlow(flowRequest));
-            carrier.sendUpdateRequest(addChangedFields(flowRequest, flowPatch));
+            carrier.sendUpdateRequest(changedRequest);
         } else {
             flowDashboardLogger.onFlowPatchUpdate(updatedFlow);
             carrier.sendNorthboundResponse(buildFlowResponse(updatedFlow));
