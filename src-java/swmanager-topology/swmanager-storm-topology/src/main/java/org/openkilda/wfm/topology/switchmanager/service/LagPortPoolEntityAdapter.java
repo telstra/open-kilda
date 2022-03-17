@@ -44,7 +44,7 @@ public class LagPortPoolEntityAdapter implements PoolEntityAdapter {
     @Override
     public Optional<Long> allocateFirstInRange(long idMinimum, long idMaximum) {
         return repository.findUnassignedPortInRange(switchId, (int) idMinimum, (int) idMaximum)
-                .map(Long.class::cast);
+                .map(Long::new);
     }
 
     @Override
