@@ -376,7 +376,7 @@ public class FlowServiceImpl implements FlowService {
         // TODO: Need a getFlowIDs .. since that is all we need
         CompletableFuture<List<FlowResponsePayload>> getFlowsStage = this.getAllFlows();
         final String correlationId = RequestCorrelationId.getId();
-
+        List<String> failedFlows = Collections.synchronizedList(new ArrayList<>());
         getFlowsStage.thenApply(flows -> {
             List<CompletableFuture<?>> deletionRequests = new ArrayList<>();
             for (int i = 0; i < flows.size(); i++) {
@@ -386,12 +386,29 @@ public class FlowServiceImpl implements FlowService {
                     // Skip y-sub-flows.
                     continue;
                 }
-                deletionRequests.add(sendDeleteFlow(flow.getId(), requestId));
+                CompletableFuture<FlowResponsePayload> request = sendDeleteFlow(flow.getId(), requestId)
+                        .handle((value, possibleException) -> {
+                            if (possibleException != null) {
+                                failedFlows.add(flow.getId());
+                            }
+                            return value;
+                        });
+                deletionRequests.add(request);
             }
             return deletionRequests;
         }).thenApply(requests -> collectResponses(requests, FlowResponsePayload.class)
-                .thenApply(result::complete));
-
+                .thenApply(results -> {
+                    if (!failedFlows.isEmpty()) {
+                        StringBuilder errorBuilder = new StringBuilder("The following flows haven't been deleted: ");
+                        result.completeExceptionally(new MessageException(correlationId,
+                                System.currentTimeMillis(),
+                                ErrorType.REQUEST_INVALID,
+                                "Couldn't delete flow",
+                                errorBuilder.append(String.join(", ", failedFlows))
+                                        .toString()));
+                    }
+                    return result.complete(results);
+                }));
         return result;
     }
 

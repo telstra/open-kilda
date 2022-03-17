@@ -45,6 +45,7 @@ import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.MeterFlag;
 import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.OfVersion;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.topology.switchmanager.mappers.LogicalPortMapper;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
@@ -55,6 +56,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.junit.Test;
+import org.mockito.Mock;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -89,9 +91,12 @@ public class ValidationServiceImplTest {
     public static final int PHYSICAL_PORT_6 = 6;
     public static final int PHYSICAL_PORT_7 = 7;
 
+    @Mock
+    private RuleManager ruleManager;
+
     @Test
     public void validateRulesEmpty() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, emptyList(), emptyList());
         assertTrue(response.getMissingRules().isEmpty());
         assertTrue(response.getProperRules().isEmpty());
@@ -100,7 +105,7 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateRules() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
         List<FlowSpeakerData> actualFlows = Lists.newArrayList(
                 FlowSpeakerData.builder().cookie(new Cookie(0x8000000000000001L)).priority(1).build(),
                 FlowSpeakerData.builder().cookie(new Cookie(0x8000000000000001L)).priority(2).build(),
@@ -122,7 +127,7 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersEmpty() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_A, emptyList(), emptyList());
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -132,7 +137,7 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersProperMeters() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
         MeterSpeakerData meter = MeterSpeakerData.builder()
                 .meterId(new MeterId(32))
                 .rate(10000)
@@ -153,7 +158,7 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersMisconfiguredMeters() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
         MeterSpeakerData actualMeter = MeterSpeakerData.builder()
                 .meterId(new MeterId(32))
                 .rate(10002)
@@ -188,7 +193,7 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersMissingAndExcessMeters() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
         MeterSpeakerData actualMeter = MeterSpeakerData.builder()
                 .meterId(new MeterId(33))
                 .rate(10000)
@@ -216,7 +221,7 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersProperMetersESwitch() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
         long rateESwitch = FLOW_E_BANDWIDTH + (long) (FLOW_E_BANDWIDTH * 0.01) - 1;
         long burstSize = (long) (FLOW_E_BANDWIDTH * 1.05);
         long burstSizeESwitch = burstSize + (long) (burstSize * 0.01) - 1;
@@ -241,7 +246,7 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersMisconfiguredMetersESwitch() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
         long rateESwitch = FLOW_E_BANDWIDTH + (long) (FLOW_E_BANDWIDTH * 0.01) + 1;
         long burstSize = (long) (FLOW_E_BANDWIDTH * 1.05);
         long burstSizeESwitch = burstSize + (long) (burstSize * 0.01) + 1;
@@ -272,7 +277,7 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateLogicalPorts() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
 
         LogicalPort proper = buildLogicalPort(LOGICAL_PORT_NUMBER_1, PHYSICAL_PORT_2, PHYSICAL_PORT_1);
         LogicalPort misconfigured = buildLogicalPort(LOGICAL_PORT_NUMBER_2, LogicalPortType.BFD, PHYSICAL_PORT_3);
@@ -318,7 +323,7 @@ public class ValidationServiceImplTest {
 
     @Test
     public void calculateMisconfiguredLogicalPortDifferentPortOrderTest() {
-        ValidationServiceImpl validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationServiceImpl validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
 
         LogicalPortInfoEntry actual = LogicalPortInfoEntry.builder()
                 .type(org.openkilda.messaging.info.switches.LogicalPortType.LAG)

@@ -27,6 +27,7 @@ import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.switchmanager.bolt.HeavyOperationBolt;
 import org.openkilda.wfm.topology.switchmanager.bolt.SpeakerWorkerBolt;
 import org.openkilda.wfm.topology.switchmanager.bolt.SwitchManagerHub;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -88,6 +89,7 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 SwitchManagerHub.ID)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID)
                 .fieldsGrouping(HUB_SPOUT, FIELDS_KEY)
+                .directGrouping(HeavyOperationBolt.ID, SwitchManagerHub.INCOME_STREAM)
                 .directGrouping(SpeakerWorkerBolt.ID, SwitchManagerHub.INCOME_STREAM)
                 .directGrouping(CoordinatorBolt.ID);
 
@@ -104,6 +106,11 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 .fieldsGrouping(WORKER_SPOUT, FIELDS_KEY)
                 .fieldsGrouping(SwitchManagerHub.ID, SpeakerWorkerBolt.INCOME_STREAM, FIELDS_KEY)
                 .directGrouping(CoordinatorBolt.ID);
+
+        declareBolt(builder, new HeavyOperationBolt(
+                persistenceManager, configurationProvider.getConfiguration(RuleManagerConfig.class)),
+                HeavyOperationBolt.ID)
+                .shuffleGrouping(SwitchManagerHub.ID, HeavyOperationBolt.INCOME_STREAM);
 
         declareBolt(builder, buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic()), NB_KAFKA_BOLT)
                 .shuffleGrouping(SwitchManagerHub.ID, StreamType.TO_NORTHBOUND.toString());

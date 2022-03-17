@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowMeter;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.MirrorDirection;
@@ -28,14 +29,18 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
+import org.openkilda.persistence.repositories.FlowMeterRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanPool;
 import org.openkilda.wfm.share.flow.resources.vxlan.VxlanPool;
+import org.openkilda.wfm.share.utils.PoolManager;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.map.LRUMap;
 
 import java.util.Map;
 import java.util.Optional;
@@ -48,19 +53,29 @@ public class FlowResourcesManager {
     private static final int MAX_ALLOCATION_ATTEMPTS = 5;
 
     private final TransactionManager transactionManager;
+    private final FlowMeterRepository flowMeterRepository;
 
     private final CookiePool cookiePool;
-    private final MeterPool meterPool;
     private final MirrorGroupIdPool mirrorGroupIdPool;
+
+    private final LRUMap<SwitchId, PoolManager<FlowMeter>> meterIdPools;
+    private final PoolManager.PoolConfig meterIdPoolConfig;
+
     private final Map<FlowEncapsulationType, EncapsulationResourcesProvider> encapsulationResourcesProviders;
 
     public FlowResourcesManager(PersistenceManager persistenceManager, FlowResourcesConfig config) {
         transactionManager = persistenceManager.getTransactionManager();
 
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        flowMeterRepository = repositoryFactory.createFlowMeterRepository();
+
         this.cookiePool = new CookiePool(persistenceManager, config.getMinFlowCookie(), config.getMaxFlowCookie(),
                 POOL_SIZE);
-        this.meterPool = new MeterPool(persistenceManager,
-                new MeterId(config.getMinFlowMeterId()), new MeterId(config.getMaxFlowMeterId()), POOL_SIZE);
+
+        meterIdPools = new LRUMap<>(config.getPoolsCacheSizeMeterId());
+        meterIdPoolConfig = new PoolManager.PoolConfig(
+                config.getMinFlowMeterId(), config.getMaxFlowMeterId(), config.getPoolChunksCountMeterId());
+
         this.mirrorGroupIdPool = new MirrorGroupIdPool(persistenceManager,
                 new GroupId(config.getMinGroupId()), new GroupId(config.getMaxGroupId()), POOL_SIZE);
 
@@ -111,8 +126,8 @@ public class FlowResourcesManager {
                 .pathId(reversePathId);
 
         if (flow.getBandwidth() > 0L) {
-            forward.meterId(meterPool.allocate(flow.getSrcSwitchId(), flow.getFlowId(), forwardPathId));
-            reverse.meterId(meterPool.allocate(flow.getDestSwitchId(), flow.getFlowId(), reversePathId));
+            forward.meterId(allocatePathMeter(flow.getSrcSwitchId(), flow.getFlowId(), forwardPathId));
+            reverse.meterId(allocatePathMeter(flow.getDestSwitchId(), flow.getFlowId(), reversePathId));
         }
 
         if (!flow.isOneSwitchFlow()) {
@@ -155,7 +170,7 @@ public class FlowResourcesManager {
 
         transactionManager.doInTransaction(() -> {
             cookiePool.deallocate(unmaskedCookie);
-            meterPool.deallocate(pathId);
+            deallocatePathMeter(pathId);
 
             EncapsulationResourcesProvider encapsulationResourcesProvider =
                     getEncapsulationResourcesProvider(encapsulationType);
@@ -174,10 +189,9 @@ public class FlowResourcesManager {
         transactionManager.doInTransaction(() -> {
             cookiePool.deallocate(resources.getUnmaskedCookie());
 
-            meterPool.deallocate(resources.getForward().getPathId(), resources.getReverse().getPathId());
-
             Stream.of(resources.getForward(), resources.getReverse())
                     .forEach(path -> {
+                        deallocatePathMeter(path.getPathId());
                         EncapsulationResources encapsulationResources = path.getEncapsulationResources();
                         if (encapsulationResources != null) {
                             getEncapsulationResourcesProvider(encapsulationResources.getEncapsulationType())
@@ -244,8 +258,10 @@ public class FlowResourcesManager {
      */
     public MeterId allocateMeter(String flowId, SwitchId switchId) throws ResourceAllocationException {
         try {
-            return meterPool.allocate(switchId, flowId, null);
-        } catch (ConstraintViolationException | ResourceNotAvailableException ex) {
+            FlowMeter flowMeter = newFlowMeter(switchId, flowId);
+            flowMeterRepository.add(flowMeter);
+            return flowMeter.getMeterId();
+        } catch (ResourceNotAvailableException ex) {
             throw new ResourceAllocationException(
                     format("Unable to allocate meter for flow %s on switch %s", flowId, switchId), ex);
         }
@@ -255,6 +271,52 @@ public class FlowResourcesManager {
      * Deallocates a meter.
      */
     public void deallocateMeter(SwitchId switchId, MeterId meterId) {
-        meterPool.deallocate(switchId, meterId);
+        transactionManager.doInTransaction(
+                () -> flowMeterRepository
+                        .findById(switchId, meterId)
+                        .ifPresent(this::deallocateFlowMeter));
+    }
+
+    private MeterId allocatePathMeter(SwitchId switchId, String flowId, PathId pathId) {
+        FlowMeter flowMeter = newFlowMeter(switchId, flowId, pathId);
+        flowMeterRepository.add(flowMeter);
+        return flowMeter.getMeterId();
+    }
+
+    private void deallocatePathMeter(PathId pathId) {
+        flowMeterRepository.findByPathId(pathId)
+                .ifPresent(this::deallocateFlowMeter);
+    }
+
+    private void deallocateFlowMeter(FlowMeter entity) {
+        queryMeterIdPoolManager(entity.getSwitchId())
+                .deallocate(() -> {
+                    flowMeterRepository.remove(entity);
+                    return entity.getMeterId().getValue();
+                });
+    }
+
+    private FlowMeter newFlowMeter(SwitchId switchId, String flowId) {
+        return newFlowMeter(switchId, flowId, null);
+    }
+
+    private FlowMeter newFlowMeter(SwitchId switchId, String flowId, PathId pathId) {
+        return queryMeterIdPoolManager(switchId).allocate(entityId ->
+                FlowMeter.builder()
+                        .switchId(switchId)
+                        .flowId(flowId)
+                        .pathId(pathId)
+                        .meterId(new MeterId(entityId))
+                        .build());
+    }
+
+    private PoolManager<FlowMeter> queryMeterIdPoolManager(SwitchId switchId) {
+        return meterIdPools.computeIfAbsent(switchId, this::newMeterIdPoolManager);
+    }
+
+    private PoolManager<FlowMeter> newMeterIdPoolManager(SwitchId switchId) {
+        MeterIdPoolEntityAdapter adapter = new MeterIdPoolEntityAdapter(
+                flowMeterRepository, meterIdPoolConfig, switchId);
+        return new PoolManager<>(meterIdPoolConfig, adapter);
     }
 }

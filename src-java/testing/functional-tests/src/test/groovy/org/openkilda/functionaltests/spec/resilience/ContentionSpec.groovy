@@ -89,6 +89,7 @@ class ContentionSpec extends BaseSpecification {
     }
 
     @Tidy
+    @Ignore("https://github.com/telstra/open-kilda/issues/4711")
     def "Reroute can be simultaneously performed with sync rules requests, removeExcess=#removeExcess"() {
         given: "A flow with reroute potential"
         def switches = topologyHelper.getNotNeighboringSwitchPair()

@@ -37,6 +37,14 @@ public interface FlowResourcesConfig extends Serializable {
     @Default("2500")
     int getMaxFlowMeterId();
 
+    @Key("flow.meter-id.pool.chunks.count")
+    @Default("10")
+    int getPoolChunksCountMeterId();
+
+    @Key("flow.meter-id.pools.cache.size")
+    @Default("128")
+    int getPoolsCacheSizeMeterId();
+
     /**
      * Minimum vlan value for flows.
      */

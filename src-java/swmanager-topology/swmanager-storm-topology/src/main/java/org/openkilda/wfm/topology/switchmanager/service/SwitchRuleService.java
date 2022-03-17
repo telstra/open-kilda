@@ -89,7 +89,7 @@ public class SwitchRuleService implements SwitchManagerHubService {
     }
 
     @Override
-    public void dispatchWorkerMessage(ErrorData payload, MessageCookie cookie) {
+    public void dispatchErrorMessage(ErrorData payload, MessageCookie cookie) {
         // FIXME(surabujin): the service completely ignores error responses
         log.error("Got speaker error response: {} (request key: {})", payload, cookie.getValue());
     }

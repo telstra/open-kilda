@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.floodlightrouter.service;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
 
 import org.openkilda.messaging.command.BroadcastWrapper;
 import org.openkilda.messaging.command.CommandMessage;
@@ -64,7 +63,7 @@ public class ControllerToSpeakerProxyServiceTest {
         subject.switchMappingUpdate(new RegionMappingAdd(SWITCH_GAMMA, REGION_MANAGEMENT, false));
         subject.switchMappingUpdate(new RegionMappingAdd(SWITCH_GAMMA, REGION_MANAGEMENT, true));
 
-        verifyZeroInteractions(carrier);
+        verifyNoMoreInteractions(carrier);
 
         String correlationId = "dummy-request";
         StatsRequest request = new StatsRequest();

@@ -102,6 +102,13 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
         }
 
+        //todo remove in case no traffic on jenkins
+        and: "Flow is pingable"
+        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
+            forward.pingSuccess
+            reverse.pingSuccess
+        }
+
         and: "The flow allows traffic"
         def traffExam = traffExamProvider.get()
         def exam

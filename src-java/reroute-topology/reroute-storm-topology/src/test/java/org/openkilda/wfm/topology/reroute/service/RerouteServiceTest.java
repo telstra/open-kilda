@@ -28,7 +28,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -504,7 +504,7 @@ public class RerouteServiceTest {
         RerouteAffectedFlows request = new RerouteAffectedFlows(islSide, "dummy-reason - unittest");
         rerouteService.rerouteAffectedFlows(carrier, CORRELATION_ID, request);
 
-        verifyZeroInteractions(carrier);
+        verifyNoInteractions(carrier);
     }
 
     @Test

@@ -28,6 +28,7 @@ src/main/webapp/lib/font/*
 src/main/webapp/ui/assets/*
 src/main/webapp/ui/*.js
 src/main/webapp/ui/*.js.map
+src/main/webapp/ui/*.js.LICENSE.txt
 ui/node_modules
 ui/package-lock.json
 src/main/webapp/ui/index.html
