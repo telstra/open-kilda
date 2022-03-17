@@ -36,7 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class FlowSwapEndpointsHubService extends FlowProcessingService<FlowSwapEndpointsFsm, Event,
-        FlowSwapEndpointsContext, FlowSwapEndpointsHubCarrier, FsmRegister<FlowSwapEndpointsFsm>,
+        FlowSwapEndpointsContext, FlowSwapEndpointsHubCarrier, FsmRegister<String, FlowSwapEndpointsFsm>,
         FlowProcessingEventListener> {
     private final FlowSwapEndpointsFsm.Factory fsmFactory;
 

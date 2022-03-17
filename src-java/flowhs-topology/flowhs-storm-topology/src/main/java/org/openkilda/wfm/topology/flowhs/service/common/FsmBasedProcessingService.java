@@ -17,24 +17,17 @@ package org.openkilda.wfm.topology.flowhs.service.common;
 
 import org.openkilda.wfm.share.utils.FsmExecutor;
 
-import lombok.AccessLevel;
-import lombok.Getter;
 import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.util.HashSet;
 import java.util.Set;
 
-@Slf4j
 public abstract class FsmBasedProcessingService<T extends AbstractStateMachine<T, ?, E, C>, E, C,
-        F extends FsmRegister<T>, L extends ProcessingEventListener> {
+        F extends FsmRegister<?, ?>, L extends ProcessingEventListener> extends FlowHsService {
     protected final F fsmRegister;
     protected final FsmExecutor<T, ?, E, C> fsmExecutor;
     protected final Set<L> eventListeners = new HashSet<>();
-
-    @Getter(AccessLevel.PROTECTED)
-    private boolean active;
 
     protected FsmBasedProcessingService(@NonNull F fsmRegister,
                                         @NonNull FsmExecutor<T, ?, E, C> fsmExecutor) {
@@ -46,18 +39,9 @@ public abstract class FsmBasedProcessingService<T extends AbstractStateMachine<T
         eventListeners.add(eventListener);
     }
 
-    /**
-     * Handles deactivate command.
-     */
+    @Override
     public boolean deactivate() {
-        active = false;
+        super.deactivate();
         return !fsmRegister.hasAnyRegisteredFsm();
-    }
-
-    /**
-     * Handles activate command.
-     */
-    public void activate() {
-        active = true;
     }
 }

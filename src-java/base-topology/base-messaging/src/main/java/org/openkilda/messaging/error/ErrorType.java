@@ -66,6 +66,8 @@ public enum ErrorType {
      */
     ALREADY_EXISTS("Object already exists"),
 
+    BUSY("Operation can't be processed at this moment"),
+
     /**
      * The error message for invalid request data.
      */

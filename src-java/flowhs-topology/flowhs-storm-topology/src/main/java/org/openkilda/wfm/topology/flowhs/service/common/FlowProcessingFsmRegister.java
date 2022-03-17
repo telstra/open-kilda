@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
-public class FlowProcessingFsmRegister<T extends FlowProcessingFsm<T, ?, ?, ?, ?>> extends FsmRegister<T> {
+public class FlowProcessingFsmRegister<T extends FlowProcessingFsm<T, ?, ?, ?, ?>> extends FsmRegister<String, T> {
     private final Map<String, String> keyByFlowId = new HashMap<>();
 
     @Override

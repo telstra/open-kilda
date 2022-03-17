@@ -23,14 +23,14 @@ import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
-public class FsmRegister<T extends StateMachine<T, ?, ?, ?>> {
-    private final Map<String, T> fsmByKey = new HashMap<>();
+public class FsmRegister<K, T extends StateMachine<T, ?, ?, ?>> {
+    private final Map<K, T> fsmByKey = new HashMap<>();
 
-    public void registerFsm(String key, T fsm) {
+    public void registerFsm(K key, T fsm) {
         fsmByKey.put(key, fsm);
     }
 
-    public boolean hasRegisteredFsmWithKey(String key) {
+    public boolean hasRegisteredFsmWithKey(K key) {
         return fsmByKey.containsKey(key);
     }
 
@@ -38,11 +38,11 @@ public class FsmRegister<T extends StateMachine<T, ?, ?, ?>> {
         return !fsmByKey.isEmpty();
     }
 
-    public Optional<T> getFsmByKey(String key) {
+    public Optional<T> getFsmByKey(K key) {
         return Optional.ofNullable(fsmByKey.get(key));
     }
 
-    public T unregisterFsm(String key) {
+    public T unregisterFsm(K key) {
         return fsmByKey.remove(key);
     }
 }

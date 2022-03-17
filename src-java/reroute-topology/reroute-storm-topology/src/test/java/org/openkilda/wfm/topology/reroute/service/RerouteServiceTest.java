@@ -603,7 +603,6 @@ public class RerouteServiceTest {
                 .priority(regularFlow.getPriority())
                 .timeCreate(regularFlow.getTimeCreate())
                 .affectedIsl(Collections.emptySet())
-                .force(true)
                 .effectivelyDown(true)
                 .reason("reason")
                 .build();

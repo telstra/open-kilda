@@ -24,6 +24,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_PATH_SWAP_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_REROUTE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_SYNC_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_UPDATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_VALIDATION_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_CREATE_HUB;
@@ -46,6 +47,7 @@ import org.openkilda.messaging.command.flow.FlowMirrorPointDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.flow.FlowSyncRequest;
 import org.openkilda.messaging.command.flow.FlowValidationRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.command.yflow.SubFlowsReadRequest;
@@ -74,6 +76,7 @@ import org.apache.storm.tuple.Values;
 public class RouterBolt extends AbstractBolt {
 
     public static final String FLOW_ID_FIELD = "flow-id";
+
     private static final Fields STREAM_FIELDS =
             new Fields(FIELD_ID_KEY, FLOW_ID_FIELD, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
@@ -123,6 +126,8 @@ public class RouterBolt extends AbstractBolt {
                         key, input.getMessageId());
                 Values values = new Values(key, deleteRequest.getFlowId(), data);
                 emitWithContext(ROUTER_TO_FLOW_DELETE_HUB.name(), input, values);
+            } else if (data instanceof FlowSyncRequest) {
+                routeSyncRequest(input, (FlowSyncRequest) data, key);
             } else if (data instanceof FlowPathSwapRequest) {
                 FlowPathSwapRequest pathSwapRequest = (FlowPathSwapRequest) data;
                 log.debug("Received a path swap request {} with key {}. MessageId {}", pathSwapRequest.getFlowId(),
@@ -221,6 +226,13 @@ public class RouterBolt extends AbstractBolt {
         }
     }
 
+    private void routeSyncRequest(Tuple input, FlowSyncRequest syncRequest, String key) {
+        log.debug("Received a sync request {} with key {}. MessageId {}",
+                syncRequest.getFlowId(), key, input.getMessageId());
+        Values values = new Values(key, syncRequest.getFlowId(), syncRequest, getCommandContext());
+        emit(ROUTER_TO_FLOW_SYNC_HUB.name(), input, values);
+    }
+
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(ROUTER_TO_FLOW_CREATE_HUB.name(), STREAM_FIELDS);
@@ -230,6 +242,7 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(ROUTER_TO_FLOW_PATH_SWAP_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_FLOW_CREATE_MIRROR_POINT_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_FLOW_DELETE_MIRROR_POINT_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_FLOW_SYNC_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB.name(),
                 new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
         declarer.declareStream(ROUTER_TO_FLOW_VALIDATION_HUB.name(), STREAM_FIELDS);
