@@ -24,14 +24,13 @@ import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.service.handler.LagPortUpdateHandler;
 
+import com.google.common.collect.Sets;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-
-import java.util.Arrays;
 
 @RunWith(MockitoJUnitRunner.class)
 public class UpdateLagPortServiceTest {
@@ -56,13 +55,13 @@ public class UpdateLagPortServiceTest {
         Assert.assertFalse(subject.activeHandlers.containsKey(requestKey));
 
         UpdateLagPortRequest request = new UpdateLagPortRequest(
-                new SwitchId(1), (int) config.getPoolConfig().getIdMinimum(), Arrays.asList(1, 2, 3));
+                new SwitchId(1), (int) config.getPoolConfig().getIdMinimum(), Sets.newHashSet(1, 2, 3));
         subject.update(requestKey, request);
         LagPortUpdateHandler origin = subject.activeHandlers.get(requestKey);
         Assert.assertNotNull(origin);
 
         UpdateLagPortRequest request2 = new UpdateLagPortRequest(
-                new SwitchId(2), (int) config.getPoolConfig().getIdMinimum(), Arrays.asList(1, 2, 3));
+                new SwitchId(2), (int) config.getPoolConfig().getIdMinimum(), Sets.newHashSet(1, 2, 3));
         Assert.assertThrows(InconsistentDataException.class, () -> subject.update(requestKey, request2));
         Assert.assertSame(origin, subject.activeHandlers.get(requestKey));
     }
@@ -77,7 +76,7 @@ public class UpdateLagPortServiceTest {
 
         String requestKey = "test-key";
         UpdateLagPortRequest request = new UpdateLagPortRequest(
-                switchId, (int) config.getPoolConfig().getIdMinimum(), Arrays.asList(1, 2, 3));
+                switchId, (int) config.getPoolConfig().getIdMinimum(), Sets.newHashSet(1, 2, 3));
         subject.update(requestKey, request);
         Mockito.verify(carrier).errorResponse(
                 Mockito.eq(requestKey), Mockito.eq(ErrorType.NOT_FOUND), Mockito.anyString(), Mockito.anyString());

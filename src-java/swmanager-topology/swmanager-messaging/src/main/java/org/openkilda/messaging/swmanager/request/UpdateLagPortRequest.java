@@ -21,12 +21,12 @@ import org.openkilda.model.SwitchId;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
-import java.util.List;
+import java.util.Set;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
 public class UpdateLagPortRequest extends CommandData {
     SwitchId switchId;
     int logicalPortNumber;
-    List<Integer> targetPorts;
+    Set<Integer> targetPorts;
 }

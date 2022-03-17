@@ -150,7 +150,7 @@ public class BfdWorker extends WorkerBolt {
         }
 
         CreateOrUpdateLogicalPortRequest request = new CreateOrUpdateLogicalPortRequest(
-                address.get(), Collections.singletonList(physicalPortNumber), logical.getPortNumber(),
+                address.get(), Collections.singleton(physicalPortNumber), logical.getPortNumber(),
                 LogicalPortType.BFD);
         emit(STREAM_GRPC_ID, getCurrentTuple(), makeGrpcTuple(requestId, request));
     }

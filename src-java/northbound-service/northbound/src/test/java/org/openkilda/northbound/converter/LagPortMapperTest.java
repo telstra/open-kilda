@@ -21,6 +21,7 @@ import org.openkilda.messaging.nbtopology.response.LagPortDto;
 import org.openkilda.messaging.swmanager.response.LagPortResponse;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +52,7 @@ public class LagPortMapperTest {
     @Test
     public void mapLagResponseTest() {
         LagPortResponse response = new LagPortResponse(LOGICAL_PORT_NUMBER_1,
-                Lists.newArrayList(PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2));
+                Sets.newHashSet(PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2));
 
         org.openkilda.northbound.dto.v2.switches.LagPortResponse dto = lagMapper.map(response);
         assertEquals(LOGICAL_PORT_NUMBER_1, dto.getLogicalPortNumber());

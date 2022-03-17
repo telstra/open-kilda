@@ -78,6 +78,7 @@ import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.math.NumberUtils;
@@ -474,7 +475,7 @@ public class CommandBuilderImpl implements CommandBuilder {
         List<CreateOrUpdateLogicalPortRequest> requests = new ArrayList<>();
         for (LogicalPortInfoEntry port : missingLogicalPorts) {
             requests.add(new CreateOrUpdateLogicalPortRequest(
-                    ipAddress, port.getPhysicalPorts(), port.getLogicalPortNumber(),
+                    ipAddress, Sets.newHashSet(port.getPhysicalPorts()), port.getLogicalPortNumber(),
                     LogicalPortMapper.INSTANCE.map(port.getType())));
         }
         return requests;

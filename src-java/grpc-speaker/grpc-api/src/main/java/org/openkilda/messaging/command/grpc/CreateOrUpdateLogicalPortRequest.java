@@ -22,14 +22,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.util.List;
+import java.util.Set;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class CreateOrUpdateLogicalPortRequest extends GrpcBaseRequest {
 
     @JsonProperty("port_numbers")
-    private List<Integer> portNumbers;
+    private Set<Integer> portNumbers;
 
     @JsonProperty("logical_port_number")
     private int logicalPortNumber;
@@ -39,7 +39,7 @@ public class CreateOrUpdateLogicalPortRequest extends GrpcBaseRequest {
 
     @JsonCreator
     public CreateOrUpdateLogicalPortRequest(@JsonProperty("address") String address,
-                                            @JsonProperty("port_numbers") List<Integer> portNumbers,
+                                            @JsonProperty("port_numbers") Set<Integer> portNumbers,
                                             @JsonProperty("logical_port_number") int logicalPortNumber,
                                             @JsonProperty("type") LogicalPortType type) {
         super(address);
