@@ -20,6 +20,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.SpeakerData;
 
 import com.google.common.collect.ImmutableList;
 import lombok.Builder;
@@ -37,6 +38,7 @@ public class SwitchValidationContext {
 
     List<GroupSpeakerData> actualGroupEntries;
     List<LogicalPort> actualLogicalPortEntries;
+    List<SpeakerData> expectedSwitchEntities;
 
     ValidateRulesResult ofFlowsValidationReport;
     ValidateMetersResult metersValidationReport;
@@ -48,6 +50,7 @@ public class SwitchValidationContext {
             SwitchId switchId, List<FlowSpeakerData> actualOfFlows,
             List<MeterSpeakerData> actualMeters, List<GroupSpeakerData> actualGroupEntries,
             List<LogicalPort> actualLogicalPortEntries,
+            List<SpeakerData> expectedSwitchEntities,
             ValidateRulesResult ofFlowsValidationReport, ValidateMetersResult metersValidationReport,
             ValidateGroupsResult validateGroupsResult, ValidateLogicalPortsResult validateLogicalPortResult) {
         this.switchId = switchId;
@@ -59,7 +62,8 @@ public class SwitchValidationContext {
         this.actualGroupEntries = actualGroupEntries != null ? ImmutableList.copyOf(actualGroupEntries) : null;
         this.actualLogicalPortEntries = actualLogicalPortEntries != null
                 ? ImmutableList.copyOf(actualLogicalPortEntries) : null;
-
+        this.expectedSwitchEntities = expectedSwitchEntities != null
+                ? ImmutableList.copyOf(expectedSwitchEntities) : null;
         this.ofFlowsValidationReport = ofFlowsValidationReport;
         this.metersValidationReport = metersValidationReport;
         this.validateGroupsResult = validateGroupsResult;

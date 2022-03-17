@@ -314,7 +314,7 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     @Override
     public List<LagPortResponse> getLagLogicalPort(SwitchId switchId) {
         log.debug("Get LAG ports from switch('{}')", switchId);
-        LagPortResponse[] lagPorts = restTemplate.exchange("/api/v2/switches/{switchId}/lags", HttpMethod.GET,
+        LagPortResponse[] lagPorts = restTemplate.exchange("/api/v2/switches/{switch_id}/lags", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), LagPortResponse[].class, switchId).getBody();
         return Arrays.asList(lagPorts);
     }
@@ -323,8 +323,16 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     public LagPortResponse createLagLogicalPort(SwitchId switchId, LagPortRequest payload) {
         log.debug("Create LAG port on switch('{}')", switchId);
         HttpEntity<LagPortRequest> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v2/switches/{switchId}/lags", HttpMethod.POST, httpEntity,
+        return restTemplate.exchange("/api/v2/switches/{switch_id}/lags", HttpMethod.POST, httpEntity,
                 LagPortResponse.class, switchId).getBody();
+    }
+
+    @Override
+    public LagPortResponse updateLagLogicalPort(SwitchId switchId, Integer logicalPortNumber, LagPortRequest payload) {
+        log.debug("Create LAG port on switch('{}')", switchId);
+        HttpEntity<LagPortRequest> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/switches/{switch_id}/lags/{logical_port_number}", HttpMethod.PUT,
+                httpEntity, LagPortResponse.class, switchId, logicalPortNumber).getBody();
     }
 
     @Override

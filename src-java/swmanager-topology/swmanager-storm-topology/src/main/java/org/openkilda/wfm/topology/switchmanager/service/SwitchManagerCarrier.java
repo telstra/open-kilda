@@ -21,6 +21,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 
 import lombok.NonNull;
@@ -31,6 +32,10 @@ public interface SwitchManagerCarrier {
     void sendCommandToSpeaker(String key, CommandData command);
 
     void sendCommandToSpeaker(CommandData command, @NonNull MessageCookie cookie);
+
+    void runHeavyOperation(String key, SwitchId switchId);
+
+    void runHeavyOperation(SwitchId switchId, @NonNull MessageCookie messageCookie);
 
     void response(String key, Message message);
 

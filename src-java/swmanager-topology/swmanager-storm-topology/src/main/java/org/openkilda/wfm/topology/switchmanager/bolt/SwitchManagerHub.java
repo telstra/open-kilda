@@ -31,6 +31,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
 import org.openkilda.messaging.swmanager.request.DeleteLagPortRequest;
 import org.openkilda.messaging.swmanager.request.UpdateLagPortRequest;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.RuleManagerImpl;
@@ -82,6 +83,10 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public static final Fields WORKER_STREAM_FIELDS =
             new Fields(
                     MessageKafkaTranslator.FIELD_ID_KEY, MessageKafkaTranslator.FIELD_ID_PAYLOAD, FIELD_ID_COOKIE,
+                    FIELD_ID_CONTEXT);
+
+    public static final Fields HEAVY_OPERATION_STREAM_FIELDS =
+            new Fields(MessageKafkaTranslator.FIELD_ID_KEY, MessageKafkaTranslator.FIELD_ID_PAYLOAD, FIELD_ID_COOKIE,
                     FIELD_ID_CONTEXT);
 
     public static final String NORTHBOUND_STREAM_ID = StreamType.TO_NORTHBOUND.toString();
@@ -141,7 +146,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         validateService = registerService(serviceRegistry, "switch-validate", this,
                 carrier -> new SwitchValidateService(
                         carrier, persistenceManager,
-                        new ValidationServiceImpl(persistenceManager), new RuleManagerImpl(ruleManagerConfig)));
+                        new ValidationServiceImpl(persistenceManager, new RuleManagerImpl(ruleManagerConfig))));
         syncService = registerService(
                 serviceRegistry, "switch-sync", this,
                 carrier -> new SwitchSyncService(carrier, persistenceManager, flowResourcesConfig));
@@ -154,6 +159,15 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                 serviceRegistry, "lag-update", this, carrier -> new UpdateLagPortService(carrier, config));
         deleteLagPortService = registerService(
                 serviceRegistry, "lag-delete", this, carrier -> new DeleteLagPortService(carrier, config));
+    }
+
+    @Override
+    protected void handleInput(Tuple input) throws Exception {
+        if (HeavyOperationBolt.ID.equals(input.getSourceComponent())) {
+            dispatchResponse(input);
+        } else {
+            super.handleInput(input);
+        }
     }
 
     @Override
@@ -179,14 +193,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     @Override
     protected void onWorkerResponse(Tuple input) throws PipelineException {
-        Message message = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
-        try {
-            dispatchWorkerResponse(message);
-        } catch (MessageDispatchException e) {
-            log.warn("Unable to route worker response {}: {}", message, e.getMessage(message.getCookie()));
-        } catch (UnexpectedInputException e) {
-            log.error("{}", e.getMessage(message.getCookie()), e);
-        }
+        dispatchResponse(input);
     }
 
     @Override
@@ -233,44 +240,40 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         action.accept(service);
     }
 
-    private void dispatchWorkerResponse(Message message) throws MessageDispatchException, UnexpectedInputException {
-        MessageCookie cookie = message.getCookie();
-        if (cookie == null) {
-            log.error(
-                    "There is no message cookie in worker response, can't determine target service "
-                            + "(response: {})",
-                    message);
-            return;
-        }
-
+    private SwitchManagerHubService getService(MessageCookie cookie) throws MessageDispatchException {
         SwitchManagerHubService service = serviceRegistry.get(cookie);
         if (service == null) {
             throw new MessageDispatchException(cookie);
         }
-        dispatchWorkerResponse(service, message, cookie.getNested());
+        return service;
     }
 
-    private void dispatchWorkerResponse(SwitchManagerHubService service, Message message, MessageCookie serviceCookie)
-            throws UnexpectedInputException, MessageDispatchException {
-        if (message instanceof InfoMessage) {
-            dispatchWorkerResponse(service, (InfoMessage) message, serviceCookie);
-        } else if (message instanceof ErrorMessage) {
-            dispatchWorkerResponse(service, (ErrorMessage) message, serviceCookie);
-        } else {
-            throw new UnexpectedInputException(message);
+    private void dispatchResponse(Tuple input) throws PipelineException {
+        Message message = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
+        MessageCookie cookie = message.getCookie();
+        if (cookie == null) {
+            log.error("There is no message cookie in response, can't determine target service (response: {})", message);
+            return;
         }
-    }
 
-    private void dispatchWorkerResponse(
-            SwitchManagerHubService service, InfoMessage message, MessageCookie serviceCookie)
-            throws UnexpectedInputException, MessageDispatchException {
-        service.dispatchWorkerMessage(message.getData(), serviceCookie);
-    }
-
-    private void dispatchWorkerResponse(
-            SwitchManagerHubService service, ErrorMessage message, MessageCookie serviceCookie)
-            throws MessageDispatchException {
-        service.dispatchWorkerMessage(message.getData(), serviceCookie);
+        try {
+            SwitchManagerHubService service = getService(cookie);
+            if (message instanceof InfoMessage) {
+                if (HeavyOperationBolt.ID.equals(input.getSourceComponent())) {
+                    service.dispatchHeavyOperationMessage(((InfoMessage) message).getData(), cookie.getNested());
+                } else {
+                    service.dispatchWorkerMessage(((InfoMessage) message).getData(), cookie.getNested());
+                }
+            } else if (message instanceof ErrorMessage) {
+                service.dispatchErrorMessage(((ErrorMessage) message).getData(), cookie.getNested());
+            } else {
+                throw new UnexpectedInputException(message);
+            }
+        } catch (MessageDispatchException e) {
+            log.warn("Unable to route worker response {}: {}", message, e.getMessage(message.getCookie()));
+        } catch (UnexpectedInputException e) {
+            log.error("{}", e.getMessage(message.getCookie()), e);
+        }
     }
 
     private void dispatchTimeout(MessageCookie cookie) {
@@ -319,7 +322,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     @Override
     public void sendCommandToSpeaker(String key, CommandData command) {
-        // will never be user, because of carrier decorator
+        // will never be used, because of carrier decorator
         sendCommandToSpeaker(command, new MessageCookie(key));
     }
 
@@ -330,6 +333,16 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     public void sendCommandToSpeaker(String requestKey, CommandData command, MessageCookie cookie) {
         emit(SpeakerWorkerBolt.INCOME_STREAM, getCurrentTuple(), makeWorkerTuple(requestKey, command, cookie));
+    }
+
+    @Override
+    public void runHeavyOperation(String key, SwitchId switchId) {
+        // will never be used, because of carrier decorator
+        runHeavyOperation(switchId, new MessageCookie(key));
+    }
+
+    public void runHeavyOperation(SwitchId switchId, @NonNull MessageCookie messageCookie) {
+        emit(HeavyOperationBolt.INCOME_STREAM, getCurrentTuple(), makeHeavyOperationTuple(switchId, messageCookie));
     }
 
     @Override
@@ -372,10 +385,15 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         declarer.declareStream(SpeakerWorkerBolt.INCOME_STREAM, WORKER_STREAM_FIELDS);
         declarer.declareStream(NORTHBOUND_STREAM_ID, NORTHBOUND_STREAM_FIELDS);
         declarer.declareStream(ZOOKEEPER_STREAM_ID, ZOOKEEPER_STREAM_FIELDS);
+        declarer.declareStream(HeavyOperationBolt.INCOME_STREAM, HEAVY_OPERATION_STREAM_FIELDS);
     }
 
     private Values makeWorkerTuple(String key, CommandData payload, MessageCookie cookie) {
         return new Values(KeyProvider.generateChainedKey(key), payload, cookie, getCommandContext());
+    }
+
+    private Values makeHeavyOperationTuple(SwitchId switchId, MessageCookie cookie) {
+        return new Values(cookie.getValue(), switchId, cookie, getCommandContext());
     }
 
     private Values makeNorthboundTuple(String key, Message payload) {

@@ -21,6 +21,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 
 import lombok.NonNull;
@@ -48,6 +49,16 @@ public class SwitchManagerCarrierCookieDecorator implements SwitchManagerCarrier
     @Override
     public void sendCommandToSpeaker(CommandData command, @NonNull MessageCookie cookie) {
         target.sendCommandToSpeaker(command, new MessageCookie(dispatchRoute, cookie));
+    }
+
+    @Override
+    public void runHeavyOperation(String key, SwitchId switchId) {
+        runHeavyOperation(switchId, new MessageCookie(key));
+    }
+
+    @Override
+    public void runHeavyOperation(SwitchId switchId, @NonNull MessageCookie cookie) {
+        target.runHeavyOperation(switchId, new MessageCookie(dispatchRoute, cookie));
     }
 
     @Override

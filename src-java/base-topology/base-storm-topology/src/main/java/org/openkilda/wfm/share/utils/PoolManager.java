@@ -23,16 +23,18 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Optional;
 import java.util.Random;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 @Slf4j
 public class PoolManager<T> {
     protected final PoolConfig config;
-    private final PoolEntityAdapter<T> entityAdapter;
+    private final PoolEntityAdapter entityAdapter;
 
     private final Random random = new Random();
     private long lastId;
 
-    public PoolManager(PoolConfig config, PoolEntityAdapter<T> entityAdapter) {
+    public PoolManager(PoolConfig config, PoolEntityAdapter entityAdapter) {
         this.config = config;
         this.entityAdapter = entityAdapter;
 
@@ -42,34 +44,53 @@ public class PoolManager<T> {
     /**
      * Allocate one entity.
      */
-    public T allocate() {
-        Optional<T> entity = allocateNext();
-        if (! entity.isPresent()) {
-            entity = allocateInChunk();
+    public T allocate(Function<Long, T> assembler) {
+        Optional<Long> entityId = allocateNext();
+        if (!entityId.isPresent()) {
+            entityId = allocateInChunk();
         }
-        if (! entity.isPresent()) {
-            entity = allocateInFullScan();
+        if (!entityId.isPresent()) {
+            entityId = allocateInFullScan();
         }
-        if (! entity.isPresent()) {
+        if (!entityId.isPresent()) {
             throw new ResourceNotAvailableException(entityAdapter.formatResourceNotAvailableMessage());
         }
 
-        T value = entity.get();
-        lastId = entityAdapter.getNumericSequentialId(value);
-        log.trace("Pool entity have been successfully allocated id=={}", lastId);
+        long value = entityId.get();
+        T entity = assembler.apply(value);
+
+        log.trace("Pool entity have been successfully allocated id=={}: {}", lastId, entity);
+        lastId = value;  // will not happen if assembler fails
+        return entity;
+    }
+
+    /**
+     * Complementary pair of allocate method. Disassembler must return `entityId` of destroyed object, so pool manager
+     * can adjust it's state accordingly.
+     */
+    public long deallocate(Supplier<Long> disassembler) {
+        Long value = disassembler.get();
+        if (value == null) {
+            throw new IllegalArgumentException(
+                    "Incorrect behaviour of disassembler handler, it do not return entityId of disassembled object");
+        }
         return value;
     }
 
-    private Optional<T> allocateNext() {
+    private Optional<Long> allocateNext() {
         long nextId = lastId + 1;
         if (config.idMaximum <= nextId) {
             return Optional.empty();
         }
+
         log.trace("Attempt to allocate pool entity by id == {}", nextId);
-        return entityAdapter.allocateSpecificId(nextId);
+        if (! entityAdapter.allocateSpecificId(nextId)) {
+            return Optional.empty();
+        }
+        return Optional.of(nextId);
     }
 
-    private Optional<T> allocateInChunk() {
+    private Optional<Long> allocateInChunk() {
         long chunkNumber = selectChunkNumber(config.chunksCount);
         long chunkSize = (config.idMaximum - config.idMinimum) / config.chunksCount;
         long first = config.idMinimum + chunkNumber * chunkSize;
@@ -85,7 +106,7 @@ public class PoolManager<T> {
         return entityAdapter.allocateFirstInRange(first, last);
     }
 
-    private Optional<T> allocateInFullScan() {
+    private Optional<Long> allocateInFullScan() {
         log.trace(
                 "Attempt to allocate pool entity using full scan (idMin=={}, idMax=={})",
                 config.idMinimum, config.idMaximum);

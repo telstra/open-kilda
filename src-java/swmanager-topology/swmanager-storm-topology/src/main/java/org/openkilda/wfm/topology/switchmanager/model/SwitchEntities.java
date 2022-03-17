@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,14 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.utils;
+package org.openkilda.wfm.topology.switchmanager.model;
 
-import java.util.Optional;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.rulemanager.SpeakerData;
 
-public interface PoolEntityAdapter {
-    boolean allocateSpecificId(long entityId);
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
-    Optional<Long> allocateFirstInRange(long idMinimum, long idMaximum);
+import java.util.List;
 
-    String formatResourceNotAvailableMessage();
+@Value
+@EqualsAndHashCode(callSuper = false)
+public class SwitchEntities extends InfoData {
+    List<SpeakerData> entities;
 }

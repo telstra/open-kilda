@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.117.0 (21/03/2022)
+
+### Features:
+-  [#4683](https://github.com/telstra/open-kilda/pull/4683) [test] check update-lag-port action [**tests**]
+-  [#4687](https://github.com/telstra/open-kilda/pull/4687) [test] check yFlow periodicPings [**tests**]
+
+### Bug Fixes:
+-  [#4718](https://github.com/telstra/open-kilda/pull/4718) Fixed deleteAllFlows endpoint timeout while flow in progress (Issue: [#4629](https://github.com/telstra/open-kilda/issues/4629)) [**northbound**]
+-  [#4723](https://github.com/telstra/open-kilda/pull/4723) Fix type cast into LAG port number allocation [**storm-topologies**]
+
+### Improvements:
+-  [#4712](https://github.com/telstra/open-kilda/pull/4712) Test/ignore some unstable test [**tests**]
+-  [#4713](https://github.com/telstra/open-kilda/pull/4713) [test] make vxlan tests run on virt env [**tests**]
+-  [#4652](https://github.com/telstra/open-kilda/pull/4652) Upgrade gradle dependencies in topologies, services, gui [**northbound**][**storm-topologies**]
+-  [#4684](https://github.com/telstra/open-kilda/pull/4684) Replace meter pool with generic pool manager
+-  [#4717](https://github.com/telstra/open-kilda/pull/4717) Improved performance of sw manager topology [**storm-topologies**]
+-  [#4721](https://github.com/telstra/open-kilda/pull/4721) Ignore unstable Contention test because of bug 4711 [**tests**]
+-  [#4720](https://github.com/telstra/open-kilda/pull/4720) Add js License files into GUI .gitignore file [**gui**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.116.0...v1.117.0).
+
+### Affected Components:
+gui, ping, swmanager, flow-hs, stats, flow-monitor, isllatency, portstate, reroute, nbworker, connected, nb, server42, grpc, network
+
+---
+
 ## v1.116.0 (04/03/2022)
 
 ### Features:

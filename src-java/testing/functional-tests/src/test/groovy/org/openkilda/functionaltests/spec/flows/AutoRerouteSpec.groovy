@@ -39,6 +39,7 @@ import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 import groovy.util.logging.Slf4j
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Isolated
 import spock.lang.Narrative
 
@@ -347,6 +348,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(SMOKE)
+    @Ignore("fix ASAP, unstable on jenkins(history size)")
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no alt path to reroute"() {
         given: "A flow without alternative paths"
         def data = noIntermediateSwitchFlow(0, true)

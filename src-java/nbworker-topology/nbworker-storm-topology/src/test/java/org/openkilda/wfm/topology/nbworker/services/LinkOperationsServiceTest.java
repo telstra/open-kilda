@@ -24,7 +24,6 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
 
 import org.openkilda.model.BfdProperties;
 import org.openkilda.model.Flow;
@@ -183,7 +182,7 @@ public class LinkOperationsServiceTest extends InMemoryGraphBasedTest {
 
         // no propagation on subsequent request
         linkOperationsService.writeBfdProperties(source, destination, defaultBfdProperties);
-        verifyZeroInteractions(carrier);
+        verifyNoMoreInteractions(carrier);
     }
 
     @Test

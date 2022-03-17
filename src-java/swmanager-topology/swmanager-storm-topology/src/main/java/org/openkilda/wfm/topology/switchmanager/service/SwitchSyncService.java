@@ -111,7 +111,7 @@ public class SwitchSyncService implements SwitchManagerHubService {
     }
 
     @Override
-    public void dispatchWorkerMessage(ErrorData payload, MessageCookie cookie) throws MessageDispatchException {
+    public void dispatchErrorMessage(ErrorData payload, MessageCookie cookie) throws MessageDispatchException {
         fireHandlerEvent(cookie, SwitchSyncEvent.ERROR, payload);
     }
 

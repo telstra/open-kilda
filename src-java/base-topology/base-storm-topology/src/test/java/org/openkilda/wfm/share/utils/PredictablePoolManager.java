@@ -18,7 +18,7 @@ package org.openkilda.wfm.share.utils;
 public class PredictablePoolManager<T> extends PoolManager<T> {
     private long lastSelectedChunk = -1;
 
-    public PredictablePoolManager(PoolConfig config, PoolEntityAdapter<T> entityAdapter) {
+    public PredictablePoolManager(PoolConfig config, PoolEntityAdapter entityAdapter) {
         super(config, entityAdapter);
     }
 
