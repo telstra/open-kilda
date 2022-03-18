@@ -52,8 +52,8 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.kafka.AbstractMessageSerializer;
+import org.openkilda.wfm.kafka.MessageSerializer;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
-import org.openkilda.wfm.share.history.bolt.HistoryBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
@@ -161,7 +161,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         flowMonitoringTopologyOutput(tb);
         statsTopologyOutput(tb);
 
-        history(tb, persistenceManager);
+        history(tb);
 
         zkSpout(tb);
         zkBolt(tb);
@@ -1028,28 +1028,25 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                         Stream.HUB_TO_STATS_TOPOLOGY_SENDER.name());
     }
 
-    private void history(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
-        HistoryBolt historyBolt = new HistoryBolt(persistenceManager);
-        Fields grouping = HistoryBolt.newInputGroupingFields();
-        declareBolt(topologyBuilder, historyBolt, ComponentId.HISTORY_BOLT.name())
-                .fieldsGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
-                .fieldsGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
-                .fieldsGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
-                .fieldsGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
-                .fieldsGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
-                .fieldsGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
-                .fieldsGrouping(
-                        ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
-                .fieldsGrouping(
-                        ComponentId.FLOW_DELETE_MIRROR_POINT_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
-                .fieldsGrouping(
-                        ComponentId.YFLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
-                .fieldsGrouping(
-                        ComponentId.YFLOW_UPDATE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
-                .fieldsGrouping(
-                        ComponentId.YFLOW_REROUTE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping)
-                .fieldsGrouping(
-                        ComponentId.YFLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_BOLT.name(), grouping);
+    private void history(TopologyBuilder topologyBuilder) {
+        KafkaBolt<String, Message> kafkaBolt = makeKafkaBolt(
+                topologyConfig.getKafkaHistoryTopic(), MessageSerializer.class);
+        declareBolt(topologyBuilder, kafkaBolt, ComponentId.HISTORY_BOLT.name())
+                .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(),
+                        Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name(),
+                        Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.FLOW_DELETE_MIRROR_POINT_HUB.name(),
+                        Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.YFLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.YFLOW_UPDATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.YFLOW_REROUTE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.YFLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name());
     }
 
     @Override
@@ -1158,7 +1155,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         ROUTER_TO_YFLOW_VALIDATION_HUB,
 
         HUB_TO_SPEAKER_WORKER,
-        HUB_TO_HISTORY_BOLT,
+        HUB_TO_HISTORY_TOPOLOGY_SENDER,
         HUB_TO_METRICS_BOLT,
 
         SPEAKER_WORKER_TO_HUB_CREATE,

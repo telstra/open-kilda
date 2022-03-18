@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,21 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.history.model;
+package org.openkilda.wfm.topology.history;
 
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
-import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
+import com.sabre.oss.conf4j.annotation.Configuration;
 
-@Value
-@Builder
-@EqualsAndHashCode(callSuper = false)
-public class FlowHistoryHolder extends InfoData {
-    private final String taskId;
+@Configuration
+public interface HistoryTopologyConfig extends AbstractTopologyConfig {
 
-    private final FlowDumpData flowDumpData;
-    private final FlowHistoryData flowHistoryData;
-    private final FlowEventData flowEventData;
+    default String getKafkaTopoHistoryTopic() {
+        return getKafkaTopics().getTopoHistoryTopic();
+    }
 }

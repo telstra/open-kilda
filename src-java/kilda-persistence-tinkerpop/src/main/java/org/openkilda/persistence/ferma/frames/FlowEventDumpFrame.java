@@ -20,7 +20,7 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.history.FlowEventDump.FlowEventDumpData;
 import org.openkilda.persistence.ferma.frames.converters.Convert;
 import org.openkilda.persistence.ferma.frames.converters.FlowEncapsulationTypeConverter;
@@ -80,22 +80,22 @@ public abstract class FlowEventDumpFrame extends KildaBaseVertexFrame implements
     @Override
     @Property("forward_cookie")
     @Convert(FlowSegmentCookieConverter.class)
-    public abstract Cookie getForwardCookie();
+    public abstract FlowSegmentCookie getForwardCookie();
 
     @Override
     @Property("forward_cookie")
     @Convert(FlowSegmentCookieConverter.class)
-    public abstract void setForwardCookie(Cookie forwardCookie);
+    public abstract void setForwardCookie(FlowSegmentCookie forwardCookie);
 
     @Override
     @Property("reverse_cookie")
     @Convert(FlowSegmentCookieConverter.class)
-    public abstract Cookie getReverseCookie();
+    public abstract FlowSegmentCookie getReverseCookie();
 
     @Override
     @Property("reverse_cookie")
     @Convert(FlowSegmentCookieConverter.class)
-    public abstract void setReverseCookie(Cookie reverseCookie);
+    public abstract void setReverseCookie(FlowSegmentCookie reverseCookie);
 
     @Override
     @Property("src_switch")
