@@ -47,6 +47,16 @@ class Greeter(noviflow_pb2_grpc.NoviFlowGrpcServicer):
         return noviflow_pb2.CliReply(reply_status=0)
 
     def SetConfigLogicalPort(self, request, context):
+        if request.logicalportno not in range(100, 63488):
+            return noviflow_pb2.CliReply(reply_status=185)
+
+        if len(request.portno) > len(set(request.portno)):
+            return noviflow_pb2.CliReply(reply_status=190)
+
+        for port in request.portno:
+            if port not in range(1, 100):
+                return noviflow_pb2.CliReply(reply_status=31)
+
         if request.logicalportno in self.storage.logical_ports:
             port = self.storage.logical_ports[request.logicalportno]
             if port.type != request.logicalporttype:
