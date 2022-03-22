@@ -94,11 +94,13 @@ public class GrpcSession implements Closeable {
     /**
      * Plan GRPC channel close.
      */
-    public void close() {
-        extendChain(() -> {
-            log.debug("Perform messaging channel shutdown for switch {}", address);
-            channel.shutdownNow();
-        }, CompletableFuture.completedFuture(null));
+    public synchronized void close() {
+        chain.handle((dummy, e) -> {
+                    log.debug("Perform messaging channel shutdown for switch {}", address);
+                    channel.shutdownNow();
+                    return null;
+                }
+        );
     }
 
     /**
@@ -408,11 +410,13 @@ public class GrpcSession implements Closeable {
 
     private synchronized void extendChain(Runnable action, CompletableFuture<?> operation) {
         chain = CompletableFuture.allOf(
-                chain.whenComplete((v, e) -> action.run()), operation)
-                .handle((dummy, e) -> {
-                    // clean exceptional status
-                    return null;
-                });
+                chain.whenComplete((v, e) -> {
+                    if (e == null) {
+                        action.run();
+                    } else {
+                        operation.completeExceptionally(e);
+                    }
+                }), operation);
     }
 
     private static ManagedChannel makeChannel(String address) {
