@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.118.0 (24/03/2022)
+
+### Features:
+-  [#4730](https://github.com/telstra/open-kilda/pull/4730) Added HistoryTopology to save flow history events
+-  [#4733](https://github.com/telstra/open-kilda/pull/4733) GRPC stub: return errors on invalid requests (Issue: [#4728](https://github.com/telstra/open-kilda/issues/4728))
+
+### Bug Fixes:
+-  [#4724](https://github.com/telstra/open-kilda/pull/4724) Fixed inner vlan change in case of partial update of default flow  (Issue: [#4411](https://github.com/telstra/open-kilda/issues/4411)) [**storm-topologies**]
+-  [#4725](https://github.com/telstra/open-kilda/pull/4725) Fixed lag creation with duplicate port numbers (Issue: [#4644](https://github.com/telstra/open-kilda/issues/4644)) [**storm-topologies**]
+
+### Improvements:
+-  [#4679](https://github.com/telstra/open-kilda/pull/4679) Bumped version of github api and jwt for changelog generator
+-  [#4715](https://github.com/telstra/open-kilda/pull/4715)  DeleteAllFlowsV1 endpoint correlation-id  [**northbound**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.117.0...v1.118.0).
+
+### Affected Components:
+grpc, nbworker, history, nb, flow-hs, swmanager
+
+---
+
 ## v1.117.0 (21/03/2022)
 
 ### Features:
