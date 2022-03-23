@@ -19,7 +19,7 @@ import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.model.SwitchId;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -39,6 +39,6 @@ public class CreateLagPortRequestTest {
     }
 
     public static CreateLagPortRequest makeRequest() {
-        return new CreateLagPortRequest(new SwitchId(1), Lists.newArrayList(1, 2, 3));
+        return new CreateLagPortRequest(new SwitchId(1), Sets.newHashSet(1, 2, 3));
     }
 }

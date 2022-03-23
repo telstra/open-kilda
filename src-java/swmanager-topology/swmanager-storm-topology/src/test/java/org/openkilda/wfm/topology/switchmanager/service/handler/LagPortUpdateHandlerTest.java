@@ -31,6 +31,7 @@ import org.openkilda.wfm.topology.switchmanager.service.LagPortOperationService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -39,7 +40,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -173,6 +173,6 @@ public class LagPortUpdateHandlerTest {
     }
 
     private UpdateLagPortRequest newRequest() {
-        return new UpdateLagPortRequest(new SwitchId(1), 2001, Arrays.asList(1, 2, 3));
+        return new UpdateLagPortRequest(new SwitchId(1), 2001, Sets.newHashSet(1, 2, 3));
     }
 }

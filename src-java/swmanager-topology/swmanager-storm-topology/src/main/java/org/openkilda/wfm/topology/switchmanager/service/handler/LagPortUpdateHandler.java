@@ -172,14 +172,14 @@ public class LagPortUpdateHandler {
     private CreateOrUpdateLogicalPortRequest newGrpcRequest(Set<Integer> targetPorts) {
         String address = operationService.getSwitchIpAddress(goal.getSwitchId());
         return new CreateOrUpdateLogicalPortRequest(
-                address, new ArrayList<>(targetPorts), goal.getLogicalPortNumber(), LogicalPortType.LAG);
+                address, targetPorts, goal.getLogicalPortNumber(), LogicalPortType.LAG);
     }
 
     public String formatLagPortReference() {
         return String.format("LAG logical port #%d on %s", goal.getLogicalPortNumber(), goal.getSwitchId());
     }
 
-    private static String formatTargetPorts(List<Integer> origin) {
+    private static String formatTargetPorts(Set<Integer> origin) {
         List<Integer> ports = new ArrayList<>(origin);
         Collections.sort(ports);
         return ports.stream().map(Object::toString).collect(Collectors.joining(", "));
