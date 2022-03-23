@@ -1,8 +1,8 @@
 # WFM topology management
 
-TOPOLOGY := network flowhs flowmonitoring stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control
-BLUE_TOPOLOGY := network flowhs flowmonitoring stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control
-GREEN_TOPOLOGY := network flowhs flowmonitoring stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control
+TOPOLOGY := network flowhs flowmonitoring stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control history
+BLUE_TOPOLOGY := network flowhs flowmonitoring stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control history
+GREEN_TOPOLOGY := network flowhs flowmonitoring stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter connecteddevices server42-control history
 
 STORM := /opt/storm/bin/storm
 

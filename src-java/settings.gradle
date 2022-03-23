@@ -15,6 +15,7 @@ include 'flowmonitoring-storm-topology'
 include 'flowmonitoring-messaging'
 include 'grpc-api'
 include 'grpc-service'
+include 'history-storm-topology'
 include 'isllatency-messaging'
 include 'isllatency-storm-topology'
 include 'kilda-configuration'
@@ -70,6 +71,7 @@ project(':flowmonitoring-storm-topology').projectDir = "$rootDir/flowmonitoring-
 project(':flowmonitoring-messaging').projectDir = "$rootDir/flowmonitoring-topology/flowmonitoring-messaging" as File
 project(':grpc-api').projectDir = "$rootDir/grpc-speaker/grpc-api" as File
 project(':grpc-service').projectDir = "$rootDir/grpc-speaker/grpc-service" as File
+project(':history-storm-topology').projectDir = "$rootDir/history-topology/history-storm-topology" as File
 project(':isllatency-messaging').projectDir = "$rootDir/isllatency-topology/isllatency-messaging" as File
 project(':isllatency-storm-topology').projectDir = "$rootDir/isllatency-topology/isllatency-storm-topology" as File
 project(':nbworker-messaging').projectDir = "$rootDir/nbworker-topology/nbworker-messaging" as File

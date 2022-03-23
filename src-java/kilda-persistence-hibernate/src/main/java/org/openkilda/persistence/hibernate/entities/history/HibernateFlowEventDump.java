@@ -20,7 +20,7 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.history.FlowEventDump.FlowEventDumpData;
 import org.openkilda.persistence.hibernate.entities.EntityBase;
 import org.openkilda.persistence.hibernate.entities.JsonPayloadBase;
@@ -107,8 +107,8 @@ public class HibernateFlowEventDump extends EntityBase implements FlowEventDumpD
         private String flowId;
         private long bandwidth;
         private boolean ignoreBandwidth;
-        private Cookie forwardCookie;
-        private Cookie reverseCookie;
+        private FlowSegmentCookie forwardCookie;
+        private FlowSegmentCookie reverseCookie;
 
         private SwitchId sourceSwitch;
         private int sourcePort;

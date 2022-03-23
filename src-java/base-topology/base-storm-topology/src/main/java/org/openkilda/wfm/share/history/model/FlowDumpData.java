@@ -20,7 +20,7 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -44,8 +44,8 @@ public class FlowDumpData implements Serializable {
     private int destinationVlan;
     private int sourceInnerVlan;
     private int destinationInnerVlan;
-    private Cookie forwardCookie;
-    private Cookie reverseCookie;
+    private FlowSegmentCookie forwardCookie;
+    private FlowSegmentCookie reverseCookie;
     private MeterId forwardMeterId;
     private MeterId reverseMeterId;
     private String forwardPath;
