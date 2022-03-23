@@ -51,7 +51,6 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.StateMachineStatus;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 
 @Slf4j
@@ -140,7 +139,7 @@ public class CreateLagPortFsm extends AbstractStateMachine<
 
     void finishedEnter(CreateLagState from, CreateLagState to, CreateLagEvent event, CreateLagContext context) {
         LagPortResponse response = new LagPortResponse(
-                grpcRequest.getLogicalPortNumber(), new ArrayList<>(grpcRequest.getPortNumbers()));
+                grpcRequest.getLogicalPortNumber(), grpcRequest.getPortNumbers());
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
         carrier.response(key, message);
     }

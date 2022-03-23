@@ -51,6 +51,10 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getPingTopic();
     }
 
+    default String getKafkaHistoryTopic() {
+        return getKafkaTopics().getTopoHistoryTopic();
+    }
+
     default String getKafkaFlowHsServer42StormNotifyTopic() {
         return getKafkaTopics().getFlowHsServer42StormNotifyTopic();
     }

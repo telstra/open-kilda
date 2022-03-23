@@ -1,0 +1,5 @@
+[template]
+src = "history-topology/history-topology.tmpl"
+dest = "src-java/history-topology/history-storm-topology/src/main/resources/history-topology.yaml"
+keys = [ "/" ]
+mode = "0644"

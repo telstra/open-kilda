@@ -15,14 +15,16 @@
 
 package org.openkilda.wfm.share.history.model;
 
-import lombok.Builder;
-import lombok.Value;
+import org.openkilda.messaging.info.InfoData;
 
-import java.io.Serializable;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
 @Value
 @Builder
-public class FlowHistoryHolder implements Serializable {
+@EqualsAndHashCode(callSuper = false)
+public class FlowHistoryHolder extends InfoData {
     private final String taskId;
 
     private final FlowDumpData flowDumpData;

@@ -156,12 +156,12 @@ public class DeleteLagPortFsm extends AbstractStateMachine<
         if (removedLagPort != null) {
             response = new LagPortResponse(
                     removedLagPort.getLogicalPortNumber(), removedLagPort.getPhysicalPorts().stream()
-                    .map(PhysicalPort::getPortNumber).collect(Collectors.toList()));
+                    .map(PhysicalPort::getPortNumber).collect(Collectors.toSet()));
 
         } else {
             // dummy response entity
             // TODO(surabujin): weird behaviour, can we be more correct?
-            response = new LagPortResponse(request.getLogicalPortNumber(), Collections.emptyList());
+            response = new LagPortResponse(request.getLogicalPortNumber(), Collections.emptySet());
         }
 
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);

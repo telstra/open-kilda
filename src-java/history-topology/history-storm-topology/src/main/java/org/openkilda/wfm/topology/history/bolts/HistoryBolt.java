@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,36 +13,29 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.history.bolt;
+package org.openkilda.wfm.topology.history.bolts;
 
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
+
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.history.service.HistoryService;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 
 public class HistoryBolt extends AbstractBolt {
-    public static final String FIELD_ID_PAYLOAD = "payload";
-    public static final String FIELD_ID_TASK_ID = "task-id";
-    public static final Fields INPUT_FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_TASK_ID, FIELD_ID_CONTEXT);
-
     private transient HistoryService historyService;
 
-    public static Fields newInputGroupingFields() {
-        return new Fields(FIELD_ID_TASK_ID);
-    }
-
-    public static Values newInputTuple(FlowHistoryHolder payload, CommandContext context) {
-        return new Values(payload, payload.getTaskId(), context);
-    }
-
-    public HistoryBolt(PersistenceManager persistenceManager) {
-        super(persistenceManager);
+    public HistoryBolt(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
+        super(persistenceManager, lifeCycleEventSourceComponent);
     }
 
     @Override
@@ -52,16 +45,24 @@ public class HistoryBolt extends AbstractBolt {
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        Object payload = input.getValueByField(FIELD_ID_PAYLOAD);
-        if (payload instanceof FlowHistoryHolder) {
-            historyService.store((FlowHistoryHolder) payload);
-        } else {
-            log.error("Skip undefined payload: {}", payload);
+        if (active) {
+            Message message = pullValue(input, FIELD_ID_PAYLOAD, Message.class);
+            if (message instanceof InfoMessage) {
+                InfoData payload = ((InfoMessage) message).getData();
+                if (payload instanceof FlowHistoryHolder) {
+                    historyService.store((FlowHistoryHolder) payload);
+                } else {
+                    unhandledInput(input);
+                }
+            } else {
+                unhandledInput(input);
+            }
         }
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-
+        declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
+                ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 }

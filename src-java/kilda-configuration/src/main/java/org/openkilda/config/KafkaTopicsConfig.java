@@ -185,6 +185,10 @@ public interface KafkaTopicsConfig {
     @Default("kilda.floodlight.connected.devices.priv")
     String getTopoConnectedDevicesRegionTopic();
 
+    @Key("topo.history.storm")
+    @Default("kilda.topo.history.storm.priv")
+    String getTopoHistoryTopic();
+
     // TODO(surabujin): check usage
     @Key("grpc.response")
     @Default("kilda.grpc.response.priv")

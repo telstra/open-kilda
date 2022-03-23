@@ -21,7 +21,7 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.BeanSerializer;
@@ -151,13 +151,13 @@ public class FlowEventDump implements CompositeDataEntity<FlowEventDump.FlowEven
 
         void setIgnoreBandwidth(boolean ignoreBandwidth);
 
-        Cookie getForwardCookie();
+        FlowSegmentCookie getForwardCookie();
 
-        void setForwardCookie(Cookie forwardCookie);
+        void setForwardCookie(FlowSegmentCookie forwardCookie);
 
-        Cookie getReverseCookie();
+        FlowSegmentCookie getReverseCookie();
 
-        void setReverseCookie(Cookie reverseCookie);
+        void setReverseCookie(FlowSegmentCookie reverseCookie);
 
         SwitchId getSourceSwitch();
 
@@ -264,8 +264,8 @@ public class FlowEventDump implements CompositeDataEntity<FlowEventDump.FlowEven
         String type;
         long bandwidth;
         boolean ignoreBandwidth;
-        Cookie forwardCookie;
-        Cookie reverseCookie;
+        FlowSegmentCookie forwardCookie;
+        FlowSegmentCookie reverseCookie;
         SwitchId sourceSwitch;
         SwitchId destinationSwitch;
         int sourcePort;
