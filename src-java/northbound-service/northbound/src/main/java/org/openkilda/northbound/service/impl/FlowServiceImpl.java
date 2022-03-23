@@ -380,7 +380,7 @@ public class FlowServiceImpl implements FlowService {
         getFlowsStage.thenApply(flows -> {
             List<CompletableFuture<?>> deletionRequests = new ArrayList<>();
             for (int i = 0; i < flows.size(); i++) {
-                String requestId = idFactory.produceChained(String.valueOf(i));
+                String requestId = idFactory.produceChained(correlationId);
                 FlowResponsePayload flow = flows.get(i);
                 if (flow.getYFlowId() != null) {
                     // Skip y-sub-flows.
