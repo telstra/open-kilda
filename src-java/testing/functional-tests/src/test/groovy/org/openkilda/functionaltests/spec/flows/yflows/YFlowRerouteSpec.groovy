@@ -48,7 +48,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         given: "A qinq y-flow"
         def swT = topologyHelper.switchTriplets.find { it ->
-            def yPoints = findPotentialYPoints(it)
+            def yPoints = yFlowHelper.findPotentialYPoints(it)
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
                     [it.pathsEp1, it.pathsEp2].every { it.size() > 1 } &&
                     it.ep1 != it.ep2 && yPoints.size() == 1 && yPoints[0] != it.shared &&
@@ -131,25 +131,5 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         islToFail && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         wait(WAIT_OFFSET) { northbound.getLink(islToFail).state == DISCOVERED }
         database.resetCosts(topology.isls)
-    }
-
-    @Memoized
-    List<Switch> findPotentialYPoints(SwitchTriplet swT) {
-        def sortedEp1Paths = swT.pathsEp1.sort { it.size() }
-        def potentialEp1Paths = sortedEp1Paths.takeWhile { it.size() == sortedEp1Paths[0].size() }
-        def potentialEp2Paths = potentialEp1Paths.collect { potentialEp1Path ->
-            def sortedEp2Paths = swT.pathsEp2.sort {
-                it.size() - it.intersect(potentialEp1Path).size()
-            }
-            [path1: potentialEp1Path,
-             potentialPaths2: sortedEp2Paths.takeWhile {it.size() == sortedEp2Paths[0].size() }]
-        }
-        return potentialEp2Paths.collectMany {path1WithPath2 ->
-            path1WithPath2.potentialPaths2.collect { List<PathNode> potentialPath2 ->
-                def switches = pathHelper.getInvolvedSwitches(path1WithPath2.path1)
-                        .intersect(pathHelper.getInvolvedSwitches(potentialPath2))
-                switches ? switches[-1] : null
-            }
-        }.findAll().unique()
     }
 }
