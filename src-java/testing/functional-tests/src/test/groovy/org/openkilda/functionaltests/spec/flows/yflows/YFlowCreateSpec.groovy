@@ -453,7 +453,8 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
         }
         //se qinq, ep1 default, ep2 qinq
         testData.with {
-            def suitingTriplets = owner.topologyHelper.switchTriplets.findAll { it.ep1 != it.ep2 }
+            // https://github.com/telstra/open-kilda/issues/4407
+            def suitingTriplets = owner.topologyHelper.switchTriplets.findAll { it.ep1 != it.ep2 && !it.shared.wb5164 }
             def swT = suitingTriplets.find { isTrafficApplicable(it) } ?: suitingTriplets[0]
             def yFlow = owner.yFlowHelper.randomYFlow(swT).tap {
                 it.subFlows[1].sharedEndpoint.vlanId = it.subFlows[0].sharedEndpoint.vlanId
@@ -466,7 +467,8 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
         }
         //se qinq, ep1-ep2 same sw-port, qinq
         testData.with {
-            def suitingTriplets = owner.topologyHelper.switchTriplets.findAll { it.ep1 == it.ep2 }
+            // https://github.com/telstra/open-kilda/issues/4407
+            def suitingTriplets = owner.topologyHelper.switchTriplets.findAll { it.ep1 == it.ep2 && !it.shared.wb5164 }
             def swT = suitingTriplets.find { isTrafficApplicable(it) } ?: suitingTriplets[0]
             def yFlow = owner.yFlowHelper.randomYFlow(swT).tap {
                 it.subFlows[0].sharedEndpoint.vlanId = 123
