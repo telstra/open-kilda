@@ -301,7 +301,7 @@ public class SwitchSyncServiceTest {
         service.handleSwitchSync(KEY, request, new ValidationResult(
                 tempResult.getFlowEntries(), false, tempResult.getValidateRulesResult(), null,
                 new ValidateGroupsResult(emptyList(), emptyList(), emptyList(), emptyList()),
-                new ValidateLogicalPortsResult(emptyList(), emptyList(), emptyList(), emptyList())));
+                ValidateLogicalPortsResult.newEmpty()));
 
         verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
         verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
@@ -324,7 +324,7 @@ public class SwitchSyncServiceTest {
                         newHashSet(excessRules), newHashSet(misconfiguredRules)),
                 new ValidateMetersResult(emptyList(), emptyList(), emptyList(), excessMeters),
                 new ValidateGroupsResult(emptyList(), emptyList(), emptyList(), emptyList()),
-                new ValidateLogicalPortsResult(emptyList(), emptyList(), emptyList(), emptyList()));
+                ValidateLogicalPortsResult.newEmpty());
     }
 
     private ErrorMessage getErrorMessage() {

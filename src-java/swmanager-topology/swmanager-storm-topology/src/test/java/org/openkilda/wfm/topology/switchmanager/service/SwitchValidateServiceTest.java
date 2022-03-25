@@ -22,6 +22,7 @@ import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -31,6 +32,7 @@ import static org.openkilda.model.SwitchFeature.LAG;
 
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.grpc.DumpLogicalPortsRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -41,6 +43,7 @@ import org.openkilda.messaging.info.group.GroupDumpResponse;
 import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -78,7 +81,13 @@ import java.util.Optional;
 public class SwitchValidateServiceTest {
     private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
     private static final SwitchId SWITCH_ID_MISSING = new SwitchId(0x0000000000000002L);
-    private static final Switch SWITCH_1 = Switch.builder().switchId(SWITCH_ID).features(Sets.newHashSet(LAG)).build();
+    private static final SwitchId LAG_SWITCH_ID = new SwitchId(0x0000000000000003L);
+    private static final Switch SWITCH_1 = Switch.builder().switchId(SWITCH_ID).build();
+    private static final Switch SWITCH_2 = Switch.builder()
+            .switchId(LAG_SWITCH_ID)
+            .features(Sets.newHashSet(LAG))
+            .socketAddress(new IpSocketAddress("127.127.127.127", 9999))
+            .build();
     private static final String KEY = "KEY";
 
     @Mock
@@ -101,6 +110,7 @@ public class SwitchValidateServiceTest {
         RepositoryFactory repositoryFactory = Mockito.mock(RepositoryFactory.class);
         SwitchRepository switchRepository = Mockito.mock(SwitchRepository.class);
         when(switchRepository.findById(eq(SWITCH_ID))).thenReturn(Optional.of(SWITCH_1));
+        when(switchRepository.findById(eq(LAG_SWITCH_ID))).thenReturn(Optional.of(SWITCH_2));
         when(switchRepository.findById(eq(SWITCH_ID_MISSING))).thenReturn(Optional.empty());
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
@@ -154,10 +164,15 @@ public class SwitchValidateServiceTest {
 
         service.dispatchWorkerMessage(
                 new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
-        service.timeout(new MessageCookie(KEY));
+        ArgumentCaptor<MessageCookie> argument = ArgumentCaptor.forClass(MessageCookie.class);
+        verify(carrier, times(3))
+                .sendCommandToSpeaker(any(CommandData.class), argument.capture());
+        MessageCookie cookie = argument.getValue();
+        service.timeout(cookie);
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).errorResponse(eq(KEY), eq(ErrorType.OPERATION_TIMED_OUT), any(String.class), any(String.class));
+
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
     }
@@ -168,8 +183,11 @@ public class SwitchValidateServiceTest {
 
         service.dispatchWorkerMessage(
                 new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
+        ArgumentCaptor<MessageCookie> argument = ArgumentCaptor.forClass(MessageCookie.class);
+        verify(carrier, times(3))
+                .sendCommandToSpeaker(any(CommandData.class), argument.capture());
         ErrorMessage errorMessage = getErrorMessage();
-        service.dispatchErrorMessage(errorMessage.getData(), new MessageCookie(KEY));
+        service.dispatchErrorMessage(errorMessage.getData(), argument.getValue());
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).errorResponse(eq(KEY), eq(errorMessage.getData().getErrorType()), any(String.class),
@@ -199,8 +217,10 @@ public class SwitchValidateServiceTest {
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).build();
 
         service.handleSwitchValidateRequest(KEY, request);
-        verify(carrier, times(2)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
-        verify(carrier, times(1)).runHeavyOperation(eq(KEY), eq(SWITCH_ID));
+        verify(carrier, times(2))
+                .sendCommandToSpeaker(any(CommandData.class), any(MessageCookie.class));
+        verify(carrier, times(1))
+                .runHeavyOperation(eq(SWITCH_ID), any(MessageCookie.class));
 
         service.dispatchWorkerMessage(
                 new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
@@ -241,6 +261,46 @@ public class SwitchValidateServiceTest {
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
+    }
+
+    @Test
+    public void validationSuccessWithUnavailableGrpc() throws UnexpectedInputException, MessageDispatchException {
+        request = SwitchValidateRequest.builder().switchId(LAG_SWITCH_ID).processMeters(true).build();
+        service.handleSwitchValidateRequest(KEY, request);
+
+        verify(carrier, times(4))
+                .sendCommandToSpeaker(any(CommandData.class), argThat(cookie -> KEY.equals(cookie.getValue())));
+        verify(carrier, times(1))
+                .runHeavyOperation(eq(LAG_SWITCH_ID), argThat(cookie -> KEY.equals(cookie.getValue())));
+
+        ArgumentCaptor<MessageCookie> cookieCaptor = ArgumentCaptor.forClass(MessageCookie.class);
+        verify(carrier, times(1))
+                .sendCommandToSpeaker(any(DumpLogicalPortsRequest.class), cookieCaptor.capture());
+        verifyNoMoreInteractions(carrier);
+
+        service.dispatchWorkerMessage(
+                new FlowDumpResponse(LAG_SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new GroupDumpResponse(LAG_SWITCH_ID, emptyList()), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new SwitchEntities(new ArrayList<>()), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new MeterDumpResponse(LAG_SWITCH_ID, emptyList()), new MessageCookie(KEY));
+        service.dispatchErrorMessage(getErrorMessage().getData(), cookieCaptor.getValue());
+
+        verify(validationService).validateRules(eq(LAG_SWITCH_ID), any(), any());
+        verify(validationService).validateGroups(eq(LAG_SWITCH_ID), any(), any());
+        verify(validationService).validateMeters(eq(LAG_SWITCH_ID), any(), any());
+
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
+
+        ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
+        verify(carrier).response(eq(KEY), responseCaptor.capture());
+        SwitchValidationResponse response = (SwitchValidationResponse) responseCaptor.getValue().getData();
+
+        assertEquals(singletonList(flowSpeakerData.getCookie().getValue()), response.getRules().getMissing());
+        assertEquals(response.getLogicalPorts().getError(), getErrorMessage().getData().getErrorMessage());
+
+        verifyNoMoreInteractions(carrier);
+        verifyNoMoreInteractions(validationService);
+
     }
 
     @Test
@@ -297,8 +357,10 @@ public class SwitchValidateServiceTest {
     private void handleRequestAndInitDataReceive() {
         service.handleSwitchValidateRequest(KEY, request);
 
-        verify(carrier, times(3)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
-        verify(carrier, times(1)).runHeavyOperation(eq(KEY), eq(SWITCH_ID));
+        verify(carrier, times(3))
+                .sendCommandToSpeaker(any(CommandData.class), argThat(cookie -> KEY.equals(cookie.getValue())));
+        verify(carrier, times(1))
+                .runHeavyOperation(eq(SWITCH_ID), argThat(cookie -> KEY.equals(cookie.getValue())));
         verifyNoMoreInteractions(carrier);
     }
 

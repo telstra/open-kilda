@@ -238,7 +238,8 @@ public class ValidationServiceImpl implements ValidationService {
                 ImmutableList.copyOf(properPorts),
                 ImmutableList.copyOf(missingPorts),
                 ImmutableList.copyOf(excessPorts),
-                ImmutableList.copyOf(misconfiguredPorts));
+                ImmutableList.copyOf(misconfiguredPorts),
+                "");
     }
 
     private Set<GroupInfoEntry> calculateMisconfiguredGroups(Set<GroupInfoEntry> expected, Set<GroupInfoEntry> actual) {

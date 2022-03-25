@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.switchmanager.fsm;
 
 import static org.openkilda.model.SwitchFeature.LAG;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.ERROR;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.ERROR_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_ENTITIES_BUILT;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.GROUPS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.LOGICAL_PORTS_RECEIVED;
@@ -29,7 +30,10 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.Swi
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.FINISHED_WITH_ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.VALIDATE;
 
+import org.openkilda.messaging.MessageCookie;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.grpc.DumpLogicalPortsRequest;
+import org.openkilda.messaging.command.grpc.GrpcBaseRequest;
 import org.openkilda.messaging.command.switches.DumpGroupsForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
@@ -65,16 +69,20 @@ import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
+import com.fasterxml.uuid.Generators;
+import com.fasterxml.uuid.NoArgGenerator;
 import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.StateMachineStatus;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -89,6 +97,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
     private final SwitchValidateRequest request;
     private final SwitchManagerCarrier carrier;
     private final ValidationService validationService;
+    private static final Map<String, CommandData> requestsTable = new HashMap<>();
+    private final NoArgGenerator requestIdGenerator = Generators.timeBasedGenerator();
 
     private SwitchValidationContext validationContext;
     private final Set<ExternalResources> pendingRequests = new HashSet<>();
@@ -143,8 +153,11 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 .on(METERS_UNSUPPORTED).callMethod("metersUnsupported");
         builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
                 .on(EXPECTED_ENTITIES_BUILT).callMethod("expectedEntitiesBuild");
+        builder.internalTransition().within(SwitchValidateState.COLLECT_DATA)
+                .on(ERROR_RECEIVED).callMethod("errorWhileCollectingData");
         builder.externalTransition().from(SwitchValidateState.COLLECT_DATA).to(VALIDATE).on(READY);
         builder.externalTransition().from(SwitchValidateState.COLLECT_DATA).to(FINISHED_WITH_ERROR).on(ERROR);
+
 
         // VALIDATE
         builder.externalTransition().from(VALIDATE).to(FINISHED).on(NEXT);
@@ -269,6 +282,35 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         fireReadyIfAllResourcesReceived();
     }
 
+    protected void errorWhileCollectingData(SwitchValidateState from, SwitchValidateState to,
+                                            SwitchValidateEvent event, SwitchValidateContext context) {
+        log.info("Caught error while collecting data, checking source (switch={}, key={}", getSwitchId(), key);
+        MessageCookie sourceCookie = context.getRequestCookie();
+        if (sourceCookie == null) {
+            log.warn("Request cookie is null, aborting");
+            fire(ERROR, context);
+            return;
+        }
+        CommandData request = requestsTable.remove(sourceCookie.getValue());
+        if (request == null) {
+            log.warn("Request got by cookie is null, aborting (cookie={})", sourceCookie);
+            fire(ERROR, context);
+            return;
+        }
+        SwitchManagerException error = context.getError();
+        if (error != null && request instanceof GrpcBaseRequest) {
+            log.warn("Got error from GRPC request (cookie={})", sourceCookie);
+            pendingRequests.remove(ExternalResources.ACTUAL_LOGICAL_PORTS);
+            validationContext = validationContext.toBuilder()
+                    .validateLogicalPortResult(ValidateLogicalPortsResult.newErrorMessage(error.getMessage()))
+                    .build();
+            fireReadyIfAllResourcesReceived();
+        } else {
+            log.warn("Got error from floodlight request (cookie={})", sourceCookie);
+            fire(ERROR, context);
+        }
+    }
+
     protected void validateEnter(SwitchValidateState from, SwitchValidateState to,
                                  SwitchValidateEvent event, SwitchValidateContext context) {
         List<SpeakerData> expectedEntities = validationContext.getExpectedSwitchEntities();
@@ -339,33 +381,45 @@ public class SwitchValidateFsm extends AbstractStateMachine<
     private void requestSwitchOfFlows() {
         SwitchId switchId = getSwitchId();
         log.info("Sending requests to get switch OF-flows (switch={}, key={})", switchId, key);
+        String uuid = String.valueOf(requestIdGenerator.generate());
+        CommandData request = new DumpRulesForSwitchManagerRequest(switchId);
 
-        carrier.sendCommandToSpeaker(key, new DumpRulesForSwitchManagerRequest(switchId));
+        carrier.sendCommandToSpeaker(uuid, request);
         pendingRequests.add(ExternalResources.ACTUAL_OF_FLOWS);
+        requestsTable.put(uuid, request);
     }
 
     private void requestSwitchOfGroups() {
         SwitchId switchId = getSwitchId();
         log.info("Sending requests to get switch OF-groups (switch={}, key={})", switchId, key);
+        String uuid = String.valueOf(requestIdGenerator.generate());
+        CommandData request = new DumpGroupsForSwitchManagerRequest(switchId);
 
-        carrier.sendCommandToSpeaker(key, new DumpGroupsForSwitchManagerRequest(switchId));
+        carrier.sendCommandToSpeaker(uuid, request);
         pendingRequests.add(ExternalResources.ACTUAL_OF_GROUPS);
+        requestsTable.put(uuid, request);
     }
 
     private void requestLogicalPorts(String ipAddress) {
         SwitchId switchId = getSwitchId();
         log.info("Sending request to get switch logical ports. IP {} (switch={}, key={})", ipAddress, switchId, key);
+        String uuid = String.valueOf(requestIdGenerator.generate());
+        CommandData request = new DumpLogicalPortsRequest(ipAddress);
 
-        carrier.sendCommandToSpeaker(key, new DumpLogicalPortsRequest(ipAddress));
+        carrier.sendCommandToSpeaker(uuid, request);
         pendingRequests.add(ExternalResources.ACTUAL_LOGICAL_PORTS);
+        requestsTable.put(uuid, request);
     }
 
     private void requestSwitchMeters() {
         SwitchId switchId = getSwitchId();
         log.info("Sending requests to get switch meters (switch={}, key={})", switchId, key);
+        String uuid = String.valueOf(requestIdGenerator.generate());
+        CommandData request = new DumpMetersForSwitchManagerRequest(switchId);
 
-        carrier.sendCommandToSpeaker(key, new DumpMetersForSwitchManagerRequest(switchId));
+        carrier.sendCommandToSpeaker(uuid, request);
         pendingRequests.add(ExternalResources.ACTUAL_METERS);
+        requestsTable.put(uuid, request);
     }
 
     private void validateRules(List<FlowSpeakerData> expectedRules) {
@@ -460,6 +514,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         LOGICAL_PORTS_RECEIVED,
         METERS_UNSUPPORTED,
         EXPECTED_ENTITIES_BUILT,
+        ERROR_RECEIVED,
         ERROR
     }
 
@@ -471,7 +526,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         EXPECTED_ENTITIES
     }
 
-    @Value
+    @Data
     @Builder
     public static class SwitchValidateContext {
         List<FlowSpeakerData> flowEntries;
@@ -480,5 +535,6 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         List<LogicalPort> logicalPortEntries;
         List<SpeakerData> expectedEntities;
         SwitchManagerException error;
+        MessageCookie requestCookie;
     }
 }
