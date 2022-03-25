@@ -48,8 +48,7 @@ public class SwitchSyncFsmTest {
             newArrayList(), newArrayList(), newArrayList(), newArrayList());
     private static final ValidateRulesResult EMPTY_VALIDATE_RULES_RESULT = new ValidateRulesResult(
             newHashSet(), newHashSet(), newHashSet(), newHashSet());
-    private static final ValidateLogicalPortsResult EMPTY_LOGICAL_PORTS_RESULT = new ValidateLogicalPortsResult(
-            newArrayList(), newArrayList(), newArrayList(), newArrayList());
+    private static final ValidateLogicalPortsResult EMPTY_LOGICAL_PORTS_RESULT = ValidateLogicalPortsResult.newEmpty();
 
     @Test
     public void getModifyDefaultMetersWithMissingRulesTest() {

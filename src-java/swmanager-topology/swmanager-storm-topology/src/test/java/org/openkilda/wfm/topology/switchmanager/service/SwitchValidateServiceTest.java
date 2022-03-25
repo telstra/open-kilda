@@ -22,6 +22,7 @@ import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -154,10 +155,15 @@ public class SwitchValidateServiceTest {
 
         service.dispatchWorkerMessage(
                 new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
-        service.timeout(new MessageCookie(KEY));
+        ArgumentCaptor<MessageCookie> argument = ArgumentCaptor.forClass(MessageCookie.class);
+        verify(carrier, times(3))
+                .sendCommandToSpeaker(any(CommandData.class), argument.capture());
+        MessageCookie cookie = argument.getValue();
+        service.timeout(cookie);
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).errorResponse(eq(KEY), eq(ErrorType.OPERATION_TIMED_OUT), any(String.class), any(String.class));
+
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
     }
@@ -168,8 +174,11 @@ public class SwitchValidateServiceTest {
 
         service.dispatchWorkerMessage(
                 new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
+        ArgumentCaptor<MessageCookie> argument = ArgumentCaptor.forClass(MessageCookie.class);
+        verify(carrier, times(3))
+                .sendCommandToSpeaker(any(CommandData.class), argument.capture());
         ErrorMessage errorMessage = getErrorMessage();
-        service.dispatchErrorMessage(errorMessage.getData(), new MessageCookie(KEY));
+        service.dispatchErrorMessage(errorMessage.getData(), argument.getValue());
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).errorResponse(eq(KEY), eq(errorMessage.getData().getErrorType()), any(String.class),
@@ -199,8 +208,10 @@ public class SwitchValidateServiceTest {
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).build();
 
         service.handleSwitchValidateRequest(KEY, request);
-        verify(carrier, times(2)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
-        verify(carrier, times(1)).runHeavyOperation(eq(KEY), eq(SWITCH_ID));
+        verify(carrier, times(2))
+                .sendCommandToSpeaker(any(CommandData.class), any(MessageCookie.class));
+        verify(carrier, times(1))
+                .runHeavyOperation(eq(SWITCH_ID), any(MessageCookie.class));
 
         service.dispatchWorkerMessage(
                 new FlowDumpResponse(SWITCH_ID, singletonList(flowSpeakerData)), new MessageCookie(KEY));
@@ -297,8 +308,10 @@ public class SwitchValidateServiceTest {
     private void handleRequestAndInitDataReceive() {
         service.handleSwitchValidateRequest(KEY, request);
 
-        verify(carrier, times(3)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
-        verify(carrier, times(1)).runHeavyOperation(eq(KEY), eq(SWITCH_ID));
+        verify(carrier, times(3))
+                .sendCommandToSpeaker(any(CommandData.class), argThat(cookie -> KEY.equals(cookie.getValue())));
+        verify(carrier, times(1))
+                .runHeavyOperation(eq(SWITCH_ID), argThat(cookie -> KEY.equals(cookie.getValue())));
         verifyNoMoreInteractions(carrier);
     }
 

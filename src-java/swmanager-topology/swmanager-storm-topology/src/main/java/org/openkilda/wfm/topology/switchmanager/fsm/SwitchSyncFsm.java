@@ -735,6 +735,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                 .missing(validateLogicalPortsResult.getMissingLogicalPorts())
                 .installed(validateLogicalPortsResult.getMissingLogicalPorts())
                 .removed(validateLogicalPortsResult.getExcessLogicalPorts())
+                .error(validateLogicalPortsResult.getErrorMessage())
                 .build();
 
         SwitchSyncResponse response = new SwitchSyncResponse(switchId, rulesEntry, metersEntry, groupEntry,
