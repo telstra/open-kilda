@@ -87,7 +87,7 @@ public class HibernateFlowEvent extends EntityBase implements FlowEventData {
     }
 
     public void setTaskId(String value) {
-        taskIdUniqueKey = String.format("%s:%x:sha256", DigestUtils.sha256Hex(value), value.length());
+        taskIdUniqueKey = makeTaskIdUniqueKey(value);
         taskId = value;
     }
 
@@ -127,6 +127,10 @@ public class HibernateFlowEvent extends EntityBase implements FlowEventData {
     public void addDump(HibernateFlowEventDump entry) {
         dumps.add(entry);
         entry.setEvent(this);
+    }
+
+    public static String makeTaskIdUniqueKey(String value) {
+        return String.format("%s:%x:sha256", DigestUtils.sha256Hex(value), value.length());
     }
 
     @Getter
