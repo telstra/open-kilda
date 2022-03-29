@@ -266,8 +266,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
             switchHelper.isVxlanEnabled(it.dpId)
         }*.dpId ?: assumeTrue(false, "Should be at least two active traffgens connected to NoviFlow switches")
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            //Forbid QinQ flows for WB-series switches #4408
-            [swP.src, swP.dst].every { !it.wb5164 } && allTraffgenSwitchIds.contains(swP.src.dpId) &&
+            allTraffgenSwitchIds.contains(swP.src.dpId) &&
                     allTraffgenSwitchIds.contains(swP.dst.dpId) &&
                     swP.paths.findAll { path ->
                         pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
