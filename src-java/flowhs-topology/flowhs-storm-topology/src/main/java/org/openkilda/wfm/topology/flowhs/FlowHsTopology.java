@@ -92,6 +92,7 @@ import org.openkilda.wfm.topology.flowhs.bolts.YFlowRerouteHubBolt.YFlowRerouteC
 import org.openkilda.wfm.topology.flowhs.bolts.YFlowUpdateHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.YFlowUpdateHubBolt.YFlowUpdateConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.YFlowValidationHubBolt;
+import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -1031,22 +1032,34 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     private void history(TopologyBuilder topologyBuilder) {
         KafkaBolt<String, Message> kafkaBolt = makeKafkaBolt(
                 topologyConfig.getKafkaHistoryTopic(), MessageSerializer.class);
+        Fields grouping = new Fields(KafkaRecordTranslator.FIELD_ID_KEY);
         declareBolt(topologyBuilder, kafkaBolt, ComponentId.HISTORY_BOLT.name())
-                .shuffleGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
-                .shuffleGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
-                .shuffleGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
-                .shuffleGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
-                .shuffleGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
-                .shuffleGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(),
-                        Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
-                .shuffleGrouping(ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name(),
-                        Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
-                .shuffleGrouping(ComponentId.FLOW_DELETE_MIRROR_POINT_HUB.name(),
-                        Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
-                .shuffleGrouping(ComponentId.YFLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
-                .shuffleGrouping(ComponentId.YFLOW_UPDATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
-                .shuffleGrouping(ComponentId.YFLOW_REROUTE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name())
-                .shuffleGrouping(ComponentId.YFLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name());
+                .fieldsGrouping(ComponentId.FLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(),
+                        grouping)
+                .fieldsGrouping(ComponentId.FLOW_UPDATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(),
+                        grouping)
+                .fieldsGrouping(ComponentId.FLOW_REROUTE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(),
+                        grouping)
+                .fieldsGrouping(ComponentId.FLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(),
+                        grouping)
+                .fieldsGrouping(ComponentId.FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(),
+                        grouping)
+                .fieldsGrouping(ComponentId.FLOW_SWAP_ENDPOINTS_HUB.name(),
+                        Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), grouping)
+                .fieldsGrouping(
+                        ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(),
+                        grouping)
+                .fieldsGrouping(
+                        ComponentId.FLOW_DELETE_MIRROR_POINT_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(),
+                        grouping)
+                .fieldsGrouping(
+                        ComponentId.YFLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), grouping)
+                .fieldsGrouping(
+                        ComponentId.YFLOW_UPDATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), grouping)
+                .fieldsGrouping(
+                        ComponentId.YFLOW_REROUTE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), grouping)
+                .fieldsGrouping(
+                        ComponentId.YFLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), grouping);
     }
 
     @Override
