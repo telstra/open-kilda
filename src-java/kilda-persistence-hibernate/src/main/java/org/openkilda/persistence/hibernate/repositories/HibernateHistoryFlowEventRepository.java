@@ -86,19 +86,22 @@ public class HibernateHistoryFlowEventRepository
 
     /**
      * Fetch and return hibernate {@link HibernateFlowEvent} entity, dedicated to use by others hibernate repositories.
+     * NOTE: taskId field has no index, but taskIdUniqueKey has, so to find FlowEvent by taskId we will use unique key
      */
     public Optional<HibernateFlowEvent> findEntityByTaskId(String taskId) {
+        String taskIdKey = HibernateFlowEvent.makeTaskIdUniqueKey(taskId);
         CriteriaBuilder builder = getSession().getCriteriaBuilder();
         CriteriaQuery<HibernateFlowEvent> query = builder.createQuery(HibernateFlowEvent.class);
         Root<HibernateFlowEvent> root = query.from(HibernateFlowEvent.class);
         query.select(root);
-        query.where(builder.equal(root.get(HibernateFlowEvent_.taskId), taskId));
+        query.where(builder.equal(root.get(HibernateFlowEvent_.taskIdUniqueKey), taskIdKey));
         List<HibernateFlowEvent> results = getSession().createQuery(query).getResultList();
 
         if (1 < results.size()) {
             throw new PersistenceException(String.format(
-                    "Unique constraint violation on field %s of %s",
-                    HibernateFlowEvent_.taskId, HibernateFlowEvent.class.getName()));
+                    "Unique constraint violation on field %s of %s. %s is %s",
+                    HibernateFlowEvent_.taskId, HibernateFlowEvent.class.getName(),
+                    HibernateFlowEvent_.taskIdUniqueKey, taskIdKey));
         }
         if (!results.isEmpty()) {
             return Optional.of(results.get(0));
