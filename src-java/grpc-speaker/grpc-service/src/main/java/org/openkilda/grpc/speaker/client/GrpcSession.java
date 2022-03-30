@@ -408,13 +408,11 @@ public class GrpcSession implements Closeable {
 
     private synchronized void extendChain(Runnable action, CompletableFuture<?> operation) {
         chain = CompletableFuture.allOf(
-                chain.whenComplete((v, e) -> {
-                    if (e == null) {
-                        action.run();
-                    } else {
-                        operation.completeExceptionally(e);
-                    }
-                }), operation);
+                chain.whenComplete((v, e) -> action.run()), operation)
+                .handle((dummy, e) -> {
+                    // clean exceptional status
+                    return null;
+                });
     }
 
     private static ManagedChannel makeChannel(String address) {
