@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.118.1 (30/03/2022)
+
+### Improvements:
+-  [#4448](https://github.com/telstra/open-kilda/pull/4448) Revert "Forbid QinQ flows for WB-series switches"
+-  [#4741](https://github.com/telstra/open-kilda/pull/4741) Group History messages in FlowHS topology
+-  [#4744](https://github.com/telstra/open-kilda/pull/4744) Use TaskIdUniqueKey field to find flow events
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.118.0...v1.118.1).
+
+### Affected Components:
+history, flow-hs, swmanager
+
+---
+
 ## v1.118.0 (24/03/2022)
 
 ### Features:
