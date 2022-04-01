@@ -61,6 +61,13 @@ public class FlowValidateAction extends
     @Override
     protected Optional<Message> performWithResponse(State from, State to, Event event, FlowCreateContext context,
                                                     FlowCreateFsm stateMachine) throws FlowProcessingException {
+        if (event != Event.RETRY) {
+            stateMachine.saveNewEventToHistory("Flow create request validation has been started",
+                    FlowEventData.Event.CREATE);
+        } else {
+            // no need to save a new event into DB, it should already exist there.
+            stateMachine.saveActionToHistory("Flow create request validation has been started");
+        }
         RequestedFlow request = context.getTargetFlow();
         dashboardLogger.onFlowCreate(request.getFlowId(),
                 request.getSrcSwitch(), request.getSrcPort(), request.getSrcVlan(),
@@ -91,13 +98,7 @@ public class FlowValidateAction extends
         }
 
         stateMachine.setTargetFlow(request);
-
-        if (event != Event.RETRY) {
-            stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.CREATE);
-        } else {
-            // no need to save a new event into DB, it should already exist there.
-            stateMachine.saveActionToHistory("Flow was validated successfully");
-        }
+        stateMachine.saveActionToHistory("Flow was validated successfully");
 
         return Optional.empty();
     }

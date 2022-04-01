@@ -56,6 +56,8 @@ public class FlowValidateAction extends
     @Override
     protected Optional<Message> performWithResponse(State from, State to, Event event, FlowPathSwapContext context,
                                                     FlowPathSwapFsm stateMachine) throws FlowProcessingException {
+        stateMachine.saveNewEventToHistory("Flow path swap request validation has been started",
+                FlowEventData.Event.PATH_SWAP);
         transactionManager.doInTransaction(() -> {
             String flowId = stateMachine.getFlowId();
             Flow flow = flowRepository.findById(flowId)
@@ -93,7 +95,7 @@ public class FlowValidateAction extends
             flow.getProtectedReversePath().setStatus(FlowPathStatus.IN_PROGRESS);
 
         });
-        stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.PATH_SWAP);
+        stateMachine.saveActionToHistory("Flow was validated successfully");
 
         return Optional.empty();
     }
