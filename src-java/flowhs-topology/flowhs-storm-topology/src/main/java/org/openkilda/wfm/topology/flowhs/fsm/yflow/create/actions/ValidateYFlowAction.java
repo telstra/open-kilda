@@ -64,6 +64,8 @@ public class ValidateYFlowAction extends
     @Override
     protected Optional<Message> performWithResponse(State from, State to, Event event, YFlowCreateContext context,
                                                     YFlowCreateFsm stateMachine) {
+        stateMachine.saveNewEventToHistory("Y-flow create request validation has been started",
+                FlowEventData.Event.CREATE);
         YFlowRequest targetFlow = context.getTargetFlow();
         String yFlowId = targetFlow.getYFlowId();
 
@@ -98,7 +100,7 @@ public class ValidateYFlowAction extends
         dashboardLogger.onYFlowCreate(yFlowId, targetFlow.getSharedEndpoint(), subFlowEndpoints,
                 targetFlow.getMaximumBandwidth());
 
-        stateMachine.saveNewEventToHistory("Y-flow was validated successfully", FlowEventData.Event.CREATE);
+        stateMachine.saveActionToHistory("Y-flow was validated successfully");
 
         return Optional.empty();
     }

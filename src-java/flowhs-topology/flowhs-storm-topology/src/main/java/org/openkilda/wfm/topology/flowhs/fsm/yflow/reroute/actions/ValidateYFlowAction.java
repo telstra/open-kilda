@@ -68,6 +68,8 @@ public class ValidateYFlowAction extends
     protected Optional<Message> performWithResponse(State from, State to, Event event, YFlowRerouteContext context,
                                                     YFlowRerouteFsm stateMachine) {
 
+        stateMachine.saveNewEventToHistory("Y-flow reroute request validation has been started",
+                FlowEventData.Event.REROUTE);
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getModifyYFlowEnabled();
         if (!isOperationAllowed) {
             throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Y-flow reroute feature is disabled");
@@ -119,7 +121,7 @@ public class ValidateYFlowAction extends
                 .collect(Collectors.toSet());
         stateMachine.setTargetSubFlowIds(affectedFlowIds);
 
-        stateMachine.saveNewEventToHistory("Y-flow was validated successfully", FlowEventData.Event.REROUTE);
+        stateMachine.saveActionToHistory("Y-flow was validated successfully");
 
         return Optional.empty();
     }

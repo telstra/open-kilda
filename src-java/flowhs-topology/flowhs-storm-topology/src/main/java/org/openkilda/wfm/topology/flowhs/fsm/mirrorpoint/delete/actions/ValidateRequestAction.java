@@ -62,6 +62,8 @@ public class ValidateRequestAction extends
     protected Optional<Message> performWithResponse(State from, State to, Event event,
                                                     FlowMirrorPointDeleteContext context,
                                                     FlowMirrorPointDeleteFsm stateMachine) {
+        stateMachine.saveNewEventToHistory("Flow mirror point delete request validation has been started",
+                FlowEventData.Event.FLOW_MIRROR_POINT_DELETE);
         String flowId = stateMachine.getFlowId();
         PathId mirrorPathId = new PathId(context.getFlowMirrorPointId());
         stateMachine.setMirrorPathId(mirrorPathId);
@@ -103,8 +105,7 @@ public class ValidateRequestAction extends
                     .build();
         });
 
-        stateMachine.saveNewEventToHistory("Flow was validated successfully",
-                FlowEventData.Event.FLOW_MIRROR_POINT_DELETE);
+        stateMachine.saveActionToHistory("Flow was validated successfully");
 
         CommandContext commandContext = stateMachine.getCommandContext();
         return Optional.of(new InfoMessage(response, commandContext.getCreateTime(),

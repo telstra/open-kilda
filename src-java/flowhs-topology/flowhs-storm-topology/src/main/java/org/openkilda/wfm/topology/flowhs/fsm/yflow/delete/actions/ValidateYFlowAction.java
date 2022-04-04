@@ -68,6 +68,8 @@ public class ValidateYFlowAction extends
     @Override
     protected Optional<Message> performWithResponse(State from, State to, Event event, YFlowDeleteContext context,
                                                     YFlowDeleteFsm stateMachine) {
+        stateMachine.saveNewEventToHistory("Y-flow delete request validation has been started",
+                FlowEventData.Event.DELETE);
         String yFlowId = stateMachine.getYFlowId();
         dashboardLogger.onYFlowDelete(yFlowId);
 
@@ -92,7 +94,7 @@ public class ValidateYFlowAction extends
             return yFlow;
         });
 
-        stateMachine.saveNewEventToHistory("Y-flow was validated successfully", FlowEventData.Event.DELETE);
+        stateMachine.saveActionToHistory("Y-flow was validated successfully");
 
         return Optional.of(buildResponseMessage(result, stateMachine.getCommandContext()));
     }

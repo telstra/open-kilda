@@ -64,6 +64,8 @@ public class ValidateRequestAction extends
     protected Optional<Message> performWithResponse(State from, State to, Event event,
                                                     FlowMirrorPointCreateContext context,
                                                     FlowMirrorPointCreateFsm stateMachine) {
+        stateMachine.saveNewEventToHistory("Flow mirror point create request validation has been started",
+                FlowEventData.Event.FLOW_MIRROR_POINT_CREATE);
         String flowId = stateMachine.getFlowId();
         RequestedFlowMirrorPoint mirrorPoint = context.getMirrorPoint();
         PathId mirrorPathId = new PathId(mirrorPoint.getMirrorPointId());
@@ -122,8 +124,7 @@ public class ValidateRequestAction extends
             throw new FlowProcessingException(ErrorType.DATA_INVALID, e.getMessage(), e);
         }
 
-        stateMachine.saveNewEventToHistory("Flow was validated successfully",
-                FlowEventData.Event.FLOW_MIRROR_POINT_CREATE);
+        stateMachine.saveActionToHistory("Flow was validated successfully");
 
         return Optional.empty();
     }
