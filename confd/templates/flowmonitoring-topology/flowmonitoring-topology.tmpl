@@ -1,7 +1,7 @@
 # topology configuration
 config:
   topology.parallelism: {{ getv "/kilda_storm_flow_monitoring_parallelism" }}
-  topology.workers: {{ getv "/kilda_storm_parallelism_workers_count" }}
+  topology.workers: {{ getv "/kilda_storm_flow_monitoring_workers_count" }}
 
 # spout definitions
 spouts:
