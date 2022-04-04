@@ -62,7 +62,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     ])
     def "System allows to create/update encapsulation type for a flow\
 [#data.encapsulationCreate.toString() -> #data.encapsulationUpdate.toString(), #swPair.hwSwString()]"(Map data, SwitchPair swPair) {
-        assumeFalse((swPair.src.wb5164 || swPair.dst.wb5164), "Forbid QinQ flows for WB-series switches #4408")
         when: "Create a flow with #encapsulationCreate.toString() encapsulation type"
         def flow = flowHelperV2.randomFlow(swPair)
         flow.encapsulationType = data.encapsulationCreate
@@ -364,7 +363,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
         given: "Two active VXLAN supported switches connected to traffgen"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
-            !it.wb5164 && switchHelper.isVxlanEnabled(it.dpId) //Forbid QinQ flows for WB-series switches #4408
+            switchHelper.isVxlanEnabled(it.dpId)
         }*.dpId ?: assumeTrue(false,
 "Should be at least two active traffgens connected to VXLAN supported switches")
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
