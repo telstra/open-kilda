@@ -40,6 +40,11 @@ public class FlowCommand extends OfCommand {
     }
 
     @Override
+    public void buildModify(OfEntityBatch builder, SwitchId switchId) {
+        builder.addModifyFlow(data, switchId);
+    }
+
+    @Override
     public void buildDelete(OfEntityBatch builder, SwitchId switchId) {
         builder.addDeleteFlow(data, switchId);
     }

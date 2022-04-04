@@ -16,6 +16,10 @@
 package org.openkilda.wfm.topology.switchmanager.model;
 
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
+import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.SpeakerData;
 
 import lombok.Value;
 
@@ -25,6 +29,10 @@ import java.util.List;
 public class ValidationResult {
     List<FlowEntry> flowEntries;
     boolean processMeters;
+    List<SpeakerData> expectedEntries;
+    List<FlowSpeakerData> actualFlows;
+    List<MeterSpeakerData> actualMeters;
+    List<GroupSpeakerData> actualGroups;
 
     ValidateRulesResult validateRulesResult;
     ValidateMetersResult validateMetersResult;

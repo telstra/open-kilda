@@ -27,19 +27,19 @@ import lombok.NonNull;
 import java.util.Collection;
 import java.util.UUID;
 
-public class InstallSpeakerCommandsRequest extends BaseSpeakerCommandsRequest {
+public class ModifySpeakerCommandsRequest extends BaseSpeakerCommandsRequest {
 
     @Builder(toBuilder = true)
     @JsonCreator
-    public InstallSpeakerCommandsRequest(@JsonProperty("message_context") MessageContext messageContext,
-                                         @JsonProperty("switch_id") @NonNull SwitchId switchId,
-                                         @JsonProperty("command_id") @NonNull UUID commandId,
-                                         @JsonProperty("command_data") Collection<OfCommand> commands,
-                                         @JsonProperty("origin") Origin origin) {
+    public ModifySpeakerCommandsRequest(@JsonProperty("message_context") MessageContext messageContext,
+                                        @JsonProperty("switch_id") @NonNull SwitchId switchId,
+                                        @JsonProperty("command_id") @NonNull UUID commandId,
+                                        @JsonProperty("command_data") Collection<OfCommand> commands,
+                                        @JsonProperty("origin") Origin origin) {
         super(messageContext, switchId, commandId, commands, origin);
     }
 
     public void process(BatchCommandProcessor processor, String key) {
-        processor.processBatchInstall(this, key);
+        processor.processBatchModify(this, key);
     }
 }

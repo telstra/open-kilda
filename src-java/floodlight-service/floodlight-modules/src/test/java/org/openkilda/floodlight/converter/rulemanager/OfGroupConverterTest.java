@@ -29,10 +29,10 @@ import org.openkilda.rulemanager.group.WatchPort;
 import com.google.common.collect.Sets;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFBucket;
-import org.projectfloodlight.openflow.protocol.OFGroupAdd;
 import org.projectfloodlight.openflow.protocol.OFGroupDelete;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsReply.Builder;
+import org.projectfloodlight.openflow.protocol.OFGroupMod;
 import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
@@ -114,11 +114,11 @@ public class OfGroupConverterTest {
                 .build();
         OFFactoryVer13 factory = new OFFactoryVer13();
 
-        OFGroupAdd ofGroupAdd = OfGroupConverter.INSTANCE.convertInstallGroupCommand(groupSpeakerData, factory);
+        OFGroupMod ofGroupMod = OfGroupConverter.INSTANCE.convertInstallGroupCommand(groupSpeakerData, factory);
 
-        assertEquals(OFGroup.of(GROUP_ID), ofGroupAdd.getGroup());
-        assertEquals(OFGroupType.ALL, ofGroupAdd.getGroupType());
-        assertEquals(2, ofGroupAdd.getBuckets().size());
+        assertEquals(OFGroup.of(GROUP_ID), ofGroupMod.getGroup());
+        assertEquals(OFGroupType.ALL, ofGroupMod.getGroupType());
+        assertEquals(2, ofGroupMod.getBuckets().size());
 
         List<OFBucket> expectedBuckets = new ArrayList<>();
         expectedBuckets.add(factory.buildBucket().setWatchPort(OFPort.ANY)
@@ -130,7 +130,7 @@ public class OfGroupConverterTest {
                 .setWatchGroup(OFGroup.ALL)
                 .setActions(getActions(factory, 1))
                 .build());
-        assertEquals(expectedBuckets, ofGroupAdd.getBuckets());
+        assertEquals(expectedBuckets, ofGroupMod.getBuckets());
     }
 
     @Test

@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.info.InfoData;
@@ -34,6 +35,9 @@ public interface SwitchManagerHubService {
 
     void dispatchWorkerMessage(InfoData payload, MessageCookie cookie)
             throws UnexpectedInputException, MessageDispatchException;
+
+    default void dispatchWorkerMessage(SpeakerResponse payload, MessageCookie cookie)
+            throws UnexpectedInputException, MessageDispatchException {}
 
     void dispatchErrorMessage(ErrorData payload, MessageCookie cookie) throws MessageDispatchException;
 

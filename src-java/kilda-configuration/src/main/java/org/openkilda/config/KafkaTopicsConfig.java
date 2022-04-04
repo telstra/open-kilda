@@ -93,6 +93,23 @@ public interface KafkaTopicsConfig {
     @Default("kilda.speaker.flowhs.priv.region")
     String getFlowHsSpeakerRegionTopic();
 
+    @Key("speaker.switch.manager")
+    @Default("kilda.speaker.switch.manager.storm")
+    String getSpeakerSwitchManagerTopic();
+
+    @Key("speaker.switch.manager.region")
+    @FallbackKey("kafka.speaker.switch.manager.region")
+    @Default("kilda.speaker.switch.manager")
+    String getSpeakerSwitchManagerRegionTopic();
+
+    @Key("speaker.switch.manager.priv")
+    @Default("kilda.speaker.switch.manager.priv")
+    String getSwitchManagerSpeakerTopic();
+
+    @Key("speaker.switch.manager.priv.region")
+    @Default("kilda.speaker.switch.manager.priv.region")
+    String getSwitchManagerSpeakerRegionTopic();
+
     @Key("speaker.flow.ping")
     @FallbackKey("kafka.speaker.flow.ping")
     @Default("kilda.speaker.flow.ping.storm")

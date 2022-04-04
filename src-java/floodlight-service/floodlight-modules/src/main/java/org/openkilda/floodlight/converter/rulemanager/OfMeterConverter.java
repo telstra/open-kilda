@@ -99,6 +99,21 @@ public class OfMeterConverter {
      * @return mod
      */
     public OFMeterMod convertInstallMeterCommand(MeterSpeakerData commandData, OFFactory ofFactory) {
+        return setupBaseMeterModBuilder(commandData, ofFactory)
+                .setCommand(OFMeterModCommand.ADD)
+                .build();
+    }
+
+    /**
+     * Convert Meter Modify Command.
+     */
+    public OFMeterMod convertModifyMeterCommand(MeterSpeakerData commandData, OFFactory ofFactory) {
+        return setupBaseMeterModBuilder(commandData, ofFactory)
+                .setCommand(OFMeterModCommand.MODIFY)
+                .build();
+    }
+
+    private OFMeterMod.Builder setupBaseMeterModBuilder(MeterSpeakerData commandData, OFFactory ofFactory) {
         OFMeterMod.Builder builder = ofFactory.buildMeterMod();
         builder.setMeterId(commandData.getMeterId().getValue())
                 .setFlags(toOfMeterFlags(commandData.getFlags()));
@@ -115,7 +130,7 @@ public class OfMeterConverter {
         } else {
             builder.setMeters(bandDrops);
         }
-        return builder.build();
+        return builder;
     }
 
     /**

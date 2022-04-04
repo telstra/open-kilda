@@ -15,24 +15,18 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.flow.FlowInstallResponse;
-import org.openkilda.messaging.info.flow.FlowReinstallResponse;
-import org.openkilda.messaging.info.flow.FlowRemoveResponse;
 import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
-import org.openkilda.messaging.info.switches.DeleteGroupResponse;
-import org.openkilda.messaging.info.switches.DeleteMeterResponse;
-import org.openkilda.messaging.info.switches.InstallGroupResponse;
-import org.openkilda.messaging.info.switches.ModifyGroupResponse;
-import org.openkilda.messaging.info.switches.ModifyMeterResponse;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.MessageDispatchException;
 import org.openkilda.wfm.error.UnexpectedInputException;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState;
@@ -65,9 +59,8 @@ public class SwitchSyncService implements SwitchManagerHubService {
     CommandBuilder commandBuilder;
 
     public SwitchSyncService(
-            SwitchManagerCarrier carrier, PersistenceManager persistenceManager,
-            FlowResourcesConfig flowResourcesConfig) {
-        this(carrier, new CommandBuilderImpl(persistenceManager, flowResourcesConfig));
+            SwitchManagerCarrier carrier, PersistenceManager persistenceManager) {
+        this(carrier, new CommandBuilderImpl(persistenceManager));
     }
 
     @VisibleForTesting
@@ -85,26 +78,27 @@ public class SwitchSyncService implements SwitchManagerHubService {
     @Override
     public void dispatchWorkerMessage(InfoData payload, MessageCookie cookie)
             throws UnexpectedInputException, MessageDispatchException {
-        if (payload instanceof FlowInstallResponse) {
-            fireHandlerEvent(cookie, SwitchSyncEvent.MISSING_RULES_INSTALLED);
-        } else if (payload instanceof FlowRemoveResponse) {
-            fireHandlerEvent(cookie, SwitchSyncEvent.EXCESS_RULES_REMOVED);
-        } else if (payload instanceof FlowReinstallResponse) {
-            fireHandlerEvent(cookie, SwitchSyncEvent.MISCONFIGURED_RULES_REINSTALLED, payload);
-        } else if (payload instanceof DeleteMeterResponse) {
-            fireHandlerEvent(cookie, SwitchSyncEvent.METERS_REMOVED);
-        } else if (payload instanceof ModifyMeterResponse) {
-            fireHandlerEvent(cookie, SwitchSyncEvent.MISCONFIGURED_METERS_MODIFIED);
-        } else if (payload instanceof InstallGroupResponse) {
-            fireHandlerEvent(cookie, SwitchSyncEvent.GROUPS_INSTALLED);
-        } else if (payload instanceof ModifyGroupResponse) {
-            fireHandlerEvent(cookie, SwitchSyncEvent.GROUPS_MODIFIED);
-        } else if (payload instanceof DeleteGroupResponse) {
-            fireHandlerEvent(cookie, SwitchSyncEvent.GROUPS_REMOVED);
-        } else if (payload instanceof CreateOrUpdateLogicalPortResponse) {
+        if (payload instanceof CreateOrUpdateLogicalPortResponse) {
             fireHandlerEvent(cookie, SwitchSyncEvent.LOGICAL_PORT_INSTALLED);
         } else if (payload instanceof DeleteLogicalPortResponse) {
             fireHandlerEvent(cookie, SwitchSyncEvent.LOGICAL_PORT_REMOVED);
+        } else {
+            throw new UnexpectedInputException(payload);
+        }
+    }
+
+    @Override
+    public void dispatchWorkerMessage(SpeakerResponse payload, MessageCookie cookie)
+            throws UnexpectedInputException, MessageDispatchException {
+        if (payload instanceof SpeakerCommandResponse) {
+            SpeakerCommandResponse response = (SpeakerCommandResponse) payload;
+            if (response.isSuccess()) {
+                fireHandlerEvent(cookie, SwitchSyncEvent.COMMANDS_PROCESSED);
+            } else {
+                ErrorData errorData = new ErrorData(ErrorType.INTERNAL_ERROR, "OpenFlow commands failed",
+                        response.getFailedCommandIds().values().toString());
+                fireHandlerEvent(cookie, SwitchSyncEvent.ERROR, errorData);
+            }
         } else {
             throw new UnexpectedInputException(payload);
         }
@@ -147,9 +141,9 @@ public class SwitchSyncService implements SwitchManagerHubService {
     // FIXME(surabujin): incorrect FSM usage
     private void process(SwitchSyncFsm fsm) {
         final List<SwitchSyncState> stopStates = Arrays.asList(
-                SwitchSyncState.RULES_COMMANDS_SEND,
-                SwitchSyncState.METERS_COMMANDS_SEND,
-                SwitchSyncState.GROUPS_COMMANDS_SEND,
+                SwitchSyncState.SEND_REMOVE_COMMANDS,
+                SwitchSyncState.SEND_MODIFY_COMMANDS,
+                SwitchSyncState.SEND_INSTALL_COMMANDS,
                 SwitchSyncState.LOGICAL_PORTS_COMMANDS_SEND,
                 SwitchSyncState.FINISHED,
                 SwitchSyncState.FINISHED_WITH_ERROR

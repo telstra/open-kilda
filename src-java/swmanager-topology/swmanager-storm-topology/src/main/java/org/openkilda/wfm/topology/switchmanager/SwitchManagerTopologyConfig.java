@@ -47,6 +47,14 @@ public interface SwitchManagerTopologyConfig  extends AbstractTopologyConfig {
         return getKafkaTopics().getSpeakerTopic();
     }
 
+    default String getKafkaSpeakerSwitchManagerTopic() {
+        return getKafkaTopics().getSpeakerSwitchManagerTopic();
+    }
+
+    default String getKafkaSwitchManagerSpeakerWorkerTopic() {
+        return getKafkaTopics().getSwitchManagerSpeakerTopic();
+    }
+
     default String getGrpcSpeakerTopic() {
         return getKafkaTopics().getGrpcSpeakerTopic();
     }

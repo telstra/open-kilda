@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.CommandData;
@@ -48,8 +50,20 @@ public class SpeakerWorkerService {
      */
     public void sendFloodlightCommand(String key, CommandData command, MessageCookie cookie) throws PipelineException {
         log.debug("Got Floodlight request from hub bolt {}", command);
-        keyToRequest.put(key, new RequestContext(command, cookie));
+        keyToRequest.put(key, new RequestContext(command, null, cookie));
         carrier.sendFloodlightCommand(key, new CommandMessage(command, System.currentTimeMillis(), key));
+    }
+
+    /**
+     * Sends RuleManager request to Floodlight speaker.
+     * @param key unique operation's key.
+     * @param request request to be processed.
+     */
+    public void sendFloodlightOfRequest(String key, BaseSpeakerCommandsRequest request, MessageCookie cookie)
+            throws PipelineException {
+        log.debug("Got Floodlight RuleManager request from hub bolt {}", request);
+        keyToRequest.put(key, new RequestContext(null, request, cookie));
+        carrier.sendFloodlightOfRequest(key, request);
     }
 
     /**
@@ -59,7 +73,7 @@ public class SpeakerWorkerService {
      */
     public void sendGrpcCommand(String key, CommandData command, MessageCookie cookie) throws PipelineException {
         log.debug("Got GRPC request from hub bolt {}", command);
-        keyToRequest.put(key, new RequestContext(command, cookie));
+        keyToRequest.put(key, new RequestContext(command, null, cookie));
         carrier.sendGrpcCommand(key, new CommandMessage(command, key, cookie));
     }
 
@@ -81,6 +95,20 @@ public class SpeakerWorkerService {
     }
 
     /**
+     * Processes received OF speaker response and forwards it to the hub component.
+     */
+    public void handleSpeakerResponse(String key, SpeakerResponse response) throws PipelineException {
+        log.debug("Got a response from speaker {}", response);
+        RequestContext pending = keyToRequest.remove(key);
+        if (pending != null) {
+            if (response.getMessageCookie() == null) {
+                response.setMessageCookie(pending.getCookie());
+            }
+            carrier.sendSpeakerResponse(key, response);
+        }
+    }
+
+    /**
      * Handles operation timeout.
      * @param key operation identifier.
      */
@@ -98,6 +126,7 @@ public class SpeakerWorkerService {
     @Value
     private static class RequestContext {
         CommandData payload;
+        BaseSpeakerCommandsRequest request;
         MessageCookie cookie;
     }
 }

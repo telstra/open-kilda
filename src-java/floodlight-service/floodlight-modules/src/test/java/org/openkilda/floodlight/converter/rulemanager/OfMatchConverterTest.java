@@ -103,7 +103,7 @@ public class OfMatchConverterTest {
         OFFactoryVer13 factory = new OFFactoryVer13();
         Set<FieldMatch> matchSet = new HashSet<>();
         matchSet.add(FieldMatch.builder().field(Field.ETH_TYPE).value(0x0800L).build());
-        matchSet.add(FieldMatch.builder().field(Field.ETH_SRC).value(1).build());
+        matchSet.add(FieldMatch.builder().field(Field.ETH_SRC).value(167000408061L).build());
         matchSet.add(FieldMatch.builder().field(Field.ETH_DST).value(2).build());
         matchSet.add(FieldMatch.builder().field(Field.IP_PROTO).value(17).build());
         matchSet.add(FieldMatch.builder().field(Field.UDP_SRC).value(11).build());
@@ -119,7 +119,7 @@ public class OfMatchConverterTest {
         assertEquals(0x800, ethType.getValue());
 
         MacAddress ethSrc = match.get(MatchField.ETH_SRC);
-        assertEquals(MacAddress.of(1), ethSrc);
+        assertEquals(MacAddress.of(167000408061L), ethSrc);
 
         MacAddress ethDst = match.get(MatchField.ETH_DST);
         assertEquals(MacAddress.of(2), ethDst);

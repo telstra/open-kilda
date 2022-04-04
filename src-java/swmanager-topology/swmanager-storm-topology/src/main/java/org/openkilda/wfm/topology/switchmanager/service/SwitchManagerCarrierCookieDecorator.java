@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
+import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.CommandData;
@@ -22,9 +23,12 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.topology.switchmanager.bolt.SwitchManagerHub.OfCommandAction;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 
 import lombok.NonNull;
+
+import java.util.List;
 
 public class SwitchManagerCarrierCookieDecorator implements SwitchManagerCarrier {
     private final SwitchManagerCarrier target;
@@ -59,6 +63,18 @@ public class SwitchManagerCarrierCookieDecorator implements SwitchManagerCarrier
     @Override
     public void runHeavyOperation(SwitchId switchId, @NonNull MessageCookie cookie) {
         target.runHeavyOperation(switchId, new MessageCookie(dispatchRoute, cookie));
+    }
+
+    @Override
+    public void sendOfCommandsToSpeaker(String key, List<OfCommand> commands, OfCommandAction action,
+                                        SwitchId switchId) {
+        sendOfCommandsToSpeaker(commands, action, switchId, new MessageCookie(key));
+    }
+
+    @Override
+    public void sendOfCommandsToSpeaker(List<OfCommand> commands, OfCommandAction action, SwitchId switchId,
+                                        @NonNull MessageCookie cookie) {
+        target.sendOfCommandsToSpeaker(commands, action, switchId, new MessageCookie(dispatchRoute, cookie));
     }
 
     @Override

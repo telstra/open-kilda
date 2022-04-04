@@ -40,6 +40,11 @@ public class GroupCommand extends OfCommand {
     }
 
     @Override
+    public void buildModify(OfEntityBatch builder, SwitchId switchId) {
+        builder.addModifyGroup(data, switchId);
+    }
+
+    @Override
     public void buildDelete(OfEntityBatch builder, SwitchId switchId) {
         builder.addDeleteGroup(data, switchId);
     }

@@ -28,10 +28,10 @@ import org.mapstruct.factory.Mappers;
 import org.projectfloodlight.openflow.protocol.OFBucket;
 import org.projectfloodlight.openflow.protocol.OFBucket.Builder;
 import org.projectfloodlight.openflow.protocol.OFFactory;
-import org.projectfloodlight.openflow.protocol.OFGroupAdd;
 import org.projectfloodlight.openflow.protocol.OFGroupDelete;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsReply;
+import org.projectfloodlight.openflow.protocol.OFGroupMod;
 import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.types.OFGroup;
@@ -77,15 +77,27 @@ public class OfGroupConverter {
     /**
      * Convert group command data into OfGroupMod representation.
      */
-    public OFGroupAdd convertInstallGroupCommand(GroupSpeakerData commandData, OFFactory ofFactory) {
-        List<OFBucket> buckets = commandData.getBuckets().stream()
-                .map(x -> toOfBucket(ofFactory, x)).collect(Collectors.toList());
-        return ofFactory.buildGroupAdd()
-                .setGroup(OFGroup.of((int) commandData.getGroupId().getValue()))
-                .setGroupType(toOfGroupType(commandData.getType()))
-                .setBuckets(buckets)
+    public OFGroupMod convertInstallGroupCommand(GroupSpeakerData commandData, OFFactory ofFactory) {
+        return setupBaseBuilder(ofFactory.buildGroupAdd(), commandData, ofFactory)
                 .build();
+    }
 
+    /**
+     * Convert group command data into OfGroupMod representation for group modify command.
+     */
+    public OFGroupMod convertModifyGroupCommand(GroupSpeakerData commandData, OFFactory ofFactory) {
+        return setupBaseBuilder(ofFactory.buildGroupModify(), commandData, ofFactory)
+                .build();
+    }
+
+    private OFGroupMod.Builder setupBaseBuilder(OFGroupMod.Builder builder, GroupSpeakerData groupSpeakerData,
+                                                OFFactory ofFactory) {
+        List<OFBucket> buckets = groupSpeakerData.getBuckets().stream()
+                .map(x -> toOfBucket(ofFactory, x))
+                .collect(Collectors.toList());
+        return builder.setGroup(OFGroup.of((int) groupSpeakerData.getGroupId().getValue()))
+                .setGroupType(toOfGroupType(groupSpeakerData.getType()))
+                .setBuckets(buckets);
     }
 
     /**

@@ -35,5 +35,7 @@ public abstract class OfCommand {
 
     public abstract void buildInstall(OfEntityBatch builder, SwitchId switchId);
 
+    public abstract void buildModify(OfEntityBatch builder, SwitchId switchId);
+
     public abstract void buildDelete(OfEntityBatch builder, SwitchId switchId);
 }

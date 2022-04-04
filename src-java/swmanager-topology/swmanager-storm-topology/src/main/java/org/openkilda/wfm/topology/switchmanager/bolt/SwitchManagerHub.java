@@ -15,8 +15,19 @@
 
 package org.openkilda.wfm.topology.switchmanager.bolt;
 
+import static java.lang.String.format;
+
 import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.ModifySpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
+import org.openkilda.floodlight.api.request.rulemanager.Origin;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
+import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -38,7 +49,6 @@ import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.error.MessageDispatchException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.error.UnexpectedInputException;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
@@ -68,7 +78,9 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -97,7 +109,6 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public static final Fields ZOOKEEPER_STREAM_FIELDS = new Fields(
             ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT);
 
-    private final FlowResourcesConfig flowResourcesConfig;
     private final SwitchManagerTopologyConfig topologyConfig;
     private final RuleManagerConfig ruleManagerConfig;
 
@@ -115,11 +126,9 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     public SwitchManagerHub(HubBolt.Config hubConfig, PersistenceManager persistenceManager,
                             SwitchManagerTopologyConfig topologyConfig,
-                            FlowResourcesConfig flowResourcesConfig,
                             RuleManagerConfig ruleManagerConfig) {
         super(persistenceManager, hubConfig);
         this.topologyConfig = topologyConfig;
-        this.flowResourcesConfig = flowResourcesConfig;
         this.ruleManagerConfig = ruleManagerConfig;
 
         enableMeterRegistry("kilda.switch_validate", StreamType.HUB_TO_METRICS_BOLT.name());
@@ -149,7 +158,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                         new ValidationServiceImpl(persistenceManager, new RuleManagerImpl(ruleManagerConfig))));
         syncService = registerService(
                 serviceRegistry, "switch-sync", this,
-                carrier -> new SwitchSyncService(carrier, persistenceManager, flowResourcesConfig));
+                carrier -> new SwitchSyncService(carrier, persistenceManager));
         switchRuleService = registerService(
                 serviceRegistry, "switch-rules", this,
                 carrier -> new SwitchRuleService(carrier, persistenceManager.getRepositoryFactory()));
@@ -249,7 +258,19 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     }
 
     private void dispatchResponse(Tuple input) throws PipelineException {
-        Message message = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
+        Object payload = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Object.class);
+        if (payload instanceof Message) {
+            Message message = (Message) payload;
+            dispatchResponse(message, input);
+        } else if (payload instanceof AbstractMessage) {
+            AbstractMessage abstractMessage = (AbstractMessage) payload;
+            dispatchResponse(abstractMessage);
+        } else {
+            unhandledInput(input);
+        }
+    }
+
+    private void dispatchResponse(Message message, Tuple input) {
         MessageCookie cookie = message.getCookie();
         if (cookie == null) {
             log.error("There is no message cookie in response, can't determine target service (response: {})", message);
@@ -273,6 +294,27 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
             log.warn("Unable to route worker response {}: {}", message, e.getMessage(message.getCookie()));
         } catch (UnexpectedInputException e) {
             log.error("{}", e.getMessage(message.getCookie()), e);
+        }
+    }
+
+    private void dispatchResponse(AbstractMessage message) {
+        MessageCookie cookie = message.getMessageCookie();
+        if (cookie == null) {
+            log.error("There is no message cookie in response, can't determine target service (response: {})", message);
+            return;
+        }
+
+        try {
+            SwitchManagerHubService service = getService(cookie);
+            if (message instanceof SpeakerCommandResponse) {
+                service.dispatchWorkerMessage((SpeakerCommandResponse) message, cookie.getNested());
+            } else {
+                throw new UnexpectedInputException(message);
+            }
+        } catch (MessageDispatchException e) {
+            log.warn("Unable to route worker response {}: {}", message, e.getMessage(message.getMessageCookie()));
+        } catch (UnexpectedInputException e) {
+            log.error("{}", e.getMessage(message.getMessageCookie()), e);
         }
     }
 
@@ -346,6 +388,46 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     }
 
     @Override
+    public void sendOfCommandsToSpeaker(String key, List<OfCommand> commands, OfCommandAction action,
+                                        SwitchId switchId) {
+        // will never be user, because of carrier decorator
+        sendOfCommandsToSpeaker(commands, action, switchId, new MessageCookie(key));
+    }
+
+    @Override
+    public void sendOfCommandsToSpeaker(List<OfCommand> commands, OfCommandAction action, SwitchId switchId,
+                                        @NonNull MessageCookie cookie) {
+        sendOfCommandsToSpeaker(cookie.toString(), commands, action, switchId, cookie);
+    }
+
+    private void sendOfCommandsToSpeaker(String requestKey, List<OfCommand> commands, OfCommandAction action,
+                                        SwitchId switchId, MessageCookie cookie) {
+        BaseSpeakerCommandsRequest request = getRequest(requestKey, commands, action, switchId);
+
+        emit(SpeakerWorkerBolt.OF_COMMANDS_INCOME_STREAM, getCurrentTuple(),
+                makeWorkerTuple(requestKey, request, cookie));
+    }
+
+    private BaseSpeakerCommandsRequest getRequest(String requestKey, List<OfCommand> commands, OfCommandAction action,
+                                                  SwitchId switchId) {
+        MessageContext messageContext = new MessageContext(requestKey, getCommandContext().getCorrelationId());
+        UUID commandId = UUID.randomUUID();
+        switch (action) {
+            case INSTALL:
+                return new InstallSpeakerCommandsRequest(messageContext, switchId, commandId, commands,
+                        Origin.SW_MANAGER);
+            case MODIFY:
+                return new ModifySpeakerCommandsRequest(messageContext, switchId, commandId, commands,
+                        Origin.SW_MANAGER);
+            case DELETE:
+                return new DeleteSpeakerCommandsRequest(messageContext, switchId, commandId, commands,
+                        Origin.SW_MANAGER);
+            default:
+                throw new IllegalStateException(format("Unknown OpenFlow command type %s", action));
+        }
+    }
+
+    @Override
     public void response(String key, Message message) {
         emit(NORTHBOUND_STREAM_ID, getCurrentTuple(), makeNorthboundTuple(key, message));
     }
@@ -383,12 +465,17 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
         declarer.declareStream(SpeakerWorkerBolt.INCOME_STREAM, WORKER_STREAM_FIELDS);
+        declarer.declareStream(SpeakerWorkerBolt.OF_COMMANDS_INCOME_STREAM, WORKER_STREAM_FIELDS);
         declarer.declareStream(NORTHBOUND_STREAM_ID, NORTHBOUND_STREAM_FIELDS);
         declarer.declareStream(ZOOKEEPER_STREAM_ID, ZOOKEEPER_STREAM_FIELDS);
         declarer.declareStream(HeavyOperationBolt.INCOME_STREAM, HEAVY_OPERATION_STREAM_FIELDS);
     }
 
     private Values makeWorkerTuple(String key, CommandData payload, MessageCookie cookie) {
+        return new Values(KeyProvider.generateChainedKey(key), payload, cookie, getCommandContext());
+    }
+
+    private Values makeWorkerTuple(String key, BaseSpeakerCommandsRequest payload, MessageCookie cookie) {
         return new Values(KeyProvider.generateChainedKey(key), payload, cookie, getCommandContext());
     }
 
@@ -406,5 +493,11 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         S service = provider.apply(new SwitchManagerCarrierCookieDecorator(targetCarrier, name));
         registry.put(new MessageCookie(name), service);
         return service;
+    }
+
+    public enum OfCommandAction {
+        INSTALL,
+        MODIFY,
+        DELETE
     }
 }

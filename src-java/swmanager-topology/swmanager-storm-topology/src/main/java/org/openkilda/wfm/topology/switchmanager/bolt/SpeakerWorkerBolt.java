@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.switchmanager.bolt;
 
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.CommandData;
@@ -35,6 +38,7 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
 
     public static final String ID = "speaker.worker.bolt";
     public static final String INCOME_STREAM = "speaker.worker.stream";
+    public static final String OF_COMMANDS_INCOME_STREAM = "speaker.worker.of.commands.stream";
 
     public static final String FIELD_ID_COOKIE = "cookie";
 
@@ -53,22 +57,37 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     @Override
     protected void onHubRequest(Tuple input) throws PipelineException {
         String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
-        CommandData command = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, CommandData.class);
         MessageCookie cookie = pullValue(input, FIELD_ID_COOKIE, MessageCookie.class);
+        if (INCOME_STREAM.equals(input.getSourceStreamId())) {
+            CommandData command = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, CommandData.class);
 
-        if (command instanceof GrpcBaseRequest) {
-            service.sendGrpcCommand(key, command, cookie);
+            if (command instanceof GrpcBaseRequest) {
+                service.sendGrpcCommand(key, command, cookie);
+            } else {
+                service.sendFloodlightCommand(key, command, cookie);
+            }
+        } else if (OF_COMMANDS_INCOME_STREAM.equals(input.getSourceStreamId())) {
+            BaseSpeakerCommandsRequest request = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD,
+                    BaseSpeakerCommandsRequest.class);
+            service.sendFloodlightOfRequest(key, request, cookie);
         } else {
-            service.sendFloodlightCommand(key, command, cookie);
+            unhandledInput(input);
         }
     }
 
     @Override
     protected void onAsyncResponse(Tuple request, Tuple response) throws Exception {
         String key = pullKey();
-        Message message = pullValue(response, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
-
-        service.handleResponse(key, message);
+        Object payload = pullValue(response, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Object.class);
+        if (payload instanceof Message) {
+            Message message = (Message) payload;
+            service.handleResponse(key, message);
+        } else if (payload instanceof SpeakerResponse) {
+            SpeakerResponse speakerResponse = (SpeakerResponse) payload;
+            service.handleSpeakerResponse(key, speakerResponse);
+        } else {
+            unhandledInput(response);
+        }
     }
 
     @Override
@@ -80,6 +99,7 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
         declarer.declareStream(StreamType.TO_FLOODLIGHT.toString(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(StreamType.REQUEST_TO_FLOODLIGHT.toString(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(StreamType.TO_GRPC.toString(), MessageKafkaTranslator.STREAM_FIELDS);
     }
 
@@ -89,12 +109,23 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     }
 
     @Override
+    public void sendFloodlightOfRequest(String key, SpeakerRequest request) {
+        emitWithContext(StreamType.REQUEST_TO_FLOODLIGHT.toString(), getCurrentTuple(), new Values(key, request));
+    }
+
+    @Override
     public void sendGrpcCommand(String key, CommandMessage command) {
         emitWithContext(StreamType.TO_GRPC.toString(), getCurrentTuple(), new Values(key, command));
     }
 
     @Override
     public void sendResponse(String key, Message response) {
+        Values values = new Values(key, response, getCommandContext());
+        emitResponseToHub(getCurrentTuple(), values);
+    }
+
+    @Override
+    public void sendSpeakerResponse(String key, SpeakerResponse response) {
         Values values = new Values(key, response, getCommandContext());
         emitResponseToHub(getCurrentTuple(), values);
     }
