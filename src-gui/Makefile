@@ -1,6 +1,6 @@
 APP := openkilda-gui
 
-rebuild: clean clean-java build
+rebuild: clean-java build
 
 build: build/libs/${APP}.war
 
@@ -23,10 +23,7 @@ build/libs/${APP}.war: .deps/node .deps/resources
 	mkdir -p .deps
 	mkdir -p tmp
 
-clean:
-	rm -f .deps/resources
-
 clean-java:
 	./gradlew clean
 
-.PHONY: rebuild clean clean-java
+.PHONY: rebuild clean-java
