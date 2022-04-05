@@ -31,6 +31,7 @@ import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.Flow
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
@@ -74,8 +75,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
             @IterationTag(tags = [SMOKE], iterationNameRegex = /vlan /),
-            @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex =
-                    /random vlans|no vlans|single-switch flow with vlans/),
+            @IterationTag(tags = [SMOKE_SWITCHES],
+                    iterationNameRegex = /random vlans|no vlans|single-switch flow with vlans/),
             @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /and vlan only on/)
     ])
     def "Valid #data.description has traffic and no rule discrepancies [#srcDstStr]"() {
@@ -129,7 +130,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def flowIsDeleted = true
 
         and: "ISL bandwidth is restored"
-        Wrappers.wait(WAIT_OFFSET) {
+        wait(WAIT_OFFSET) {
             def allLinksInfoAfter = northbound.getAllLinks().collectEntries { [it.id, it.availableBandwidth] }.sort()
             assert allLinksInfoBefore == allLinksInfoAfter
         }
