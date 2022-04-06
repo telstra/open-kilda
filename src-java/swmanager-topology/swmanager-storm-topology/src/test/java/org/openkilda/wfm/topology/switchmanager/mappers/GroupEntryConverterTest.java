@@ -97,7 +97,6 @@ public class GroupEntryConverterTest {
     private void initializeData() {
         writeActions.add(SET_FIELD_ACTION);
         writeActions.add(PORT_OUT_ACTION);
-        writeActions.add(PUSH_VXLAN_NOVIFLOW_ACTION);
         writeActions.add(PUSH_VXLAN_OVS_ACTION);
 
         buckets.add(new Bucket(WatchGroup.ALL, WatchPort.ANY, writeActions));
