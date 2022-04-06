@@ -15,13 +15,14 @@
 
 package org.openkilda.wfm.topology.flowhs.service.yflow;
 
+import static java.util.Collections.emptyList;
+
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
 import org.openkilda.messaging.command.yflow.SubFlowsResponse;
 import org.openkilda.messaging.command.yflow.YFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowPathsResponse;
 import org.openkilda.messaging.command.yflow.YFlowResponse;
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -36,7 +37,6 @@ import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.mapper.YFlowMapper;
 
 import lombok.NonNull;
@@ -45,10 +45,10 @@ import net.jodah.failsafe.RetryPolicy;
 
 import java.time.Duration;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -158,12 +158,11 @@ public class YFlowReadService {
     }
 
     private YFlowDto convertToYFlowDto(YFlow yFlow) {
-        Flow mainAffinityFlow = yFlow.getSubFlows().stream()
+        Optional<Flow> mainAffinityFlow = yFlow.getSubFlows().stream()
                 .map(YSubFlow::getFlow)
                 .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
-                .findFirst().orElseThrow(() -> new FlowProcessingException(ErrorType.INTERNAL_ERROR,
-                        "Main affinity flow not found"));
-        Collection<Flow> diverseWithFlow = getDiverseWithFlow(mainAffinityFlow);
+                .findFirst();
+        Collection<Flow> diverseWithFlow = mainAffinityFlow.map(this::getDiverseWithFlow).orElse(emptyList());
         Set<String> diverseFlows = diverseWithFlow.stream()
                 .filter(flow -> flow.getYFlowId() == null)
                 .map(Flow::getFlowId)
@@ -177,7 +176,7 @@ public class YFlowReadService {
     }
 
     private Collection<Flow> getDiverseWithFlow(Flow flow) {
-        return flow.getDiverseGroupId() == null ? Collections.emptyList() :
+        return flow.getDiverseGroupId() == null ? emptyList() :
                 flowRepository.findByDiverseGroupId(flow.getDiverseGroupId()).stream()
                         .filter(diverseFlow -> !flow.getYFlowId().equals(diverseFlow.getYFlowId()))
                         .collect(Collectors.toSet());
