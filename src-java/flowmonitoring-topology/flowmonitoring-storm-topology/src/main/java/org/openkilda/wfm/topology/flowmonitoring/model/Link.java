@@ -20,11 +20,9 @@ import org.openkilda.model.SwitchId;
 import lombok.Builder;
 import lombok.Data;
 
-import java.io.Serializable;
-
 @Data
 @Builder
-public class Link implements Serializable {
+public class Link {
 
     private SwitchId srcSwitchId;
     private int srcPort;
