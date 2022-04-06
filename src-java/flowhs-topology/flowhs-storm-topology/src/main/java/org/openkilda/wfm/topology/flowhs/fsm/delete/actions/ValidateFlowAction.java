@@ -53,8 +53,6 @@ public class ValidateFlowAction extends
     @Override
     protected Optional<Message> performWithResponse(State from, State to, Event event, FlowDeleteContext context,
                                                     FlowDeleteFsm stateMachine) {
-        stateMachine.saveNewEventToHistory("Flow delete request validation has been started",
-                FlowEventData.Event.DELETE);
         String flowId = stateMachine.getFlowId();
         dashboardLogger.onFlowDelete(flowId);
 
@@ -80,7 +78,7 @@ public class ValidateFlowAction extends
         stateMachine.setDstSwitchId(resultFlow.getDestSwitchId());
         stateMachine.setSrcSwitchId(resultFlow.getSrcSwitchId());
 
-        stateMachine.saveActionToHistory("Flow was validated successfully");
+        stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.DELETE);
 
         return Optional.of(buildResponseMessage(resultFlow, stateMachine.getCommandContext()));
     }

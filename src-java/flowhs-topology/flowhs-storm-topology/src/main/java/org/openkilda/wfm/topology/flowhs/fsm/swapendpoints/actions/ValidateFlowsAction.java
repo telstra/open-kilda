@@ -57,15 +57,6 @@ public class ValidateFlowsAction
         RequestedFlow firstTargetFlow = stateMachine.getFirstTargetFlow();
         RequestedFlow secondTargetFlow = stateMachine.getSecondTargetFlow();
 
-        stateMachine.saveNewEventToHistory(stateMachine.getFirstFlowId(),
-                format("Validating of swap endpoint request for flows %s and %s",
-                        stateMachine.getFirstFlowId(), stateMachine.getSecondFlowId()),
-                FlowEventData.Event.SWAP_ENDPOINTS);
-        stateMachine.saveNewEventToHistory(stateMachine.getSecondFlowId(),
-                format("Validating of swap endpoint request for flows %s and %s",
-                        stateMachine.getSecondFlowId(), stateMachine.getFirstFlowId()),
-                FlowEventData.Event.SWAP_ENDPOINTS);
-
         if (!featureTogglesRepository.getOrDefault().getUpdateFlowEnabled()) {
             throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Flow update feature is disabled");
         }
@@ -99,10 +90,12 @@ public class ValidateFlowsAction
             return;
         }
 
-        stateMachine.saveFlowActionToHistory(stateMachine.getFirstFlowId(),
-                format("Current flow and flow %s were validated successfully", stateMachine.getSecondFlowId()));
-        stateMachine.saveFlowActionToHistory(stateMachine.getSecondFlowId(),
-                format("Current flow and flow %s were validated successfully", stateMachine.getFirstFlowId()));
+        stateMachine.saveNewEventToHistory(stateMachine.getFirstFlowId(),
+                format("Current flow and flow %s were validated successfully", stateMachine.getSecondFlowId()),
+                FlowEventData.Event.SWAP_ENDPOINTS);
+        stateMachine.saveNewEventToHistory(stateMachine.getSecondFlowId(),
+                format("Current flow and flow %s were validated successfully", stateMachine.getFirstFlowId()),
+                FlowEventData.Event.SWAP_ENDPOINTS);
 
         stateMachine.fireNext();
     }

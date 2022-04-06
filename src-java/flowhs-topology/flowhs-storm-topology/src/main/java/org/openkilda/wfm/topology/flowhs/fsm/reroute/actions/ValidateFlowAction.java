@@ -73,8 +73,7 @@ public class ValidateFlowAction extends
         dashboardLogger.onFlowPathReroute(flowId, affectedIsl, context.isForceReroute());
 
         String rerouteReason = context.getRerouteReason();
-        stateMachine.saveNewEventToHistory("Flow reroute request validation has been started",
-                FlowEventData.Event.REROUTE,
+        stateMachine.saveNewEventToHistory("Started flow validation", FlowEventData.Event.REROUTE,
                 rerouteReason == null ? FlowEventData.Initiator.NB : FlowEventData.Initiator.AUTO,
                 rerouteReason == null ? null : "Reason: " + rerouteReason);
         stateMachine.setRerouteReason(rerouteReason);

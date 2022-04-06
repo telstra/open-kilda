@@ -68,8 +68,6 @@ public class ValidateYFlowAction extends
     @Override
     protected Optional<Message> performWithResponse(State from, State to, Event event, YFlowUpdateContext context,
                                                     YFlowUpdateFsm stateMachine) {
-        stateMachine.saveNewEventToHistory("Y-flow update request validation has been started",
-                FlowEventData.Event.UPDATE);
         YFlowRequest targetFlow = context.getTargetFlow();
 
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getModifyYFlowEnabled();
@@ -128,7 +126,7 @@ public class ValidateYFlowAction extends
 
         stateMachine.setTargetFlow(targetFlow);
 
-        stateMachine.saveActionToHistory("Y-flow was validated successfully");
+        stateMachine.saveNewEventToHistory("Y-flow was validated successfully", FlowEventData.Event.UPDATE);
 
         return Optional.empty();
     }
