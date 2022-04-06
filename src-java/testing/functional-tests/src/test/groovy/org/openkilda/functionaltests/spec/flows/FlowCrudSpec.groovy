@@ -438,7 +438,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 }
         ]
     }
- 
+
     @Tidy
     def "A flow cannot be created with asymmetric forward and reverse paths"() {
         given: "Two active neighboring switches with two possible flow paths at least and different number of hops"
@@ -868,7 +868,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "Two active switches"
         def swPair = topologyHelper.getNeighboringSwitchPair().find {
             [it.src, it.dst].any { !switchHelper.isVxlanEnabled(it.dpId) }
-        } as SwitchPair ?: assumeTrue(false, "Unable to find required switches in topology")
+        } ?: assumeTrue(false, "Unable to find required switches in topology")
 
         def srcProps = northbound.getSwitchProperties(swPair.src.dpId)
         def dstProps = northbound.getSwitchProperties(swPair.dst.dpId)
