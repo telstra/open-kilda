@@ -320,7 +320,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         and: "The root cause('Switch is not active') is registered in flow history"
         Wrappers.wait(WAIT_OFFSET) {
             def flowHistory = northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }
-            assert flowHistory.payload[0].action == "Flow reroute request validation has been started"
+            assert flowHistory.payload[0].action == "Started flow validation"
             assert flowHistory.payload[1].action == "ValidateFlowAction failed: Flow's $flow.flowId src switch is not active"
             assert flowHistory.payload[2].action == REROUTE_FAIL
         }
