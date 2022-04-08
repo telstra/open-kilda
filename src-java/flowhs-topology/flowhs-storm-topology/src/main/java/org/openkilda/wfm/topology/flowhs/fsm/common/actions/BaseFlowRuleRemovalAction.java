@@ -109,8 +109,8 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
     }
 
     protected boolean removeSharedServer42InputRule(
-            FlowEndpoint oldEndpoint, FlowEndpoint newEndpoint, boolean server42Rtt) {
-        return server42Rtt && !oldEndpoint.isSwitchPortEquals(newEndpoint)
+            FlowEndpoint oldEndpoint, FlowEndpoint newEndpoint, boolean server42Rtt, boolean becameSingleSwitch) {
+        return server42Rtt && (!oldEndpoint.isSwitchPortEquals(newEndpoint) || becameSingleSwitch)
                 && findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(
                 oldEndpoint.getSwitchId(), oldEndpoint.getPortNumber()).isEmpty();
     }
@@ -145,12 +145,16 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
     }
 
     protected boolean removeServer42OuterVlanMatchSharedRule(
-            RequestedFlow currentFlow, FlowEndpoint current, FlowEndpoint goal) {
-        if (current.getSwitchId().equals(goal.getSwitchId()) && current.getOuterVlanId() == goal.getOuterVlanId()
-                || currentFlow.isOneSwitchFlow()) {
+            RequestedFlow currentFlow, FlowEndpoint current, FlowEndpoint goal,
+            boolean server42FlowRtt, boolean flowBecameSingleSwitch) {
+        if (currentFlow.isOneSwitchFlow() || !server42FlowRtt) {
             return false;
         }
-        return findServer42OuterVlanMatchSharedRuleUsage(current).stream()
+        boolean endpointChanged = !current.getSwitchId().equals(goal.getSwitchId())
+                || current.getOuterVlanId() != goal.getOuterVlanId();
+
+        return (endpointChanged || flowBecameSingleSwitch)
+                && findServer42OuterVlanMatchSharedRuleUsage(current).stream()
                 .allMatch(currentFlow.getFlowId()::equals);
     }
 
@@ -168,6 +172,7 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
 
         FlowEndpoint newIngress = makeIngressEndpoint(newFlow, newSrcSwitchProperties);
         FlowEndpoint newEgress = makeEgressEndpoint(newFlow, newDstSwitchProperties);
+        boolean becameSingleSwitch = !oldFlow.isOneSwitchFlow() && newFlow.isOneSwitchFlow();
 
         PathContext forwardPathContext = PathContext.builder()
                 .removeCustomerPortRule(removeForwardCustomerPortSharedCatchRule(oldFlow, newFlow))
@@ -176,11 +181,11 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
                 .removeOuterVlanMatchSharedRule(
                         removeOuterVlanMatchSharedRule(oldFlow.getFlowId(), oldIngress, newIngress))
                 .removeServer42InputRule(removeSharedServer42InputRule(
-                        oldIngress, newIngress, srcServer42FlowRtt))
+                        oldIngress, newIngress, srcServer42FlowRtt, becameSingleSwitch))
                 .removeServer42IngressRule(srcServer42FlowRtt)
                 .updateMeter(removeMeters)
-                .removeServer42OuterVlanMatchSharedRule(srcServer42FlowRtt
-                        && removeServer42OuterVlanMatchSharedRule(oldFlow, oldIngress, newIngress))
+                .removeServer42OuterVlanMatchSharedRule(removeServer42OuterVlanMatchSharedRule(
+                        oldFlow, oldIngress, newIngress, srcServer42FlowRtt, becameSingleSwitch))
                 .server42Port(oldSrcSwitchProperties.getServer42Port())
                 .server42MacAddress(oldSrcSwitchProperties.getServer42MacAddress())
                 .build();
@@ -194,11 +199,11 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
                 .removeOuterVlanMatchSharedRule(
                         removeOuterVlanMatchSharedRule(oldFlow.getFlowId(), oldEgress, newEgress))
                 .removeServer42InputRule(removeSharedServer42InputRule(
-                        oldEgress, newEgress, dstServer42FlowRtt))
+                        oldEgress, newEgress, dstServer42FlowRtt, becameSingleSwitch))
                 .removeServer42IngressRule(dstServer42FlowRtt)
                 .updateMeter(removeMeters)
-                .removeServer42OuterVlanMatchSharedRule(dstServer42FlowRtt
-                        && removeServer42OuterVlanMatchSharedRule(oldFlow, oldEgress, newEgress))
+                .removeServer42OuterVlanMatchSharedRule(removeServer42OuterVlanMatchSharedRule(
+                        oldFlow, oldEgress, newEgress, dstServer42FlowRtt, becameSingleSwitch))
                 .server42Port(oldDstSwitchProperties.getServer42Port())
                 .server42MacAddress(oldDstSwitchProperties.getServer42MacAddress())
                 .build();
