@@ -59,8 +59,6 @@ public class ValidateFlowAction extends
     @Override
     protected Optional<Message> performWithResponse(State from, State to, Event event, FlowUpdateContext context,
                                                     FlowUpdateFsm stateMachine) {
-        stateMachine.saveNewEventToHistory("Flow update request validation has been started",
-                FlowEventData.Event.UPDATE);
         String flowId = stateMachine.getFlowId();
         RequestedFlow targetFlow = context.getTargetFlow();
         String diverseFlowId = targetFlow.getDiverseFlowId();
@@ -127,7 +125,7 @@ public class ValidateFlowAction extends
             return foundFlow;
         });
 
-        stateMachine.saveActionToHistory("Flow was validated successfully");
+        stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.UPDATE);
 
         return Optional.empty();
     }
