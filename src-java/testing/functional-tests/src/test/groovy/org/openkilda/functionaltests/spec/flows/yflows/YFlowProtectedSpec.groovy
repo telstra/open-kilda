@@ -48,7 +48,6 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Tidy
-//    @Ignore
     def "Able to enable/disable protected path on a flow"() {
         given: "A simple y-flow"
         def swT = topologyHelper.switchTriplets.find {
@@ -120,10 +119,10 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches passes switch validation"
-//        involvedSwitches.each { sw ->
-//            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//        }
+        involvedSwitches.each { sw ->
+            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
