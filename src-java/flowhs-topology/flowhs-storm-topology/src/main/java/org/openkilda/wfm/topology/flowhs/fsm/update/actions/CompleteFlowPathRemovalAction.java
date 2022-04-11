@@ -74,6 +74,7 @@ public class CompleteFlowPathRemovalAction extends
                 updateIslsForFlowPath(removedPaths.getReverse());
             }
             if (removedPaths != null) {
+                restoreFlowEndpoints(removedPaths, originalFlow);
                 saveRemovalActionWithDumpToHistory(stateMachine, originalFlow, removedPaths);
             }
         }
@@ -106,9 +107,18 @@ public class CompleteFlowPathRemovalAction extends
                 updateIslsForFlowPath(removedPaths.getReverse());
             }
             if (removedPaths != null) {
+                restoreFlowEndpoints(removedPaths, originalFlow);
                 saveRemovalActionWithDumpToHistory(stateMachine, originalFlow, removedPaths);
             }
         }
+    }
+
+    private void restoreFlowEndpoints(FlowPathPair flowPathPair, Flow originalFlow) {
+        Flow flow = flowPathPair.getForward().getFlow();
+        flow.setSrcSwitch(originalFlow.getSrcSwitch());
+        flow.setSrcPort(originalFlow.getSrcPort());
+        flow.setDestSwitch(originalFlow.getDestSwitch());
+        flow.setDestPort(originalFlow.getDestPort());
     }
 
     private void removeRejectedFlowPaths(Flow flow, FlowUpdateFsm stateMachine) {
