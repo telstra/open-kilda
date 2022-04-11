@@ -115,82 +115,135 @@ public class BaseFlowRuleRemovalActionTest extends InMemoryGraphBasedTest {
     public void turnOffArpAndLldpTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, true, true);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, false, false);
-        assertTrue(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
-        assertTrue(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3, 0, 0, false, false);
+        assertTrue(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
+        assertTrue(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
     }
 
     @Test
     public void turnOnArpAndLldpTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, false, false);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, true, true);
-        assertFalse(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
-        assertFalse(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3, 0, 0, false, false);
+        assertFalse(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
+        assertFalse(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
     }
 
     @Test
     public void doNotChangeArpAndLldpTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, false, true);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, false, true);
-        assertFalse(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
-        assertFalse(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3, 0, 0, false, false);
+        assertFalse(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
+        assertFalse(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
     }
 
     @Test
     public void changePortForOnArpAndLldpTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, true, true);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_2, 0, 0, true, true);
-        assertTrue(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
-        assertTrue(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3, 0, 0, false, false);
+        assertTrue(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
+        assertTrue(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
     }
 
     @Test
     public void changePortForOffArpAndLldpTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, false, false);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_2, 0, 0, false, false);
-        assertFalse(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
-        assertFalse(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3, 0, 0, false, false);
+        assertFalse(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
+        assertFalse(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
     }
 
     @Test
     public void changeSwitchForOnArpAndLldpTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, true, true);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_1, 0, 0, true, true);
-        assertTrue(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
-        assertTrue(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3, 0, 0, false, false);
+        assertTrue(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
+        assertTrue(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
     }
 
     @Test
     public void changeSwitchForOffArpAndLldpTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, false, false);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_1, 0, 0, false, false);
-        assertFalse(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
-        assertFalse(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint));
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3, 0, 0, false, false);
+        assertFalse(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
+        assertFalse(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
+    }
+
+    @Test
+    public void swapEndpointOnArpAndLldpTest() {
+        FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, true, true);
+        FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_2, 0, 0, true, true);
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, true, true);
+        assertFalse(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
+        assertFalse(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
+    }
+
+    @Test
+    public void swapEndpointTurnOffArpAndLldpTest() {
+        FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, true, true);
+        FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_2, 0, 0, true, true);
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, 0, 0, false, false);
+        assertTrue(testClass.removeSharedLldpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
+        assertTrue(testClass.removeSharedArpRule(FLOW_ID_1, oldEndpoint, newEndpoint, oppositeNewEndpoint));
     }
 
     @Test
     public void sameEndpointRemoveSharedServer42InputRuleTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);
-        assertFalse(testClass.removeSharedServer42InputRule(oldEndpoint, newEndpoint, true, false));
-        assertFalse(testClass.removeSharedServer42InputRule(oldEndpoint, newEndpoint, false, false));
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3);
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, newEndpoint, oppositeNewEndpoint, true, false));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, newEndpoint, oppositeNewEndpoint, false, false));
     }
 
     @Test
     public void changeSwitchRemoveSharedServer42InputRuleTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_1);
-        assertTrue(testClass.removeSharedServer42InputRule(oldEndpoint, newEndpoint, true, false));
-        assertTrue(testClass.removeSharedServer42InputRule(oldEndpoint, newEndpoint, true, true));
-        assertFalse(testClass.removeSharedServer42InputRule(oldEndpoint, newEndpoint, false, false));
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3);
+        assertTrue(testClass.removeSharedServer42InputRule(oldEndpoint, newEndpoint, oppositeNewEndpoint, true, false));
+        assertTrue(testClass.removeSharedServer42InputRule(oldEndpoint, newEndpoint, oppositeNewEndpoint, true, true));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, newEndpoint, oppositeNewEndpoint, false, false));
     }
 
     @Test
     public void changePortRemoveSharedServer42InputRuleTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_2);
-        assertTrue(testClass.removeSharedServer42InputRule(oldEndpoint, newEndpoint, true, false));
-        assertTrue(testClass.removeSharedServer42InputRule(oldEndpoint, newEndpoint, true, true));
-        assertFalse(testClass.removeSharedServer42InputRule(oldEndpoint, newEndpoint, false, false));
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3);
+        assertTrue(testClass.removeSharedServer42InputRule(oldEndpoint, newEndpoint, oppositeNewEndpoint, true, false));
+        assertTrue(testClass.removeSharedServer42InputRule(oldEndpoint, newEndpoint, oppositeNewEndpoint, true, true));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, newEndpoint, oppositeNewEndpoint, false, false));
+    }
+
+    @Test
+    public void swapEndpointMultiSwitchRemoveSharedServer42InputRuleTest() {
+        FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);
+        FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_2);
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, newEndpoint, oppositeNewEndpoint, true, false));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, newEndpoint, oppositeNewEndpoint, false, false));
+    }
+
+    @Test
+    public void swapEndpointSingleSwitchRemoveSharedServer42InputRuleTest() {
+        FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);
+        FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_2);
+        FlowEndpoint oppositeNewEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);
+        assertTrue(testClass.removeSharedServer42InputRule(oldEndpoint, newEndpoint, oppositeNewEndpoint, true, true));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, newEndpoint, oppositeNewEndpoint, false, true));
     }
 
     @Test
@@ -201,94 +254,194 @@ public class BaseFlowRuleRemovalActionTest extends InMemoryGraphBasedTest {
         FlowEndpoint sameEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);
         FlowEndpoint changedSwitchEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_1);
         FlowEndpoint changedPortEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_2);
+        FlowEndpoint changedSwitchOppositeEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_1);
+        FlowEndpoint changedPortOppositeEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_3);
 
-        assertFalse(testClass.removeSharedServer42InputRule(oldEndpoint, sameEndpoint, true, false));
-        assertFalse(testClass.removeSharedServer42InputRule(oldEndpoint, sameEndpoint, true, true));
-        assertFalse(testClass.removeSharedServer42InputRule(oldEndpoint, sameEndpoint, false, false));
-        assertFalse(testClass.removeSharedServer42InputRule(oldEndpoint, changedSwitchEndpoint, true, false));
-        assertFalse(testClass.removeSharedServer42InputRule(oldEndpoint, changedSwitchEndpoint, true, true));
-        assertFalse(testClass.removeSharedServer42InputRule(oldEndpoint, changedSwitchEndpoint, false, false));
-        assertFalse(testClass.removeSharedServer42InputRule(oldEndpoint, changedPortEndpoint, true, false));
-        assertFalse(testClass.removeSharedServer42InputRule(oldEndpoint, changedPortEndpoint, true, true));
-        assertFalse(testClass.removeSharedServer42InputRule(oldEndpoint, changedPortEndpoint, false, false));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, sameEndpoint, changedSwitchOppositeEndpoint, true, false));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, sameEndpoint, changedPortOppositeEndpoint, true, true));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, sameEndpoint, changedSwitchOppositeEndpoint, false, false));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, changedSwitchEndpoint, changedSwitchOppositeEndpoint, true, false));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, changedSwitchEndpoint, changedPortOppositeEndpoint, true, true));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, changedSwitchEndpoint, changedSwitchOppositeEndpoint, false, false));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, changedPortEndpoint, changedSwitchOppositeEndpoint, true, false));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, changedPortEndpoint, changedPortOppositeEndpoint, true, true));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, changedPortEndpoint, changedSwitchOppositeEndpoint, false, false));
+        assertFalse(testClass.removeSharedServer42InputRule(
+                oldEndpoint, changedPortEndpoint, sameEndpoint, true, false));
     }
 
     @Test
     public void sameEndpointRemoveServer42OuterVlanMatchSharedRuleTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);
+        FlowEndpoint changedSwitchOppositeEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3);
+        FlowEndpoint sameSwitchOppositeEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_3);
         assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
-                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, true, false));
+                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, true, false));
         assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
-                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, false, false));
+                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, false, false));
         assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, false, false));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, false, false));
         assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, false, true));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, sameSwitchOppositeEndpoint, false, true));
         assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, true, false));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, true, false));
         assertTrue(testClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, true, true));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, sameSwitchOppositeEndpoint, true, true));
     }
 
     @Test
     public void changeSwitchRemoveServer42OuterVlanMatchSharedRuleTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_1);
+        FlowEndpoint changedSwitchOppositeEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3);
+        FlowEndpoint sameSwitchOppositeEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_3);
+
         assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
-                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, true, false));
+                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, true, false));
         assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
-                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, false, false));
+                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, false, false));
         assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, false, false));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, false, false));
         assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, false, true));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, sameSwitchOppositeEndpoint, false, true));
         assertTrue(testClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, true, false));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, true, false));
         assertTrue(testClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, true, true));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, sameSwitchOppositeEndpoint, true, true));
     }
 
     @Test
     public void changeOuterVlanRemoveServer42OuterVlanMatchSharedRuleTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, VLAN_1);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, VLAN_2);
+        FlowEndpoint changedSwitchOppositeEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3);
+        FlowEndpoint sameSwitchOppositeEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_3);
+
         assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
-                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, true, false));
+                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, true, false));
         assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
-                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, false, false));
+                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, false, false));
         assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, false, false));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, false, false));
         assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, false, true));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, sameSwitchOppositeEndpoint, false, true));
         assertTrue(testClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, true, false));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, true, false));
         assertTrue(testClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, true, true));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, sameSwitchOppositeEndpoint, true, true));
+    }
+
+    @Test
+    public void changePortRemoveServer42OuterVlanMatchSharedRuleTest() {
+        FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, VLAN_1);
+        FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_2, VLAN_1);
+        FlowEndpoint changedSwitchOppositeEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3);
+        FlowEndpoint sameSwitchOppositeEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_3);
+
+        assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
+                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, true, false));
+        assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
+                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, false, false));
+        assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, false, false));
+        assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, sameSwitchOppositeEndpoint, false, true));
+        assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, true, false));
+        assertTrue(testClass.removeServer42OuterVlanMatchSharedRule(
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, sameSwitchOppositeEndpoint, true, true));
+    }
+
+    @Test
+    public void swapEndpointsRemoveServer42OuterVlanMatchSharedRuleTest() {
+        FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, VLAN_1);
+        FlowEndpoint newEndpointMultiSwitch = new FlowEndpoint(SWITCH_ID_2, PORT_2, VLAN_2);
+        FlowEndpoint newEndpointOneSwitch = new FlowEndpoint(SWITCH_ID_1, PORT_2, VLAN_2);
+
+        assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
+                ONE_SWITCH_FLOW, oldEndpoint, newEndpointOneSwitch, oldEndpoint, true, false));
+        assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
+                ONE_SWITCH_FLOW, oldEndpoint, newEndpointOneSwitch, oldEndpoint, false, false));
+        assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpointMultiSwitch, oldEndpoint, false, false));
+        assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpointOneSwitch, oldEndpoint, false, true));
+        assertFalse(testClass.removeServer42OuterVlanMatchSharedRule(
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpointMultiSwitch, oldEndpoint, true, false));
+        assertTrue(testClass.removeServer42OuterVlanMatchSharedRule(
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpointOneSwitch, oldEndpoint, true, true));
     }
 
     @Test
     public void hasOtherFlowRemoveServer42OuterVlanMatchSharedRuleTest() {
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, VLAN_1);
         FlowEndpoint newEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_2, VLAN_2);
+        FlowEndpoint changedSwitchOppositeEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_3);
+        FlowEndpoint sameSwitchOppositeEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_3);
         BaseFlowRuleRemovalAction mockTestClass = Mockito.mock(BaseFlowRuleRemovalAction.class);
         when(mockTestClass.findServer42OuterVlanMatchSharedRuleUsage(any()))
                 .thenReturn(newArrayList(FLOW_ID_2));
-        when(mockTestClass.removeServer42OuterVlanMatchSharedRule(any(), any(), any(), anyBoolean(), anyBoolean()))
-                .thenCallRealMethod();
+        when(mockTestClass.removeServer42OuterVlanMatchSharedRule(
+                any(), any(), any(), any(), anyBoolean(), anyBoolean())).thenCallRealMethod();
 
         assertFalse(mockTestClass.removeServer42OuterVlanMatchSharedRule(
-                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, true, false));
+                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, true, false));
         assertFalse(mockTestClass.removeServer42OuterVlanMatchSharedRule(
-                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, false, false));
+                ONE_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, false, false));
         assertFalse(mockTestClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, false, false));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, false, false));
         assertFalse(mockTestClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, false, true));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, sameSwitchOppositeEndpoint, false, true));
         assertFalse(mockTestClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, true, false));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, changedSwitchOppositeEndpoint, true, false));
         assertFalse(mockTestClass.removeServer42OuterVlanMatchSharedRule(
-                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, true, true));
+                MULTI_SWITCH_FLOW, oldEndpoint, newEndpoint, sameSwitchOppositeEndpoint, true, true));
+    }
+
+    @Test
+    public void removeOuterVlanMatchSharedRuleTest() {
+        FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, VLAN_1);
+        FlowEndpoint changeSwitchEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_1, VLAN_1);
+        FlowEndpoint changeVlanEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1, VLAN_2);
+        FlowEndpoint changePortEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_2, VLAN_1);
+        FlowEndpoint changedSwitchOppositeEndpoint = new FlowEndpoint(SWITCH_ID_2, PORT_1, VLAN_1);
+        FlowEndpoint sameSwitchOppositeEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_3, VLAN_1);
+
+        assertFalse(testClass.removeOuterVlanMatchSharedRule(
+                FLOW_ID_1, oldEndpoint, oldEndpoint, changedSwitchOppositeEndpoint));
+        assertFalse(testClass.removeOuterVlanMatchSharedRule(
+                FLOW_ID_1, oldEndpoint, oldEndpoint, sameSwitchOppositeEndpoint));
+
+        assertTrue(testClass.removeOuterVlanMatchSharedRule(
+                FLOW_ID_1, oldEndpoint, changeSwitchEndpoint, changedSwitchOppositeEndpoint));
+        assertTrue(testClass.removeOuterVlanMatchSharedRule(
+                FLOW_ID_1, oldEndpoint, changeVlanEndpoint, changedSwitchOppositeEndpoint));
+        assertTrue(testClass.removeOuterVlanMatchSharedRule(
+                FLOW_ID_1, oldEndpoint, changePortEndpoint, changedSwitchOppositeEndpoint));
+
+        assertTrue(testClass.removeOuterVlanMatchSharedRule(
+                FLOW_ID_1, oldEndpoint, changeSwitchEndpoint, sameSwitchOppositeEndpoint));
+        assertTrue(testClass.removeOuterVlanMatchSharedRule(
+                FLOW_ID_1, oldEndpoint, changeVlanEndpoint, sameSwitchOppositeEndpoint));
+        assertTrue(testClass.removeOuterVlanMatchSharedRule(
+                FLOW_ID_1, oldEndpoint, changePortEndpoint, sameSwitchOppositeEndpoint));
+
+        assertFalse(testClass.removeOuterVlanMatchSharedRule(
+                FLOW_ID_1, oldEndpoint, changeSwitchEndpoint, oldEndpoint));
+        assertFalse(testClass.removeOuterVlanMatchSharedRule(
+                FLOW_ID_1, oldEndpoint, changeVlanEndpoint, oldEndpoint));
+        assertFalse(testClass.removeOuterVlanMatchSharedRule(
+                FLOW_ID_1, oldEndpoint, changePortEndpoint, oldEndpoint));
     }
 
     private static class TestClass extends BaseFlowRuleRemovalAction {

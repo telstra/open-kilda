@@ -109,53 +109,91 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
     }
 
     protected boolean removeSharedServer42InputRule(
-            FlowEndpoint oldEndpoint, FlowEndpoint newEndpoint, boolean server42Rtt, boolean becameSingleSwitch) {
-        return server42Rtt && (!oldEndpoint.isSwitchPortEquals(newEndpoint) || becameSingleSwitch)
-                && findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(
+            FlowEndpoint oldEndpoint, FlowEndpoint newEndpoint,  FlowEndpoint oppositeNewEndpoint,
+            boolean server42Rtt, boolean becameSingleSwitch) {
+        if (!server42Rtt) {
+            return false; // server42 is off so nothing to delete.
+        }
+        if (oldEndpoint.isSwitchPortEquals(newEndpoint) && !becameSingleSwitch) {
+            return false; // new endpoint still need server42 input rule
+        }
+
+        if (oldEndpoint.isSwitchPortEquals(oppositeNewEndpoint) && !becameSingleSwitch) {
+            return false; // opposite new endpoint will use existing server42 input rule
+        }
+
+        // Current flow doesn't use server42 input rule anymore, but maybe some other flow still need this rule.
+        return findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(
                 oldEndpoint.getSwitchId(), oldEndpoint.getPortNumber()).isEmpty();
     }
 
-    protected boolean removeSharedLldpRule(String flowId, FlowEndpoint oldEndpoint, FlowEndpoint newEndpoint) {
-        boolean lldpWasSwitchedOff = oldEndpoint.isTrackLldpConnectedDevices()
-                && !newEndpoint.isTrackLldpConnectedDevices();
-        boolean lldpPortWasChanged = !oldEndpoint.isSwitchPortEquals(newEndpoint)
-                && oldEndpoint.isTrackLldpConnectedDevices();
-
-        return (lldpWasSwitchedOff || lldpPortWasChanged) && isFlowTheLastUserOfSharedLldpPortRule(
-                flowId, oldEndpoint.getSwitchId(), oldEndpoint.getPortNumber());
-    }
-
-    protected boolean removeSharedArpRule(String flowId, FlowEndpoint oldEndpoint, FlowEndpoint newEndpoint) {
-        boolean arpWasSwitchedOff = oldEndpoint.isTrackArpConnectedDevices()
-                && !newEndpoint.isTrackArpConnectedDevices();
-        boolean arpPortWasChanged = !oldEndpoint.isSwitchPortEquals(newEndpoint)
-                && oldEndpoint.isTrackArpConnectedDevices();
-
-        return (arpWasSwitchedOff || arpPortWasChanged) && isFlowTheLastUserOfSharedArpPortRule(
-                flowId, oldEndpoint.getSwitchId(), oldEndpoint.getPortNumber());
-    }
-
-    protected boolean removeOuterVlanMatchSharedRule(String flowId, FlowEndpoint current, FlowEndpoint goal) {
-        if (current.isSwitchPortEquals(goal)
-                && current.getOuterVlanId() == goal.getOuterVlanId()) {
-            return false;
+    protected boolean removeSharedLldpRule(
+            String flowId, FlowEndpoint oldEndpoint, FlowEndpoint newEndpoint, FlowEndpoint oppositeNewEndpoint) {
+        if (!oldEndpoint.isTrackLldpConnectedDevices()) {
+            return false; // LLDP is off on endpoint so nothing to delete.
         }
-        return findOuterVlanMatchSharedRuleUsage(current).stream()
+        if (oldEndpoint.isSwitchPortEquals(newEndpoint) && newEndpoint.isTrackLldpConnectedDevices()) {
+            return false; // LLDP still on and endpoint still same. We need LLDP rule.
+        }
+        if (oldEndpoint.isSwitchPortEquals(oppositeNewEndpoint) && oppositeNewEndpoint.isTrackLldpConnectedDevices()) {
+            return false; // Opposite endpoint will use LLDP rule of oldEndpoint.
+        }
+
+        // Current flow doesn't use shared LLDP rule anymore, but maybe some other flow still need this rule.
+        return isFlowTheLastUserOfSharedLldpPortRule(flowId, oldEndpoint.getSwitchId(), oldEndpoint.getPortNumber());
+    }
+
+    protected boolean removeSharedArpRule(
+            String flowId, FlowEndpoint oldEndpoint, FlowEndpoint newEndpoint, FlowEndpoint oppositeNewEndpoint) {
+        if (!oldEndpoint.isTrackArpConnectedDevices()) {
+            return false; // ARP is off on endpoint so nothing to delete.
+        }
+        if (oldEndpoint.isSwitchPortEquals(newEndpoint) && newEndpoint.isTrackArpConnectedDevices()) {
+            return false; // ARP still on and endpoint still same. We need LLDP rule.
+        }
+        if (oldEndpoint.isSwitchPortEquals(oppositeNewEndpoint) && oppositeNewEndpoint.isTrackArpConnectedDevices()) {
+            return false; // Opposite endpoint will use ARP rule of oldEndpoint.
+        }
+
+        // Current flow doesn't use shared ARP rule anymore, but maybe some other flow still need this rule.
+        return isFlowTheLastUserOfSharedArpPortRule(flowId, oldEndpoint.getSwitchId(), oldEndpoint.getPortNumber());
+    }
+
+    protected boolean removeOuterVlanMatchSharedRule(
+            String flowId, FlowEndpoint oldEndpoint, FlowEndpoint newEndpoint, FlowEndpoint oppositeNewEndpoint) {
+        if (oldEndpoint.isSwitchPortOuterVlanEquals(newEndpoint)) {
+            return false; // new endpoint still need shared rule
+        }
+
+        if (oldEndpoint.isSwitchPortOuterVlanEquals(oppositeNewEndpoint)) {
+            return false; // opposite new endpoint will use existing shared rule
+        }
+
+        // Current flow doesn't use shared rule anymore, but maybe some other flow still need this rule.
+        return findOuterVlanMatchSharedRuleUsage(oldEndpoint).stream()
                 .allMatch(entry -> flowId.equals(entry.getFlowId()));
     }
 
     protected boolean removeServer42OuterVlanMatchSharedRule(
-            RequestedFlow currentFlow, FlowEndpoint current, FlowEndpoint goal,
+            RequestedFlow oldFlow, FlowEndpoint oldEndpoint, FlowEndpoint newEndpoint, FlowEndpoint oppositeNewEndpoint,
             boolean server42FlowRtt, boolean flowBecameSingleSwitch) {
-        if (currentFlow.isOneSwitchFlow() || !server42FlowRtt) {
-            return false;
+        if (oldFlow.isOneSwitchFlow() || !server42FlowRtt) {
+            return false; // flow endpoint has no server42 rules so nothing to delete.
         }
-        boolean endpointChanged = !current.getSwitchId().equals(goal.getSwitchId())
-                || current.getOuterVlanId() != goal.getOuterVlanId();
 
-        return (endpointChanged || flowBecameSingleSwitch)
-                && findServer42OuterVlanMatchSharedRuleUsage(current).stream()
-                .allMatch(currentFlow.getFlowId()::equals);
+        if (oldEndpoint.getSwitchId().equals(newEndpoint.getSwitchId())
+                && oldEndpoint.getOuterVlanId() == newEndpoint.getOuterVlanId() && !flowBecameSingleSwitch) {
+            return false; // new endpoint still need shared server42 rule
+        }
+
+        if (oldEndpoint.getSwitchId().equals(oppositeNewEndpoint.getSwitchId())
+                && oldEndpoint.getOuterVlanId() == oppositeNewEndpoint.getOuterVlanId() && !flowBecameSingleSwitch) {
+            return false; // opposite new endpoint will use existing shared server42 rule
+        }
+
+        // Current flow doesn't use shared server42 rule anymore, but maybe some other flow still need this rule.
+        return findServer42OuterVlanMatchSharedRuleUsage(oldEndpoint).stream()
+                .allMatch(oldFlow.getFlowId()::equals);
     }
 
     protected SpeakerRequestBuildContext buildSpeakerContextForRemovalIngressAndShared(
@@ -176,16 +214,17 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
 
         PathContext forwardPathContext = PathContext.builder()
                 .removeCustomerPortRule(removeForwardCustomerPortSharedCatchRule(oldFlow, newFlow))
-                .removeCustomerPortLldpRule(removeSharedLldpRule(oldFlow.getFlowId(), oldIngress, newIngress))
-                .removeCustomerPortArpRule(removeSharedArpRule(oldFlow.getFlowId(), oldIngress, newIngress))
+                .removeCustomerPortLldpRule(removeSharedLldpRule(
+                        oldFlow.getFlowId(), oldIngress, newIngress, newEgress))
+                .removeCustomerPortArpRule(removeSharedArpRule(oldFlow.getFlowId(), oldIngress, newIngress, newEgress))
                 .removeOuterVlanMatchSharedRule(
-                        removeOuterVlanMatchSharedRule(oldFlow.getFlowId(), oldIngress, newIngress))
+                        removeOuterVlanMatchSharedRule(oldFlow.getFlowId(), oldIngress, newIngress, newEgress))
                 .removeServer42InputRule(removeSharedServer42InputRule(
-                        oldIngress, newIngress, srcServer42FlowRtt, becameSingleSwitch))
+                        oldIngress, newIngress, newEgress, srcServer42FlowRtt, becameSingleSwitch))
                 .removeServer42IngressRule(srcServer42FlowRtt)
                 .updateMeter(removeMeters)
                 .removeServer42OuterVlanMatchSharedRule(removeServer42OuterVlanMatchSharedRule(
-                        oldFlow, oldIngress, newIngress, srcServer42FlowRtt, becameSingleSwitch))
+                        oldFlow, oldIngress, newIngress, newEgress, srcServer42FlowRtt, becameSingleSwitch))
                 .server42Port(oldSrcSwitchProperties.getServer42Port())
                 .server42MacAddress(oldSrcSwitchProperties.getServer42MacAddress())
                 .build();
@@ -194,16 +233,16 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
 
         PathContext reversePathContext = PathContext.builder()
                 .removeCustomerPortRule(removeReverseCustomerPortSharedCatchRule(oldFlow, newFlow))
-                .removeCustomerPortLldpRule(removeSharedLldpRule(oldFlow.getFlowId(), oldEgress, newEgress))
-                .removeCustomerPortArpRule(removeSharedArpRule(oldFlow.getFlowId(), oldEgress, newEgress))
+                .removeCustomerPortLldpRule(removeSharedLldpRule(oldFlow.getFlowId(), oldEgress, newEgress, newIngress))
+                .removeCustomerPortArpRule(removeSharedArpRule(oldFlow.getFlowId(), oldEgress, newEgress, newIngress))
                 .removeOuterVlanMatchSharedRule(
-                        removeOuterVlanMatchSharedRule(oldFlow.getFlowId(), oldEgress, newEgress))
+                        removeOuterVlanMatchSharedRule(oldFlow.getFlowId(), oldEgress, newEgress, newIngress))
                 .removeServer42InputRule(removeSharedServer42InputRule(
-                        oldEgress, newEgress, dstServer42FlowRtt, becameSingleSwitch))
+                        oldEgress, newEgress, newIngress, dstServer42FlowRtt, becameSingleSwitch))
                 .removeServer42IngressRule(dstServer42FlowRtt)
                 .updateMeter(removeMeters)
                 .removeServer42OuterVlanMatchSharedRule(removeServer42OuterVlanMatchSharedRule(
-                        oldFlow, oldEgress, newEgress, dstServer42FlowRtt, becameSingleSwitch))
+                        oldFlow, oldEgress, newEgress, newIngress, dstServer42FlowRtt, becameSingleSwitch))
                 .server42Port(oldDstSwitchProperties.getServer42Port())
                 .server42MacAddress(oldDstSwitchProperties.getServer42MacAddress())
                 .build();
