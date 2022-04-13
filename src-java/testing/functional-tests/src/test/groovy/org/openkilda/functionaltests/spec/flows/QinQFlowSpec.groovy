@@ -679,7 +679,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE) //not tested
+    @Tags(HARDWARE) //https://github.com/telstra/open-kilda/issues/4783
     @IterationTags([
             @IterationTag(tags=[SMOKE_SWITCHES],
                     iterationNameRegex = /srcVlan:10, srcInnerVlan:20, dstVlan:30, dstInnerVlan:40/)
