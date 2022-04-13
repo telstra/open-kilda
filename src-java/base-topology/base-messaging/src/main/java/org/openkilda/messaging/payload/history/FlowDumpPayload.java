@@ -19,11 +19,15 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class FlowDumpPayload {
     private String type;
 

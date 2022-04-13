@@ -48,18 +48,23 @@ import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Slf4j
-@Mapper(uses = {FlowPathMapper.class})
+@Mapper(uses = {FlowPathMapper.class}, imports = ZoneOffset.class)
 public abstract class HistoryMapper {
     public static final HistoryMapper INSTANCE = Mappers.getMapper(HistoryMapper.class);
 
     @Mapping(target = "payload", source = "payload")
     @Mapping(target = "dumps", source = "dumps")
+    @Mapping(target = "timestampIso",
+             expression = "java(flowEvent.getTimestamp().atOffset(ZoneOffset.UTC).toString())")
     public abstract FlowHistoryEntry map(
             FlowEvent flowEvent, List<FlowHistoryPayload> payload, List<FlowDumpPayload> dumps);
 
+    @Mapping(target = "timestampIso",
+            expression = "java(action.getTimestamp().atOffset(ZoneOffset.UTC).toString())")
     public abstract FlowHistoryPayload map(FlowEventAction action);
 
     /**
