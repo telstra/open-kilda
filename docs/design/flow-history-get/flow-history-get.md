@@ -23,6 +23,7 @@ Example of a response to the request:
   "clazz": "org.openkilda.messaging.payload.history.FlowHistoryEntry",
   "flow_id": "flow_id",
   "timestamp": 1612898925,
+  "timestamp_iso": 2021-02-09T19:28:45Z,
   "actor": "AUTO",
   "action": "Flow rerouting",
   "task_id": "40eb352b-8f1e-41a1-8da0-953820e92c12 : 1612898884095",
@@ -30,26 +31,31 @@ Example of a response to the request:
   "payload": [
     {
       "timestamp": 1612898925,
+      "timestamp_iso": 2021-02-09T19:28:45Z,
       "action": "Started flow validation",
       "details": null
     },
     {
       "timestamp": 1612898926,
+      "timestamp_iso": 2021-02-09T19:28:46Z,
       "action": "Flow was validated successfully",
       "details": null
     },
     {
       "timestamp": 1612898927,
+      "timestamp_iso": 2021-02-09T19:28:47Z,
       "action": "Found the same primary path. Skipped creating of it",
       "details": null
     },
     {
       "timestamp": 1612898927,
+      "timestamp_iso": 2021-02-09T19:28:47Z,
       "action": "The flow status was reverted to UP",
       "details": null
     },
     {
       "timestamp": 1612898927,
+      "timestamp_iso": 2021-02-09T19:28:47Z,
       "action": "Failed to reroute the flow",
       "details": "Reroute is unsuccessful. Couldn't find new path(s)"
     }
