@@ -72,3 +72,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 020-add-unique-index-field-for-switch-connected-devices.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 021-add-unique-constraint-for-switch-connected-devices.yaml
