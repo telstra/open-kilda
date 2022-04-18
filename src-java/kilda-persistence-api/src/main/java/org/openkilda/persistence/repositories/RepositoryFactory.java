@@ -85,4 +85,6 @@ public interface RepositoryFactory {
     PhysicalPortRepository createPhysicalPortRepository();
 
     YFlowRepository createYFlowRepository();
+
+    PortRepository createPortRepository();
 }

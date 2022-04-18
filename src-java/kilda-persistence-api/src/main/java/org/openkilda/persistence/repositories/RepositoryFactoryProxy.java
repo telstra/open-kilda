@@ -185,6 +185,11 @@ public class RepositoryFactoryProxy implements RepositoryFactory {
         return resolve(YFlowRepository.class).createYFlowRepository();
     }
 
+    @Override
+    public PortRepository createPortRepository() {
+        return resolve(PortRepository.class).createPortRepository();
+    }
+
     private RepositoryFactory resolve(Class<?> repositoryClass) {
         PersistenceArea area = RepositoryAreaBinding.INSTANCE.lookup(repositoryClass);
         PersistenceImplementation implementation = manager.getImplementation(area);

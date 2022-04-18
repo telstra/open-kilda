@@ -38,6 +38,7 @@ import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
+import org.openkilda.persistence.repositories.PortRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SpeakerRepository;
 import org.openkilda.persistence.repositories.SwitchConnectRepository;
@@ -201,6 +202,11 @@ public class HibernateRepositoryFactory implements RepositoryFactory {
 
     @Override
     public YFlowRepository createYFlowRepository() {
+        throw new IllegalStateException("Repository not implemented on hibernate layer");
+    }
+
+    @Override
+    public PortRepository createPortRepository() {
         throw new IllegalStateException("Repository not implemented on hibernate layer");
     }
 

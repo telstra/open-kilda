@@ -36,6 +36,7 @@ import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
+import org.openkilda.persistence.repositories.PortRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SpeakerRepository;
 import org.openkilda.persistence.repositories.SwitchConnectRepository;
@@ -219,6 +220,11 @@ public class FermaRepositoryFactory implements RepositoryFactory {
     @Override
     public PhysicalPortRepository createPhysicalPortRepository() {
         return new FermaPhysicalPortRepository(implementation);
+    }
+
+    @Override
+    public PortRepository createPortRepository() {
+        return new FermaPortRepository(implementation);
     }
 
     @Override

@@ -24,6 +24,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
+import org.openkilda.wfm.topology.network.model.PortDataHolder;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -33,6 +34,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkAntiFlapServiceTest {
+    private static final long MAX_SPEED = 10000000;
+    private static final long CURRENT_SPEED = 999999;
 
     @Mock
     private IAntiFlapCarrier carrier;
@@ -60,29 +63,28 @@ public class NetworkAntiFlapServiceTest {
                 .delayCoolingDown(5000)
                 .build();
 
+        PortDataHolder portData = new PortDataHolder(MAX_SPEED, CURRENT_SPEED);
         NetworkAntiFlapService service = new NetworkAntiFlapService(carrier, config);
 
-        service.filterLinkStatus(endpoint1, LinkStatus.UP, 1);
-        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.UP);
+        service.filterLinkStatus(endpoint1, LinkStatus.UP, portData, 1);
+        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.UP, portData);
         resetMocks();
 
-        service.filterLinkStatus(endpoint1, LinkStatus.DOWN, 100);
-        service.filterLinkStatus(endpoint1, LinkStatus.UP, 110);
-        // delayCoolingDown + firs event + 1
+        service.filterLinkStatus(endpoint1, LinkStatus.DOWN, portData, 100);
+        service.filterLinkStatus(endpoint1, LinkStatus.UP, portData, 110);
+        // delayCoolingDown + first event + 1
         service.tick(5000 + 100 + 1);
 
-        verify(carrier, never()).filteredLinkStatus(endpoint1, LinkStatus.UP);
-        verify(carrier, never()).filteredLinkStatus(endpoint1, LinkStatus.DOWN);
+        verify(carrier, never()).filteredLinkStatus(endpoint1, LinkStatus.UP, portData);
+        verify(carrier, never()).filteredLinkStatus(endpoint1, LinkStatus.DOWN, portData);
 
         resetMocks();
+        service.filterLinkStatus(endpoint1, LinkStatus.UP, portData, 6000);
 
-        service.filterLinkStatus(endpoint1, LinkStatus.UP, 6000);
-
-        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.UP);
+        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.UP, portData);
 
         //System.out.println(mockingDetails(carrier).printInvocations());
     }
-
 
     @Test
     public void fastPortDown() {
@@ -95,13 +97,14 @@ public class NetworkAntiFlapServiceTest {
                 .build();
 
         NetworkAntiFlapService service = new NetworkAntiFlapService(carrier, config);
+        PortDataHolder portData = new PortDataHolder(MAX_SPEED, CURRENT_SPEED);
 
-        service.filterLinkStatus(endpoint1, LinkStatus.DOWN, 100);
+        service.filterLinkStatus(endpoint1, LinkStatus.DOWN, portData, 100);
         // now - last_down > delay_min
         service.tick(1000 + 100 + 1);
 
-        verify(carrier, never()).filteredLinkStatus(endpoint1, LinkStatus.UP);
-        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.DOWN);
+        verify(carrier, never()).filteredLinkStatus(endpoint1, LinkStatus.UP, portData);
+        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.DOWN, portData);
 
     }
 
@@ -116,29 +119,30 @@ public class NetworkAntiFlapServiceTest {
                 .build();
 
         NetworkAntiFlapService service = new NetworkAntiFlapService(carrier, config);
+        PortDataHolder portData = new PortDataHolder(MAX_SPEED, CURRENT_SPEED);
 
-        service.filterLinkStatus(endpoint1, LinkStatus.DOWN, 100);
+        service.filterLinkStatus(endpoint1, LinkStatus.DOWN, portData, 100);
         // now - last_down > delay_min
         service.tick(1000 + 100 + 1);
 
-        verify(carrier, never()).filteredLinkStatus(endpoint1, LinkStatus.UP);
-        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.DOWN);
+        verify(carrier, never()).filteredLinkStatus(endpoint1, LinkStatus.UP, portData);
+        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.DOWN, portData);
 
         resetMocks();
 
-        service.filterLinkStatus(endpoint1, LinkStatus.UP, 2000);
+        service.filterLinkStatus(endpoint1, LinkStatus.UP, portData, 2000);
 
         service.tick(3000);
 
         // Port Up
         service.tick(2000 + 5000 + 1);
 
-        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.UP);
+        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.UP, portData);
 
         // PortUp
-        service.filterLinkStatus(endpoint1, LinkStatus.UP, 10000);
+        service.filterLinkStatus(endpoint1, LinkStatus.UP, portData, 10000);
 
-        verify(carrier, times(2)).filteredLinkStatus(endpoint1, LinkStatus.UP);
+        verify(carrier, times(2)).filteredLinkStatus(endpoint1, LinkStatus.UP, portData);
     }
 
 
@@ -153,16 +157,16 @@ public class NetworkAntiFlapServiceTest {
                 .build();
 
         NetworkAntiFlapService service = new NetworkAntiFlapService(carrier, config);
+        PortDataHolder portData = new PortDataHolder(MAX_SPEED, CURRENT_SPEED);
 
-        service.filterLinkStatus(endpoint1, LinkStatus.UP, 1);
+        service.filterLinkStatus(endpoint1, LinkStatus.UP, portData, 1);
         resetMocks();
-        service.filterLinkStatus(endpoint1, LinkStatus.DOWN, 100);
-        service.filterLinkStatus(endpoint1, LinkStatus.UP, 100 + 5000 - 500);
+        service.filterLinkStatus(endpoint1, LinkStatus.DOWN, portData, 100);
+        service.filterLinkStatus(endpoint1, LinkStatus.UP, portData, 100 + 5000 - 500);
         // now - last_down > delay_min
         service.tick(5101);
 
-        verify(carrier, never()).filteredLinkStatus(endpoint1, LinkStatus.UP);
-        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.DOWN);
-
+        verify(carrier, never()).filteredLinkStatus(endpoint1, LinkStatus.UP, portData);
+        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.DOWN, null);
     }
 }

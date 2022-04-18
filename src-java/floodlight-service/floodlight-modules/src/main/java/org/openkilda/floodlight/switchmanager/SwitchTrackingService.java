@@ -150,7 +150,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     public void switchPortChanged(final DatapathId switchId, final OFPortDesc portDesc, final PortChangeType type) {
         dashboardLogger.onPortEvent(switchId, portDesc, type);
 
-        if (! OfPortDescConverter.INSTANCE.isReservedPort(portDesc.getPortNo())) {
+        if (!OfPortDescConverter.INSTANCE.isReservedPort(portDesc.getPortNo())) {
             portDiscovery(switchId, portDesc, type);
         }
     }
@@ -284,7 +284,9 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
                         port.getPortNo().getPortNumber(),
                         port.isEnabled()
                                 ? SpeakerSwitchPortView.State.UP
-                                : SpeakerSwitchPortView.State.DOWN))
+                                : SpeakerSwitchPortView.State.DOWN,
+                        port.getMaxSpeed(),
+                        port.getCurrSpeed()))
                 .forEach(builder::port);
 
         buildSwitchAddress(builder, sw);

@@ -33,11 +33,20 @@ public abstract class AbstractPort implements Serializable {
 
     private LinkStatus linkStatus;
 
+    private long maxSpeed;
+    private long currentSpeed;
+
     public AbstractPort(Endpoint endpoint) {
-        this(endpoint, null);
+        this(endpoint, 0, 0);
+    }
+
+    public AbstractPort(Endpoint endpoint, long maxSpeed, long currentSpeed) {
+        this(endpoint, null, maxSpeed, currentSpeed);
     }
 
     public abstract void portAdd(ISwitchCarrier carrier);
+
+    public abstract void portUpdate(ISwitchCarrier carrier);
 
     public abstract void portDel(ISwitchCarrier carrier);
 

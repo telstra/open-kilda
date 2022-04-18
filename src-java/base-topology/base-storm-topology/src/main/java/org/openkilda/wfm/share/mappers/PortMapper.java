@@ -34,17 +34,16 @@ public abstract class PortMapper {
 
     public static final PortMapper INSTANCE = Mappers.getMapper(PortMapper.class);
 
-    @Mapping(source = "state", target = "status")
+    @Mapping(source = "switchId", target = "switchObj.switchId")
     public abstract Port map(PortInfoData portInfoData);
 
     @Mapping(target = "timestamp", ignore = true)
-    @Mapping(target = "maxCapacity", ignore = true)
     @Mapping(target = "state", ignore = true)
     @Mapping(target = "enabled", ignore = true)
     public abstract PortInfoData map(Port port);
 
     /**
-     *  Convert {@link PortChangeType} to {@link PortStatus}.
+     * Convert {@link PortChangeType} to {@link PortStatus}.
      *
      * @param portChangeType port change type.
      * @return converted port status.
