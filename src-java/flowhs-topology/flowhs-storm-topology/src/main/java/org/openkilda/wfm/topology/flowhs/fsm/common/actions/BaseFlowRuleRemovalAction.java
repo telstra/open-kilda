@@ -108,50 +108,31 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
                 && findFlowsIdsByEndpointWithMultiTable(oldFlow.getDestSwitch(), oldFlow.getDestPort()).isEmpty();
     }
 
-    protected boolean removeForwardSharedServer42InputRule(
-            RequestedFlow oldFlow, RequestedFlow newFlow, boolean server42Rtt) {
-        return server42Rtt && oldFlow.getSrcPort() != newFlow.getSrcPort() // src port changed
+    protected boolean removeSharedServer42InputRule(
+            FlowEndpoint oldEndpoint, FlowEndpoint newEndpoint, boolean server42Rtt, boolean becameSingleSwitch) {
+        return server42Rtt && (!oldEndpoint.isSwitchPortEquals(newEndpoint) || becameSingleSwitch)
                 && findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(
-                oldFlow.getSrcSwitch(), oldFlow.getSrcPort()).isEmpty();
+                oldEndpoint.getSwitchId(), oldEndpoint.getPortNumber()).isEmpty();
     }
 
-    protected boolean removeReverseSharedServer42InputRule(
-            RequestedFlow oldFlow, RequestedFlow newFlow, boolean server42Rtt) {
-        return server42Rtt && oldFlow.getDestPort() != newFlow.getDestPort() // dst port changed
-                && findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(
-                oldFlow.getDestSwitch(), oldFlow.getDestPort()).isEmpty();
+    protected boolean removeSharedLldpRule(String flowId, FlowEndpoint oldEndpoint, FlowEndpoint newEndpoint) {
+        boolean lldpWasSwitchedOff = oldEndpoint.isTrackLldpConnectedDevices()
+                && !newEndpoint.isTrackLldpConnectedDevices();
+        boolean lldpPortWasChanged = !oldEndpoint.isSwitchPortEquals(newEndpoint)
+                && oldEndpoint.isTrackLldpConnectedDevices();
+
+        return (lldpWasSwitchedOff || lldpPortWasChanged) && isFlowTheLastUserOfSharedLldpPortRule(
+                flowId, oldEndpoint.getSwitchId(), oldEndpoint.getPortNumber());
     }
 
-    protected boolean removeForwardSharedLldpRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
-        boolean srcLldpWasSwitchedOff = oldFlow.getDetectConnectedDevices().isSrcLldp()
-                && !newFlow.getDetectConnectedDevices().isSrcLldp();
+    protected boolean removeSharedArpRule(String flowId, FlowEndpoint oldEndpoint, FlowEndpoint newEndpoint) {
+        boolean arpWasSwitchedOff = oldEndpoint.isTrackArpConnectedDevices()
+                && !newEndpoint.isTrackArpConnectedDevices();
+        boolean arpPortWasChanged = !oldEndpoint.isSwitchPortEquals(newEndpoint)
+                && oldEndpoint.isTrackArpConnectedDevices();
 
-        return srcLldpWasSwitchedOff && isFlowTheLastUserOfSharedLldpPortRule(
-                oldFlow.getFlowId(), oldFlow.getSrcSwitch(), oldFlow.getSrcPort());
-    }
-
-    protected boolean removeReverseSharedLldpRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
-        boolean dstLldpWasSwitchedOff = oldFlow.getDetectConnectedDevices().isDstLldp()
-                && !newFlow.getDetectConnectedDevices().isDstLldp();
-
-        return dstLldpWasSwitchedOff && isFlowTheLastUserOfSharedLldpPortRule(
-                oldFlow.getFlowId(), oldFlow.getDestSwitch(), oldFlow.getDestPort());
-    }
-
-    protected boolean removeForwardSharedArpRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
-        boolean srcArpWasSwitchedOff = oldFlow.getDetectConnectedDevices().isSrcArp()
-                && !newFlow.getDetectConnectedDevices().isSrcArp();
-
-        return srcArpWasSwitchedOff && isFlowTheLastUserOfSharedArpPortRule(
-                oldFlow.getFlowId(), oldFlow.getSrcSwitch(), oldFlow.getSrcPort());
-    }
-
-    protected boolean removeReverseSharedArpRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
-        boolean dstArpWasSwitchedOff = oldFlow.getDetectConnectedDevices().isDstArp()
-                && !newFlow.getDetectConnectedDevices().isDstArp();
-
-        return dstArpWasSwitchedOff && isFlowTheLastUserOfSharedArpPortRule(
-                oldFlow.getFlowId(), oldFlow.getDestSwitch(), oldFlow.getDestPort());
+        return (arpWasSwitchedOff || arpPortWasChanged) && isFlowTheLastUserOfSharedArpPortRule(
+                flowId, oldEndpoint.getSwitchId(), oldEndpoint.getPortNumber());
     }
 
     protected boolean removeOuterVlanMatchSharedRule(String flowId, FlowEndpoint current, FlowEndpoint goal) {
@@ -164,70 +145,87 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
     }
 
     protected boolean removeServer42OuterVlanMatchSharedRule(
-            RequestedFlow currentFlow, FlowEndpoint current, FlowEndpoint goal) {
-        if (current.getSwitchId().equals(goal.getSwitchId()) && current.getOuterVlanId() == goal.getOuterVlanId()
-                || currentFlow.isOneSwitchFlow()) {
+            RequestedFlow currentFlow, FlowEndpoint current, FlowEndpoint goal,
+            boolean server42FlowRtt, boolean flowBecameSingleSwitch) {
+        if (currentFlow.isOneSwitchFlow() || !server42FlowRtt) {
             return false;
         }
-        return findServer42OuterVlanMatchSharedRuleUsage(current).stream()
+        boolean endpointChanged = !current.getSwitchId().equals(goal.getSwitchId())
+                || current.getOuterVlanId() != goal.getOuterVlanId();
+
+        return (endpointChanged || flowBecameSingleSwitch)
+                && findServer42OuterVlanMatchSharedRuleUsage(current).stream()
                 .allMatch(currentFlow.getFlowId()::equals);
     }
 
     protected SpeakerRequestBuildContext buildSpeakerContextForRemovalIngressAndShared(
             RequestedFlow oldFlow, RequestedFlow newFlow, boolean removeMeters) {
-        SwitchProperties srcSwitchProperties = getSwitchProperties(oldFlow.getSrcSwitch());
+        SwitchProperties oldSrcSwitchProperties = getSwitchProperties(oldFlow.getSrcSwitch());
+        SwitchProperties oldDstSwitchProperties = getSwitchProperties(oldFlow.getDestSwitch());
+        SwitchProperties newSrcSwitchProperties = getSwitchProperties(newFlow.getSrcSwitch());
+        SwitchProperties newDstSwitchProperties = getSwitchProperties(newFlow.getDestSwitch());
         boolean server42FlowRttToggle = isServer42FlowRttFeatureToggle();
-        boolean srcServer42FlowRtt = srcSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle;
+        boolean srcServer42FlowRtt = oldSrcSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle;
 
-        FlowEndpoint oldIngress = new FlowEndpoint(
-                oldFlow.getSrcSwitch(), oldFlow.getSrcPort(), oldFlow.getSrcVlan(), oldFlow.getSrcInnerVlan());
-        FlowEndpoint oldEgress = new FlowEndpoint(
-                oldFlow.getDestSwitch(), oldFlow.getDestPort(), oldFlow.getDestVlan(), oldFlow.getDestInnerVlan());
+        FlowEndpoint oldIngress = makeIngressEndpoint(oldFlow, oldSrcSwitchProperties);
+        FlowEndpoint oldEgress = makeEgressEndpoint(oldFlow, oldDstSwitchProperties);
 
-        FlowEndpoint newIngress = new FlowEndpoint(
-                newFlow.getSrcSwitch(), newFlow.getSrcPort(), newFlow.getSrcVlan(), newFlow.getSrcInnerVlan());
-        FlowEndpoint newEgress = new FlowEndpoint(
-                newFlow.getDestSwitch(), newFlow.getDestPort(), newFlow.getDestVlan(), newFlow.getDestInnerVlan());
+        FlowEndpoint newIngress = makeIngressEndpoint(newFlow, newSrcSwitchProperties);
+        FlowEndpoint newEgress = makeEgressEndpoint(newFlow, newDstSwitchProperties);
+        boolean becameSingleSwitch = !oldFlow.isOneSwitchFlow() && newFlow.isOneSwitchFlow();
 
         PathContext forwardPathContext = PathContext.builder()
                 .removeCustomerPortRule(removeForwardCustomerPortSharedCatchRule(oldFlow, newFlow))
-                .removeCustomerPortLldpRule(removeForwardSharedLldpRule(oldFlow, newFlow))
-                .removeCustomerPortArpRule(removeForwardSharedArpRule(oldFlow, newFlow))
+                .removeCustomerPortLldpRule(removeSharedLldpRule(oldFlow.getFlowId(), oldIngress, newIngress))
+                .removeCustomerPortArpRule(removeSharedArpRule(oldFlow.getFlowId(), oldIngress, newIngress))
                 .removeOuterVlanMatchSharedRule(
                         removeOuterVlanMatchSharedRule(oldFlow.getFlowId(), oldIngress, newIngress))
-                .removeServer42InputRule(removeForwardSharedServer42InputRule(
-                        oldFlow, newFlow, srcServer42FlowRtt))
+                .removeServer42InputRule(removeSharedServer42InputRule(
+                        oldIngress, newIngress, srcServer42FlowRtt, becameSingleSwitch))
                 .removeServer42IngressRule(srcServer42FlowRtt)
                 .updateMeter(removeMeters)
-                .removeServer42OuterVlanMatchSharedRule(srcServer42FlowRtt
-                        && removeServer42OuterVlanMatchSharedRule(oldFlow, oldIngress, newIngress))
-                .server42Port(srcSwitchProperties.getServer42Port())
-                .server42MacAddress(srcSwitchProperties.getServer42MacAddress())
+                .removeServer42OuterVlanMatchSharedRule(removeServer42OuterVlanMatchSharedRule(
+                        oldFlow, oldIngress, newIngress, srcServer42FlowRtt, becameSingleSwitch))
+                .server42Port(oldSrcSwitchProperties.getServer42Port())
+                .server42MacAddress(oldSrcSwitchProperties.getServer42MacAddress())
                 .build();
 
-        SwitchProperties dstSwitchProperties = getSwitchProperties(oldFlow.getDestSwitch());
-        boolean dstServer42FlowRtt = dstSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle;
+        boolean dstServer42FlowRtt = oldDstSwitchProperties.isServer42FlowRtt() && server42FlowRttToggle;
 
         PathContext reversePathContext = PathContext.builder()
                 .removeCustomerPortRule(removeReverseCustomerPortSharedCatchRule(oldFlow, newFlow))
-                .removeCustomerPortLldpRule(removeReverseSharedLldpRule(oldFlow, newFlow))
-                .removeCustomerPortArpRule(removeReverseSharedArpRule(oldFlow, newFlow))
+                .removeCustomerPortLldpRule(removeSharedLldpRule(oldFlow.getFlowId(), oldEgress, newEgress))
+                .removeCustomerPortArpRule(removeSharedArpRule(oldFlow.getFlowId(), oldEgress, newEgress))
                 .removeOuterVlanMatchSharedRule(
                         removeOuterVlanMatchSharedRule(oldFlow.getFlowId(), oldEgress, newEgress))
-                .removeServer42InputRule(removeReverseSharedServer42InputRule(
-                        oldFlow, newFlow, dstServer42FlowRtt))
+                .removeServer42InputRule(removeSharedServer42InputRule(
+                        oldEgress, newEgress, dstServer42FlowRtt, becameSingleSwitch))
                 .removeServer42IngressRule(dstServer42FlowRtt)
                 .updateMeter(removeMeters)
-                .removeServer42OuterVlanMatchSharedRule(dstServer42FlowRtt
-                        && removeServer42OuterVlanMatchSharedRule(oldFlow, oldEgress, newEgress))
-                .server42Port(dstSwitchProperties.getServer42Port())
-                .server42MacAddress(dstSwitchProperties.getServer42MacAddress())
+                .removeServer42OuterVlanMatchSharedRule(removeServer42OuterVlanMatchSharedRule(
+                        oldFlow, oldEgress, newEgress, dstServer42FlowRtt, becameSingleSwitch))
+                .server42Port(oldDstSwitchProperties.getServer42Port())
+                .server42MacAddress(oldDstSwitchProperties.getServer42MacAddress())
                 .build();
 
         return SpeakerRequestBuildContext.builder()
                 .forward(forwardPathContext)
                 .reverse(reversePathContext)
                 .build();
+    }
+
+    private FlowEndpoint makeIngressEndpoint(RequestedFlow endpoint, SwitchProperties oldSrcSwitchProperties) {
+        return new FlowEndpoint(
+                endpoint.getSrcSwitch(), endpoint.getSrcPort(), endpoint.getSrcVlan(), endpoint.getSrcInnerVlan(),
+                endpoint.getDetectConnectedDevices().isSrcLldp() || oldSrcSwitchProperties.isSwitchLldp(),
+                endpoint.getDetectConnectedDevices().isSrcArp() || oldSrcSwitchProperties.isSwitchArp());
+    }
+
+    private FlowEndpoint makeEgressEndpoint(RequestedFlow oldFlow, SwitchProperties oldDstSwitchProperties) {
+        return new FlowEndpoint(
+                oldFlow.getDestSwitch(), oldFlow.getDestPort(), oldFlow.getDestVlan(), oldFlow.getDestInnerVlan(),
+                oldFlow.getDetectConnectedDevices().isDstLldp() || oldDstSwitchProperties.isSwitchLldp(),
+                oldFlow.getDetectConnectedDevices().isDstArp() || oldDstSwitchProperties.isSwitchArp());
     }
 
     protected SpeakerRequestBuildContext buildSpeakerContextForRemovalIngressOnly(

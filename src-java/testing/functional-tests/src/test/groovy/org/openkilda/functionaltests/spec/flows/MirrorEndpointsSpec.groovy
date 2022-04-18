@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.model.FlowTransitEncapsulation
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeFalse
@@ -1254,12 +1253,11 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     List<SwitchPair> getUniqueVxlanSwitchPairs(boolean needTraffgens) {
         getUniqueSwitchPairs({ SwitchPair swP ->
-            def wbCheck = [swP.src, swP.dst].every { !it.wb5164 } //ignore due to issue with vxlan(checksum)
             def vxlanCheck = swP.paths.find {
                 pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) }
             }
             def tgCheck = needTraffgens ? swP.src.traffGens && swP.dst.traffGens : true
-            vxlanCheck && tgCheck && wbCheck
+            vxlanCheck && tgCheck
         })
     }
 

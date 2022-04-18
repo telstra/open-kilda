@@ -71,7 +71,7 @@ public class GrpcSenderService {
      */
     public CompletableFuture<LogicalPort> createOrUpdateLogicalPort(String switchAddress, LogicalPortDto port) {
         try (GrpcSession session = makeSession(switchAddress)) {
-            session.setLogicalPort(port).join();
+            session.setLogicalPort(port);
             return session.showConfigLogicalPort(port.getLogicalPortNumber())
                     .thenApply(portOptional -> portOptional
                             .map(mapper::map)

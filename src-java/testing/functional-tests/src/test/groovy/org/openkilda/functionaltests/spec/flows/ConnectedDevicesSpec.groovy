@@ -80,6 +80,8 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
     def "Able to create a #flowDescr flow with lldp and arp enabled on #devicesDescr"() {
         assumeTrue(data.encapsulation != FlowEncapsulationType.VXLAN,
 "Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
+        assumeTrue(data.switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2,
+ "Unable to find swPair with protected path")
 
         given: "A flow with enabled or disabled connected devices"
         def tgService = traffExamProvider.get()
@@ -1083,8 +1085,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find two active traffgens")
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].every { sw ->
-                //4407
-                !sw.wb5164 && sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
+                sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
             }
         } ?: assumeTrue(false, "No suiting switches found")
 
@@ -1183,8 +1184,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find two active traffgens")
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].every { sw ->
-                //4407
-                !sw.wb5164 && sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
+                sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
             }
         } ?: assumeTrue(false, "No suiting switches found")
 
@@ -1243,7 +1243,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "Able to detect devices on a qinq single-switch different-port flow"() {
         given: "A flow between different ports on the same switch"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def sw = topology.activeTraffGens*.switchConnected.find { !it.wb5164 } //4407
+        def sw = topology.activeTraffGens*.switchConnected.first()
         assumeTrue(sw.asBoolean(), "Wasn't able to find switch connected to traffGen")
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
@@ -1308,7 +1308,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "Able to detect devices when two qinq single-switch different-port flows exist with the same outerVlanId"() {
         given: "Two flows between different ports on the same switch with the same outerVlanId"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def sw = topology.activeTraffGens*.switchConnected.find { !it.wb5164 } //4407
+        def sw = topology.activeTraffGens*.switchConnected.first()
         assumeTrue(sw.asBoolean(), "Wasn't able to find switch connected to traffGen")
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
