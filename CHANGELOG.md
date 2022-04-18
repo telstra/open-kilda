@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.118.2 (08/04/2022)
+
+### Bug Fixes:
+-  [#4707](https://github.com/telstra/open-kilda/pull/4707) Proper watching for changes in openflowj and floodlight repos (Gradle up-to-date)
+-  [#4749](https://github.com/telstra/open-kilda/pull/4749) Fixed lag port creating/updating with non existing physical ports (Issues: [#4726](https://github.com/telstra/open-kilda/issues/4726) [#4727](https://github.com/telstra/open-kilda/issues/4727))
+-  [#4750](https://github.com/telstra/open-kilda/pull/4750) Correct removing of LLDP/ARP/Server42 shared rules during update (Issue: [#4607](https://github.com/telstra/open-kilda/issues/4607))
+-  [#4765](https://github.com/telstra/open-kilda/pull/4765) Correct removing of server42 shared rules during update (Issue: [#4763](https://github.com/telstra/open-kilda/issues/4763))
+-  [#4703](https://github.com/telstra/open-kilda/pull/4703) Fix failing y-flow get operation during removal
+
+### Other changes:
+-  [#4748](https://github.com/telstra/open-kilda/pull/4748) [test] allow qinq/vxlan on wb in func-tests [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.118.1...v1.118.2).
+
+### Affected Components:
+grpc, flow-monitor, flow-hs
+
+---
+
 ## v1.118.1 (30/03/2022)
 
 ### Improvements:
@@ -28,7 +47,6 @@ history, flow-hs, swmanager
 -  [#4679](https://github.com/telstra/open-kilda/pull/4679) Bumped version of github api and jwt for changelog generator
 -  [#4715](https://github.com/telstra/open-kilda/pull/4715)  DeleteAllFlowsV1 endpoint correlation-id  [**northbound**]
 
-
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.117.0...v1.118.0).
 
 ### Affected Components:
@@ -55,7 +73,6 @@ grpc, nbworker, history, nb, flow-hs, swmanager
 -  [#4721](https://github.com/telstra/open-kilda/pull/4721) Ignore unstable Contention test because of bug 4711 [**tests**]
 -  [#4720](https://github.com/telstra/open-kilda/pull/4720) Add js License files into GUI .gitignore file [**gui**]
 
-
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.116.0...v1.117.0).
 
 ### Affected Components:
@@ -79,7 +96,6 @@ gui, ping, swmanager, flow-hs, stats, flow-monitor, isllatency, portstate, rerou
 -  [#4680](https://github.com/telstra/open-kilda/pull/4680) LAG logical port update operation
 -  [#4699](https://github.com/telstra/open-kilda/pull/4699) Rework events routing inside SwitchManagerHub [**storm-topologies**]
 -  [#4700](https://github.com/telstra/open-kilda/pull/4700) Ignore leading and trailing spaces in a string for the SwitchId class.
-
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.115.2...v1.116.0).
 
@@ -173,7 +189,6 @@ ping, nbworker, network, nb, swmanager, flow-hs
 -  [#4662](https://github.com/telstra/open-kilda/pull/4662) [test] fix "cleanup" in partialUpdateSpec [**tests**]
 -  [#4665](https://github.com/telstra/open-kilda/pull/4665) Remove unused classes from Ping topology [**storm-topologies**]
 -  [#4670](https://github.com/telstra/open-kilda/pull/4670) [test] check that flow is up after updating in swapEndpSpec [**tests**]
-
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.112.0...v1.113.0).
 
