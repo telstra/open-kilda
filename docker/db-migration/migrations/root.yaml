@@ -69,3 +69,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 019-add-shared-bandwidth-group-properties.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 020-add-unique-index-field-for-switch-connected-devices.yaml
