@@ -521,6 +521,71 @@ class LagPortSpec extends HealthCheckSpecification {
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
     }
 
+    @Tidy
+    def "Able to create/update LAG port with duplicated port numbers on the #sw.hwSwString switch"() {
+        given: "Switch and two ports"
+        def sw = getTopology().getActiveSwitches().get(0)
+        def testPorts = topology.getAllowedPortsForSwitch(sw).take(2)
+        assert testPorts.size > 1
+
+        when: "Create LAG port with duplicated port numbers"
+        def switchPortToCreate = testPorts.get(0)
+        def swAddress = northbound.getSwitch(sw.dpId).address
+        def portListToCreate = [switchPortToCreate, switchPortToCreate]
+        def createPayload = new LagPortRequest(portNumbers: portListToCreate)
+        def lagPortCreateResponse = northboundV2.createLagLogicalPort(sw.dpId, createPayload)
+
+        then: "Response shows that LAG port created successfully"
+        with(lagPortCreateResponse) {
+            logicalPortNumber > 0
+            portNumbers == [switchPortToCreate]
+        }
+        def lagPort = lagPortCreateResponse.logicalPortNumber
+
+        and: "Request on user side shows that LAG port created"
+        with(northboundV2.getLagLogicalPort(sw.dpId)[0]) {
+            logicalPortNumber == lagPort
+            portNumbers == [switchPortToCreate]
+        }
+
+        and: "Created port exists in a list of all LAG ports from switch side (GRPC)"
+        with(grpc.getSwitchLogicalPortConfig(swAddress, lagPort)) {
+            logicalPortNumber == lagPort
+            name == "novi_lport" + lagPort.toString()
+            portNumbers == [switchPortToCreate]
+            type == LogicalPortType.LAG
+        }
+
+        when: "Update the LAG port with duplicated port numbers"
+        def switchPortToUpdate = testPorts.get(1)
+        def portListToUpdate = [switchPortToUpdate, switchPortToUpdate]
+        def updatePayload = new LagPortRequest(portNumbers: portListToUpdate)
+        def lagPortUpdateResponse = northboundV2.updateLagLogicalPort(sw.dpId, lagPort, updatePayload)
+
+        then: "Response shows that LAG port updated successfully"
+        with(lagPortUpdateResponse) {
+            logicalPortNumber == lagPort
+            portNumbers == [switchPortToUpdate]
+        }
+
+        and: "Check on user side that LAG port updated successfully"
+        with(northboundV2.getLagLogicalPort(sw.dpId)[0]) {
+            logicalPortNumber == lagPort
+            portNumbers == [switchPortToUpdate]
+        }
+
+        and: "Check that LAG port updated successfully on switch side (via GRPC)"
+        with(grpc.getSwitchLogicalPortConfig(swAddress, lagPort)) {
+            logicalPortNumber == lagPort
+            name == "novi_lport" + lagPort.toString()
+            portNumbers == [switchPortToUpdate]
+            type == LogicalPortType.LAG
+        }
+
+        cleanup:
+        lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
+    }
+
     void deleteAllLagPorts(SwitchId switchId) {
         northboundV2.getLagLogicalPort(switchId)*.logicalPortNumber.each { Integer lagPort ->
             northboundV2.deleteLagLogicalPort(switchId, lagPort)
