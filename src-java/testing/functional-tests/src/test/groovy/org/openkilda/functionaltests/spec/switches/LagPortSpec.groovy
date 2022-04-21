@@ -402,9 +402,14 @@ class LagPortSpec extends HealthCheckSpecification {
                         errorMsg   : "Physical port number %d intersects with existing ISLs"
                 ],
                 [
-                        description: "is more than lagOffset",
+                        description: "more than lagOffset",
                         portNumber : { 2008 },
                         errorMsg   : "Physical port number %d can't be greater than LAG port offset $lagOffset."
+                ],
+                [
+                        description: "not exist",
+                        portNumber : { Switch s -> s.maxPort + 1 },
+                        errorMsg   : "Invalid portno value."
                 ]
         ]
     }
