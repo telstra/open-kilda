@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.error;
 
+import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.MessageData;
@@ -27,6 +28,10 @@ public class UnexpectedInputException extends Exception {
     }
 
     public UnexpectedInputException(MessageData payload) {
+        this.input = payload;
+    }
+
+    public UnexpectedInputException(AbstractMessage payload) {
         this.input = payload;
     }
 

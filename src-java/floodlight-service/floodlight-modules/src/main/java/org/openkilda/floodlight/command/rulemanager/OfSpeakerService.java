@@ -18,6 +18,7 @@ package org.openkilda.floodlight.command.rulemanager;
 import org.openkilda.floodlight.api.BatchCommandProcessor;
 import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.ModifySpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
@@ -26,11 +27,13 @@ import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.model.SwitchId;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.projectfloodlight.openflow.types.DatapathId;
 
+@Slf4j
 public class OfSpeakerService implements BatchCommandProcessor {
     private final IOFSwitchService iofSwitchService;
     private final SessionService sessionService;
@@ -65,6 +68,31 @@ public class OfSpeakerService implements BatchCommandProcessor {
                 .holder(holder)
                 .switchFeatures(featureDetectorService.detectSwitch(sw))
                 .kafkaKey(key)
+                .origin(request.getOrigin())
+                .build();
+        executor.executeBatch();
+    }
+
+    @Override
+    public void processBatchModify(ModifySpeakerCommandsRequest request, String key) {
+        SwitchId switchId = request.getSwitchId();
+        DatapathId dpId = DatapathId.of(switchId.toLong());
+        IOFSwitch sw = iofSwitchService.getSwitch(dpId);
+        OfBatchHolder holder = new OfBatchHolder(iofSwitchService, request.getMessageContext(),
+                request.getCommandId(), request.getSwitchId());
+        for (OfCommand data : request.getCommands()) {
+            data.buildModify(holder, switchId);
+        }
+        OfBatchExecutor executor = OfBatchExecutor.builder()
+                .iofSwitch(sw)
+                .kafkaUtilityService(kafkaUtilityService)
+                .kafkaProducerService(kafkaProducerService)
+                .sessionService(sessionService)
+                .messageContext(request.getMessageContext())
+                .holder(holder)
+                .switchFeatures(featureDetectorService.detectSwitch(sw))
+                .kafkaKey(key)
+                .origin(request.getOrigin())
                 .build();
         executor.executeBatch();
     }
@@ -88,6 +116,7 @@ public class OfSpeakerService implements BatchCommandProcessor {
                 .holder(holder)
                 .switchFeatures(featureDetectorService.detectSwitch(sw))
                 .kafkaKey(key)
+                .origin(request.getOrigin())
                 .build();
         executor.executeBatch();
     }

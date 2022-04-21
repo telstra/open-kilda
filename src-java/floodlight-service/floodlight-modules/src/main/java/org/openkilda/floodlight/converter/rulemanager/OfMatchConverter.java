@@ -214,18 +214,18 @@ public class OfMatchConverter {
                 break;
             case ETH_SRC:
                 if (fieldMatch.isMasked()) {
-                    builder.setMasked(MatchField.ETH_SRC, MacAddress.of((int) fieldMatch.getValue()),
+                    builder.setMasked(MatchField.ETH_SRC, MacAddress.of(fieldMatch.getValue()),
                             MacAddress.of(fieldMatch.getMask().intValue()));
                 } else {
-                    builder.setExact(MatchField.ETH_SRC, MacAddress.of((int) fieldMatch.getValue()));
+                    builder.setExact(MatchField.ETH_SRC, MacAddress.of(fieldMatch.getValue()));
                 }
                 break;
             case ETH_DST:
                 if (fieldMatch.isMasked()) {
-                    builder.setMasked(MatchField.ETH_DST, MacAddress.of((int) fieldMatch.getValue()),
+                    builder.setMasked(MatchField.ETH_DST, MacAddress.of(fieldMatch.getValue()),
                             MacAddress.of(fieldMatch.getMask().intValue()));
                 } else {
-                    builder.setExact(MatchField.ETH_DST, MacAddress.of((int) fieldMatch.getValue()));
+                    builder.setExact(MatchField.ETH_DST, MacAddress.of(fieldMatch.getValue()));
                 }
                 break;
             case IN_PORT:

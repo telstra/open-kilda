@@ -216,6 +216,22 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     }
 
     private void speakerToSwitchManager(TopologyBuilder topology, TopologyOutput output) {
+        declareKafkaSpoutForAbstractMessage(topology,
+                kafkaTopics.getSpeakerSwitchManagerTopic(), ComponentType.SPEAKER_SWITCH_MANAGER_KAFKA_SPOUT);
+        declareControllerToSpeakerProxy(
+                topology, kafkaTopics.getSpeakerSwitchManagerRegionTopic(),
+                ComponentType.SPEAKER_SWITCH_MANAGER_KAFKA_SPOUT, ComponentType.SPEAKER_SWITCH_MANAGER_REQUEST_BOLT,
+                output.getKafkaHsOutput());
+
+        declareKafkaSpoutForAbstractMessage(topology,
+                makeRegionTopics(kafkaTopics.getSwitchManagerSpeakerRegionTopic()),
+                ComponentType.KILDA_SWITCH_MANAGER_REQUEST_KAFKA_SPOUT);
+        declareSpeakerToControllerProxy(
+                topology, kafkaTopics.getSwitchManagerSpeakerTopic(),
+                ComponentType.KILDA_SWITCH_MANAGER_REQUEST_KAFKA_SPOUT,
+                ComponentType.KILDA_SWITCH_MANAGER_RESPONSE_REPLY_BOLT,
+                output.getKafkaHsOutput());
+
         declareSpeakerToControllerProxy(
                 topology, kafkaTopics.getTopoSwitchManagerRegionTopic(), kafkaTopics.getTopoSwitchManagerTopic(),
                 ComponentType.KILDA_SWITCH_MANAGER_KAFKA_SPOUT, ComponentType.KILDA_SWITCH_MANAGER_REPLY_BOLT,

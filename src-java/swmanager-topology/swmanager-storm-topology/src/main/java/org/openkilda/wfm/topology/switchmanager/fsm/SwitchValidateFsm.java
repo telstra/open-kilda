@@ -331,6 +331,10 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                     .collect(Collectors.toList());
             ValidationResult results = new ValidationResult(flowEntries,
                     validationContext.getMetersValidationReport() != null,
+                    validationContext.getExpectedSwitchEntities(),
+                    validationContext.getActualOfFlows(),
+                    validationContext.getActualMeters(),
+                    validationContext.getActualGroupEntries(),
                     validationContext.getOfFlowsValidationReport(), validationContext.getMetersValidationReport(),
                     validationContext.getValidateGroupsResult(), validationContext.getValidateLogicalPortResult());
             carrier.runSwitchSync(key, request, results);

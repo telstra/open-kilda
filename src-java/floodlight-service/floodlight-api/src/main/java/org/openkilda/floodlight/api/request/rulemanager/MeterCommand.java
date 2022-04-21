@@ -40,6 +40,11 @@ public class MeterCommand extends OfCommand {
     }
 
     @Override
+    public void buildModify(OfEntityBatch builder, SwitchId switchId) {
+        builder.addModifyMeter(data, switchId);
+    }
+
+    @Override
     public void buildDelete(OfEntityBatch builder, SwitchId switchId) {
         builder.addDeleteMeter(data, switchId);
     }

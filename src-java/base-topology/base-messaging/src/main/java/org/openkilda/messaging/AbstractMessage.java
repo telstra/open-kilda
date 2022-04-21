@@ -17,16 +17,20 @@ package org.openkilda.messaging;
 
 import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.Setter;
 import lombok.ToString;
 
 import java.io.Serializable;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = PROPERTY, property = "clazz")
+@JsonInclude(Include.NON_NULL)
 @Getter
 @ToString
 @EqualsAndHashCode
@@ -35,6 +39,10 @@ public abstract class AbstractMessage implements Serializable {
 
     @JsonProperty("message_context")
     protected MessageContext messageContext;
+
+    @Setter
+    @JsonProperty("message_cookie")
+    protected MessageCookie messageCookie;
 
     public AbstractMessage(@NonNull MessageContext messageContext) {
         this.messageContext = messageContext;

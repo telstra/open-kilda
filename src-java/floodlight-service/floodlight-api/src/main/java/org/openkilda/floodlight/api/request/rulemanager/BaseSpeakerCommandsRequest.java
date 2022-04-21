@@ -36,6 +36,8 @@ import java.util.UUID;
 @JsonSubTypes({
         @Type(value = InstallSpeakerCommandsRequest.class,
                 name = "org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest"),
+        @Type(value = ModifySpeakerCommandsRequest.class,
+                name = "org.openkilda.floodlight.api.request.rulemanager.ModifySpeakerCommandsRequest"),
         @Type(value = DeleteSpeakerCommandsRequest.class,
                 name = "org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest")
 })
@@ -45,16 +47,25 @@ public abstract class BaseSpeakerCommandsRequest extends SpeakerRequest {
     @JsonProperty("command_data")
     protected Collection<OfCommand> commands;
 
+    @JsonProperty("origin")
+    protected Origin origin;
+
     public BaseSpeakerCommandsRequest(MessageContext messageContext,
                                       @NonNull SwitchId switchId,
                                       @NonNull UUID commandId,
-                                      Collection<OfCommand> commands) {
+                                      Collection<OfCommand> commands,
+                                      Origin origin) {
         super(messageContext, switchId, commandId);
         this.commands = commands;
+        this.origin = origin;
     }
 
     public Collection<OfCommand> getCommands() {
         return commands;
+    }
+
+    public Origin getOrigin() {
+        return origin;
     }
 
     public abstract void process(BatchCommandProcessor processor, String key);

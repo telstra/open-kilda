@@ -5,9 +5,7 @@ actor User
 boundary Northbound as NB
 participant SwitchManager << Hub >>
 participant SpeakerWorker
-participant CommandBuilder
 participant Floodlight as FL
-database DAO
 
 User -> NB : Switch sync rules
 
@@ -18,26 +16,18 @@ activate SwitchManager
 SwitchManager -> SwitchManager : Switch validate
 
 opt Missing rules exists
-    SwitchManager -> CommandBuilder : buildCommandsToCreateMissingRules
-    activate CommandBuilder
-    CommandBuilder -> CommandBuilder : Build commands
-    CommandBuilder -> SwitchManager : Rule installation commands
-    deactivate CommandBuilder
+    SwitchManager -> SwitchManager : Rule installation commands
 end
 
 opt Excess rules exists and removeExcess=true
-    SwitchManager -> CommandBuilder : buildCommandsToRemoveExcessRules
-    activate CommandBuilder
-    CommandBuilder -> CommandBuilder : Build commands
-    CommandBuilder -> SwitchManager : Rule remove commands
-    deactivate CommandBuilder
+    SwitchManager -> SwitchManager : Rule remove commands
 end
 
 group Sending rules commands
     opt Missing rules commands exists
         loop for each missing rule
-            SwitchManager ->> SpeakerWorker : InstallFlowForSwitchManagerRequest
-            SpeakerWorker ->> FL : InstallFlowForSwitchManagerRequest
+            SwitchManager ->> SpeakerWorker : BaseSpeakerCommandsRequest
+            SpeakerWorker ->> FL : BaseSpeakerCommandsRequest
 
             FL ->> SpeakerWorker
             SpeakerWorker ->> SwitchManager
@@ -45,8 +35,8 @@ group Sending rules commands
     end
     opt Excess rules commands exists
         loop for each excess rule
-            SwitchManager ->> SpeakerWorker : RemoveFlowForSwitchManagerRequest
-            SpeakerWorker ->> FL : RemoveFlowForSwitchManagerRequest
+            SwitchManager ->> SpeakerWorker : DeleteSpeakerCommandsRequest
+            SpeakerWorker ->> FL : DeleteSpeakerCommandsRequest
             FL ->> SpeakerWorker
             SpeakerWorker ->> SwitchManager
         end
@@ -60,8 +50,8 @@ end
 
 opt Excess meters commands exists
     loop for each excess meter
-        SwitchManager ->> SpeakerWorker : DeleterMeterForSwitchManagerRequest
-        SpeakerWorker ->> FL : DeleterMeterForSwitchManagerRequest
+        SwitchManager ->> SpeakerWorker : DeleteSpeakerCommandsRequest
+        SpeakerWorker ->> FL : DeleteSpeakerCommandsRequest
         FL ->> SpeakerWorker
         SpeakerWorker --> SwitchManager
     end
