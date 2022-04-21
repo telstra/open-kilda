@@ -127,6 +127,7 @@ public class FlowEntryConverter {
         if (instructions.getApplyActions() != null) {
             instructions.getApplyActions().forEach(action -> addAction(actionsBuilder, action));
         }
+        builder.applyActions(actionsBuilder.build());
         return builder.build();
     }
 

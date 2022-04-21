@@ -34,4 +34,5 @@ public class LogicalPortsSyncDto {
     private List<LogicalPortInfoDto> excess;
     private List<LogicalPortInfoDto> installed;
     private List<LogicalPortInfoDto> removed;
+    private String error;
 }

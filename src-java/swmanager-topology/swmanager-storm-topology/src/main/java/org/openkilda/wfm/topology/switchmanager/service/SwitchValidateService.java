@@ -104,7 +104,7 @@ public class SwitchValidateService implements SwitchManagerHubService {
         SwitchValidateContext context = SwitchValidateContext.builder()
                 .error(new SpeakerFailureException(payload))
                 .build();
-        handle(cookie, SwitchValidateEvent.ERROR, context);
+        handle(cookie, SwitchValidateEvent.ERROR_RECEIVED, context);
     }
 
     @Override
@@ -121,9 +121,10 @@ public class SwitchValidateService implements SwitchManagerHubService {
      * Handle switch validate request.
      */
     public void handleSwitchValidateRequest(String key, SwitchValidateRequest request) {
+        SwitchManagerCarrierCookieDecorator fsmCarrier = new SwitchManagerCarrierCookieDecorator(carrier, key);
         SwitchValidateFsm fsm =
                 builder.newStateMachine(
-                        SwitchValidateState.START, carrier, key, request, validationService, persistenceManager);
+                        SwitchValidateState.START, fsmCarrier, key, request, validationService, persistenceManager);
         MeterRegistryHolder.getRegistry().ifPresent(registry -> {
             Sample sample = LongTaskTimer.builder("fsm.active_execution")
                     .register(registry)
@@ -188,6 +189,7 @@ public class SwitchValidateService implements SwitchManagerHubService {
         if (handler == null) {
             throw new MessageDispatchException(cookie);
         }
+        context.setRequestCookie(cookie.getNested());
         handle(handler, event, context);
     }
 

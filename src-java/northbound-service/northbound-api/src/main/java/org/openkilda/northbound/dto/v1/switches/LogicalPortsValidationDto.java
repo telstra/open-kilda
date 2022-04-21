@@ -32,4 +32,5 @@ public class LogicalPortsValidationDto {
     private List<LogicalPortInfoDto> misconfigured;
     private List<LogicalPortInfoDto> proper;
     private List<LogicalPortInfoDto> excess;
+    private String error;
 }

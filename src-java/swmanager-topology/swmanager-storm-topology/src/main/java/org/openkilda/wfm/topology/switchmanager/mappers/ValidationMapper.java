@@ -81,5 +81,6 @@ public abstract class ValidationMapper {
     @Mapping(source = "misconfiguredLogicalPorts", target = "misconfigured")
     @Mapping(source = "properLogicalPorts", target = "proper")
     @Mapping(source = "excessLogicalPorts", target = "excess")
+    @Mapping(source = "errorMessage", target = "error")
     public abstract LogicalPortsValidationEntry mapReport(ValidateLogicalPortsResult report);
 }
