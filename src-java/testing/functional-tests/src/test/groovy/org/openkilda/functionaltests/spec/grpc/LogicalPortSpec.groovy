@@ -98,10 +98,9 @@ class LogicalPortSpec extends GrpcBaseSpecification {
                         [logicalPortNumber: 63488,
                          portNumber       : false,
                          errorMessage     : "Valid logicalportno range is 100 to 63487."],
-                        //https://github.com/telstra/open-kilda/issues/3973
-//                        [logicalPortNumber: false,
-//                         portNumber       : 44444,
-//                         errorMessage     : "Invalid portno value."],
+                        [logicalPortNumber: false,
+                         portNumber       : 44444,
+                         errorMessage     : "Invalid portno value."],
                 ], noviflowSwitches].combinations()
     }
 
