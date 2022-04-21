@@ -1243,9 +1243,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "A single switch flow with enabled lldp/arp on the dst side"
         def swPair = topologyHelper.getNeighboringSwitchPair()
         def flow = flowHelperV2.singleSwitchFlow(swPair.src)
-        //https://github.com/telstra/open-kilda/issues/4607
-//        flow.destination.detectConnectedDevices.lldp = true
-//        flow.destination.detectConnectedDevices.arp = true
+        flow.destination.detectConnectedDevices.lldp = true
+        flow.destination.detectConnectedDevices.arp = true
         flowHelperV2.addFlow(flow)
 
         when: "Update the dst endpoint to make this flow as multi switch flow"

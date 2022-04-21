@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
@@ -364,16 +365,15 @@ class PartialUpdateSpec extends HealthCheckSpecification {
             it.reverse.pingSuccess
         }
 
-        //issue with excess rules: https://github.com/telstra/open-kilda/issues/4055
-//        and: "The new and old dst switches pass switch validation"
-//        Wrappers.wait(RULES_DELETION_TIME) {
-//            [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
-//                with(northbound.validateSwitch(switchId)) { validation ->
-//                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//                }
-//            }
-//        }
+        and: "The new and old dst switches pass switch validation"
+        Wrappers.wait(RULES_DELETION_TIME) {
+            [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
+                with(northbound.validateSwitch(switchId)) { validation ->
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                }
+            }
+        }
         def dstSwitchesAreFine = false
 
         cleanup:
