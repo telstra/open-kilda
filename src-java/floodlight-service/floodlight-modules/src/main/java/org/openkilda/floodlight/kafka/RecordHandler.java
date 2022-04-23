@@ -1306,7 +1306,7 @@ class RecordHandler implements Runnable {
                     .dumpGroups(DatapathId.of(switchId.toLong()));
 
             List<GroupSpeakerData> groups = ofGroupDescStatsEntries.stream()
-                    .map(OfGroupConverter.INSTANCE::convertToGroupSpeakerData)
+                    .map(group -> OfGroupConverter.INSTANCE.convertToGroupSpeakerData(group, switchId))
                     .collect(Collectors.toList());
 
             GroupDumpResponse response = GroupDumpResponse.builder()

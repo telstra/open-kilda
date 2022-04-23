@@ -18,6 +18,7 @@ dependencies {
     implementation('org.projectfloodlight:openflowj')
     compileOnly('org.projectfloodlight:floodlight')
     testImplementation('org.projectfloodlight:floodlight')
+    testImplementation 'org.mockito:mockito-junit-jupiter'
 
     implementation('org.apache.kafka:kafka_2.11') {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'

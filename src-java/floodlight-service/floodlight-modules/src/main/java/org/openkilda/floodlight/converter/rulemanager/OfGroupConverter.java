@@ -16,7 +16,9 @@
 package org.openkilda.floodlight.converter.rulemanager;
 
 import org.openkilda.model.GroupId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.GroupSpeakerData;
+import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.group.Bucket;
 import org.openkilda.rulemanager.group.GroupType;
@@ -50,16 +52,16 @@ public class OfGroupConverter {
     /**
      * Convert stats reply.
      */
-    public List<GroupSpeakerData> convertToGroupSpeakerData(OFGroupDescStatsReply statsReply) {
+    public List<GroupSpeakerData> convertToGroupSpeakerData(OFGroupDescStatsReply statsReply, SwitchId switchId) {
         return statsReply.getEntries().stream()
-                .map(this::convertToGroupSpeakerData)
+                .map(entry -> convertToGroupSpeakerData(entry, switchId))
                 .collect(Collectors.toList());
     }
 
     /**
      * Convert stats entry.
      */
-    public GroupSpeakerData convertToGroupSpeakerData(OFGroupDescStatsEntry entry) {
+    public GroupSpeakerData convertToGroupSpeakerData(OFGroupDescStatsEntry entry, SwitchId switchId) {
         GroupId groupId = new GroupId(entry.getGroup().getGroupNumber());
         GroupType type = fromOfGroupType(entry.getGroupType());
         List<Bucket> buckets = new ArrayList<>();
@@ -68,6 +70,8 @@ public class OfGroupConverter {
             buckets.add(fromOfBucket(bucket));
         }
         return GroupSpeakerData.builder()
+                .switchId(switchId)
+                .ofVersion(OfVersion.of(entry.getVersion().name()))
                 .groupId(groupId)
                 .type(type)
                 .buckets(buckets)

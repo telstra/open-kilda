@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
@@ -38,6 +39,7 @@ import java.util.UUID;
 @JsonSerialize
 @SuperBuilder(toBuilder = true)
 @JsonNaming(SnakeCaseStrategy.class)
+@ToString(callSuper = true)
 public class GroupSpeakerData extends SpeakerData {
     GroupId groupId;
     GroupType type;
