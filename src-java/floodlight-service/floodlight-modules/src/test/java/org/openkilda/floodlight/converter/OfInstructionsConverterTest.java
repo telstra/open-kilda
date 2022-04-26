@@ -114,6 +114,7 @@ public class OfInstructionsConverterTest {
         actions.add(factory.actions().group(OFGroup.of(3)));
         actions.add(factory.actions().buildOutput()
                 .setPort(OFPort.CONTROLLER)
+                .setMaxLen(0xFFFFFFFF)
                 .build());
         actions.add(factory.actions().popVlan());
         actions.add(factory.actions().pushVlan(EthType.VLAN_FRAME));
@@ -126,6 +127,7 @@ public class OfInstructionsConverterTest {
                 .setIpv4Dst(IPv4Address.of(44))
                 .setUdpSrc(55)
                 .setVni(66)
+                .setFlags((short) 0x01)
                 .build());
         actions.add(factory.actions().buildKildaPushVxlanField()
                 .setEthSrc(MacAddress.of(111))

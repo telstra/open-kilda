@@ -53,7 +53,7 @@ public class OfGroupConverterTest {
 
     private List<OFAction> getActions(OFFactoryVer13 factory, int portNumber) {
         List<OFAction> list = new ArrayList<>();
-        list.add(factory.actions().buildOutput().setPort(OFPort.of(portNumber)).build());
+        list.add(factory.actions().buildOutput().setPort(OFPort.of(portNumber)).setMaxLen(0xFFFFFFFF).build());
         return list;
     }
 
