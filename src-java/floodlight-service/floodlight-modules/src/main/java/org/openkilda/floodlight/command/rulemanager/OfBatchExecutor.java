@@ -135,13 +135,19 @@ public class OfBatchExecutor {
                         }
                     } else {
                         log.error("Received error {}", ex.getMessage(), ex);
+                        UUID uuid = holder.popAwaitingXid(message.getXid());
+                        holder.recordFailedUuid(uuid, ex.getMessage());
                     }
                 }));
             }
         }
 
         CompletableFuture.allOf(requests.toArray(new CompletableFuture<?>[0]))
-                .thenAccept(ignore -> checkOfResponses());
+                .thenAccept(ignore -> checkOfResponses())
+                .exceptionally(ignore -> {
+                    checkOfResponses();
+                    return null;
+                });
     }
 
     private void onSuccessfulOfMessage(OFMessage ofMessage) {
@@ -288,8 +294,8 @@ public class OfBatchExecutor {
             List<OFGroupDescStatsReply> replies = groupStats.get();
             List<GroupSpeakerData> switchGroups = new ArrayList<>();
             replies.forEach(reply -> switchGroups.addAll(
-                    OfGroupConverter.INSTANCE.convertToGroupSpeakerData(reply)));
-
+                    OfGroupConverter.INSTANCE.convertToGroupSpeakerData(reply,
+                            new SwitchId(iofSwitch.getId().getLong()))));
             for (GroupSpeakerData switchGroup : switchGroups) {
                 GroupSpeakerData expectedGroup = holder.getByGroupId(switchGroup.getGroupId());
                 if (expectedGroup != null) {

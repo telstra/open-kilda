@@ -18,7 +18,9 @@ package org.openkilda.floodlight.converter.rulemanager;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.model.GroupId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.GroupSpeakerData;
+import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.group.Bucket;
@@ -46,6 +48,7 @@ import java.util.Set;
 
 public class OfGroupConverterTest {
 
+    private static final SwitchId SWITCH_ID = new SwitchId(1);
     private static final int GROUP_ID = 12;
 
     private List<OFAction> getActions(OFFactoryVer13 factory, int portNumber) {
@@ -82,9 +85,11 @@ public class OfGroupConverterTest {
         builder.setEntries(entries);
 
         List<GroupSpeakerData> groupSpeakerDataList = OfGroupConverter.INSTANCE.convertToGroupSpeakerData(
-                builder.build());
+                builder.build(), SWITCH_ID);
         assertEquals(1, groupSpeakerDataList.size());
         GroupSpeakerData groupSpeakerData = groupSpeakerDataList.get(0);
+        assertEquals(SWITCH_ID, groupSpeakerData.getSwitchId());
+        assertEquals(OfVersion.OF_13, groupSpeakerData.getOfVersion());
         assertEquals(new GroupId(GROUP_ID), groupSpeakerData.getGroupId());
         assertEquals(GroupType.ALL, groupSpeakerData.getType());
         List<Bucket> buckets = groupSpeakerData.getBuckets();

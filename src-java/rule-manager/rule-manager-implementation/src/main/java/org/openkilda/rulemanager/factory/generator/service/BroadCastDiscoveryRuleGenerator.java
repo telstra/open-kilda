@@ -47,6 +47,8 @@ import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.group.Bucket;
 import org.openkilda.rulemanager.group.GroupType;
+import org.openkilda.rulemanager.group.WatchGroup;
+import org.openkilda.rulemanager.group.WatchPort;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
@@ -139,11 +141,15 @@ public class BroadCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator
                         // todo: remove useless set ETH_DST action
                         actionSetDstMac(sw.getSwitchId().toLong()),
                         new PortOutAction(new PortNumber(SpecialPortType.CONTROLLER))))
+                .watchGroup(WatchGroup.ANY)
+                .watchPort(WatchPort.ANY)
                 .build());
         buckets.add(Bucket.builder()
                 .writeActions(Sets.newHashSet(
                         SetFieldAction.builder().field(Field.UDP_DST).value(LATENCY_PACKET_UDP_PORT).build(),
                         new PortOutAction(new PortNumber(SpecialPortType.IN_PORT))))
+                .watchGroup(WatchGroup.ANY)
+                .watchPort(WatchPort.ANY)
                 .build());
 
         return GroupSpeakerData.builder()

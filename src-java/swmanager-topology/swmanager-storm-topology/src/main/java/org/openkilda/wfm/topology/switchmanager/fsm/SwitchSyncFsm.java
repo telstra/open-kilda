@@ -485,12 +485,12 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                 .collect(Collectors.toList());
 
         if (!missingGroupIds.isEmpty()) {
-            log.info("Compute mirror configs for install groups (switch={}, key={})", switchId, key);
+            log.info("Compute missing groups (switch={}, key={})", switchId, key);
             try {
                 List<GroupSpeakerData> missingGroups = missingGroupIds.stream()
-                        .map(this::findActualGroupById)
+                        .map(this::findExpectedGroupById)
                         .collect(Collectors.toList());
-                toRemove.addAll(missingGroups);
+                toInstall.addAll(missingGroups);
             } catch (Exception e) {
                 sendException(e);
             }
@@ -501,9 +501,9 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                 .map(GroupInfoEntry::getGroupId)
                 .collect(Collectors.toList());
         if (!misconfiguredGroupIds.isEmpty()) {
-            log.info("Compute mirror configs for modify groups (switch={}, key={})", switchId, key);
+            log.info("Compute misconfigured groups (switch={}, key={})", switchId, key);
             try {
-                List<GroupSpeakerData> misconfiguredGroups = missingGroupIds.stream()
+                List<GroupSpeakerData> misconfiguredGroups = misconfiguredGroupIds.stream()
                         .map(this::findExpectedGroupById)
                         .collect(Collectors.toList());
                 toModify.addAll(misconfiguredGroups);
@@ -518,8 +518,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         if (!excessGroups.isEmpty()) {
             log.info("Compute excess groups (switch={}, key={})", switchId, key);
             try {
-                List<GroupSpeakerData> excessGroupCommands = missingGroupIds.stream()
-                        .map(this::findExpectedGroupById)
+                List<GroupSpeakerData> excessGroupCommands = excessGroups.stream()
+                        .map(this::findActualGroupById)
                         .collect(Collectors.toList());
                 toRemove.addAll(excessGroupCommands);
             } catch (Exception e) {
