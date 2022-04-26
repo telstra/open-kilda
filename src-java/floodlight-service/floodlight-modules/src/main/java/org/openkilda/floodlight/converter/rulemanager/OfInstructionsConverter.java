@@ -255,6 +255,7 @@ public class OfInstructionsConverter {
                 PortOutAction portOutAction = (PortOutAction) action;
                 return ofFactory.actions().buildOutput()
                         .setPort(convertPort(portOutAction.getPortNumber()))
+                        .setMaxLen(0xFFFFFFFF)
                         .build();
             case POP_VLAN:
                 return ofFactory.actions().popVlan();
@@ -284,6 +285,9 @@ public class OfInstructionsConverter {
                             .setIpv4Dst(IPv4Address.of(pushVxlanAction.getDstIpv4Address().getAddress()))
                             .setUdpSrc(pushVxlanAction.getUdpSrc())
                             .setVni(pushVxlanAction.getVni())
+                            // Set to 0x01 indicating tunnel data is present
+                            // (i.e. we are passing l2 and l3 headers in this action)
+                            .setFlags((short) 0x01)
                             .build();
                 }
             case METER:
