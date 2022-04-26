@@ -33,7 +33,7 @@ import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowRequestValidationException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm;
@@ -73,15 +73,15 @@ public class ValidateYFlowAction extends
 
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getModifyYFlowEnabled();
         if (!isOperationAllowed) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Y-flow delete feature is disabled");
+            throw new FlowRequestValidationException(ErrorType.NOT_PERMITTED, "Y-flow delete feature is disabled");
         }
 
         YFlow result = transactionManager.doInTransaction(() -> {
             YFlow yFlow = yFlowRepository.findById(yFlowId)
-                    .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                    .orElseThrow(() -> new FlowRequestValidationException(ErrorType.NOT_FOUND,
                             format("Y-flow %s not found", yFlowId)));
             if (yFlow.getStatus() == FlowStatus.IN_PROGRESS) {
-                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                         format("Y-flow %s is in progress now", yFlowId));
             }
 

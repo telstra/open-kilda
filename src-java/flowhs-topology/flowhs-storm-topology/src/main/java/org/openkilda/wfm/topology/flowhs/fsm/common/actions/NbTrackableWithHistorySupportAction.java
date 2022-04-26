@@ -21,6 +21,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowRequestValidationException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,8 @@ public abstract class NbTrackableWithHistorySupportAction<T extends FlowProcessi
     protected final void perform(S from, S to, E event, C context, T stateMachine) {
         try {
             performWithResponse(from, to, event, context, stateMachine).ifPresent(stateMachine::sendNorthboundResponse);
+        } catch (FlowRequestValidationException ex) {
+            handleError(stateMachine, ex, ex.getErrorType(), false, false);
         } catch (FlowProcessingException ex) {
             handleError(stateMachine, ex, ex.getErrorType(), false);
         } catch (Exception ex) {
@@ -54,13 +57,20 @@ public abstract class NbTrackableWithHistorySupportAction<T extends FlowProcessi
     protected abstract String getGenericErrorMessage();
 
     protected void handleError(T stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        handleError(stateMachine, ex, errorType, logTraceback, true);
+    }
+
+    private void handleError(
+            T stateMachine, Exception ex, ErrorType errorType, boolean logTraceback, boolean writeErrorToHistory) {
         String errorMessage = format("%s failed: %s", getClass().getSimpleName(), ex.getMessage());
-        if (logTraceback) {
-            stateMachine.saveErrorToHistory(errorMessage, ex);
-        } else {
-            stateMachine.saveErrorToHistory(errorMessage);
+        if (writeErrorToHistory) {
+            if (logTraceback) {
+                stateMachine.saveErrorToHistory(errorMessage, ex);
+            } else {
+                stateMachine.saveErrorToHistory(errorMessage);
+            }
         }
-        stateMachine.fireError(errorMessage);
+        stateMachine.fireError(errorMessage, writeErrorToHistory);
         stateMachine.sendNorthboundError(errorType, getGenericErrorMessage(), ex.getMessage());
     }
 }

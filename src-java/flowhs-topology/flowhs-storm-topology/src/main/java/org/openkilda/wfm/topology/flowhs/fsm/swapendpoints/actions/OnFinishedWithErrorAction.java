@@ -64,14 +64,15 @@ public class OnFinishedWithErrorAction extends OnFinishedNbTrackableAction {
             data = (ErrorData) context.getResponse();
         }
 
-        if (!Event.VALIDATION_ERROR.equals(event)) {
+        boolean writeToHistory = !Event.VALIDATION_ERROR.equals(event) && stateMachine.isWriteErrorToHistory();
+        if (writeToHistory) {
             saveActionToHistory(stateMachine,
                     stateMachine.getFirstFlowId(), stateMachine.getSecondFlowId(), data.getErrorDescription());
             saveActionToHistory(stateMachine,
                     stateMachine.getSecondFlowId(), stateMachine.getFirstFlowId(), data.getErrorDescription());
         }
 
-        updateFlowsStatuses(stateMachine);
+        updateFlowsStatuses(stateMachine, writeToHistory);
 
         CommandContext commandContext = stateMachine.getCommandContext();
         return Optional.of(new ErrorMessage(data, commandContext.getCreateTime(), commandContext.getCorrelationId()));

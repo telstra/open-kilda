@@ -35,7 +35,9 @@ public class OnFinishedWithErrorAction extends AnonymousAction<FlowPathSwapFsm, 
     @Override
     public void execute(State from, State to, Event event, FlowPathSwapContext context, FlowPathSwapFsm stateMachine) {
         dashboardLogger.onFailedFlowUpdate(stateMachine.getFlowId(), stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to swap paths for the flow", stateMachine.getErrorReason());
+        if (stateMachine.isWriteErrorToHistory()) {
+            stateMachine.saveActionToHistory("Failed to swap paths for the flow", stateMachine.getErrorReason());
+        }
 
         log.warn("Flow {} path swap failed", stateMachine.getFlowId());
         stateMachine.getCarrier().sendPathSwapResultStatus(stateMachine.getFlowId(), false,

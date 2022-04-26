@@ -43,18 +43,19 @@ abstract class OnFinishedNbTrackableAction
         this.dashboardLogger = dashboardLogger;
     }
 
-    protected void updateFlowsStatuses(FlowSwapEndpointsFsm stateMachine) {
+    protected void updateFlowsStatuses(FlowSwapEndpointsFsm stateMachine, boolean writeToHistory) {
         try {
             UpdateFlowsStatusesResult updateFlowsStatusesResult = transactionManager.doInTransaction(() ->
                             UpdateFlowsStatusesResult.builder()
                                     .firstFlowStatus(updateFlowStatus(stateMachine.getFirstFlowId()))
                                     .secondFlowStatus(updateFlowStatus(stateMachine.getSecondFlowId()))
                                     .build());
-
-            stateMachine.saveFlowActionToHistory(stateMachine.getFirstFlowId(), format("The flow status was set to %s",
-                    updateFlowsStatusesResult.getFirstFlowStatus()));
-            stateMachine.saveFlowActionToHistory(stateMachine.getSecondFlowId(), format("The flow status was set to %s",
-                    updateFlowsStatusesResult.getSecondFlowStatus()));
+            if (writeToHistory) {
+                stateMachine.saveFlowActionToHistory(stateMachine.getFirstFlowId(), format(
+                        "The flow status was set to %s", updateFlowsStatusesResult.getFirstFlowStatus()));
+                stateMachine.saveFlowActionToHistory(stateMachine.getSecondFlowId(), format(
+                        "The flow status was set to %s", updateFlowsStatusesResult.getSecondFlowStatus()));
+            }
 
         } catch (FlowProcessingException e) {
             log.error("Failed update flow status: {}", e.getMessage());

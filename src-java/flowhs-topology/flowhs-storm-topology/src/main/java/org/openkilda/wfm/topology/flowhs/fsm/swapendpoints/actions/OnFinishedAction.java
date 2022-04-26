@@ -46,7 +46,7 @@ public class OnFinishedAction extends OnFinishedNbTrackableAction {
                                                     FlowSwapEndpointsFsm stateMachine) {
         log.info("Swap endpoints operation completed successfully.");
 
-        updateFlowsStatuses(stateMachine);
+        updateFlowsStatuses(stateMachine, true);
 
         stateMachine.saveFlowActionToHistory(stateMachine.getFirstFlowId(),
                 format("Swap endpoints with flow %s was successful", stateMachine.getSecondFlowId()));

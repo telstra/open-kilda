@@ -35,6 +35,8 @@ public class OnFinishedWithErrorAction extends HistoryRecordingAction<FlowDelete
     @Override
     public void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
         dashboardLogger.onFailedFlowDelete(stateMachine.getFlowId(), stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to delete the flow", stateMachine.getErrorReason());
+        if (stateMachine.isWriteErrorToHistory()) {
+            stateMachine.saveActionToHistory("Failed to delete the flow", stateMachine.getErrorReason());
+        }
     }
 }

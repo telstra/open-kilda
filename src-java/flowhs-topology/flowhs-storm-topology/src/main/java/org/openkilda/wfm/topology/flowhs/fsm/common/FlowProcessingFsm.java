@@ -32,12 +32,15 @@ public abstract class FlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, E
     @Getter
     private final Collection<L> eventListeners;
     @Getter
+    private boolean writeErrorToHistory;
+    @Getter
     private String errorReason;
 
     protected FlowProcessingFsm(@NonNull E nextEvent, @NonNull E errorEvent, @NonNull Collection<L> eventListeners) {
         this.nextEvent = nextEvent;
         this.errorEvent = errorEvent;
         this.eventListeners = eventListeners;
+        this.writeErrorToHistory = true;
     }
 
     public void notifyEventListeners(@NonNull Consumer<L> eventProducer) {
@@ -63,7 +66,12 @@ public abstract class FlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, E
     }
 
     public void fireError(String errorReason) {
+        fireError(errorReason, true);
+    }
+
+    public void fireError(String errorReason, boolean writeErrorToHistory) {
         setErrorReason(errorReason);
+        this.writeErrorToHistory = writeErrorToHistory;
         fireError();
     }
 

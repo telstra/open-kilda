@@ -28,7 +28,7 @@ import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowRequestValidationException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm;
@@ -76,9 +76,9 @@ public class ValidateRequestAction extends
 
         stateMachine.setRequestedFlowMirrorPoint(mirrorPoint);
         Flow flow = transactionManager.doInTransaction(() -> {
-            Flow foundFlow = getFlow(flowId);
+            Flow foundFlow = getFlowForValidation(flowId);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
-                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                         format("Flow %s is in progress now", flowId));
             }
             stateMachine.setFlowStatus(foundFlow.getStatus());
@@ -87,7 +87,7 @@ public class ValidateRequestAction extends
         });
 
         if (!mirrorPoint.getMirrorPointSwitchId().equals(mirrorPoint.getSinkEndpoint().getSwitchId())) {
-            throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+            throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                     format("Invalid sink endpoint switch id: %s. In the current implementation, "
                             + "the sink switch id cannot differ from the mirror point switch id.",
                             mirrorPoint.getSinkEndpoint().getSwitchId()));
@@ -95,19 +95,19 @@ public class ValidateRequestAction extends
 
         if (!mirrorPoint.getMirrorPointSwitchId().equals(flow.getSrcSwitchId())
                 && !mirrorPoint.getMirrorPointSwitchId().equals(flow.getDestSwitchId())) {
-            throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+            throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                     format("Invalid mirror point switch id: %s", mirrorPoint.getMirrorPointSwitchId()));
         }
 
         if (flowMirrorPathRepository.exists(mirrorPathId)) {
-            throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,
+            throw new FlowRequestValidationException(ErrorType.ALREADY_EXISTS,
                     format("Flow mirror point %s already exists", mirrorPathId));
         }
 
         Optional<PhysicalPort> physicalPort = physicalPortRepository.findBySwitchIdAndPortNumber(
                 mirrorPoint.getSinkEndpoint().getSwitchId(), mirrorPoint.getSinkEndpoint().getPortNumber());
         if (physicalPort.isPresent()) {
-            throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+            throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                     format("Invalid sink port %d on switch %s. This port is part of LAG %d. Please delete LAG port "
                                     + "or choose another sink port.",
                             mirrorPoint.getSinkEndpoint().getPortNumber(), mirrorPoint.getSinkEndpoint().getSwitchId(),
@@ -117,9 +117,9 @@ public class ValidateRequestAction extends
         try {
             flowValidator.flowMirrorPointValidate(mirrorPoint);
         } catch (InvalidFlowException e) {
-            throw new FlowProcessingException(e.getType(), e.getMessage(), e);
+            throw new FlowRequestValidationException(e.getType(), e.getMessage(), e);
         } catch (UnavailableFlowEndpointException e) {
-            throw new FlowProcessingException(ErrorType.DATA_INVALID, e.getMessage(), e);
+            throw new FlowRequestValidationException(ErrorType.DATA_INVALID, e.getMessage(), e);
         }
 
         stateMachine.saveNewEventToHistory("Flow was validated successfully",

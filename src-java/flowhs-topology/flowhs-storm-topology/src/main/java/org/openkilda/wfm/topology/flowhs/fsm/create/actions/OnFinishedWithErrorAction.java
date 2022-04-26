@@ -35,6 +35,8 @@ public class OnFinishedWithErrorAction extends HistoryRecordingAction<FlowCreate
     @Override
     public void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         dashboardLogger.onFailedFlowCreate(stateMachine.getFlowId(), stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to create the flow", stateMachine.getErrorReason());
+        if (stateMachine.isWriteErrorToHistory()) {
+            stateMachine.saveActionToHistory("Failed to create the flow", stateMachine.getErrorReason());
+        }
     }
 }

@@ -75,6 +75,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -424,8 +425,12 @@ public final class FlowCreateFsm extends FlowProcessingWithHistorySupportFsm<Flo
                             fsm.notifyEventListeners(listener -> listener.onCompleted(flowId));
                             break;
                         case FINISHED_WITH_ERROR:
+                            ErrorType errorType = Optional.ofNullable(fsm.getOperationResultMessage())
+                                    .filter(message -> message instanceof ErrorMessage)
+                                    .map(message -> ((ErrorMessage) message).getData())
+                                    .map(ErrorData::getErrorType).orElse(ErrorType.INTERNAL_ERROR);
                             fsm.notifyEventListeners(listener ->
-                                    listener.onFailed(flowId, fsm.getErrorReason(), ErrorType.INTERNAL_ERROR));
+                                    listener.onFailed(flowId, fsm.getErrorReason(), errorType));
                             break;
                         default:
                             // ignore

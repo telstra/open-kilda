@@ -26,7 +26,7 @@ import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowRequestValidationException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
@@ -58,13 +58,14 @@ public class ValidateFlowAction extends
 
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getDeleteFlowEnabled();
         if (!isOperationAllowed) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Flow delete feature is disabled");
+            throw new FlowRequestValidationException(ErrorType.NOT_PERMITTED, "Flow delete feature is disabled");
         }
 
         Flow resultFlow = transactionManager.doInTransaction(() -> {
-            Flow flow = getFlow(flowId);
+            Flow flow = getFlowForValidation(flowId);
+
             if (flow.getStatus() == FlowStatus.IN_PROGRESS) {
-                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                         format("Flow %s is in progress now", flowId));
             }
 

@@ -28,6 +28,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowRequestValidationException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm;
@@ -59,17 +60,17 @@ public class FlowValidateAction extends
         transactionManager.doInTransaction(() -> {
             String flowId = stateMachine.getFlowId();
             Flow flow = flowRepository.findById(flowId)
-                    .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                    .orElseThrow(() -> new FlowRequestValidationException(ErrorType.NOT_FOUND,
                             format("Could not swap paths: Flow %s not found", flowId)));
             dashboardLogger.onFlowPathsSwap(flow);
             stateMachine.setPeriodicPingsEnabled(flow.isPeriodicPings());
             if (!flow.isAllocateProtectedPath()) {
-                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                         format("Could not swap paths: Flow %s doesn't have protected path", flowId));
             }
             if (FlowPathStatus.ACTIVE != flow.getProtectedForwardPath().getStatus()
                     || FlowPathStatus.ACTIVE != flow.getProtectedReversePath().getStatus()) {
-                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                         format("Could not swap paths: Protected flow path %s is not in ACTIVE state", flowId));
             }
             stateMachine.setOldPrimaryForwardPath(flow.getForwardPathId());

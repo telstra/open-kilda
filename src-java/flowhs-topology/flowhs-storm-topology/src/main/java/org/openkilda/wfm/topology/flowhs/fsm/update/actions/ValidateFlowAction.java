@@ -26,7 +26,7 @@ import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowRequestValidationException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
@@ -70,49 +70,49 @@ public class ValidateFlowAction extends
 
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getUpdateFlowEnabled();
         if (!isOperationAllowed) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Flow update feature is disabled");
+            throw new FlowRequestValidationException(ErrorType.NOT_PERMITTED, "Flow update feature is disabled");
         }
 
         stateMachine.setTargetFlow(targetFlow);
         stateMachine.setBulkUpdateFlowIds(context.getBulkUpdateFlowIds());
         stateMachine.setDoNotRevert(context.isDoNotRevert());
-        Flow flow = getFlow(flowId);
+        Flow flow = getFlowForValidation(flowId);
 
         try {
             flowValidator.validate(targetFlow, stateMachine.getBulkUpdateFlowIds());
         } catch (InvalidFlowException e) {
-            throw new FlowProcessingException(e.getType(), e.getMessage(), e);
+            throw new FlowRequestValidationException(e.getType(), e.getMessage(), e);
         } catch (UnavailableFlowEndpointException e) {
-            throw new FlowProcessingException(ErrorType.DATA_INVALID, e.getMessage(), e);
+            throw new FlowRequestValidationException(ErrorType.DATA_INVALID, e.getMessage(), e);
         }
 
         if ((!targetFlow.getSrcSwitch().equals(flow.getSrcSwitchId())
                 || !targetFlow.getDestSwitch().equals(flow.getDestSwitchId()))
                 && (!flow.getForwardPath().getFlowMirrorPointsSet().isEmpty()
                 || !flow.getReversePath().getFlowMirrorPointsSet().isEmpty())) {
-            throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+            throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                     "The current implementation of flow mirror points does not allow allocating paths. "
                             + "Therefore, remove the flow mirror points before changing the endpoint switch.");
         }
 
         if (diverseFlowId != null
                 && targetFlow.getSrcSwitch().equals(targetFlow.getDestSwitch())) {
-            throw new FlowProcessingException(ErrorType.DATA_INVALID,
+            throw new FlowRequestValidationException(ErrorType.DATA_INVALID,
                     "Couldn't add one-switch flow into diverse group");
         }
 
         transactionManager.doInTransaction(() -> {
             if (diverseFlowId != null && !diverseFlowId.isEmpty()) {
-                Flow diverseFlow = getFlow(diverseFlowId);
+                Flow diverseFlow = getFlowForValidation(diverseFlowId);
                 if (diverseFlow.isOneSwitchFlow()) {
-                    throw new FlowProcessingException(ErrorType.PARAMETERS_INVALID,
+                    throw new FlowRequestValidationException(ErrorType.PARAMETERS_INVALID,
                             "Couldn't create diverse group with one-switch flow");
                 }
             }
 
-            Flow foundFlow = getFlow(flowId);
+            Flow foundFlow = getFlowForValidation(flowId);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS && stateMachine.getBulkUpdateFlowIds().isEmpty()) {
-                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                         format("Flow %s is in progress now", flowId));
             }
 

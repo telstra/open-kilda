@@ -41,7 +41,9 @@ public class OnFinishedWithErrorAction extends
     protected void perform(State from, State to, Event event, YFlowRerouteContext context,
                            YFlowRerouteFsm stateMachine) {
         dashboardLogger.onFailedYFlowReroute(stateMachine.getYFlowId(), stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to reroute the y-flow", stateMachine.getErrorReason());
+        if (stateMachine.isWriteErrorToHistory()) {
+            stateMachine.saveActionToHistory("Failed to reroute the y-flow", stateMachine.getErrorReason());
+        }
 
         carrier.sendYFlowRerouteResultStatus(stateMachine.getFlowId(), new RerouteError(stateMachine.getErrorReason()),
                 stateMachine.getCommandContext().getCorrelationId());

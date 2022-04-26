@@ -36,6 +36,8 @@ public class OnFinishedWithErrorAction extends
     @Override
     protected void perform(State from, State to, Event event, YFlowUpdateContext context, YFlowUpdateFsm stateMachine) {
         dashboardLogger.onFailedYFlowUpdate(stateMachine.getYFlowId(), stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to update the y-flow", stateMachine.getErrorReason());
+        if (stateMachine.isWriteErrorToHistory()) {
+            stateMachine.saveActionToHistory("Failed to update the y-flow", stateMachine.getErrorReason());
+        }
     }
 }

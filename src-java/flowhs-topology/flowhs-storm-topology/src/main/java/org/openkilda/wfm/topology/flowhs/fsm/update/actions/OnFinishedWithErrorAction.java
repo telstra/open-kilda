@@ -40,7 +40,9 @@ public class OnFinishedWithErrorAction extends HistoryRecordingAction<FlowUpdate
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         dashboardLogger.onFailedFlowUpdate(stateMachine.getFlowId(), stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to update the flow", stateMachine.getErrorReason());
+        if (stateMachine.isWriteErrorToHistory()) {
+            stateMachine.saveActionToHistory("Failed to update the flow", stateMachine.getErrorReason());
+        }
 
         Message message = stateMachine.getOperationResultMessage();
         if (stateMachine.getBulkUpdateFlowIds() != null && !stateMachine.getBulkUpdateFlowIds().isEmpty()) {

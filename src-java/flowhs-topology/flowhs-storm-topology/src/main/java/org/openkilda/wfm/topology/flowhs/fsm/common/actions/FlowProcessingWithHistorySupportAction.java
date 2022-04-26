@@ -46,6 +46,7 @@ import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowRequestValidationException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 
 import com.fasterxml.uuid.Generators;
@@ -83,6 +84,12 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
+    }
+
+    protected Flow getFlowForValidation(String flowId) {
+        return flowRepository.findById(flowId)
+                .orElseThrow(() -> new FlowRequestValidationException(ErrorType.NOT_FOUND,
+                        format("Flow %s not found", flowId)));
     }
 
     protected Flow getFlow(String flowId) {

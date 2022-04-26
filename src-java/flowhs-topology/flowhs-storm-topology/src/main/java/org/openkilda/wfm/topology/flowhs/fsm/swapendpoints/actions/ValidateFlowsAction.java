@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
@@ -26,7 +27,8 @@ import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
+import org.openkilda.wfm.topology.flowhs.exception.FlowRequestValidationException;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsContext;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm.Event;
@@ -38,9 +40,11 @@ import org.openkilda.wfm.topology.flowhs.validation.UnavailableFlowEndpointExcep
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Optional;
+
 @Slf4j
 public class ValidateFlowsAction
-        extends FlowProcessingWithHistorySupportAction<FlowSwapEndpointsFsm, State, Event, FlowSwapEndpointsContext> {
+        extends NbTrackableWithHistorySupportAction<FlowSwapEndpointsFsm, State, Event, FlowSwapEndpointsContext> {
     private final KildaFeatureTogglesRepository featureTogglesRepository;
     private final FlowValidator flowValidator;
 
@@ -52,13 +56,13 @@ public class ValidateFlowsAction
     }
 
     @Override
-    protected void perform(State from, State to, Event event, FlowSwapEndpointsContext context,
-                           FlowSwapEndpointsFsm stateMachine) {
+    protected Optional<Message> performWithResponse(
+            State from, State to, Event event, FlowSwapEndpointsContext context, FlowSwapEndpointsFsm stateMachine) {
         RequestedFlow firstTargetFlow = stateMachine.getFirstTargetFlow();
         RequestedFlow secondTargetFlow = stateMachine.getSecondTargetFlow();
 
         if (!featureTogglesRepository.getOrDefault().getUpdateFlowEnabled()) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Flow update feature is disabled");
+            throw new FlowRequestValidationException(ErrorType.NOT_PERMITTED, "Flow update feature is disabled");
         }
 
         try {
@@ -66,11 +70,11 @@ public class ValidateFlowsAction
         } catch (InvalidFlowException e) {
             stateMachine.fireValidationError(
                     new ErrorData(e.getType(), FlowSwapEndpointsFsm.GENERIC_ERROR_MESSAGE, e.getMessage()));
-            return;
+            return Optional.empty();
         } catch (UnavailableFlowEndpointException e) {
             stateMachine.fireValidationError(
                     new ErrorData(ErrorType.DATA_INVALID, FlowSwapEndpointsFsm.GENERIC_ERROR_MESSAGE, e.getMessage()));
-            return;
+            return Optional.empty();
         }
 
         try {
@@ -87,7 +91,7 @@ public class ValidateFlowsAction
         } catch (FlowProcessingException e) {
             stateMachine.fireValidationError(
                     new ErrorData(e.getErrorType(), FlowSwapEndpointsFsm.GENERIC_ERROR_MESSAGE, e.getMessage()));
-            return;
+            return Optional.empty();
         }
 
         stateMachine.saveNewEventToHistory(stateMachine.getFirstFlowId(),
@@ -98,12 +102,19 @@ public class ValidateFlowsAction
                 FlowEventData.Event.SWAP_ENDPOINTS);
 
         stateMachine.fireNext();
+        return Optional.empty();
+    }
+
+    @Override
+    protected String getGenericErrorMessage() {
+        return "Could not swap flow endpoints";
     }
 
     private Flow checkAndGetFlow(String flowId) {
-        Flow flow = getFlow(flowId);
+        Flow flow = getFlowForValidation(flowId);
         if (flow.getStatus() == FlowStatus.IN_PROGRESS) {
-            throw new FlowProcessingException(ErrorType.REQUEST_INVALID, format("Flow %s is in progress now", flowId));
+            throw new FlowRequestValidationException(
+                    ErrorType.REQUEST_INVALID, format("Flow %s is in progress now", flowId));
         }
         return flow;
     }

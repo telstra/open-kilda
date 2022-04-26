@@ -45,6 +45,8 @@ public class OnFinishedWithErrorAction extends
 
         dashboardLogger.onFailedFlowMirrorPointDelete(stateMachine.getFlowId(), stateMachine.getMirrorPathId().getId(),
                 stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to delete the flow mirror point", stateMachine.getErrorReason());
+        if (stateMachine.isWriteErrorToHistory()) {
+            stateMachine.saveActionToHistory("Failed to delete the flow mirror point", stateMachine.getErrorReason());
+        }
     }
 }

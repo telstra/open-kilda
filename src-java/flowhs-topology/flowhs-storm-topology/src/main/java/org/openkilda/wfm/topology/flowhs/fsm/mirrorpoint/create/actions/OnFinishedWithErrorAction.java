@@ -49,6 +49,8 @@ public class OnFinishedWithErrorAction extends
                 mirrorPoint.getMirrorPointSwitchId(), mirrorPoint.getMirrorPointDirection().toString(),
                 mirrorPoint.getSinkEndpoint().getSwitchId(), mirrorPoint.getSinkEndpoint().getPortNumber(),
                 mirrorPoint.getSinkEndpoint().getOuterVlanId(), stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to create the flow mirror point", stateMachine.getErrorReason());
+        if (stateMachine.isWriteErrorToHistory()) {
+            stateMachine.saveActionToHistory("Failed to create the flow mirror point", stateMachine.getErrorReason());
+        }
     }
 }

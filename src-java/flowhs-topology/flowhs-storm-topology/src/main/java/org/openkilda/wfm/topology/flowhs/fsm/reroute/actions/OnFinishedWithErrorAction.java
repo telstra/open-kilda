@@ -39,7 +39,9 @@ public class OnFinishedWithErrorAction extends
     @Override
     public void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         dashboardLogger.onFailedFlowReroute(stateMachine.getFlowId(), stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to reroute the flow", stateMachine.getErrorReason());
+        if (stateMachine.isWriteErrorToHistory()) {
+            stateMachine.saveActionToHistory("Failed to reroute the flow", stateMachine.getErrorReason());
+        }
         log.info("Flow {} reroute result failed with error {}", stateMachine.getFlowId(),
                 stateMachine.getRerouteError());
         carrier.sendRerouteResultStatus(stateMachine.getFlowId(), stateMachine.getRerouteError(),

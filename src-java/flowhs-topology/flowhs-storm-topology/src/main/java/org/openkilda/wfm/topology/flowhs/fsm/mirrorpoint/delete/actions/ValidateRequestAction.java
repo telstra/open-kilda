@@ -33,7 +33,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowRequestValidationException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm;
@@ -69,19 +69,19 @@ public class ValidateRequestAction extends
         dashboardLogger.onFlowMirrorPointDelete(flowId, context.getFlowMirrorPointId());
 
         FlowMirrorPointResponse response = transactionManager.doInTransaction(() -> {
-            Flow foundFlow = getFlow(flowId);
+            Flow foundFlow = getFlowForValidation(flowId);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
-                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                         format("Flow %s is in progress now", flowId));
             }
             stateMachine.setFlowStatus(foundFlow.getStatus());
             flowRepository.updateStatus(flowId, FlowStatus.IN_PROGRESS);
 
             FlowMirrorPath flowMirrorPath = flowMirrorPathRepository.findById(mirrorPathId)
-                    .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                    .orElseThrow(() -> new FlowRequestValidationException(ErrorType.NOT_FOUND,
                             format("Flow mirror point %s not found", mirrorPathId)));
             if (flowMirrorPath.getStatus() == FlowPathStatus.IN_PROGRESS) {
-                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                         format("Flow mirror point %s is in progress now", mirrorPathId));
             }
 

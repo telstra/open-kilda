@@ -31,7 +31,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowRequestValidationException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm;
@@ -72,24 +72,24 @@ public class ValidateYFlowAction extends
 
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getModifyYFlowEnabled();
         if (!isOperationAllowed) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Y-flow create feature is disabled");
+            throw new FlowRequestValidationException(ErrorType.NOT_PERMITTED, "Y-flow create feature is disabled");
         }
 
         try {
             yFlowValidator.validate(targetFlow);
         } catch (InvalidFlowException e) {
-            throw new FlowProcessingException(e.getType(), e.getMessage(), e);
+            throw new FlowRequestValidationException(e.getType(), e.getMessage(), e);
         } catch (UnavailableFlowEndpointException e) {
-            throw new FlowProcessingException(ErrorType.DATA_INVALID, e.getMessage(), e);
+            throw new FlowRequestValidationException(ErrorType.DATA_INVALID, e.getMessage(), e);
         }
 
         String yFlowId = targetFlow.getYFlowId();
         YFlow yFlow = transactionManager.doInTransaction(() -> {
             YFlow result = yFlowRepository.findById(yFlowId)
-                    .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                    .orElseThrow(() -> new FlowRequestValidationException(ErrorType.NOT_FOUND,
                             format("Y-flow %s not found", yFlowId)));
             if (result.getStatus() == FlowStatus.IN_PROGRESS) {
-                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                         format("Y-flow %s is in progress now", yFlowId));
             }
 
@@ -109,12 +109,12 @@ public class ValidateYFlowAction extends
                 .collect(Collectors.toSet());
 
         if (!requestedSubFlowIds.equals(originalSubFlowIds)) {
-            throw new FlowProcessingException(ErrorType.PARAMETERS_INVALID,
+            throw new FlowRequestValidationException(ErrorType.PARAMETERS_INVALID,
                     format("Unable to map provided sub-flows set onto existing y-flow %s", yFlowId));
         }
 
         YSubFlow subFlow = yFlow.getSubFlows().stream().findAny()
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.DATA_INVALID,
+                .orElseThrow(() -> new FlowRequestValidationException(ErrorType.DATA_INVALID,
                         format("No sub-flows of the y-flow %s were found", yFlowId)));
         stateMachine.setMainAffinityFlowId(subFlow.getFlow().getAffinityGroupId());
 

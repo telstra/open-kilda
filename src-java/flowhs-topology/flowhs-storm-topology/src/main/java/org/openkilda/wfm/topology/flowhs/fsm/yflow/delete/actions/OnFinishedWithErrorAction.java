@@ -36,6 +36,8 @@ public class OnFinishedWithErrorAction extends
     @Override
     protected void perform(State from, State to, Event event, YFlowDeleteContext context, YFlowDeleteFsm stateMachine) {
         dashboardLogger.onFailedYFlowDelete(stateMachine.getYFlowId(), stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to delete the y-flow", stateMachine.getErrorReason());
+        if (stateMachine.isWriteErrorToHistory()) {
+            stateMachine.saveActionToHistory("Failed to delete the y-flow", stateMachine.getErrorReason());
+        }
     }
 }

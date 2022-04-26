@@ -34,7 +34,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowRequestValidationException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm;
@@ -70,7 +70,7 @@ public class ValidateYFlowAction extends
 
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getModifyYFlowEnabled();
         if (!isOperationAllowed) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Y-flow reroute feature is disabled");
+            throw new FlowRequestValidationException(ErrorType.NOT_PERMITTED, "Y-flow reroute feature is disabled");
         }
 
         YFlowRerouteRequest request = context.getRerouteRequest();
@@ -87,10 +87,10 @@ public class ValidateYFlowAction extends
 
         YFlow yFlow = transactionManager.doInTransaction(() -> {
             YFlow result = yFlowRepository.findById(yFlowId)
-                    .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                    .orElseThrow(() -> new FlowRequestValidationException(ErrorType.NOT_FOUND,
                             format("Y-flow %s not found", yFlowId)));
             if (result.getStatus() == FlowStatus.IN_PROGRESS) {
-                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                throw new FlowRequestValidationException(ErrorType.REQUEST_INVALID,
                         format("Y-flow %s is in progress now", yFlowId));
             }
 
@@ -108,7 +108,7 @@ public class ValidateYFlowAction extends
         Flow mainAffinitySubFlow = subFlows.stream()
                 .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
                 .findFirst()
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.DATA_INVALID,
+                .orElseThrow(() -> new FlowRequestValidationException(ErrorType.DATA_INVALID,
                         format("Main affinity sub-flow of the y-flow %s not found", yFlowId)));
         stateMachine.setMainAffinityFlowId(mainAffinitySubFlow.getFlowId());
 

@@ -26,6 +26,7 @@ import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowRequestValidationException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
@@ -69,25 +70,25 @@ public class FlowValidateAction extends
 
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getCreateFlowEnabled();
         if (!isOperationAllowed) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Flow create feature is disabled");
+            throw new FlowRequestValidationException(ErrorType.NOT_PERMITTED, "Flow create feature is disabled");
         }
 
         if (flowRepository.exists(request.getFlowId())) {
-            throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,
+            throw new FlowRequestValidationException(ErrorType.ALREADY_EXISTS,
                     format("Flow %s already exists", request.getFlowId()));
         }
 
         if (yFlowRepository.exists(request.getFlowId())) {
-            throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,
+            throw new FlowRequestValidationException(ErrorType.ALREADY_EXISTS,
                     format("Y-flow %s already exists", request.getFlowId()));
         }
 
         try {
             flowValidator.validate(request);
         } catch (InvalidFlowException e) {
-            throw new FlowProcessingException(e.getType(), e.getMessage(), e);
+            throw new FlowRequestValidationException(e.getType(), e.getMessage(), e);
         } catch (UnavailableFlowEndpointException e) {
-            throw new FlowProcessingException(ErrorType.DATA_INVALID, e.getMessage(), e);
+            throw new FlowRequestValidationException(ErrorType.DATA_INVALID, e.getMessage(), e);
         }
 
         stateMachine.setTargetFlow(request);
