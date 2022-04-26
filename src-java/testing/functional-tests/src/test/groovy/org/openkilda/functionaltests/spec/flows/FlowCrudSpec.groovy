@@ -1241,6 +1241,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
     def "System allows to update single switch flow to multi switch flow"() {
         given: "A single switch flow with enabled lldp/arp on the dst side"
+        assumeTrue(useMultitable, "This test can be run in multiTable mode due to lldp/arp")
         def swPair = topologyHelper.getNeighboringSwitchPair()
         def flow = flowHelperV2.singleSwitchFlow(swPair.src)
         flow.destination.detectConnectedDevices.lldp = true
