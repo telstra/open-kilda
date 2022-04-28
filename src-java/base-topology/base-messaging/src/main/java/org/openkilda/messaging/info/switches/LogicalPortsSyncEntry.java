@@ -33,4 +33,5 @@ public class LogicalPortsSyncEntry implements Serializable {
     private List<LogicalPortInfoEntry> excess;
     private List<LogicalPortInfoEntry> installed;
     private List<LogicalPortInfoEntry> removed;
+    private String error;
 }

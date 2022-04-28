@@ -18,7 +18,9 @@ package org.openkilda.floodlight.converter.rulemanager;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.model.GroupId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.GroupSpeakerData;
+import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.group.Bucket;
@@ -29,10 +31,10 @@ import org.openkilda.rulemanager.group.WatchPort;
 import com.google.common.collect.Sets;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFBucket;
-import org.projectfloodlight.openflow.protocol.OFGroupAdd;
 import org.projectfloodlight.openflow.protocol.OFGroupDelete;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsReply.Builder;
+import org.projectfloodlight.openflow.protocol.OFGroupMod;
 import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
@@ -46,11 +48,12 @@ import java.util.Set;
 
 public class OfGroupConverterTest {
 
+    private static final SwitchId SWITCH_ID = new SwitchId(1);
     private static final int GROUP_ID = 12;
 
     private List<OFAction> getActions(OFFactoryVer13 factory, int portNumber) {
         List<OFAction> list = new ArrayList<>();
-        list.add(factory.actions().buildOutput().setPort(OFPort.of(portNumber)).build());
+        list.add(factory.actions().buildOutput().setPort(OFPort.of(portNumber)).setMaxLen(0xFFFFFFFF).build());
         return list;
     }
 
@@ -82,9 +85,11 @@ public class OfGroupConverterTest {
         builder.setEntries(entries);
 
         List<GroupSpeakerData> groupSpeakerDataList = OfGroupConverter.INSTANCE.convertToGroupSpeakerData(
-                builder.build());
+                builder.build(), SWITCH_ID);
         assertEquals(1, groupSpeakerDataList.size());
         GroupSpeakerData groupSpeakerData = groupSpeakerDataList.get(0);
+        assertEquals(SWITCH_ID, groupSpeakerData.getSwitchId());
+        assertEquals(OfVersion.OF_13, groupSpeakerData.getOfVersion());
         assertEquals(new GroupId(GROUP_ID), groupSpeakerData.getGroupId());
         assertEquals(GroupType.ALL, groupSpeakerData.getType());
         List<Bucket> buckets = groupSpeakerData.getBuckets();
@@ -114,11 +119,11 @@ public class OfGroupConverterTest {
                 .build();
         OFFactoryVer13 factory = new OFFactoryVer13();
 
-        OFGroupAdd ofGroupAdd = OfGroupConverter.INSTANCE.convertInstallGroupCommand(groupSpeakerData, factory);
+        OFGroupMod ofGroupMod = OfGroupConverter.INSTANCE.convertInstallGroupCommand(groupSpeakerData, factory);
 
-        assertEquals(OFGroup.of(GROUP_ID), ofGroupAdd.getGroup());
-        assertEquals(OFGroupType.ALL, ofGroupAdd.getGroupType());
-        assertEquals(2, ofGroupAdd.getBuckets().size());
+        assertEquals(OFGroup.of(GROUP_ID), ofGroupMod.getGroup());
+        assertEquals(OFGroupType.ALL, ofGroupMod.getGroupType());
+        assertEquals(2, ofGroupMod.getBuckets().size());
 
         List<OFBucket> expectedBuckets = new ArrayList<>();
         expectedBuckets.add(factory.buildBucket().setWatchPort(OFPort.ANY)
@@ -130,7 +135,7 @@ public class OfGroupConverterTest {
                 .setWatchGroup(OFGroup.ALL)
                 .setActions(getActions(factory, 1))
                 .build());
-        assertEquals(expectedBuckets, ofGroupAdd.getBuckets());
+        assertEquals(expectedBuckets, ofGroupMod.getBuckets());
     }
 
     @Test

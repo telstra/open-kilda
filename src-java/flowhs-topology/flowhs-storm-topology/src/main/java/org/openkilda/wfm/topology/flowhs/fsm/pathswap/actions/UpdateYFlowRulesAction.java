@@ -23,6 +23,7 @@ import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsReq
 import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
+import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
@@ -102,7 +103,7 @@ public class UpdateYFlowRulesAction extends
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(),
                 context.getCorrelationId());
-        return new InstallSpeakerCommandsRequest(messageContext, switchId, commandId, ofCommands);
+        return new InstallSpeakerCommandsRequest(messageContext, switchId, commandId, ofCommands, Origin.FLOW_HS);
     }
 
     protected DeleteSpeakerCommandsRequest buildYFlowDeleteRequest(SwitchId switchId, PathId pathId,
@@ -111,7 +112,7 @@ public class UpdateYFlowRulesAction extends
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(),
                 context.getCorrelationId());
-        return new DeleteSpeakerCommandsRequest(messageContext, switchId, commandId, ofCommands);
+        return new DeleteSpeakerCommandsRequest(messageContext, switchId, commandId, ofCommands, Origin.FLOW_HS);
     }
 
     private List<OfCommand> buildYFlowOfCommands(SwitchId switchId, PathId pathId) {

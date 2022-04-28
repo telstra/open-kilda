@@ -81,15 +81,28 @@ public abstract class OfFlowConverter {
      * Convert flow speaker command data into OfFlowMod representation.
      */
     public OFFlowMod convertInstallFlowCommand(FlowSpeakerData commandData, OFFactory ofFactory) {
-        return ofFactory.buildFlowAdd()
-                .setCookie(U64.of(commandData.getCookie().getValue()))
+        return setupBuilder(ofFactory.buildFlowAdd(), commandData, ofFactory)
+                .build();
+    }
+
+    /**
+     * Convert flow speaker command data into OfFlowMod representation for Flow modify.
+     */
+    public OFFlowMod convertModifyFlowCommand(FlowSpeakerData commandData, OFFactory ofFactory) {
+        return setupBuilder(ofFactory.buildFlowModify(), commandData, ofFactory)
+                .build();
+    }
+
+    private OFFlowMod.Builder setupBuilder(OFFlowMod.Builder builder,
+                                           FlowSpeakerData commandData, OFFactory ofFactory) {
+        return builder.setCookie(U64.of(commandData.getCookie().getValue()))
                 .setTableId(TableId.of(commandData.getTable().getTableId()))
                 .setPriority(commandData.getPriority())
                 .setMatch(OfMatchConverter.INSTANCE.convertMatch(commandData.getMatch(), ofFactory))
                 .setInstructions(
                         OfInstructionsConverter.INSTANCE.convertInstructions(commandData.getInstructions(), ofFactory))
-                .setFlags(convertToOfFlags(commandData.getFlags()))
-                .build();
+                .setFlags(convertToOfFlags(commandData.getFlags()));
+
     }
 
     /**

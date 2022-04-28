@@ -24,13 +24,19 @@ public interface OfEntityBatch {
 
     void addInstallFlow(FlowSpeakerData data, SwitchId switchId);
 
+    void addModifyFlow(FlowSpeakerData data, SwitchId switchId);
+
     void addDeleteFlow(FlowSpeakerData data, SwitchId switchId);
 
     void addInstallMeter(MeterSpeakerData data, SwitchId switchId);
 
+    void addModifyMeter(MeterSpeakerData data, SwitchId switchId);
+
     void addDeleteMeter(MeterSpeakerData data, SwitchId switchId);
 
     void addInstallGroup(GroupSpeakerData data, SwitchId switchId);
+
+    void addModifyGroup(GroupSpeakerData data, SwitchId switchId);
 
     void addDeleteGroup(GroupSpeakerData data, SwitchId switchId);
 }

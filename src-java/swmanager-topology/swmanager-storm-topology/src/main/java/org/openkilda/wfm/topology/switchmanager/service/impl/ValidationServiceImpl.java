@@ -161,7 +161,7 @@ public class ValidationServiceImpl implements ValidationService {
                 .filter(entry -> !presentGroupsIds.contains(entry.getGroupId()))
                 .forEach(missingGroups::add);
         if (!missingGroups.isEmpty() && log.isErrorEnabled()) {
-            log.error("On switch {} the following groups are missed: {}", switchId,
+            log.warn("On switch {} the following groups are missed: {}", switchId,
                     missingGroups.stream().map(x -> Integer.toString(x.getGroupId()))
                             .collect(Collectors.joining(", ", "[", "]")));
         }
@@ -238,7 +238,8 @@ public class ValidationServiceImpl implements ValidationService {
                 ImmutableList.copyOf(properPorts),
                 ImmutableList.copyOf(missingPorts),
                 ImmutableList.copyOf(excessPorts),
-                ImmutableList.copyOf(misconfiguredPorts));
+                ImmutableList.copyOf(misconfiguredPorts),
+                "");
     }
 
     private Set<GroupInfoEntry> calculateMisconfiguredGroups(Set<GroupInfoEntry> expected, Set<GroupInfoEntry> actual) {
@@ -382,7 +383,7 @@ public class ValidationServiceImpl implements ValidationService {
         ValidateMetersResult result = comparePresentedAndExpectedMeters(isESwitch, actualMeters, expectedMeters);
 
         if (!result.getMissingMeters().isEmpty() && log.isErrorEnabled()) {
-            log.error("On switch {} the following meters are missed: {}", switchId,
+            log.warn("On switch {} the following meters are missed: {}", switchId,
                     metersIntoLogRepresentation(result.getMissingMeters()));
         }
 

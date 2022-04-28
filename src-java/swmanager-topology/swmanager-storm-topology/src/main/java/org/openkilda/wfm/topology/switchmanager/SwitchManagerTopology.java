@@ -15,10 +15,11 @@
 
 package org.openkilda.wfm.topology.switchmanager;
 
+import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.wfm.LaunchEnvironment;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.kafka.AbstractMessageSerializer;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
@@ -45,8 +46,10 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
 
     private static final String HUB_SPOUT = "hub.spout";
     private static final String WORKER_SPOUT = "worker.spout";
+    private static final String WORKER_RESPONSE_SPOUT = "worker.response.spout";
     private static final String NB_KAFKA_BOLT = "nb.bolt";
     private static final String SPEAKER_KAFKA_BOLT = "speaker.bolt";
+    private static final String SPEAKER_REQUEST_KAFKA_BOLT = "speaker.request.bolt";
     private static final String GRPC_SPEAKER_KAFKA_BOLT = "grpc.speaker.bolt";
     private static final String METRICS_BOLT = "metrics.bolt";
 
@@ -84,8 +87,7 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 topologyConfig.getKafkaSwitchManagerNbWorkerTopic());
         declareKafkaSpout(builder, inputTopics, HUB_SPOUT);
         declareBolt(builder, new SwitchManagerHub(hubConfig, persistenceManager,
-                        topologyConfig, configurationProvider.getConfiguration(FlowResourcesConfig.class),
-                        configurationProvider.getConfiguration(RuleManagerConfig.class)),
+                        topologyConfig, configurationProvider.getConfiguration(RuleManagerConfig.class)),
                 SwitchManagerHub.ID)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID)
                 .fieldsGrouping(HUB_SPOUT, FIELDS_KEY)
@@ -97,14 +99,19 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 .hubComponent(SwitchManagerHub.ID)
                 .streamToHub(SwitchManagerHub.INCOME_STREAM)
                 .workerSpoutComponent(WORKER_SPOUT)
+                .workerSpoutComponent(WORKER_RESPONSE_SPOUT)
                 .defaultTimeout((int) TimeUnit.SECONDS.toMillis(topologyConfig.getOperationTimeout()))
                 .build();
         declareKafkaSpout(builder, Lists.newArrayList(topologyConfig.getKafkaSwitchManagerTopic(),
                 topologyConfig.getGrpcResponseTopic()), WORKER_SPOUT);
+        declareKafkaSpoutForAbstractMessage(builder, topologyConfig.getKafkaSwitchManagerSpeakerWorkerTopic(),
+                WORKER_RESPONSE_SPOUT);
         declareBolt(builder, new SpeakerWorkerBolt(speakerWorkerConfig),
                 SpeakerWorkerBolt.ID)
                 .fieldsGrouping(WORKER_SPOUT, FIELDS_KEY)
+                .fieldsGrouping(WORKER_RESPONSE_SPOUT, FIELDS_KEY)
                 .fieldsGrouping(SwitchManagerHub.ID, SpeakerWorkerBolt.INCOME_STREAM, FIELDS_KEY)
+                .fieldsGrouping(SwitchManagerHub.ID, SpeakerWorkerBolt.OF_COMMANDS_INCOME_STREAM, FIELDS_KEY)
                 .directGrouping(CoordinatorBolt.ID);
 
         declareBolt(builder, new HeavyOperationBolt(
@@ -117,6 +124,11 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
 
         declareBolt(builder, buildKafkaBolt(topologyConfig.getKafkaSpeakerTopic()), SPEAKER_KAFKA_BOLT)
                 .shuffleGrouping(SpeakerWorkerBolt.ID, StreamType.TO_FLOODLIGHT.toString());
+
+        KafkaBolt<String, AbstractMessage> flKafkaBolt = makeKafkaBolt(
+                topologyConfig.getKafkaSpeakerSwitchManagerTopic(), AbstractMessageSerializer.class);
+        declareBolt(builder, flKafkaBolt, SPEAKER_REQUEST_KAFKA_BOLT)
+                .shuffleGrouping(SpeakerWorkerBolt.ID, StreamType.REQUEST_TO_FLOODLIGHT.toString());
 
         declareBolt(builder, buildKafkaBolt(topologyConfig.getGrpcSpeakerTopic()), GRPC_SPEAKER_KAFKA_BOLT)
                 .shuffleGrouping(SpeakerWorkerBolt.ID, StreamType.TO_GRPC.toString());

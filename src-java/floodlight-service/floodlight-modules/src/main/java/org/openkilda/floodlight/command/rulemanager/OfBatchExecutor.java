@@ -21,6 +21,7 @@ import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
 import org.openkilda.floodlight.KafkaChannel;
+import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.floodlight.converter.rulemanager.OfFlowConverter;
 import org.openkilda.floodlight.converter.rulemanager.OfGroupConverter;
 import org.openkilda.floodlight.converter.rulemanager.OfMeterConverter;
@@ -64,7 +65,7 @@ public class OfBatchExecutor {
     private final OfBatchHolder holder;
     private final Set<SwitchFeature> switchFeatures;
     private final String kafkaKey;
-
+    private final Origin origin;
 
     private boolean hasMeters;
     private boolean hasGroups;
@@ -78,7 +79,7 @@ public class OfBatchExecutor {
     public OfBatchExecutor(IOFSwitch iofSwitch, KafkaUtilityService kafkaUtilityService,
                            IKafkaProducerService kafkaProducerService,
                            SessionService sessionService, MessageContext messageContext, OfBatchHolder holder,
-                           Set<SwitchFeature> switchFeatures, String kafkaKey) {
+                           Set<SwitchFeature> switchFeatures, String kafkaKey, Origin origin) {
         this.iofSwitch = iofSwitch;
         this.kafkaUtilityService = kafkaUtilityService;
         this.kafkaProducerService = kafkaProducerService;
@@ -87,6 +88,7 @@ public class OfBatchExecutor {
         this.holder = holder;
         this.switchFeatures = switchFeatures;
         this.kafkaKey = kafkaKey;
+        this.origin = origin;
     }
 
     /**
@@ -133,13 +135,19 @@ public class OfBatchExecutor {
                         }
                     } else {
                         log.error("Received error {}", ex.getMessage(), ex);
+                        UUID uuid = holder.popAwaitingXid(message.getXid());
+                        holder.recordFailedUuid(uuid, ex.getMessage());
                     }
                 }));
             }
         }
 
         CompletableFuture.allOf(requests.toArray(new CompletableFuture<?>[0]))
-                .thenAccept(ignore -> checkOfResponses());
+                .thenAccept(ignore -> checkOfResponses())
+                .exceptionally(ignore -> {
+                    checkOfResponses();
+                    return null;
+                });
     }
 
     private void onSuccessfulOfMessage(OFMessage ofMessage) {
@@ -286,8 +294,8 @@ public class OfBatchExecutor {
             List<OFGroupDescStatsReply> replies = groupStats.get();
             List<GroupSpeakerData> switchGroups = new ArrayList<>();
             replies.forEach(reply -> switchGroups.addAll(
-                    OfGroupConverter.INSTANCE.convertToGroupSpeakerData(reply)));
-
+                    OfGroupConverter.INSTANCE.convertToGroupSpeakerData(reply,
+                            new SwitchId(iofSwitch.getId().getLong()))));
             for (GroupSpeakerData switchGroup : switchGroups) {
                 GroupSpeakerData expectedGroup = holder.getByGroupId(switchGroup.getGroupId());
                 if (expectedGroup != null) {
@@ -311,8 +319,19 @@ public class OfBatchExecutor {
 
     private void sendResponse() {
         KafkaChannel kafkaChannel = kafkaUtilityService.getKafkaChannel();
-        log.debug("Send response to {} (key={})", kafkaChannel.getSpeakerFlowHsTopic(), kafkaKey);
-        kafkaProducerService.sendMessageAndTrack(kafkaChannel.getSpeakerFlowHsTopic(),
-                kafkaKey, holder.getResult());
+        String topic = getTopic(kafkaChannel);
+        log.debug("Send response to {} (key={})", topic, kafkaKey);
+        kafkaProducerService.sendMessageAndTrack(topic, kafkaKey, holder.getResult());
+    }
+
+    private String getTopic(KafkaChannel kafkaChannel) {
+        switch (origin) {
+            case FLOW_HS:
+                return kafkaChannel.getSpeakerFlowHsTopic();
+            case SW_MANAGER:
+                return kafkaChannel.getSpeakerSwitchManagerResponseTopic();
+            default:
+                throw new IllegalStateException(format("Unknown message origin %s", origin));
+        }
     }
 }

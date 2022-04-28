@@ -173,6 +173,8 @@ kilda_storm_flowhs_workers: 1
 kilda_storm_parallelism_workers_count: 1
 kilda_storm_history_parallelism: 2
 
+kilda_storm_spout_parallelism: 2
+
 kilda_storm_flow_monitoring_parallelism: 2
 
 kilda_storm_disruptor_wait_timeout: 1000

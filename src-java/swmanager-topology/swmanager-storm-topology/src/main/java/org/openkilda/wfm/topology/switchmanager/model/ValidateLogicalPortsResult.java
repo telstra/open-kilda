@@ -26,11 +26,17 @@ import java.util.List;
 public class ValidateLogicalPortsResult {
     public static ValidateLogicalPortsResult newEmpty() {
         return new ValidateLogicalPortsResult(
-                new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+                new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), "");
+    }
+
+    public static ValidateLogicalPortsResult newErrorMessage(String error) {
+        return new ValidateLogicalPortsResult(
+                new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), error);
     }
 
     List<LogicalPortInfoEntry> properLogicalPorts;
     List<LogicalPortInfoEntry> missingLogicalPorts;
     List<LogicalPortInfoEntry> excessLogicalPorts;
     List<LogicalPortInfoEntry> misconfiguredLogicalPorts;
+    String errorMessage;
 }

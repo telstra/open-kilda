@@ -17,10 +17,13 @@ package org.openkilda.floodlight.api;
 
 import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.ModifySpeakerCommandsRequest;
 
 public interface BatchCommandProcessor {
 
     void processBatchInstall(InstallSpeakerCommandsRequest request, String key);
+
+    void processBatchModify(ModifySpeakerCommandsRequest request, String key);
 
     void processBatchDelete(DeleteSpeakerCommandsRequest request, String key);
 

@@ -24,6 +24,7 @@ import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
+import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -74,7 +75,8 @@ public abstract class YFlowRuleManagerProcessingAction<T extends YFlowProcessing
             List<SpeakerData> dataList = entry.getValue();
             UUID commandId = commandIdGenerator.generate();
             MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
-            return new InstallSpeakerCommandsRequest(messageContext, switchId, commandId, mapToOfCommands(dataList));
+            return new InstallSpeakerCommandsRequest(messageContext, switchId, commandId, mapToOfCommands(dataList),
+                    Origin.FLOW_HS);
         }).collect(Collectors.toList());
     }
 
@@ -86,7 +88,8 @@ public abstract class YFlowRuleManagerProcessingAction<T extends YFlowProcessing
             List<SpeakerData> dataList = reverseDependenciesForDeletion(entry.getValue());
             UUID commandId = commandIdGenerator.generate();
             MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
-            return new DeleteSpeakerCommandsRequest(messageContext, switchId, commandId, mapToOfCommands(dataList));
+            return new DeleteSpeakerCommandsRequest(messageContext, switchId, commandId, mapToOfCommands(dataList),
+                    Origin.FLOW_HS);
         }).collect(Collectors.toList());
     }
 

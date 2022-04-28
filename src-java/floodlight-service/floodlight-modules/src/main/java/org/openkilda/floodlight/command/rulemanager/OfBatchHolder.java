@@ -171,6 +171,18 @@ public class OfBatchHolder implements OfEntityBatch {
     }
 
     @Override
+    public void addModifyFlow(FlowSpeakerData data, SwitchId switchId) {
+        DatapathId dpId = DatapathId.of(switchId.toLong());
+        OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
+        OFMessage message = OfFlowConverter.INSTANCE.convertModifyFlowCommand(data, factory);
+        xidMapping.put(message.getXid(), data.getUuid());
+        BatchData batchData = BatchData.builder().flow(true).message(message).presenceBeVerified(true).build();
+        commandMap.put(data.getUuid(), batchData);
+        flowsMap.put(data.getCookie(), data);
+        executionGraph.add(data.getUuid(), data.getDependsOn());
+    }
+
+    @Override
     public void addDeleteFlow(FlowSpeakerData data, SwitchId switchId) {
         DatapathId dpId = DatapathId.of(switchId.toLong());
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
@@ -195,6 +207,18 @@ public class OfBatchHolder implements OfEntityBatch {
     }
 
     @Override
+    public void addModifyMeter(MeterSpeakerData data, SwitchId switchId) {
+        DatapathId dpId = DatapathId.of(switchId.toLong());
+        OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
+        OFMessage message = OfMeterConverter.INSTANCE.convertModifyMeterCommand(data, factory);
+        xidMapping.put(message.getXid(), data.getUuid());
+        BatchData batchData = BatchData.builder().meter(true).message(message).presenceBeVerified(true).build();
+        commandMap.put(data.getUuid(), batchData);
+        metersMap.put(data.getMeterId(), data);
+        executionGraph.add(data.getUuid(), data.getDependsOn());
+    }
+
+    @Override
     public void addDeleteMeter(MeterSpeakerData data, SwitchId switchId) {
         DatapathId dpId = DatapathId.of(switchId.toLong());
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
@@ -211,6 +235,18 @@ public class OfBatchHolder implements OfEntityBatch {
         DatapathId dpId = DatapathId.of(switchId.toLong());
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfGroupConverter.INSTANCE.convertInstallGroupCommand(data, factory);
+        xidMapping.put(message.getXid(), data.getUuid());
+        BatchData batchData = BatchData.builder().group(true).message(message).presenceBeVerified(true).build();
+        commandMap.put(data.getUuid(), batchData);
+        groupsMap.put(data.getGroupId(), data);
+        executionGraph.add(data.getUuid(), data.getDependsOn());
+    }
+
+    @Override
+    public void addModifyGroup(GroupSpeakerData data, SwitchId switchId) {
+        DatapathId dpId = DatapathId.of(switchId.toLong());
+        OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
+        OFMessage message = OfGroupConverter.INSTANCE.convertModifyGroupCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
         BatchData batchData = BatchData.builder().group(true).message(message).presenceBeVerified(true).build();
         commandMap.put(data.getUuid(), batchData);

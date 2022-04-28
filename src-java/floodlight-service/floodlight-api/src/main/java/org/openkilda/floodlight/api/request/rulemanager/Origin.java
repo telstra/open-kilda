@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,12 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager;
+package org.openkilda.floodlight.api.request.rulemanager;
 
-public enum StreamType {
-    TO_NORTHBOUND,
-    TO_FLOODLIGHT,
-    REQUEST_TO_FLOODLIGHT,
-    TO_GRPC,
-    HUB_TO_METRICS_BOLT
+public enum Origin {
+
+    FLOW_HS,
+    SW_MANAGER
 }

@@ -24,12 +24,14 @@ import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Singular;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -62,7 +64,7 @@ public abstract class WorkerBolt extends CoordinatedBolt {
 
         requireNonNull(config.getStreamToHub(), "Stream to hub bolt cannot be null");
         requireNonNull(config.getHubComponent(), "Hub bolt id cannot be null");
-        requireNonNull(config.getWorkerSpoutComponent(), "Worker's spout id cannot be null");
+        requireNonNull(config.getWorkerSpoutComponents(), "Worker's spout ids cannot be null");
         this.workerConfig = config;
     }
 
@@ -71,7 +73,7 @@ public abstract class WorkerBolt extends CoordinatedBolt {
         String sourceComponent = input.getSourceComponent();
         if (workerConfig.getHubComponent().equals(sourceComponent)) {
             dispatchHub(input);
-        } else if (workerConfig.getWorkerSpoutComponent().equals(sourceComponent)) {
+        } else if (workerConfig.getWorkerSpoutComponents().contains(sourceComponent)) {
             dispatchResponse(input);
         } else {
             super.dispatch(input);
@@ -182,7 +184,8 @@ public abstract class WorkerBolt extends CoordinatedBolt {
     public static class Config implements Serializable {
         private String streamToHub;
         private String hubComponent;
-        private String workerSpoutComponent;
+        @Singular
+        private List<String> workerSpoutComponents;
 
         @Builder.Default
         private int defaultTimeout = 100;
