@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.118.3 (26/04/2022)
+
+
+### Bug Fixes:
+-  [#4768](https://github.com/telstra/open-kilda/pull/4768) Correct removing of LLDP/ARP/Server42 rules during update in swap endpoint case (Issue: [#4766](https://github.com/telstra/open-kilda/issues/4766)) 
+-  [#4790](https://github.com/telstra/open-kilda/pull/4790) Fix groups install in switch sync operation [**floodlight**]
+-  [#4767](https://github.com/telstra/open-kilda/pull/4767) Fix flow path endpoints in flow dump for update flow operation (Issue: [#4606](https://github.com/telstra/open-kilda/issues/4606)) 
+
+### Improvements:
+-  [#4780](https://github.com/telstra/open-kilda/pull/4780) Unignore test according to #4733 (Issues: [#3973](https://github.com/telstra/open-kilda/issues/3973) [#4733](https://github.com/telstra/open-kilda/issues/4733)) [**tests**]
+-  [#4751](https://github.com/telstra/open-kilda/pull/4751) [test] unignore tests for #4607 (Issue: [#4607](https://github.com/telstra/open-kilda/issues/4607)) 
+-  [#4753](https://github.com/telstra/open-kilda/pull/4753) Rework switch sync to use RuleManager [**floodlight**][**storm-topologies**]
+-  [#4786](https://github.com/telstra/open-kilda/pull/4786) update makefile template according to #4734 (Issue: [#4734](https://github.com/telstra/open-kilda/issues/4734)) 
+-  [#4754](https://github.com/telstra/open-kilda/pull/4754) Added config option for spout parallelism [**storm-topologies**]
+-  [#4757](https://github.com/telstra/open-kilda/pull/4757) Fix appearing warnings for FlowCrudSpec [**tests**]
+-  [#4734](https://github.com/telstra/open-kilda/pull/4734) Making repeatable builds possible w/o Internet 
+
+### Other changes:
+-  [#4745](https://github.com/telstra/open-kilda/pull/4745) Switch validation without logical port info (Issue: [#4574](https://github.com/telstra/open-kilda/issues/4574)) [**northbound**][**storm-topologies**]
+-  [#4778](https://github.com/telstra/open-kilda/pull/4778) Add test to validate non existing lag port creation [**tests**]
+-  [#4791](https://github.com/telstra/open-kilda/pull/4791) Revert "Use MySQL DB to store history on local env" (Issue: [#4746](https://github.com/telstra/open-kilda/issues/4746)) 
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.118.2...v1.118.3).
+
+### Affected Components:
+otsdb, network, router, ping, reroute, fl, flow-hs, history, swmanager, nb, nbworker, flow-monitor
+
+
+
 ## v1.118.2 (08/04/2022)
 
 ### Bug Fixes:
