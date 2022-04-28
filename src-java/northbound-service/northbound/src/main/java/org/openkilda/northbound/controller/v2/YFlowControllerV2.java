@@ -15,8 +15,6 @@
 
 package org.openkilda.northbound.controller.v2;
 
-import static org.openkilda.northbound.config.SwaggerConfig.DRAFT_API_TAG;
-
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.v2.yflows.SubFlowsDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlow;
@@ -50,7 +48,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.concurrent.CompletableFuture;
 import javax.validation.Valid;
 
-@Api(tags = {DRAFT_API_TAG})
+@Api
 @RestController
 @RequestMapping("/v2/y-flows")
 public class YFlowControllerV2 extends BaseController {
