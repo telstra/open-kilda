@@ -33,6 +33,4 @@ import java.util.List;
 public class YFlowPaths {
     YFlowPath sharedPath;
     List<SubFlowPath> subFlowPaths;
-    YFlowPath sharedProtectedPath;
-    List<SubFlowPath> subFlowProtectedPaths;
 }

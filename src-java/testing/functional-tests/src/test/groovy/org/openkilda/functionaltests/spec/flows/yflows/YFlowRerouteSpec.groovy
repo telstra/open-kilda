@@ -61,7 +61,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         def yFlow = yFlowHelper.addYFlow(yFlowRequest)
 
         def paths = northboundV2.getYFlowPaths(yFlow.YFlowId)
-        def islToFail = pathHelper.getInvolvedIsls(paths.sharedPath.nodes).first()
+        def islToFail = pathHelper.getInvolvedIsls(PathHelper.convert(paths.subFlowPaths[0].forward)).first()
 
         when: "Fail a flow ISL (bring switch port down)"
         antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
