@@ -135,6 +135,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags(LOW_PRIORITY)
     def "System is able to switch a y-flow to protected paths"() {
         given: "A y-flow with protected paths"
         def swT = findSwitchTripletForYFlowWithProtectedPaths()
@@ -286,6 +287,9 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         given: "A y-flow without protected path"
         def swT = topologyHelper.switchTriplets[0]
         assumeTrue(swT != null, "No suiting switches found.")
+        print("=" * 100)
+        print(swT)
+        print("=" * 100)
         def yFlowRequest = yFlowHelper.randomYFlow(swT, false)
         def yFlow = yFlowHelper.addYFlow(yFlowRequest)
         assert !yFlow.protectedPathYPoint

@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS_Y
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
@@ -69,9 +70,11 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
 
         then: "The flow was rerouted after reroute delay"
         and: "History has relevant entries about y-flow reroute"
-        //        wait(FLOW_CRUD_TIMEOUT) { northbound.getFlowHistory(yFlow.YFlowId).last().payload.last().action == REROUTE_SUCCESS_Y }
+        wait(FLOW_CRUD_TIMEOUT) {
+            assert northbound.getFlowHistory(yFlow.YFlowId).last().payload.last().action == REROUTE_SUCCESS_Y
+        }
         yFlow.subFlows.each { sf ->
-            wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowHistory(sf.flowId).last().payload.last().action == REROUTE_SUCCESS }
+            assert northbound.getFlowHistory(sf.flowId).last().payload.last().action == REROUTE_SUCCESS
         }
         wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.UP.toString()
@@ -88,10 +91,10 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
 
         and: "All involved switches pass switch validation"
         def involvedSwitches = pathHelper.getInvolvedYSwitches(paths)
-//        involvedSwitches.each { sw ->
-//            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//        }
+        involvedSwitches.each { sw ->
+            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
 
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
         def beforeTraffic = new Date()

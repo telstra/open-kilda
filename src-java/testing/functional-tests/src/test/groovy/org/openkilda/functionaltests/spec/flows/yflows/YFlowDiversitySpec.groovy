@@ -1,7 +1,9 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -60,11 +62,11 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
-//        and: "YFlows histories contains 'diverse?' information"
-//        [flow2, flow3].each {//flow1 had no diversity at the time of creation
-//            assert northbound.getFlowHistory(it.flowId).find { it.action == CREATE_ACTION }.dumps
-//                    .find { it.type == "stateAfter" }?.diverseGroupId
-//        }
+        and: "YFlows histories contains 'diverse?' information"
+        [yFlow2.subFlows[0], yFlow3.subFlows[0]].each {//flow1 had no diversity at the time of creation
+            assert northbound.getFlowHistory(it.flowId).find { it.action == CREATE_ACTION }.dumps
+                    .find { it.type == "stateAfter" }?.diverseGroupId
+        }
 
         and: "Y-flow passes flow validation"
         [yFlow1, yFlow2, yFlow3].each { assert northboundV2.validateYFlow(it.YFlowId).asExpected }
@@ -74,12 +76,10 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def yFlowsAreDeleted = true
 
         then: "YFlows' histories contain 'diverseGroupId' information in 'delete' operation"
-//        [flow1, flow2].each {
-//            verifyAll(northbound.getFlowHistory(it.flowId).find { it.action == DELETE_ACTION }.dumps) {
-//                it.find { it.type == "stateBefore" }?.diverseGroupId
-//                !it.find { it.type == "stateAfter" }?.diverseGroupId
-//            }
-//        }
+        verifyAll(northbound.getFlowHistory(yFlow1.subFlows[0].flowId).find { it.action == DELETE_ACTION }.dumps) {
+            it.find { it.type == "stateBefore" }?.diverseGroupId
+            !it.find { it.type == "stateAfter" }?.diverseGroupId
+        }
 
         cleanup:
         !yFlowsAreDeleted && [yFlow1, yFlow2, yFlow3].each { it && yFlowHelper.deleteYFlow(it.YFlowId) }
@@ -130,7 +130,11 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def involvedIslSubFlowAfterUpdate = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(subFlow.flowId)))
         assert involvedIslSubFlowAfterUpdate != involvedIslSimpleFlow
 
-        //todo check 'diverse' in history for update action
+        and: "First sub flow history contains 'groupId' information"
+        verifyAll(northbound.getFlowHistory(subFlow.flowId).find { it.action == UPDATE_ACTION }.dumps) {
+            !it.find { it.type == "stateBefore" }?.diverseGroupId
+            it.find { it.type == "stateAfter" }?.diverseGroupId
+        }
 
         and: "Y-flow passes flow validation"
         assert northboundV2.validateYFlow(yFlow.YFlowId).asExpected
