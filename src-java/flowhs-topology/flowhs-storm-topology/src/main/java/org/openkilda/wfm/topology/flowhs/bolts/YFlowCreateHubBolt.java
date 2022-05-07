@@ -34,6 +34,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.stats.StatsNotification;
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputer;
@@ -249,6 +250,15 @@ public class YFlowCreateHubBolt extends HubBolt implements FlowGenericCarrier {
 
         emitWithContext(HUB_TO_STATS_TOPOLOGY_SENDER.name(), getCurrentTuple(),
                 new Values(flowPathInfo.getFlowId(), message));
+    }
+
+    @Override
+    public void sendStatsNotification(@NonNull StatsNotification notification) {
+        String correlationId = getCommandContext().getCorrelationId();
+        Message message = new InfoMessage(notification, System.currentTimeMillis(), correlationId);
+
+        emitWithContext(HUB_TO_STATS_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(correlationId, message));
     }
 
     @Override

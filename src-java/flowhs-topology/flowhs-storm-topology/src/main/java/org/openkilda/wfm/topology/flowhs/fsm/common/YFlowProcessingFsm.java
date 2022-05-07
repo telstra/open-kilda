@@ -138,6 +138,7 @@ public abstract class YFlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, 
     private YFlowStatsInfoFactory newYFlowStatsInfoFactory(YFlowResources resources) throws InsufficientDataException {
         YFlowResources.EndpointResources sharedEndpoint = resources.getSharedEndpointResources();
         YFlowResources.EndpointResources yPoint = resources.getMainPathYPointResources();
+        YFlowResources.EndpointResources protectedYPoint = resources.getProtectedPathYPointResources();
 
         String missing;
         if (sharedEndpoint == null && yPoint == null) {
@@ -156,7 +157,10 @@ public abstract class YFlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, 
         return new YFlowStatsInfoFactory(
                 getYFlowId(),
                 new YFlowEndpointResources(sharedEndpoint.getEndpoint(), sharedEndpoint.getMeterId()),
-                new YFlowEndpointResources(yPoint.getEndpoint(), yPoint.getMeterId()));
+                new YFlowEndpointResources(yPoint.getEndpoint(), yPoint.getMeterId()),
+                protectedYPoint != null
+                        ? new YFlowEndpointResources(protectedYPoint.getEndpoint(), protectedYPoint.getMeterId())
+                        : null);
     }
 
     public void addInstallSpeakerCommand(UUID key, InstallSpeakerCommandsRequest command) {

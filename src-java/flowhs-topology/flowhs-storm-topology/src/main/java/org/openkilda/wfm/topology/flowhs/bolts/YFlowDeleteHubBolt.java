@@ -35,6 +35,7 @@ import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.command.yflow.YFlowDeleteRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
+import org.openkilda.messaging.info.stats.StatsNotification;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
@@ -220,6 +221,15 @@ public class YFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
 
         emitWithContext(HUB_TO_STATS_TOPOLOGY_SENDER.name(), getCurrentTuple(),
                 new Values(flowPathInfo.getFlowId(), message));
+    }
+
+    @Override
+    public void sendStatsNotification(@NonNull StatsNotification notification) {
+        String correlationId = getCommandContext().getCorrelationId();
+        Message message = new InfoMessage(notification, System.currentTimeMillis(), correlationId);
+
+        emitWithContext(HUB_TO_STATS_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(correlationId, message));
     }
 
     @Override

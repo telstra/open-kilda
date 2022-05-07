@@ -62,7 +62,10 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         def yFlow = northboundV2.addYFlow(yFlowRequest)
 
         then: "Y-flow is created and has UP status"
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.UP.toString() }
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
+            yFlow = northboundV2.getYFlow(yFlow.YFlowId)
+            assert yFlow.status == FlowState.UP.toString()
+        }
         northboundV2.getYFlow(yFlow.YFlowId).YPoint
 
         and: "2 sub-flows are created, visible via regular 'dump flows' API"
@@ -98,10 +101,10 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         and: "All involved switches pass switch validation"
         def involvedSwitches = pathHelper.getInvolvedYSwitches(paths)
-//        involvedSwitches.each { sw ->
-//            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//        }
+        involvedSwitches.each { sw ->
+            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
 
         and: "Bandwidth is properly consumed on shared and non-shared ISLs"
         def allLinksAfter = northbound.getAllLinks()
@@ -150,7 +153,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
-//        statsHelper.verifyFlowWritesStats(yFlow.YFlowId, beforeTraffic, trafficApplicable)
+        statsHelper.verifyYFlowWritesMeterStats(yFlow, beforeTraffic, trafficApplicable)
         yFlow.subFlows.each {
             statsHelper.verifyFlowWritesStats(it.flowId, beforeTraffic, trafficApplicable)
         }
@@ -176,11 +179,10 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         and: "All involved switches pass switch validation"
         // https://github.com/telstra/open-kilda/issues/3411
         northbound.synchronizeSwitch(yFlow.sharedEndpoint.switchId, true)
-//        involvedSwitches.each { sw ->
-            //TODO: new method signature after rebase
-//            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty()
-//            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty()
-//        }
+        involvedSwitches.each { sw ->
+            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
 
         cleanup:
         yFlow && !flowRemoved && yFlowHelper.deleteYFlow(yFlow.YFlowId)

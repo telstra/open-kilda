@@ -30,10 +30,11 @@ import lombok.Value;
 public class UpdateYFlowStatsInfo extends BaseYFlowStatsInfo {
     @JsonCreator
     public UpdateYFlowStatsInfo(
-            @JsonProperty("y_flow_id") String yFlowId,
+            @JsonProperty("yflow_id") String yFlowId,
             @JsonProperty("shared_endpoint_resources") YFlowEndpointResources sharedEndpointResources,
-            @JsonProperty("y_point_resources") YFlowEndpointResources yPointResources) {
-        super(yFlowId, sharedEndpointResources, yPointResources);
+            @JsonProperty("ypoint_resources") YFlowEndpointResources yPointResources,
+            @JsonProperty("protected_ypoint_resources") YFlowEndpointResources protectedYPointResources) {
+        super(yFlowId, sharedEndpointResources, yPointResources, protectedYPointResources);
     }
 
     public UpdateYFlowStatsInfo(BaseYFlowStatsInfo other) {
