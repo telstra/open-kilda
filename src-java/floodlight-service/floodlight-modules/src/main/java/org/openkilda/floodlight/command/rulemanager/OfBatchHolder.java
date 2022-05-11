@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.rulemanager;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.api.request.rulemanager.OfEntityBatch;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.floodlight.converter.rulemanager.OfFlowConverter;
@@ -28,6 +30,7 @@ import org.openkilda.model.cookie.CookieBase;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.SpeakerData;
 
 import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -42,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Slf4j
 public class OfBatchHolder implements OfEntityBatch {
@@ -62,6 +66,8 @@ public class OfBatchHolder implements OfEntityBatch {
     private final Map<GroupId, GroupSpeakerData> groupsMap = new HashMap<>();
 
     private final Map<Long, UUID> xidMapping = new HashMap<>();
+
+    private Throwable failCause;
 
     public List<UUID> getCurrentStage() {
         return executionGraph.getCurrent();
@@ -89,6 +95,14 @@ public class OfBatchHolder implements OfEntityBatch {
         } else {
             failedUuids.put(failedUuid, message);
         }
+    }
+
+    /**
+     * Process other fail during command processing.
+     */
+    public void otherFail(String message, Throwable throwable) {
+        log.error(message, throwable);
+        this.failCause = throwable;
     }
 
     /**
@@ -126,6 +140,17 @@ public class OfBatchHolder implements OfEntityBatch {
 
     public BatchData getByUUid(UUID uuid) {
         return commandMap.get(uuid);
+    }
+
+    /**
+     * Get speaker data by UUID.
+     */
+    public SpeakerData getSpeakerDataByUUid(UUID uuid) {
+        return Stream.of(flowsMap.values(), metersMap.values(), groupsMap.values())
+                .flatMap(Collection::stream)
+                .filter(data -> uuid.equals(data.getUuid()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(format("Can't find speaker data with uuid %s", uuid)));
     }
 
     public MeterSpeakerData getByMeterId(MeterId meterId) {
@@ -270,7 +295,7 @@ public class OfBatchHolder implements OfEntityBatch {
                 .messageContext(messageContext)
                 .commandId(commandId)
                 .switchId(switchId)
-                .success(failedUuids.isEmpty())
+                .success(failedUuids.isEmpty() && failCause == null)
                 .failedCommandIds(failedUuids).build();
     }
 }

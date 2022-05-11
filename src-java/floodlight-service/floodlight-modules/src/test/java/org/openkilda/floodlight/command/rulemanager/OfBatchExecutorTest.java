@@ -121,17 +121,14 @@ public class OfBatchExecutorTest {
     public void shouldSendFailedResponse() {
         when(switchService.getSwitch(DatapathId.of(SWITCH_ID.toLong()))).thenReturn(sw);
         when(sw.getOFFactory()).thenReturn(new OFFactoryVer13());
-        when(sw.getId()).thenReturn(DatapathId.of(SWITCH_ID.toLong()));
         Session session = mock(Session.class);
         when(sessionService.open(MESSAGE_CONTEXT, sw)).thenReturn(session);
         CompletableFuture<Optional<OFMessage>> completableFuture = new CompletableFuture<>();
         completableFuture.completeExceptionally(new Exception("test exception"));
         when(session.write(any(OFMessage.class))).thenReturn(completableFuture);
         OFFlowStatsReply reply = mock(OFFlowStatsReply.class);
-        when(reply.getEntries()).thenReturn(Collections.emptyList());
         SettableFuture<List<OFFlowStatsReply>> future = SettableFuture.create();
         future.set(Collections.singletonList(reply));
-        when(sw.writeStatsRequest(any(OFFlowStatsRequest.class))).thenReturn(future);
         KafkaChannel kafkaChannel = mock(KafkaChannel.class);
         when(kafkaChannel.getSpeakerSwitchManagerResponseTopic()).thenReturn("kafka-topic");
         when(kafkaUtilityService.getKafkaChannel()).thenReturn(kafkaChannel);

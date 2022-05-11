@@ -69,6 +69,7 @@ public class OfSpeakerService implements BatchCommandProcessor {
                 .switchFeatures(featureDetectorService.detectSwitch(sw))
                 .kafkaKey(key)
                 .origin(request.getOrigin())
+                .failIfExists(request.isFailIfExists())
                 .build();
         executor.executeBatch();
     }
