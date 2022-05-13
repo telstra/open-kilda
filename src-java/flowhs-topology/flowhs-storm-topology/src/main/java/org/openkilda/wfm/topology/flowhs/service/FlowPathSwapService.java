@@ -60,6 +60,7 @@ public class FlowPathSwapService extends FlowProcessingService<FlowPathSwapFsm, 
         String flowId = request.getFlowId();
         if (request.isManual() && yFlowRepository.isSubFlow(flowId)) {
             sendForbiddenSubFlowOperationToNorthbound(flowId, commandContext);
+            cancelProcessing(key);
             return;
         }
 
@@ -74,6 +75,7 @@ public class FlowPathSwapService extends FlowProcessingService<FlowPathSwapFsm, 
                     format("Flow %s is updating now", flowId), commandContext);
             log.error("Attempt to create a FSM with key {}, while there's another active FSM for the same flowId {}.",
                     key, flowId);
+            cancelProcessing(key);
             return;
         }
 
@@ -130,12 +132,9 @@ public class FlowPathSwapService extends FlowProcessingService<FlowPathSwapFsm, 
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
             fsmRegister.unregisterFsm(key);
+            cancelProcessing(key);
 
-            carrier.cancelTimeoutCallback(key);
 
-            if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
-                carrier.sendInactive();
-            }
         }
     }
 }

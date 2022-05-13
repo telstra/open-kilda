@@ -104,6 +104,7 @@ public class FlowCreateService extends FlowProcessingService<FlowCreateFsm, Even
         if (fsmRegister.hasRegisteredFsmWithFlowId(flowId)) {
             sendErrorResponseToNorthbound(ErrorType.ALREADY_EXISTS, "Could not create flow",
                     format("Flow %s is already creating now", flowId), commandContext);
+            cancelProcessing(key);
             throw new DuplicateKeyException(key, "There's another active FSM for the same flowId " + flowId);
         }
 
@@ -188,11 +189,7 @@ public class FlowCreateService extends FlowProcessingService<FlowCreateFsm, Even
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
             fsmRegister.unregisterFsm(key);
-
-            carrier.cancelTimeoutCallback(key);
-            if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
-                carrier.sendInactive();
-            }
+            cancelProcessing(key);
         }
     }
 }

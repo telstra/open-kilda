@@ -175,11 +175,7 @@ public class YFlowDeleteService
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
             fsmRegister.unregisterFsm(key);
-
-            carrier.cancelTimeoutCallback(key);
-            if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
-                carrier.sendInactive();
-            }
+            cancelProcessing(key);
         }
     }
 }

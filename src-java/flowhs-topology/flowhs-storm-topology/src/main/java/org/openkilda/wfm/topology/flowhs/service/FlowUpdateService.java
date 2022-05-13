@@ -88,6 +88,7 @@ public class FlowUpdateService extends FlowProcessingService<FlowUpdateFsm, Even
             throws DuplicateKeyException {
         if (yFlowRepository.isSubFlow(request.getFlowId())) {
             sendForbiddenSubFlowOperationToNorthbound(request.getFlowId(), commandContext);
+            cancelProcessing(key);
             return;
         }
 
@@ -126,6 +127,7 @@ public class FlowUpdateService extends FlowProcessingService<FlowUpdateFsm, Even
                     format("Flow %s is updating now", flowId), commandContext);
             log.error("Attempt to create a FSM with key {}, while there's another active FSM for the same flowId {}.",
                     key, flowId);
+            cancelProcessing(key);
             return;
         }
 
@@ -272,12 +274,7 @@ public class FlowUpdateService extends FlowProcessingService<FlowUpdateFsm, Even
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
             fsmRegister.unregisterFsm(key);
-
-            carrier.cancelTimeoutCallback(key);
-
-            if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
-                carrier.sendInactive();
-            }
+            cancelProcessing(key);
         }
     }
 }

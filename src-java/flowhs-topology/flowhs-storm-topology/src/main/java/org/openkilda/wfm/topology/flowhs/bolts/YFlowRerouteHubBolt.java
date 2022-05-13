@@ -209,6 +209,7 @@ public class YFlowRerouteHubBolt extends HubBolt implements YFlowRerouteHubCarri
                 .flowId(flowId)
                 .success(rerouteError == null)
                 .rerouteError(rerouteError)
+                .yFlow(true)
                 .build();
         Message message = new InfoMessage(rerouteResult, System.currentTimeMillis(), correlationId);
         emitWithContext(Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name(), getCurrentTuple(),

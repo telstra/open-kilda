@@ -51,10 +51,12 @@ public class FlowSwapEndpointsHubService extends FlowProcessingService<FlowSwapE
     public void handleRequest(String key, CommandContext commandContext, SwapFlowEndpointRequest request) {
         if (yFlowRepository.isSubFlow(request.getFirstFlow().getFlowId())) {
             sendForbiddenSubFlowOperationToNorthbound(request.getFirstFlow().getFlowId(), commandContext);
+            cancelProcessing(key);
             return;
         }
         if (yFlowRepository.isSubFlow(request.getSecondFlow().getFlowId())) {
             sendForbiddenSubFlowOperationToNorthbound(request.getSecondFlow().getFlowId(), commandContext);
+            cancelProcessing(key);
             return;
         }
 
@@ -117,12 +119,7 @@ public class FlowSwapEndpointsHubService extends FlowProcessingService<FlowSwapE
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
             fsmRegister.unregisterFsm(key);
-
-            carrier.cancelTimeoutCallback(key);
-
-            if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
-                carrier.sendInactive();
-            }
+            cancelProcessing(key);
         }
     }
 }
