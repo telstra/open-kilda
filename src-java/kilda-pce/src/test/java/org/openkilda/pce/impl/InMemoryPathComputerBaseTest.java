@@ -818,6 +818,24 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     }
 
     @Test
+    public void shouldGetYPoint2FlowPathsShorter() {
+        FlowPath flowPathA = buildFlowPath("flow_path_a", 1, 2);
+        FlowPath flowPathB = buildFlowPath("flow_path_b", 1, 2, 3);
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        SwitchId result = pathComputer.getIntersectionPoint(SWITCH_1, flowPathA, flowPathB);
+        assertEquals(SWITCH_2, result);
+    }
+
+    @Test
+    public void shouldGetYPoint2ReverseFlowPaths() {
+        FlowPath flowPathA = buildFlowPath("flow_path_a", 2, 3);
+        FlowPath flowPathB = buildFlowPath("flow_path_b", 1, 2, 3);
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        SwitchId result = pathComputer.getIntersectionPoint(new SwitchId(3), flowPathA, flowPathB);
+        assertEquals(SWITCH_2, result);
+    }
+
+    @Test
     public void shouldGetYPoint3FlowPaths() {
         FlowPath flowPathA = buildFlowPath("flow_path_a", 1, 2, 3, 7);
         FlowPath flowPathB = buildFlowPath("flow_path_b", 1, 2, 3, 4, 5);
@@ -843,7 +861,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         FlowPath flowPathB = buildFlowPath("flow_path_b", 1, 4, 3);
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         SwitchId result = pathComputer.getIntersectionPoint(SWITCH_1, flowPathA, flowPathB);
-        assertEquals(new SwitchId(1), result);
+        assertEquals(SWITCH_1, result);
     }
 
     @Test

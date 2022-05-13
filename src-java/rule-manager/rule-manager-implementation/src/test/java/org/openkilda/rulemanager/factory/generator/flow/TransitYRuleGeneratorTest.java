@@ -279,6 +279,7 @@ public class TransitYRuleGeneratorTest {
                 .encapsulation(VLAN_ENCAPSULATION)
                 .sharedMeterId(SHARED_METER_ID)
                 .config(config)
+                .externalMeterCommandUuid(UUID.randomUUID())
                 .build();
         assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }

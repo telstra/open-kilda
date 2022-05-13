@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.utils.rule.validation;
+package org.openkilda.wfm.topology.flowhs.fsm.validation;
 
 import org.openkilda.model.SwitchId;
 

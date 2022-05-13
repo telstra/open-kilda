@@ -13,7 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.utils.rule.validation;
+package org.openkilda.wfm.topology.flowhs.fsm.validation;
+
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT;
 
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
@@ -32,10 +34,13 @@ import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRule.SimpleGroupBucket;
-import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRule.SimpleSwitchRuleBuilder;
+import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.wfm.topology.flowhs.fsm.validation.SimpleSwitchRule.SimpleGroupBucket;
+import org.openkilda.wfm.topology.flowhs.fsm.validation.SimpleSwitchRule.SimpleSwitchRuleBuilder;
 
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -67,7 +72,7 @@ public class SimpleSwitchRuleConverter {
             rules.addAll(buildIngressSimpleSwitchRules(flow, flowPath, encapsulationId, flowMeterMinBurstSizeInKbits,
                     flowMeterBurstCoefficient));
         }
-        if (! flow.isOneSwitchFlow()) {
+        if (!flow.isOneSwitchFlow()) {
             rules.addAll(buildTransitAndEgressSimpleSwitchRules(flow, flowPath, encapsulationId));
         }
         return rules;
@@ -77,9 +82,9 @@ public class SimpleSwitchRuleConverter {
      * Build ingress rules ({@link SimpleSwitchRule}) for provided {@link FlowPath}.
      */
     public List<SimpleSwitchRule> buildIngressSimpleSwitchRules(Flow flow, FlowPath flowPath,
-                                                                 EncapsulationId encapsulationId,
-                                                                 long flowMeterMinBurstSizeInKbits,
-                                                                 double flowMeterBurstCoefficient) {
+                                                                EncapsulationId encapsulationId,
+                                                                long flowMeterMinBurstSizeInKbits,
+                                                                double flowMeterBurstCoefficient) {
         boolean forward = flow.isForward(flowPath);
         int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
         int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
@@ -198,11 +203,31 @@ public class SimpleSwitchRuleConverter {
     }
 
     /**
+     * Build ingress rules ({@link SimpleSwitchRule}) for provided y-flow's {@link FlowPath}.
+     */
+    public List<SimpleSwitchRule> buildYFlowIngressSimpleSwitchRules(List<SimpleSwitchRule> ingressRules,
+                                                                     SwitchId sharedEndpoint,
+                                                                     MeterId sharedEndpointMeterId) {
+        return ingressRules.stream()
+                .filter(SimpleSwitchRule::isIngressRule)
+                .filter(rule -> rule.getSwitchId().equals(sharedEndpoint))
+                .filter(rule -> new Cookie(rule.getCookie()).getType() == SERVICE_OR_FLOW_SEGMENT)
+                .map(origin -> {
+                    FlowSegmentCookie cookie = new FlowSegmentCookie(origin.getCookie());
+                    return origin.toBuilder()
+                            .meterId(sharedEndpointMeterId.getValue())
+                            .cookie(cookie.toBuilder().yFlow(true).build().getValue())
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Build transit rule ({@link SimpleSwitchRule}) between the segments of provided {@link FlowPath}.
      */
     public SimpleSwitchRule buildTransitSimpleSwitchRule(Flow flow, FlowPath flowPath,
-                                                          PathSegment srcPathSegment, PathSegment dstPathSegment,
-                                                          EncapsulationId encapsulationId) {
+                                                         PathSegment srcPathSegment, PathSegment dstPathSegment,
+                                                         EncapsulationId encapsulationId) {
 
         SimpleSwitchRule rule = SimpleSwitchRule.builder()
                 .switchId(srcPathSegment.getDestSwitchId())
@@ -217,6 +242,30 @@ public class SimpleSwitchRuleConverter {
         }
 
         return rule;
+    }
+
+    /**
+     * Build transit rules ({@link SimpleSwitchRule}) between the segments of provided y-flow's {@link FlowPath}.
+     */
+    public List<SimpleSwitchRule> buildYFlowTransitSimpleSwitchRules(List<SimpleSwitchRule> transitRules,
+                                                                     SwitchId yPoint,
+                                                                     MeterId yPointMeterId,
+                                                                     Long meterRate, Long meterMinBurstSize) {
+        return transitRules.stream()
+                .filter(rule -> !rule.isIngressRule() && !rule.isEgressRule())
+                .filter(rule -> rule.getSwitchId().equals(yPoint))
+                .filter(rule -> new Cookie(rule.getCookie()).getType() == SERVICE_OR_FLOW_SEGMENT)
+                .map(origin -> {
+                    FlowSegmentCookie cookie = new FlowSegmentCookie(origin.getCookie());
+                    return origin.toBuilder()
+                            .cookie(cookie.toBuilder().yFlow(true).build().getValue())
+                            .meterId(yPointMeterId.getValue())
+                            .meterRate(meterRate)
+                            .meterBurstSize(meterMinBurstSize)
+                            .meterFlags(Meter.getMeterKbpsFlags())
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
     private List<SimpleSwitchRule> buildEgressSimpleSwitchRules(Flow flow, FlowPath flowPath,

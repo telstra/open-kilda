@@ -28,6 +28,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.ToString;
 
 import java.util.Collection;
 import java.util.UUID;
@@ -42,6 +43,7 @@ import java.util.UUID;
                 name = "org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest")
 })
 @Getter
+@ToString(callSuper = true)
 public abstract class BaseSpeakerCommandsRequest extends SpeakerRequest {
 
     @JsonProperty("command_data")

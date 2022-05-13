@@ -20,19 +20,20 @@ import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.factory.RuleGenerator;
 
 import lombok.Builder;
+import lombok.Singular;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Builder
 public class JointRuleGenerator implements RuleGenerator {
-    protected final RuleGenerator firstGenerator;
-    protected final RuleGenerator secondGenerator;
-
+    @Singular
+    private final List<RuleGenerator> generators;
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
-        List<SpeakerData> commands = firstGenerator.generateCommands(sw);
-        commands.addAll(secondGenerator.generateCommands(sw));
+        List<SpeakerData> commands = new ArrayList<>();
+        generators.forEach(generator -> commands.addAll(generator.generateCommands(sw)));
         return commands;
     }
 }

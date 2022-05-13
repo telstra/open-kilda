@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.utils.rule.validation;
+package org.openkilda.wfm.topology.flowhs.fsm.validation;
 
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.junit.Assert.assertEquals;
@@ -52,7 +52,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.Vxlan;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRule.SimpleGroupBucket;
+import org.openkilda.wfm.topology.flowhs.fsm.validation.SimpleSwitchRule.SimpleGroupBucket;
 
 import com.google.common.collect.Lists;
 import org.junit.Assert;
@@ -231,7 +231,7 @@ public class SimpleSwitchRuleConverterTest {
         Assert.assertFalse(pathView.isEmpty());
 
         SimpleSwitchRule ingress = pathView.get(0);
-        Assert.assertEquals(Collections.emptyList(), ingress.getOutVlan());
+        assertEquals(Collections.emptyList(), ingress.getOutVlan());
     }
 
     @Test
