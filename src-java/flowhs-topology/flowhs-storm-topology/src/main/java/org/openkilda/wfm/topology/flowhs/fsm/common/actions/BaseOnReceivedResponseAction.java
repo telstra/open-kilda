@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,17 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
 import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
 import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,8 +29,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
-public abstract class BaseOnReceivedResponseAction extends
-        HistoryRecordingAction<FlowPathSwapFsm, State, Event, FlowPathSwapContext> {
+public abstract class BaseOnReceivedResponseAction<T extends FlowProcessingWithHistorySupportFsm<T, S, E, C, ?, ?>,
+        S, E, C> extends HistoryRecordingAction<T, S, E, C> {
     protected final int speakerCommandRetriesLimit;
 
     protected BaseOnReceivedResponseAction(int speakerCommandRetriesLimit) {

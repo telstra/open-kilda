@@ -18,14 +18,11 @@ package org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.command.yflow.YFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowResponse;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.YFlow;
-import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -43,12 +40,7 @@ import org.openkilda.wfm.topology.flowhs.mapper.YFlowMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class ValidateYFlowAction extends
@@ -99,31 +91,9 @@ public class ValidateYFlowAction extends
 
     private Message buildResponseMessage(YFlow yFlow, CommandContext commandContext) {
         YFlowResponse response = YFlowResponse.builder()
-                .yFlow(convertToYFlowDto(yFlow))
+                .yFlow(YFlowMapper.INSTANCE.toYFlowDto(yFlow, flowRepository))
                 .build();
         return new InfoMessage(response, commandContext.getCreateTime(), commandContext.getCorrelationId());
-    }
-
-    private YFlowDto convertToYFlowDto(YFlow yFlow) {
-        Optional<Flow> flow = yFlow.getSubFlows().stream()
-                .map(YSubFlow::getFlow)
-                .filter(f -> f.getFlowId().equals(f.getAffinityGroupId()))
-                .findFirst();
-        Set<String> diverseFlows = new HashSet<>();
-        Set<String> diverseYFlows = new HashSet<>();
-        if (flow.isPresent()) {
-            Collection<Flow> diverseWithFlow = getDiverseWithFlow(flow.get());
-            diverseFlows = diverseWithFlow.stream()
-                    .filter(f -> f.getYFlowId() == null)
-                    .map(Flow::getFlowId)
-                    .collect(Collectors.toSet());
-            diverseYFlows = diverseWithFlow.stream()
-                    .map(Flow::getYFlowId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-        }
-
-        return YFlowMapper.INSTANCE.toYFlowDto(yFlow, diverseFlows, diverseYFlows);
     }
 
     @Override

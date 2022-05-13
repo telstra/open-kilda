@@ -30,12 +30,12 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class CompleteYFlowInstallationAction extends
+public class CompleteYFlowCreatingAction extends
         YFlowProcessingWithHistorySupportAction<YFlowCreateFsm, State, Event, YFlowCreateContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public CompleteYFlowInstallationAction(PersistenceManager persistenceManager,
-                                           FlowOperationsDashboardLogger dashboardLogger) {
+    public CompleteYFlowCreatingAction(PersistenceManager persistenceManager,
+                                       FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
         this.dashboardLogger = dashboardLogger;
     }

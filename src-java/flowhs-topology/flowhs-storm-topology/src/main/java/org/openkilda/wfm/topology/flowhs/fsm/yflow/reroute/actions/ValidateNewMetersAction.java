@@ -25,9 +25,9 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.State
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class ValidateNewMeterAction
+public class ValidateNewMetersAction
         extends YFlowProcessingWithHistorySupportAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
-    public ValidateNewMeterAction(PersistenceManager persistenceManager) {
+    public ValidateNewMetersAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
 

@@ -218,6 +218,7 @@ public class FlowUpdateService extends FlowProcessingService<FlowUpdateFsm, Even
                                             @NonNull CreateFlowLoopRequest request) throws DuplicateKeyException {
         if (yFlowRepository.isSubFlow(request.getFlowId())) {
             sendForbiddenSubFlowOperationToNorthbound(request.getFlowId(), commandContext);
+            cancelProcessing(key);
             return;
         }
 
@@ -244,6 +245,7 @@ public class FlowUpdateService extends FlowProcessingService<FlowUpdateFsm, Even
                                             @NonNull DeleteFlowLoopRequest request) throws DuplicateKeyException {
         if (yFlowRepository.isSubFlow(request.getFlowId())) {
             sendForbiddenSubFlowOperationToNorthbound(request.getFlowId(), commandContext);
+            cancelProcessing(key);
             return;
         }
 

@@ -56,7 +56,7 @@ public class StartReroutingYFlowAction
         List<FlowPath> flowPaths = transactionManager.doInTransaction(() -> {
             YFlow yFlow = getYFlow(yFlowId);
             saveOldResources(stateMachine, yFlow);
-            stateMachine.setDeleteOldYFlowCommands(buildYFlowDeleteCommands(yFlow, stateMachine.getCommandContext()));
+            stateMachine.setDeleteOldYFlowCommands(buildYFlowDeleteRequests(yFlow, stateMachine.getCommandContext()));
 
             SwitchId sharedSwitchId = yFlow.getSharedEndpoint().getSwitchId();
             return yFlow.getSubFlows().stream()
@@ -85,10 +85,12 @@ public class StartReroutingYFlowAction
                 .endpoint(yFlow.getYPoint())
                 .meterId(yFlow.getMeterId())
                 .build());
-        oldYFlowResources.setProtectedPathYPointResources(EndpointResources.builder()
-                .endpoint(yFlow.getProtectedPathYPoint())
-                .meterId(yFlow.getProtectedPathMeterId())
-                .build());
+        if (yFlow.isAllocateProtectedPath() && yFlow.getProtectedPathYPoint() != null) {
+            oldYFlowResources.setProtectedPathYPointResources(EndpointResources.builder()
+                    .endpoint(yFlow.getProtectedPathYPoint())
+                    .meterId(yFlow.getProtectedPathMeterId())
+                    .build());
+        }
         oldYFlowResources.setSharedEndpointResources(EndpointResources.builder()
                 .endpoint(yFlow.getSharedEndpoint().getSwitchId())
                 .meterId(yFlow.getSharedEndpointMeterId())

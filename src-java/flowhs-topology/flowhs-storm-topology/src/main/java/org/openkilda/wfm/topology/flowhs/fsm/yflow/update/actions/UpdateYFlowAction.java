@@ -49,7 +49,7 @@ public class UpdateYFlowAction extends
             YFlow yFlow = getYFlow(targetFlow.getYFlowId());
 
             saveOldResources(stateMachine, yFlow);
-            stateMachine.setDeleteOldYFlowCommands(buildYFlowDeleteCommands(yFlow, stateMachine.getCommandContext()));
+            stateMachine.setDeleteOldYFlowCommands(buildYFlowDeleteRequests(yFlow, stateMachine.getCommandContext()));
 
             updateFlow(yFlow, YFlowRequestMapper.INSTANCE.toYFlow(targetFlow));
             return yFlow.getStatus();
@@ -65,10 +65,12 @@ public class UpdateYFlowAction extends
                 .endpoint(yFlow.getYPoint())
                 .meterId(yFlow.getMeterId())
                 .build());
-        oldYFlowResources.setProtectedPathYPointResources(EndpointResources.builder()
-                .endpoint(yFlow.getProtectedPathYPoint())
-                .meterId(yFlow.getProtectedPathMeterId())
-                .build());
+        if (yFlow.isAllocateProtectedPath() && yFlow.getProtectedPathYPoint() != null) {
+            oldYFlowResources.setProtectedPathYPointResources(EndpointResources.builder()
+                    .endpoint(yFlow.getProtectedPathYPoint())
+                    .meterId(yFlow.getProtectedPathMeterId())
+                    .build());
+        }
         oldYFlowResources.setSharedEndpointResources(EndpointResources.builder()
                 .endpoint(yFlow.getSharedEndpoint().getSwitchId())
                 .meterId(yFlow.getSharedEndpointMeterId())

@@ -203,13 +203,13 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
             builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.RESOURCE_ALLOCATION_COMPLETED)
                     .on(Event.NEXT)
-                    .perform(new PostResourceAllocationAction(persistenceManager, dashboardLogger));
+                    .perform(new PostResourceAllocationAction(persistenceManager));
             builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.MARKED_FLOW_DOWN_OR_DEGRADED)
                     .on(Event.NO_PATH_FOUND)
                     .perform(new OnNoPathFoundAction(persistenceManager, dashboardLogger, false));
             builder.transition().from(State.MARKED_FLOW_DOWN_OR_DEGRADED).to(State.RESOURCE_ALLOCATION_COMPLETED)
                     .on(Event.NEXT)
-                    .perform(new PostResourceAllocationAction(persistenceManager, dashboardLogger));
+                    .perform(new PostResourceAllocationAction(persistenceManager));
             builder.transitions().from(State.PROTECTED_RESOURCES_ALLOCATED)
                     .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
                     .onEach(Event.TIMEOUT, Event.ERROR);

@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,18 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload.yflow;
+package org.openkilda.messaging.info.reroute.error;
 
-import org.openkilda.model.MeterId;
-import org.openkilda.model.SwitchId;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
-import lombok.NonNull;
-import lombok.Value;
+@Data
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class FlowInProgressError extends RerouteError {
 
-import java.io.Serializable;
-
-@Value
-public class YFlowEndpointResources implements Serializable {
-    @NonNull SwitchId switchId;
-    @NonNull MeterId meterId;
+    @JsonCreator
+    public FlowInProgressError(@JsonProperty("message") String message) {
+        super(message);
+    }
 }
