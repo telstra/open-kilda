@@ -136,7 +136,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         if (trafficApplicable) {
             def exam = new FlowTrafficExamBuilder(topology, traffExam).buildYFlowExam(yFlow, yFlow.maximumBandwidth, 5)
             examReports = withPool {
-                [exam.forward1, exam.reverse1, exam.forward2, exam.reverse2].collectParallel { Exam direction ->
+                [exam.forward1, exam.reverse1, exam.forward2, exam.reverse2].collect { Exam direction ->
                     def resources = traffExam.startExam(direction)
                     direction.setResources(resources)
                     traffExam.waitExam(direction)
