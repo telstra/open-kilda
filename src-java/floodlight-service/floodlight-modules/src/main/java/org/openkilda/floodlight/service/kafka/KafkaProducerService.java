@@ -23,6 +23,7 @@ import org.openkilda.floodlight.service.zookeeper.ZooKeeperEventObserver;
 import org.openkilda.floodlight.service.zookeeper.ZooKeeperService;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -30,6 +31,7 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -37,6 +39,9 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEventObserver {
@@ -73,6 +78,13 @@ public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEve
     public void sendMessageAndTrack(String topic, String key, AbstractMessage message) {
         produce(encode(topic, key, message), new SendStatusCallback(this, topic,
                 message.getMessageContext().getCorrelationId()));
+    }
+
+    @Override
+    public void sendChunkedMessageAndTrack(String topic, String key, Collection<? extends InfoData> data) {
+        for (Message message : buildChunkedMessages(data, key)) {
+            sendMessageAndTrack(topic, key, message);
+        }
     }
 
     @Override
@@ -147,6 +159,21 @@ public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEve
         }
 
         return encoded;
+    }
+
+    private List<Message> buildChunkedMessages(Collection<? extends InfoData> responseData, String correlationId) {
+        List<Message> messages = new ArrayList<>(responseData.size());
+        if (CollectionUtils.isEmpty(responseData)) {
+            messages.add(new ChunkedInfoMessage(null, System.currentTimeMillis(), correlationId, correlationId, 0));
+        } else {
+            int i = 0;
+            for (InfoData data : responseData) {
+                Message message = new ChunkedInfoMessage(data, System.currentTimeMillis(), correlationId, i++,
+                        responseData.size());
+                messages.add(message);
+            }
+        }
+        return messages;
     }
 
     /**

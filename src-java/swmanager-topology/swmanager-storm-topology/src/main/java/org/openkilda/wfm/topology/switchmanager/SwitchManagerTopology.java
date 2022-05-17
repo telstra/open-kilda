@@ -106,7 +106,8 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 topologyConfig.getGrpcResponseTopic()), WORKER_SPOUT);
         declareKafkaSpoutForAbstractMessage(builder, topologyConfig.getKafkaSwitchManagerSpeakerWorkerTopic(),
                 WORKER_RESPONSE_SPOUT);
-        declareBolt(builder, new SpeakerWorkerBolt(speakerWorkerConfig),
+        declareBolt(builder, new SpeakerWorkerBolt(
+                speakerWorkerConfig, topologyConfig.getChunkedMessagesExpirationMinutes()),
                 SpeakerWorkerBolt.ID)
                 .fieldsGrouping(WORKER_SPOUT, FIELDS_KEY)
                 .fieldsGrouping(WORKER_RESPONSE_SPOUT, FIELDS_KEY)
