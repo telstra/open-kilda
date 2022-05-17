@@ -21,14 +21,14 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Value;
 
 import java.util.List;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Value
+@Data
 @EqualsAndHashCode(callSuper = false)
 public class FlowHistoryEntry extends InfoData {
     @JsonProperty("flow_id")
@@ -36,6 +36,9 @@ public class FlowHistoryEntry extends InfoData {
 
     @JsonProperty("timestamp")
     private long timestamp;
+
+    @JsonProperty("timestamp_iso")
+    private String timestampIso;
 
     @JsonProperty("actor")
     private String actor;
@@ -59,6 +62,7 @@ public class FlowHistoryEntry extends InfoData {
     public FlowHistoryEntry(
             @JsonProperty("flow_id") String flowId,
             @JsonProperty("timestamp") long timestamp,
+            @JsonProperty("timestamp_iso") String timestampIso,
             @JsonProperty("actor") String actor,
             @JsonProperty("action") String action,
             @JsonProperty("task_id") String taskId,
@@ -67,6 +71,7 @@ public class FlowHistoryEntry extends InfoData {
             @JsonProperty("dumps") List<FlowDumpPayload> dumps) {
         this.flowId = flowId;
         this.timestamp = timestamp;
+        this.timestampIso = timestampIso;
         this.actor = actor;
         this.action = action;
         this.taskId = taskId;
