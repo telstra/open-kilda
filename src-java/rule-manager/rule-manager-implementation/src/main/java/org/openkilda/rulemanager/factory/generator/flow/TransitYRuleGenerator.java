@@ -35,6 +35,7 @@ import org.openkilda.rulemanager.factory.MeteredRuleGenerator;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import lombok.NonNull;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
@@ -43,20 +44,21 @@ import java.util.UUID;
 
 @SuperBuilder
 public class TransitYRuleGenerator extends TransitRuleGenerator implements MeteredRuleGenerator {
+    @NonNull
     protected final MeterId sharedMeterId;
-    protected RuleManagerConfig config;
-    protected UUID externalMeterCommandUuid;
-    protected boolean generateMeterCommand;
-
+    @NonNull
+    protected final RuleManagerConfig config;
+    @NonNull
+    protected final UUID externalMeterCommandUuid;
+    protected final boolean generateMeterCommand;
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
         if (flowPath.isOneSwitchFlow()) {
             return new ArrayList<>();
         }
-
         List<SpeakerData> result = new ArrayList<>();
-        SpeakerData command = buildTransitCommand(sw, inPort, outPort);
+        SpeakerData command = buildTransitCommand(sw);
         result.add(command);
 
         if (generateMeterCommand) {
@@ -71,14 +73,7 @@ public class TransitYRuleGenerator extends TransitRuleGenerator implements Meter
         return result;
     }
 
-
-    private SpeakerData buildTransitCommand(Switch sw, int inPort, int outPort) {
-        Instructions instructions = Instructions.builder()
-                .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(outPort))))
-                .build();
-        if (sharedMeterId != null && sharedMeterId.getValue() != 0L) {
-            addMeterToInstructions(sharedMeterId, sw, instructions);
-        }
+    private SpeakerData buildTransitCommand(Switch sw) {
         FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
@@ -86,11 +81,19 @@ public class TransitYRuleGenerator extends TransitRuleGenerator implements Meter
                 .table(multiTable ? OfTable.TRANSIT : OfTable.INPUT)
                 .priority(Priority.Y_FLOW_PRIORITY)
                 .match(makeTransitMatch(sw, inPort, encapsulation))
-                .instructions(instructions);
+                .instructions(buildInstructions(sw));
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
             builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
         }
         return builder.build();
+    }
+
+    private Instructions buildInstructions(Switch sw) {
+        Instructions instructions = Instructions.builder()
+                .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(outPort))))
+                .build();
+        addMeterToInstructions(sharedMeterId, sw, instructions);
+        return instructions;
     }
 }

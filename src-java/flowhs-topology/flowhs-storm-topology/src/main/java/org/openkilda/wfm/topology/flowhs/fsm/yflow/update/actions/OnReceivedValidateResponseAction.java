@@ -59,7 +59,7 @@ public class OnReceivedValidateResponseAction extends
         if (stateMachine.getPendingCommands().isEmpty()) {
             if (stateMachine.getFailedValidationResponses().isEmpty()) {
                 log.debug("Rules have been validated for y-flow {}", stateMachine.getYFlowId());
-                stateMachine.fire(Event.YPOINT_METERS_VALIDATED);
+                stateMachine.fire(Event.YFLOW_METERS_VALIDATED);
             } else {
                 String errorMessage = format("Received error response(s) for %d validation commands",
                         stateMachine.getFailedValidationResponses().size());

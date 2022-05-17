@@ -45,7 +45,7 @@ public class RemoveOldMetersAction extends
 
         if (commands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to remove y-flow meters");
-            stateMachine.fire(Event.YPOINT_METER_REMOVED);
+            stateMachine.fire(Event.YFLOW_METERS_REMOVED);
         } else {
             // emitting
             commands.forEach(command -> {

@@ -1,0 +1,78 @@
+@startuml
+title Swap y-flow paths
+
+boundary Northbound
+box "Flow HS Topology" #LightGreen
+    participant YFlowPathSwapHub
+    participant FlowPathSwapService1 as "FlowPathSwapService + FSM 1"
+    participant FlowPathSwapService2 as "FlowPathSwapService + FSM 2"
+    participant SpeakerWorker
+end box
+database OrientDB
+
+Northbound -> YFlowPathSwapHub : YFlowPathSwapRequest
+activate YFlowPathSwapHub
+YFlowPathSwapHub -> OrientDB : Update y-flow status to lock it
+alt Y-flow is already locked
+    Northbound <- YFlowPathSwapHub : Y-flow path swap error
+end
+
+==Validate y-flow==
+YFlowPathSwapHub -> YFlowPathSwapHub : Validate the y-flow
+alt Validation error
+    Northbound <- YFlowPathSwapHub : Y-flow path swap error
+end
+
+==Swap sub-flow paths==
+YFlowPathSwapHub -> FlowPathSwapService1 : Initiate the flow path swap
+activate FlowPathSwapService1
+YFlowPathSwapHub -> FlowPathSwapService2 : Initiate the flow path swap
+deactivate YFlowPathSwapHub
+activate FlowPathSwapService2
+
+FlowPathSwapService1 -> SpeakerWorker : Send install/validate ingress rules command
+deactivate FlowPathSwapService1
+FlowPathSwapService1 <- SpeakerWorker
+activate FlowPathSwapService1
+FlowPathSwapService2 -> SpeakerWorker : Send install/validate ingress rules command
+deactivate FlowPathSwapService2
+FlowPathSwapService2 <- SpeakerWorker
+activate FlowPathSwapService2
+
+FlowPathSwapService1 -> OrientDB : Swap sub-flow paths (primary <-> protected)
+FlowPathSwapService2 -> OrientDB : Swap sub-flow paths (primary <-> protected)
+
+FlowPathSwapService1 -> SpeakerWorker : Send remove old ingress rules command
+deactivate FlowPathSwapService1
+FlowPathSwapService1 <- SpeakerWorker
+activate FlowPathSwapService1
+FlowPathSwapService2 -> SpeakerWorker : Send remove old ingress rules command
+deactivate FlowPathSwapService2
+FlowPathSwapService2 <- SpeakerWorker
+activate FlowPathSwapService2
+
+YFlowPathSwapHub <- FlowPathSwapService1 : Callback: swap completed
+deactivate FlowPathSwapService1
+activate YFlowPathSwapHub
+YFlowPathSwapHub <- FlowPathSwapService2 : Callback: swap completed
+deactivate FlowPathSwapService2
+
+alt Flow path swap failed or timeout
+    YFlowPathSwapHub <- YFlowPathSwapHub : Rollback
+end
+
+==Swap y-flow resources ==
+YFlowPathSwapHub -> OrientDB : Swap y-flow resources (primary <-> protected)
+
+YFlowPathSwapHub -> SpeakerWorker : Send install/validate sharedpoint rules command
+YFlowPathSwapHub -> SpeakerWorker : Send remove old sharedpoint rules command
+deactivate YFlowPathSwapHub
+YFlowPathSwapHub <- SpeakerWorker
+activate YFlowPathSwapHub
+
+== Completing ==
+YFlowPathSwapHub -> OrientDB : Update y-flow status
+
+deactivate YFlowPathSwapHub
+
+@enduml

@@ -112,13 +112,11 @@ public class YFlowReadServiceTest extends AbstractYFlowTest<FlowSegmentRequest> 
         YFlowPathsResponse yFlowResponse = yFlowReadService.getYFlowPaths(yFlowId);
         // then
         // Only 1 shared segment
-        assertEquals(2, yFlowResponse.getSharedPath().getPath().size());
-        assertEquals(SWITCH_SHARED, yFlowResponse.getSharedPath().getPath().get(0).getSwitchId());
-        assertEquals(SWITCH_TRANSIT, yFlowResponse.getSharedPath().getPath().get(1).getSwitchId());
+        assertEquals(1, yFlowResponse.getSharedPath().getForwardPath().size());
+        assertEquals(SWITCH_SHARED, yFlowResponse.getSharedPath().getForwardPath().get(0).getSwitchId());
         assertEquals(2, yFlowResponse.getSubFlowPaths().size());
         // No protected paths
-        assertNull(yFlowResponse.getSharedProtectedPath().getPath());
-        assertEquals(0, yFlowResponse.getSubFlowProtectedPaths().size());
+        assertNull(yFlowResponse.getSharedPath().getProtectedPath());
     }
 
     @Test(expected = FlowNotFoundException.class)
@@ -145,14 +143,12 @@ public class YFlowReadServiceTest extends AbstractYFlowTest<FlowSegmentRequest> 
         YFlowPathsResponse yFlowPathsResponse = yFlowReadService.getYFlowPaths(yFlowId);
         // then
         // Only 1 shared segment
-        assertEquals(2, yFlowPathsResponse.getSharedPath().getPath().size());
-        assertEquals(SWITCH_SHARED, yFlowPathsResponse.getSharedPath().getPath().get(0).getSwitchId());
-        assertEquals(SWITCH_TRANSIT, yFlowPathsResponse.getSharedPath().getPath().get(1).getSwitchId());
+        assertEquals(1, yFlowPathsResponse.getSharedPath().getForwardPath().size());
+        assertEquals(SWITCH_SHARED, yFlowPathsResponse.getSharedPath().getForwardPath().get(0).getSwitchId());
         assertEquals(2, yFlowPathsResponse.getSubFlowPaths().size());
         // The protected paths
-        assertEquals(2, yFlowPathsResponse.getSharedProtectedPath().getPath().size());
-        assertEquals(SWITCH_SHARED, yFlowPathsResponse.getSharedProtectedPath().getPath().get(0).getSwitchId());
-        assertEquals(SWITCH_ALT_TRANSIT, yFlowPathsResponse.getSharedProtectedPath().getPath().get(1).getSwitchId());
-        assertEquals(2, yFlowPathsResponse.getSubFlowProtectedPaths().size());
+        assertEquals(1, yFlowPathsResponse.getSharedPath().getProtectedPath().getForwardPath().size());
+        assertEquals(SWITCH_SHARED,
+                yFlowPathsResponse.getSharedPath().getProtectedPath().getForwardPath().get(0).getSwitchId());
     }
 }

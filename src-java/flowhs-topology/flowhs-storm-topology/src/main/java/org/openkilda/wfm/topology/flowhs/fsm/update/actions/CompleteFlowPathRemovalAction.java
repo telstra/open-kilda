@@ -74,7 +74,7 @@ public class CompleteFlowPathRemovalAction extends
                 updateIslsForFlowPath(removedPaths.getReverse());
             }
             if (removedPaths != null) {
-                restoreFlowEndpoints(removedPaths, originalFlow);
+                //TODO: doesn't work with y-flow: restoreFlowEndpoints(removedPaths, originalFlow);
                 saveRemovalActionWithDumpToHistory(stateMachine, originalFlow, removedPaths);
             }
         }
@@ -107,7 +107,7 @@ public class CompleteFlowPathRemovalAction extends
                 updateIslsForFlowPath(removedPaths.getReverse());
             }
             if (removedPaths != null) {
-                restoreFlowEndpoints(removedPaths, originalFlow);
+                //TODO: doesn't work with y-flow: restoreFlowEndpoints(removedPaths, originalFlow);
                 saveRemovalActionWithDumpToHistory(stateMachine, originalFlow, removedPaths);
             }
         }

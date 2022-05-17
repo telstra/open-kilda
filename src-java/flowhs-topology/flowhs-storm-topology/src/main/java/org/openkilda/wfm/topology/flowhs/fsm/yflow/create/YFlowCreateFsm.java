@@ -27,7 +27,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.AllocateYFlowResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.CompleteYFlowInstallationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.CompleteYFlowCreatingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.CreateDraftYFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.CreateSubFlowsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.DeallocateYFlowResourcesAction;
@@ -35,7 +35,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.HandleNotCompl
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.HandleNotCreatedSubFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.HandleNotDeallocatedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.HandleNotRemovedSubFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.InstallYFlowResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.InstallYFlowMetersAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnReceivedInstallResponseAction;
@@ -46,7 +46,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnSubFlowCreat
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnSubFlowRemovedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.RemoveSubFlowsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.RemoveYFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.RemoveYFlowResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.RemoveYFlowMetersAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.ValidateYFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.ValidateYFlowResourcesAction;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
@@ -229,7 +229,7 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
                     .from(State.YFLOW_RESOURCES_ALLOCATED)
                     .to(State.INSTALLING_YFLOW_METERS)
                     .on(Event.NEXT)
-                    .perform(new InstallYFlowResourcesAction(persistenceManager, ruleManager));
+                    .perform(new InstallYFlowMetersAction(persistenceManager, ruleManager));
             builder.transitions()
                     .from(State.YFLOW_RESOURCES_ALLOCATED)
                     .toAmong(State.DEALLOCATING_YFLOW_RESOURCES, State.DEALLOCATING_YFLOW_RESOURCES)
@@ -276,7 +276,7 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
                     .from(State.YFLOW_METERS_VALIDATED)
                     .to(State.YFLOW_INSTALLATION_COMPLETED)
                     .on(Event.NEXT)
-                    .perform(new CompleteYFlowInstallationAction(persistenceManager, dashboardLogger));
+                    .perform(new CompleteYFlowCreatingAction(persistenceManager, dashboardLogger));
             builder.transitions()
                     .from(State.YFLOW_INSTALLATION_COMPLETED)
                     .toAmong(State.FINISHED, State.REVERTING_YFLOW, State.REVERTING_YFLOW)
@@ -286,7 +286,7 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
                     .from(State.REVERTING_YFLOW)
                     .to(State.REMOVING_YFLOW_METERS)
                     .on(Event.NEXT)
-                    .perform(new RemoveYFlowResourcesAction(persistenceManager, ruleManager));
+                    .perform(new RemoveYFlowMetersAction(persistenceManager, ruleManager));
 
             builder.internalTransition()
                     .within(State.REMOVING_YFLOW_METERS)

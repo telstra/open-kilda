@@ -19,3 +19,6 @@
 
 ### Delete
 ![Delete y-flow](./delete-y-flow.png)
+
+### Paths swap
+![Swap y-flow paths](./swap-y-flow-paths.png)

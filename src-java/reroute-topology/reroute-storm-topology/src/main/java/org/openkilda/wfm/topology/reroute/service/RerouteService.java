@@ -105,7 +105,12 @@ public class RerouteService {
             // swapping affected primary paths with available protected
             List<FlowPath> pathsForSwapping = getPathsForSwapping(affectedFlowPaths);
             for (FlowPath path : pathsForSwapping) {
-                result.flowIdsForSwapPaths.add(path.getFlowId());
+                String yFlowId = path.getFlow().getYFlowId();
+                if (yFlowId != null) {
+                    result.yFlowIdsForSwapPaths.add(yFlowId);
+                } else {
+                    result.flowIdsForSwapPaths.add(path.getFlowId());
+                }
             }
 
             for (FlowWithAffectedPaths entry : groupPathsForRerouting(affectedFlowPaths)) {
@@ -151,6 +156,10 @@ public class RerouteService {
                     .reason(command.getReason())
                     .build();
             sender.emitRerouteCommand(flow.getFlowId(), flowThrottlingData);
+        }
+
+        for (String yFlowId : rerouteResult.yFlowIdsForSwapPaths) {
+            sender.emitYFlowPathSwapCommand(correlationId, yFlowId, command.getReason());
         }
         for (YFlow yFlow : rerouteResult.yFlowsForReroute) {
             FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(yFlow)
@@ -521,6 +530,7 @@ public class RerouteService {
     private static class RerouteResult {
         Set<String> flowIdsForSwapPaths = new HashSet<>();
         Set<Flow> flowsForReroute = new HashSet<>();
+        Set<String> yFlowIdsForSwapPaths = new HashSet<>();
         Set<YFlow> yFlowsForReroute = new HashSet<>();
     }
 }

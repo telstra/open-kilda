@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.service;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
@@ -61,12 +62,16 @@ public class FlowRerouteService extends FlowProcessingService<FlowRerouteFsm, Ev
      */
     public void handleRequest(@NonNull String key, @NonNull FlowRerouteRequest reroute,
                               @NonNull CommandContext commandContext) {
-        if (yFlowRepository.isSubFlow(reroute.getFlowId())) {
-            sendForbiddenSubFlowOperationToNorthbound(reroute.getFlowId(), commandContext);
+        String flowId = reroute.getFlowId();
+        if (yFlowRepository.isSubFlow(flowId)) {
+            sendForbiddenSubFlowOperationToNorthbound(flowId, commandContext);
+            carrier.sendRerouteResultStatus(flowId, new RerouteError("Forbidden"),
+                    commandContext.getCorrelationId());
+            cancelProcessing(key);
             return;
         }
 
-        startFlowRerouting(key, reroute, commandContext, reroute.getFlowId());
+        startFlowRerouting(key, reroute, commandContext, flowId);
     }
 
     /**
@@ -93,6 +98,7 @@ public class FlowRerouteService extends FlowProcessingService<FlowRerouteFsm, Ev
         if (fsmRegister.hasRegisteredFsmWithFlowId(flowId)) {
             carrier.sendRerouteResultStatus(flowId, new RerouteInProgressError(),
                     commandContext.getCorrelationId());
+            cancelProcessing(key);
             return;
         }
 
@@ -185,12 +191,7 @@ public class FlowRerouteService extends FlowProcessingService<FlowRerouteFsm, Ev
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
             fsmRegister.unregisterFsm(key);
-
-            carrier.cancelTimeoutCallback(key);
-
-            if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
-                carrier.sendInactive();
-            }
+            cancelProcessing(key);
         }
     }
 }

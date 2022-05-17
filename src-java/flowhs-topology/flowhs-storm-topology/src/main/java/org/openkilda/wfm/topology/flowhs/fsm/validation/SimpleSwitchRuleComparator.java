@@ -20,7 +20,6 @@ import org.openkilda.model.Meter;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
-import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRule;
 
 import lombok.NonNull;
 

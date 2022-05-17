@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.validation;
 
+import static java.util.Collections.singletonList;
+
 import org.openkilda.messaging.command.yflow.YFlowDiscrepancyDto;
 import org.openkilda.messaging.info.flow.PathDiscrepancyEntity;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
@@ -22,6 +24,7 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.Meter;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -35,15 +38,14 @@ import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRule;
-import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRuleConverter;
+import org.openkilda.wfm.topology.flowhs.fsm.validation.SimpleSwitchRule;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.SimpleSwitchRuleComparator;
+import org.openkilda.wfm.topology.flowhs.fsm.validation.SimpleSwitchRuleConverter;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -97,13 +99,13 @@ public class YFlowValidationService {
         List<SimpleSwitchRule> expectedRules = new ArrayList<>();
         for (YSubFlow subFlow : yFlow.getSubFlows()) {
             Flow flow = subFlow.getFlow();
-            expectedRules.addAll(buildSimpleSwitchRules(flow, yFlow.getSharedEndpoint().getSwitchId(),
+            expectedRules.addAll(buildYFlowSimpleSwitchRules(flow, yFlow.getSharedEndpoint().getSwitchId(),
                     yFlow.getSharedEndpointMeterId(),
                     flow.getForwardPathId(), flow.getReversePathId(),
                     yFlow.getYPoint(), yFlow.getMeterId()));
             if (flow.isAllocateProtectedPath()) {
                 if (flow.getProtectedForwardPathId() != null && flow.getProtectedReversePathId() != null) {
-                    expectedRules.addAll(buildSimpleSwitchRules(flow, yFlow.getSharedEndpoint().getSwitchId(),
+                    expectedRules.addAll(buildYFlowSimpleSwitchRules(flow, yFlow.getSharedEndpoint().getSwitchId(),
                             yFlow.getSharedEndpointMeterId(),
                             flow.getProtectedForwardPathId(), flow.getProtectedReversePathId(),
                             yFlow.getProtectedPathYPoint(), yFlow.getProtectedPathMeterId()));
@@ -121,46 +123,54 @@ public class YFlowValidationService {
         return YFlowDiscrepancyDto.builder().discrepancies(discrepancies).asExpected(discrepancies.isEmpty()).build();
     }
 
-    private List<SimpleSwitchRule> buildSimpleSwitchRules(Flow subFlow, SwitchId sharedEndpoint,
-                                                          MeterId sharedMeterId,
-                                                          PathId forwardId, PathId reverseId,
-                                                          SwitchId yPoint, MeterId yMeterId) {
-        EncapsulationId encapsulationId =
-                flowResourcesManager.getEncapsulationResources(forwardId, reverseId,
-                                subFlow.getEncapsulationType()).map(EncapsulationResources::getEncapsulation)
-                        .orElseThrow(() -> new IllegalStateException(
-                                String.format("Encapsulation id was not found, pathId: %s", forwardId)));
-        FlowPath forward = subFlow.getPath(forwardId)
-                .orElseThrow(() -> new IllegalStateException(
-                        String.format("Path was not found, pathId: %s", forwardId)));
-        FlowPath reverse = subFlow.getPath(reverseId)
-                .orElseThrow(() -> new IllegalStateException(
-                        String.format("Path was not found, pathId: %s", reverseId)));
+    private List<SimpleSwitchRule> buildYFlowSimpleSwitchRules(Flow subFlow, SwitchId sharedEndpoint,
+                                                               MeterId sharedEndpointMeterId,
+                                                               PathId forwardId, PathId reverseId,
+                                                               SwitchId yPoint, MeterId yPointMeterId) {
+        FlowPath forward = subFlow.getPath(forwardId).orElseThrow(() ->
+                new IllegalStateException(String.format("Path was not found, pathId: %s", forwardId)));
+        FlowPath reverse = subFlow.getPath(reverseId).orElseThrow(() ->
+                new IllegalStateException(String.format("Path was not found, pathId: %s", reverseId)));
         if (reverse.getSrcSwitchId().equals(sharedEndpoint)) {
             FlowPath tmp = reverse;
             reverse = forward;
             forward = tmp;
         }
+        EncapsulationId forwardEncId =
+                flowResourcesManager.getEncapsulationResources(forward.getPathId(), reverse.getPathId(),
+                                subFlow.getEncapsulationType()).map(EncapsulationResources::getEncapsulation)
+                        .orElseThrow(() -> new IllegalStateException(
+                                String.format("Encapsulation was not found, pathId: %s / %s", forwardId, reverseId)));
+        EncapsulationId reverseEncId =
+                flowResourcesManager.getEncapsulationResources(reverse.getPathId(), forward.getPathId(),
+                                subFlow.getEncapsulationType()).map(EncapsulationResources::getEncapsulation)
+                        .orElseThrow(() -> new IllegalStateException(
+                                String.format("Encapsulation was not found, pathId: %s / %s", forwardId, reverseId)));
 
-        Collection<SimpleSwitchRule> ingressRules =
-                simpleSwitchRuleConverter.buildIngressSimpleSwitchRules(subFlow, forward, encapsulationId,
-                        flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
-        //TODO: apply shared endpoint y-flow cookie flags & sharedMeterId
-        List<SimpleSwitchRule> result = new ArrayList<>(ingressRules);
+        List<SimpleSwitchRule> result = new ArrayList<>();
+        if (!forward.isProtected()) {
+            List<SimpleSwitchRule> ingressRules =
+                    simpleSwitchRuleConverter.buildIngressSimpleSwitchRules(subFlow, forward, forwardEncId,
+                            flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
+            result.addAll(simpleSwitchRuleConverter.buildYFlowIngressSimpleSwitchRules(ingressRules,
+                    sharedEndpoint, sharedEndpointMeterId));
+        }
 
         List<PathSegment> orderedSegments = reverse.getSegments().stream()
                 .sorted(Comparator.comparingInt(PathSegment::getSeqId))
                 .collect(Collectors.toList());
 
-        for (int i = 1; i < orderedSegments.size(); i++) {
-            PathSegment srcPathSegment = orderedSegments.get(i - 1);
-            PathSegment dstPathSegment = orderedSegments.get(i);
-            if (dstPathSegment.getSrcSwitch().equals(yPoint)) {
-                SimpleSwitchRule yPointTransitRules =
+        for (int i = 0; i < orderedSegments.size() - 1; i++) {
+            PathSegment srcPathSegment = orderedSegments.get(i);
+            PathSegment dstPathSegment = orderedSegments.get(i + 1);
+            if (srcPathSegment.getDestSwitchId().equals(yPoint)) {
+                List<SimpleSwitchRule> yPointTransitRules = singletonList(
                         simpleSwitchRuleConverter.buildTransitSimpleSwitchRule(subFlow, reverse,
-                                srcPathSegment, dstPathSegment, encapsulationId);
-                //TODO: apply shared endpoint y-flow cookie flags & yMeterId
-                result.add(yPointTransitRules);
+                                srcPathSegment, dstPathSegment, reverseEncId));
+                result.addAll(simpleSwitchRuleConverter.buildYFlowTransitSimpleSwitchRules(yPointTransitRules,
+                        yPoint, yPointMeterId, subFlow.getBandwidth(),
+                        Meter.calculateBurstSize(subFlow.getBandwidth(), flowMeterMinBurstSizeInKbits,
+                                flowMeterBurstCoefficient, reverse.getSrcSwitch().getDescription())));
                 break;
             }
         }

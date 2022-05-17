@@ -21,8 +21,10 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import lombok.Value;
+import org.apache.commons.collections4.iterators.ReverseListIterator;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -164,6 +166,39 @@ public class IntersectionComputer {
                 .map(List::iterator)
                 .collect(Collectors.toList());
         return getLongestIntersectionOfSegments(pathSegmentIterators);
+    }
+
+    /**
+     * Calculates intersection (shared part) among the paths starting from the dest endpoint.
+     *
+     * @param paths the paths to examine.
+     * @return the overlapping path segments.
+     */
+    public static List<PathSegment> calculatePathIntersectionFromDest(Collection<FlowPath> paths) {
+        if (paths.size() < 2) {
+            throw new IllegalArgumentException("At least 2 paths must be provided");
+        }
+
+        SwitchId dest = null;
+        for (FlowPath path : paths) {
+            List<PathSegment> segments = path.getSegments();
+            if (segments.isEmpty()) {
+                throw new IllegalArgumentException("All paths mustn't be empty");
+            }
+            // Check that all paths have the same source.
+            if (dest == null) {
+                dest = segments.get(segments.size() - 1).getDestSwitchId();
+            } else if (!segments.get(segments.size() - 1).getDestSwitchId().equals(dest)) {
+                throw new IllegalArgumentException("All paths must have the same dest endpoint");
+            }
+        }
+
+        // Gather iterators of all paths' segments.
+        List<Iterator<PathSegment>> pathSegmentIterators = paths.stream()
+                .map(FlowPath::getSegments)
+                .map(ReverseListIterator::new)
+                .collect(Collectors.toList());
+        return Lists.reverse(getLongestIntersectionOfSegments(pathSegmentIterators));
     }
 
     private static List<PathSegment> getLongestIntersectionOfSegments(List<Iterator<PathSegment>> pathSegments) {

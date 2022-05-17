@@ -32,10 +32,10 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Collection;
 
 @Slf4j
-public class RemoveYFlowResourcesAction extends
+public class RemoveYFlowMetersAction extends
         YFlowRuleManagerProcessingAction<YFlowDeleteFsm, State, Event, YFlowDeleteContext> {
 
-    public RemoveYFlowResourcesAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
+    public RemoveYFlowMetersAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
         super(persistenceManager, ruleManager);
     }
 
@@ -67,7 +67,8 @@ public class RemoveYFlowResourcesAction extends
                     .build());
         }
 
-        if (yFlow.isAllocateProtectedPath() && oldResources.getProtectedPathYPointResources() == null) {
+        if (yFlow.isAllocateProtectedPath() && yFlow.getProtectedPathYPoint() != null
+                && oldResources.getProtectedPathYPointResources() == null) {
             oldResources.setProtectedPathYPointResources(EndpointResources.builder()
                     .endpoint(yFlow.getProtectedPathYPoint())
                     .meterId(yFlow.getProtectedPathMeterId())

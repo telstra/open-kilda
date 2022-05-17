@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.share.mappers;
 
+import static java.lang.String.format;
+
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -22,6 +24,7 @@ import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.NetworkEndpoint;
 import org.openkilda.model.PathSegment;
 
 import org.mapstruct.Mapper;
@@ -83,30 +86,56 @@ public abstract class FlowPathMapper {
      * Convert {@link FlowPath} to {@link PathNodePayload}.
      */
     public List<PathNodePayload> mapToPathNodes(FlowPath flowPath) {
-        List<PathNodePayload> resultList = new ArrayList<>();
-
         Flow flow = flowPath.getFlow();
         FlowEndpoint ingress = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
         FlowEndpoint egress = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
 
         List<PathSegment> pathSegments = flowPath.getSegments();
+        return mapToPathNodes(ingress, pathSegments, egress);
+    }
+
+    /**
+     * Convert {@link FlowPath} to {@link PathNodePayload}.
+     */
+    public List<PathNodePayload> mapToPathNodes(NetworkEndpoint ingress, List<PathSegment> pathSegments,
+                                                NetworkEndpoint egress) {
+        List<PathNodePayload> resultList = new ArrayList<>();
+
         Iterator<PathSegment> leftIter = pathSegments.iterator();
         Iterator<PathSegment> rightIter = pathSegments.iterator();
-        if (! rightIter.hasNext()) {
-            resultList.add(new PathNodePayload(
-                    flowPath.getSrcSwitchId(), ingress.getPortNumber(), egress.getPortNumber()));
+        if (!rightIter.hasNext()) {
+            if (ingress != null && egress != null) {
+                resultList.add(new PathNodePayload(
+                        ingress.getSwitchId(), ingress.getPortNumber(), egress.getPortNumber()));
+            }
         } else {
             PathSegment left;
             PathSegment right = rightIter.next();
 
-            resultList.add(new PathNodePayload(ingress.getSwitchId(), ingress.getPortNumber(), right.getSrcPort()));
+            if (ingress != null) {
+                if (!ingress.getSwitchId().equals(right.getSrcSwitchId())) {
+                    throw new IllegalArgumentException(format("Provided ingress and path segments are not consistent: "
+                            + "%s and %s have different switches", ingress.getSwitchId(), right));
+                }
+                resultList.add(new PathNodePayload(ingress.getSwitchId(), ingress.getPortNumber(), right.getSrcPort()));
+            }
             while (rightIter.hasNext()) {
                 left = leftIter.next();
                 right = rightIter.next();
+                if (!left.getDestSwitchId().equals(right.getSrcSwitchId())) {
+                    throw new IllegalArgumentException(format("Provided path segments are not consistent: "
+                            + "%s and %s have different switches", left, right));
+                }
                 resultList.add(new PathNodePayload(
                         left.getDestSwitchId(), left.getDestPort(), right.getSrcPort()));
             }
-            resultList.add(new PathNodePayload(egress.getSwitchId(), right.getDestPort(), egress.getPortNumber()));
+            if (egress != null) {
+                if (!egress.getSwitchId().equals(right.getDestSwitchId())) {
+                    throw new IllegalArgumentException(format("Provided egress and path segments are not consistent: "
+                            + "%s and %s have different switches", egress.getSwitchId(), right));
+                }
+                resultList.add(new PathNodePayload(egress.getSwitchId(), right.getDestPort(), egress.getPortNumber()));
+            }
         }
 
         return resultList;

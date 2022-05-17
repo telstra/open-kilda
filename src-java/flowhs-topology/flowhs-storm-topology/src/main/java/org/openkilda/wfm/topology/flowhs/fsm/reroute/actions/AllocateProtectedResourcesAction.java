@@ -97,8 +97,6 @@ public class AllocateProtectedResourcesAction extends
             stateMachine.setBackUpProtectedPathComputationWayUsed(allocatedPaths.isBackUpPathComputationWayUsed());
 
             if (!testNonOverlappingPath.test(allocatedPaths)) {
-
-
                 stateMachine.saveActionToHistory("Couldn't find non overlapping protected path. Skipped creating it");
                 stateMachine.fireNoPathFound("Couldn't find non overlapping protected path");
             } else {

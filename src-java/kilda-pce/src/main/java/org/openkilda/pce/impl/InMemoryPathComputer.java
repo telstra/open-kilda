@@ -320,6 +320,8 @@ public class InMemoryPathComputer implements PathComputer {
             for (LinkedList<SwitchId> path : paths) {
                 if (!path.isEmpty()) {
                     ypointCandidates.add(path.poll());
+                } else {
+                    return ypoint;
                 }
             }
 

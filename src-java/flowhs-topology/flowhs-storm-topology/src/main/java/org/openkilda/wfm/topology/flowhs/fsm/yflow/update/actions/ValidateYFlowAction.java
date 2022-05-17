@@ -21,6 +21,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.YFlow;
@@ -43,6 +44,7 @@ import org.openkilda.wfm.topology.flowhs.validation.YFlowValidator;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -72,7 +74,7 @@ public class ValidateYFlowAction extends
 
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getModifyYFlowEnabled();
         if (!isOperationAllowed) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Y-flow create feature is disabled");
+            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Y-flow update feature is disabled");
         }
 
         try {
@@ -92,6 +94,18 @@ public class ValidateYFlowAction extends
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
                         format("Y-flow %s is in progress now", yFlowId));
             }
+
+            Collection<Flow> subFlows = result.getSubFlows().stream()
+                    .map(YSubFlow::getFlow)
+                    .collect(Collectors.toList());
+
+            subFlows.forEach(subFlow -> {
+                if (subFlow.getStatus() == FlowStatus.IN_PROGRESS) {
+                    String message = format("Sub-flow %s of y-flow %s is in progress now", subFlow.getFlowId(),
+                            yFlowId);
+                    throw new FlowProcessingException(ErrorType.REQUEST_INVALID, message);
+                }
+            });
 
             // Keep it, just in case we have to revert it.
             stateMachine.setOriginalYFlowStatus(result.getStatus());

@@ -33,8 +33,8 @@ import java.util.Optional;
 
 @Slf4j
 public abstract class YFlowProcessingService<T extends FlowProcessingFsm<T, ?, E, C, YFlowEventListener>, E, C,
-        R extends NorthboundResponseCarrier> extends FlowProcessingService<T, E, C, R, FlowProcessingFsmRegister<T>,
-        YFlowEventListener> {
+        R extends NorthboundResponseCarrier & LifecycleEventCarrier>
+        extends FlowProcessingService<T, E, C, R, FlowProcessingFsmRegister<T>, YFlowEventListener> {
     private final Map<String, String> subFlowToYFlowMap = new HashMap<>();
     private final NoArgGenerator flowIdGenerator = Generators.timeBasedGenerator();
 

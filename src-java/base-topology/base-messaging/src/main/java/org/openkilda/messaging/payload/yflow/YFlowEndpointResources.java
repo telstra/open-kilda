@@ -18,12 +18,13 @@ package org.openkilda.messaging.payload.yflow;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 
+import lombok.NonNull;
 import lombok.Value;
 
 import java.io.Serializable;
 
 @Value
 public class YFlowEndpointResources implements Serializable {
-    SwitchId switchId;
-    MeterId meterId;
+    @NonNull SwitchId switchId;
+    @NonNull MeterId meterId;
 }

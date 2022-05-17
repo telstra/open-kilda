@@ -33,8 +33,8 @@ import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 @Slf4j
 public abstract class FlowProcessingService<T extends AbstractStateMachine<T, ?, E, C>, E, C,
-        R extends NorthboundResponseCarrier, F extends FsmRegister<T>, L extends ProcessingEventListener>
-        extends FsmBasedProcessingService<T, E, C, F, L> {
+        R extends NorthboundResponseCarrier & LifecycleEventCarrier, F extends FsmRegister<T>,
+        L extends ProcessingEventListener> extends FsmBasedProcessingService<T, E, C, F, L> {
     protected final R carrier;
     protected final FlowRepository flowRepository;
     protected final YFlowRepository yFlowRepository;
@@ -64,5 +64,12 @@ public abstract class FlowProcessingService<T extends AbstractStateMachine<T, ?,
         sendErrorResponseToNorthbound(ErrorType.REQUEST_INVALID, "Could not modify flow",
                 format("%s is a sub-flow of a y-flow. Operations on sub-flows are forbidden.", flowId),
                 commandContext);
+    }
+
+    protected void cancelProcessing(String key) {
+        carrier.cancelTimeoutCallback(key);
+        if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
+            carrier.sendInactive();
+        }
     }
 }

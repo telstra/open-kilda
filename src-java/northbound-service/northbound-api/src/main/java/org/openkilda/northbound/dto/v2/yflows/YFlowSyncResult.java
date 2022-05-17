@@ -20,18 +20,15 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-
-import java.util.List;
+import lombok.EqualsAndHashCode;
+import lombok.experimental.SuperBuilder;
 
 @Data
-@Builder
+@SuperBuilder
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
 @JsonInclude(Include.NON_EMPTY)
-public class YFlowSyncResult {
-    YFlowPath sharedPath;
-    List<SubFlowPath> subFlowPaths;
-    boolean rerouted;
+@EqualsAndHashCode(callSuper = true)
+public class YFlowSyncResult extends YFlowRerouteResult {
 }

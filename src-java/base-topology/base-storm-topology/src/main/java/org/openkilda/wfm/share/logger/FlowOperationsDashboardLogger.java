@@ -58,6 +58,8 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String YFLOW_REROUTE_RESULT_EVENT = "y_flow_reroute_result";
     private static final String YFLOW_DELETE_EVENT = "y_flow_delete";
     private static final String YFLOW_DELETE_RESULT_EVENT = "y_flow_delete_result";
+    private static final String YFLOW_PATHS_SWAP_EVENT = "y_flow_paths_swap";
+    private static final String YFLOW_PATHS_SWAP_RESULT_EVENT = "y_flow_paths_swap_result";
 
     private static final String TAG = "FLOW_OPERATIONS_DASHBOARD";
     private static final String DASHBOARD = "dashboard";
@@ -616,6 +618,43 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put("delete-result", "failed");
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed delete of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a y-flow-paths-swap event.
+     */
+    public void onYFlowPathsSwap(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-paths-swap");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_PATHS_SWAP_EVENT);
+        invokeLogger(Level.INFO, String.format("Swap paths for the y-flow: %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-paths-swap-successful event.
+     */
+    public void onSuccessfulYFlowPathsSwap(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-paths-swap-successful");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_PATHS_SWAP_RESULT_EVENT);
+        data.put("swap-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful path swap of the y-flow %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-paths-swap-failed event.
+     */
+    public void onFailedYFlowPathsSwap(String yFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-paths-swap-failed");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_PATHS_SWAP_RESULT_EVENT);
+        data.put("swap-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed path swap of the y-flow %s, reason: %s", yFlowId, failureReason),
                 data);
     }
 }

@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.dto.v2.yflows;
 
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
@@ -22,16 +24,38 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
 @Data
-@Builder
+@SuperBuilder
+@NoArgsConstructor
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
 @JsonInclude(Include.NON_EMPTY)
 public class YFlowRerouteResult {
-    YFlowPath sharedPath;
-    List<SubFlowPath> subFlowPaths;
+    ReroutedSharedPath sharedPath;
+    List<ReroutedSubFlowPath> subFlowPaths;
     boolean rerouted;
+
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @JsonNaming(SnakeCaseStrategy.class)
+    @JsonInclude(Include.NON_NULL)
+    public static class ReroutedSharedPath {
+        List<PathNodeV2> nodes;
+    }
+
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @JsonNaming(SnakeCaseStrategy.class)
+    @JsonInclude(Include.NON_NULL)
+    public static class ReroutedSubFlowPath {
+        String flowId;
+        List<PathNodeV2> nodes;
+    }
 }

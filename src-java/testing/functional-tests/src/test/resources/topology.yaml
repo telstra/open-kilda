@@ -113,6 +113,12 @@ isls:
     dst_port: 2
     max_bandwidth: 40000000
 
+  - src_switch: ofsw8
+    src_port: 1
+    dst_switch: ofsw2
+    dst_port: 5
+    max_bandwidth: 40000000
+
   - src_switch: ofsw4
     src_port: 4
     dst_switch: ofsw3

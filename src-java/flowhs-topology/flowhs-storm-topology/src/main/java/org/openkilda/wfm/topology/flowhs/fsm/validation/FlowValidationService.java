@@ -35,8 +35,6 @@ import org.openkilda.wfm.error.IllegalFlowStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRule;
-import org.openkilda.wfm.share.utils.rule.validation.SimpleSwitchRuleConverter;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;

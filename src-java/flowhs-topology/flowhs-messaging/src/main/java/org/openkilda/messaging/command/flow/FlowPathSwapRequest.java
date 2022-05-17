@@ -32,12 +32,9 @@ public class FlowPathSwapRequest extends CommandData {
 
     @JsonProperty("flow_id")
     String flowId;
-    boolean manual;
 
     @JsonCreator
-    public FlowPathSwapRequest(@NonNull @JsonProperty("flow_id") String flowId,
-                               @JsonProperty("manual") boolean manual) {
+    public FlowPathSwapRequest(@NonNull @JsonProperty("flow_id") String flowId) {
         this.flowId = flowId;
-        this.manual = manual;
     }
 }

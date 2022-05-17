@@ -29,6 +29,8 @@ import org.openkilda.messaging.command.yflow.YFlowValidationResponse;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.YFlowPingResponse;
+import org.openkilda.messaging.model.FlowPathDto;
+import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
@@ -42,9 +44,11 @@ import org.openkilda.northbound.dto.v2.yflows.YFlow;
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPath;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPath.YFlowProtectedPath;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPingResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult.ReroutedSharedPath;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpoint;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpointEncapsulation;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
@@ -80,22 +84,21 @@ public abstract class YFlowMapper {
     @Mapping(target = "vlanId", source = "outerVlanId")
     public abstract YFlowSharedEndpointEncapsulation toYFlowSharedEndpointEncapsulation(FlowEndpoint endpoint);
 
+    @Mapping(target = "sharedPath", source = "sharedPath", resultType = YFlowPath.class)
     public abstract YFlowPaths toYFlowPaths(YFlowPathsResponse source);
 
-    @Mapping(target = "nodes", source = "path.path")
-    public abstract SubFlowPath toSubFlowPath(SubFlowPathDto flow);
+    @Mapping(target = "forward", source = "forwardPath")
+    @Mapping(target = "reverse", source = "reversePath")
+    public abstract YFlowPath toYFlowPath(FlowPathDto source);
 
-    /**
-     * Convert {@link PathInfoData} to {@link YFlowPath}.
-     */
-    public YFlowPath toYFlowPath(PathInfoData path) {
-        if (path != null && path.getPath() != null && !path.getPath().isEmpty()) {
-            return YFlowPath.builder()
-                    .nodes(path.getPath().stream().map(this::toPathNodeV2).collect(Collectors.toList()))
-                    .build();
-        }
-        return null;
-    }
+    @Mapping(target = "forward", source = "forwardPath")
+    @Mapping(target = "reverse", source = "reversePath")
+    public abstract YFlowProtectedPath toYFlowProtectedPath(FlowProtectedPathDto source);
+
+    @Mapping(target = "flowId", source = "id")
+    @Mapping(target = "reverse", source = "reversePath")
+    @Mapping(target = "forward", source = "forwardPath")
+    public abstract SubFlowPath toSubFlowPath(FlowPathDto source);
 
     @Mapping(target = "segmentLatency", source = "segLatency")
     public abstract FlowPathV2.PathNodeV2 toPathNodeV2(PathNode pathNode);
@@ -135,6 +138,21 @@ public abstract class YFlowMapper {
     public abstract SubFlowsDump toSubFlowsDump(SubFlowsResponse source);
 
     public abstract YFlowRerouteResult toRerouteResult(YFlowRerouteResponse source);
+
+    /**
+     * Convert {@link PathInfoData} to {@link ReroutedSharedPath}.
+     */
+    public YFlowRerouteResult.ReroutedSharedPath toReroutedSharedPath(PathInfoData path) {
+        if (path != null && path.getPath() != null && !path.getPath().isEmpty()) {
+            return YFlowRerouteResult.ReroutedSharedPath.builder()
+                    .nodes(path.getPath().stream().map(this::toPathNodeV2).collect(Collectors.toList()))
+                    .build();
+        }
+        return null;
+    }
+
+    @Mapping(target = "nodes", source = "path.path")
+    public abstract YFlowRerouteResult.ReroutedSubFlowPath toReroutedSubFlowPath(SubFlowPathDto flow);
 
     @Mapping(target = "yFlowValidationResult", source = "YFlowValidationResult")
     public abstract YFlowValidationResult toValidationResult(YFlowValidationResponse source);

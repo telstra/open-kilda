@@ -30,10 +30,10 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Collection;
 
 @Slf4j
-public class InstallYFlowResourcesAction extends
+public class InstallYFlowMetersAction extends
         YFlowRuleManagerProcessingAction<YFlowCreateFsm, State, Event, YFlowCreateContext> {
 
-    public InstallYFlowResourcesAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
+    public InstallYFlowMetersAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
         super(persistenceManager, ruleManager);
     }
 
@@ -44,7 +44,7 @@ public class InstallYFlowResourcesAction extends
         String yFlowId = stateMachine.getYFlowId();
         YFlow yFlow = getYFlow(yFlowId);
         Collection<InstallSpeakerCommandsRequest> commands =
-                buildYFlowInstallCommands(yFlow, stateMachine.getCommandContext());
+                buildYFlowInstallRequests(yFlow, stateMachine.getCommandContext());
 
         if (commands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to install y-flow meters");

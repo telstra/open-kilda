@@ -16,7 +16,7 @@
 package org.openkilda.messaging.command.yflow;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.model.FlowPathDto;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -36,9 +36,6 @@ import java.util.List;
 public class YFlowPathsResponse extends InfoData {
     private static final long serialVersionUID = 1L;
 
-    PathInfoData sharedPath;
-    List<SubFlowPathDto> subFlowPaths;
-
-    PathInfoData sharedProtectedPath;
-    List<SubFlowPathDto> subFlowProtectedPaths;
+    FlowPathDto sharedPath;
+    List<FlowPathDto> subFlowPaths;
 }
