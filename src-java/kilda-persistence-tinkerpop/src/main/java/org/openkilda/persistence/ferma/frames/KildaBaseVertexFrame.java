@@ -37,7 +37,7 @@ public abstract class KildaBaseVertexFrame extends AbstractVertexFrame {
     public void setProperty(String name, Object value) {
         if (!name.equals(TIME_CREATE_PROPERTY) && !name.equals(TIME_MODIFY_PROPERTY)
                 && !Objects.equals(value, getProperty(name))) {
-            setProperty(TIME_MODIFY_PROPERTY, InstantStringConverter.INSTANCE.toGraphProperty(Instant.now()));
+            super.setProperty(TIME_MODIFY_PROPERTY, InstantStringConverter.INSTANCE.toGraphProperty(Instant.now()));
         }
         super.setProperty(name, value);
     }
