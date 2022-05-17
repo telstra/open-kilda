@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -80,7 +79,6 @@ class SwitchSyncSpec extends BaseSpecification {
     @Tidy
     def "Able to synchronize switch (install missing rules and meters)"() {
         given: "Two active not neighboring switches"
-        assumeFalse(useMultitable, "This test should be fixed for multiTable mode + server42")
         def switchPair = topologyHelper.allNotNeighboringSwitchPairs.find { it.src.ofVersion != "OF_12" &&
                 it.dst.ofVersion != "OF_12" } ?: assumeTrue(false, "No suiting switches found")
 
@@ -112,9 +110,23 @@ class SwitchSyncSpec extends BaseSpecification {
             }
             [switchPair.src, switchPair.dst].each {
                 def swProps = northbound.getSwitchProperties(it.dpId)
-                def amountOfSharedRules = (swProps.multiTable ? 1 : 0) + (swProps.server42FlowRtt ? 1 : 0)
-                assert validationResultsMap[it.dpId].rules.missing.size() == 2 + it.defaultCookies.size() + amountOfSharedRules
-                assert validationResultsMap[it.dpId].rules.missingHex.size() == 2 + it.defaultCookies.size() + amountOfSharedRules
+                def amountFlowRules = 2 //INGRESS_REVERSE, INGRESS_FORWARD
+                def amountS42Rules = swProps.server42FlowRtt ? 1 : 0
+                def amountMultiTableSharedRules = 0
+                if (swProps.multiTable) {
+                    amountS42Rules = swProps.server42FlowRtt ? amountS42Rules + 2 : amountS42Rules
+                    amountMultiTableSharedRules += 1
+                }
+                /**
+                 * s42Rules
+                 * multi/single table: SERVER_42_FLOW_RTT_INGRESS_REVERSE
+                 * multiTable: SERVER_42_FLOW_RTT_INPUT, SERVER_42_FLOW_RTT_TURNING_COOKIE, SERVER42_QINQ_OUTER_VLAN
+                 * some rule is in defaultCookies (SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE)
+                 */
+
+                def amountRules = amountFlowRules + amountS42Rules + amountMultiTableSharedRules + it.defaultCookies.size()
+                assert validationResultsMap[it.dpId].rules.missing.size() == amountRules
+                assert validationResultsMap[it.dpId].rules.missingHex.size() == amountRules
                 assert validationResultsMap[it.dpId].meters.missing.size() == 1 + it.defaultMeters.size()
             }
         }
