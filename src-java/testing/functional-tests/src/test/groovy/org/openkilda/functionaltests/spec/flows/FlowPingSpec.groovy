@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.flows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -254,7 +253,7 @@ class FlowPingSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE)
+    @Tags(TOPOLOGY_DEPENDENT)
     def "Flow ping can detect a broken path for a vxlan flow on an intermediate switch"() {
         given: "A vxlan flow with intermediate switch(es)"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->

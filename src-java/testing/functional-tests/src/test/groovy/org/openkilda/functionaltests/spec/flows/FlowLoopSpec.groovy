@@ -54,6 +54,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
     @Tidy
     @IterationTags([
             @IterationTag(tags = [SMOKE_SWITCHES, TOPOLOGY_DEPENDENT], iterationNameRegex = /protected/),
+            //https://github.com/telstra/open-kilda/issues/4774
             @IterationTag(tags = [HARDWARE], iterationNameRegex = /vxlan/)
     ])
     def "Able to create flowLoop for a #data.flowDescription flow"() {
