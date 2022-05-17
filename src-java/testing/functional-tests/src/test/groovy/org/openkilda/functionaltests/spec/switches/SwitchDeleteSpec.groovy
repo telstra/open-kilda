@@ -75,7 +75,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
             swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
         }
         // deactivate switch
-        def blockData = switchHelper.knockoutSwitch(sw, RW)
+        def blockData = switchHelper.knockoutSwitch(sw, RW, false)
 
         when: "Try to delete the switch"
         northbound.deleteSwitch(sw.dpId, false)
@@ -87,9 +87,9 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
                 "Remove them first.*")
 
         cleanup: "Activate the switch back and reset costs"
-        lockKeeper.reviveSwitch(sw, blockData)
+        switchHelper.reviveSwitch(sw, blockData, false)
         swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET * 2) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }

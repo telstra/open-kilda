@@ -194,9 +194,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
                             def flow1 = getFlowHelperV2().randomFlow(srcSwitch, dstSwitch)
                             def flow2 = getFlowHelperV2().randomFlow(srcSwitch, dstSwitch).tap {
                                 it.source.portNumber = flow1.source.portNumber
-                                it.source.vlanId = flow1.source.vlanId + 1
+                                it.source.vlanId = flow1.source.vlanId - 1
                                 it.destination.portNumber = flow1.destination.portNumber
-                                it.destination.vlanId = flow1.destination.vlanId + 1
+                                it.destination.vlanId = flow1.destination.vlanId - 1
                             }
                             return new Tuple2<FlowRequestV2, FlowRequestV2>(flow1, flow2)
                         }
@@ -215,7 +215,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                             def flow2 = getFlowHelperV2().randomFlow(newSrc, dstSwitch).tap {
                                 it.source.vlanId = flow1.destination.vlanId
                                 it.source.portNumber = flow1.destination.portNumber
-                                it.destination.vlanId = flow1.destination.vlanId + 1 //ensure no conflict on dst
+                                it.destination.vlanId = flow1.destination.vlanId - 1 //ensure no conflict on dst
                             }
                             return new Tuple2<FlowRequestV2, FlowRequestV2>(flow1, flow2)
                         }
