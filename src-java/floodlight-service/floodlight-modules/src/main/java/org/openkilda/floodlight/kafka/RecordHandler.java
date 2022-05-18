@@ -169,6 +169,7 @@ import org.openkilda.messaging.info.flow.FlowDumpResponse;
 import org.openkilda.messaging.info.flow.FlowInstallResponse;
 import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.flow.FlowRemoveResponse;
+import org.openkilda.messaging.info.flow.SingleFlowDumpResponse;
 import org.openkilda.messaging.info.group.GroupDumpResponse;
 import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.messaging.info.meter.MeterEntry;
@@ -1396,7 +1397,7 @@ class RecordHandler implements Runnable {
 
     private void doDumpRulesForSwitchManagerRequest(CommandMessage message) {
         processDumpRuleManagerRulesRequest(((DumpRulesForSwitchManagerRequest) message.getData()).getSwitchId(),
-                buildSenderToSwitchManager(message));
+                buildRulesSenderToSwitchManager(message));
     }
 
     private void doDumpRulesForFlowHsRequest(CommandMessage message) {
@@ -1441,7 +1442,6 @@ class RecordHandler implements Runnable {
                     .collect(Collectors.toList());
 
             FlowDumpResponse response = FlowDumpResponse.builder()
-                    .switchId(switchId)
                     .flowSpeakerData(flows)
                     .build();
             sender.accept(response);
@@ -1734,6 +1734,19 @@ class RecordHandler implements Runnable {
             SpeakerDataResponse result = new SpeakerDataResponse(messageContext, data);
             producerService.sendMessageAndTrack(context.getKafkaSpeakerFlowHsTopic(),
                     message.getCorrelationId(), result);
+        };
+    }
+
+    private java.util.function.Consumer<MessageData> buildRulesSenderToSwitchManager(Message message) {
+        IKafkaProducerService producerService = getKafkaProducer();
+        return data -> {
+            FlowDumpResponse entries = (FlowDumpResponse) data;
+            List<SingleFlowDumpResponse> result = new ArrayList<>();
+            for (FlowSpeakerData speakerData : entries.getFlowSpeakerData()) {
+                result.add(new SingleFlowDumpResponse(speakerData));
+            }
+            producerService.sendChunkedMessageAndTrack(
+                    context.getKafkaSwitchManagerTopic(), message.getCorrelationId(), result);
         };
     }
 

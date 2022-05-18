@@ -23,6 +23,7 @@ import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.grpc.GrpcBaseRequest;
+import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.switchmanager.StreamType;
@@ -43,15 +44,17 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     public static final String FIELD_ID_COOKIE = "cookie";
 
     private transient SpeakerWorkerService service;
+    private final int chunkedMessagesExpirationMinutes;
 
-    public SpeakerWorkerBolt(Config config) {
+    public SpeakerWorkerBolt(Config config, int chunkedMessagesExpirationMinutes) {
         super(config);
+        this.chunkedMessagesExpirationMinutes = chunkedMessagesExpirationMinutes;
     }
 
     @Override
     protected void init() {
         super.init();
-        service = new SpeakerWorkerService(this);
+        service = new SpeakerWorkerService(this, chunkedMessagesExpirationMinutes);
     }
 
     @Override
@@ -79,7 +82,10 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     protected void onAsyncResponse(Tuple request, Tuple response) throws Exception {
         String key = pullKey();
         Object payload = pullValue(response, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Object.class);
-        if (payload instanceof Message) {
+        if (payload instanceof ChunkedInfoMessage) {
+            ChunkedInfoMessage chunkedInfoMessage = (ChunkedInfoMessage) payload;
+            service.handleChunkedResponse(key, chunkedInfoMessage);
+        } else if (payload instanceof Message) {
             Message message = (Message) payload;
             service.handleResponse(key, message);
         } else if (payload instanceof SpeakerResponse) {

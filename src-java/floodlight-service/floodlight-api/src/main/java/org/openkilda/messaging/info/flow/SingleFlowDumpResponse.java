@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,17 +24,16 @@ import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
-import java.util.List;
-
 @Value
 @EqualsAndHashCode(callSuper = false)
-public class FlowDumpResponse extends InfoData {
+public class SingleFlowDumpResponse extends InfoData {
+
     @JsonProperty("flow_speaker_data")
-    List<FlowSpeakerData> flowSpeakerData;
+    FlowSpeakerData flowSpeakerData;
 
     @JsonCreator
     @Builder
-    public FlowDumpResponse(@JsonProperty("flow_speaker_data") List<FlowSpeakerData> flowSpeakerData) {
+    public SingleFlowDumpResponse(@JsonProperty("flow_speaker_data") FlowSpeakerData flowSpeakerData) {
         this.flowSpeakerData = flowSpeakerData;
     }
 }
