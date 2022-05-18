@@ -21,17 +21,29 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.ChunkedInfoMessage;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
+import org.openkilda.messaging.info.flow.SingleFlowDumpResponse;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.switchmanager.service.SpeakerCommandCarrier;
 
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.map.PassiveExpiringMap;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class SpeakerWorkerService {
@@ -39,8 +51,20 @@ public class SpeakerWorkerService {
 
     private final Map<String, RequestContext> keyToRequest = new HashMap<>();
 
-    public SpeakerWorkerService(SpeakerCommandCarrier carrier) {
+    /**
+     * The storage for received chunked message ids. It is needed to identify whether we have already received specific
+     * chunked message or not in order to do not have duplicates, because current version of kafka do not guarantee
+     * exactly once delivery.
+     */
+    private final Map<String, Set<String>> chunkedMessageIdsPerRequest = new HashMap<>();
+    /**
+     * Chains of chunked messages, it is filling by messages one by one as soon as the next linked message is received.
+     */
+    private final Map<String, List<ChunkedInfoMessage>> messagesChains;
+
+    public SpeakerWorkerService(SpeakerCommandCarrier carrier, int chunkedMessagesExpirationMinutes) {
         this.carrier = carrier;
+        messagesChains = new PassiveExpiringMap<>(chunkedMessagesExpirationMinutes, TimeUnit.MINUTES, new HashMap<>());
     }
 
     /**
@@ -91,6 +115,51 @@ public class SpeakerWorkerService {
                 response.setCookie(pending.getCookie());
             }
             carrier.sendResponse(key, response);
+        }
+    }
+
+    /**
+     * Processes received chunked responses, combines them and forwards it to the hub component.
+     */
+    public void handleChunkedResponse(String key, ChunkedInfoMessage response) throws PipelineException {
+        log.debug("Got chunked response from speaker {}", response);
+        chunkedMessageIdsPerRequest.computeIfAbsent(key, mappingFunction -> new HashSet<>());
+        Set<String> associatedMessages = chunkedMessageIdsPerRequest.get(key);
+        if (!associatedMessages.add(response.getMessageId())) {
+            log.debug("Skipping chunked message, it is already received: {}", response);
+            return;
+        }
+
+        messagesChains.computeIfAbsent(key, mappingFunction -> new ArrayList<>());
+        List<ChunkedInfoMessage> chain = messagesChains.get(key);
+        if (response.getTotalMessages() != 0) {
+            chain.add(response);
+        }
+
+        if (chain.size() == response.getTotalMessages()) {
+            completeChunkedResponse(key, chain);
+        }
+    }
+
+    private void completeChunkedResponse(String key, List<ChunkedInfoMessage> messages) throws PipelineException {
+        RequestContext pending = keyToRequest.remove(key);
+        messagesChains.remove(key);
+        chunkedMessageIdsPerRequest.remove(key);
+
+        if (pending != null && pending.getPayload() != null) {
+            if (pending.getPayload() instanceof DumpRulesForSwitchManagerRequest) {
+                FlowDumpResponse entries = new FlowDumpResponse(
+                        messages.stream()
+                                .map(InfoMessage::getData)
+                                .map(SingleFlowDumpResponse.class::cast)
+                                .map(SingleFlowDumpResponse::getFlowSpeakerData)
+                                .collect(Collectors.toList()));
+                InfoMessage response = new InfoMessage(entries, key, pending.getCookie());
+                carrier.sendResponse(key, response);
+            } else {
+                log.error("Unknown request payload for chunked response. Request contest: {}, key: {}, "
+                        + "chunked data: {}", pending, key, messages);
+            }
         }
     }
 

@@ -96,4 +96,8 @@ public interface SwitchManagerTopologyConfig  extends AbstractTopologyConfig {
     @Key("bfd.port.max.number")
     @Default("1999")
     int getBfdPortMaxNumber();
+
+    @Key("kafka.chunked.messages.expiration.minutes")
+    @Default("15")
+    int getChunkedMessagesExpirationMinutes();
 }
