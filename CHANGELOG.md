@@ -1,7 +1,18 @@
 # Changelog
 
-## v1.118.3 (26/04/2022)
+## v1.118.4 (18/05/2022)
 
+### Bug Fixes:
+-  [#4809](https://github.com/telstra/open-kilda/pull/4809) Use chunks for sending rules for switch validation [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.118.3...v1.118.4).
+
+### Affected Components:
+swmanager
+
+---
+
+## v1.118.3 (26/04/2022)
 
 ### Bug Fixes:
 -  [#4768](https://github.com/telstra/open-kilda/pull/4768) Correct removing of LLDP/ARP/Server42 rules during update in swap endpoint case (Issue: [#4766](https://github.com/telstra/open-kilda/issues/4766)) 
@@ -27,7 +38,7 @@ For the complete list of changes, check out [the commit log](https://github.com/
 ### Affected Components:
 otsdb, network, router, ping, reroute, fl, flow-hs, history, swmanager, nb, nbworker, flow-monitor
 
-
+---
 
 ## v1.118.2 (08/04/2022)
 
