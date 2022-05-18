@@ -14,18 +14,20 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.tools.SoftAssertions
 
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Isolated
 import spock.lang.ResourceLock
 import spock.lang.See
 import spock.lang.Shared
+
+import java.util.concurrent.TimeUnit
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-monitoring")
 @Tags([VIRTUAL, LOW_PRIORITY])
@@ -88,36 +90,51 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
 
         and : "A flow with max_latency 210"
         def createFlowTime = new Date()
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
+        def flow1 = flowHelperV2.randomFlow(switchPair).tap {
+            flowId = "fflow1"
             maxLatency = 210
             pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
         }
-        flowHelperV2.addFlow(flow)
+        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1]).tap {
+            flowId = "fflow2"
+            maxLatency = 210
+            pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
+        }
+        def flow3 = flowHelperV2.randomFlow(switchPair, false, [flow1, flow2]).tap {
+            flowId = "fflow3"
+            maxLatency = 210
+            pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
+        }
+        flowHelperV2.addFlow(flow1)
+        flowHelperV2.addFlow(flow2)
+        flowHelperV2.addFlow(flow3)
         //wait for generating some flow-monitoring stats
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
          assert !otsdb.query(createFlowTime, metricPrefix + "flow.rtt",
-                 [flowid   : flow.flowId,
+                 [flowid   : flow1.flowId,
                   direction: "forward",
                   origin   : "flow-monitoring"]).dps.isEmpty()
         assert !otsdb.query(createFlowTime, metricPrefix + "flow.rtt",
-                [flowid   : flow.flowId,
+                [flowid   : flow1.flowId,
                  direction: "reverse",
                  origin   : "flow-monitoring"]).dps.isEmpty()
         }
 
-        def path = northbound.getFlowPath(flow.flowId)
-        pathHelper.convert(path) == mainPath
+        [flow1, flow2, flow3].each {
+            def path = northbound.getFlowPath(it.flowId)
+            assert pathHelper.convert(path) == mainPath
+        }
 
         when: "Main path does not satisfy SLA(update isl latency via db)"
         def isl = pathHelper.getInvolvedIsls(mainPath).first()
         String srcInterfaceName = isl.srcSwitch.name + "-" + isl.srcPort
         String dstInterfaceName = isl.dstSwitch.name + "-" + isl.dstPort
-        def newLatency = (flow.maxLatency + (flow.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
+        def newLatency = (flow1.maxLatency + (flow1.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
         lockKeeper.setLinkDelay(srcInterfaceName, newLatency)
         lockKeeper.setLinkDelay(dstInterfaceName, newLatency)
         def updateLatencyTime = new Date()
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-            verifyLatencyInOpenTSDB(updateLatencyTime, flow.flowId, newLatency)
+            verifyLatencyInOpenTSDB(updateLatencyTime, flow1.flowId, newLatency)
         }
 
         then: "System detects that flowPathLatency doesn't satisfy max_latency and reroute the flow"
@@ -127,18 +144,35 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
          * recheck the flowLatency 'kilda_flow_sla_check_interval_seconds';
          * and then reroute the flow.
          */
-        wait(flowSlaCheckIntervalSeconds * 2 + flowLatencySlaTimeoutSeconds + WAIT_OFFSET) {
-            def history = northbound.getFlowHistory(flow.flowId).last()
-            //"Reason: Flow latency become unhealthy" or ""Reason: Flow latency become healthy""
-            assert history.details.contains("healthy") &&
-                    (history.payload.last().action in [REROUTE_SUCCESS,REROUTE_FAIL]) //just check 'reroute'
+
+        def assertions = new SoftAssertions()
+        TimeUnit.SECONDS.sleep(flowSlaCheckIntervalSeconds * 4 + flowLatencySlaTimeoutSeconds + WAIT_OFFSET)
+        //"Reason: Flow latency become unhealthy" or ""Reason: Flow latency become healthy""
+        def history1 = northbound.getFlowHistory(flow1.flowId).last()
+        def history2 = northbound.getFlowHistory(flow2.flowId).last()
+        def history3 = northbound.getFlowHistory(flow3.flowId).last()
+        assertions.checkSucceeds {
+            assert history1.details.contains("healthy") &&
+                    (history1.payload.last().action in [REROUTE_SUCCESS, REROUTE_FAIL]) //just check 'reroute'
         }
+        assertions.checkSucceeds {
+            assert history2.details.contains("healthy") &&
+                    (history2.payload.last().action in [REROUTE_SUCCESS, REROUTE_FAIL]) //just check 'reroute'
+        }
+        assertions.checkSucceeds {
+            assert history3.details.contains("healthy") &&
+                    (history3.payload.last().action in [REROUTE_SUCCESS, REROUTE_FAIL]) //just check 'reroute'
+        }
+        assertions.verify()
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
+        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
         srcInterfaceName && lockKeeper.cleanupLinkDelay(srcInterfaceName)
         dstInterfaceName && lockKeeper.cleanupLinkDelay(dstInterfaceName)
         initFeatureToggle && northbound.toggleFeature(initFeatureToggle)
+
+        where:
+        i << (1..3)
     }
 
     @Tidy
