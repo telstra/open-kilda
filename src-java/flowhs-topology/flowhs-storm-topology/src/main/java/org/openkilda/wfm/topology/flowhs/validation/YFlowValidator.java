@@ -60,7 +60,6 @@ public class YFlowValidator {
 
         checkSubFlows(request);
         checkSubFlowsHaveNoConflict(request.getSubFlows());
-        checkNoOneSwitchFlow(request);
         checkBandwidth(request);
 
         validateSubFlows(YFlowRequestMapper.INSTANCE.toRequestedFlows(request));
@@ -117,15 +116,6 @@ public class YFlowValidator {
                                     subFlow.getFlowId(), another.getFlowId(), subFlow.getEndpoint(),
                                     another.getEndpoint()), ErrorType.DATA_INVALID);
                 }
-            }
-        }
-    }
-
-    private void checkNoOneSwitchFlow(YFlowRequest yFlowRequest) throws InvalidFlowException {
-        for (SubFlowDto subFlow : yFlowRequest.getSubFlows()) {
-            if (yFlowRequest.getSharedEndpoint().getSwitchId().equals(subFlow.getEndpoint().getSwitchId())) {
-                throw new InvalidFlowException(
-                        "It is not allowed to create one-switch y-flow", ErrorType.DATA_INVALID);
             }
         }
     }

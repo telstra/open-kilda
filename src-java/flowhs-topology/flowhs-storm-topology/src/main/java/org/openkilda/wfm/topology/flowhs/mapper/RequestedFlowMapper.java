@@ -60,6 +60,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
     @Mapping(target = "diverseFlowId", ignore = true)
     @Mapping(target = "affinityFlowId", ignore = true)
+    @Mapping(source = "YFlowId", target = "yFlowId")
     public abstract RequestedFlow toRequestedFlow(Flow flow);
 
     /**
@@ -89,6 +90,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "srcInnerVlan", ignore = true)
     @Mapping(target = "destInnerVlan", ignore = true)
     @Mapping(target = "loopSwitchId", ignore = true)
+    @Mapping(target = "yFlowId", ignore = true)
     public abstract RequestedFlow toRequestedFlow(SwapFlowDto flow);
 
     /**
@@ -126,6 +128,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "destPort", ignore = true)
     @Mapping(target = "destVlan", ignore = true)
     @Mapping(target = "destInnerVlan", ignore = true)
+    @Mapping(target = "yFlowId", ignore = true)
     protected abstract RequestedFlow generatedMap(FlowRequest request);
 
     /**

@@ -99,7 +99,7 @@ public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, 
                     if (path == null) {
                         throw new FlowProcessingException(ErrorType.INTERNAL_ERROR,
                                 format("Missing a reverse path for %s sub-flow", flow.getFlowId()));
-                    } else {
+                    } else if (!flow.isOneSwitchFlow()) {
                         subFlowsReversePaths.add(path);
                     }
                 });
@@ -126,7 +126,7 @@ public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, 
                             log.warn("Sub-flow {} has no expected protected path and status {}",
                                     flow.getFlowId(), flow.getStatus());
                         }
-                    } else {
+                    } else if (!flow.isOneSwitchFlow()) {
                         subFlowsReversePaths.add(path);
                     }
                 });
@@ -170,7 +170,12 @@ public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, 
     private EndpointResources allocateYPointResources(String yFlowId, SwitchId sharedEndpoint, long bandwidth,
                                                       FlowPath[] subFlowsReversePaths)
             throws ResourceAllocationException {
-        SwitchId reverseYPoint = pathComputer.getIntersectionPoint(sharedEndpoint, subFlowsReversePaths);
+        SwitchId reverseYPoint;
+        if (subFlowsReversePaths.length != 0) {
+            reverseYPoint = pathComputer.getIntersectionPoint(sharedEndpoint, subFlowsReversePaths);
+        } else {
+            reverseYPoint = sharedEndpoint;
+        }
         return allocateMeterAsEndpointResources(yFlowId, reverseYPoint, bandwidth);
     }
 

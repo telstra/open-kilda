@@ -221,22 +221,29 @@ public class FlowFetcher extends Abstract {
             flow.getPaths(); // Load paths to use in PingProducer
             flowRepository.detach(flow);
 
-            Optional<FlowTransitEncapsulation> transitEncapsulation = getTransitEncapsulation(flow);
-            if (transitEncapsulation.isPresent()) {
-                subFlowPingRequests.add(PingContext.builder()
-                        .group(groupId)
-                        .kind(Kinds.ON_DEMAND_Y_FLOW)
-                        .flow(flow)
-                        .yFlowId(yFlow.getYFlowId())
-                        .transitEncapsulation(transitEncapsulation.get())
-                        .timeout(request.getTimeout())
-                        .build());
-            } else {
-                emitOnDemandYFlowResponse(input, request, format(
-                        "Encapsulation resource not found for sub flow %s of YFlow %s",
-                        subFlow.getSubFlowId(), yFlow.getYFlowId()));
-                return;
+            if (!flow.isOneSwitchFlow()) {
+                Optional<FlowTransitEncapsulation> transitEncapsulation = getTransitEncapsulation(flow);
+                if (transitEncapsulation.isPresent()) {
+                    subFlowPingRequests.add(PingContext.builder()
+                            .group(groupId)
+                            .kind(Kinds.ON_DEMAND_Y_FLOW)
+                            .flow(flow)
+                            .yFlowId(yFlow.getYFlowId())
+                            .transitEncapsulation(transitEncapsulation.get())
+                            .timeout(request.getTimeout())
+                            .build());
+                } else {
+                    emitOnDemandYFlowResponse(input, request, format(
+                            "Encapsulation resource not found for sub flow %s of YFlow %s",
+                            subFlow.getSubFlowId(), yFlow.getYFlowId()));
+                    return;
+                }
             }
+        }
+        if (subFlowPingRequests.isEmpty()) {
+            emitOnDemandYFlowResponse(input, request,
+                    format("Y-flow %s has only one-switch sub-flows", request.getYFlowId()));
+            return;
         }
         CommandContext commandContext = pullContext(input);
         for (PingContext pingContext : subFlowPingRequests) {

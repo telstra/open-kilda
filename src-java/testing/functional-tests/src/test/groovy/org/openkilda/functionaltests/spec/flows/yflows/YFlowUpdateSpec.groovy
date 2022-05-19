@@ -13,6 +13,7 @@ import org.openkilda.northbound.dto.v2.yflows.SubFlowPatchPayload
 import org.openkilda.northbound.dto.v2.yflows.YFlow
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchSharedEndpoint
+import org.openkilda.northbound.dto.v2.yflows.YFlowPatchSharedEndpointEncapsulation
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import com.shazam.shazamcrest.matcher.CustomisableMatcher
@@ -280,10 +281,10 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                 [
                         descr: "conflict after update",
                         updateClosure: { YFlow payload ->
-                            payload.sharedEndpoint.switchId = payload.subFlows[0].endpoint.switchId
+                            payload.subFlows[0].sharedEndpoint.vlanId = payload.subFlows[1].sharedEndpoint.vlanId
                         },
                         errorStatusCode: HttpStatus.BAD_REQUEST,
-                        errorDescrPattern: /It is not allowed to create one-switch y-flow/
+                        errorDescrPattern: /The sub-flows .* and .* have shared endpoint conflict: .*/
                 ]
         ]
     }
@@ -349,16 +350,25 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                 [
                         descr: "switch conflict after update",
                         buildPatchRequest: { YFlow payload ->
-                            payload.sharedEndpoint.switchId = payload.subFlows[0].endpoint.switchId
+                            payload.subFlows[0].sharedEndpoint.vlanId = payload.subFlows[1].sharedEndpoint.vlanId
                             return YFlowPatchPayload.builder()
-                                    .sharedEndpoint(YFlowPatchSharedEndpoint.builder()
-                                            .switchId(payload.subFlows[0].endpoint.switchId)
-                                            .build())
+                                    .subFlows([SubFlowPatchPayload.builder()
+                                                       .sharedEndpoint(YFlowPatchSharedEndpointEncapsulation.builder()
+                                                               .vlanId(payload.subFlows[1].sharedEndpoint.vlanId)
+                                                               .build())
+                                                       .flowId(payload.subFlows[0].flowId)
+                                                       .build(),
+                                               SubFlowPatchPayload.builder()
+                                                       .sharedEndpoint(YFlowPatchSharedEndpointEncapsulation.builder()
+                                                               .vlanId(payload.subFlows[1].sharedEndpoint.vlanId)
+                                                               .build())
+                                                       .flowId(payload.subFlows[1].flowId)
+                                                       .build()])
                                     .build()
                         },
                         errorStatusCode: HttpStatus.BAD_REQUEST,
                         errorMessage: "Could not update y-flow",
-                        errorDescrPattern: /It is not allowed to create one-switch y-flow/
+                        errorDescrPattern: /The sub-flows .* and .* have shared endpoint conflict: .*/
                 ]
         ]
     }

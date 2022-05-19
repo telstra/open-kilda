@@ -22,6 +22,7 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.ToString;
 
 import java.util.List;
 
@@ -30,6 +31,7 @@ import java.util.List;
  */
 @Getter
 @AllArgsConstructor
+@ToString
 public abstract class BaseFlowPathInfo extends StatsNotification {
     @NonNull String flowId;
     String yFlowId;

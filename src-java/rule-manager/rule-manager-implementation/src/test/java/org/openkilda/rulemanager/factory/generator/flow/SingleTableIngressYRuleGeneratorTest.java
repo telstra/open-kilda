@@ -17,7 +17,6 @@ package org.openkilda.rulemanager.factory.generator.flow;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -248,13 +247,6 @@ public class SingleTableIngressYRuleGeneratorTest {
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()
         );
         assertEqualsMatch(expectedMatch, match);
-    }
-
-    @Test
-    public void oneSwitchFlowFullPortRuleTest() {
-        Flow flow = buildFlow(ONE_SWITCH_PATH, 0, OUTER_VLAN_ID_2);
-        SingleTableIngressYRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
-        assertThrows(IllegalStateException.class, () -> generator.generateCommands(SWITCH_1));
     }
 
     @Test

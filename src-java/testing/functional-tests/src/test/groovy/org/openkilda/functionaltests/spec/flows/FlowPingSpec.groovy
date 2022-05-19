@@ -231,7 +231,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         then: "Error received"
         !response.forward
         !response.reverse
-        response.error == "Flow ${flow.flowId} should not be one switch flow"
+        response.error == "Flow ${flow.flowId} should not be one-switch flow"
 
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)

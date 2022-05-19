@@ -563,7 +563,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
             !forward
             !reverse
-            error == "Flow ${flow.flowId} should not be one switch flow"
+            error == "Flow ${flow.flowId} should not be one-switch flow"
         }
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"

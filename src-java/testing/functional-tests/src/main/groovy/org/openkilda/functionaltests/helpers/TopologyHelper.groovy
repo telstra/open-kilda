@@ -95,10 +95,10 @@ class TopologyHelper {
         return includeReverse ? result.collectMany { [it, it.reversed] } : result
     }
 
-    List<SwitchTriplet> getSwitchTriplets(boolean includeReverse = false) {
+    List<SwitchTriplet> getSwitchTriplets(boolean includeReverse = false, boolean includeSingleSwitch = false) {
         //get deep copy
         def mapper = new ObjectMapper()
-        def result = mapper.readValue(mapper.writeValueAsString(getSwitchTripletsCached()), SwitchTriplet[]).toList()
+        def result = mapper.readValue(mapper.writeValueAsString(getSwitchTripletsCached(includeSingleSwitch)), SwitchTriplet[]).toList()
         return includeReverse ? result.collectMany { [it, it.reversed] } : result
     }
 
@@ -143,9 +143,9 @@ class TopologyHelper {
     }
 
     @Memoized
-    private List<SwitchTriplet> getSwitchTripletsCached() {
+    private List<SwitchTriplet> getSwitchTripletsCached(boolean includeSingleSwitch) {
         return [topology.activeSwitches, topology.activeSwitches, topology.activeSwitches].combinations()
-                .findAll { shared, ep1, ep2 -> shared != ep1 && shared != ep2 } //non-single-switch
+                .findAll { shared, ep1, ep2 -> includeSingleSwitch || shared != ep1 && shared != ep2 } //non-single-switch
                 .unique { triplet -> [triplet[0], [triplet[1], triplet[2]].sort()] } //no reversed versions of ep1/ep2
                 .collect { Switch shared, Switch ep1, Switch ep2 ->
                     new SwitchTriplet(shared, ep1, ep2, getDbPathsCached(shared.dpId, ep1.dpId), getDbPathsCached(shared.dpId, ep2.dpId))

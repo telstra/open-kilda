@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
+import lombok.ToString;
 import lombok.Value;
 
 import java.util.List;
@@ -35,6 +36,7 @@ import java.util.List;
 @Value
 @EqualsAndHashCode(callSuper = true)
 @JsonNaming(value = SnakeCaseStrategy.class)
+@ToString(callSuper = true)
 public class UpdateFlowPathInfo extends BaseFlowPathInfo {
     private static final long serialVersionUID = 1L;
 

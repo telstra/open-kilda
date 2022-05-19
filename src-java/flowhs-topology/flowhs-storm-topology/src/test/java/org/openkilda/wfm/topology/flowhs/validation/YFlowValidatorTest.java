@@ -16,6 +16,8 @@
 package org.openkilda.wfm.topology.flowhs.validation;
 
 import static java.util.Collections.emptyList;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -23,11 +25,15 @@ import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.SubFlowSharedEndpointEncapsulation;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -37,6 +43,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 public class YFlowValidatorTest {
     public static final SwitchId SWITCH_ID_1 = new SwitchId(1);
@@ -52,14 +59,36 @@ public class YFlowValidatorTest {
     public static void setup() {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createFlowRepository()).thenReturn(mock(FlowRepository.class));
-        when(repositoryFactory.createSwitchRepository()).thenReturn(mock(SwitchRepository.class));
+        SwitchRepository switchRepository = mock(SwitchRepository.class);
+        when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(repositoryFactory.createIslRepository()).thenReturn(mock(IslRepository.class));
-        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(mock(SwitchPropertiesRepository.class));
+        SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
+        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
         when(repositoryFactory.createFlowMirrorPathRepository()).thenReturn(mock(FlowMirrorPathRepository.class));
         when(repositoryFactory.createYFlowRepository()).thenReturn(mock(YFlowRepository.class));
+        PhysicalPortRepository physicalPortRepository = mock(PhysicalPortRepository.class);
+        when(repositoryFactory.createPhysicalPortRepository()).thenReturn(physicalPortRepository);
         PersistenceManager persistenceManager = mock(PersistenceManager.class);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
         yFlowValidator = new YFlowValidator(persistenceManager);
+
+        when(switchRepository.findById(SWITCH_ID_1))
+                .thenReturn(Optional.of(Switch.builder().switchId(SWITCH_ID_1).ofDescriptionSoftware("")
+                        .status(SwitchStatus.ACTIVE).build()));
+        when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_1))
+                .thenReturn(Optional.of(SwitchProperties.builder().build()));
+        when(switchRepository.findById(SWITCH_ID_2))
+                .thenReturn(Optional.of(Switch.builder().switchId(SWITCH_ID_2).ofDescriptionSoftware("")
+                        .status(SwitchStatus.ACTIVE).build()));
+        when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_2))
+                .thenReturn(Optional.of(SwitchProperties.builder().build()));
+        when(switchRepository.findById(SWITCH_ID_3))
+                .thenReturn(Optional.of(Switch.builder().switchId(SWITCH_ID_3).ofDescriptionSoftware("")
+                        .status(SwitchStatus.ACTIVE).build()));
+        when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_3))
+                .thenReturn(Optional.of(SwitchProperties.builder().build()));
+
+        when(physicalPortRepository.findBySwitchIdAndPortNumber(any(), anyInt())).thenReturn(Optional.empty());
     }
 
     @Test(expected = InvalidFlowException.class)
@@ -76,8 +105,8 @@ public class YFlowValidatorTest {
         yFlowValidator.validate(request);
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfOneSwitchFlowRequested()
+    @Test
+    public void passIfOneSwitchFlowRequested()
             throws InvalidFlowException, UnavailableFlowEndpointException {
         YFlowRequest request = YFlowRequest.builder()
                 .yFlowId("test")
@@ -105,8 +134,8 @@ public class YFlowValidatorTest {
         yFlowValidator.validate(request);
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfOneSwitchFlowRequestedAsTheLast()
+    @Test
+    public void passIfOneSwitchFlowRequestedAsTheLast()
             throws InvalidFlowException, UnavailableFlowEndpointException {
         YFlowRequest request = YFlowRequest.builder()
                 .yFlowId("test")
@@ -119,6 +148,35 @@ public class YFlowValidatorTest {
                                 .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(1, 0))
                                 .endpoint(FlowEndpoint.builder()
                                         .switchId(SWITCH_ID_2)
+                                        .portNumber(PORT_2)
+                                        .build())
+                                .build(),
+                        SubFlowDto.builder()
+                                .flowId("test_2")
+                                .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(2, 0))
+                                .endpoint(FlowEndpoint.builder()
+                                        .switchId(SWITCH_ID_1)
+                                        .portNumber(PORT_3)
+                                        .build())
+                                .build()))
+                .build();
+        yFlowValidator.validate(request);
+    }
+
+    @Test
+    public void passIfBothOneSwitchFlowRequested()
+            throws InvalidFlowException, UnavailableFlowEndpointException {
+        YFlowRequest request = YFlowRequest.builder()
+                .yFlowId("test")
+                .sharedEndpoint(FlowEndpoint.builder()
+                        .switchId(SWITCH_ID_1)
+                        .portNumber(PORT_1)
+                        .build())
+                .subFlows(Arrays.asList(SubFlowDto.builder()
+                                .flowId("test_1")
+                                .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(1, 0))
+                                .endpoint(FlowEndpoint.builder()
+                                        .switchId(SWITCH_ID_1)
                                         .portNumber(PORT_2)
                                         .build())
                                 .build(),
