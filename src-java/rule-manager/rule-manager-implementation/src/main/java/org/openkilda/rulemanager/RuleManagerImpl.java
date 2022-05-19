@@ -439,7 +439,7 @@ public class RuleManagerImpl implements RuleManager {
         for (FlowPath path : flowPaths) {
             if (path.isProtected() || !path.isForward()) {
                 throw new IllegalArgumentException(
-                        format("Ingress rules must not be requested for protected or reverse path %s",
+                        format("Shared endpoint rules must not be requested for protected or reverse path %s",
                                 path.getPathId()));
             }
             Flow flow = adapter.getFlow(path.getPathId());
@@ -495,7 +495,7 @@ public class RuleManagerImpl implements RuleManager {
         for (FlowPath path : flowPaths) {
             if (path.isForward()) {
                 throw new IllegalArgumentException(
-                        format("Transit rules must not be requested for forward path %s", path.getPathId()));
+                        format("Y-point rules must not be requested for forward path %s", path.getPathId()));
             }
             Flow flow = adapter.getFlow(path.getPathId());
             if (flow == null) {
@@ -573,7 +573,7 @@ public class RuleManagerImpl implements RuleManager {
                                                     boolean meterToBeAdded) {
         if (path.isForward() || !path.getSrcSwitchId().equals(flow.getDestSwitchId())) {
             throw new IllegalArgumentException(
-                    format("Transit rules must not be requested for forward path %s", path.getPathId()));
+                    format("Y-point rules must not be requested for forward path %s", path.getPathId()));
         }
         if (path.getSegments().isEmpty()) {
             throw new IllegalArgumentException(

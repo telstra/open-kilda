@@ -187,7 +187,7 @@ public class FlowFetcher extends Abstract {
                 }
             } else {
                 emitOnDemandResponse(input, request, format(
-                        "Flow %s should not be one switch flow", request.getFlowId()));
+                        "Flow %s should not be one-switch flow", request.getFlowId()));
             }
         } else {
             emitOnDemandResponse(input, request, format("Flow %s does not exist", request.getFlowId()));
@@ -201,7 +201,7 @@ public class FlowFetcher extends Abstract {
         Optional<YFlow> optionalYFlow = yFlowRepository.findById(request.getYFlowId());
 
         if (!optionalYFlow.isPresent()) {
-            emitOnDemandYFlowResponse(input, request, format("YFlow %s does not exist", request.getYFlowId()));
+            emitOnDemandYFlowResponse(input, request, format("Y-flow %s does not exist", request.getYFlowId()));
             return;
         }
 
@@ -209,7 +209,7 @@ public class FlowFetcher extends Abstract {
         Set<YSubFlow> subFlows = yFlow.getSubFlows();
 
         if (subFlows.isEmpty()) {
-            emitOnDemandYFlowResponse(input, request, format("YFlow %s has no sub flows", request.getYFlowId()));
+            emitOnDemandYFlowResponse(input, request, format("Y-flow %s has no sub-flows", request.getYFlowId()));
             return;
         }
 
