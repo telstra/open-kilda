@@ -20,6 +20,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
+import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
 import java.util.Optional;
@@ -36,6 +37,8 @@ public class NotifyFlowStatsOnRemovedPathsAction<T extends FlowPathSwappingFsm<T
 
     @Override
     protected void perform(S from, S to, E event, C context, T stateMachine) {
+        Flow originalFlow = RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
+
         Stream.of(stateMachine.getOldPrimaryForwardPath(), stateMachine.getOldPrimaryReversePath(),
                         stateMachine.getOldProtectedForwardPath(), stateMachine.getOldProtectedReversePath())
                 .map(flowPathRepository::findById)
@@ -45,7 +48,7 @@ public class NotifyFlowStatsOnRemovedPathsAction<T extends FlowPathSwappingFsm<T
                     Flow flow = flowPath.getFlow();
                     RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
                             flow.getFlowId(), flow.getYFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
-                            FlowPathMapper.INSTANCE.mapToPathNodes(flowPath));
+                            FlowPathMapper.INSTANCE.mapToPathNodes(originalFlow, flowPath));
                     carrier.sendNotifyFlowStats(pathInfo);
                 });
     }

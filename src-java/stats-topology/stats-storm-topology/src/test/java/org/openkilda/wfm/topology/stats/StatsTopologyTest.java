@@ -788,7 +788,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     private void sendRemoveFlowPathInfo(FlowPath flowPath) {
         RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
                 flowPath.getFlowId(), null, flowPath.getCookie(), flowPath.getMeterId(),
-                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath));
+                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath));
         InfoMessage infoMessage = new InfoMessage(pathInfo, timestamp, UUID.randomUUID().toString(), null, null);
         sendMessage(infoMessage, statsTopologyConfig.getFlowStatsNotifyTopic());
     }
@@ -796,7 +796,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     private void sendUpdateFlowPathInfo(FlowPath flowPath) {
         UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
                 flowPath.getFlowId(), null, flowPath.getCookie(), flowPath.getMeterId(),
-                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath));
+                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath));
         InfoMessage infoMessage = new InfoMessage(pathInfo, timestamp, UUID.randomUUID().toString(), null, null);
         sendMessage(infoMessage, statsTopologyConfig.getFlowStatsNotifyTopic());
     }

@@ -110,8 +110,8 @@ public abstract class HistoryMapper {
     @Mapping(source = "reverse.meterId", target = "reverseMeterId")
     @Mapping(source = "forward.status", target = "forwardStatus")
     @Mapping(source = "reverse.status", target = "reverseStatus")
-    @Mapping(source = "forward", target = "forwardPath")
-    @Mapping(source = "reverse", target = "reversePath")
+    @Mapping(target = "forwardPath", expression = "java(mapPath(flow, forward))")
+    @Mapping(target = "reversePath", expression = "java(mapPath(flow, reverse))")
     @Mapping(source = "dumpType", target = "dumpType")
     public abstract FlowDumpData map(Flow flow, FlowPath forward, FlowPath reverse, DumpType dumpType);
 
@@ -179,6 +179,8 @@ public abstract class HistoryMapper {
     @Mapping(target = "reverseCookie", ignore = true)
     @Mapping(target = "forwardStatus", ignore = true)
     @Mapping(target = "reverseStatus", ignore = true)
+    @Mapping(target = "forwardPath", expression = "java(mapPath(flow, flow.getForwardPath()))")
+    @Mapping(target = "reversePath", expression = "java(mapPath(flow, flow.getReversePath()))")
     protected abstract FlowDumpData generatedMap(Flow flow, FlowResources resources, DumpType dumpType);
 
     @Mapping(target = "forwardCookie", ignore = true)
@@ -188,9 +190,9 @@ public abstract class HistoryMapper {
     /**
      * Adds string representation of flow path into {@link FlowDumpData}.
      */
-    protected String mapPath(FlowPath path) {
+    protected String mapPath(Flow flow, FlowPath path) {
         try {
-            return Utils.MAPPER.writeValueAsString(FlowPathMapper.INSTANCE.mapToPathNodes(path));
+            return Utils.MAPPER.writeValueAsString(FlowPathMapper.INSTANCE.mapToPathNodes(flow, path));
         } catch (JsonProcessingException ex) {
             log.error("Unable to map the path: {}", path, ex);
             return null;
