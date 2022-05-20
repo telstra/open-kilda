@@ -19,6 +19,7 @@ import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.wfm.share.utils.PoolEntityAdapter;
+import org.openkilda.wfm.topology.switchmanager.service.configs.LagPortOperationConfig;
 
 import java.util.Optional;
 

@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.service;
+package org.openkilda.wfm.topology.switchmanager.service.configs;
 
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.tx.TransactionManager;

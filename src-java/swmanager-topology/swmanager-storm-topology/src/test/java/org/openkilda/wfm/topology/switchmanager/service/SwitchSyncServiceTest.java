@@ -60,6 +60,7 @@ import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.topology.switchmanager.service.configs.SwitchSyncConfig;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -75,6 +76,7 @@ import java.util.UUID;
 @RunWith(MockitoJUnitRunner.class)
 public class SwitchSyncServiceTest {
 
+    private static final int OF_COMMANDS_BATCH_SIZE = 500;
     private static SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
     private static String FLOW_ID = "flow_id";
     private static String KEY = "KEY";
@@ -106,7 +108,7 @@ public class SwitchSyncServiceTest {
 
     @Before
     public void setUp() {
-        service = new SwitchSyncService(carrier, commandBuilder);
+        service = new SwitchSyncService(carrier, commandBuilder, new SwitchSyncConfig(OF_COMMANDS_BATCH_SIZE));
 
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).build();
         flowEntry = new FlowEntry(

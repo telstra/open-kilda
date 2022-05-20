@@ -137,3 +137,5 @@ flow.delete.speaker.command.retries = 3
 server42.control.rtt.sync.interval.seconds = 60
 
 blue.green.mode = blue
+
+swmanager.of.commands.batch.size = 500
