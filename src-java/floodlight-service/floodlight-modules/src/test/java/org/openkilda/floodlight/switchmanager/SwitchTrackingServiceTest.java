@@ -160,7 +160,6 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
     @Test
     public void switchRemoved() {
         Capture<Message> producedMessage = prepareSwitchEventCommon(dpId);
-        switchManager.deactivate(eq(dpId));
         replayAll();
         service.switchRemoved(dpId);
 
@@ -168,38 +167,8 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
     }
 
     @Test
-    public void switchActivate() throws Exception {
-        SpeakerSwitchView expectedSwitchView = makeSwitchRecord(dpId, switchFeatures, true, true);
-        switchActivateTest(prepareAliveSwitchEvent(expectedSwitchView), expectedSwitchView);
-    }
-
-    @Test
-    public void switchActivateMissing() throws Exception {
-        switchActivateTest(prepareRemovedSwitchEvent(), null);
-    }
-
-    private void switchActivateTest(Capture<Message> producedMessage, SpeakerSwitchView expectedSwitchView)
-            throws Exception {
-        switchManager.activate(dpId);
-        expectLastCall().andAnswer(new IAnswer<Object>() {
-            @Override
-            public Object answer() throws Throwable {
-                service.completeSwitchActivation((DatapathId) getCurrentArguments()[0]);
-                return null;
-            }
-        });
-
-        replayAll();
-
-        service.switchActivated(dpId);
-        verifySwitchEvent(SwitchChangeType.ACTIVATED, expectedSwitchView, producedMessage);
-        assertEquals(1, producedMessage.getValues().size());
-    }
-
-    @Test
     public void switchDeactivated() {
         Capture<Message> producedMessage = prepareSwitchEventCommon(dpId);
-        switchManager.deactivate(eq(dpId));
         replayAll();
         service.switchDeactivated(dpId);
         verifySwitchEvent(SwitchChangeType.DEACTIVATED, null, producedMessage);

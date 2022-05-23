@@ -21,7 +21,6 @@ import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
-import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
@@ -41,7 +40,6 @@ import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.info.switches.ConnectModeResponse;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
 import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.info.switches.PortDescription;
@@ -253,22 +251,6 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         return messagingChannel.sendAndGet(switchManagerTopic, request)
                 .thenApply(SwitchRulesResponse.class::cast)
                 .thenApply(SwitchRulesResponse::getRuleIds);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public CompletableFuture<ConnectModeRequest.Mode> connectMode(ConnectModeRequest.Mode mode) {
-        final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Set/Get switch connect mode request received: mode = {}", mode);
-
-        ConnectModeRequest data = new ConnectModeRequest(mode);
-        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
-
-        return messagingChannel.sendAndGet(floodlightTopic, request)
-                .thenApply(ConnectModeResponse.class::cast)
-                .thenApply(ConnectModeResponse::getMode);
     }
 
     @Override
