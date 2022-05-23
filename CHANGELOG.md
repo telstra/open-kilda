@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.119.0 (19/05/2022)
+
+### Features:
+-  [#4793](https://github.com/telstra/open-kilda/pull/4793) Implement dedicated y-flow paths swap [**floodlight**][**northbound**][**storm-topologies**]
+-  [#4798](https://github.com/telstra/open-kilda/pull/4798) Fix response payload of y-flow read paths [**storm-topologies**]
+
+### Bug Fixes:
+-  [#4777](https://github.com/telstra/open-kilda/pull/4777) Fix exception while removing ISL with deactivated endpoint switch (Issue: [#4150](https://github.com/telstra/open-kilda/issues/4150)) [**storm-topologies**]
+-  [#4799](https://github.com/telstra/open-kilda/pull/4799) Fix update flow with y-flow diverse flow id (Issue: [#4801](https://github.com/telstra/open-kilda/issues/4801))
+
+### Improvements:
+-  [#4800](https://github.com/telstra/open-kilda/pull/4800) Add history topology to healthcheck spec [**tests**]
+-  [#4802](https://github.com/telstra/open-kilda/pull/4802) [test] minor fixes for stability [**tests**]
+-  [#4803](https://github.com/telstra/open-kilda/pull/4803) Add check for timestamp iso format #4773 (Issue: [#4773](https://github.com/telstra/open-kilda/issues/4773)) [**tests**]
+-  [#4771](https://github.com/telstra/open-kilda/pull/4771) Changed examples of flow history endpoint [**docs**]
+-  [#4773](https://github.com/telstra/open-kilda/pull/4773) Implemented new human-readable timestamp field in flow history (Issue: [#4769](https://github.com/telstra/open-kilda/issues/4769)) [**storm-topologies**]
+-  [#4775](https://github.com/telstra/open-kilda/pull/4775) [test] allow vxlan tests on a local env [**tests**]
+-  [#4784](https://github.com/telstra/open-kilda/pull/4784) Add LAG ports test for #4725 (Issue: [#4725](https://github.com/telstra/open-kilda/issues/4725)) [**tests**]
+-  [#4789](https://github.com/telstra/open-kilda/pull/4789) [test] refactor SwitchSyncSpec [**tests**]
+-  [#4762](https://github.com/telstra/open-kilda/pull/4762) Added connected devices index. Part 1 (Issue: [#3760](https://github.com/telstra/open-kilda/issues/3760))
+-  [#4794](https://github.com/telstra/open-kilda/pull/4794) Use OVS from kilda/ovs repo
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.118.4...v1.119.0).
+
+### Affected Components:
+fl, network, reroute, nbworker, nb, flow-hs, connected
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.118.4 (18/05/2022)
 
 ### Bug Fixes:
