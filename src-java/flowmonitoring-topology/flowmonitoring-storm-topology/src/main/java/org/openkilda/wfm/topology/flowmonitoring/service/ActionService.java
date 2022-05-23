@@ -135,13 +135,19 @@ public class ActionService implements FlowSlaMonitoringCarrier {
             log.debug("Processing flow SLA checks for shard {}", shardNumber);
         }
         for (FsmKey key : fsms.keySet()) {
-            if (key.flowId.hashCode() % shardCount == shardNumber) {
+            if (needToCheckSla(key.flowId.hashCode(), shardNumber)) {
                 if (log.isTraceEnabled()) {
                     log.trace("Processing SLA check for flow FSM {}: Shard number: {}", key, shardNumber);
                 }
                 fsmExecutor.fire(fsms.get(key), Event.TICK, context);
             }
         }
+    }
+
+    @VisibleForTesting
+    boolean needToCheckSla(int hashCode, int shardNumber) {
+        // hashCode can be negative, so we can't use expression `hashCode() % shardCount == shardNumber`
+        return (hashCode + shardNumber) % shardCount == 0;
     }
 
     private FsmKey getFsmKey(String flowId, FlowDirection direction) {
