@@ -15,19 +15,18 @@
 
 package org.openkilda.wfm.topology.flowhs.service.yflow;
 
-import static java.util.Collections.emptyList;
-
 import org.openkilda.messaging.command.yflow.SubFlowDto;
-import org.openkilda.messaging.command.yflow.SubFlowPathDto;
 import org.openkilda.messaging.command.yflow.SubFlowsResponse;
-import org.openkilda.messaging.command.yflow.YFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowPathsResponse;
 import org.openkilda.messaging.command.yflow.YFlowResponse;
-import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.model.FlowPathDto;
+import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.YFlow;
+import org.openkilda.model.YFlow.SharedEndpoint;
 import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
@@ -44,11 +43,10 @@ import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -86,7 +84,7 @@ public class YFlowReadService {
         Collection<YFlow> yFlows = transactionManager.doInTransaction(getReadOperationRetryPolicy(),
                 yFlowRepository::findAll);
         return yFlows.stream()
-                .map(this::convertToYFlowDto)
+                .map(flow -> YFlowMapper.INSTANCE.toYFlowDto(flow, flowRepository))
                 .map(YFlowResponse::new)
                 .collect(Collectors.toList());
     }
@@ -97,7 +95,7 @@ public class YFlowReadService {
     public YFlowResponse getYFlow(@NonNull String yFlowId) throws FlowNotFoundException {
         return transactionManager.doInTransaction(getReadOperationRetryPolicy(), () ->
                         yFlowRepository.findById(yFlowId))
-                .map(this::convertToYFlowDto)
+                .map(flow -> YFlowMapper.INSTANCE.toYFlowDto(flow, flowRepository))
                 .map(YFlowResponse::new)
                 .orElseThrow(() -> new FlowNotFoundException(yFlowId));
     }
@@ -107,39 +105,75 @@ public class YFlowReadService {
      */
     public YFlowPathsResponse getYFlowPaths(@NonNull String yFlowId) throws FlowNotFoundException {
         return transactionManager.doInTransaction(getReadOperationRetryPolicy(), () -> {
-            Set<YSubFlow> subFlows = yFlowRepository.findById(yFlowId)
-                    .orElseThrow(() -> new FlowNotFoundException(yFlowId))
-                    .getSubFlows();
-            Set<FlowPath> mainPaths = new HashSet<>();
-            Set<FlowPath> protectedPaths = new HashSet<>();
-            for (YSubFlow subFlow : subFlows) {
+            YFlow yFlow = yFlowRepository.findById(yFlowId)
+                    .orElseThrow(() -> new FlowNotFoundException(yFlowId));
+            Set<FlowPath> mainForwardPaths = new HashSet<>();
+            Set<FlowPath> mainReversePaths = new HashSet<>();
+            Set<FlowPath> protectedForwardPaths = new HashSet<>();
+            Set<FlowPath> protectedReversePaths = new HashSet<>();
+            List<FlowPathDto> subFlowPathDtos = new ArrayList<>();
+            for (YSubFlow subFlow : yFlow.getSubFlows()) {
                 Flow flow = subFlow.getFlow();
-                mainPaths.add(flow.getForwardPath());
-                if (flow.isAllocateProtectedPath() && flow.getProtectedForwardPath() != null) {
-                    protectedPaths.add(flow.getProtectedForwardPath());
+                mainForwardPaths.add(flow.getForwardPath());
+                mainReversePaths.add(flow.getReversePath());
+                FlowPathDto.FlowPathDtoBuilder pathDtoBuilder = FlowPathDto.builder()
+                        .id(flow.getFlowId())
+                        .forwardPath(FlowPathMapper.INSTANCE.mapToPathNodes(flow.getForwardPath()))
+                        .reversePath(FlowPathMapper.INSTANCE.mapToPathNodes(flow.getReversePath()));
+
+                if (flow.isAllocateProtectedPath()) {
+                    FlowProtectedPathDto.FlowProtectedPathDtoBuilder protectedDtoBuilder =
+                            FlowProtectedPathDto.builder();
+                    if (flow.getProtectedForwardPath() != null) {
+                        protectedForwardPaths.add(flow.getProtectedForwardPath());
+                        protectedDtoBuilder.forwardPath(
+                                FlowPathMapper.INSTANCE.mapToPathNodes(flow.getProtectedForwardPath()));
+
+                    }
+                    if (flow.getProtectedReversePath() != null) {
+                        protectedReversePaths.add(flow.getProtectedReversePath());
+                        protectedDtoBuilder.reversePath(
+                                FlowPathMapper.INSTANCE.mapToPathNodes(flow.getProtectedReversePath()));
+                    }
+                    pathDtoBuilder.protectedPath(protectedDtoBuilder.build());
                 }
+                subFlowPathDtos.add(pathDtoBuilder.build());
             }
 
-            List<PathSegment> sharedPathSegments = IntersectionComputer.calculatePathIntersectionFromSource(mainPaths);
-            PathInfoData sharedPath = FlowPathMapper.INSTANCE.map(sharedPathSegments);
+            SharedEndpoint yFlowSharedEndpoint = yFlow.getSharedEndpoint();
+            FlowEndpoint sharedEndpoint =
+                    new FlowEndpoint(yFlowSharedEndpoint.getSwitchId(), yFlowSharedEndpoint.getPortNumber());
+            List<PathSegment> sharedForwardPathSegments =
+                    IntersectionComputer.calculatePathIntersectionFromSource(mainForwardPaths);
+            List<PathSegment> sharedReversePathSegments =
+                    IntersectionComputer.calculatePathIntersectionFromDest(mainReversePaths);
+            FlowPathDto sharedPath = FlowPathDto.builder()
+                    .forwardPath(
+                            FlowPathMapper.INSTANCE.mapToPathNodes(sharedEndpoint, sharedForwardPathSegments, null))
+                    .reversePath(
+                            FlowPathMapper.INSTANCE.mapToPathNodes(null, sharedReversePathSegments, sharedEndpoint))
+                    .build();
 
-            PathInfoData sharedProtectedPath;
-            // At least 2 paths required to calculate Y-point.
-            if (protectedPaths.size() < 2) {
-                sharedProtectedPath = new PathInfoData();
-            } else {
-                List<PathSegment> pathSegments =
-                        IntersectionComputer.calculatePathIntersectionFromSource(protectedPaths);
-                sharedProtectedPath = FlowPathMapper.INSTANCE.map(pathSegments);
+            if (protectedForwardPaths.size() >= 2 || protectedReversePaths.size() >= 2) {
+                FlowProtectedPathDto.FlowProtectedPathDtoBuilder protectedDtoBuilder =
+                        FlowProtectedPathDto.builder();
+                // At least 2 paths required to calculate Y-point.
+                if (protectedForwardPaths.size() >= 2) {
+                    List<PathSegment> pathSegments =
+                            IntersectionComputer.calculatePathIntersectionFromSource(protectedForwardPaths);
+                    protectedDtoBuilder.forwardPath(
+                            FlowPathMapper.INSTANCE.mapToPathNodes(sharedEndpoint, pathSegments, null));
+                }
+                if (protectedReversePaths.size() >= 2) {
+                    List<PathSegment> pathSegments =
+                            IntersectionComputer.calculatePathIntersectionFromDest(protectedReversePaths);
+                    protectedDtoBuilder.reversePath(
+                            FlowPathMapper.INSTANCE.mapToPathNodes(null, pathSegments, sharedEndpoint));
+                }
+                sharedPath.setProtectedPath(protectedDtoBuilder.build());
             }
 
-            List<SubFlowPathDto> subFlowPathDtos = mainPaths.stream()
-                    .map(flowPath -> new SubFlowPathDto(flowPath.getFlowId(), FlowPathMapper.INSTANCE.map(flowPath)))
-                    .collect(Collectors.toList());
-            List<SubFlowPathDto> subFlowProtectedPathDtos = protectedPaths.stream()
-                    .map(flowPath -> new SubFlowPathDto(flowPath.getFlowId(), FlowPathMapper.INSTANCE.map(flowPath)))
-                    .collect(Collectors.toList());
-            return new YFlowPathsResponse(sharedPath, subFlowPathDtos, sharedProtectedPath, subFlowProtectedPathDtos);
+            return new YFlowPathsResponse(sharedPath, subFlowPathDtos);
         });
     }
 
@@ -155,30 +189,5 @@ public class YFlowReadService {
                     .collect(Collectors.toList());
             return new SubFlowsResponse(subFlows);
         });
-    }
-
-    private YFlowDto convertToYFlowDto(YFlow yFlow) {
-        Optional<Flow> mainAffinityFlow = yFlow.getSubFlows().stream()
-                .map(YSubFlow::getFlow)
-                .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
-                .findFirst();
-        Collection<Flow> diverseWithFlow = mainAffinityFlow.map(this::getDiverseWithFlow).orElse(emptyList());
-        Set<String> diverseFlows = diverseWithFlow.stream()
-                .filter(flow -> flow.getYFlowId() == null)
-                .map(Flow::getFlowId)
-                .collect(Collectors.toSet());
-        Set<String> diverseYFlows = diverseWithFlow.stream()
-                .map(Flow::getYFlowId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        return YFlowMapper.INSTANCE.toYFlowDto(yFlow, diverseFlows, diverseYFlows);
-    }
-
-    private Collection<Flow> getDiverseWithFlow(Flow flow) {
-        return flow.getDiverseGroupId() == null ? emptyList() :
-                flowRepository.findByDiverseGroupId(flow.getDiverseGroupId()).stream()
-                        .filter(diverseFlow -> !flow.getYFlowId().equals(diverseFlow.getYFlowId()))
-                        .collect(Collectors.toSet());
     }
 }

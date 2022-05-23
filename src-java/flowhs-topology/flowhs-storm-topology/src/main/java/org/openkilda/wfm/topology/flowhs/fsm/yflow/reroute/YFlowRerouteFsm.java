@@ -19,6 +19,7 @@ import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsReq
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
@@ -50,7 +51,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnTimeoutOper
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.RemoveOldMetersAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.RerouteSubFlowsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.StartReroutingYFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.ValidateNewMeterAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.ValidateNewMetersAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.ValidateYFlowAction;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteService;
@@ -86,7 +87,6 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
     private Set<String> targetSubFlowIds;
 
     private YFlowResources oldResources;
-    private YFlowResources reallocatedResources;
 
     private final Set<String> subFlows = new HashSet<>();
     private final Set<String> reroutingSubFlows = new HashSet<>();
@@ -101,6 +101,8 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
     private List<Long> oldYFlowPathCookies;
 
     private Collection<DeleteSpeakerCommandsRequest> deleteOldYFlowCommands;
+
+    private RerouteError rerouteError;
 
     private YFlowRerouteFsm(@NonNull CommandContext commandContext, @NonNull YFlowRerouteHubCarrier carrier,
                             @NonNull String yFlowId, @NonNull Collection<YFlowEventListener> eventListeners) {
@@ -133,6 +135,12 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
 
     public void addAllocatedSubFlow(String flowId) {
         allocatedSubFlows.add(flowId);
+    }
+
+    public void setRerouteError(RerouteError rerouteError) {
+        if (this.rerouteError == null) {
+            this.rerouteError = rerouteError;
+        }
     }
 
     @Override
@@ -173,8 +181,8 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
                     .perform(new StartReroutingYFlowAction(persistenceManager, ruleManager));
             builder.transitions()
                     .from(State.YFLOW_VALIDATED)
-                    .toAmong(State.REVERTING_YFLOW_STATUS, State.REVERTING_YFLOW_STATUS)
-                    .onEach(Event.TIMEOUT, Event.ERROR);
+                    .toAmong(State.FINISHED, State.REVERTING_YFLOW_STATUS, State.REVERTING_YFLOW_STATUS)
+                    .onEach(Event.YFLOW_REROUTE_SKIPPED, Event.TIMEOUT, Event.ERROR);
 
             builder.transitions()
                     .from(State.YFLOW_REROUTE_STARTED)
@@ -200,8 +208,9 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
             builder.transitions()
                     .from(State.REROUTING_SUB_FLOWS)
                     .toAmong(State.SUB_FLOW_REROUTES_FINISHED, State.SUB_FLOW_REROUTES_FINISHED,
-                            State.ALL_PENDING_OPERATIONS_COMPLETED)
-                    .onEach(Event.ALL_SUB_FLOWS_REROUTED, Event.FAILED_TO_REROUTE_SUB_FLOWS, Event.TIMEOUT);
+                            State.COMPLETE_YFLOW_INSTALLATION, State.ALL_PENDING_OPERATIONS_COMPLETED)
+                    .onEach(Event.ALL_SUB_FLOWS_REROUTED, Event.FAILED_TO_REROUTE_SUB_FLOWS,
+                            Event.YFLOW_REROUTE_SKIPPED, Event.TIMEOUT);
 
             builder.onEntry(State.ALL_PENDING_OPERATIONS_COMPLETED)
                     .perform(new OnTimeoutOperationAction());
@@ -220,6 +229,26 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
 
             builder.transition()
                     .from(State.SUB_FLOW_REROUTES_FINISHED)
+                    .to(State.REMOVING_OLD_YFLOW_METERS)
+                    .on(Event.NEXT)
+                    .perform(new RemoveOldMetersAction(persistenceManager, ruleManager));
+
+            builder.internalTransition()
+                    .within(State.REMOVING_OLD_YFLOW_METERS)
+                    .on(Event.RESPONSE_RECEIVED)
+                    .perform(new OnReceivedRemoveResponseAction(speakerCommandRetriesLimit));
+            builder.transition()
+                    .from(State.REMOVING_OLD_YFLOW_METERS)
+                    .to(State.OLD_YFLOW_METERS_REMOVED)
+                    .on(Event.YFLOW_METERS_REMOVED);
+            builder.transition()
+                    .from(State.REMOVING_OLD_YFLOW_METERS)
+                    .to(State.OLD_YFLOW_METERS_REMOVED)
+                    .on(Event.ERROR)
+                    .perform(new HandleNotCompletedCommandsAction("remove old meters"));
+
+            builder.transition()
+                    .from(State.OLD_YFLOW_METERS_REMOVED)
                     .to(State.NEW_YFLOW_RESOURCES_ALLOCATED)
                     .on(Event.NEXT)
                     .perform(new AllocateYFlowResourcesAction<>(persistenceManager, resourceAllocationRetriesLimit,
@@ -254,7 +283,7 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
                     .from(State.NEW_YFLOW_METERS_INSTALLED)
                     .to(State.VALIDATING_NEW_YFLOW_METERS)
                     .on(Event.NEXT)
-                    .perform(new ValidateNewMeterAction(persistenceManager));
+                    .perform(new ValidateNewMetersAction(persistenceManager));
 
             builder.internalTransition()
                     .within(State.VALIDATING_NEW_YFLOW_METERS)
@@ -272,26 +301,6 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
 
             builder.transition()
                     .from(State.NEW_YFLOW_METERS_VALIDATED)
-                    .to(State.REMOVING_OLD_YFLOW_METERS)
-                    .on(Event.NEXT)
-                    .perform(new RemoveOldMetersAction(persistenceManager, ruleManager));
-
-            builder.internalTransition()
-                    .within(State.REMOVING_OLD_YFLOW_METERS)
-                    .on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedRemoveResponseAction(speakerCommandRetriesLimit));
-            builder.transition()
-                    .from(State.REMOVING_OLD_YFLOW_METERS)
-                    .to(State.OLD_YPOINT_METERS_REMOVED)
-                    .on(Event.YPOINT_METER_REMOVED);
-            builder.transition()
-                    .from(State.REMOVING_OLD_YFLOW_METERS)
-                    .to(State.OLD_YPOINT_METERS_REMOVED)
-                    .on(Event.ERROR)
-                    .perform(new HandleNotCompletedCommandsAction("remove old meters"));
-
-            builder.transition()
-                    .from(State.OLD_YPOINT_METERS_REMOVED)
                     .to(State.DEALLOCATING_OLD_YFLOW_RESOURCES)
                     .on(Event.NEXT);
 
@@ -320,7 +329,7 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
             builder.transition()
                     .from(State.YFLOW_INSTALLATION_COMPLETED)
                     .to(State.FINISHED)
-                    .on(Event.YFLOW_REROUTE_FINISHED);
+                    .on(Event.NEXT);
             builder.transition()
                     .from(State.YFLOW_INSTALLATION_COMPLETED)
                     .to(State.FINISHED_WITH_ERROR)
@@ -382,7 +391,7 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
         VALIDATING_NEW_YFLOW_METERS,
         NEW_YFLOW_METERS_VALIDATED,
         REMOVING_OLD_YFLOW_METERS,
-        OLD_YPOINT_METERS_REMOVED,
+        OLD_YFLOW_METERS_REMOVED,
         DEALLOCATING_OLD_YFLOW_RESOURCES,
         OLD_YFLOW_RESOURCES_DEALLOCATED,
         COMPLETE_YFLOW_INSTALLATION,
@@ -405,9 +414,9 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
         FAILED_TO_REROUTE_SUB_FLOWS,
         YFLOW_METERS_INSTALLED,
         YFLOW_METERS_VALIDATED,
-        YPOINT_METER_REMOVED,
+        YFLOW_METERS_REMOVED,
 
-        YFLOW_REROUTE_FINISHED,
+        YFLOW_REROUTE_SKIPPED,
 
         TIMEOUT,
         PENDING_OPERATIONS_COMPLETED,

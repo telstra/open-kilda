@@ -25,8 +25,9 @@ public class YFlowStatsInfoFactory {
     public YFlowStatsInfoFactory(
             @NonNull String yFlowId,
             @NonNull YFlowEndpointResources sharedEndpointResources,
-            @NonNull YFlowEndpointResources yPointResources) {
-        blank = new YFlowStatsInfoBlank(yFlowId, sharedEndpointResources, yPointResources);
+            @NonNull YFlowEndpointResources yPointResources,
+            YFlowEndpointResources protectedYPointResources) {
+        blank = new YFlowStatsInfoBlank(yFlowId, sharedEndpointResources, yPointResources, protectedYPointResources);
     }
 
     public UpdateYFlowStatsInfo produceAddUpdateNotification() {
@@ -41,8 +42,9 @@ public class YFlowStatsInfoFactory {
         public YFlowStatsInfoBlank(
                 @NonNull String yFlowId,
                 @NonNull YFlowEndpointResources sharedEndpointResources,
-                @NonNull YFlowEndpointResources yPointResources) {
-            super(yFlowId, sharedEndpointResources, yPointResources);
+                @NonNull YFlowEndpointResources yPointResources,
+                YFlowEndpointResources protectedYPointResources) {
+            super(yFlowId, sharedEndpointResources, yPointResources, protectedYPointResources);
         }
     }
 }

@@ -43,9 +43,9 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
 
     /** System tries to reroute a flow in case latency on a path is (flowLatency + flowLatency * 0.05);
      * NOTE: There is some possible latency calculation error in virtual lab(ovs/linux) after applying 'tc' command
-     * that's why '0.5' is used. */
+     * that's why '0.6' is used. */
     @Shared
-    def flowLatencySlaThresholdPercent = 0.5 //kilda_flow_latency_sla_threshold_percent: 0.05
+    def flowLatencySlaThresholdPercent = 0.6 //kilda_flow_latency_sla_threshold_percent: 0.05
     @Shared //kilda_flow_sla_check_interval_seconds: 60
     @Value('${flow.sla.check.interval.seconds}')
     Integer flowSlaCheckIntervalSeconds

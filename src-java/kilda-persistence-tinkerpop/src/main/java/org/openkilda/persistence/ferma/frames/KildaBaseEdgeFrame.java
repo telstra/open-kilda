@@ -33,7 +33,7 @@ public abstract class KildaBaseEdgeFrame extends AbstractEdgeFrame {
     public void setProperty(String name, Object value) {
         if (!name.equals(KildaBaseVertexFrame.TIME_MODIFY_PROPERTY)
                 && !Objects.equals(value, getProperty(name))) {
-            setProperty(KildaBaseVertexFrame.TIME_MODIFY_PROPERTY,
+            super.setProperty(KildaBaseVertexFrame.TIME_MODIFY_PROPERTY,
                     InstantStringConverter.INSTANCE.toGraphProperty(Instant.now()));
         }
         super.setProperty(name, value);

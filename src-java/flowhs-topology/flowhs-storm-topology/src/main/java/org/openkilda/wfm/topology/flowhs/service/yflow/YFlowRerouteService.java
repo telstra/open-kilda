@@ -15,13 +15,12 @@
 
 package org.openkilda.wfm.topology.flowhs.service.yflow;
 
-import static java.lang.String.format;
-
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
@@ -108,8 +107,8 @@ public class YFlowRerouteService
             throw new DuplicateKeyException(key, "There's another active FSM with the same key");
         }
         if (fsmRegister.hasRegisteredFsmWithFlowId(yFlowId)) {
-            sendErrorResponseToNorthbound(ErrorType.ALREADY_EXISTS, "Could not reroute y-flow",
-                    format("Y-flow %s is already rerouting now", yFlowId), commandContext);
+            carrier.sendYFlowRerouteResultStatus(yFlowId, new RerouteInProgressError(),
+                    commandContext.getCorrelationId());
             return;
         }
 
@@ -188,11 +187,7 @@ public class YFlowRerouteService
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
             fsmRegister.unregisterFsm(key);
-
-            carrier.cancelTimeoutCallback(key);
-            if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
-                carrier.sendInactive();
-            }
+            cancelProcessing(key);
         }
     }
 }

@@ -69,14 +69,14 @@ public class SwapFlowPathsAction extends
                 FlowPath oldForward = flow.getForwardPath();
                 if (oldForward != null) {
                     stateMachine.setOldPrimaryForwardPath(oldForward.getPathId());
-                    stateMachine.setOldPrimaryForwardPathStatus(oldForward.getStatus());
+                    stateMachine.setOldPathStatuses(oldForward);
                     oldForward.setStatus(FlowPathStatus.IN_PROGRESS);
                 }
 
                 FlowPath oldReverse = flow.getReversePath();
                 if (oldReverse != null) {
                     stateMachine.setOldPrimaryReversePath(oldReverse.getPathId());
-                    stateMachine.setOldPrimaryReversePathStatus(oldReverse.getStatus());
+                    stateMachine.setOldPathStatuses(oldReverse);
                     oldReverse.setStatus(FlowPathStatus.IN_PROGRESS);
                 }
 
@@ -108,14 +108,14 @@ public class SwapFlowPathsAction extends
                 FlowPath oldForward = flow.getProtectedForwardPath();
                 if (oldForward != null) {
                     stateMachine.setOldProtectedForwardPath(oldForward.getPathId());
-                    stateMachine.setOldProtectedForwardPathStatus(oldForward.getStatus());
+                    stateMachine.setOldPathStatuses(oldForward);
                     oldForward.setStatus(FlowPathStatus.IN_PROGRESS);
                 }
 
                 FlowPath oldReverse = flow.getProtectedReversePath();
                 if (oldReverse != null) {
                     stateMachine.setOldProtectedReversePath(oldReverse.getPathId());
-                    stateMachine.setOldProtectedReversePathStatus(oldReverse.getStatus());
+                    stateMachine.setOldPathStatuses(oldReverse);
                     oldReverse.setStatus(FlowPathStatus.IN_PROGRESS);
                 }
 

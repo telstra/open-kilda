@@ -387,6 +387,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
     void checkHistoryCommonStuff(FlowHistoryEntry flowHistory, String flowId) {
         assert flowHistory.flowId == flowId
         assert flowHistory.taskId
+        assert flowHistory.payload.timestampIso
     }
 
     /** We pass latest timestamp when changes were done.

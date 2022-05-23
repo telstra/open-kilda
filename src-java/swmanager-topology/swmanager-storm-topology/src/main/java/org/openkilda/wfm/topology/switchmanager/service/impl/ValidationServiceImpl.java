@@ -28,6 +28,7 @@ import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.FlowMeter;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.Meter;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -97,9 +98,11 @@ public class ValidationServiceImpl implements ValidationService {
     @Override
     public List<SpeakerData> buildExpectedEntities(SwitchId switchId) {
         Set<PathId> flowPathIds = flowPathRepository.findBySegmentSwitch(switchId).stream()
+                .filter(fp -> fp.getStatus() != FlowPathStatus.IN_PROGRESS)
                 .map(FlowPath::getPathId)
                 .collect(Collectors.toSet());
         flowPathIds.addAll(flowPathRepository.findByEndpointSwitch(switchId).stream()
+                .filter(fp -> fp.getStatus() != FlowPathStatus.IN_PROGRESS)
                 .map(FlowPath::getPathId)
                 .collect(Collectors.toSet()));
         PersistenceDataAdapter dataAdapter = PersistenceDataAdapter.builder()

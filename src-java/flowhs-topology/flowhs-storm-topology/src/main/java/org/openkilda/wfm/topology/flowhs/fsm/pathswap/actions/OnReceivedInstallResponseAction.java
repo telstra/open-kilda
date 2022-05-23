@@ -22,6 +22,7 @@ import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseOnReceivedResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapContext;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.Event;
@@ -33,7 +34,8 @@ import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
-public class OnReceivedInstallResponseAction extends BaseOnReceivedResponseAction {
+public class OnReceivedInstallResponseAction extends BaseOnReceivedResponseAction<FlowPathSwapFsm, State, Event,
+        FlowPathSwapContext> {
     public OnReceivedInstallResponseAction(int speakerCommandRetriesLimit) {
         super(speakerCommandRetriesLimit);
     }

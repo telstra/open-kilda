@@ -21,7 +21,7 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class RerouteInProgressError extends RerouteError {
+public class RerouteInProgressError extends FlowInProgressError {
 
     @JsonCreator
     public RerouteInProgressError() {

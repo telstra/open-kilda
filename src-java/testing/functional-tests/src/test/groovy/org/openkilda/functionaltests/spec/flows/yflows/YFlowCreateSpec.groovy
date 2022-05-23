@@ -62,7 +62,10 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         def yFlow = northboundV2.addYFlow(yFlowRequest)
 
         then: "Y-flow is created and has UP status"
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.UP.toString() }
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
+            yFlow = northboundV2.getYFlow(yFlow.YFlowId)
+            assert yFlow.status == FlowState.UP.toString()
+        }
         northboundV2.getYFlow(yFlow.YFlowId).YPoint
 
         and: "2 sub-flows are created, visible via regular 'dump flows' API"
@@ -98,10 +101,10 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         and: "All involved switches pass switch validation"
         def involvedSwitches = pathHelper.getInvolvedYSwitches(paths)
-//        involvedSwitches.each { sw ->
-//            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//        }
+        involvedSwitches.each { sw ->
+            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
 
         and: "Bandwidth is properly consumed on shared and non-shared ISLs"
         def allLinksAfter = northbound.getAllLinks()
@@ -150,7 +153,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
-//        statsHelper.verifyFlowWritesStats(yFlow.YFlowId, beforeTraffic, trafficApplicable)
+        statsHelper.verifyYFlowWritesMeterStats(yFlow, beforeTraffic, trafficApplicable)
         yFlow.subFlows.each {
             statsHelper.verifyFlowWritesStats(it.flowId, beforeTraffic, trafficApplicable)
         }
@@ -159,11 +162,16 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         northboundV2.deleteYFlow(yFlow.YFlowId)
 
         then: "The y-flow is no longer visible via 'get' API"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getAllYFlows().empty }
+        Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getYFlow(yFlow.YFlowId) }
         def flowRemoved = true
 
         and: "Related sub-flows are removed"
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getAllFlows().empty }
+        Wrappers.wait(WAIT_OFFSET) {
+            northboundV2.getAllFlows().forEach {
+                assert !yFlow.subFlows*.flowId.contains(it.flowId)
+                assert it.YFlowId != yFlow.YFlowId
+            }
+        }
 
         and: "History has relevant entries about y-flow deletion"
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { northbound.getFlowHistory(yFlow.YFlowId).last().payload.last().action == DELETE_SUCCESS_Y }
@@ -176,11 +184,10 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         and: "All involved switches pass switch validation"
         // https://github.com/telstra/open-kilda/issues/3411
         northbound.synchronizeSwitch(yFlow.sharedEndpoint.switchId, true)
-//        involvedSwitches.each { sw ->
-            //TODO: new method signature after rebase
-//            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty()
-//            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty()
-//        }
+        involvedSwitches.each { sw ->
+            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
 
         cleanup:
         yFlow && !flowRemoved && yFlowHelper.deleteYFlow(yFlow.YFlowId)
@@ -210,11 +217,15 @@ class YFlowCreateSpec extends HealthCheckSpecification {
             assertThat(errorDescription).matches(data.errorPattern(yFlow))
         }
 
-        and: "'Get' y-flows returns no flows"
-        northboundV2.getAllYFlows().empty
+        and: "'Get' y-flows doesn't return the flow"
+        assert !yFlowResponse || !northboundV2.getYFlow(yFlowResponse.YFlowId)
 
-        and: "'Get' flows returns no flows"
-        northboundV2.getAllFlows().empty
+        and: "'Get' flows doesn't return the sub-flows"
+        if (yFlowResponse) {
+            northboundV2.getAllFlows().forEach {
+                assert it.YFlowId != yFlowResponse.YFlowId
+            }
+        }
 
         cleanup:
         yFlowResponse && !exc && yFlowHelper.deleteYFlow(yFlowResponse.YFlowId)
@@ -381,13 +392,17 @@ existing flow '.*?' \
 source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.portNumber} vlanId=${flow.subFlows[1].sharedEndpoint.vlanId}/)
         }
 
-        and: "'Get' y-flows returns no flows"
+        and: "'Get' y-flows doesn't return the flow"
         Wrappers.wait(WAIT_OFFSET) { //even on error system briefly creates an 'in progress' flow
-            assert northboundV2.getAllYFlows().empty
+            assert !yFlowResponse || !northboundV2.getYFlow(yFlowResponse.YFlowId)
         }
 
-        and: "'Get' flows returns no flows"
-        northboundV2.getAllFlows().empty
+        and: "'Get' flows doesn't return the sub-flows"
+        if (yFlowResponse) {
+            northboundV2.getAllFlows().forEach {
+                assert it.YFlowId != yFlowResponse.YFlowId
+            }
+        }
 
         cleanup:
         yFlowResponse && !exc && yFlowHelper.deleteYFlow(yFlowResponse.YFlowId)
@@ -418,11 +433,17 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
                     "as part of LAG port $lagPort"
         }
 
-        and: "'Get' y-flows returns no flows"
-        northboundV2.getAllYFlows().empty
+        and: "'Get' y-flows doesn't return the flow"
+        Wrappers.wait(WAIT_OFFSET) { //even on error system briefly creates an 'in progress' flow
+            assert !yFlowResponse || !northboundV2.getYFlow(yFlowResponse.YFlowId)
+        }
 
-        and: "'Get' flows returns no flows"
-        northboundV2.getAllFlows().empty
+        and: "'Get' flows doesn't return the sub-flows"
+        if (yFlowResponse) {
+            northboundV2.getAllFlows().forEach {
+                assert it.YFlowId != yFlowResponse.YFlowId
+            }
+        }
 
         cleanup:
         yFlowResponse && !exc && yFlowHelper.deleteYFlow(yFlowResponse.YFlowId)

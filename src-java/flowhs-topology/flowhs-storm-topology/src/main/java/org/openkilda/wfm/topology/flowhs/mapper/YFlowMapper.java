@@ -23,13 +23,19 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.YFlow;
 import org.openkilda.model.YFlow.SharedEndpoint;
 import org.openkilda.model.YSubFlow;
+import org.openkilda.persistence.repositories.FlowRepository;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Mapper
 public abstract class YFlowMapper {
@@ -37,6 +43,31 @@ public abstract class YFlowMapper {
 
     @Mapping(target = "timeUpdate", source = "flow.timeModify")
     public abstract YFlowDto toYFlowDto(YFlow flow, Set<String> diverseWithFlows, Set<String> diverseWithYFlows);
+
+    /**
+     * Map {@link YFlow} to {@link YFlowDto} with completing diverseFlows and diverseYFlows.
+     */
+    public YFlowDto toYFlowDto(YFlow yFlow, FlowRepository flowRepository) {
+        Optional<Flow> mainAffinityFlow = yFlow.getSubFlows().stream()
+                .map(YSubFlow::getFlow)
+                .filter(f -> f.getFlowId().equals(f.getAffinityGroupId()))
+                .findFirst();
+        Set<String> diverseFlows = new HashSet<>();
+        Set<String> diverseYFlows = new HashSet<>();
+        if (mainAffinityFlow.isPresent()) {
+            Collection<Flow> diverseWithFlow = getDiverseWithFlow(mainAffinityFlow.get(), flowRepository);
+            diverseFlows = diverseWithFlow.stream()
+                    .filter(f -> f.getYFlowId() == null)
+                    .map(Flow::getFlowId)
+                    .collect(Collectors.toSet());
+            diverseYFlows = diverseWithFlow.stream()
+                    .map(Flow::getYFlowId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+        }
+
+        return YFlowMapper.INSTANCE.toYFlowDto(yFlow, diverseFlows, diverseYFlows);
+    }
 
     @Mapping(target = "outerVlanId", ignore = true)
     @Mapping(target = "innerVlanId", ignore = true)
@@ -69,5 +100,13 @@ public abstract class YFlowMapper {
                 .timeCreate(flow.map(Flow::getTimeCreate).orElse(null))
                 .timeUpdate(flow.map(Flow::getTimeModify).orElse(null))
                 .build();
+    }
+
+    protected Collection<Flow> getDiverseWithFlow(Flow flow, FlowRepository flowRepository) {
+        return flow.getDiverseGroupId() == null ? Collections.emptyList() :
+                flowRepository.findByDiverseGroupId(flow.getDiverseGroupId()).stream()
+                        .filter(diverseFlow -> !flow.getFlowId().equals(diverseFlow.getFlowId())
+                                || (flow.getYFlowId() != null && !flow.getYFlowId().equals(diverseFlow.getYFlowId())))
+                        .collect(Collectors.toSet());
     }
 }

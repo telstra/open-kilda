@@ -55,7 +55,7 @@ public class CompleteYFlowReroutingAction extends
         stateMachine.saveActionToHistory(format("The y-flow status was set to %s", flowStatus));
 
         if (stateMachine.getErrorReason() == null) {
-            stateMachine.fire(Event.YFLOW_REROUTE_FINISHED);
+            stateMachine.fire(Event.NEXT);
         } else {
             stateMachine.fire(Event.ERROR);
         }

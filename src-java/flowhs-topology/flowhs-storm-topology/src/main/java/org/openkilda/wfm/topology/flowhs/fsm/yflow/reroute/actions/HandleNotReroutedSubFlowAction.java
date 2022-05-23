@@ -64,9 +64,15 @@ public class HandleNotReroutedSubFlowAction
                 listener.onSubFlowProcessingFinished(stateMachine.getYFlowId(), subFlowId));
 
         if (stateMachine.getReroutingSubFlows().isEmpty()) {
-            stateMachine.fire(Event.FAILED_TO_REROUTE_SUB_FLOWS);
-            stateMachine.setErrorReason(format("Failed to reroute sub-flows %s of y-flow %s",
-                    stateMachine.getFailedSubFlows(), stateMachine.getYFlowId()));
+            if (stateMachine.getFailedSubFlows().containsAll(stateMachine.getSubFlows())) {
+                stateMachine.fire(Event.YFLOW_REROUTE_SKIPPED);
+                stateMachine.setErrorReason(format("Failed to reroute all sub-flows of y-flow %s",
+                        stateMachine.getYFlowId()));
+            } else {
+                stateMachine.fire(Event.FAILED_TO_REROUTE_SUB_FLOWS);
+                stateMachine.setErrorReason(format("Failed to reroute sub-flows %s of y-flow %s",
+                        stateMachine.getFailedSubFlows(), stateMachine.getYFlowId()));
+            }
         }
 
         if (isFirstError) {

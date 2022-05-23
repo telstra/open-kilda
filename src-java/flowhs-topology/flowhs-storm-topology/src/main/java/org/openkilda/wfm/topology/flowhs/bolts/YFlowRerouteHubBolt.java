@@ -37,6 +37,7 @@ import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
+import org.openkilda.messaging.info.stats.StatsNotification;
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputer;
@@ -208,6 +209,7 @@ public class YFlowRerouteHubBolt extends HubBolt implements YFlowRerouteHubCarri
                 .flowId(flowId)
                 .success(rerouteError == null)
                 .rerouteError(rerouteError)
+                .yFlow(true)
                 .build();
         Message message = new InfoMessage(rerouteResult, System.currentTimeMillis(), correlationId);
         emitWithContext(Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name(), getCurrentTuple(),
@@ -259,6 +261,15 @@ public class YFlowRerouteHubBolt extends HubBolt implements YFlowRerouteHubCarri
 
         emitWithContext(HUB_TO_STATS_TOPOLOGY_SENDER.name(), getCurrentTuple(),
                 new Values(flowPathInfo.getFlowId(), message));
+    }
+
+    @Override
+    public void sendStatsNotification(@NonNull StatsNotification notification) {
+        String correlationId = getCommandContext().getCorrelationId();
+        Message message = new InfoMessage(notification, System.currentTimeMillis(), correlationId);
+
+        emitWithContext(HUB_TO_STATS_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(correlationId, message));
     }
 
     @Override

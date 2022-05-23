@@ -71,7 +71,7 @@ public class OnNoPathFoundAction extends
                     && stateMachine.getNewProtectedForwardPath() == null
                     && stateMachine.getNewProtectedReversePath() == null) {
                 if (flow.getProtectedForwardPathId() == null && flow.getProtectedReversePathId() == null) {
-                    log.debug("Skip marking flow path statuses as inactive: flow {} doesn't have protected paths",
+                    log.debug("Skip marking flow path statuses as inactive: flow {} doesn't have a protected paths",
                             flowId);
                 } else {
                     log.debug("Set the flow path status of {}/{} to inactive",

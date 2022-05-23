@@ -43,7 +43,7 @@ public class InstallReallocatedMetersAction
         String yFlowId = stateMachine.getYFlowId();
         YFlow yFlow = getYFlow(yFlowId);
         Collection<InstallSpeakerCommandsRequest> commands =
-                buildYFlowInstallCommands(yFlow, stateMachine.getCommandContext());
+                buildYFlowInstallRequests(yFlow, stateMachine.getCommandContext());
 
         if (commands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to install y-flow meters");

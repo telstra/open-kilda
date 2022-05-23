@@ -26,9 +26,9 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.factory.generator.flow.EgressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.EgressYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.InputArpRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.InputLldpRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.flow.JointRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.MultiTableServer42IngressRuleGenerator;
@@ -108,27 +108,6 @@ public class FlowRulesGeneratorFactory {
      * Get ingress y-rule generator.
      */
     public RuleGenerator getIngressYRuleGenerator(
-            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
-            Set<FlowSideAdapter> overlappingIngressAdapters,
-            FlowPath alternativeFlowPath, Flow alternativeFlow, FlowTransitEncapsulation alternativeEncapsulation,
-            Set<FlowSideAdapter> alternativeOverlappingIngressAdapters,
-            MeterId sharedMeterId) {
-        UUID externalMeterCommandUuid = UUID.randomUUID();
-        RuleGenerator firstGenerator = getIngressYRuleGenerator(flowPath, flow, encapsulation,
-                overlappingIngressAdapters, sharedMeterId,
-                externalMeterCommandUuid, true);
-
-        RuleGenerator secondGenerator = getIngressYRuleGenerator(alternativeFlowPath, alternativeFlow,
-                alternativeEncapsulation, alternativeOverlappingIngressAdapters, sharedMeterId,
-                externalMeterCommandUuid, false);
-        return JointRuleGenerator.builder()
-                .firstGenerator(firstGenerator)
-                .secondGenerator(secondGenerator)
-                .build();
-    }
-
-
-    RuleGenerator getIngressYRuleGenerator(
             FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
             Set<FlowSideAdapter> overlappingIngressAdapters, MeterId sharedMeterId, UUID externalMeterCommandUuid,
             boolean generateMeterCommand) {
@@ -220,6 +199,24 @@ public class FlowRulesGeneratorFactory {
     }
 
     /**
+     * Get egress rule generator.
+     */
+    public RuleGenerator getEgressYRuleGenerator(FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
+                                                 MeterId sharedMeterId, UUID externalMeterCommandUuid,
+                                                 boolean generateMeterCommand) {
+        checkEgressRulePreRequirements(flowPath, flow, "egress");
+        return EgressYRuleGenerator.builder()
+                .flowPath(flowPath)
+                .flow(flow)
+                .encapsulation(encapsulation)
+                .config(config)
+                .sharedMeterId(sharedMeterId)
+                .externalMeterCommandUuid(externalMeterCommandUuid)
+                .generateMeterCommand(generateMeterCommand)
+                .build();
+    }
+
+    /**
      * Get egress mirror rule generator.
      */
     public RuleGenerator getEgressMirrorRuleGenerator(
@@ -257,36 +254,13 @@ public class FlowRulesGeneratorFactory {
                 .build();
     }
 
-
-    /**
-     * Get joint transit y-rule generator.
-     */
-    public RuleGenerator getTransitYRuleGenerator(
-            FlowPath flowPath, FlowTransitEncapsulation encapsulation, PathSegment firstSegment,
-            PathSegment secondSegment, FlowPath alternativeFlowPath, FlowTransitEncapsulation alternativeEncapsulation,
-            PathSegment alternativeFirstSegment, PathSegment alternativeSecondSegment, MeterId sharedMeterId) {
-
-        UUID externalMeterCommandUuid = UUID.randomUUID();
-        TransitYRuleGenerator firstGenerator = getTransitYRuleGenerator(flowPath, encapsulation, firstSegment,
-                secondSegment, sharedMeterId, externalMeterCommandUuid, true);
-
-        TransitYRuleGenerator secondGenerator = getTransitYRuleGenerator(alternativeFlowPath, alternativeEncapsulation,
-                alternativeFirstSegment, alternativeSecondSegment, sharedMeterId, externalMeterCommandUuid, false);
-
-        return JointRuleGenerator.builder()
-                .firstGenerator(firstGenerator)
-                .secondGenerator(secondGenerator)
-                .build();
-    }
-
     /**
      * Get transit y-rule generator.
      */
-    TransitYRuleGenerator getTransitYRuleGenerator(FlowPath flowPath, FlowTransitEncapsulation encapsulation,
-                                                   PathSegment firstSegment, PathSegment secondSegment,
-                                                   MeterId sharedMeterId, UUID externalMeterCommandUuid,
-                                                   boolean generateMeterCommand
-    ) {
+    public TransitYRuleGenerator getTransitYRuleGenerator(FlowPath flowPath, FlowTransitEncapsulation encapsulation,
+                                                          PathSegment firstSegment, PathSegment secondSegment,
+                                                          MeterId sharedMeterId, UUID externalMeterCommandUuid,
+                                                          boolean generateMeterCommand) {
         if (flowPath.isOneSwitchFlow()) {
             throw new IllegalArgumentException(format(
                     "Couldn't create transit rule for path %s because it is one switch path", flowPath.getPathId()));

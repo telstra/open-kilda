@@ -59,6 +59,7 @@ public class FlowDeleteService extends FlowProcessingService<FlowDeleteFsm, Even
             throws DuplicateKeyException {
         if (yFlowRepository.isSubFlow(flowId)) {
             sendForbiddenSubFlowOperationToNorthbound(flowId, commandContext);
+            cancelProcessing(key);
             return;
         }
         startFlowDeletion(key, commandContext, flowId);
@@ -87,6 +88,7 @@ public class FlowDeleteService extends FlowProcessingService<FlowDeleteFsm, Even
         if (fsmRegister.hasRegisteredFsmWithFlowId(flowId)) {
             sendErrorResponseToNorthbound(ErrorType.REQUEST_INVALID, "Could not delete flow",
                     format("Flow %s is already deleting now", flowId), commandContext);
+            cancelProcessing(key);
             throw new DuplicateKeyException(key, "There's another active FSM for the same flowId " + flowId);
         }
 
@@ -162,11 +164,7 @@ public class FlowDeleteService extends FlowProcessingService<FlowDeleteFsm, Even
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
             fsmRegister.unregisterFsm(key);
-
-            carrier.cancelTimeoutCallback(key);
-            if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
-                carrier.sendInactive();
-            }
+            cancelProcessing(key);
         }
     }
 }

@@ -37,7 +37,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.OnFinishedWith
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.OnReceivedRemoveResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.OnSubFlowRemovedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.RemoveSubFlowsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.RemoveYFlowResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.RemoveYFlowMetersAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.StartRemovingYFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.actions.ValidateYFlowAction;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
@@ -167,7 +167,7 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
                     .from(State.SUB_FLOWS_REMOVED)
                     .to(State.REMOVING_YFLOW_METERS)
                     .on(Event.NEXT)
-                    .perform(new RemoveYFlowResourcesAction(persistenceManager, ruleManager));
+                    .perform(new RemoveYFlowMetersAction(persistenceManager, ruleManager));
 
             builder.internalTransition()
                     .within(State.REMOVING_YFLOW_METERS)

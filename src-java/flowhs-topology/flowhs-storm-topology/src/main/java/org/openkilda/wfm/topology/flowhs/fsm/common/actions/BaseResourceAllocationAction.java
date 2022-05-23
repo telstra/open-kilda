@@ -267,11 +267,11 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
 
                 boolean newPathFound = isNotSamePath(potentialPath, oldPaths);
                 if (allowOldPaths || newPathFound) {
-                    if (!newPathFound) {
-                        log.debug("Found the same path for flow {}. Proceed with recreating it", flow.getFlowId());
-                    }
+                    boolean createFoundPath = whetherCreatePathSegments.test(potentialPath);
+                    log.debug("Found {} path for flow {}. {} (re-)creating it", newPathFound ? "a new" : "the same",
+                            flow.getFlowId(), createFoundPath ? "Proceed with" : "Skip");
 
-                    if (whetherCreatePathSegments.test(potentialPath)) {
+                    if (createFoundPath) {
                         boolean ignoreBandwidth = forceToIgnoreBandwidth || flow.isIgnoreBandwidth();
                         List<PathSegment> forwardSegments = flowPathBuilder.buildPathSegments(newForwardPathId,
                                 potentialPath.getForward(), flow.getBandwidth(), ignoreBandwidth,
@@ -287,6 +287,8 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                     }
 
                     return potentialPath;
+                } else {
+                    log.debug("Found the same path for flow {}, but not allowed", flow.getFlowId());
                 }
                 return null;
             });

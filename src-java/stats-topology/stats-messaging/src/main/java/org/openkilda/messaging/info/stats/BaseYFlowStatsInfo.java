@@ -20,16 +20,20 @@ import org.openkilda.messaging.payload.yflow.YFlowEndpointResources;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.ToString;
 
 @Getter
 @AllArgsConstructor
+@ToString
 public abstract class BaseYFlowStatsInfo extends StatsNotification {
     @NonNull String yFlowId;
 
     @NonNull YFlowEndpointResources sharedEndpointResources;
     @NonNull YFlowEndpointResources yPointResources;
+    YFlowEndpointResources protectedYPointResources;
 
     BaseYFlowStatsInfo(BaseYFlowStatsInfo other) {
-        this(other.getYFlowId(), other.getSharedEndpointResources(), other.getYPointResources());
+        this(other.getYFlowId(), other.getSharedEndpointResources(), other.getYPointResources(),
+                other.getProtectedYPointResources());
     }
 }

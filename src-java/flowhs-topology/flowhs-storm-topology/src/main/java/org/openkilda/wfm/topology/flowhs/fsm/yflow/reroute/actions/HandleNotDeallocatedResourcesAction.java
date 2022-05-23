@@ -39,25 +39,27 @@ public class HandleNotDeallocatedResourcesAction extends
             return;
         }
 
+        String error = context != null ? context.getError() : null;
+
         EndpointResources sharedEndpointResources = newResources.getSharedEndpointResources();
         if (sharedEndpointResources != null) {
             stateMachine.saveErrorToHistory("Failed to deallocate resources",
                     format("Failed to deallocate resources %s of y-flow %s (shared endpoint): %s",
-                            sharedEndpointResources, stateMachine.getYFlowId(), context.getError()));
+                            sharedEndpointResources, stateMachine.getYFlowId(), error));
         }
 
         EndpointResources mainResources = newResources.getMainPathYPointResources();
         if (mainResources != null) {
             stateMachine.saveErrorToHistory("Failed to deallocate resources",
                     format("Failed to deallocate resources %s of y-flow %s (main paths): %s",
-                            mainResources, stateMachine.getYFlowId(), context.getError()));
+                            mainResources, stateMachine.getYFlowId(), error));
         }
 
         EndpointResources protectedResources = newResources.getProtectedPathYPointResources();
         if (protectedResources != null) {
             stateMachine.saveErrorToHistory("Failed to deallocate resources",
                     format("Failed to deallocate resources %s of y-flow %s (protected paths): %s",
-                            mainResources, stateMachine.getYFlowId(), context.getError()));
+                            mainResources, stateMachine.getYFlowId(), error));
         }
     }
 }

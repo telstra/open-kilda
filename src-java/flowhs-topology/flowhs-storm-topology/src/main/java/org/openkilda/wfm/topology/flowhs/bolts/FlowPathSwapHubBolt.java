@@ -47,6 +47,8 @@ import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
+import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathSwapHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathSwapService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -86,8 +88,8 @@ public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarri
     protected void init() {
         FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         RuleManager ruleManager = new RuleManagerImpl(ruleManagerConfig);
-        service = new FlowPathSwapService(this, persistenceManager, ruleManager,
-                config.getSpeakerCommandRetriesLimit(), resourcesManager);
+        service = new FlowPathSwapService(this, persistenceManager, ruleManager, resourcesManager,
+                config.getSpeakerCommandRetriesLimit());
     }
 
     @Override
@@ -108,7 +110,11 @@ public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarri
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         FlowPathSwapRequest payload = (FlowPathSwapRequest) input.getValueByField(FIELD_ID_PAYLOAD);
-        service.handleRequest(currentKey, pullContext(input), payload);
+        try {
+            service.handleRequest(currentKey, pullContext(input), payload.getFlowId());
+        } catch (DuplicateKeyException e) {
+            log.error("Failed to handle a request with key {}. {}", currentKey, e.getMessage());
+        }
     }
 
     @Override
@@ -116,13 +122,21 @@ public class FlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCarri
         String operationKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         currentKey = KeyProvider.getParentKey(operationKey);
         SpeakerResponse flowResponse = (SpeakerResponse) input.getValueByField(FIELD_ID_PAYLOAD);
-        service.handleAsyncResponse(currentKey, flowResponse);
+        try {
+            service.handleAsyncResponse(currentKey, flowResponse);
+        } catch (UnknownKeyException e) {
+            log.warn("Received a response with unknown key {}.", currentKey);
+        }
     }
 
     @Override
     public void onTimeout(@NonNull String key, Tuple tuple) {
         currentKey = key;
-        service.handleTimeout(key);
+        try {
+            service.handleTimeout(key);
+        } catch (UnknownKeyException e) {
+            log.warn("Failed to handle a timeout event for unknown key {}.", currentKey);
+        }
     }
 
     @Override

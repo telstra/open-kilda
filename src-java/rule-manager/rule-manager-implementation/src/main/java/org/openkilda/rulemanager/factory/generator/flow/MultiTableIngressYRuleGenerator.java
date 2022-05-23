@@ -36,19 +36,20 @@ import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
 
 import com.google.common.collect.Sets;
+import lombok.NonNull;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
 @SuperBuilder
 public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenerator {
-
+    @NonNull
     protected final MeterId sharedMeterId;
-    protected UUID externalMeterCommandUuid;
-    protected boolean generateMeterCommand;
+    @NonNull
+    protected final UUID externalMeterCommandUuid;
+    protected final boolean generateMeterCommand;
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
@@ -58,9 +59,6 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
         List<SpeakerData> result = new ArrayList<>();
         FlowEndpoint ingressEndpoint = checkAndBuildIngressEndpoint(flow, flowPath, sw.getSwitchId());
         FlowSpeakerData command = buildFlowIngressCommand(sw, ingressEndpoint);
-        if (command == null) {
-            return Collections.emptyList();
-        }
         result.add(command);
 
         if (generateMeterCommand) {
@@ -76,8 +74,8 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
     }
 
     private FlowSpeakerData buildFlowIngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
-        List<Action> actions = new ArrayList<>(buildTransformActions(
-                ingressEndpoint.getInnerVlanId(), sw.getFeatures()));
+        List<Action> actions =
+                new ArrayList<>(buildTransformActions(ingressEndpoint.getInnerVlanId(), sw.getFeatures()));
         actions.add(new PortOutAction(getOutPort(flowPath, flow)));
 
         FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()

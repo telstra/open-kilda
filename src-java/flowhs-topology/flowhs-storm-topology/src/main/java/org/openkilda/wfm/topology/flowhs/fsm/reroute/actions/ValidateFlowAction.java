@@ -20,6 +20,7 @@ import static java.util.Collections.emptySet;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.reroute.error.FlowInProgressError;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -82,7 +83,7 @@ public class ValidateFlowAction extends
             Flow foundFlow = getFlow(flowId);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
                 String message = format("Flow %s is in progress now", flowId);
-                stateMachine.setRerouteError(new RerouteError(message));
+                stateMachine.setRerouteError(new FlowInProgressError(message));
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID, message);
             }
 
@@ -128,13 +129,14 @@ public class ValidateFlowAction extends
         } else {
             reroutePrimary = checkIsPathAffected(flow.getForwardPath(), affectedIsl)
                     || checkIsPathAffected(flow.getReversePath(), affectedIsl);
-            rerouteProtected = checkIsPathAffected(flow.getProtectedForwardPath(), affectedIsl)
+            // Reroute the protected if the primary is affected to properly handle the case of overlapped paths.
+            rerouteProtected = reroutePrimary || checkIsPathAffected(flow.getProtectedForwardPath(), affectedIsl)
                     || checkIsPathAffected(flow.getProtectedReversePath(), affectedIsl);
         }
         // check protected path presence
         rerouteProtected &= flow.isAllocateProtectedPath();
 
-        if (! reroutePrimary && ! rerouteProtected) {
+        if (!reroutePrimary && !rerouteProtected) {
             throw new FlowProcessingException(ErrorType.NOT_FOUND, format(
                     "No paths of the flow %s are affected by failure on %s", flowId,
                     affectedIsl.stream()
@@ -183,7 +185,7 @@ public class ValidateFlowAction extends
         boolean isAffected = false;
         for (PathSegment segment : path.getSegments()) {
             isAffected = affectedIsl.contains(getSegmentSourceEndpoint(segment));
-            if (! isAffected) {
+            if (!isAffected) {
                 isAffected = affectedIsl.contains(getSegmentDestEndpoint(segment));
             }
 

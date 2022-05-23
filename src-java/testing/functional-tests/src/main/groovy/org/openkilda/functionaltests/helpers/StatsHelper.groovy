@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.helpers
 import static groovyx.gpars.GParsPool.withPool
 
 import org.openkilda.northbound.dto.v1.flows.PingInput
+import org.openkilda.northbound.dto.v2.yflows.YFlow
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.otsdb.OtsdbQueryService
@@ -51,6 +52,21 @@ class StatsHelper {
                 assert dps.values().any { it > 0 }, flowId
             } else {
                 assert dps.size() > 0, flowId
+            }
+        }
+    }
+
+    void verifyYFlowWritesMeterStats(YFlow yFlow, Date from, boolean expectTraffic) {
+        Wrappers.wait(STATS_INTERVAL) {
+            def yFlowId = yFlow.YFlowId
+            def dpsShared = otsdb.query(from, metricPrefix + "yFlow.meter.shared.bytes", ["y_flow_id": yFlowId]).dps
+            def dpsYPoint = otsdb.query(from, metricPrefix + "yFlow.meter.yPoint.bytes", ["y_flow_id": yFlowId]).dps
+            if (expectTraffic) {
+                assert dpsShared.values().any { it > 0 }, yFlowId
+                assert dpsYPoint.values().any { it > 0 }, yFlowId
+            } else {
+                assert dpsShared.size() > 0, yFlowId
+                assert dpsYPoint.size() > 0, yFlowId
             }
         }
     }

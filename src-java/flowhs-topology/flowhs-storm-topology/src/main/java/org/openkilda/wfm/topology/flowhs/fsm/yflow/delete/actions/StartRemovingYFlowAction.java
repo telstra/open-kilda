@@ -38,6 +38,6 @@ public class StartRemovingYFlowAction
                            YFlowDeleteFsm stateMachine) {
         String yFlowId = stateMachine.getYFlowId();
         YFlow yFlow = getYFlow(yFlowId);
-        stateMachine.setDeleteOldYFlowCommands(buildYFlowDeleteCommands(yFlow, stateMachine.getCommandContext()));
+        stateMachine.setDeleteOldYFlowCommands(buildYFlowDeleteRequests(yFlow, stateMachine.getCommandContext()));
     }
 }

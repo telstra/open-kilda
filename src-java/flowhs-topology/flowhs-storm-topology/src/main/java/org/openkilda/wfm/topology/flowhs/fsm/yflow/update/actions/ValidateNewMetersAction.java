@@ -36,6 +36,6 @@ public class ValidateNewMetersAction
         stateMachine.clearPendingAndRetriedAndFailedCommands();
 
         // We use validation directly in floodlight after installing the rules, so it's not necessary to do it here.
-        stateMachine.fire(Event.YPOINT_METERS_VALIDATED);
+        stateMachine.fire(Event.YFLOW_METERS_VALIDATED);
     }
 }

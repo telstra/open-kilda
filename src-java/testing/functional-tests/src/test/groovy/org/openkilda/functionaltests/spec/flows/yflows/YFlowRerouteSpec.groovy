@@ -13,6 +13,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -61,7 +62,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         def yFlow = yFlowHelper.addYFlow(yFlowRequest)
 
         def paths = northboundV2.getYFlowPaths(yFlow.YFlowId)
-        def islToFail = pathHelper.getInvolvedIsls(paths.sharedPath.nodes).first()
+        def islToFail = pathHelper.getInvolvedIsls(PathHelper.convert(paths.subFlowPaths[0].forward)).first()
 
         when: "Fail a flow ISL (bring switch port down)"
         antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
@@ -74,7 +75,8 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
             wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowHistory(sf.flowId).last().payload.last().action == REROUTE_SUCCESS }
         }
         wait(rerouteDelay + WAIT_OFFSET) {
-            assert northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.UP.toString()
+            yFlow = northboundV2.getYFlow(yFlow.YFlowId)
+            assert yFlow.status == FlowState.UP.toString()
             assert northboundV2.getYFlowPaths(yFlow.YFlowId) != paths
         }
 
@@ -88,10 +90,10 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
 
         and: "All involved switches pass switch validation"
         def involvedSwitches = pathHelper.getInvolvedYSwitches(paths)
-//        involvedSwitches.each { sw ->
-//            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//        }
+        involvedSwitches.each { sw ->
+            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
 
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
         def beforeTraffic = new Date()
@@ -113,7 +115,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
 
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
-//        statsHelper.verifyFlowWritesStats(yFlow.YFlowId, beforeTraffic, true)
+        statsHelper.verifyYFlowWritesMeterStats(yFlow, beforeTraffic, true)
         yFlow.subFlows.each {
             statsHelper.verifyFlowWritesStats(it.flowId, beforeTraffic, true)
         }

@@ -19,7 +19,6 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
@@ -50,7 +49,7 @@ public class UpdateFlowStatusAction extends
         FlowStatus resultStatus = transactionManager.doInTransaction(() -> {
             Flow flow = getFlow(flowId);
             for (FlowPath fp : flow.getPaths()) {
-                fp.setStatus(FlowPathStatus.ACTIVE);
+                fp.setStatus(stateMachine.getOldPathStatus(fp.getPathId()));
             }
             FlowStatus flowStatus = flow.computeFlowStatus();
             if (flowStatus != flow.getStatus()) {

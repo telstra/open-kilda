@@ -22,14 +22,17 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.ConnectedDeviceType.ARP;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
+import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.UNIQUE_INDEX_PROPERTY;
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
+import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -67,6 +70,8 @@ public class FermaSwitchConnectedDevicesRepositoryTest extends InMemoryGraphBase
     SwitchConnectedDevice lldpConnectedDeviceB;
     SwitchConnectedDevice arpConnectedDeviceC;
     SwitchConnectedDevice arpConnectedDeviceD;
+    SwitchConnectedDevice arpConnectedDeviceE;
+    SwitchConnectedDevice lldpConnectedDeviceF;
 
     SwitchRepository switchRepository;
     SwitchConnectedDeviceRepository connectedDeviceRepository;
@@ -94,6 +99,12 @@ public class FermaSwitchConnectedDevicesRepositoryTest extends InMemoryGraphBase
                 secondSwitch, SECOND_PORT_NUMBER, SECOND_VLAN, SECOND_FLOW_ID, null, MAC_ADDRESS_2, ARP, IP_ADDRESS_2,
                 null, null, TTL, PORT, SYSTEM_NAME, SYSTEM_DESCRIPTION, CAPABILITIES, MANAGEMENT_ADDRESS,
                 TIME_FIRST_SEEN, TIME_LAST_SEEN);
+        arpConnectedDeviceE = new SwitchConnectedDevice(
+                secondSwitch, SECOND_PORT_NUMBER, SECOND_VLAN, null, null, MAC_ADDRESS_2, ARP, null,
+                null, null, null, null, null, null, null, null, null, null);
+        lldpConnectedDeviceF = new SwitchConnectedDevice(
+                secondSwitch, SECOND_PORT_NUMBER, SECOND_VLAN, null, null, MAC_ADDRESS_1, LLDP, null,
+                null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -160,10 +171,12 @@ public class FermaSwitchConnectedDevicesRepositoryTest extends InMemoryGraphBase
     public void findByLldpUniqueFields() {
         connectedDeviceRepository.add(lldpConnectedDeviceA);
         connectedDeviceRepository.add(lldpConnectedDeviceB);
+        connectedDeviceRepository.add(lldpConnectedDeviceF);
         connectedDeviceRepository.add(arpConnectedDeviceC);
 
         runFindByLldpUniqueFields(lldpConnectedDeviceA);
         runFindByLldpUniqueFields(lldpConnectedDeviceB);
+        runFindByLldpUniqueFields(lldpConnectedDeviceF);
         runFindByLldpUniqueFields(arpConnectedDeviceC);
 
         assertFalse(connectedDeviceRepository.findLldpByUniqueFieldCombination(
@@ -188,10 +201,12 @@ public class FermaSwitchConnectedDevicesRepositoryTest extends InMemoryGraphBase
         connectedDeviceRepository.add(lldpConnectedDeviceA);
         connectedDeviceRepository.add(arpConnectedDeviceC);
         connectedDeviceRepository.add(arpConnectedDeviceD);
+        connectedDeviceRepository.add(arpConnectedDeviceE);
 
         runFindByArpUniqueFields(lldpConnectedDeviceA);
         runFindByArpUniqueFields(arpConnectedDeviceC);
         runFindByArpUniqueFields(arpConnectedDeviceD);
+        runFindByArpUniqueFields(arpConnectedDeviceE);
 
         assertFalse(connectedDeviceRepository.findLldpByUniqueFieldCombination(
                 firstSwitch.getSwitchId(), 999, 999, "fake", CHASSIS_ID, PORT_ID).isPresent());
@@ -207,6 +222,38 @@ public class FermaSwitchConnectedDevicesRepositoryTest extends InMemoryGraphBase
             assertEquals(device, foundDevice.get());
         } else {
             assertFalse(foundDevice.isPresent());
+        }
+    }
+
+    @Test
+    public void uniqueIndexTest() {
+        connectedDeviceRepository.add(lldpConnectedDeviceA);
+        connectedDeviceRepository.add(lldpConnectedDeviceF);
+        connectedDeviceRepository.add(arpConnectedDeviceC);
+        connectedDeviceRepository.add(arpConnectedDeviceE);
+
+        for (SwitchConnectedDevice device : Lists.newArrayList(lldpConnectedDeviceA, lldpConnectedDeviceF)) {
+            Optional<SwitchConnectedDevice> foundDevice = connectedDeviceRepository.findLldpByUniqueFieldCombination(
+                    device.getSwitchId(), device.getPortNumber(), device.getVlan(), device.getMacAddress(),
+                    device.getChassisId(), device.getPortId());
+            assertTrue(foundDevice.isPresent());
+            SwitchConnectedDeviceFrame frame = (SwitchConnectedDeviceFrame) foundDevice.get().getData();
+
+            assertEquals(String.format("%s_%s_%s_%s_%s_%s_%s", device.getSwitchId(), device.getPortNumber(),
+                    device.getType(), device.getVlan(), device.getMacAddress(), device.getChassisId(),
+                    device.getPortId()), frame.getProperty(UNIQUE_INDEX_PROPERTY));
+        }
+
+        for (SwitchConnectedDevice device : Lists.newArrayList(arpConnectedDeviceC, arpConnectedDeviceE)) {
+            Optional<SwitchConnectedDevice> foundDevice = connectedDeviceRepository.findArpByUniqueFieldCombination(
+                    device.getSwitchId(), device.getPortNumber(), device.getVlan(), device.getMacAddress(),
+                    device.getIpAddress());
+            assertTrue(foundDevice.isPresent());
+            SwitchConnectedDeviceFrame frame = (SwitchConnectedDeviceFrame) foundDevice.get().getData();
+
+            assertEquals(String.format("%s_%s_%s_%s_%s_%s", device.getSwitchId(), device.getPortNumber(),
+                    device.getType(), device.getVlan(), device.getMacAddress(), device.getIpAddress()),
+                    frame.getProperty(UNIQUE_INDEX_PROPERTY));
         }
     }
 }

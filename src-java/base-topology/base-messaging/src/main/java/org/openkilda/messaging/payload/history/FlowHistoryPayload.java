@@ -15,6 +15,7 @@
 
 package org.openkilda.messaging.payload.history;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -22,6 +23,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class FlowHistoryPayload {
     private long timestamp;
+
+    @JsonProperty("timestamp_iso")
+    private String timestampIso;
 
     private String action;
 

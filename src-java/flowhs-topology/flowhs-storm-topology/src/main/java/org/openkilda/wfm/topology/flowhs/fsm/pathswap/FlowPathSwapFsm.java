@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.pathswap;
 
 import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
@@ -41,10 +42,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.RecalculateFlowSta
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.RemoveOldRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.RevertNewRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.RevertPathsSwapAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.RevertYFlowRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.UpdateFlowPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.UpdateFlowStatusAction;
-import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.UpdateYFlowRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.actions.ValidateIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathSwapHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
@@ -58,6 +57,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -74,8 +74,9 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
     private final Map<UUID, DeleteSpeakerCommandsRequest> deleteSpeakerRequests = new HashMap<>();
 
     public FlowPathSwapFsm(@NonNull CommandContext commandContext, @NonNull FlowPathSwapHubCarrier carrier,
-                           @NonNull String flowId) {
-        super(Event.NEXT, Event.ERROR, commandContext, carrier, flowId);
+                           @NonNull String flowId,
+                           @NonNull Collection<FlowProcessingEventListener> eventListeners) {
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, flowId, eventListeners);
     }
 
     @Override
@@ -117,7 +118,8 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
                     reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
 
             builder = StateMachineBuilderFactory.create(FlowPathSwapFsm.class, State.class, Event.class,
-                    FlowPathSwapContext.class, CommandContext.class, FlowPathSwapHubCarrier.class, String.class);
+                    FlowPathSwapContext.class, CommandContext.class, FlowPathSwapHubCarrier.class, String.class,
+                    Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
 
@@ -160,20 +162,7 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
                     .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
                     .onEach(Event.TIMEOUT, Event.MISSING_RULE_FOUND, Event.ERROR);
 
-            builder.transition().from(State.INGRESS_RULES_VALIDATED).to(State.UPDATING_YFLOW_RULES).on(Event.NEXT)
-                    .perform(new UpdateYFlowRulesAction(persistenceManager, ruleManager));
-
-            builder.internalTransition().within(State.UPDATING_YFLOW_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
-            builder.transitions().from(State.UPDATING_YFLOW_RULES)
-                    .toAmong(State.YFLOW_RULES_UPDATED, State.YFLOW_RULES_UPDATED)
-                    .onEach(Event.RULES_INSTALLED, Event.SKIP_YFLOW_RULES_UPDATE);
-            builder.transitions().from(State.UPDATING_YFLOW_RULES)
-                    .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
-                    .onEach(Event.TIMEOUT, Event.ERROR)
-                    .perform(new AbandonPendingCommandsAction());
-
-            builder.transition().from(State.YFLOW_RULES_UPDATED).to(State.REMOVING_OLD_RULES).on(Event.NEXT)
+            builder.transition().from(State.INGRESS_RULES_VALIDATED).to(State.REMOVING_OLD_RULES).on(Event.NEXT)
                     .perform(new RemoveOldRulesAction(persistenceManager, resourcesManager));
 
             builder.internalTransition().within(State.REMOVING_OLD_RULES).on(Event.RESPONSE_RECEIVED)
@@ -207,20 +196,7 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
                     .on(Event.ERROR)
                     .perform(new HandleNotCompletedCommandsAction());
 
-            builder.transition().from(State.NEW_RULES_REVERTED).to(State.REVERTING_YFLOW_RULES).on(Event.NEXT)
-                    .perform(new RevertYFlowRulesAction(persistenceManager, ruleManager));
-
-            builder.internalTransition().within(State.REVERTING_YFLOW_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
-            builder.transitions().from(State.REVERTING_YFLOW_RULES)
-                    .toAmong(State.YFLOW_RULES_REVERTED, State.YFLOW_RULES_REVERTED)
-                    .onEach(Event.RULES_REMOVED, Event.SKIP_YFLOW_RULES_REVERT);
-            builder.transitions().from(State.REVERTING_YFLOW_RULES)
-                    .toAmong(State.YFLOW_RULES_REVERTED, State.YFLOW_RULES_REVERTED)
-                    .onEach(Event.TIMEOUT, Event.ERROR)
-                    .perform(new HandleNotCompletedCommandsAction());
-
-            builder.transition().from(State.YFLOW_RULES_REVERTED)
+            builder.transition().from(State.NEW_RULES_REVERTED)
                     .to(State.REVERTING_FLOW_STATUS)
                     .on(Event.NEXT)
                     .perform(new RecalculateFlowStatusAction(persistenceManager,
@@ -245,17 +221,35 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
                     .on(Event.NEXT)
                     .perform(new NotifyFlowMonitorAction<>(persistenceManager, carrier));
 
-            builder.defineFinalState(State.FINISHED_WITH_ERROR)
-                    .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger));
+            builder.defineFinalState(State.FINISHED_WITH_ERROR)
+                    .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public FlowPathSwapFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId) {
-            FlowPathSwapFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+        public FlowPathSwapFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId,
+                                           @NonNull Collection<FlowProcessingEventListener> eventListeners) {
+            FlowPathSwapFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
+                    eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("FlowPathSwapFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
+
+            if (!eventListeners.isEmpty()) {
+                fsm.addTransitionCompleteListener(event -> {
+                    switch (event.getTargetState()) {
+                        case FINISHED:
+                            fsm.notifyEventListeners(listener -> listener.onCompleted(flowId));
+                            break;
+                        case FINISHED_WITH_ERROR:
+                            fsm.notifyEventListeners(listener ->
+                                    listener.onFailed(flowId, fsm.getErrorReason(), ErrorType.INTERNAL_ERROR));
+                            break;
+                        default:
+                            // ignore
+                    }
+                });
+            }
 
             MeterRegistryHolder.getRegistry().ifPresent(registry -> {
                 Sample sample = LongTaskTimer.builder("fsm.active_execution")
@@ -286,9 +280,6 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
         VALIDATING_INGRESS_RULES,
         INGRESS_RULES_VALIDATED,
 
-        UPDATING_YFLOW_RULES,
-        YFLOW_RULES_UPDATED,
-
         REMOVING_OLD_RULES,
         OLD_RULES_REMOVED,
 
@@ -306,9 +297,6 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
         PATHS_SWAP_REVERTED,
         REVERTING_NEW_RULES,
         NEW_RULES_REVERTED,
-
-        REVERTING_YFLOW_RULES,
-        YFLOW_RULES_REVERTED,
 
         REVERTING_FLOW_STATUS,
         REVERTING_FLOW,
@@ -328,11 +316,7 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
         RULES_VALIDATED,
         MISSING_RULE_FOUND,
 
-        SKIP_YFLOW_RULES_UPDATE,
-
         RULES_REMOVED,
-
-        SKIP_YFLOW_RULES_REVERT,
 
         TIMEOUT,
         ERROR

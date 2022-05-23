@@ -155,6 +155,11 @@ public class KildaEntryCacheService {
         updateCache(
                 cacheHandler, yFlowStatsInfo.getYFlowId(), yFlowStatsInfo.getYPointResources(),
                 MeasurePoint.Y_FLOW_Y_POINT);
+        if (yFlowStatsInfo.getProtectedYPointResources() != null) {
+            updateCache(
+                    cacheHandler, yFlowStatsInfo.getYFlowId(), yFlowStatsInfo.getProtectedYPointResources(),
+                    MeasurePoint.Y_FLOW_Y_POINT);
+        }
     }
 
     private void updateCache(

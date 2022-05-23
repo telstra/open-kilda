@@ -164,4 +164,6 @@ public interface NorthboundServiceV2 {
     YFlowSyncResult synchronizeYFlow(String yFlowId);
 
     YFlowPingResult pingYFlow(String yFlowId, YFlowPingPayload payload);
+
+    YFlow swapYFlowPaths(String yFlowId);
 }

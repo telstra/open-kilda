@@ -146,4 +146,11 @@ public class YFlowControllerV2 extends BaseController {
             @PathVariable("y_flow_id") String yFlowId) {
         return flowService.pingYFlow(yFlowId, payload);
     }
+
+    @ApiOperation(value = "Swap paths for y-flow with protected path", response = YFlow.class)
+    @PostMapping(path = "/{y_flow_id:.+}/swap")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public CompletableFuture<YFlow> swapYFlowPaths(@PathVariable("y_flow_id") String yFlowId) {
+        return flowService.swapYFlowPaths(yFlowId);
+    }
 }

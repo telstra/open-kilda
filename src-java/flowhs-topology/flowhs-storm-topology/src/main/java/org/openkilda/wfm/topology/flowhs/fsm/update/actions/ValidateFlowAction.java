@@ -102,14 +102,6 @@ public class ValidateFlowAction extends
         }
 
         transactionManager.doInTransaction(() -> {
-            if (diverseFlowId != null && !diverseFlowId.isEmpty()) {
-                Flow diverseFlow = getFlow(diverseFlowId);
-                if (diverseFlow.isOneSwitchFlow()) {
-                    throw new FlowProcessingException(ErrorType.PARAMETERS_INVALID,
-                            "Couldn't create diverse group with one-switch flow");
-                }
-            }
-
             Flow foundFlow = getFlow(flowId);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS && stateMachine.getBulkUpdateFlowIds().isEmpty()) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,

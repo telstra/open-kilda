@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
@@ -1275,7 +1274,7 @@ switches"() {
     }
 
     @Tidy
-    @Tags(HARDWARE)
+    @Tags(LOW_PRIORITY)
     def "Able to swap endpoints (#data.description) for two vxlan flows with the same source and destination switches"() {
         given: "Two flows with the same source and destination switches"
         flow1.encapsulationType = FlowEncapsulationType.VXLAN
@@ -1322,7 +1321,7 @@ switches"() {
                      flow2Dst = flow1.destination
                  }].collect { iterationData ->
             def switchPair = getTopologyHelper().getAllNeighboringSwitchPairs().find {
-                it.src.noviflow && !it.src.wb5164 && it.dst.noviflow && !it.dst.wb5164
+                [it.src, it.dst].every { switchHelper.isVxlanEnabled(it.dpId) }
             }
             def flow1 = getFirstFlow(switchPair, switchPair)
             def flow2 = getSecondFlow(switchPair, switchPair, flow1)

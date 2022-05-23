@@ -20,7 +20,6 @@ import static java.lang.String.format;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.SubFlowSharedEndpointEncapsulation;
-import org.openkilda.messaging.command.yflow.YFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowResponse;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
@@ -42,11 +41,7 @@ import org.openkilda.wfm.topology.flowhs.mapper.YFlowMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Collection;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class OnSubFlowAllocatedAction extends
@@ -114,28 +109,9 @@ public class OnSubFlowAllocatedAction extends
 
     private Message buildResponseMessage(YFlow yFlow, CommandContext commandContext) {
         YFlowResponse response = YFlowResponse.builder()
-                .yFlow(convertToYFlowDto(yFlow))
+                .yFlow(YFlowMapper.INSTANCE.toYFlowDto(yFlow, flowRepository))
                 .build();
         return new InfoMessage(response, commandContext.getCreateTime(), commandContext.getCorrelationId());
-    }
-
-    private YFlowDto convertToYFlowDto(YFlow yFlow) {
-        Flow mainAffinityFlow = yFlow.getSubFlows().stream()
-                .map(YSubFlow::getFlow)
-                .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
-                .findFirst().orElseThrow(() -> new FlowProcessingException(ErrorType.INTERNAL_ERROR,
-                        "Main affinity flow not found"));
-        Collection<Flow> diverseWithFlow = getDiverseWithFlow(mainAffinityFlow);
-        Set<String> diverseFlows = diverseWithFlow.stream()
-                .filter(flow -> flow.getYFlowId() == null)
-                .map(Flow::getFlowId)
-                .collect(Collectors.toSet());
-        Set<String> diverseYFlows = diverseWithFlow.stream()
-                .map(Flow::getYFlowId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        return YFlowMapper.INSTANCE.toYFlowDto(yFlow, diverseFlows, diverseYFlows);
     }
 
     @Override

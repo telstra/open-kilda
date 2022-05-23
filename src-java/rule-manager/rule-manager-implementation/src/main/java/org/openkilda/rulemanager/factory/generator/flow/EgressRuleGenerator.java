@@ -84,7 +84,7 @@ public class EgressRuleGenerator extends NotIngressRuleGenerator {
         return builder.build();
     }
 
-    private List<Action> buildApplyActions(FlowEndpoint egressEndpoint, Switch sw) {
+    protected List<Action> buildApplyActions(FlowEndpoint egressEndpoint, Switch sw) {
         List<Action> result = buildTransformActions(egressEndpoint, sw);
         result.add(new PortOutAction(new PortNumber(egressEndpoint.getPortNumber())));
         return result;

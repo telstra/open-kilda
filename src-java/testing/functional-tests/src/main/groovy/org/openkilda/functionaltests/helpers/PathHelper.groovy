@@ -5,7 +5,7 @@ import static org.springframework.beans.factory.config.ConfigurableBeanFactory.S
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath
-import org.openkilda.model.SwitchId
+import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -159,9 +159,16 @@ class PathHelper {
     }
 
     /**
+     * Converts List<PathNodePayload> path representation to a List<PathNode> representation
+     */
+    static List<PathNode> convert(List<PathNodePayload> path, boolean removeTail = true) {
+        getPathNodes(path, removeTail)
+    }
+
+    /**
      * Returns a List<PathNode> representation of a path
      */
-    static List<PathNode> getPathNodes(path) {
+    static List<PathNode> getPathNodes(path, boolean removeTail = true) {
         if (path.empty) {
             throw new IllegalArgumentException("Path cannot be empty. " +
                     "This should be impossible for valid FlowPathPayload")
@@ -173,7 +180,10 @@ class PathHelper {
         }
         def seqId = 0
         if (pathNodes.size() > 2) {
-            pathNodes = pathNodes.dropRight(1).tail() //remove first and last elements (not used in PathNode view)
+            pathNodes = pathNodes.tail() //remove first elements (not used in PathNode view)
+            if (removeTail) {
+                pathNodes = pathNodes.dropRight(1) //remove last elements (not used in PathNode view)
+            }
         }
         pathNodes.each { it.seqId = seqId++ } //set valid seqId indexes
         return pathNodes
@@ -224,7 +234,7 @@ class PathHelper {
 
     List<Switch> getInvolvedYSwitches(YFlowPaths yFlowPaths) {
         return yFlowPaths.subFlowPaths.collectMany { subFlowPath ->
-            getInvolvedSwitchesV2(subFlowPath.nodes)
+            getInvolvedSwitchesV2(subFlowPath.forward)
         }.unique()
     }
 
@@ -232,7 +242,7 @@ class PathHelper {
         return getInvolvedYSwitches(northboundV2.getYFlowPaths(yFlowId))
     }
 
-    List<Switch> getInvolvedSwitchesV2(List<PathNodeV2> nodes) {
+    List<Switch> getInvolvedSwitchesV2(List<PathNodePayload> nodes) {
         return nodes.collect { it.switchId }.unique().collect { topology.find(it) }
     }
 

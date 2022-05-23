@@ -148,7 +148,7 @@ public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String
         //then
         YFlowValidationResponse response = getNorthboundResponse(yFlowValidationHubCarrier);
         assertFalse(response.isAsExpected());
-        assertFalse(response.getYFlowValidationResult().isAsExpected());
+        assertTrue(response.getYFlowValidationResult().isAsExpected());
         response.getSubFlowValidationResults()
                 .forEach(result ->
                         assertTrue(result.getFlowId().equals(failedFlow.getFlowId()) || result.getAsExpected()));
