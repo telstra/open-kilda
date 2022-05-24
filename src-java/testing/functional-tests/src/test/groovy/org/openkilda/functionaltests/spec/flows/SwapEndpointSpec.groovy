@@ -1577,11 +1577,6 @@ switches"() {
         }
     }
 
-    def cleanup() {
-        //workaround #4003. Should be removed after #4003 is fixed
-        topology.activeSwitches.each { northbound.synchronizeSwitch(it.dpId, true) }
-    }
-
     void verifyEndpoints(response, FlowEndpointPayload flow1SrcExpected, FlowEndpointPayload flow1DstExpected,
                          FlowEndpointPayload flow2SrcExpected, FlowEndpointPayload flow2DstExpected) {
         verifyEndpoints(response, flowHelper.toFlowEndpointV2(flow1SrcExpected),
@@ -1632,8 +1627,8 @@ switches"() {
             switches.each {
                 if (it.ofVersion == "OF_13") {
                     def validationResult = northbound.validateSwitch(it.dpId)
-                    //below verification should also include 'excess' after #4003 is fixed
-                    validationResult.verifyRuleSectionsAreEmpty(["missing"])
+                    //below verification should also include 'misconfigured' after #4708 is fixed
+                    validationResult.verifyRuleSectionsAreEmpty(["missing", "excess"])
                     validationResult.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
                 } else {
                     def validationResult = northbound.validateSwitchRules(it.dpId)
