@@ -31,6 +31,7 @@ import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.topology.switchmanager.service.configs.SwitchSyncConfig;
 import org.openkilda.wfm.topology.switchmanager.service.impl.CommandBuilderImpl;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -57,17 +58,20 @@ public class SwitchSyncService implements SwitchManagerHubService {
 
     @VisibleForTesting
     CommandBuilder commandBuilder;
+    private SwitchSyncConfig syncConfig;
 
     public SwitchSyncService(
-            SwitchManagerCarrier carrier, PersistenceManager persistenceManager) {
-        this(carrier, new CommandBuilderImpl(persistenceManager));
+            SwitchManagerCarrier carrier, PersistenceManager persistenceManager, SwitchSyncConfig syncConfig) {
+        this(carrier, new CommandBuilderImpl(persistenceManager), syncConfig);
     }
 
     @VisibleForTesting
-    SwitchSyncService(SwitchManagerCarrier carrier, CommandBuilder commandBuilder) {
+    SwitchSyncService(SwitchManagerCarrier carrier, CommandBuilder commandBuilder, SwitchSyncConfig syncConfig) {
         this.carrier = carrier;
         this.commandBuilder = commandBuilder;
         this.builder = SwitchSyncFsm.builder();
+        this.builder = SwitchSyncFsm.builder();
+        this.syncConfig = syncConfig;
     }
 
     @Override
@@ -115,7 +119,7 @@ public class SwitchSyncService implements SwitchManagerHubService {
     public void handleSwitchSync(String key, SwitchValidateRequest request, ValidationResult validationResult) {
         SwitchSyncFsm fsm =
                 builder.newStateMachine(SwitchSyncState.INITIALIZED, carrier, key, commandBuilder, request,
-                        validationResult);
+                        validationResult, syncConfig);
         handlers.put(key, fsm);
         process(fsm);
     }

@@ -29,6 +29,7 @@ import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagContext;
 import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState;
+import org.openkilda.wfm.topology.switchmanager.service.configs.LagPortOperationConfig;
 
 import lombok.Getter;
 import lombok.NonNull;

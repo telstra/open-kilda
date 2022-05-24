@@ -59,7 +59,6 @@ import org.openkilda.wfm.topology.switchmanager.error.SwitchManagerException;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.CreateLagPortService;
 import org.openkilda.wfm.topology.switchmanager.service.DeleteLagPortService;
-import org.openkilda.wfm.topology.switchmanager.service.LagPortOperationConfig;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrierCookieDecorator;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerHubService;
@@ -67,6 +66,8 @@ import org.openkilda.wfm.topology.switchmanager.service.SwitchRuleService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
 import org.openkilda.wfm.topology.switchmanager.service.UpdateLagPortService;
+import org.openkilda.wfm.topology.switchmanager.service.configs.LagPortOperationConfig;
+import org.openkilda.wfm.topology.switchmanager.service.configs.SwitchSyncConfig;
 import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceImpl;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
@@ -156,9 +157,10 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                 carrier -> new SwitchValidateService(
                         carrier, persistenceManager,
                         new ValidationServiceImpl(persistenceManager, new RuleManagerImpl(ruleManagerConfig))));
+        SwitchSyncConfig syncConfig = new SwitchSyncConfig(topologyConfig.getOfCommandsBatchSize());
         syncService = registerService(
                 serviceRegistry, "switch-sync", this,
-                carrier -> new SwitchSyncService(carrier, persistenceManager));
+                carrier -> new SwitchSyncService(carrier, persistenceManager, syncConfig));
         switchRuleService = registerService(
                 serviceRegistry, "switch-rules", this,
                 carrier -> new SwitchRuleService(carrier, persistenceManager.getRepositoryFactory()));

@@ -25,6 +25,7 @@ import org.openkilda.wfm.error.MessageDispatchException;
 import org.openkilda.wfm.error.UnexpectedInputException;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchManagerException;
+import org.openkilda.wfm.topology.switchmanager.service.configs.LagPortOperationConfig;
 import org.openkilda.wfm.topology.switchmanager.service.handler.LagPortUpdateHandler;
 
 import com.google.common.annotations.VisibleForTesting;

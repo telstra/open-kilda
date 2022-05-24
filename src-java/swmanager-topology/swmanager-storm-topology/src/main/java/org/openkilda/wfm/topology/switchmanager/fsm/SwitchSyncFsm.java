@@ -65,6 +65,7 @@ import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.SpeakerData;
+import org.openkilda.rulemanager.utils.RuleManagerHelper;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.topology.switchmanager.bolt.SwitchManagerHub.OfCommandAction;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent;
@@ -76,7 +77,9 @@ import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
+import org.openkilda.wfm.topology.switchmanager.service.configs.SwitchSyncConfig;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
@@ -102,6 +105,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private final CommandBuilder commandBuilder;
     private final SwitchId switchId;
     private final ValidationResult validationResult;
+    private final SwitchSyncConfig syncConfig;
     private List<Long> installedRulesCookies;
     private List<Long> reinstalledRulesCookies;
     private List<Long> removedFlowRulesCookies;
@@ -114,15 +118,18 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     private int missingLogicalPortsPendingResponsesCount = 0;
     private int excessLogicalPortsPendingResponsesCount = 0;
+    private int ofCommandsResponsesCount = 0;
 
     public SwitchSyncFsm(SwitchManagerCarrier carrier, String key, CommandBuilder commandBuilder,
-                         SwitchValidateRequest request, ValidationResult validationResult) {
+                         SwitchValidateRequest request, ValidationResult validationResult,
+                         SwitchSyncConfig syncConfig) {
         this.carrier = carrier;
         this.key = key;
         this.commandBuilder = commandBuilder;
         this.request = request;
         this.validationResult = validationResult;
         this.switchId = request.getSwitchId();
+        this.syncConfig = syncConfig;
     }
 
     /**
@@ -140,7 +147,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                         String.class,
                         CommandBuilder.class,
                         SwitchValidateRequest.class,
-                        ValidationResult.class);
+                        ValidationResult.class,
+                        SwitchSyncConfig.class);
 
         builder.onEntry(INITIALIZED).callMethod("initialized");
         builder.externalTransition().from(INITIALIZED).to(COMPUTE_MISSING_RULES).on(NEXT)
@@ -202,7 +210,9 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         builder.externalTransition().from(SEND_REMOVE_COMMANDS).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(SEND_REMOVE_COMMANDS).to(SEND_MODIFY_COMMANDS).on(COMMANDS_PROCESSED)
+        builder.internalTransition().within(SEND_REMOVE_COMMANDS).on(COMMANDS_PROCESSED)
+                .callMethod("ofCommandsProcessed");
+        builder.externalTransition().from(SEND_REMOVE_COMMANDS).to(SEND_MODIFY_COMMANDS).on(NEXT)
                 .callMethod("sendModifyCommands");
 
         builder.externalTransition().from(SEND_MODIFY_COMMANDS).to(FINISHED_WITH_ERROR).on(TIMEOUT)
@@ -210,7 +220,9 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         builder.externalTransition().from(SEND_MODIFY_COMMANDS).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(SEND_MODIFY_COMMANDS).to(SEND_INSTALL_COMMANDS).on(COMMANDS_PROCESSED)
+        builder.internalTransition().within(SEND_MODIFY_COMMANDS).on(COMMANDS_PROCESSED)
+                .callMethod("ofCommandsProcessed");
+        builder.externalTransition().from(SEND_MODIFY_COMMANDS).to(SEND_INSTALL_COMMANDS).on(NEXT)
                 .callMethod("sendInstallCommands");
 
         builder.externalTransition().from(SEND_INSTALL_COMMANDS).to(FINISHED_WITH_ERROR).on(TIMEOUT)
@@ -218,7 +230,9 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         builder.externalTransition().from(SEND_INSTALL_COMMANDS).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
 
-        builder.externalTransition().from(SEND_INSTALL_COMMANDS).to(FINISHED).on(COMMANDS_PROCESSED)
+        builder.internalTransition().within(SEND_INSTALL_COMMANDS).on(COMMANDS_PROCESSED)
+                .callMethod("ofCommandsProcessed");
+        builder.externalTransition().from(SEND_INSTALL_COMMANDS).to(FINISHED).on(NEXT)
                 .callMethod(FINISHED_METHOD_NAME);
 
         builder.defineFinalState(FINISHED);
@@ -532,49 +546,83 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                                       SwitchSyncEvent event, Object context) {
         if (toRemove.isEmpty()) {
             log.info("No need to process remove commands (switch={}, key={})", switchId, key);
-            fire(COMMANDS_PROCESSED);
+            fire(NEXT);
             return;
         }
-        List<OfCommand> commands = cleanupDependenciesAndBuildCommands(toRemove);
+        List<List<OfCommand>> commandBatches = cleanupDependenciesAndBuildCommandBatches(toRemove);
+        ofCommandsResponsesCount = commandBatches.size();
 
         log.info("Remove commands has been sent (switch={}, key={})", switchId, key);
-        carrier.sendOfCommandsToSpeaker(key, commands, OfCommandAction.DELETE, switchId);
+        sendOfCommandsToSpeaker(commandBatches, OfCommandAction.DELETE);
     }
 
     protected void sendModifyCommands(SwitchSyncState from, SwitchSyncState to,
                                       SwitchSyncEvent event, Object context) {
         if (toModify.isEmpty()) {
             log.info("No need to process modify commands (switch={}, key={})", switchId, key);
-            fire(COMMANDS_PROCESSED);
+            fire(NEXT);
             return;
         }
-        List<OfCommand> commands = cleanupDependenciesAndBuildCommands(toModify);
+        List<List<OfCommand>> commandBatches = cleanupDependenciesAndBuildCommandBatches(toModify);
+        ofCommandsResponsesCount = commandBatches.size();
 
         log.info("Modify commands has been sent (switch={}, key={})", switchId, key);
-        carrier.sendOfCommandsToSpeaker(key, commands, OfCommandAction.MODIFY, switchId);
+        sendOfCommandsToSpeaker(commandBatches, OfCommandAction.MODIFY);
     }
 
     protected void sendInstallCommands(SwitchSyncState from, SwitchSyncState to,
                                        SwitchSyncEvent event, Object context) {
         if (toInstall.isEmpty()) {
             log.info("No need to process install commands (switch={}, key={})", switchId, key);
-            fire(COMMANDS_PROCESSED);
+            fire(NEXT);
             return;
         }
-        List<OfCommand> commands = cleanupDependenciesAndBuildCommands(toInstall);
+        List<List<OfCommand>> commandBatches = cleanupDependenciesAndBuildCommandBatches(toInstall);
+        ofCommandsResponsesCount = commandBatches.size();
 
         log.info("Install commands has been sent (switch={}, key={})", switchId, key);
-        carrier.sendOfCommandsToSpeaker(key, commands, OfCommandAction.INSTALL, switchId);
+        sendOfCommandsToSpeaker(commandBatches, OfCommandAction.INSTALL);
     }
 
-    private List<OfCommand> cleanupDependenciesAndBuildCommands(List<SpeakerData> source) {
+    private void sendOfCommandsToSpeaker(List<List<OfCommand>> commandBatches, OfCommandAction action) {
+        for (List<OfCommand> commands : commandBatches) {
+            carrier.sendOfCommandsToSpeaker(key, commands, action, switchId);
+        }
+    }
+
+    protected void ofCommandsProcessed(SwitchSyncState from, SwitchSyncState to,
+                                       SwitchSyncEvent event, Object context) {
+        log.info("OF commands processed (switch={}, key={})", switchId, key);
+        ofCommandsResponsesCount--;
+        if (ofCommandsResponsesCount <= 0) {
+            fire(NEXT);
+        }
+    }
+
+    @VisibleForTesting
+    List<List<OfCommand>> cleanupDependenciesAndBuildCommandBatches(List<SpeakerData> source) {
         Set<UUID> ids = source.stream()
                 .map(SpeakerData::getUuid)
                 .collect(Collectors.toSet());
         source.forEach(speakerData -> speakerData.getDependsOn().retainAll(ids));
-        return source.stream()
-                .map(this::toCommand)
-                .collect(Collectors.toList());
+
+        // As we send commands by several batches we need to put command and its dependent commands into same batch
+        List<List<SpeakerData>> groupedCommands = RuleManagerHelper.groupCommandsByDependenciesAndSort(source);
+        List<List<OfCommand>> batches = new ArrayList<>();
+
+        List<OfCommand> currentBatch = new ArrayList<>();
+        for (List<SpeakerData> group : groupedCommands) {
+            if (!currentBatch.isEmpty() && currentBatch.size() + group.size() > syncConfig.getOfCommandsBatchSize()) {
+                batches.add(currentBatch);
+                currentBatch = new ArrayList<>();
+            }
+            currentBatch.addAll(group.stream().map(this::toCommand).collect(Collectors.toList()));
+        }
+        if (!currentBatch.isEmpty()) {
+            batches.add(currentBatch);
+        }
+
+        return batches;
     }
 
     private OfCommand toCommand(SpeakerData speakerData) {

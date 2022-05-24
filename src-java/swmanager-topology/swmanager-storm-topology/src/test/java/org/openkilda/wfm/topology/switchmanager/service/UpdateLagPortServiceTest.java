@@ -22,6 +22,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
+import org.openkilda.wfm.topology.switchmanager.service.configs.LagPortOperationConfig;
 import org.openkilda.wfm.topology.switchmanager.service.handler.LagPortUpdateHandler;
 
 import com.google.common.collect.Sets;

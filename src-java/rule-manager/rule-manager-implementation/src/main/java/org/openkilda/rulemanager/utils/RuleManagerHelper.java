@@ -21,12 +21,15 @@ import static java.util.stream.Collectors.toMap;
 import org.openkilda.rulemanager.SpeakerData;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -69,6 +72,55 @@ public final class RuleManagerHelper {
                 }
             }
         }
+    }
+
+    /**
+     * Split commands into several groups. Each group contains interdependent and topology sorted commands.
+     */
+    public static List<List<SpeakerData>> groupCommandsByDependenciesAndSort(List<SpeakerData> commands) {
+        Map<UUID, Set<UUID>> graph = buildDependenciesGraph(commands);
+        Map<UUID, SpeakerData> commandMap = buildCommandMap(commands);
+        Set<UUID> used = new HashSet<>();
+        List<List<SpeakerData>> result = new ArrayList<>();
+
+        for (SpeakerData command : commands) {
+            if (used.contains(command.getUuid())) {
+                continue;
+            }
+
+            used.add(command.getUuid());
+            List<SpeakerData> currentGroup = Lists.newArrayList(command);
+            Queue<UUID> queue = new LinkedList<>();
+            queue.add(command.getUuid());
+
+            while (!queue.isEmpty()) {
+                UUID current = queue.poll();
+
+                for (UUID next : graph.get(current)) {
+                    if (!used.contains(next)) {
+                        used.add(next);
+                        queue.add(next);
+                        currentGroup.add(commandMap.get(next));
+                    }
+                }
+            }
+
+            result.add(sortCommandsByDependencies(currentGroup));
+        }
+        return result;
+    }
+
+    private static Map<UUID, Set<UUID>> buildDependenciesGraph(List<SpeakerData> commands) {
+        Map<UUID, Set<UUID>> map = new HashMap<>();
+
+        for (SpeakerData command : commands) {
+            Set<UUID> dependencies = map.computeIfAbsent(command.getUuid(), x -> new HashSet<>());
+            for (UUID dependencyUuid : command.getDependsOn()) {
+                dependencies.add(dependencyUuid);
+                map.computeIfAbsent(dependencyUuid, x -> new HashSet<>()).add(command.getUuid());
+            }
+        }
+        return map;
     }
 
     private static Map<UUID, SpeakerData> buildCommandMap(List<SpeakerData> commands) {
