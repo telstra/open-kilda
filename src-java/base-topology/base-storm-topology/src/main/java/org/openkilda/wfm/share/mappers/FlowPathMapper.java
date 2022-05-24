@@ -85,8 +85,7 @@ public abstract class FlowPathMapper {
     /**
      * Convert {@link FlowPath} to {@link PathNodePayload}.
      */
-    public List<PathNodePayload> mapToPathNodes(FlowPath flowPath) {
-        Flow flow = flowPath.getFlow();
+    public List<PathNodePayload> mapToPathNodes(Flow flow, FlowPath flowPath) {
         FlowEndpoint ingress = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
         FlowEndpoint egress = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
 
@@ -139,17 +138,6 @@ public abstract class FlowPathMapper {
         }
 
         return resultList;
-    }
-
-    /**
-     * Convert {@link FlowPath} to {@link PathNodePayload}.
-     */
-    public List<PathNodePayload> mapToPathNodes(Flow flow, FlowPath flowPath) {
-        boolean forward = flow.isForward(flowPath);
-        int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
-        int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
-
-        return mapToPathNodes(flowPath, inPort, outPort);
     }
 
     /**

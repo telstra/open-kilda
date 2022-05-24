@@ -118,8 +118,8 @@ public class YFlowReadService {
                 mainReversePaths.add(flow.getReversePath());
                 FlowPathDto.FlowPathDtoBuilder pathDtoBuilder = FlowPathDto.builder()
                         .id(flow.getFlowId())
-                        .forwardPath(FlowPathMapper.INSTANCE.mapToPathNodes(flow.getForwardPath()))
-                        .reversePath(FlowPathMapper.INSTANCE.mapToPathNodes(flow.getReversePath()));
+                        .forwardPath(FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getForwardPath()))
+                        .reversePath(FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getReversePath()));
 
                 if (flow.isAllocateProtectedPath()) {
                     FlowProtectedPathDto.FlowProtectedPathDtoBuilder protectedDtoBuilder =
@@ -127,13 +127,13 @@ public class YFlowReadService {
                     if (flow.getProtectedForwardPath() != null) {
                         protectedForwardPaths.add(flow.getProtectedForwardPath());
                         protectedDtoBuilder.forwardPath(
-                                FlowPathMapper.INSTANCE.mapToPathNodes(flow.getProtectedForwardPath()));
+                                FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getProtectedForwardPath()));
 
                     }
                     if (flow.getProtectedReversePath() != null) {
                         protectedReversePaths.add(flow.getProtectedReversePath());
                         protectedDtoBuilder.reversePath(
-                                FlowPathMapper.INSTANCE.mapToPathNodes(flow.getProtectedReversePath()));
+                                FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getProtectedReversePath()));
                     }
                     pathDtoBuilder.protectedPath(protectedDtoBuilder.build());
                 }
