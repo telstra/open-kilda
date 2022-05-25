@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.service.yflow;
 
+import static java.util.Collections.emptyList;
+
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.SubFlowsResponse;
 import org.openkilda.messaging.command.yflow.YFlowPathsResponse;
@@ -114,8 +116,10 @@ public class YFlowReadService {
             List<FlowPathDto> subFlowPathDtos = new ArrayList<>();
             for (YSubFlow subFlow : yFlow.getSubFlows()) {
                 Flow flow = subFlow.getFlow();
-                mainForwardPaths.add(flow.getForwardPath());
-                mainReversePaths.add(flow.getReversePath());
+                if (!flow.isOneSwitchFlow()) {
+                    mainForwardPaths.add(flow.getForwardPath());
+                    mainReversePaths.add(flow.getReversePath());
+                }
                 FlowPathDto.FlowPathDtoBuilder pathDtoBuilder = FlowPathDto.builder()
                         .id(flow.getFlowId())
                         .forwardPath(FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getForwardPath()))
@@ -125,13 +129,17 @@ public class YFlowReadService {
                     FlowProtectedPathDto.FlowProtectedPathDtoBuilder protectedDtoBuilder =
                             FlowProtectedPathDto.builder();
                     if (flow.getProtectedForwardPath() != null) {
-                        protectedForwardPaths.add(flow.getProtectedForwardPath());
+                        if (!flow.isOneSwitchFlow()) {
+                            protectedForwardPaths.add(flow.getProtectedForwardPath());
+                        }
                         protectedDtoBuilder.forwardPath(
                                 FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getProtectedForwardPath()));
 
                     }
                     if (flow.getProtectedReversePath() != null) {
-                        protectedReversePaths.add(flow.getProtectedReversePath());
+                        if (!flow.isOneSwitchFlow()) {
+                            protectedReversePaths.add(flow.getProtectedReversePath());
+                        }
                         protectedDtoBuilder.reversePath(
                                 FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getProtectedReversePath()));
                     }
@@ -143,10 +151,10 @@ public class YFlowReadService {
             SharedEndpoint yFlowSharedEndpoint = yFlow.getSharedEndpoint();
             FlowEndpoint sharedEndpoint =
                     new FlowEndpoint(yFlowSharedEndpoint.getSwitchId(), yFlowSharedEndpoint.getPortNumber());
-            List<PathSegment> sharedForwardPathSegments =
-                    IntersectionComputer.calculatePathIntersectionFromSource(mainForwardPaths);
-            List<PathSegment> sharedReversePathSegments =
-                    IntersectionComputer.calculatePathIntersectionFromDest(mainReversePaths);
+            List<PathSegment> sharedForwardPathSegments = mainForwardPaths.size() >= 2
+                    ? IntersectionComputer.calculatePathIntersectionFromSource(mainForwardPaths) : emptyList();
+            List<PathSegment> sharedReversePathSegments = mainReversePaths.size() >= 2
+                    ? IntersectionComputer.calculatePathIntersectionFromDest(mainReversePaths) : emptyList();
             FlowPathDto sharedPath = FlowPathDto.builder()
                     .forwardPath(
                             FlowPathMapper.INSTANCE.mapToPathNodes(sharedEndpoint, sharedForwardPathSegments, null))

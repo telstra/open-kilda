@@ -58,6 +58,8 @@ public class RequestedFlow {
 
     private SwitchId loopSwitchId;
 
+    private String yFlowId;
+
     public boolean isOneSwitchFlow() {
         return Objects.equals(srcSwitch, destSwitch);
     }

@@ -95,6 +95,53 @@ class YFlowHelper {
     }
 
     /**
+     * Creates YFlowCreatePayload for a single-swith y-flow with random vlan.
+     *
+     * @param sw the switch for shared and sub-flow endpoints
+     * @param useTraffgenPorts try using traffgen ports if available
+     */
+    YFlowCreatePayload singleSwitchYFlow(Switch sw, boolean useTraffgenPorts = true,
+                                         List<YFlowCreatePayload> existingFlows = []) {
+        List<SwitchPortVlan> busyEndpoints = getBusyEndpoints(existingFlows)
+
+        def sePort = randomEndpointPort(sw, useTraffgenPorts, busyEndpoints)
+        busyEndpoints << new SwitchPortVlan(sw.dpId, sePort)
+        def epPort = randomEndpointPort(sw, useTraffgenPorts, busyEndpoints)
+
+        def subFlows = (0..1).collect {
+            def payload = Wrappers.retry(3, 0) {
+                def seVlan = randomVlan()
+                if (busyEndpoints.contains(new SwitchPortVlan(sw.dpId, sePort, seVlan))) {
+                    throw new Exception("Generated sub-flow conflicts with existing endpoints.")
+                }
+                def epVlan = randomVlan();
+                if (busyEndpoints.contains(new SwitchPortVlan(sw.dpId, epPort, epVlan))) {
+                    throw new Exception("Generated sub-flow conflicts with existing endpoints.")
+                }
+                SubFlowUpdatePayload.builder()
+                        .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder().vlanId(seVlan).build())
+                        .endpoint(new FlowEndpointV2(sw.dpId, epPort, epVlan, new DetectConnectedDevicesV2(false, false)))
+                        .build()
+            }
+            busyEndpoints << new SwitchPortVlan(sw.dpId, sePort, payload.sharedEndpoint.vlanId)
+            busyEndpoints << new SwitchPortVlan(sw.dpId, epPort, payload.endpoint.vlanId)
+            payload
+        }
+
+        return YFlowCreatePayload.builder()
+                .sharedEndpoint(YFlowSharedEndpoint.builder().switchId(sw.dpId).portNumber(sePort).build())
+                .subFlows(subFlows)
+                .maximumBandwidth(1000)
+                .ignoreBandwidth(false)
+                .periodicPings(false)
+                .description(generateDescription())
+                .strictBandwidth(false)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN.toString())
+                .pathComputationStrategy(PathComputationStrategy.COST.toString())
+                .build()
+    }
+
+    /**
      * Adds y-flow and waits for it to become UP.
      */
     YFlow addYFlow(YFlowCreatePayload flow) {

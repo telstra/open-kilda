@@ -18,15 +18,10 @@ package org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.command.yflow.SubFlowDto;
-import org.openkilda.messaging.command.yflow.SubFlowSharedEndpointEncapsulation;
 import org.openkilda.messaging.command.yflow.YFlowResponse;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.YFlow;
-import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
@@ -71,38 +66,6 @@ public class OnSubFlowAllocatedAction extends
 
         stateMachine.addAllocatedSubFlow(subFlowId);
 
-        SubFlowDto subFlowDto = stateMachine.getTargetFlow().getSubFlows().stream()
-                .filter(f -> f.getFlowId().equals(subFlowId))
-                .findAny()
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.INTERNAL_ERROR,
-                        format("Can't find definition of created sub-flow %s", subFlowId)));
-        SubFlowSharedEndpointEncapsulation sharedEndpoint = subFlowDto.getSharedEndpoint();
-        FlowEndpoint endpoint = subFlowDto.getEndpoint();
-
-        log.debug("Start creating sub-flow references from {} to y-flow {}", subFlowId,
-                stateMachine.getYFlowId());
-
-        YFlow result = transactionManager.doInTransaction(() -> {
-            YFlow yFlow = yFlowRepository.findById(yFlowId)
-                    .orElseThrow(() -> new FlowProcessingException(ErrorType.INTERNAL_ERROR,
-                            format("Y-flow %s not found", yFlowId)));
-            Flow flow = flowRepository.findById(subFlowId)
-                    .orElseThrow(() -> new FlowProcessingException(ErrorType.INTERNAL_ERROR,
-                            format("Flow %s not found", subFlowId)));
-            YSubFlow subFlow = YSubFlow.builder()
-                    .yFlow(yFlow)
-                    .flow(flow)
-                    .sharedEndpointVlan(sharedEndpoint.getVlanId())
-                    .sharedEndpointInnerVlan(sharedEndpoint.getInnerVlanId())
-                    .endpointSwitchId(endpoint.getSwitchId())
-                    .endpointPort(endpoint.getPortNumber())
-                    .endpointVlan(endpoint.getOuterVlanId())
-                    .endpointInnerVlan(endpoint.getInnerVlanId())
-                    .build();
-            yFlow.addSubFlow(subFlow);
-            return yFlow;
-        });
-
         if (subFlowId.equals(stateMachine.getMainAffinityFlowId())) {
             stateMachine.getRequestedFlows().forEach(requestedFlow -> {
                 String requestedFlowId = requestedFlow.getFlowId();
@@ -112,13 +75,20 @@ public class OnSubFlowAllocatedAction extends
                     stateMachine.notifyEventListeners(listener ->
                             listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
                     CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
-                    requestedFlow.setAffinityFlowId(stateMachine.getMainAffinityFlowId());
+                    if (!requestedFlow.getSrcSwitch().equals(requestedFlow.getDestSwitch())) {
+                        // One-switch flow can't be added to an affinity group.
+                        requestedFlow.setAffinityFlowId(stateMachine.getMainAffinityFlowId());
+                    }
+                    requestedFlow.setYFlowId(stateMachine.getYFlowId());
                     flowCreateService.startFlowCreation(flowContext, requestedFlow, yFlowId);
                 }
             });
         }
 
         if (stateMachine.getAllocatedSubFlows().size() == stateMachine.getSubFlows().size()) {
+            YFlow result = yFlowRepository.findById(yFlowId)
+                    .orElseThrow(() -> new FlowProcessingException(ErrorType.INTERNAL_ERROR,
+                            format("Y-flow %s not found", yFlowId)));
             return Optional.of(buildResponseMessage(result, stateMachine.getCommandContext()));
         } else {
             return Optional.empty();

@@ -22,11 +22,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
 @JsonNaming(value = SnakeCaseStrategy.class)
+@ToString(callSuper = true)
 public class UpdateYFlowStatsInfo extends BaseYFlowStatsInfo {
     @JsonCreator
     public UpdateYFlowStatsInfo(

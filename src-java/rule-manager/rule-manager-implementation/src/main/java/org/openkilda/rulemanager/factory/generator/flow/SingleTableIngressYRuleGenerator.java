@@ -53,9 +53,6 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
-        if (flow.isOneSwitchFlow()) {
-            throw new IllegalStateException("Y-Flow rules can't be created for one switch flow");
-        }
         List<SpeakerData> result = new ArrayList<>();
         FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
         FlowSpeakerData command = buildFlowIngressCommand(sw, ingressEndpoint);

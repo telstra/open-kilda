@@ -276,7 +276,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         verifyAll(northbound.pingFlow(qinqFlow.flowId, new PingInput())) {
             !it.forward
             !it.reverse
-            it.error == "Flow ${qinqFlow.flowId} should not be one switch flow"
+            it.error == "Flow ${qinqFlow.flowId} should not be one-switch flow"
         }
 
         and: "Involved switches pass switch validation"

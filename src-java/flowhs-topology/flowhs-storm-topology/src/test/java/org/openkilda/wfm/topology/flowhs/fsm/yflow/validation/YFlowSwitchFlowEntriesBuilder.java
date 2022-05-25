@@ -68,7 +68,7 @@ public final class YFlowSwitchFlowEntriesBuilder {
             Flow flow = subFlow.getFlow();
             if (!flow.getSrcSwitchId().equals(yFlow.getSharedEndpoint().getSwitchId())) {
                 throw new IllegalArgumentException("Invalid sub-flow source - "
-                        + "doesn't correspond to y-flow shared-endpoint");
+                        + "doesn't correspond to y-flow shared endpoint");
             }
         });
     }
