@@ -40,8 +40,8 @@ public final class OfUtils {
      * @param sw target switch
      * @return future with stats reply
      */
-    public static CompletableFuture<List<OFMeterConfigStatsReply>> verifyMeters(MessageContext messageContext,
-                                                                                IOFSwitch sw) {
+    public static CompletableFuture<List<OFMeterConfigStatsReply>> getMeters(MessageContext messageContext,
+                                                                             IOFSwitch sw) {
 
         return new CompletableFutureAdapter<>(
                 messageContext, sw.writeStatsRequest(makeMeterReadCommand(sw)));
@@ -60,8 +60,8 @@ public final class OfUtils {
      * @param sw target switch
      * @return future with stats reply
      */
-    public static CompletableFuture<List<OFGroupDescStatsReply>> verifyGroups(MessageContext messageContext,
-                                                                              IOFSwitch sw) {
+    public static CompletableFuture<List<OFGroupDescStatsReply>> getGroups(MessageContext messageContext,
+                                                                           IOFSwitch sw) {
 
         return new CompletableFutureAdapter<>(
                 messageContext, sw.writeStatsRequest(makeGroupReadCommand(sw)));
@@ -71,8 +71,8 @@ public final class OfUtils {
         return sw.getOFFactory().buildGroupDescStatsRequest().build();
     }
 
-    public static CompletableFuture<List<OFFlowStatsReply>> verifyFlows(MessageContext messageContext,
-                                                                              IOFSwitch sw) {
+    public static CompletableFuture<List<OFFlowStatsReply>> getFlows(MessageContext messageContext,
+                                                                     IOFSwitch sw) {
         return new CompletableFutureAdapter<>(
                 messageContext, sw.writeStatsRequest(makeFlowStatsCommand(sw)));
     }

@@ -22,6 +22,7 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.NonNull;
 
 import java.util.Collection;
@@ -29,14 +30,20 @@ import java.util.UUID;
 
 public class InstallSpeakerCommandsRequest extends BaseSpeakerCommandsRequest {
 
+    @JsonProperty("fail_if_exists")
+    @Getter
+    private final boolean failIfExists;
+
     @Builder(toBuilder = true)
     @JsonCreator
     public InstallSpeakerCommandsRequest(@JsonProperty("message_context") MessageContext messageContext,
                                          @JsonProperty("switch_id") @NonNull SwitchId switchId,
                                          @JsonProperty("command_id") @NonNull UUID commandId,
                                          @JsonProperty("command_data") Collection<OfCommand> commands,
-                                         @JsonProperty("origin") Origin origin) {
+                                         @JsonProperty("origin") Origin origin,
+                                         @JsonProperty("fail_if_exists") Boolean failIfExists) {
         super(messageContext, switchId, commandId, commands, origin);
+        this.failIfExists = failIfExists == null || failIfExists;
     }
 
     public void process(BatchCommandProcessor processor, String key) {
