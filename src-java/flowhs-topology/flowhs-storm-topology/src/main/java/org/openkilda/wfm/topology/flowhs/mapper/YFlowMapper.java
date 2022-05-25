@@ -105,8 +105,9 @@ public abstract class YFlowMapper {
     protected Collection<Flow> getDiverseWithFlow(Flow flow, FlowRepository flowRepository) {
         return flow.getDiverseGroupId() == null ? Collections.emptyList() :
                 flowRepository.findByDiverseGroupId(flow.getDiverseGroupId()).stream()
-                        .filter(diverseFlow -> !flow.getFlowId().equals(diverseFlow.getFlowId())
-                                || (flow.getYFlowId() != null && !flow.getYFlowId().equals(diverseFlow.getYFlowId())))
+                        .filter(diverseFlow -> !flow.getFlowId().equals(diverseFlow.getFlowId()))
+                        .filter(diverseFlow -> flow.getYFlowId() == null
+                                || !flow.getYFlowId().equals(diverseFlow.getYFlowId()))
                         .collect(Collectors.toSet());
     }
 }

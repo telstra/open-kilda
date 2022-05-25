@@ -45,8 +45,6 @@ import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.YFlow;
-import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -479,19 +477,20 @@ public class FlowOperationsService {
     }
 
     private boolean updateRequiredByDiverseFlowIdField(FlowPatch flowPatch, Flow flow) {
-        if (flowPatch.getDiverseFlowId() != null) {
-            String diverseFlowId = yFlowRepository.findById(flowPatch.getDiverseFlowId())
-                    .map(Stream::of).orElseGet(Stream::empty)
-                    .map(YFlow::getSubFlows)
-                    .flatMap(Collection::stream)
-                    .map(YSubFlow::getFlow)
-                    .filter(f -> f.getFlowId().equals(f.getAffinityGroupId()))
-                    .map(Flow::getFlowId)
-                    .findFirst()
-                    .orElse(flowPatch.getDiverseFlowId());
-            return flowRepository.getOrCreateDiverseFlowGroupId(diverseFlowId)
-                    .map(groupId -> !flowRepository.findFlowsIdByDiverseGroupId(groupId).contains(flow.getFlowId()))
-                    .orElse(true);
+        String diverseFlowId = flowPatch.getDiverseFlowId();
+        if (diverseFlowId != null) {
+            Optional<String> groupId;
+            if (yFlowRepository.exists(diverseFlowId)) {
+                groupId = yFlowRepository.getOrCreateDiverseYFlowGroupId(diverseFlowId);
+            } else if (yFlowRepository.isSubFlow(diverseFlowId)) {
+                groupId = flowRepository.findById(diverseFlowId)
+                        .map(Flow::getYFlowId)
+                        .flatMap(yFlowRepository::getOrCreateDiverseYFlowGroupId);
+            } else {
+                groupId = flowRepository.getOrCreateDiverseFlowGroupId(diverseFlowId);
+            }
+            return !groupId.isPresent()
+                    || !flowRepository.findFlowsIdByDiverseGroupId(groupId.get()).contains(flow.getFlowId());
         }
         return false;
     }

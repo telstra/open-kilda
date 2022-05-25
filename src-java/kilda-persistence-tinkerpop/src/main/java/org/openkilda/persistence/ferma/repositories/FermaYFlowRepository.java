@@ -15,8 +15,11 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import static java.lang.String.format;
+
 import org.openkilda.model.YFlow;
 import org.openkilda.model.YFlow.YFlowData;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
@@ -31,6 +34,7 @@ import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 
 import java.util.Collection;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -114,6 +118,28 @@ public class FermaYFlowRepository extends FermaGenericRepository<YFlow, YFlowDat
                             return flow;
                         }));
     }
+
+    @Override
+    public Optional<String> getOrCreateDiverseYFlowGroupId(String yFlowId) {
+        return getTransactionManager().doInTransaction(() -> findById(yFlowId)
+                .map(yFlow -> {
+                    String groupId = yFlow.getSubFlows().stream()
+                            .map(YSubFlow::getFlow)
+                            .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
+                            .findFirst()
+                            .orElseThrow(() -> new IllegalStateException(
+                                    format("Y-flow %s has no sub-flow with an affinity group defined.", yFlowId)))
+                            .getDiverseGroupId();
+                    if (groupId == null) {
+                        groupId = UUID.randomUUID().toString();
+                    }
+                    for (YSubFlow ySubFlow : yFlow.getSubFlows()) {
+                        ySubFlow.getFlow().setDiverseGroupId(groupId);
+                    }
+                    return groupId;
+                }));
+    }
+
 
     @Override
     protected YFlowFrame doAdd(YFlowData data) {
