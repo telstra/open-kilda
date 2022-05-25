@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.openkilda.rulemanager.utils.RuleManagerHelper.checkCircularDependencies;
 import static org.openkilda.rulemanager.utils.RuleManagerHelper.groupCommandsByDependenciesAndSort;
 import static org.openkilda.rulemanager.utils.RuleManagerHelper.removeDuplicateCommands;
+import static org.openkilda.rulemanager.utils.RuleManagerHelper.reverseDependencies;
 import static org.openkilda.rulemanager.utils.RuleManagerHelper.sortCommandsByDependencies;
 
 import org.openkilda.model.GroupId;
@@ -280,6 +281,19 @@ public class RuleManagerHelperTest {
                 newHashSet(result.get(2).get(3).getUuid(), result.get(2).get(4).getUuid()));
     }
 
+    @Test
+    public void reverseDependenciesTest() {
+        FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
+        FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
+        FlowSpeakerData command3 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
+
+        reverseDependencies(newArrayList(command1, command2, command3));
+
+        assertEquals(2, command1.getDependsOn().size());
+        assertTrue(command1.getDependsOn().containsAll(newArrayList(command2.getUuid(), command3.getUuid())));
+        assertTrue(command2.getDependsOn().isEmpty());
+        assertTrue(command3.getDependsOn().isEmpty());
+    }
 
     private FlowSpeakerData buildVlanMatchCommand(int vlan) {
         return FlowSpeakerData.builder()

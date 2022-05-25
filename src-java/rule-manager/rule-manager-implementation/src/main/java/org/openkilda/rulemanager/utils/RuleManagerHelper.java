@@ -200,6 +200,23 @@ public final class RuleManagerHelper {
         sortedCommands.add(current);
     }
 
+    /**
+     * Reverse dependencies for delete commands.
+     */
+    public static void reverseDependencies(List<SpeakerData> commands) {
+        commands.forEach(data -> {
+            data.getDependsOn().forEach(uuid -> getByUuid(uuid, commands).getDependsOn().add(data.getUuid()));
+            data.getDependsOn().clear();
+        });
+    }
+
+    private static SpeakerData getByUuid(UUID uuid, List<SpeakerData> commands) {
+        return commands.stream()
+                .filter(data -> uuid.equals(data.getUuid()))
+                .findFirst()
+                .orElse(null);
+    }
+
     private enum Color {
         GREY, BLACK
     }
