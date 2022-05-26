@@ -78,7 +78,7 @@ public class InMemoryDataAdapter implements DataAdapter {
     public YFlow getYFlow(PathId pathId) {
         YFlow yFlow = yFlows.get(pathId);
         if (yFlow == null) {
-            throw new IllegalStateException(format("YFlow for pathId '%s' not found.", pathId));
+            throw new IllegalStateException(format("Y-flow for pathId '%s' not found.", pathId));
         }
         return yFlow;
     }

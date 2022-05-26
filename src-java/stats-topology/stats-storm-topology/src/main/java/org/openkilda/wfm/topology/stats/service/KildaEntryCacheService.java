@@ -32,6 +32,7 @@ import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
 import org.openkilda.messaging.info.stats.UpdateYFlowStatsInfo;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.messaging.payload.yflow.YFlowEndpointResources;
+import org.openkilda.model.Flow;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
@@ -202,10 +203,10 @@ public class KildaEntryCacheService {
                 .flatMap(flow -> flow.getPaths().stream())
                 .filter(Objects::nonNull)
                 .forEach(path -> {
-                    String flowId = path.getFlowId();
+                    Flow flow = path.getFlow();
                     updateCache(
-                            cacheHandler, flowId, path.getFlow().getYFlowId(), path.getCookie(), path.getMeterId(),
-                            FlowPathMapper.INSTANCE.mapToPathNodes(path));
+                            cacheHandler, flow.getFlowId(), flow.getYFlowId(), path.getCookie(), path.getMeterId(),
+                            FlowPathMapper.INSTANCE.mapToPathNodes(flow, path));
                 });
     }
 

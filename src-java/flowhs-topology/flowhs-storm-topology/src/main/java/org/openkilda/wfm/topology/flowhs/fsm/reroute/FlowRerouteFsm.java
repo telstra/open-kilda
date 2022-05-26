@@ -69,7 +69,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.ValidateIngressRule
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.ValidateNonIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.error.SetInstallRuleErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.error.SetValidateRuleErrorAction;
-import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteEventListener;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 
@@ -100,7 +99,6 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     private boolean rerouteProtected;
     private boolean effectivelyDown;
 
-    private RequestedFlow originalFlow;
     private FlowStatus originalFlowStatus;
     private String originalFlowStatusInfo;
     private FlowEncapsulationType originalEncapsulationType;

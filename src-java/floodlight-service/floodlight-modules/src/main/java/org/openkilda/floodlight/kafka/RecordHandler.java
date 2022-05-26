@@ -138,7 +138,6 @@ import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteGroupRequest;
-import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpGroupsForFlowHsRequest;
@@ -152,11 +151,9 @@ import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
 import org.openkilda.messaging.command.switches.InstallGroupRequest;
-import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.ModifyGroupRequest;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
-import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -232,7 +229,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -281,8 +277,6 @@ class RecordHandler implements Runnable {
             doNetworkDump((NetworkCommandData) data);
         } else if (data instanceof SwitchRulesDeleteRequest) {
             doDeleteSwitchRules(message);
-        } else if (data instanceof SwitchRulesInstallRequest) {
-            doInstallSwitchRules(message);
         } else if (data instanceof DumpRulesForFlowHsRequest) {
             doDumpRulesForFlowHsRequest(message);
         } else if (data instanceof DumpRulesRequest) {
@@ -762,222 +756,6 @@ class RecordHandler implements Runnable {
         switchTracking.dumpAllSwitches(payload.getDumpId());
     }
 
-    private void doInstallSwitchRules(final CommandMessage message) {
-        SwitchRulesInstallRequest request = (SwitchRulesInstallRequest) message.getData();
-        logger.info("Installing rules on '{}' switch: action={}",
-                request.getSwitchId(), request.getInstallRulesAction());
-
-        final IKafkaProducerService producerService = getKafkaProducer();
-        final String replyToTopic = context.getKafkaSwitchManagerTopic();
-
-        DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
-        ISwitchManager switchManager = context.getSwitchManager();
-        InstallRulesAction installAction = request.getInstallRulesAction();
-        List<Long> installedRules = new ArrayList<>();
-        try {
-            if (installAction == InstallRulesAction.INSTALL_DROP) {
-                installedRules.add(switchManager.installDropFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_BROADCAST) {
-                installedRules.add(switchManager.installVerificationRule(dpid, true));
-            } else if (installAction == InstallRulesAction.INSTALL_UNICAST) {
-                // TODO: this isn't always added (ie if OF1.2). Is there a better response?
-                installedRules.add(switchManager.installVerificationRule(dpid, false));
-            } else if (installAction == InstallRulesAction.INSTALL_DROP_VERIFICATION_LOOP) {
-                installedRules.add(switchManager.installDropLoopRule(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_BFD_CATCH) {
-                // TODO: this isn't installed as well. Refactor this section
-                installedRules.add(switchManager.installBfdCatchFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY) {
-                // TODO: this isn't installed as well. Refactor this section
-                installedRules.add(switchManager.installRoundTripLatencyFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_UNICAST_VXLAN) {
-                installedRules.add(switchManager.installUnicastVerificationRuleVxlan(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_PRE_INGRESS_PASS_THROUGH) {
-                installedRules.add(switchManager.installPreIngressTablePassThroughDefaultRule(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_INGRESS_DROP) {
-                installedRules.add(switchManager.installDropFlowForTable(dpid,
-                        INGRESS_TABLE_ID, MULTITABLE_INGRESS_DROP_COOKIE));
-            } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_POST_INGRESS_DROP) {
-                installedRules.add(switchManager.installDropFlowForTable(dpid,
-                        POST_INGRESS_TABLE_ID, MULTITABLE_POST_INGRESS_DROP_COOKIE));
-            } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_EGRESS_PASS_THROUGH) {
-                installedRules.add(switchManager.installEgressTablePassThroughDefaultRule(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_MULTITABLE_TRANSIT_DROP) {
-                installedRules.add(switchManager.installDropFlowForTable(dpid,
-                        TRANSIT_TABLE_ID, MULTITABLE_TRANSIT_DROP_COOKIE));
-            } else if (installAction == InstallRulesAction.INSTALL_LLDP_INPUT_PRE_DROP) {
-                installedRules.add(switchManager.installLldpInputPreDropFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_LLDP_INGRESS) {
-                installedRules.add(switchManager.installLldpIngressFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_LLDP_POST_INGRESS) {
-                installedRules.add(switchManager.installLldpPostIngressFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_LLDP_POST_INGRESS_VXLAN) {
-                installedRules.add(switchManager.installLldpPostIngressVxlanFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_LLDP_POST_INGRESS_ONE_SWITCH) {
-                installedRules.add(switchManager.installLldpPostIngressOneSwitchFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_LLDP_TRANSIT) {
-                installedRules.add(switchManager.installLldpTransitFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_ARP_INPUT_PRE_DROP) {
-                installedRules.add(switchManager.installArpInputPreDropFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_ARP_INGRESS) {
-                installedRules.add(switchManager.installArpIngressFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_ARP_POST_INGRESS) {
-                installedRules.add(switchManager.installArpPostIngressFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_ARP_POST_INGRESS_VXLAN) {
-                installedRules.add(switchManager.installArpPostIngressVxlanFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_ARP_POST_INGRESS_ONE_SWITCH) {
-                installedRules.add(switchManager.installArpPostIngressOneSwitchFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_ARP_TRANSIT) {
-                installedRules.add(switchManager.installArpTransitFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_SERVER_42_OUTPUT_VLAN
-                    || installAction == InstallRulesAction.INSTALL_SERVER_42_FLOW_RTT_OUTPUT_VLAN) {
-                validateServer42Fields(request, installAction);
-                installedRules.add(switchManager.installServer42FlowRttOutputVlanFlow(
-                        dpid, request.getServer42Port(), request.getServer42Vlan(), request.getServer42MacAddress()));
-            } else if (installAction == InstallRulesAction.INSTALL_SERVER_42_OUTPUT_VXLAN
-                    || installAction == InstallRulesAction.INSTALL_SERVER_42_FLOW_RTT_OUTPUT_VXLAN) {
-                validateServer42Fields(request, installAction);
-                installedRules.add(switchManager.installServer42FlowRttOutputVxlanFlow(
-                        dpid, request.getServer42Port(), request.getServer42Vlan(), request.getServer42MacAddress()));
-            } else if (installAction == InstallRulesAction.INSTALL_SERVER_42_TURNING
-                    || installAction == InstallRulesAction.INSTALL_SERVER_42_FLOW_RTT_TURNING) {
-                installedRules.add(switchManager.installServer42FlowRttTurningFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_SERVER_42_FLOW_RTT_VXLAN_TURNING) {
-                installedRules.add(switchManager.installServer42FlowRttVxlanTurningFlow(dpid));
-            } else if (installAction == InstallRulesAction.INSTALL_SERVER_42_ISL_RTT_OUTPUT) {
-                validateServer42Fields(request, installAction);
-                installedRules.add(switchManager.installServer42IslRttOutputFlow(
-                        dpid, request.getServer42Port(), request.getServer42Vlan(), request.getServer42MacAddress()));
-            } else if (installAction == InstallRulesAction.INSTALL_SERVER_42_ISL_RTT_TURNING) {
-                installedRules.add(switchManager.installServer42IslRttTurningFlow(dpid));
-            } else {
-                installedRules.addAll(switchManager.installDefaultRules(dpid));
-                if (request.isMultiTable()) {
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE));
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            MULTITABLE_INGRESS_DROP_COOKIE));
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            MULTITABLE_POST_INGRESS_DROP_COOKIE));
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            MULTITABLE_EGRESS_PASS_THROUGH_COOKIE));
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            MULTITABLE_TRANSIT_DROP_COOKIE));
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            LLDP_POST_INGRESS_COOKIE));
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            LLDP_POST_INGRESS_VXLAN_COOKIE));
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            LLDP_POST_INGRESS_ONE_SWITCH_COOKIE));
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            ARP_POST_INGRESS_COOKIE));
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            ARP_POST_INGRESS_VXLAN_COOKIE));
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            ARP_POST_INGRESS_ONE_SWITCH_COOKIE));
-                    for (int port : request.getIslPorts()) {
-                        installedRules.addAll(switchManager.installMultitableEndpointIslRules(dpid, port));
-                    }
-                    for (int port : request.getFlowPorts()) {
-                        installedRules.add(switchManager.installIntermediateIngressRule(dpid, port));
-                    }
-                    for (Integer port : request.getFlowLldpPorts()) {
-                        installedRules.add(switchManager.installLldpInputCustomerFlow(dpid, port));
-                    }
-                    for (Integer port : request.getFlowArpPorts()) {
-                        installedRules.add(switchManager.installArpInputCustomerFlow(dpid, port));
-                    }
-
-                    if (request.isSwitchLldp()) {
-                        installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                                LLDP_INPUT_PRE_DROP_COOKIE));
-                        installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                                LLDP_TRANSIT_COOKIE));
-                        installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                                LLDP_INGRESS_COOKIE));
-                    }
-                    if (request.isSwitchArp()) {
-                        installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                                ARP_INPUT_PRE_DROP_COOKIE));
-                        installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                                ARP_TRANSIT_COOKIE));
-                        installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                                ARP_INGRESS_COOKIE));
-                    }
-                }
-                Integer server42Port = request.getServer42Port();
-                Integer server42Vlan = request.getServer42Vlan();
-                MacAddress server42MacAddress = request.getServer42MacAddress();
-
-                if (request.isServer42FlowRttFeatureToggle()) {
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            SERVER_42_FLOW_RTT_TURNING_COOKIE));
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE));
-
-                    if (request.isServer42FlowRttSwitchProperty() && server42Port != null && server42Vlan != null
-                            && server42MacAddress != null) {
-                        installedRules.add(switchManager.installServer42FlowRttOutputVlanFlow(
-                                dpid, server42Port, server42Vlan, server42MacAddress));
-                        installedRules.add(switchManager.installServer42FlowRttOutputVxlanFlow(
-                                dpid, server42Port, server42Vlan, server42MacAddress));
-
-                        for (Integer port : request.getServer42FlowRttPorts()) {
-                            installedRules.add(switchManager.installServer42FlowRttInputFlow(
-                                    dpid, server42Port, port, server42MacAddress));
-                        }
-                    }
-                }
-
-                if (request.isServer42IslRttEnabled()) {
-                    installedRules.add(processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            SERVER_42_ISL_RTT_TURNING_COOKIE));
-                    installedRules.add(switchManager.installServer42IslRttOutputFlow(dpid,
-                            request.getServer42Port(), request.getServer42Vlan(), request.getServer42MacAddress()));
-                    for (Integer port : request.getIslPorts()) {
-                        installedRules.add(switchManager.installServer42IslRttInputFlow(dpid, server42Port, port));
-                    }
-                }
-            }
-
-            SwitchRulesResponse response = new SwitchRulesResponse(
-                    installedRules.stream().filter(Objects::nonNull).collect(Collectors.toList()));
-            InfoMessage infoMessage = new InfoMessage(response,
-                    System.currentTimeMillis(), message.getCorrelationId());
-            producerService.sendMessageAndTrack(replyToTopic, record.key(), infoMessage);
-
-        } catch (SwitchOperationException e) {
-            logger.error("Failed to install rules on switch '{}'", request.getSwitchId(), e);
-            anError(ErrorType.CREATION_FAILURE)
-                    .withMessage(e.getMessage())
-                    .withDescription(request.getSwitchId().toString())
-                    .withCorrelationId(message.getCorrelationId())
-                    .withTopic(replyToTopic)
-                    .withKey(record.key())
-                    .sendVia(producerService);
-        }
-    }
-
-    private void validateServer42Fields(SwitchRulesInstallRequest request, InstallRulesAction action)
-            throws SwitchOperationException {
-        List<String> errors = new ArrayList<>();
-        if (request.getServer42Port() == null) {
-            errors.add("Switch property 'server42_port' is null");
-        }
-        if (request.getServer42Vlan() == null) {
-            errors.add("Switch property 'server42_vlan' is null");
-        }
-        if (request.getServer42MacAddress() == null) {
-            errors.add("Switch property 'server42_mac address' is null");
-        }
-
-        if (!errors.isEmpty()) {
-            String message = format("%s action is unsuccessful because: %s",
-                    action.name(), String.join(", ", errors));
-            throw new SwitchOperationException(DatapathId.of(request.getSwitchId().getId()), message);
-        }
-    }
-
     private void doDeleteSwitchRules(final CommandMessage message) {
         SwitchRulesDeleteRequest request = (SwitchRulesDeleteRequest) message.getData();
         logger.info("Deleting rules from '{}' switch: action={}, criteria={}", request.getSwitchId(),
@@ -987,7 +765,6 @@ class RecordHandler implements Runnable {
         final String replyToTopic = context.getKafkaSwitchManagerTopic();
 
         DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
-        DeleteRulesAction deleteAction = request.getDeleteRulesAction();
         DeleteRulesCriteria criteria = request.getCriteria();
 
         ISwitchManager switchManager = context.getSwitchManager();
@@ -995,230 +772,9 @@ class RecordHandler implements Runnable {
         try {
             List<Long> removedRules = new ArrayList<>();
 
-            if (deleteAction != null) {
-                switch (deleteAction) {
-                    case REMOVE_DROP:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(DROP_RULE_COOKIE).build();
-                        break;
-                    case REMOVE_BROADCAST:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(VERIFICATION_BROADCAST_RULE_COOKIE).build();
-                        break;
-                    case REMOVE_UNICAST:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(VERIFICATION_UNICAST_RULE_COOKIE).build();
-                        break;
-                    case REMOVE_VERIFICATION_LOOP:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(DROP_VERIFICATION_LOOP_RULE_COOKIE).build();
-                        break;
-                    case REMOVE_BFD_CATCH:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(CATCH_BFD_RULE_COOKIE).build();
-                        break;
-                    case REMOVE_ROUND_TRIP_LATENCY:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(ROUND_TRIP_LATENCY_RULE_COOKIE).build();
-                        break;
-                    case REMOVE_UNICAST_VXLAN:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE).build();
-                        break;
-                    case REMOVE_MULTITABLE_PRE_INGRESS_PASS_THROUGH:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE).build();
-                        break;
-                    case REMOVE_MULTITABLE_INGRESS_DROP:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(MULTITABLE_INGRESS_DROP_COOKIE).build();
-                        break;
-                    case REMOVE_MULTITABLE_POST_INGRESS_DROP:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(MULTITABLE_POST_INGRESS_DROP_COOKIE).build();
-                        break;
-                    case REMOVE_MULTITABLE_EGRESS_PASS_THROUGH:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE).build();
-                        break;
-                    case REMOVE_MULTITABLE_TRANSIT_DROP:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(MULTITABLE_TRANSIT_DROP_COOKIE).build();
-                        break;
-                    case REMOVE_LLDP_INPUT_PRE_DROP:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(LLDP_INPUT_PRE_DROP_COOKIE).build();
-                        break;
-                    case REMOVE_LLDP_INGRESS:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(LLDP_INGRESS_COOKIE).build();
-                        break;
-                    case REMOVE_LLDP_POST_INGRESS:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(LLDP_POST_INGRESS_COOKIE).build();
-                        break;
-                    case REMOVE_LLDP_POST_INGRESS_VXLAN:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(LLDP_POST_INGRESS_VXLAN_COOKIE).build();
-                        break;
-                    case REMOVE_LLDP_POST_INGRESS_ONE_SWITCH:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE).build();
-                        break;
-                    case REMOVE_LLDP_TRANSIT:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(LLDP_TRANSIT_COOKIE).build();
-                        break;
-                    case REMOVE_ARP_INPUT_PRE_DROP:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(ARP_INPUT_PRE_DROP_COOKIE).build();
-                        break;
-                    case REMOVE_ARP_INGRESS:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(ARP_INGRESS_COOKIE).build();
-                        break;
-                    case REMOVE_ARP_POST_INGRESS:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(ARP_POST_INGRESS_COOKIE).build();
-                        break;
-                    case REMOVE_ARP_POST_INGRESS_VXLAN:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(ARP_POST_INGRESS_VXLAN_COOKIE).build();
-                        break;
-                    case REMOVE_ARP_POST_INGRESS_ONE_SWITCH:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(ARP_POST_INGRESS_ONE_SWITCH_COOKIE).build();
-                        break;
-                    case REMOVE_ARP_TRANSIT:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(ARP_TRANSIT_COOKIE).build();
-                        break;
-                    case REMOVE_SERVER_42_FLOW_RTT_TURNING:
-                    case REMOVE_SERVER_42_TURNING:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(SERVER_42_FLOW_RTT_TURNING_COOKIE).build();
-                        break;
-                    case REMOVE_SERVER_42_FLOW_RTT_VXLAN_TURNING:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE).build();
-                        break;
-                    case REMOVE_SERVER_42_FLOW_RTT_OUTPUT_VLAN:
-                    case REMOVE_SERVER_42_OUTPUT_VLAN:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE).build();
-                        break;
-                    case REMOVE_SERVER_42_FLOW_RTT_OUTPUT_VXLAN:
-                    case REMOVE_SERVER_42_OUTPUT_VXLAN:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE).build();
-                        break;
-                    case REMOVE_SERVER_42_ISL_RTT_TURNING:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(SERVER_42_ISL_RTT_TURNING_COOKIE).build();
-                        break;
-                    case REMOVE_SERVER_42_ISL_RTT_OUTPUT:
-                        criteria = DeleteRulesCriteria.builder()
-                                .cookie(SERVER_42_ISL_RTT_OUTPUT_COOKIE).build();
-                        break;
-                    default:
-                        logger.warn("Received unexpected delete switch rule action: {}", deleteAction);
-                }
-
-                // The cases when we delete all non-default rules.
-                if (deleteAction.nonDefaultRulesToBeRemoved()) {
-                    removedRules.addAll(switchManager.deleteAllNonDefaultRules(dpid));
-                }
-
-                // The cases when we delete the default rules.
-                if (deleteAction.defaultRulesToBeRemoved()) {
-                    removedRules.addAll(switchManager.deleteDefaultRules(dpid, request.getIslPorts(),
-                            request.getFlowPorts(), request.getFlowLldpPorts(), request.getFlowArpPorts(),
-                            request.getServer42FlowRttPorts(), request.isMultiTable(), request.isSwitchLldp(),
-                            request.isSwitchArp(),
-                            request.isServer42FlowRttFeatureToggle() && request.isServer42FlowRttSwitchProperty(),
-                            request.isServer42IslRttEnabled()
-                    ));
-                }
-            }
-
-            // The case when we either delete by criteria or a specific default rule.
+            // The case when we delete by criteria.
             if (criteria != null) {
                 removedRules.addAll(switchManager.deleteRulesByCriteria(dpid, false, null, criteria));
-            }
-
-            // The cases when we (re)install the default rules.
-            if (deleteAction != null && deleteAction.defaultRulesToBeInstalled()) {
-                switchManager.installDefaultRules(dpid);
-                if (request.isMultiTable()) {
-                    processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE);
-                    processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            MULTITABLE_INGRESS_DROP_COOKIE);
-                    processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            MULTITABLE_POST_INGRESS_DROP_COOKIE);
-                    processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            MULTITABLE_EGRESS_PASS_THROUGH_COOKIE);
-                    processInstallDefaultFlowByCookie(request.getSwitchId(),
-                            MULTITABLE_TRANSIT_DROP_COOKIE);
-                    processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_POST_INGRESS_COOKIE);
-                    processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_POST_INGRESS_VXLAN_COOKIE);
-                    processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_POST_INGRESS_ONE_SWITCH_COOKIE);
-                    processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_POST_INGRESS_COOKIE);
-                    processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_POST_INGRESS_VXLAN_COOKIE);
-                    processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_POST_INGRESS_ONE_SWITCH_COOKIE);
-                    for (int port : request.getIslPorts()) {
-                        switchManager.installMultitableEndpointIslRules(dpid, port);
-                    }
-
-                    for (int port : request.getFlowPorts()) {
-                        switchManager.installIntermediateIngressRule(dpid, port);
-                    }
-                    for (Integer port : request.getFlowLldpPorts()) {
-                        switchManager.installLldpInputCustomerFlow(dpid, port);
-                    }
-                    for (Integer port : request.getFlowArpPorts()) {
-                        switchManager.installArpInputCustomerFlow(dpid, port);
-                    }
-
-                    if (request.isSwitchLldp()) {
-                        processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_INPUT_PRE_DROP_COOKIE);
-                        processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_TRANSIT_COOKIE);
-                        processInstallDefaultFlowByCookie(request.getSwitchId(), LLDP_INGRESS_COOKIE);
-                    }
-                    if (request.isSwitchArp()) {
-                        processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_INPUT_PRE_DROP_COOKIE);
-                        processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_TRANSIT_COOKIE);
-                        processInstallDefaultFlowByCookie(request.getSwitchId(), ARP_INGRESS_COOKIE);
-                    }
-                }
-                Integer server42Port = request.getServer42Port();
-                Integer server42Vlan = request.getServer42Vlan();
-                MacAddress server42MacAddress = request.getServer42MacAddress();
-                if (request.isServer42FlowRttFeatureToggle()) {
-                    switchManager.installServer42FlowRttTurningFlow(dpid);
-                    switchManager.installServer42FlowRttVxlanTurningFlow(dpid);
-
-                    if (request.isServer42FlowRttSwitchProperty() && server42Port != null && server42Vlan != null
-                            && server42MacAddress != null) {
-                        switchManager.installServer42FlowRttOutputVlanFlow(
-                                dpid, server42Port, server42Vlan, server42MacAddress);
-                        switchManager.installServer42FlowRttOutputVxlanFlow(
-                                dpid, server42Port, server42Vlan, server42MacAddress);
-
-                        for (Integer port : request.getServer42FlowRttPorts()) {
-                            switchManager.installServer42FlowRttInputFlow(dpid, server42Port, port, server42MacAddress);
-                        }
-                    }
-                }
-
-                if (request.isServer42IslRttEnabled()) {
-                    switchManager.installServer42IslRttTurningFlow(dpid);
-                    switchManager.installServer42IslRttOutputFlow(dpid, server42Port, server42Vlan,
-                            server42MacAddress);
-                    for (Integer port : request.getIslPorts()) {
-                        switchManager.installServer42IslRttInputFlow(dpid, server42Port, port);
-                    }
-                }
             }
 
             SwitchRulesResponse response = new SwitchRulesResponse(removedRules);

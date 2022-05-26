@@ -29,11 +29,13 @@ import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
+import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
+import org.openkilda.rulemanager.utils.RoutingMetadata;
 
 import com.google.common.collect.Sets;
 import lombok.NonNull;
@@ -53,9 +55,6 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
-        if (flow.isOneSwitchFlow()) {
-            throw new IllegalStateException("Y-Flow rules can't be created for one switch flow");
-        }
         List<SpeakerData> result = new ArrayList<>();
         FlowEndpoint ingressEndpoint = checkAndBuildIngressEndpoint(flow, flowPath, sw.getSwitchId());
         FlowSpeakerData command = buildFlowIngressCommand(sw, ingressEndpoint);
@@ -111,6 +110,10 @@ public class MultiTableIngressYRuleGenerator extends MultiTableIngressRuleGenera
                 .goToTable(OfTable.POST_INGRESS)
                 .build();
         addMeterToInstructions(sharedMeterId, sw, instructions);
+        if (flowPath.isOneSwitchFlow()) {
+            RoutingMetadata metadata = RoutingMetadata.builder().oneSwitchFlowFlag(true).build(sw.getFeatures());
+            instructions.setWriteMetadata(new OfMetadata(metadata.getValue(), metadata.getMask()));
+        }
         return instructions;
     }
 }

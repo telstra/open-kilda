@@ -27,6 +27,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
@@ -62,6 +63,7 @@ public abstract class FlowPathSwappingFsm<T extends StateMachine<T, S, E, C>, S,
     protected boolean backUpPrimaryPathComputationWayUsed;
     protected boolean backUpProtectedPathComputationWayUsed;
 
+    protected RequestedFlow originalFlow;
     protected final Collection<FlowResources> oldResources = new ArrayList<>();
     protected PathId oldPrimaryForwardPath;
     protected PathId oldPrimaryReversePath;

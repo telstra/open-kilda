@@ -44,6 +44,7 @@ import org.openkilda.messaging.swmanager.request.DeleteLagPortRequest;
 import org.openkilda.messaging.swmanager.request.UpdateLagPortRequest;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.error.MessageDispatchException;
@@ -59,7 +60,6 @@ import org.openkilda.wfm.topology.switchmanager.error.SwitchManagerException;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.CreateLagPortService;
 import org.openkilda.wfm.topology.switchmanager.service.DeleteLagPortService;
-import org.openkilda.wfm.topology.switchmanager.service.LagPortOperationConfig;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrierCookieDecorator;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerHubService;
@@ -67,6 +67,8 @@ import org.openkilda.wfm.topology.switchmanager.service.SwitchRuleService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
 import org.openkilda.wfm.topology.switchmanager.service.UpdateLagPortService;
+import org.openkilda.wfm.topology.switchmanager.service.configs.LagPortOperationConfig;
+import org.openkilda.wfm.topology.switchmanager.service.configs.SwitchSyncConfig;
 import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceImpl;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
@@ -149,6 +151,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
         serviceRegistry = new HashMap<>();
 
+        RuleManager ruleManager = new RuleManagerImpl(ruleManagerConfig);
         // Service name are used by service registry will be used as part of the produced message cookies and as a
         // result as delivery tag on response dispatching. This means that it must be unique across this bolt/class or
         // response dispatching will fail.
@@ -156,12 +159,13 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                 carrier -> new SwitchValidateService(
                         carrier, persistenceManager,
                         new ValidationServiceImpl(persistenceManager, new RuleManagerImpl(ruleManagerConfig))));
+        SwitchSyncConfig syncConfig = new SwitchSyncConfig(topologyConfig.getOfCommandsBatchSize());
         syncService = registerService(
                 serviceRegistry, "switch-sync", this,
-                carrier -> new SwitchSyncService(carrier, persistenceManager));
+                carrier -> new SwitchSyncService(carrier, persistenceManager, syncConfig));
         switchRuleService = registerService(
                 serviceRegistry, "switch-rules", this,
-                carrier -> new SwitchRuleService(carrier, persistenceManager.getRepositoryFactory()));
+                carrier -> new SwitchRuleService(carrier, persistenceManager, ruleManager));
         createLagPortService = registerService(
                 serviceRegistry, "lag-create", this, carrier -> new CreateLagPortService(carrier, config));
         updateLagPortService = registerService(
@@ -414,8 +418,22 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         UUID commandId = UUID.randomUUID();
         switch (action) {
             case INSTALL:
-                return new InstallSpeakerCommandsRequest(messageContext, switchId, commandId, commands,
-                        Origin.SW_MANAGER);
+                return InstallSpeakerCommandsRequest.builder()
+                        .messageContext(messageContext)
+                        .switchId(switchId)
+                        .commandId(commandId)
+                        .commands(commands)
+                        .origin(Origin.SW_MANAGER)
+                        .build();
+            case INSTALL_IF_NOT_EXIST:
+                return InstallSpeakerCommandsRequest.builder()
+                        .messageContext(messageContext)
+                        .switchId(switchId)
+                        .commandId(commandId)
+                        .commands(commands)
+                        .origin(Origin.SW_MANAGER)
+                        .failIfExists(false)
+                        .build();
             case MODIFY:
                 return new ModifySpeakerCommandsRequest(messageContext, switchId, commandId, commands,
                         Origin.SW_MANAGER);
@@ -497,6 +515,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     public enum OfCommandAction {
         INSTALL,
+        INSTALL_IF_NOT_EXIST,
         MODIFY,
         DELETE
     }

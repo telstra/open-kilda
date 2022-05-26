@@ -55,7 +55,7 @@ public class EgressYRuleGenerator extends EgressRuleGenerator implements Metered
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
         if (flowPath.isOneSwitchFlow() || flowPath.getSegments().isEmpty()) {
-            throw new IllegalStateException("Y-Flow rules can't be created for one switch flow");
+            throw new IllegalStateException("Y-flow rules can't be created for a one-switch flow");
         }
         List<SpeakerData> result = new ArrayList<>();
         PathSegment lastSegment = flowPath.getSegments().get(flowPath.getSegments().size() - 1);

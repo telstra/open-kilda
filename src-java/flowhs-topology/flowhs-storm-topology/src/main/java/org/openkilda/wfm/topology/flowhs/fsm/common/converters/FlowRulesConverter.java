@@ -62,7 +62,13 @@ public final class FlowRulesConverter {
                                                                  CommandContext context, Origin origin) {
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
-        return new InstallSpeakerCommandsRequest(messageContext, switchId, commandId, ofCommands, origin);
+        return InstallSpeakerCommandsRequest.builder()
+                .messageContext(messageContext)
+                .switchId(switchId)
+                .commandId(commandId)
+                .commands(ofCommands)
+                .origin(origin)
+                .build();
     }
 
     /**

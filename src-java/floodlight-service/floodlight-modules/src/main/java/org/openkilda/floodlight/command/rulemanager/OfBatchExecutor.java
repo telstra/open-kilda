@@ -16,43 +16,43 @@
 package org.openkilda.floodlight.command.rulemanager;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.api.request.rulemanager.Origin;
-import org.openkilda.floodlight.converter.rulemanager.OfFlowConverter;
-import org.openkilda.floodlight.converter.rulemanager.OfGroupConverter;
-import org.openkilda.floodlight.converter.rulemanager.OfMeterConverter;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchFeature;
-import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.SpeakerData;
 
 import com.google.common.base.Joiner;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
-import org.projectfloodlight.openflow.protocol.OFGroupDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @Slf4j
 public class OfBatchExecutor {
@@ -61,34 +61,43 @@ public class OfBatchExecutor {
     private final KafkaUtilityService kafkaUtilityService;
     private final IKafkaProducerService kafkaProducerService;
     private final SessionService sessionService;
+    private final SwitchDataProvider switchDataProvider;
     private final MessageContext messageContext;
     private final OfBatchHolder holder;
     private final Set<SwitchFeature> switchFeatures;
     private final String kafkaKey;
     private final Origin origin;
+    private final boolean failIfExists;
 
     private boolean hasMeters;
     private boolean hasGroups;
     private boolean hasFlows;
 
-    private CompletableFuture<List<OFMeterConfigStatsReply>> meterStats = CompletableFuture.completedFuture(null);
-    private CompletableFuture<List<OFGroupDescStatsReply>> groupStats = CompletableFuture.completedFuture(null);
-    private CompletableFuture<List<OFFlowStatsReply>> flowStats = CompletableFuture.completedFuture(null);
+    private CompletableFuture<List<MeterSpeakerData>> meterStats = CompletableFuture.completedFuture(emptyList());
+    private CompletableFuture<List<GroupSpeakerData>> groupStats = CompletableFuture.completedFuture(emptyList());
+    private CompletableFuture<List<FlowSpeakerData>> flowStats = CompletableFuture.completedFuture(emptyList());
 
     @Builder
     public OfBatchExecutor(IOFSwitch iofSwitch, KafkaUtilityService kafkaUtilityService,
-                           IKafkaProducerService kafkaProducerService,
-                           SessionService sessionService, MessageContext messageContext, OfBatchHolder holder,
-                           Set<SwitchFeature> switchFeatures, String kafkaKey, Origin origin) {
+                           IKafkaProducerService kafkaProducerService, SessionService sessionService,
+                           MessageContext messageContext, OfBatchHolder holder,
+                           Set<SwitchFeature> switchFeatures, String kafkaKey, Origin origin, Boolean failIfExists) {
         this.iofSwitch = iofSwitch;
         this.kafkaUtilityService = kafkaUtilityService;
         this.kafkaProducerService = kafkaProducerService;
         this.sessionService = sessionService;
+        this.switchDataProvider = SwitchDataProvider.builder()
+                .iofSwitch(iofSwitch)
+                .messageContext(messageContext)
+                .switchFeatures(switchFeatures)
+                .kafkaKey(kafkaKey)
+                .build();
         this.messageContext = messageContext;
         this.holder = holder;
         this.switchFeatures = switchFeatures;
         this.kafkaKey = kafkaKey;
         this.origin = origin;
+        this.failIfExists = failIfExists == null || failIfExists;
     }
 
     /**
@@ -97,7 +106,7 @@ public class OfBatchExecutor {
     public void executeBatch() {
         log.debug("Execute batch start (key={})", kafkaKey);
         List<UUID> stageCommandsUuids = holder.getCurrentStage();
-        List<OFMessage> ofMessages = new ArrayList<>();
+        Map<SpeakerData, OFMessage> stageMessages = new HashMap<>();
         for (UUID uuid : stageCommandsUuids) {
             if (holder.canExecute(uuid)) {
                 BatchData batchData = holder.getByUUid(uuid);
@@ -107,7 +116,10 @@ public class OfBatchExecutor {
                 hasFlows |= batchData.isFlow();
                 hasMeters |= batchData.isMeter();
                 hasGroups |= batchData.isGroup();
-                ofMessages.add(ofMessage);
+                OFMessage previous = stageMessages.put(holder.getSpeakerDataByUUid(uuid), batchData.getMessage());
+                if (previous != null) {
+                    log.warn("Command with uuid {} already processed.", uuid);
+                }
             } else {
                 Map<UUID, String> blockingDependencies = holder.getBlockingDependencies(uuid);
                 if (!blockingDependencies.isEmpty()) {
@@ -120,6 +132,12 @@ public class OfBatchExecutor {
                 }
             }
         }
+
+        if (!failIfExists) {
+            removeAlreadyExists(stageMessages);
+        }
+
+        Collection<OFMessage> ofMessages = stageMessages.values();
         List<CompletableFuture<Optional<OFMessage>>> requests = new ArrayList<>();
         try (Session session = sessionService.open(messageContext, iofSwitch)) {
             for (OFMessage message : ofMessages) {
@@ -150,10 +168,42 @@ public class OfBatchExecutor {
 
         CompletableFuture.allOf(requests.toArray(new CompletableFuture<?>[0]))
                 .thenAccept(ignore -> checkOfResponses())
-                .exceptionally(ignore -> {
-                    checkOfResponses();
+                .exceptionally(ex -> {
+                    holder.otherFail("Failed to process OpenFlow messages.", ex);
+                    sendResponse();
                     return null;
                 });
+    }
+
+    private void removeAlreadyExists(Map<SpeakerData, OFMessage> stageMessages) {
+        if (hasMeters) {
+            meterStats = switchDataProvider.getMeters();
+        }
+        if (hasGroups) {
+            groupStats = switchDataProvider.getGroups();
+        }
+
+        try {
+            List<SpeakerData> speakerData = new ArrayList<>(meterStats.get());
+            speakerData.addAll(groupStats.get());
+            Set<SpeakerData> toRemove = new HashSet<>();
+            for (Entry<SpeakerData, OFMessage> entry : stageMessages.entrySet()) {
+                if (speakerData.contains(entry.getKey())) {
+                    toRemove.add(entry.getKey());
+                }
+            }
+            toRemove.forEach(data -> {
+                log.debug("OpenFlow entry is already exist. Skipping command {}", data);
+                holder.recordSuccessUuid(data.getUuid());
+                stageMessages.remove(data);
+            });
+        } catch (ExecutionException | InterruptedException e) {
+            holder.otherFail("Failed to verify OpenFlow elements already exists.", e);
+        }
+
+        meterStats = CompletableFuture.completedFuture(emptyList());
+        groupStats = CompletableFuture.completedFuture(emptyList());
+        flowStats = CompletableFuture.completedFuture(emptyList());
     }
 
     private void onSuccessfulOfMessage(OFMessage ofMessage) {
@@ -169,31 +219,21 @@ public class OfBatchExecutor {
 
     private void checkOfResponses() {
         if (hasMeters) {
-            meterStats = OfUtils.verifyMeters(messageContext, iofSwitch).whenComplete((res, ex) -> {
-                log.debug("Get meter stats: {} (key={})", res, kafkaKey);
-                if (ex != null) {
-                    log.error("Received error {}", ex.getMessage(), ex);
-                }
-            });
+            meterStats = switchDataProvider.getMeters();
         }
         if (hasGroups) {
-            groupStats = OfUtils.verifyGroups(messageContext, iofSwitch).whenComplete((res, ex) -> {
-                log.debug("Get group stats: {} (key={})", res, kafkaKey);
-                if (ex != null) {
-                    log.error("Received error {}", ex.getMessage(), ex);
-                }
-            });
+            groupStats = switchDataProvider.getGroups();
         }
         if (hasFlows) {
-            flowStats = OfUtils.verifyFlows(messageContext, iofSwitch).whenComplete((res, ex) -> {
-                log.debug("Get flow stats: {} (key={})", res, kafkaKey);
-                if (ex != null) {
-                    log.error("Received error {}", ex.getMessage(), ex);
-                }
-            });
+            flowStats = switchDataProvider.getFlows();
         }
         CompletableFuture.allOf(meterStats, groupStats, flowStats)
-                .thenAccept(ignore -> runVerify());
+                .thenAccept(ignore -> runVerify())
+                .exceptionally(ex -> {
+                    holder.otherFail("Failed to get data from switch.", ex);
+                    sendResponse();
+                    return null;
+                });
     }
 
     private void runVerify() {
@@ -203,9 +243,9 @@ public class OfBatchExecutor {
         verifyGroups();
         if (holder.nextStage()) {
             log.debug("Proceed next stage (key={})", kafkaKey);
-            meterStats = CompletableFuture.completedFuture(null);
-            groupStats = CompletableFuture.completedFuture(null);
-            flowStats = CompletableFuture.completedFuture(null);
+            meterStats = CompletableFuture.completedFuture(emptyList());
+            groupStats = CompletableFuture.completedFuture(emptyList());
+            flowStats = CompletableFuture.completedFuture(emptyList());
             hasMeters = false;
             hasGroups = false;
             hasFlows = false;
@@ -221,11 +261,7 @@ public class OfBatchExecutor {
             return;
         }
         try {
-            List<OFFlowStatsReply> replies = flowStats.get();
-            List<FlowSpeakerData> switchFlows = new ArrayList<>();
-            replies.forEach(reply -> switchFlows.addAll(
-                    OfFlowConverter.INSTANCE.convertToFlowSpeakerData(reply,
-                            new SwitchId(iofSwitch.getId().getLong()))));
+            List<FlowSpeakerData> switchFlows = flowStats.get();
             Map<Long, Long> cookieCounts = switchFlows.stream()
                     .map(v -> v.getCookie().getValue())
                     .collect(groupingBy(identity(), counting()));
@@ -254,7 +290,7 @@ public class OfBatchExecutor {
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to verify flows for message", e);
+            holder.otherFail("Failed to verify flows for message", e);
         }
     }
 
@@ -263,12 +299,8 @@ public class OfBatchExecutor {
         if (!hasMeters) {
             return;
         }
-        boolean inaccurate = switchFeatures.contains(SwitchFeature.INACCURATE_METER);
         try {
-            List<OFMeterConfigStatsReply> replies = meterStats.get();
-            List<MeterSpeakerData> switchMeters = new ArrayList<>();
-            replies.forEach(reply -> switchMeters.addAll(
-                    OfMeterConverter.INSTANCE.convertToMeterSpeakerData(reply, inaccurate)));
+            List<MeterSpeakerData> switchMeters = meterStats.get();
 
             for (MeterSpeakerData switchMeter : switchMeters) {
                 MeterSpeakerData expectedMeter = holder.getByMeterId(switchMeter.getMeterId());
@@ -286,9 +318,8 @@ public class OfBatchExecutor {
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to verify meters for message", e);
+            holder.otherFail("Failed to verify meters for message", e);
         }
-
     }
 
     private void verifyGroups() {
@@ -297,11 +328,7 @@ public class OfBatchExecutor {
             return;
         }
         try {
-            List<OFGroupDescStatsReply> replies = groupStats.get();
-            List<GroupSpeakerData> switchGroups = new ArrayList<>();
-            replies.forEach(reply -> switchGroups.addAll(
-                    OfGroupConverter.INSTANCE.convertToGroupSpeakerData(reply,
-                            new SwitchId(iofSwitch.getId().getLong()))));
+            List<GroupSpeakerData> switchGroups = groupStats.get();
             for (GroupSpeakerData switchGroup : switchGroups) {
                 GroupSpeakerData expectedGroup = holder.getByGroupId(switchGroup.getGroupId());
                 if (expectedGroup != null) {
@@ -318,9 +345,8 @@ public class OfBatchExecutor {
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to verify groups for message", e);
+            holder.otherFail("Failed to verify groups for message", e);
         }
-
     }
 
     private void sendResponse() {

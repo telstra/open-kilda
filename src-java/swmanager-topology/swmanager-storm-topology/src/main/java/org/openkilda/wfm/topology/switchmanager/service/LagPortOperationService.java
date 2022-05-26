@@ -44,6 +44,7 @@ import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.InvalidDataException;
 import org.openkilda.wfm.topology.switchmanager.error.LagPortNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
+import org.openkilda.wfm.topology.switchmanager.service.configs.LagPortOperationConfig;
 
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;

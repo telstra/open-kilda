@@ -1,0 +1,58 @@
+databaseChangeLog:
+  - preConditions:
+      - onFail: HALT
+      - onFailMessage: "Failed preconditions for migration '021-add-unique-constraint-for-switch-connected-devices'.\n
+      \n
+      Before run this migration you must be sure that:\n
+       1. Following fields of vertex 'switch_connected_device' have non null values: [switch_id, port_number, type, mac_address]\n
+       2. Field 'type' of vertex 'switch_connected_device' have one of the following values: ['lldp', 'arp']\n
+       3. There must be uniqueness of 'lldp' devices of vertex 'switch_connected_device' by following fields:\n 
+          [switch_id, port_number, vlan, type, mac_address, chassis_id, port_id] \n
+       4. There must be uniqueness of 'arp' devices of vertex 'switch_connected_device' by following fields:\n 
+          [switch_id, port_number, vlan, type, mac_address, ip_address]"
+      - sqlCheck:
+          expectedResult: 0
+          sql: >
+            SELECT COUNT(*) FROM switch_connected_device
+            WHERE switch_id IS NULL OR port_number IS NULL OR type IS NULL OR mac_address IS NULL
+      - sqlCheck:
+          expectedResult: 0
+          sql: "SELECT COUNT(*) FROM switch_connected_device WHERE type not in ['lldp', 'arp']"
+      - sqlCheck:
+          expectedResult: 0
+          sql: >
+            SELECT COUNT(*) FROM (
+                SELECT COUNT(*) AS duplicate_count FROM switch_connected_device 
+                WHERE type='lldp' GROUP BY switch_id, port_number, vlan, mac_address, chassis_id, port_id
+            ) WHERE duplicate_count > 1
+      - sqlCheck:
+          expectedResult: 0
+          sql: >
+            SELECT COUNT(*) FROM (
+                SELECT COUNT(*) AS duplicate_count FROM switch_connected_device 
+                WHERE type='arp' GROUP BY switch_id, port_number, vlan, mac_address, ip_address
+            ) WHERE duplicate_count > 1
+
+  - changeSet:
+      id: tag
+      author: snikitin
+      changes:
+        - tagDatabase:
+            tag: 021-add-unique-constraint-for-switch-connected-devices
+
+  - changeSet:
+      id: add_unique_index_constraint_for_switch_connected_devices
+      author: snikitin
+      changes:
+        - sql: >
+            UPDATE switch_connected_device SET unique_index=switch_id + "_" + port_number + "_" + type + "_" 
+                + ifnull(vlan, "0") + "_" + mac_address + "_" 
+                + ifnull(chassis_id, "null") + "_" + ifnull(port_id, "null") 
+            WHERE type='lldp';
+        - sql: >
+            UPDATE switch_connected_device SET unique_index=switch_id + "_" + port_number + "_" + type + "_" 
+                + ifnull(vlan, "0") + "_" + mac_address + "_" + ifnull(ip_address, "null") 
+            WHERE type='arp';
+        - sql: "CREATE INDEX switch_connected_device.unique_index UNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP INDEX switch_connected_device.unique_index IF EXISTS"

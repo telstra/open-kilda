@@ -20,7 +20,9 @@ import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.rulemanager.utils.RuleManagerHelper.checkCircularDependencies;
+import static org.openkilda.rulemanager.utils.RuleManagerHelper.groupCommandsByDependenciesAndSort;
 import static org.openkilda.rulemanager.utils.RuleManagerHelper.removeDuplicateCommands;
+import static org.openkilda.rulemanager.utils.RuleManagerHelper.reverseDependencies;
 import static org.openkilda.rulemanager.utils.RuleManagerHelper.sortCommandsByDependencies;
 
 import org.openkilda.model.GroupId;
@@ -64,6 +66,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -226,6 +229,71 @@ public class RuleManagerHelperTest {
         assertTrue(command1Pos < command2Pos);
     }
 
+    @Test
+    public void groupCommandsByDependenciesAndSortTest() {
+        FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1);
+        FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
+        FlowSpeakerData command3 = buildFullFlowSpeakerCommandData(METER_ID_1);
+        List<List<SpeakerData>> result = groupCommandsByDependenciesAndSort(newArrayList(command3, command2, command1));
+
+        assertEquals(2, result.size());
+        result.sort(Comparator.comparingInt(List::size));
+
+        assertEquals(1, result.get(0).size());
+        assertEquals(command3.getUuid(), result.get(0).get(0).getUuid());
+
+        assertEquals(2, result.get(1).size());
+        assertEquals(command1.getUuid(), result.get(1).get(0).getUuid());
+        assertEquals(command2.getUuid(), result.get(1).get(1).getUuid());
+    }
+
+
+    @Test
+    public void groupCommandsByDependenciesAndSortMultyDependenciesTest() {
+        FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1);
+        FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_1);
+        FlowSpeakerData command3 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid(), command2.getUuid());
+        FlowSpeakerData command4 = buildFullFlowSpeakerCommandData(METER_ID_1, command3.getUuid());
+        FlowSpeakerData command5 = buildFullFlowSpeakerCommandData(METER_ID_1, command3.getUuid());
+        FlowSpeakerData command6 = buildFullFlowSpeakerCommandData(METER_ID_1);
+        FlowSpeakerData command7 = buildFullFlowSpeakerCommandData(METER_ID_1);
+        FlowSpeakerData command8 = buildFullFlowSpeakerCommandData(METER_ID_1, command7.getUuid());
+        FlowSpeakerData command9 = buildFullFlowSpeakerCommandData(METER_ID_1, command8.getUuid(), command7.getUuid());
+        List<List<SpeakerData>> result = groupCommandsByDependenciesAndSort(newArrayList(
+                command9, command8, command7, command6, command5, command4, command3, command2, command1));
+
+        assertEquals(3, result.size());
+        result.sort(Comparator.comparingInt(List::size));
+
+        assertEquals(1, result.get(0).size());
+        assertEquals(command6.getUuid(), result.get(0).get(0).getUuid());
+
+        assertEquals(3, result.get(1).size());
+        assertEquals(command7.getUuid(), result.get(1).get(0).getUuid());
+        assertEquals(command8.getUuid(), result.get(1).get(1).getUuid());
+        assertEquals(command9.getUuid(), result.get(1).get(2).getUuid());
+
+        assertEquals(5, result.get(2).size());
+        assertEquals(newHashSet(command1.getUuid(), command2.getUuid()),
+                newHashSet(result.get(2).get(0).getUuid(), result.get(2).get(1).getUuid()));
+        assertEquals(command3.getUuid(), result.get(2).get(2).getUuid());
+        assertEquals(newHashSet(command4.getUuid(), command5.getUuid()),
+                newHashSet(result.get(2).get(3).getUuid(), result.get(2).get(4).getUuid()));
+    }
+
+    @Test
+    public void reverseDependenciesTest() {
+        FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
+        FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
+        FlowSpeakerData command3 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
+
+        reverseDependencies(newArrayList(command1, command2, command3));
+
+        assertEquals(2, command1.getDependsOn().size());
+        assertTrue(command1.getDependsOn().containsAll(newArrayList(command2.getUuid(), command3.getUuid())));
+        assertTrue(command2.getDependsOn().isEmpty());
+        assertTrue(command3.getDependsOn().isEmpty());
+    }
 
     private FlowSpeakerData buildVlanMatchCommand(int vlan) {
         return FlowSpeakerData.builder()
@@ -237,11 +305,7 @@ public class RuleManagerHelperTest {
         return buildFullFlowSpeakerCommandData(METER_ID_1, UUID.randomUUID());
     }
 
-    private FlowSpeakerData buildFullFlowSpeakerCommandData(MeterId goToMeterId) {
-        return buildFullFlowSpeakerCommandData(goToMeterId, UUID.randomUUID());
-    }
-
-    private FlowSpeakerData buildFullFlowSpeakerCommandData(MeterId goToMeterId, UUID dependsOnUuid) {
+    private FlowSpeakerData buildFullFlowSpeakerCommandData(MeterId goToMeterId, UUID... dependsOnUuid) {
         Set<FieldMatch> match = Arrays.stream(Field.values())
                 .map(f -> FieldMatch.builder().field(f).value(f.ordinal()).mask(f.ordinal() + 1L).build())
                 .collect(Collectors.toSet());

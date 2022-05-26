@@ -46,15 +46,19 @@ public class CreateSubFlowsAction extends HistoryRecordingAction<YFlowCreateFsm,
         log.debug("Start creating {} sub-flows for y-flow {}", requestedFlows.size(), yFlowId);
         stateMachine.clearCreatingSubFlows();
 
-        requestedFlows.stream().findFirst().ifPresent(requestedFlow -> {
-            String subFlowId = requestedFlow.getFlowId();
-            stateMachine.setMainAffinityFlowId(subFlowId);
-            stateMachine.addSubFlow(subFlowId);
-            stateMachine.addCreatingSubFlow(subFlowId);
-            stateMachine.notifyEventListeners(listener -> listener.onSubFlowProcessingStart(yFlowId, subFlowId));
-            CommandContext flowContext = stateMachine.getCommandContext().fork(subFlowId);
-            requestedFlow.setDiverseFlowId(stateMachine.getDiverseFlowId());
-            flowCreateService.startFlowCreation(flowContext, requestedFlow, yFlowId);
-        });
+        RequestedFlow requestedFlow = requestedFlows.stream()
+                .filter(p -> !p.getSrcSwitch().equals(p.getDestSwitch()))
+                .findFirst()
+                .orElse(requestedFlows.stream().findFirst()
+                        .orElseThrow(() -> new IllegalStateException("Can't construct sub-flow requests")));
+        String subFlowId = requestedFlow.getFlowId();
+        stateMachine.setMainAffinityFlowId(subFlowId);
+        stateMachine.addSubFlow(subFlowId);
+        stateMachine.addCreatingSubFlow(subFlowId);
+        stateMachine.notifyEventListeners(listener -> listener.onSubFlowProcessingStart(yFlowId, subFlowId));
+        CommandContext flowContext = stateMachine.getCommandContext().fork(subFlowId);
+        requestedFlow.setDiverseFlowId(stateMachine.getDiverseFlowId());
+        requestedFlow.setYFlowId(stateMachine.getYFlowId());
+        flowCreateService.startFlowCreation(flowContext, requestedFlow, yFlowId);
     }
 }

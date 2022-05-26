@@ -1,5 +1,50 @@
 # Changelog
 
+## v1.120.0 (25/05/2022)
+
+### Features:
+-  [#4815](https://github.com/telstra/open-kilda/pull/4815) Support one-switch y-flows [**storm-topologies**]
+
+### Bug Fixes:
+-  [#4814](https://github.com/telstra/open-kilda/pull/4814) Use batches to send sync commands (Issue: [#4813](https://github.com/telstra/open-kilda/issues/4813)) [**storm-topologies**]
+-  [#4816](https://github.com/telstra/open-kilda/pull/4816) Fix recording old flow paths (consistency issue)
+-  [#4821](https://github.com/telstra/open-kilda/pull/4821) Fix NPE in SpeakerRulesRouter when empty chunked message sent [**storm-topologies**]
+
+### Improvements:
+-  [#4770](https://github.com/telstra/open-kilda/pull/4770)  [test] adjust swapEndpointSpec to #4708  (Issue: [#4708](https://github.com/telstra/open-kilda/issues/4708)) [**tests**]
+-  [#4804](https://github.com/telstra/open-kilda/pull/4804) Rework install service rules API to use RuleManager implementation [**floodlight**][**storm-topologies**]
+-  [#4807](https://github.com/telstra/open-kilda/pull/4807) Rework delete service rules API to use RuleManager implementation [**floodlight**][**storm-topologies**]
+-  [#4779](https://github.com/telstra/open-kilda/pull/4779) Added unique index for switch connected devices. Part 2 (Issues: [#3760](https://github.com/telstra/open-kilda/issues/3760) [#4762](https://github.com/telstra/open-kilda/issues/4762))
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.119.0...v1.120.0).
+
+### Affected Components:
+fl, ping, swmanager, network, flow-hs
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+Also, before data migration you need to clean up connected devices duplicates (if any). As this operation will delete used data it should be done manually by following commands:
+
+```
+DELETE VERTEX FROM switch_connected_device WHERE @rid in (
+    SELECT rid FROM (
+        SELECT COUNT(*) AS duplicate_count, MIN(@rid) as rid FROM switch_connected_device
+        WHERE type='arp' GROUP BY switch_id, port_number, vlan, mac_address, ip_address
+    ) WHERE duplicate_count > 1
+)
+```
+
+```DELETE VERTEX FROM switch_connected_device WHERE @rid in (
+    SELECT rid FROM (
+        SELECT COUNT(*) AS duplicate_count, MIN(@rid) as rid FROM switch_connected_device
+        WHERE type='lldp' GROUP BY switch_id, port_number, vlan, mac_address, chassis_id, port_id
+    ) WHERE duplicate_count > 1
+)
+```
+
+---
+
 ## v1.119.0 (19/05/2022)
 
 ### Features:
@@ -21,7 +66,6 @@
 -  [#4789](https://github.com/telstra/open-kilda/pull/4789) [test] refactor SwitchSyncSpec [**tests**]
 -  [#4762](https://github.com/telstra/open-kilda/pull/4762) Added connected devices index. Part 1 (Issue: [#3760](https://github.com/telstra/open-kilda/issues/3760))
 -  [#4794](https://github.com/telstra/open-kilda/pull/4794) Use OVS from kilda/ovs repo
-
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.118.4...v1.119.0).
 

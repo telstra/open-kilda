@@ -64,7 +64,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         then: "Y-flow is created and has UP status"
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             yFlow = northboundV2.getYFlow(yFlow.YFlowId)
-            assert yFlow.status == FlowState.UP.toString()
+            assert yFlow && yFlow.status == FlowState.UP.toString()
         }
         northboundV2.getYFlow(yFlow.YFlowId).YPoint
 
@@ -92,11 +92,13 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "YFlow is pingable"
-        def response = northboundV2.pingYFlow(yFlow.YFlowId, new YFlowPingPayload(2000))
-        !response.error
-        response.subFlows.each {
-            assert it.forward.pingSuccess
-            assert it.reverse.pingSuccess
+        if(swT.shared != swT.ep1 || swT.shared != swT.ep2) {
+            def response = northboundV2.pingYFlow(yFlow.YFlowId, new YFlowPingPayload(2000))
+            !response.error
+            response.subFlows.each {
+                assert it.forward.pingSuccess
+                assert it.reverse.pingSuccess
+            }
         }
 
         and: "All involved switches pass switch validation"
@@ -113,15 +115,19 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         (involvedIslsSFlow_1 + involvedIslsSFlow_2).unique().each { link ->
             [link, link.reversed].each {
-                def bwBefore = islUtils.getIslInfo(allLinksBefore, it).get().availableBandwidth
-                def bwAfter = islUtils.getIslInfo(allLinksAfter, it).get().availableBandwidth
-                assert bwBefore == bwAfter + yFlow.maximumBandwidth
+                 islUtils.getIslInfo(allLinksBefore, it).ifPresent(islBefore -> {
+                     def bwBefore = islBefore.availableBandwidth
+                     def bwAfter = islUtils.getIslInfo(allLinksAfter, it).get().availableBandwidth
+                     assert bwBefore == bwAfter + yFlow.maximumBandwidth
+                 })
             }
         }
 
         and: "YFlow is pingable #2"
-        //TODO: remove this quickfix for failing traffexam
-        !northboundV2.pingYFlow(yFlow.YFlowId, new YFlowPingPayload(2000)).error
+        if(swT.shared != swT.ep1 || swT.shared != swT.ep2) {
+            //TODO: remove this quickfix for failing traffexam
+            !northboundV2.pingYFlow(yFlow.YFlowId, new YFlowPingPayload(2000)).error
+        }
 
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
         def beforeTraffic = new Date()
@@ -348,22 +354,6 @@ switch '${flow.sharedEndpoint.switchId}' is occupied by an ISL \(source endpoint
                             ~/Server 42 port in the switch properties for switch '${flow.sharedEndpoint.switchId}'\
  is set to '${flow.sharedEndpoint.portNumber}'. It is not possible to create or update an endpoint with these parameters./
                         }
-                ],
-                [
-                        descr: "single-switch, shared = ep1",
-                        yFlow: yFlowHelper.randomYFlow(topology.activeSwitches[0], topology.activeSwitches[0],
-                                topology.activeSwitches[1]),
-                        errorPattern: { YFlowCreatePayload flow ->
-                            ~"It is not allowed to create one-switch y-flow"
-                        }
-                ],
-                [
-                        descr: "single-switch, shared = ep2",
-                        yFlow: yFlowHelper.randomYFlow(topology.activeSwitches[0], topology.activeSwitches[1],
-                                topology.activeSwitches[0]),
-                        errorPattern: { YFlowCreatePayload flow ->
-                            ~"It is not allowed to create one-switch y-flow"
-                        }
                 ]
         ]
         yFlow = data.yFlow as YFlowCreatePayload
@@ -502,6 +492,21 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
             }
             add([swT: swT, yFlow: yFlow, coveredCases: ["se qinq, ep1-ep2 same sw-port, qinq"]])
         }
+
+        //se-ep1-ep2 same sw (one-switch y-flow)
+        testData.with {
+            def topo = owner.topology
+            def sw = topo.getActiveSwitches()
+                    .sort { swIt -> topo.getActiveTraffGens().findAll { it.switchConnected.dpId == swIt.dpId }.size() }
+                    .reverse()
+                    .first()
+            def swT = owner.topologyHelper.getSwitchTriplets(false, true).find() {
+                it.shared == sw && it.ep1 == sw && it.ep2 == sw
+            }
+            def yFlow = owner.yFlowHelper.singleSwitchYFlow(sw)
+            add([swT: swT, yFlow: yFlow, coveredCases: ["se-ep1-ep2 same sw (one-switch y-flow)"]])
+        }
+
         return testData
     }
 
@@ -543,13 +548,18 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
                 [name     : "ep+yp on non-wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2) }]
+                     !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2) }],
+                [name     : "yp==se",
+                 condition: { SwitchTriplet swT ->
+                     def yPoints = findPotentialYPoints(swT)
+                     yPoints.size() == 1 && yPoints[0] == swT.shared && swT.shared != swT.ep1 && swT.shared != swT.ep2 }]
         ]
         requiredCases.each { it.picked = false }
         //match all triplets to the list of requirements that it satisfies
-        Map<SwitchTriplet, List<String>> weightedTriplets =  topologyHelper.switchTriplets.collectEntries { triplet ->
-            [(triplet): requiredCases.findAll { it.condition(triplet) }*.name ]
-        }
+        Map<SwitchTriplet, List<String>> weightedTriplets = topologyHelper.getSwitchTriplets(false, true)
+                .collectEntries { triplet ->
+                    [(triplet): requiredCases.findAll { it.condition(triplet) }*.name]
+                }
         //sort, so that most valuable triplet is first
         weightedTriplets = weightedTriplets.sort { - it.value.size() }
         def result = []

@@ -181,6 +181,30 @@ public class ResourcesAllocationAction extends
                 getFlowAffinityGroupFromContext(targetFlow.getAffinityFlowId())
                         .ifPresent(flow::setAffinityGroupId);
                 flowRepository.add(flow);
+
+                String yFlowId = targetFlow.getYFlowId();
+                if (yFlowId != null) {
+                    YFlow yFlow = yFlowRepository.findById(yFlowId)
+                            .orElseThrow(() -> new FlowProcessingException(ErrorType.INTERNAL_ERROR,
+                                    format("Y-flow %s not found", yFlowId)));
+                    if (!flow.getSrcSwitchId().equals(yFlow.getSharedEndpoint().getSwitchId())) {
+                        throw new FlowProcessingException(ErrorType.INTERNAL_ERROR,
+                                format("Y-flow %s has different sharedpoint than the source of flow %s", yFlowId,
+                                        flow.getFlowId()));
+                    }
+                    YSubFlow subFlow = YSubFlow.builder()
+                            .yFlow(yFlow)
+                            .flow(flow)
+                            .sharedEndpointVlan(flow.getSrcVlan())
+                            .sharedEndpointInnerVlan(flow.getSrcInnerVlan())
+                            .endpointSwitchId(flow.getDestSwitchId())
+                            .endpointPort(flow.getDestPort())
+                            .endpointVlan(flow.getDestVlan())
+                            .endpointInnerVlan(flow.getDestInnerVlan())
+                            .build();
+                    yFlow.addSubFlow(subFlow);
+                    log.debug("Created a sub-flow reference from {} to y-flow {}", flow.getFlowId(), yFlowId);
+                }
             });
         } catch (ConstraintViolationException e) {
             throw new FlowAlreadyExistException(format("Failed to save flow with id %s", targetFlow.getFlowId()), e);

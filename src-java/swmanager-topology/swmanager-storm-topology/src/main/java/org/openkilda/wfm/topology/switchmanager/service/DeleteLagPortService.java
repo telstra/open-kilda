@@ -29,6 +29,7 @@ import org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagContext;
 import org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagState;
+import org.openkilda.wfm.topology.switchmanager.service.configs.LagPortOperationConfig;
 
 import lombok.Getter;
 import lombok.NonNull;

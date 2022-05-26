@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.validation;
 
+import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 
 import org.openkilda.messaging.command.yflow.YFlowDiscrepancyDto;
@@ -128,24 +129,21 @@ public class YFlowValidationService {
                                                                PathId forwardId, PathId reverseId,
                                                                SwitchId yPoint, MeterId yPointMeterId) {
         FlowPath forward = subFlow.getPath(forwardId).orElseThrow(() ->
-                new IllegalStateException(String.format("Path was not found, pathId: %s", forwardId)));
+                new IllegalStateException(format("Path was not found, pathId: %s", forwardId)));
         FlowPath reverse = subFlow.getPath(reverseId).orElseThrow(() ->
-                new IllegalStateException(String.format("Path was not found, pathId: %s", reverseId)));
-        if (reverse.getSrcSwitchId().equals(sharedEndpoint)) {
+                new IllegalStateException(format("Path was not found, pathId: %s", reverseId)));
+        if (!forward.getSrcSwitchId().equals(sharedEndpoint) && reverse.getSrcSwitchId().equals(sharedEndpoint)) {
             FlowPath tmp = reverse;
             reverse = forward;
             forward = tmp;
         }
-        EncapsulationId forwardEncId =
-                flowResourcesManager.getEncapsulationResources(forward.getPathId(), reverse.getPathId(),
-                                subFlow.getEncapsulationType()).map(EncapsulationResources::getEncapsulation)
-                        .orElseThrow(() -> new IllegalStateException(
-                                String.format("Encapsulation was not found, pathId: %s / %s", forwardId, reverseId)));
-        EncapsulationId reverseEncId =
-                flowResourcesManager.getEncapsulationResources(reverse.getPathId(), forward.getPathId(),
-                                subFlow.getEncapsulationType()).map(EncapsulationResources::getEncapsulation)
-                        .orElseThrow(() -> new IllegalStateException(
-                                String.format("Encapsulation was not found, pathId: %s / %s", forwardId, reverseId)));
+        EncapsulationId forwardEncId = null;
+        if (!subFlow.isOneSwitchFlow()) {
+            forwardEncId = flowResourcesManager.getEncapsulationResources(forward.getPathId(), reverse.getPathId(),
+                            subFlow.getEncapsulationType()).map(EncapsulationResources::getEncapsulation)
+                    .orElseThrow(() -> new IllegalStateException(
+                            format("Encapsulation was not found, pathId: %s / %s", forwardId, reverseId)));
+        }
 
         List<SimpleSwitchRule> result = new ArrayList<>();
         if (!forward.isProtected()) {
@@ -156,22 +154,30 @@ public class YFlowValidationService {
                     sharedEndpoint, sharedEndpointMeterId));
         }
 
-        List<PathSegment> orderedSegments = reverse.getSegments().stream()
-                .sorted(Comparator.comparingInt(PathSegment::getSeqId))
-                .collect(Collectors.toList());
+        if (!subFlow.isOneSwitchFlow()) {
+            EncapsulationId reverseEncId =
+                    flowResourcesManager.getEncapsulationResources(reverse.getPathId(), forward.getPathId(),
+                                    subFlow.getEncapsulationType()).map(EncapsulationResources::getEncapsulation)
+                            .orElseThrow(() -> new IllegalStateException(
+                                    format("Encapsulation was not found, pathId: %s / %s", forwardId, reverseId)));
 
-        for (int i = 0; i < orderedSegments.size() - 1; i++) {
-            PathSegment srcPathSegment = orderedSegments.get(i);
-            PathSegment dstPathSegment = orderedSegments.get(i + 1);
-            if (srcPathSegment.getDestSwitchId().equals(yPoint)) {
-                List<SimpleSwitchRule> yPointTransitRules = singletonList(
-                        simpleSwitchRuleConverter.buildTransitSimpleSwitchRule(subFlow, reverse,
-                                srcPathSegment, dstPathSegment, reverseEncId));
-                result.addAll(simpleSwitchRuleConverter.buildYFlowTransitSimpleSwitchRules(yPointTransitRules,
-                        yPoint, yPointMeterId, subFlow.getBandwidth(),
-                        Meter.calculateBurstSize(subFlow.getBandwidth(), flowMeterMinBurstSizeInKbits,
-                                flowMeterBurstCoefficient, reverse.getSrcSwitch().getDescription())));
-                break;
+            List<PathSegment> orderedSegments = reverse.getSegments().stream()
+                    .sorted(Comparator.comparingInt(PathSegment::getSeqId))
+                    .collect(Collectors.toList());
+
+            for (int i = 0; i < orderedSegments.size() - 1; i++) {
+                PathSegment srcPathSegment = orderedSegments.get(i);
+                PathSegment dstPathSegment = orderedSegments.get(i + 1);
+                if (srcPathSegment.getDestSwitchId().equals(yPoint)) {
+                    List<SimpleSwitchRule> yPointTransitRules = singletonList(
+                            simpleSwitchRuleConverter.buildTransitSimpleSwitchRule(subFlow, reverse,
+                                    srcPathSegment, dstPathSegment, reverseEncId));
+                    result.addAll(simpleSwitchRuleConverter.buildYFlowTransitSimpleSwitchRules(yPointTransitRules,
+                            yPoint, yPointMeterId, subFlow.getBandwidth(),
+                            Meter.calculateBurstSize(subFlow.getBandwidth(), flowMeterMinBurstSizeInKbits,
+                                    flowMeterBurstCoefficient, reverse.getSrcSwitch().getDescription())));
+                    break;
+                }
             }
         }
         return result;

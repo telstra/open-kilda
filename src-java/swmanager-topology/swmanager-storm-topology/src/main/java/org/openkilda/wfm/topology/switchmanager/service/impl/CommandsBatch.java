@@ -13,29 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.stats;
+package org.openkilda.wfm.topology.switchmanager.service.impl;
 
-import org.openkilda.messaging.payload.flow.PathNodePayload;
-import org.openkilda.model.MeterId;
-import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
+import org.openkilda.wfm.topology.switchmanager.bolt.SwitchManagerHub.OfCommandAction;
 
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.ToString;
+import lombok.Data;
 
 import java.util.List;
 
-/**
- * A base for path info messages.
- */
-@Getter
+@Data
 @AllArgsConstructor
-@ToString
-public abstract class BaseFlowPathInfo extends StatsNotification {
-    @NonNull String flowId;
-    String yFlowId;
-    @NonNull FlowSegmentCookie cookie;
-    MeterId meterId;
-    @NonNull List<PathNodePayload> pathNodes;
+public class CommandsBatch {
+
+    private OfCommandAction action;
+    private List<OfCommand> commands;
 }

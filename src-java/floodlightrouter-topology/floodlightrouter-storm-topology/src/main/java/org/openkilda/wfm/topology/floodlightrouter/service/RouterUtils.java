@@ -48,7 +48,6 @@ import org.openkilda.messaging.command.switches.InstallGroupRequest;
 import org.openkilda.messaging.command.switches.ModifyGroupRequest;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
-import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.floodlight.request.RemoveBfdSession;
 import org.openkilda.messaging.floodlight.request.SetupBfdSession;
@@ -91,8 +90,6 @@ public final class RouterUtils {
                 return ((DiscoverPathCommandData) commandData).getSrcSwitchId();
             } else if (commandData instanceof SwitchRulesDeleteRequest) {
                 return ((SwitchRulesDeleteRequest) commandData).getSwitchId();
-            } else if (commandData instanceof SwitchRulesInstallRequest) {
-                return ((SwitchRulesInstallRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpRulesRequest) {
                 return ((DumpRulesRequest) commandData).getSwitchId();
             } else if (commandData instanceof DeleterMeterForSwitchManagerRequest) {

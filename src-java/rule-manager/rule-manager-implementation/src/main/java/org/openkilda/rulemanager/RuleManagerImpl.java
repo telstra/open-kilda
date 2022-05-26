@@ -391,9 +391,13 @@ public class RuleManagerImpl implements RuleManager {
             if (yFlow == null) {
                 break;
             }
-            SwitchId sharedSwitchId = yFlow.getSharedEndpoint().getSwitchId();
-
-            if (sharedSwitchId.equals(flowPath.getSrcSwitchId())) {
+            if (flowPath.isForward()) {
+                SwitchId sharedSwitchId = yFlow.getSharedEndpoint().getSwitchId();
+                if (!sharedSwitchId.equals(flowPath.getSrcSwitchId())) {
+                    throw new IllegalArgumentException(
+                            format("Provided forward path %s has the source which differs from the shared endpoint %s",
+                                    flowPath.getPathId(), sharedSwitchId));
+                }
                 if (!flowPath.isProtected()) {
                     flowPathsForShared.add(flowPath);
                 } else {
@@ -439,7 +443,7 @@ public class RuleManagerImpl implements RuleManager {
         for (FlowPath path : flowPaths) {
             if (path.isProtected() || !path.isForward()) {
                 throw new IllegalArgumentException(
-                        format("Ingress rules must not be requested for protected or reverse path %s",
+                        format("Shared endpoint rules must not be requested for protected or reverse path %s",
                                 path.getPathId()));
             }
             Flow flow = adapter.getFlow(path.getPathId());
@@ -495,7 +499,7 @@ public class RuleManagerImpl implements RuleManager {
         for (FlowPath path : flowPaths) {
             if (path.isForward()) {
                 throw new IllegalArgumentException(
-                        format("Transit rules must not be requested for forward path %s", path.getPathId()));
+                        format("Y-point rules must not be requested for forward path %s", path.getPathId()));
             }
             Flow flow = adapter.getFlow(path.getPathId());
             if (flow == null) {
@@ -516,7 +520,7 @@ public class RuleManagerImpl implements RuleManager {
                             flow.getFlowId(), protectedYPointSwitchId);
                     continue;
                 }
-                if (!doesPathGoThroughSwitch(protectedYPointSwitchId, path.getSegments())) {
+                if (!doesPathGoThroughSwitch(protectedYPointSwitchId, path)) {
                     log.trace("Skip commands for the sub-flow {} as it doesn't go via the protected path y-point {}",
                             flow.getFlowId(), protectedYPointSwitchId);
                     continue;
@@ -537,7 +541,7 @@ public class RuleManagerImpl implements RuleManager {
                             flow.getFlowId(), yPointSwitchId);
                     continue;
                 }
-                if (!doesPathGoThroughSwitch(yPointSwitchId, path.getSegments())) {
+                if (!doesPathGoThroughSwitch(yPointSwitchId, path)) {
                     log.trace("Skip commands for the sub-flow {} as it doesn't go via the protected path y-point {}",
                             flow.getFlowId(), yPointSwitchId);
                     continue;
@@ -562,8 +566,9 @@ public class RuleManagerImpl implements RuleManager {
     }
 
     private boolean doesPathGoThroughSwitch(SwitchId switchId,
-                                            List<PathSegment> pathSegments) {
-        return pathSegments.stream().anyMatch(segment ->
+                                            FlowPath path) {
+        return path.getSrcSwitchId().equals(switchId) || path.getDestSwitchId().equals(switchId)
+                || path.getSegments().stream().anyMatch(segment ->
                 segment.getSrcSwitchId().equals(switchId) || segment.getDestSwitchId().equals(switchId));
     }
 
@@ -573,30 +578,33 @@ public class RuleManagerImpl implements RuleManager {
                                                     boolean meterToBeAdded) {
         if (path.isForward() || !path.getSrcSwitchId().equals(flow.getDestSwitchId())) {
             throw new IllegalArgumentException(
-                    format("Transit rules must not be requested for forward path %s", path.getPathId()));
-        }
-        if (path.getSegments().isEmpty()) {
-            throw new IllegalArgumentException(
-                    format("Transit rules must not be requested for a path %s with no segments", path.getPathId()));
+                    format("Y-point rules must not be requested for forward path %s", path.getPathId()));
         }
 
         SwitchId yPointSwitchId = yPointSwitch.getSwitchId();
-        if (yPointSwitchId.equals(flow.getSrcSwitchId())) {
-            return flowRulesFactory.getEgressYRuleGenerator(path, flow,
-                    encapsulation, yPointMeterId, externalMeterCommandUuid, meterToBeAdded);
-        } else if (yPointSwitchId.equals(flow.getDestSwitchId())) {
+        if (yPointSwitchId.equals(path.getSrcSwitchId())) {
             return flowRulesFactory.getIngressYRuleGenerator(path, flow,
                     encapsulation, emptySet(), yPointMeterId, externalMeterCommandUuid, meterToBeAdded);
         } else {
-            SwitchPathSegments switchPathSegments = findPathSegmentsForSwitch(yPointSwitchId, path.getSegments());
-            if (switchPathSegments == null) {
+            if (path.getSegments().isEmpty()) {
                 throw new IllegalArgumentException(
-                        format("The segment for endpoint %s can't be found among %s, %s / %s", yPointSwitchId,
-                                path.getSegments().size(), flow.getSrcSwitchId(), flow.getDestSwitchId()));
+                        format("Transit rules must not be requested for a path %s with no segments", path.getPathId()));
             }
-            return flowRulesFactory.getTransitYRuleGenerator(path, encapsulation,
-                    switchPathSegments.getFirstPathSegment(), switchPathSegments.getSecondPathSegment(),
-                    yPointMeterId, externalMeterCommandUuid, meterToBeAdded);
+
+            if (yPointSwitchId.equals(path.getDestSwitchId())) {
+                return flowRulesFactory.getEgressYRuleGenerator(path, flow,
+                        encapsulation, yPointMeterId, externalMeterCommandUuid, meterToBeAdded);
+            } else {
+                SwitchPathSegments switchPathSegments = findPathSegmentsForSwitch(yPointSwitchId, path.getSegments());
+                if (switchPathSegments == null) {
+                    throw new IllegalArgumentException(
+                            format("The segment for endpoint %s can't be found among %s, %s / %s", yPointSwitchId,
+                                    path.getSegments().size(), flow.getSrcSwitchId(), flow.getDestSwitchId()));
+                }
+                return flowRulesFactory.getTransitYRuleGenerator(path, encapsulation,
+                        switchPathSegments.getFirstPathSegment(), switchPathSegments.getSecondPathSegment(),
+                        yPointMeterId, externalMeterCommandUuid, meterToBeAdded);
+            }
         }
     }
 
