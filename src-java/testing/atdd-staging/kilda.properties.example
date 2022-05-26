@@ -1,7 +1,0 @@
-northbound.endpoint=http://localhost:8080
-northbound.username=username
-northbound.password=password
-
-floodlight.endpoint=http://localhost:8081
-floodlight.username=username
-floodlight.password=password

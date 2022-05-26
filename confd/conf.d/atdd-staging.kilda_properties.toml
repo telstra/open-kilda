@@ -1,5 +1,0 @@
-[template]
-src = "atdd-staging/kilda.properties.tmpl"
-dest = "src-java/testing/atdd-staging/kilda.properties"
-keys = [ "/" ]
-mode = "0644"
