@@ -90,6 +90,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncState, SwitchSyncEvent, Object> {
@@ -275,7 +276,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
             log.info("Compute reinstall rules (switch={}, key={})", switchId, key);
             try {
                 List<FlowSpeakerData> misconfiguredRulesToRemove = reinstalledRulesCookies.stream()
-                        .map(this::findActualFlowByCookie)
+                        .flatMap(this::findActualFlowsByCookie)
                         .collect(Collectors.toList());
                 toRemove.addAll(misconfiguredRulesToRemove);
                 List<FlowSpeakerData> misconfiguredRulesToInstall = validationResult.getExpectedEntries().stream()
@@ -298,7 +299,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
             log.info("Compute remove rules (switch={}, key={})", switchId, key);
             try {
                 List<FlowSpeakerData> excessRules = removedFlowRulesCookies.stream()
-                        .map(this::findActualFlowByCookie)
+                        .flatMap(this::findActualFlowsByCookie)
                         .collect(Collectors.toList());
                 toRemove.addAll(excessRules);
             } catch (Exception e) {
@@ -371,12 +372,11 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         }
     }
 
-    private FlowSpeakerData findActualFlowByCookie(long cookie) {
+    private Stream<FlowSpeakerData> findActualFlowsByCookie(long cookie) {
         return validationResult.getActualFlows().stream()
                 .filter(flowSpeakerData -> flowSpeakerData.getCookie().getValue() == cookie)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        format("Actual rule with cookie %s not found", cookie)));
+                .collect(Collectors.toList())
+                .stream();
     }
 
     private MeterSpeakerData findActualMeterById(long meterId) {
