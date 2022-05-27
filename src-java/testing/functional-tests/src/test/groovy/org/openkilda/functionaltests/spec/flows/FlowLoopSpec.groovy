@@ -647,14 +647,16 @@ class FlowLoopSpec extends HealthCheckSpecification {
         then: "FlowLoop is still present for the src switch"
         northboundV2.getFlow(flow.flowId).loopSwitchId == switchPair.src.dpId
 
+        and: "The src/dst switches are valid"
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            [switchPair.src, switchPair.dst].each {
+                northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            }
+        }
+
         and: "No extra rules are created on the src/dst switches"
         getFlowLoopRules(switchPair.src.dpId).size() == 2
         getFlowLoopRules(switchPair.dst.dpId).empty
-
-        and: "The src/dst switches are valid"
-        [switchPair.src, switchPair.dst].each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
 
         when: "Delete the flow with created flowLoop"
         northboundV2.deleteFlow(flow.flowId)

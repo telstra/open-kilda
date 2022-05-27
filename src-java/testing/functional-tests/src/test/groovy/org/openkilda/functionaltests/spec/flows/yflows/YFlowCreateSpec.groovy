@@ -603,6 +603,8 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
     }
 
     static boolean isTrafficApplicable(SwitchTriplet swT) {
-        swT ? [swT.shared, swT.ep1, swT.ep2].every { it.traffGens } : false
+        def isOneSw = swT ? (swT.shared == swT.ep1 && swT.shared == swT.ep2) : false
+        def amountTraffgens = isOneSw ? 1 : 0
+        swT ? [swT.shared, swT.ep1, swT.ep2].every { it.traffGens.size() > amountTraffgens } : false
     }
 }
