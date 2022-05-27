@@ -16,12 +16,16 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.YFlowHelper
+import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.ExamReport
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
+import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
@@ -44,10 +48,12 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     def "Valid y-flow can be rerouted"() {
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         given: "A qinq y-flow"
-        def swT = topologyHelper.switchTriplets.find {
+        def swT = topologyHelper.switchTriplets.find { it ->
+            def yPoints = yFlowHelper.findPotentialYPoints(it)
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
                     [it.pathsEp1, it.pathsEp2].every { it.size() > 1 } &&
-                    it.ep1 != it.ep2
+                    it.ep1 != it.ep2 && yPoints.size() == 1 && yPoints[0] != it.shared &&
+                    !it.shared.wb5164 && !it.ep1.wb5164 && !it.ep2.wb5164
         }
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def yFlowRequest = yFlowHelper.randomYFlow(swT).tap {
