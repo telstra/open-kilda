@@ -51,8 +51,8 @@ class SubFlowSpec extends HealthCheckSpecification {
         and: "All involved switches pass switch validation"
         def involvedSwitches = pathHelper.getInvolvedYSwitches(yFlow.YFlowId)
         involvedSwitches.each { sw ->
-//            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured"])
             northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "misconfigured"])
         }

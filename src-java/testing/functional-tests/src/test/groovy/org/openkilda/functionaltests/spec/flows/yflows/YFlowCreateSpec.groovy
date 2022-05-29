@@ -136,7 +136,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         if (trafficApplicable) {
             def exam = new FlowTrafficExamBuilder(topology, traffExam).buildYFlowExam(yFlow, yFlow.maximumBandwidth, 5)
             examReports = withPool {
-                [exam.forward1, exam.reverse1, exam.forward2, exam.reverse2].collectParallel { Exam direction ->
+                [exam.forward1, exam.reverse1, exam.forward2, exam.reverse2].collect { Exam direction ->
                     def resources = traffExam.startExam(direction)
                     direction.setResources(resources)
                     traffExam.waitExam(direction)
@@ -515,11 +515,11 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
                 //se = shared endpoint, ep = subflow endpoint, yp = y-point
                 [name     : "se is wb and se!=yp",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = findPotentialYPoints(swT)
+                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
                      swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared }],
                 [name     : "se is non-wb and se!=yp",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = findPotentialYPoints(swT)
+                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
                      !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared }],
                 [name     : "ep on wb and different eps", //ep1 is not the same sw as ep2
                  condition: { SwitchTriplet swT -> swT.ep1.wb5164 && swT.ep1 != swT.ep2 }],
@@ -527,27 +527,27 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
                  condition: { SwitchTriplet swT -> !swT.ep1.wb5164 && swT.ep1 != swT.ep2 }],
                 [name     : "se+yp on wb",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = findPotentialYPoints(swT)
+                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
                      swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared }],
                 [name     : "se+yp on non-wb",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = findPotentialYPoints(swT)
+                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
                      !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared }],
                 [name     : "yp on wb and yp!=se!=ep",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = findPotentialYPoints(swT)
+                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
                      swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared && yPoints[0] != swT.ep1 && yPoints[0] != swT.ep2 }],
                 [name     : "yp on non-wb and yp!=se!=ep",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = findPotentialYPoints(swT)
+                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
                      !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared && yPoints[0] != swT.ep1 && yPoints[0] != swT.ep2 }],
                 [name     : "ep+yp on wb",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = findPotentialYPoints(swT)
+                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
                      swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2) }],
                 [name     : "ep+yp on non-wb",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = findPotentialYPoints(swT)
+                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
                      !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2) }],
                 [name     : "yp==se",
                  condition: { SwitchTriplet swT ->
@@ -580,26 +580,6 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
             result << [swT: null, coveredCases: notPicked*.name]
         }
         return result
-    }
-
-    @Memoized
-    List<Switch> findPotentialYPoints(SwitchTriplet swT) {
-        def sortedEp1Paths = swT.pathsEp1.sort { it.size() }
-        def potentialEp1Paths = sortedEp1Paths.takeWhile { it.size() == sortedEp1Paths[0].size() }
-        def potentialEp2Paths = potentialEp1Paths.collect { potentialEp1Path ->
-            def sortedEp2Paths = swT.pathsEp2.sort {
-                it.size() - it.intersect(potentialEp1Path).size()
-            }
-            [path1: potentialEp1Path,
-            potentialPaths2: sortedEp2Paths.takeWhile {it.size() == sortedEp2Paths[0].size() }]
-        }
-        return potentialEp2Paths.collectMany {path1WithPath2 ->
-            path1WithPath2.potentialPaths2.collect { List<PathNode> potentialPath2 ->
-                def switches = pathHelper.getInvolvedSwitches(path1WithPath2.path1)
-                        .intersect(pathHelper.getInvolvedSwitches(potentialPath2))
-                switches ? switches[-1] : null
-            }
-        }.findAll().unique()
     }
 
     static boolean isTrafficApplicable(SwitchTriplet swT) {

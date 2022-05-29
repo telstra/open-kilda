@@ -8,7 +8,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
-import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.info.event.PathNode
@@ -39,7 +38,6 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Tidy
-    @Ignore
     def "Able to enable/disable protected path on a flow"() {
         given: "A simple y-flow"
         def swT = topologyHelper.switchTriplets.find {
@@ -97,7 +95,7 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
         then: "Partial update response contains disabled protected path"
         !patchResponse.allocateProtectedPath
 
-        then: "Protected path is really disable for YFlow/sub-flows"
+        then: "Protected path is really disabled for YFlow/sub-flows"
         !northboundV2.getYFlow(yFlow.YFlowId).allocateProtectedPath
         yFlow.subFlows.each {
             assert !northbound.getFlow(it.flowId).allocateProtectedPath
@@ -120,71 +118,6 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
-    }
-
-    @Tidy
-    @Ignore
-    def "Y-Flow is marked as degraded in case sub-flow is degraded"() {
-        given: "A protected y-flow"
-        def swT = topologyHelper.switchTriplets.find {
-            def ep1paths = it.pathsEp1.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def ep2paths = it.pathsEp2.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def yPoints = findPotentialYPoints(it)
-            //se == yp
-            yPoints.size() == 1 && yPoints[0] == it.shared && yPoints[0] != it.ep1 && yPoints[0] != it.ep2 &&
-                    it.ep1 != it.ep2 && ep1paths.size() >= 2 && ep2paths.size() >= 2
-        }
-        assumeTrue(swT != null, "No suiting switches found.")
-        def yFlowRequest = yFlowHelper.randomYFlow(swT).tap { allocateProtectedPath = true }
-        YFlow yFlow = yFlowHelper.addYFlow(yFlowRequest)
-
-        when: "Other paths are not available (ISLs are down)"
-        and: "Main flow path breaks"
-        def subFlow_1 = yFlow.subFlows.first()
-        def dstSwIdSubFl_1 = subFlow_1.endpoint.switchId
-        def path = northbound.getFlowPath(subFlow_1.flowId)
-        def originalMainPath = PathHelper.convert(path)
-        def originalProtectedPath = PathHelper.convert(path.protectedPath)
-        List<Isl> usedIsls = (pathHelper.getInvolvedIsls(originalMainPath) + pathHelper.getInvolvedIsls(originalProtectedPath))
-        List<Isl> otherIsls = topology.islsForActiveSwitches.collectMany { [it, it.reversed] }
-                .findAll { it.dstSwitch.dpId == dstSwIdSubFl_1 } - usedIsls
-        otherIsls.each { antiflap.portDown(it.dstSwitch.dpId, it.dstPort) }
-        wait(antiflapMin + WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == FAILED
-            }.size() == otherIsls.size() * 2
-        }
-        antiflap.portDown(originalMainPath.last().switchId, originalMainPath.last().portNo)
-
-        then: "Main path swaps to protected, flow becomes degraded, main path UP, protected DOWN"
-        wait(WAIT_OFFSET) {
-            def newPath = northbound.getFlowPath(subFlow_1.flowId)
-            assert PathHelper.convert(newPath) == originalProtectedPath  // mainPath swapped to protected <-- ok
-            assert PathHelper.convert(newPath.protectedPath) == originalProtectedPath
-            // protected is not swapped to main  <-- issue
-            verifyAll(northbound.getFlow(subFlow_1.flowId)) {
-                status == FlowState.DEGRADED.toString()
-                flowStatusDetails.mainFlowPathStatus == "Up"
-                flowStatusDetails.protectedFlowPathStatus == "Down" //should be "Down"
-            }
-        }
-
-        and: "YFlow is also marked as DEGRADED"
-        northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.DEGRADED.toString() //should be DEGRADED
-
-        and: "'Get y-flow path' endpoint is available"
-        northboundV2.getYFlowPaths(yFlow.YFlowId)
-
-        cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
-        if (yFlow) {
-            otherIsls.each { antiflap.portUp(it.dstSwitch.dpId, it.dstPort) }
-            antiflap.portUp(originalMainPath.last().switchId, originalMainPath.last().portNo)
-        }
-        wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
-        database.resetCosts()
     }
 
     @Memoized
