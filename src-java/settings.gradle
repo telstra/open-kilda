@@ -53,7 +53,6 @@ include 'stats-messaging'
 include 'stats-storm-topology'
 include 'swmanager-messaging'
 include 'swmanager-storm-topology'
-include 'atdd-staging'
 include 'functional-tests'
 include 'performance-tests'
 include 'test-library'
@@ -101,7 +100,6 @@ project(':stats-storm-topology').projectDir = "$rootDir/stats-topology/stats-sto
 project(':swmanager-messaging').projectDir = "$rootDir/swmanager-topology/swmanager-messaging" as File
 project(':swmanager-storm-topology').projectDir = "$rootDir/swmanager-topology/swmanager-storm-topology" as File
 
-project(':atdd-staging').projectDir = "$rootDir/testing/atdd-staging" as File
 project(':functional-tests').projectDir = "$rootDir/testing/functional-tests" as File
 project(':performance-tests').projectDir = "$rootDir/testing/performance-tests" as File
 project(':test-library').projectDir = "$rootDir/testing/test-library" as File
