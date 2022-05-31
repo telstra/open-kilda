@@ -15,10 +15,11 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions;
 
+import static java.util.Collections.emptyList;
+
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
 import org.openkilda.model.YSubFlow;
@@ -68,8 +69,10 @@ public class StartReroutingYFlowAction
         stateMachine.setOldYFlowPathCookies(flowPaths.stream()
                 .map(FlowPath::getCookie).map(FlowSegmentCookie::getValue).collect(Collectors.toList()));
 
-        List<PathSegment> sharedPathSegments = IntersectionComputer.calculatePathIntersectionFromSource(flowPaths);
-        PathInfoData sharedPath = FlowPathMapper.INSTANCE.map(sharedPathSegments);
+        List<FlowPath> nonEmptyPaths = flowPaths.stream()
+                .filter(fp -> !fp.getSegments().isEmpty()).collect(Collectors.toList());
+        PathInfoData sharedPath = FlowPathMapper.INSTANCE.map(nonEmptyPaths.size() >= 2
+                ? IntersectionComputer.calculatePathIntersectionFromSource(nonEmptyPaths) : emptyList());
         stateMachine.setOldSharedPath(sharedPath);
 
         List<SubFlowPathDto> subFlowPathDtos = flowPaths.stream()

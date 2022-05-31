@@ -82,11 +82,10 @@ class YFlowValidationSpec extends HealthCheckSpecification {
                         description: "multiSwtich y-flow",
                         yFlow: { SwitchTriplet swTriplet -> yFlowHelper.randomYFlow(swTriplet) }
                 ],
-                //https://github.com/telstra/open-kilda/issues/4825
-//                [
-//                        description: "one-switch y-flow",
-//                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.singleSwitchYFlow(swTriplet.shared) }
-//                ]
+                [
+                        description: "one-switch y-flow",
+                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.singleSwitchYFlow(swTriplet.shared) }
+                ]
         ]
     }
 
@@ -149,11 +148,10 @@ class YFlowValidationSpec extends HealthCheckSpecification {
                         description: "multiSwtich y-flow",
                         yFlow: { SwitchTriplet swTriplet -> yFlowHelper.randomYFlow(swTriplet) }
                 ],
-                //https://github.com/telstra/open-kilda/issues/4824
-//                [
-//                        description: "one-switch y-flow",
-//                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.singleSwitchYFlow(swTriplet.ep2) }
-//                ]
+                [
+                        description: "one-switch y-flow",
+                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.singleSwitchYFlow(swTriplet.ep2) }
+                ]
         ]
     }
 
