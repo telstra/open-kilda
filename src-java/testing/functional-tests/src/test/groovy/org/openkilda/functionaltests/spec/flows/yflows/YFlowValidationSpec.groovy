@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
@@ -7,8 +8,10 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
+import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
 
@@ -26,10 +29,10 @@ class YFlowValidationSpec extends HealthCheckSpecification {
     YFlowHelper yFlowHelper
 
     @Tidy
-    def "Y-Flow validation should fail in case of missing y-flow shared rule"() {
+    def "Y-Flow validation should fail in case of missing y-flow shared rule (#data.description)"() {
         given: "Existing y-flow"
         def swT = topologyHelper.switchTriplets[0]
-        def yFlowRequest = yFlowHelper.randomYFlow(swT)
+        def yFlowRequest = data.yFlow(swT)
         def yFlow = yFlowHelper.addYFlow(yFlowRequest)
 
         when: "Delete shared y-flow rule"
@@ -72,13 +75,27 @@ class YFlowValidationSpec extends HealthCheckSpecification {
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+
+        where:
+        data << [
+                [
+                        description: "multiSwtich y-flow",
+                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.randomYFlow(swTriplet) }
+                ],
+                //https://github.com/telstra/open-kilda/issues/4825
+//                [
+//                        description: "one-switch y-flow",
+//                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.singleSwitchYFlow(swTriplet.shared) }
+//                ]
+        ]
     }
 
     @Tidy
-    def "Y-Flow/flow validation should fail in case of missing subFlow rule"() {
+    @Tags(LOW_PRIORITY)
+    def "Y-Flow/flow validation should fail in case of missing subFlow rule (#data.description)"() {
         given: "Existing y-flow"
         def swT = topologyHelper.switchTriplets[0]
-        def yFlowRequest = yFlowHelper.randomYFlow(swT)
+        def yFlowRequest = data.yFlow(swT)
         def yFlow = yFlowHelper.addYFlow(yFlowRequest)
 
         when: "Delete reverse rule of subFlow_1"
@@ -125,6 +142,19 @@ class YFlowValidationSpec extends HealthCheckSpecification {
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+
+        where:
+        data << [
+                [
+                        description: "multiSwtich y-flow",
+                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.randomYFlow(swTriplet) }
+                ],
+                //https://github.com/telstra/open-kilda/issues/4824
+//                [
+//                        description: "one-switch y-flow",
+//                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.singleSwitchYFlow(swTriplet.ep2) }
+//                ]
+        ]
     }
 
     @Tidy
