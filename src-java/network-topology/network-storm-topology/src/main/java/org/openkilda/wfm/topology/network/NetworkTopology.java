@@ -169,7 +169,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         Fields keyGrouping = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
         declareBolt(topology, speakerRulesWorker, SpeakerRulesWorker.BOLT_ID)
                 .directGrouping(CoordinatorBolt.ID)
-                .fieldsGrouping(workerConfig.getHubComponent(), IslHandler.STREAM_SPEAKER_RULES_ID, keyGrouping)
+                .fieldsGrouping(IslHandler.BOLT_ID, IslHandler.STREAM_SPEAKER_RULES_ID, keyGrouping)
                 .fieldsGrouping(SpeakerRulesRouter.BOLT_ID,
                         SpeakerRulesRouter.STREAM_WORKER_ID, keyGrouping);
     }
@@ -205,7 +205,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         Fields keyGrouping = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
         declareBolt(topology, switchManagerWorker, SwitchManagerWorker.BOLT_ID)
                 .directGrouping(CoordinatorBolt.ID)
-                .fieldsGrouping(workerConfig.getHubComponent(), SwitchHandler.STREAM_SWMANAGER_ID, keyGrouping)
+                .fieldsGrouping(SwitchHandler.BOLT_ID, SwitchHandler.STREAM_SWMANAGER_ID, keyGrouping)
                 .fieldsGrouping(SwitchManagerRouter.BOLT_ID,
                         SwitchManagerRouter.STREAM_WORKER_ID, keyGrouping);
     }
@@ -308,7 +308,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         Fields keyGrouping = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
         declareBolt(topology, bolt, BfdWorker.BOLT_ID)
                 .directGrouping(CoordinatorBolt.ID)
-                .fieldsGrouping(workerConfig.getHubComponent(), BfdHub.STREAM_WORKER_ID, keyGrouping)
+                .fieldsGrouping(BfdHub.BOLT_ID, BfdHub.STREAM_WORKER_ID, keyGrouping)
                 .fieldsGrouping(
                         SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_BFD_WORKER_ID, keyGrouping)
                 .fieldsGrouping(GrpcRouter.BOLT_ID, GrpcRouter.STREAM_BFD_WORKER_ID, keyGrouping);
