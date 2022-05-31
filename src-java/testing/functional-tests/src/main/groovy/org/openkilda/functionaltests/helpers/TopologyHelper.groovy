@@ -30,6 +30,8 @@ import org.springframework.stereotype.Component
 class TopologyHelper {
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
+    @Autowired @Qualifier("northboundServiceImpl")
+    NorthboundService nb
     @Autowired
     TopologyDefinition topology
     @Autowired
@@ -103,8 +105,12 @@ class TopologyHelper {
     }
 
     TopologyDefinition readCurrentTopology() {
-        def switches = northbound.getAllSwitches()
-        def links = northbound.getAllLinks()
+        readCurrentTopology(false)
+    }
+
+    TopologyDefinition readCurrentTopology(Boolean generateTopology) {
+        def switches = generateTopology ? nb.getAllSwitches() : northbound.getAllSwitches()
+        def links = generateTopology ? nb.getAllLinks() : northbound.getAllLinks()
         def i = 0
         def switchIdsPerRegion = flHelper.fls.collectEntries {
             [(it.region): it.floodlightService.getSwitches()*.switchId] }
