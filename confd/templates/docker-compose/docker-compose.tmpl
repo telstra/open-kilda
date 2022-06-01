@@ -277,16 +277,6 @@ services:
     depends_on:
       zookeeper:
         condition: service_healthy
-    ports:
-      - "60000:60000"
-      - "60010:60010"
-      - "60020:60020"
-      - "60030:60030"
-      - "8070:8070"
-      - "8090:8090"
-      - "9070:9070"
-      - "9080:9080"
-      - "9090:9090"
     healthcheck:
       test: ["CMD-SHELL", "jps | grep --silent HMaster"]
       interval: 30s
@@ -308,12 +298,7 @@ services:
         condition: service_healthy
 {{if not (exists "/no_opentsdb")}}      opentsdb:
         condition: service_started
-{{end}}    ports:
-      - "6627:6627"
-      - "3772:3772"
-      - "3773:3773"
-      - "8000:8000"
-    healthcheck:
+{{end}}    healthcheck:
       test: ["CMD-SHELL", "jps | grep --silent nimbus"]
       interval: 30s
       timeout: 10s
@@ -363,59 +348,7 @@ services:
         condition: service_healthy
 {{end}}{{if not (exists "/no_opentsdb")}}      opentsdb:
         condition: service_started
-{{end}}    ports:
-      - "6700:6700"
-      - "6701:6701"
-      - "6702:6702"
-      - "6703:6703"
-      - "6704:6704"
-      - "6705:6705"
-      - "6706:6706"
-      - "6707:6707"
-      - "6708:6708"
-      - "6709:6709"
-      - "6710:6710"
-      - "6711:6711"
-      - "6712:6712"
-      - "6713:6713"
-      - "6714:6714"
-      - "6715:6715"
-      - "6716:6716"
-      - "6717:6717"
-      - "6718:6718"
-      - "6719:6719"
-      - "6720:6720"
-      - "6721:6721"
-      - "6722:6722"
-      - "6723:6723"
-      - "6724:6724"
-      - "6725:6725"
-      - "6726:6726"
-      - "6727:6727"
-      - "6728:6728"
-      - "6729:6729"
-      - "6730:6730"
-      - "6731:6731"
-      - "6732:6732"
-      - "6733:6733"
-      - "6734:6734"
-      - "6735:6735"
-      - "6736:6736"
-      - "6737:6737"
-      - "6738:6738"
-      - "6739:6739"
-      - "6740:6740"
-      - "6741:6741"
-      - "6742:6742"
-      - "6743:6743"
-      - "6744:6744"
-      - "6745:6745"
-      - "6746:6746"
-      - "6747:6747"
-      - "6748:6748"
-      - "6749:6749"
-      - "8001:8000"
-    healthcheck:
+{{end}}    healthcheck:
       test: ["CMD-SHELL", "/simple-storm-supervisor-healthcheck.sh"]
       interval: 10s
       timeout: 10s
