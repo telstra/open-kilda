@@ -115,11 +115,8 @@ class Wrappers {
 
     @InheritConstructors
     static class WaitTimeoutException extends RuntimeException {
-        Throwable originalError
-        
         WaitTimeoutException(String message, Throwable error) {
-            super(error ? message + "\nFailed with exception:\n\n$error" : message)
-            originalError = error
+            super(message, error)
         }
     }
 }
