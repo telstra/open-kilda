@@ -351,4 +351,24 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
         verifyNoMoreInteractions(carrier);
     }
+
+    @Test
+    public void needToCheckSlaTest() {
+        int shardCount = 4;
+        ActionService testService = new ActionService(
+                carrier, persistenceManager, clock, TIMEOUT, THRESHOLD, shardCount);
+        int[] shardChecks = new int[shardCount];
+        for (int hash = -20; hash < 20; hash++) {
+            for (int shard = 0; shard < shardCount; shard++) {
+                if (testService.needToCheckSla(hash, shard)) {
+                    shardChecks[shard]++;
+                }
+            }
+        }
+
+        assertEquals(10, shardChecks[0]);
+        assertEquals(10, shardChecks[1]);
+        assertEquals(10, shardChecks[2]);
+        assertEquals(10, shardChecks[3]);
+    }
 }

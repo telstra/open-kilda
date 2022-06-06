@@ -205,13 +205,14 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "Check if stats for reverse are available"
-        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            def statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : reversedFlow.flowId,
-                     direction: "reverse",
-                     origin   : "server42"]).dps
-            assert statsData && !statsData.empty
-        }
+        //https://github.com/telstra/open-kilda/issues/4678
+//        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+//            def statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+//                    [flowid   : reversedFlow.flowId,
+//                     direction: "reverse",
+//                     origin   : "server42"]).dps
+//            assert statsData && !statsData.empty
+//        }
 
         cleanup: "Revert system to original state"
         revertToOrigin([flow, reversedFlow], flowRttFeatureStartState, initialSwitchRtt)
@@ -306,29 +307,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "Stats for reversed flow are available"
-        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-                    [flowid   : reversedFlow.flowId,
-                     direction: "reverse",
-                     origin   : "server42"]).dps
-            assert statsData && !statsData.empty
-        }
-        //behavior below varies between physical switches and virtual stub due to 'turning rule'
-        //will be resolved as part of https://github.com/telstra/open-kilda/issues/3809
-//        when: "Disable switch rtt toggle on dst (still enabled on src)"
-//        changeFlowRttSwitch(switchPair.dst, false)
-//        checkpointTime = new Date()
-//
-//        then: "Stats for forward flow are available"
-//        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-//            def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-//                    [flowid   : flow.flowId,
-//                     direction: "forward",
-//                     origin   : "server42"]).dps
-//            assert statsData && !statsData.empty
-//        }
-//
-//        and: "Stats for reversed flow are available"
+        //https://github.com/telstra/open-kilda/issues/4678
 //        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
 //            def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
 //                    [flowid   : reversedFlow.flowId,
@@ -336,6 +315,30 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 //                     origin   : "server42"]).dps
 //            assert statsData && !statsData.empty
 //        }
+
+        when: "Disable switch rtt toggle on dst (still enabled on src)"
+        changeFlowRttSwitch(switchPair.dst, false)
+        checkpointTime = new Date()
+
+        then: "Stats for forward flow are available"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "forward",
+                     origin   : "server42"]).dps
+            assert statsData && !statsData.empty
+        }
+
+        and: "Stats for reversed flow are available"
+        //https://github.com/telstra/open-kilda/issues/4678
+//        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+//            def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
+//                    [flowid   : reversedFlow.flowId,
+//                     direction: "reverse",
+//                     origin   : "server42"]).dps
+//            assert statsData && !statsData.empty
+//        }
+
         when: "Disable global toggle"
         changeFlowRttToggle(false)
 
@@ -397,11 +400,12 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                      direction: "forward",
                      origin   : "server42"]).dps
             assert fwData && !fwData.empty
-            def reverseData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "reverse",
-                     origin   : "server42"]).dps
-            assert reverseData && !reverseData.empty
+            //https://github.com/telstra/open-kilda/issues/4678
+//            def reverseData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
+//                    [flowid   : flow.flowId,
+//                     direction: "reverse",
+//                     origin   : "server42"]).dps
+//            assert reverseData && !reverseData.empty
         }
 
         when: "Disable flow rtt on dst switch"
@@ -410,21 +414,20 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         checkpointTime = new Date()
 
         then: "Stats are available in forward direction"
-        TimeUnit.SECONDS.sleep(4) //remove after removing workaround below
-        //not until https://github.com/telstra/open-kilda/issues/3809
-//        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-//            def fwData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-//                    [flowid   : flow.flowId,
-//                     direction: "forward",
-//                     origin   : "server42"]).dps
-//            assert fwData && !fwData.empty
-//        }
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            def fwData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
+                    [flowid   : flow.flowId,
+                     direction: "forward",
+                     origin   : "server42"]).dps
+            assert fwData && !fwData.empty
+        }
 
         and: "Stats are not available in reverse direction"
-        otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-                [flowid   : flow.flowId,
-                 direction: "reverse",
-                 origin   : "server42"]).dps.isEmpty()
+        //https://github.com/telstra/open-kilda/issues/4678
+//        otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
+//                [flowid   : flow.flowId,
+//                 direction: "reverse",
+//                 origin   : "server42"]).dps.isEmpty()
 
         cleanup: "Revert system to original state"
         revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)
@@ -453,10 +456,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                     [flowid   : flow.flowId,
                      direction: "forward",
                      origin   : "server42"]).dps.size() > 0
-            assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "reverse",
-                     origin   : "server42"]).dps.size() > 0
+            //https://github.com/telstra/open-kilda/issues/4678
+//            assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+//                    [flowid   : flow.flowId,
+//                     direction: "reverse",
+//                     origin   : "server42"]).dps.size() > 0
         }
 
         when: "Delete ingress server42 rule related to the flow on the src switch"
@@ -481,18 +485,19 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                 [flowid   : flow.flowId,
                  direction: "forward",
                  origin   : "server42"]).dps
-        def statsDataReverse = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                [flowid   : flow.flowId,
-                 direction: "reverse",
-                 origin   : "server42"]).dps
-        def newStatsDataReverse
-        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            newStatsDataReverse = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "reverse",
-                     origin   : "server42"]).dps
-            assert newStatsDataReverse.size() > statsDataReverse.size()
-        }
+        //https://github.com/telstra/open-kilda/issues/4678
+//        def statsDataReverse = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+//                [flowid   : flow.flowId,
+//                 direction: "reverse",
+//                 origin   : "server42"]).dps
+//        def newStatsDataReverse
+//        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+//            newStatsDataReverse = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+//                    [flowid   : flow.flowId,
+//                     direction: "reverse",
+//                     origin   : "server42"]).dps
+//            assert newStatsDataReverse.size() > statsDataReverse.size()
+//        }
         otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
                 [flowid   : flow.flowId,
                  direction: "forward",
@@ -515,10 +520,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                     [flowid   : flow.flowId,
                      direction: "forward",
                      origin   : "server42"]).dps.size() > statsDataForward.size()
-            assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "reverse",
-                     origin   : "server42"]).dps.size() > newStatsDataReverse.size()
+//            assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+//                    [flowid   : flow.flowId,
+//                     direction: "reverse",
+//                     origin   : "server42"]).dps.size() > newStatsDataReverse.size()
         }
 
         cleanup: "Revert system to original state"
@@ -741,10 +746,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                     [flowid   : flow.flowId,
                      direction: "forward",
                      origin   : "server42"]).dps.isEmpty()
-            assert !otsdb.query(flowUpdateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "reverse",
-                     origin   : "server42"]).dps.isEmpty()
+            //https://github.com/telstra/open-kilda/issues/4678
+//            assert !otsdb.query(flowUpdateTime, metricPrefix + "flow.rtt",
+//                    [flowid   : flow.flowId,
+//                     direction: "reverse",
+//                     origin   : "server42"]).dps.isEmpty()
         }
 
         and: "Flow is valid"
@@ -922,10 +928,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                     [flowid   : flow.flowId,
                      direction: "forward",
                      origin   : "server42"]).dps.isEmpty()
-            assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "reverse",
-                     origin   : "server42"]).dps.isEmpty()
+            //https://github.com/telstra/open-kilda/issues/4678
+//            assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
+//                    [flowid   : flow.flowId,
+//                     direction: "reverse",
+//                     origin   : "server42"]).dps.isEmpty()
         }
 
         cleanup: "Revert system to original state"

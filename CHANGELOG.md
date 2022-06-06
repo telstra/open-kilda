@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.120.1 (01/06/2022)
+
+### Bug Fixes:
+-  [#4812](https://github.com/telstra/open-kilda/pull/4812) Fix switch sync can't handle misconfigured and exess rules with the same cookie (Issue: [#4805](https://github.com/telstra/open-kilda/issues/4805)) [**storm-topologies**]
+-  [#4819](https://github.com/telstra/open-kilda/pull/4819) Fixed incorrect flow sharding in FlowMonitoring topology
+
+### Improvements:
+-  [#4581](https://github.com/telstra/open-kilda/pull/4581) add check of autoReroute for a degraded flow [**tests**]
+-  [#4681](https://github.com/telstra/open-kilda/pull/4681) increase SERVER42_LOGGING_TIMEOUT due to #4678 (Issues: [#4678](https://github.com/telstra/open-kilda/issues/4678) [#4678](https://github.com/telstra/open-kilda/issues/4678)) [**tests**]
+-  [#4795](https://github.com/telstra/open-kilda/pull/4795) decrease kilda_flow_sla_check_shard_count(10->1) for local env
+
+### Other changes:
+-  [#4808](https://github.com/telstra/open-kilda/pull/4808) Test/yflow final [**tests**]
+-  [#4822](https://github.com/telstra/open-kilda/pull/4822) minor fixes in FlowLoop/RoundTripIsl/YFlowCreateSpec [**tests**]
+-  [#4823](https://github.com/telstra/open-kilda/pull/4823) [test] remove atdd-staging [**tests**]
+-  [#4826](https://github.com/telstra/open-kilda/pull/4826) [test] add for #4824 #4825 (Issues: [#4824](https://github.com/telstra/open-kilda/issues/4824) [#4825](https://github.com/telstra/open-kilda/issues/4825)) [**tests**]
+-  [#4827](https://github.com/telstra/open-kilda/pull/4827) [test] fix GenerateTopologyConfig [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.120.0...v1.120.1).
+
+### Affected Components:
+flow-monitor, swmanager
+
+---
+
 ## v1.120.0 (25/05/2022)
 
 ### Features:
@@ -35,7 +60,8 @@ DELETE VERTEX FROM switch_connected_device WHERE @rid in (
 )
 ```
 
-```DELETE VERTEX FROM switch_connected_device WHERE @rid in (
+```
+DELETE VERTEX FROM switch_connected_device WHERE @rid in (
     SELECT rid FROM (
         SELECT COUNT(*) AS duplicate_count, MIN(@rid) as rid FROM switch_connected_device
         WHERE type='lldp' GROUP BY switch_id, port_number, vlan, mac_address, chassis_id, port_id

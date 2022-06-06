@@ -1,20 +1,23 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
+import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -26,11 +29,10 @@ class YFlowValidationSpec extends HealthCheckSpecification {
     YFlowHelper yFlowHelper
 
     @Tidy
-    @Ignore("not implemented")
-    def "Y-Flow/flow validation should fail in case of missing y-flow shared rule"() {
+    def "Y-Flow validation should fail in case of missing y-flow shared rule (#data.description)"() {
         given: "Existing y-flow"
         def swT = topologyHelper.switchTriplets[0]
-        def yFlowRequest = yFlowHelper.randomYFlow(swT)
+        def yFlowRequest = data.yFlow(swT)
         def yFlow = yFlowHelper.addYFlow(yFlowRequest)
 
         when: "Delete shared y-flow rule"
@@ -41,21 +43,21 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         def sharedRules = northbound.getSwitchRules(swIdToManipulate).flowEntries.findAll {
             it.instructions.goToMeter == sharedMeterId
         }
-//        sharedRules.each { northbound.deleteSwitchRules(swIdToManipulate, it.cookie) }
+        sharedRules.each { northbound.deleteSwitchRules(swIdToManipulate, it.cookie) }
 
         then: "Y-Flow validate detects discrepancies"
-        !northboundV2.validateYFlow(yFlow.YFlowId).asExpected
+        Wrappers.wait(RULES_DELETION_TIME) { assert !northboundV2.validateYFlow(yFlow.YFlowId).asExpected }
 
         and: "Simple flow validation detects discrepancies"
         yFlow.subFlows.each {
-            assert !northbound.validateFlow(it.flowId).findAll { !it.discrepancies.empty }.empty
+            northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
         }
 
         and: "Switch validation detects missing y-flow rule"
         with(northbound.validateSwitch(swIdToManipulate).rules) {
             it.misconfigured.empty
             it.excess.empty
-            it.missing.size() == 1
+            it.missing.size() == sharedRules.size()
             it.missing.sort() == sharedRules*.cookie.sort()
         }
 
@@ -72,14 +74,28 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         northbound.validateSwitch(swIdToManipulate).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
 
         cleanup:
-        yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+
+        where:
+        data << [
+                [
+                        description: "multiSwtich y-flow",
+                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.randomYFlow(swTriplet) }
+                ],
+                //https://github.com/telstra/open-kilda/issues/4825
+//                [
+//                        description: "one-switch y-flow",
+//                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.singleSwitchYFlow(swTriplet.shared) }
+//                ]
+        ]
     }
 
     @Tidy
-    def "Y-Flow/flow validation should fail in case of missing subFlow rule"() {
+    @Tags(LOW_PRIORITY)
+    def "Y-Flow/flow validation should fail in case of missing subFlow rule (#data.description)"() {
         given: "Existing y-flow"
         def swT = topologyHelper.switchTriplets[0]
-        def yFlowRequest = yFlowHelper.randomYFlow(swT)
+        def yFlowRequest = data.yFlow(swT)
         def yFlow = yFlowHelper.addYFlow(yFlowRequest)
 
         when: "Delete reverse rule of subFlow_1"
@@ -109,29 +125,6 @@ class YFlowValidationSpec extends HealthCheckSpecification {
             it.missing[0] == cookieToDelete
         }
 
-        when: "Delete shared rule of y-flow from the shared switch"
-        def sharedSwId = swT.shared.dpId
-        def sharedMeterId = northbound.getAllMeters(sharedSwId).meterEntries.findAll {
-            it.meterId > MAX_SYSTEM_RULE_METER_ID
-        }.max { it.meterId }.meterId
-        def sharedRules = northbound.getSwitchRules(sharedSwId).flowEntries.findAll {
-            it.instructions.goToMeter == sharedMeterId
-        }
-//        sharedRules.each { northbound.deleteSwitchRules(sharedSwId, it.cookie) }
-
-        then: "Both subFlows are not valid"
-//        yFlow.subFlows.each {
-//            assert !northbound.validateFlow(it.flowId).findAll { !it.discrepancies.empty }.empty
-//        }
-
-        and: "Switch validation detects missing y-flow rule on the shared switch"
-//        with(northbound.validateSwitch(sharedSwId).rules) {
-//            it.misconfigured.empty
-//            it.excess.empty
-//            it.missing.size() == 1
-//            it.missing.sort() == sharedRules*.cookie.sort()
-//        }
-
         when: "Sync y-flow"
         northboundV2.synchronizeYFlow(yFlow.YFlowId)
 
@@ -145,13 +138,23 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         }
 
         and: "Switches pass validation"
-        [swIdToManipulate, sharedSwId].each {
-            northbound.validateSwitch(it).verifyRuleSectionsAreEmpty(["missing", "misconfigured"])
-//                    .verifyRuleSectionsAreEmpty(swIdToManipulate, ["missing", "excess", "misconfigured"])
-        }
+        northbound.validateSwitch(swIdToManipulate).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
 
         cleanup:
-        yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+
+        where:
+        data << [
+                [
+                        description: "multiSwtich y-flow",
+                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.randomYFlow(swTriplet) }
+                ],
+                //https://github.com/telstra/open-kilda/issues/4824
+//                [
+//                        description: "one-switch y-flow",
+//                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.singleSwitchYFlow(swTriplet.ep2) }
+//                ]
+        ]
     }
 
     @Tidy

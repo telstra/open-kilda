@@ -342,7 +342,7 @@ class LagPortSpec extends HealthCheckSpecification {
     def "Unable to create a LAG port with port which is used as mirrorPort"() {
         given: "A flow with mirrorPoint"
         def swP = topologyHelper.getNeighboringSwitchPair()
-        def flow = flowHelperV2.randomFlow(swP)
+        def flow = flowHelperV2.randomFlow(swP, false)
         flowHelperV2.addFlow(flow)
 
         def mirrorPort = topology.getAllowedPortsForSwitch(swP.src).last()
@@ -364,8 +364,8 @@ class LagPortSpec extends HealthCheckSpecification {
         exc.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Error during LAG create"
-        errorDetails.errorDescription == "Physical port $mirrorPort already used by following flows: [$flow.flowId]. " +
-                "You must remove these flows to be able to use the port in LAG."
+        errorDetails.errorDescription == "Physical port $mirrorPort already used as sink by following mirror points" +
+                " flow '$flow.flowId': [$mirrorEndpoint.mirrorPointId]"
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
