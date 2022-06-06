@@ -15,8 +15,6 @@
 
 package org.openkilda.floodlight.command.rulemanager;
 
-import static java.lang.String.format;
-
 import org.openkilda.floodlight.api.request.rulemanager.OfEntityBatch;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.floodlight.converter.rulemanager.OfFlowConverter;
@@ -30,7 +28,6 @@ import org.openkilda.model.cookie.CookieBase;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterSpeakerData;
-import org.openkilda.rulemanager.SpeakerData;
 
 import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -45,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 @Slf4j
 public class OfBatchHolder implements OfEntityBatch {
@@ -142,17 +138,6 @@ public class OfBatchHolder implements OfEntityBatch {
         return commandMap.get(uuid);
     }
 
-    /**
-     * Get speaker data by UUID.
-     */
-    public SpeakerData getSpeakerDataByUUid(UUID uuid) {
-        return Stream.of(flowsMap.values(), metersMap.values(), groupsMap.values())
-                .flatMap(Collection::stream)
-                .filter(data -> uuid.equals(data.getUuid()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(format("Can't find speaker data with uuid %s", uuid)));
-    }
-
     public MeterSpeakerData getByMeterId(MeterId meterId) {
         return metersMap.get(meterId);
     }
@@ -185,7 +170,12 @@ public class OfBatchHolder implements OfEntityBatch {
         OFMessage message = OfFlowConverter.INSTANCE.convertInstallFlowCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
         flowsMap.put(data.getCookie(), data);
-        BatchData batchData = BatchData.builder().flow(true).message(message).presenceBeVerified(true).build();
+        BatchData batchData = BatchData.builder()
+                .flow(true)
+                .message(message)
+                .origin(data)
+                .presenceBeVerified(true)
+                .build();
         addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
@@ -195,10 +185,14 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfFlowConverter.INSTANCE.convertModifyFlowCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        BatchData batchData = BatchData.builder().flow(true).message(message).presenceBeVerified(true).build();
-        commandMap.put(data.getUuid(), batchData);
+        BatchData batchData = BatchData.builder()
+                .flow(true)
+                .message(message)
+                .origin(data)
+                .presenceBeVerified(true)
+                .build();
         flowsMap.put(data.getCookie(), data);
-        executionGraph.add(data.getUuid(), data.getDependsOn());
+        addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
     @Override
@@ -208,7 +202,12 @@ public class OfBatchHolder implements OfEntityBatch {
         OFMessage message = OfFlowConverter.INSTANCE.convertDeleteFlowCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
         flowsMap.put(data.getCookie(), data);
-        BatchData batchData = BatchData.builder().flow(true).message(message).presenceBeVerified(false).build();
+        BatchData batchData = BatchData.builder()
+                .flow(true)
+                .message(message)
+                .origin(data)
+                .presenceBeVerified(false)
+                .build();
         addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
@@ -219,7 +218,12 @@ public class OfBatchHolder implements OfEntityBatch {
         OFMessage message = OfMeterConverter.INSTANCE.convertInstallMeterCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
         metersMap.put(data.getMeterId(), data);
-        BatchData batchData = BatchData.builder().meter(true).message(message).presenceBeVerified(true).build();
+        BatchData batchData = BatchData.builder()
+                .meter(true)
+                .message(message)
+                .origin(data)
+                .presenceBeVerified(true)
+                .build();
         addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
@@ -229,10 +233,14 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfMeterConverter.INSTANCE.convertModifyMeterCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        BatchData batchData = BatchData.builder().meter(true).message(message).presenceBeVerified(true).build();
-        commandMap.put(data.getUuid(), batchData);
+        BatchData batchData = BatchData.builder()
+                .meter(true)
+                .message(message)
+                .origin(data)
+                .presenceBeVerified(true)
+                .build();
         metersMap.put(data.getMeterId(), data);
-        executionGraph.add(data.getUuid(), data.getDependsOn());
+        addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
     @Override
@@ -242,7 +250,12 @@ public class OfBatchHolder implements OfEntityBatch {
         OFMessage message = OfMeterConverter.INSTANCE.convertDeleteMeterCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
         metersMap.put(data.getMeterId(), data);
-        BatchData batchData = BatchData.builder().meter(true).message(message).presenceBeVerified(false).build();
+        BatchData batchData = BatchData.builder()
+                .meter(true)
+                .message(message)
+                .origin(data)
+                .presenceBeVerified(false)
+                .build();
         addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
@@ -253,7 +266,12 @@ public class OfBatchHolder implements OfEntityBatch {
         OFMessage message = OfGroupConverter.INSTANCE.convertInstallGroupCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
         groupsMap.put(data.getGroupId(), data);
-        BatchData batchData = BatchData.builder().group(true).message(message).presenceBeVerified(true).build();
+        BatchData batchData = BatchData.builder()
+                .group(true)
+                .message(message)
+                .origin(data)
+                .presenceBeVerified(true)
+                .build();
         addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
@@ -263,10 +281,14 @@ public class OfBatchHolder implements OfEntityBatch {
         OFFactory factory = iofSwitchService.getSwitch(dpId).getOFFactory();
         OFMessage message = OfGroupConverter.INSTANCE.convertModifyGroupCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
-        BatchData batchData = BatchData.builder().group(true).message(message).presenceBeVerified(true).build();
+        BatchData batchData = BatchData.builder()
+                .group(true)
+                .message(message)
+                .origin(data)
+                .presenceBeVerified(true)
+                .build();
         commandMap.put(data.getUuid(), batchData);
-        groupsMap.put(data.getGroupId(), data);
-        executionGraph.add(data.getUuid(), data.getDependsOn());
+        addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
     @Override
@@ -276,7 +298,12 @@ public class OfBatchHolder implements OfEntityBatch {
         OFMessage message = OfGroupConverter.INSTANCE.convertDeleteGroupCommand(data, factory);
         xidMapping.put(message.getXid(), data.getUuid());
         groupsMap.put(data.getGroupId(), data);
-        BatchData batchData = BatchData.builder().group(true).message(message).presenceBeVerified(false).build();
+        BatchData batchData = BatchData.builder()
+                .group(true)
+                .message(message)
+                .origin(data)
+                .presenceBeVerified(false)
+                .build();
         addBatchData(data.getUuid(), batchData, data.getDependsOn());
     }
 
