@@ -363,7 +363,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         def islRttFeatureStartState = changeIslRttToggle(false)
 
         and: "server42IslRtt is disabled on the switch"
-        def originSwProps = northbound.getSwitchProperties(sw.dpId)
+        def originSwProps = switchHelper.getCachedSwProps(sw.dpId)
         changeIslRttSwitch(sw, false)
 
         then: "No IslRtt rules on the switch"

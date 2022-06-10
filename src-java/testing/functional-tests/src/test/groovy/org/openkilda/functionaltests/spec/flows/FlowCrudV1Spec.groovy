@@ -598,7 +598,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
             def validation = northbound.validateSwitch(it.dpId)
             validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
             validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
-            def swProps = northbound.getSwitchProperties(it.dpId)
+            def swProps = switchHelper.getCachedSwProps(it.dpId)
             def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
             if (swProps.multiTable && swProps.server42FlowRtt) {

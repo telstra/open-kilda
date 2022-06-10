@@ -567,7 +567,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
             def validation = northbound.validateSwitch(it.dpId)
             validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
             validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
-            def swProps = northbound.getSwitchProperties(it.dpId)
+            def swProps = switchHelper.getCachedSwProps(it.dpId)
             def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
             if (swProps.multiTable && swProps.server42FlowRtt) {
@@ -869,8 +869,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
             [it.src, it.dst].any { !switchHelper.isVxlanEnabled(it.dpId) }
         } ?: assumeTrue(false, "Unable to find required switches in topology")
 
-        def srcProps = northbound.getSwitchProperties(swPair.src.dpId)
-        def dstProps = northbound.getSwitchProperties(swPair.dst.dpId)
+        def srcProps = switchHelper.getCachedSwProps(swPair.src.dpId)
+        def dstProps = switchHelper.getCachedSwProps(swPair.dst.dpId)
         def endpointName = "source"
 
         def swWithoutVxlan = swPair.src
@@ -990,7 +990,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         and: "Flow rules are recreated"
         def flowInfoFromDb2 = database.getFlow(flow.flowId)
         wait(RULES_INSTALLATION_TIME) {
-            def isMultiTableEnabled = northbound.getSwitchProperties(srcSwitch.dpId).multiTable
+            def isMultiTableEnabled = switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable
             with(northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
                 !new Cookie(it.cookie).serviceFlag
             }) { rules ->

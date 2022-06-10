@@ -650,7 +650,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def flowRttFeatureStartState = changeFlowRttToggle(true)
 
         and: "server42FlowRtt is enabled on src switch"
-        def initialSrcSwS42Props = northbound.getSwitchProperties(switchPair.src.dpId).server42FlowRtt
+        def initialSrcSwS42Props = switchHelper.getCachedSwProps(switchPair.src.dpId).server42FlowRtt
         changeFlowRttSwitch(switchPair.src, true)
 
         and: "Create a flow"
@@ -808,7 +808,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def newS42Port = topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
             it.dpId == switchPair.src.dpId
         }).last()
-        def originalSrcSwPros = northbound.getSwitchProperties(switchPair.src.dpId)
+        def originalSrcSwPros = switchHelper.getCachedSwProps(switchPair.src.dpId)
         northbound.updateSwitchProperties(switchPair.src.dpId, originalSrcSwPros.jacksonCopy().tap {
             server42Port = newS42Port
         })
@@ -905,8 +905,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def flowRttFeatureStartState = changeFlowRttToggle(true)
 
         and: "server42FlowRtt is enabled on src/dst switches"
-        def initialSrcSwS42Props = northbound.getSwitchProperties(switchPair.src.dpId).server42FlowRtt
-        def initialDstSwS42Props = northbound.getSwitchProperties(switchPair.dst.dpId).server42FlowRtt
+        def initialSrcSwS42Props = switchHelper.getCachedSwProps(switchPair.src.dpId).server42FlowRtt
+        def initialDstSwS42Props = switchHelper.getCachedSwProps(switchPair.dst.dpId).server42FlowRtt
         changeFlowRttSwitch(switchPair.src, true)
         changeFlowRttSwitch(switchPair.dst, true)
 

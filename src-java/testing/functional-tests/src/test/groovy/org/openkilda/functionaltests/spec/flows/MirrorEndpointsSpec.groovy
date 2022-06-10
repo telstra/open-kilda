@@ -1025,7 +1025,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         flowHelperV2.createMirrorPoint(flow.flowId, mirrorPoint)
 
         when: "Try to enable connected devices for switch where mirror is created"
-        def originalProps = northbound.getSwitchProperties(swPair.src.dpId)
+        def originalProps = switchHelper.getCachedSwProps(swPair.src.dpId)
         northbound.updateSwitchProperties(swPair.src.dpId, originalProps.jacksonCopy().tap {
             it.switchArp = true
             it.switchLldp = true
@@ -1050,7 +1050,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         given: "A switch with enabled connected devices"
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         def swPair = topologyHelper.switchPairs[0]
-        def originalProps = northbound.getSwitchProperties(swPair.src.dpId)
+        def originalProps = switchHelper.getCachedSwProps(swPair.src.dpId)
         northbound.updateSwitchProperties(swPair.src.dpId, originalProps.jacksonCopy().tap {
             it.switchArp = true
             it.switchLldp = true
@@ -1182,7 +1182,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     }
 
     private SwitchPropertiesDto enableMultiTableIfNeeded(boolean needDevices, SwitchId switchId) {
-        def initialProps = northbound.getSwitchProperties(switchId)
+        def initialProps = switchHelper.getCachedSwProps(switchId)
         if (needDevices && !initialProps.multiTable) {
             def sw = topology.switches.find { it.dpId == switchId }
             switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
@@ -1214,7 +1214,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     @Memoized
     def initialSwPropsCache(SwitchId switchId) {
-        return northbound.getSwitchProperties(switchId)
+        return switchHelper.getCachedSwProps(switchId)
     }
 
     /**

@@ -79,7 +79,7 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         // get init switch props
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
-            [(it.dpId): northbound.getSwitchProperties(it.dpId)]
+            [(it.dpId): switchHelper.getCachedSwProps(it.dpId)]
         }
 
         //Change switch properties so that path switches are multi -> single -> multi -> single -table
@@ -221,7 +221,7 @@ mode with existing flows and hold flows of different table-mode types"() {
     def "Single-switch flow rules are (re)installed according to switch property while rerouting,syncing,updating"() {
         given: "An active switch"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.MULTI_TABLE) }
-        SwitchPropertiesDto initSwProps = northbound.getSwitchProperties(sw.dpId)
+        SwitchPropertiesDto initSwProps = switchHelper.getCachedSwProps(sw.dpId)
 
         and: "Multi table mode is enabled on it"
         !initSwProps.multiTable && northbound.updateSwitchProperties(sw.dpId,
@@ -391,7 +391,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
-            [(it.dpId): northbound.getSwitchProperties(it.dpId)]
+            [(it.dpId): switchHelper.getCachedSwProps(it.dpId)]
         }
 
         and: "Multi table is enabled for them"
@@ -520,7 +520,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
-            [(it.dpId): northbound.getSwitchProperties(it.dpId)]
+            [(it.dpId): switchHelper.getCachedSwPropss(it.dpId)]
         }
 
         and: "Multi table is disabled for them"
@@ -703,7 +703,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
-            [(it.dpId): northbound.getSwitchProperties(it.dpId)]
+            [(it.dpId): switchHelper.getCachedSwProps(it.dpId)]
         }
 
         and: "Multi table is enabled for them"
@@ -820,7 +820,7 @@ mode with existing flows and hold flows of different table-mode types"() {
     def "Single switch flow rules are not reinstalled according to switch props when the update procedure is failed"() {
         given: "An active switch"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.MULTI_TABLE) }
-        SwitchPropertiesDto initSwProps = northbound.getSwitchProperties(sw.dpId)
+        SwitchPropertiesDto initSwProps = switchHelper.getCachedSwProps(sw.dpId)
 
         and: "Multi table mode is enabled on it"
         !initSwProps.multiTable && northbound.updateSwitchProperties(sw.dpId,
@@ -898,7 +898,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
-            [(it.dpId): northbound.getSwitchProperties(it.dpId)]
+            [(it.dpId): switchHelper.getCachedSwProps(it.dpId)]
         }
 
         and: "Multi table is disabled for them"
@@ -1028,7 +1028,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
-            [(it.dpId): northbound.getSwitchProperties(it.dpId)]
+            [(it.dpId): switchHelper.getCachedSwProps(it.dpId)]
         }
 
         and: "Multi table is enabled for them"
@@ -1230,7 +1230,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
-            [(it.dpId): northbound.getSwitchProperties(it.dpId)]
+            [(it.dpId): switchHelper.getCachedSwProps(it.dpId)]
         }
 
         and: "Multi table is enabled for them"
@@ -1373,7 +1373,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = mainPathSwitches.collectEntries {
-            [(it.dpId): northbound.getSwitchProperties(it.dpId)]
+            [(it.dpId): switchHelper.getCachedSwProps(it.dpId)]
         }
 
         and: "Multi table is disabled for them"
