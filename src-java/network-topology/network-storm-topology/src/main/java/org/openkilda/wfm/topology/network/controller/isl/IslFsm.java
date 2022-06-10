@@ -205,7 +205,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     // FIXME(surabujin): protect from stale responses
     public void handleInstalledRule(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        Endpoint endpoint = context.getInstalledRulesEndpoint();
+        Endpoint endpoint = context.getEndpoint();
         if (endpoint == null) {
             throw new IllegalArgumentException(makeInvalidResourceManipulationResponseMessage());
         }
@@ -218,7 +218,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         }
     }
 
-    public void setUpResourcesTimeout(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    public void setUpResourcesFailed(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         if (--islRulesAttempts >= 0) {
             long maxAttempts = options.getRulesSynchronizationAttempts();
             log.info("Retrying ISL resources setup for {} (attempt {} of {})",
@@ -275,7 +275,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     // FIXME(surabujin): protect from stale responses
     public void handleRemovedRule(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        Endpoint endpoint = context.getRemovedRulesEndpoint();
+        Endpoint endpoint = context.getEndpoint();
         if (endpoint == null) {
             throw new IllegalArgumentException(makeInvalidResourceManipulationResponseMessage());
         }
@@ -288,7 +288,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         }
     }
 
-    public void cleanUpResourcesTimeout(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    public void cleanUpResourcesFailed(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         if (--islRulesAttempts >= 0) {
             long maxAttempts = options.getRulesSynchronizationAttempts();
             log.info("Retrying ISL resources removal for {} (attempt {} of {})",
@@ -335,11 +335,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private void sendInstallResources(IIslCarrier carrier) {
         final Endpoint source = reference.getSource();
         final Endpoint dest = reference.getDest();
-        sendInstallResources(carrier, source, dest);
-        sendInstallResources(carrier, dest, source);
+        sendInstallResources(carrier, source);
+        sendInstallResources(carrier, dest);
     }
 
-    private void sendInstallResources(IIslCarrier carrier, Endpoint ingress, Endpoint egress) {
+    private void sendInstallResources(IIslCarrier carrier, Endpoint ingress) {
         Boolean isCompleted = endpointResourcesManagementCompleteStatus.get(ingress);
         if (isCompleted != null && isCompleted) {
             return;
@@ -353,7 +353,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
         if (multitableMode || server42IslRtt) {
             log.info("Emit ISL resource allocation request for {} to {}", reference, ingress.getDatapath());
-            carrier.islDefaultRulesInstall(ingress, egress, multitableMode, server42IslRtt, server42Port);
+            carrier.islRulesInstall(reference, ingress);
         } else {
             endpointResourcesManagementCompleteStatus.put(ingress, true);
         }
@@ -383,7 +383,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .isEmpty();
         if (isIslRemoved && isSwitchInMultiTableModeOrServer42IslRtt(ingress.getDatapath())) {
             log.info("Emit ISL resource release request for {} to {}", reference, ingress.getDatapath());
-            carrier.islDefaultRulesDelete(ingress, egress);
+            carrier.islRulesDelete(reference, ingress);
         } else {
             endpointResourcesManagementCompleteStatus.put(ingress, true);
         }
@@ -793,8 +793,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                     .within(IslFsmState.SET_UP_RESOURCES).on(IslFsmEvent.ISL_RULE_INSTALLED)
                     .callMethod("handleInstalledRule");
             builder.internalTransition()
-                    .within(IslFsmState.SET_UP_RESOURCES).on(IslFsmEvent.ISL_RULE_TIMEOUT)
-                    .callMethod("setUpResourcesTimeout");
+                    .within(IslFsmState.SET_UP_RESOURCES).on(IslFsmEvent.ISL_RULE_FAILED)
+                    .callMethod("setUpResourcesFailed");
             setupOperationalInternalTransitions(builder, IslFsmState.SET_UP_RESOURCES);
 
             // USABLE
@@ -846,8 +846,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                     .within(IslFsmState.CLEAN_UP_RESOURCES).on(IslFsmEvent.ISL_RULE_REMOVED)
                     .callMethod("handleRemovedRule");
             builder.internalTransition()
-                    .within(IslFsmState.CLEAN_UP_RESOURCES).on(IslFsmEvent.ISL_RULE_TIMEOUT)
-                    .callMethod("cleanUpResourcesTimeout");
+                    .within(IslFsmState.CLEAN_UP_RESOURCES).on(IslFsmEvent.ISL_RULE_FAILED)
+                    .callMethod("cleanUpResourcesFailed");
 
             // DELETED
             builder.defineFinalState(IslFsmState.DELETED);
@@ -918,8 +918,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         private IslDataHolder islData;
 
         private IslDownReason downReason;
-        private Endpoint installedRulesEndpoint;  // FIXME - garbage - must use `endpoint`
-        private Endpoint removedRulesEndpoint;    // FIXME - garbage - must use `endpoint`
         private Boolean bfdEnable;
 
         private RoundTripStatus roundTripStatus;
@@ -946,7 +944,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         ISL_UP, ISL_DOWN, ISL_MOVE,
         ISL_REMOVE,
 
-        ISL_RULE_INSTALLED, ISL_RULE_REMOVED, ISL_RULE_TIMEOUT
+        ISL_RULE_INSTALLED, ISL_RULE_REMOVED, ISL_RULE_FAILED
     }
 
     public enum IslFsmState {

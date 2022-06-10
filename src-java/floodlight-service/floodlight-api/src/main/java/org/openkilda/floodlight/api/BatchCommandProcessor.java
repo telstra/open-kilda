@@ -18,6 +18,8 @@ package org.openkilda.floodlight.api;
 import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.ModifySpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.Origin;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 
 public interface BatchCommandProcessor {
 
@@ -27,5 +29,5 @@ public interface BatchCommandProcessor {
 
     void processBatchDelete(DeleteSpeakerCommandsRequest request, String key);
 
-
+    void processResponse(SpeakerCommandResponse response, String key, Origin origin);
 }

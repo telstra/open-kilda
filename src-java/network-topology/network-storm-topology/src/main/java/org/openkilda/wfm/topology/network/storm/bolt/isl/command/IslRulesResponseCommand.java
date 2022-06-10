@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,17 +15,19 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.isl.command;
 
-import org.openkilda.wfm.share.model.Endpoint;
-import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 
-public class IslDefaultRuleTimeoutCommand extends IslCommand {
-    public IslDefaultRuleTimeoutCommand(Endpoint source, Endpoint destination) {
-        super(source, new IslReference(source, destination));
+public class IslRulesResponseCommand implements IslCommandBase {
+
+    private final SpeakerCommandResponse response;
+
+    public IslRulesResponseCommand(SpeakerCommandResponse response) {
+        this.response = response;
     }
 
     @Override
     public void apply(IslHandler handler) {
-        handler.processIslRuleTimeout(getReference(), getEndpoint());
+        handler.processIslRulesResponse(response);
     }
 }

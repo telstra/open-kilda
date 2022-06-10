@@ -101,7 +101,8 @@ public class KafkaMessageCollector implements IFloodlightModule {
         logger.info("Kafka Consumer: general executor threads = {}", consumerConfig.getGeneralExecutorCount());
         launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerTopic()));
         launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerFlowTopic()));
-        launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerSwitchManagerTopic()));
+        launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerSwitchManagerTopic(),
+                kafkaChannel.getNetworkControlTopic()));
         launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerFlowPingTopic()));
 
         ExecutorService discoCommandExecutor = buildExecutorWithNoQueue(consumerConfig.getDiscoExecutorCount());

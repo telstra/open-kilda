@@ -18,5 +18,6 @@ package org.openkilda.floodlight.api.request.rulemanager;
 public enum Origin {
 
     FLOW_HS,
-    SW_MANAGER
+    SW_MANAGER,
+    NETWORK
 }

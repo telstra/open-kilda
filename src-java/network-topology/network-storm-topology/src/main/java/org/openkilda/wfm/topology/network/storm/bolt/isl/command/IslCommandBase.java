@@ -13,25 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.switchmanager.factory;
+package org.openkilda.wfm.topology.network.storm.bolt.isl.command;
 
-import lombok.Builder;
-import lombok.Data;
-import net.floodlightcontroller.core.IOFSwitch;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.OFGroupAdd;
-import org.projectfloodlight.openflow.protocol.OFMeterMod;
+import org.openkilda.wfm.topology.network.storm.ICommand;
+import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 
-@Data
-@Builder
-public class SwitchFlowTuple {
-
-    public static SwitchFlowTuple getEmpty() {
-        return SwitchFlowTuple.builder().build();
-    }
-
-    private IOFSwitch sw;
-    private OFFlowMod flow;
-    private OFMeterMod meter;
-    private OFGroupAdd group;
+public interface IslCommandBase extends ICommand<IslHandler> {
 }
