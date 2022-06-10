@@ -35,6 +35,7 @@ import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.OnlineStatus;
+import org.openkilda.wfm.topology.network.model.PortDataHolder;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.utils.EndpointStatusMonitor;
 import org.openkilda.wfm.topology.network.utils.SwitchOnlineStatusMonitor;
@@ -240,18 +241,23 @@ public class NetworkIntegrationCarrier
     }
 
     @Override
+    public void updatePortHandler(Endpoint endpoint, PortDataHolder portData) {
+        portService.update(endpoint, portData);
+    }
+
+    @Override
     public void removePortHandler(Endpoint endpoint) {
         portService.remove(endpoint);
     }
 
     @Override
-    public void setOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus) {
-        portService.updateOnlineMode(endpoint, onlineStatus);
+    public void setOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus, PortDataHolder portData) {
+        portService.updateOnlineMode(endpoint, onlineStatus, portData);
     }
 
     @Override
-    public void setPortLinkMode(Endpoint endpoint, LinkStatus linkStatus) {
-        portService.updateLinkStatus(endpoint, linkStatus);
+    public void setPortLinkMode(Endpoint endpoint, LinkStatus linkStatus, PortDataHolder portData) {
+        portService.updateLinkStatus(endpoint, linkStatus, portData);
     }
 
     @Override

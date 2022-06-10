@@ -36,13 +36,27 @@ public class SpeakerSwitchPortView implements Serializable {
     @JsonProperty(value = "state", required = true)
     private State state;
 
+    @JsonProperty(value = "max_speed")
+    private long maxSpeed;
+
+    @JsonProperty(value = "current_speed")
+    private long currentSpeed;
+
+    public SpeakerSwitchPortView(int number, State state) {
+        this(number, state, 0L, 0L);
+    }
+
     @Builder
     @JsonCreator
     public SpeakerSwitchPortView(
             @JsonProperty("number") int number,
-            @JsonProperty("state") @NonNull State state) {
+            @JsonProperty("state") @NonNull State state,
+            @JsonProperty("max_speed") long maxSpeed,
+            @JsonProperty("current_speed") long currentSpeed) {
         this.number = number;
         this.state = state;
+        this.maxSpeed = maxSpeed;
+        this.currentSpeed = currentSpeed;
     }
 
     public enum State {

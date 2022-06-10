@@ -5,6 +5,7 @@ Internal state:
 Input signals:
 * port-up (switch)
 * port-down (switch)
+* port-data (switch)
 * online (switch)
 * offline (switch)
 * poll-discovery (poll)
@@ -40,26 +41,31 @@ state OPERATIONAL {
     DOWN : enter / emit round-trip-inactive
     DOWN : enter / emit delWatch
     DOWN : poll-fail / emit fail
+    DOWN : port-data / save port in DB
 
     UP --> DOWN : port-down
     UP --> UP_DISABLED : disable-discovery
     UP : enter / emit port-up into report
     UP : enter[discovery-enabled] / emit addWatch
+    UP : enter / save port in DB
     UP : poll-discovery / proxy discovery
     UP : poll-fail / proxy fail
     UP : round-trip-status / proxy round-trip-status
     UP : enable-discovery / emit addWatch
+    UP : port-data / save port in DB
 
     UP_DISABLED --> DOWN : port-down
     UP_DISABLED --> UP : enable-discovery
     UP_DISABLED : enter / emit delWatch
     UP_DISABLED : enter / emit fail
     UP_DISABLED : enter / emit round-trip-inactive
+    UP_DISABLED : port-data / save port in DB
 }
 
 OPERATIONAL --> UNOPERATIONAL : offline
 OPERATIONAL -r-> FINISH : port-del
 OPERATIONAL --> REGION_MISSING : region-offline
+OPERATIONAL : enter / save port in DB
 
 UNOPERATIONAL --> OPERATIONAL : online
 UNOPERATIONAL --> FINISH : port-del
@@ -72,6 +78,7 @@ REGION_MISSING -r-> FINISH : port-del
 
 FINISH: enter / emit uni-isl-del
 FINISH: enter / emit delWatch
+FINISH: enter / delete port from DB
 FINISH -> [*]
 
 @enduml

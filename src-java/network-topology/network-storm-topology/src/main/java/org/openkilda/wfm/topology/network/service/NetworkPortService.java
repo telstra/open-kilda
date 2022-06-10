@@ -38,6 +38,7 @@ import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmState;
 import org.openkilda.wfm.topology.network.controller.port.PortReportFsm;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.OnlineStatus;
+import org.openkilda.wfm.topology.network.model.PortDataHolder;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -70,10 +71,10 @@ public class NetworkPortService {
         this.portPropertiesRepository = persistenceManager.getRepositoryFactory().createPortPropertiesRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
-        controllerFactory = PortFsm.factory(persistenceManager);
-        controllerExecutor = controllerFactory.produceExecutor();
-
         reportFactory = PortReportFsm.factory(dashboardLoggerBuilder, carrier);
+
+        controllerFactory = PortFsm.factory(persistenceManager, reportFactory);
+        controllerExecutor = controllerFactory.produceExecutor();
     }
 
     /**
@@ -82,8 +83,24 @@ public class NetworkPortService {
     public void setup(Endpoint endpoint, Isl history) {
         log.info("Port service receive setup request for {}", endpoint);
         // TODO: try to switch on atomic action i.e. port-setup + online|offline action in one event
-        PortFsm portFsm = controllerFactory.produce(reportFactory, endpoint, history);
+
+        PortFsm portFsm = controllerFactory.produce(endpoint, history);
         controller.put(endpoint, portFsm);
+    }
+
+    /**
+     * Process updated port data(ports speed).
+     *
+     * @param endpoint endpoint
+     * @param portData port data to update
+     */
+    public void update(Endpoint endpoint, PortDataHolder portData) {
+        log.info("Port service receive update request for {}, with data: {}", endpoint, portData);
+        PortFsm portFsm = locateController(endpoint);
+        PortFsmContext context = PortFsmContext.builder(carrier)
+                .portData(portData)
+                .build();
+        controllerExecutor.fire(portFsm, PortFsmEvent.PORT_DATA, context);
     }
 
     /**
@@ -102,7 +119,7 @@ public class NetworkPortService {
     /**
      * .
      */
-    public void updateOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus) {
+    public void updateOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus, PortDataHolder portData) {
         PortFsm portFsm = locateController(endpoint);
         PortFsmEvent event;
         switch (onlineStatus) {
@@ -122,13 +139,16 @@ public class NetworkPortService {
 
         }
         log.debug("Port service receive online status change for {}, new status is {}", endpoint, event);
-        controllerExecutor.fire(portFsm, event, PortFsmContext.builder(carrier).build());
+        PortFsmContext context = PortFsmContext.builder(carrier)
+                .portData(portData)
+                .build();
+        controllerExecutor.fire(portFsm, event, context);
     }
 
     /**
      * .
      */
-    public void updateLinkStatus(Endpoint endpoint, LinkStatus status) {
+    public void updateLinkStatus(Endpoint endpoint, LinkStatus status, PortDataHolder portData) {
         log.debug("Port service receive link status update for {} new status is {}", endpoint, status);
         PortFsm portFsm = locateController(endpoint);
         PortFsmEvent event;
@@ -143,7 +163,8 @@ public class NetworkPortService {
                 throw new IllegalArgumentException(
                         format("Unsupported %s value %s", LinkStatus.class.getName(), status));
         }
-        controllerExecutor.fire(portFsm, event, PortFsmContext.builder(carrier).build());
+        PortFsmContext context = PortFsmContext.builder(carrier).portData(portData).build();
+        controllerExecutor.fire(portFsm, event, context);
     }
 
     /**
