@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.120.2 (10/06/2022)
+
+
+### Bug Fixes:
+-  [#4839](https://github.com/telstra/open-kilda/pull/4839) Fix switch sync to be able to repair misconfigured rules with the same cookie (Issue: [#4838](https://github.com/telstra/open-kilda/issues/4838)) [**floodlight**]
+
+### Improvements:
+-  [#4832](https://github.com/telstra/open-kilda/pull/4832) Improve pervormance of flowRulesConverter 
+-  [#4835](https://github.com/telstra/open-kilda/pull/4835) Fix getting CONTAINER_ID in lab services 
+-  [#4837](https://github.com/telstra/open-kilda/pull/4837) Extend error message in swmanager [**storm-topologies**]
+-  [#4841](https://github.com/telstra/open-kilda/pull/4841) Added individual parallelism config options for stats topology [**storm-topologies**]
+-  [#4781](https://github.com/telstra/open-kilda/pull/4781) update kafka container(remove unused script) 
+-  [#4558](https://github.com/telstra/open-kilda/pull/4558) [test] replace getSwProps by getCachedSwProps [**tests**]
+-  [#4818](https://github.com/telstra/open-kilda/pull/4818) Clean up floodlight code [**floodlight**][**northbound**]
+-  [#4829](https://github.com/telstra/open-kilda/pull/4829) Use common speaker worker for flowhs hubs 
+
+### Other changes:
+-  [#4776](https://github.com/telstra/open-kilda/pull/4776) Add validation for LAG port update request (Issue: [#4719](https://github.com/telstra/open-kilda/issues/4719)) [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.120.1...v1.120.2).
+
+### Affected Components:
+flow-hs, fl, stats, swmanager, nb, network
+
+### Upgrade notes:
+
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
 ## v1.120.1 (01/06/2022)
 
 ### Bug Fixes:
