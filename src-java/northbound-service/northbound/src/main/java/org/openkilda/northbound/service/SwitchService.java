@@ -15,7 +15,6 @@
 
 package org.openkilda.northbound.service;
 
-import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
@@ -111,15 +110,6 @@ public interface SwitchService {
      */
     CompletableFuture<List<Long>> installRules(SwitchId switchId, InstallRulesAction installAction);
 
-
-    /**
-     * Sets (or just gets) the connection mode for the switches. The connection mode governs the
-     * policy for what Floodlight does.
-     *
-     * @param mode the mode to use. If null, then just return existing value.
-     * @return the value of connection mode after the operation
-     */
-    CompletableFuture<ConnectModeRequest.Mode> connectMode(ConnectModeRequest.Mode mode);
 
     /**
      * Validate the rules installed on the switch against the flows in the database.

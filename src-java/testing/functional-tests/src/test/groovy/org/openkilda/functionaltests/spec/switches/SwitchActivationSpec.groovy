@@ -8,27 +8,26 @@ import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
 import static org.openkilda.messaging.info.event.SwitchChangeType.DEACTIVATED
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+import static org.openkilda.testing.tools.KafkaUtils.buildCookie
+import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandMessage
-import org.openkilda.messaging.command.flow.BaseInstallFlow
-import org.openkilda.messaging.command.flow.InstallEgressFlow
-import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest
-import org.openkilda.messaging.command.flow.InstallIngressFlow
-import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.FlowEndpoint
-import org.openkilda.model.OutputVlanType
+import org.openkilda.model.MeterId
 import org.openkilda.model.cookie.Cookie
+import org.openkilda.rulemanager.FlowSpeakerData
+import org.openkilda.rulemanager.Instructions
+import org.openkilda.rulemanager.MeterFlag
+import org.openkilda.rulemanager.MeterSpeakerData
+import org.openkilda.rulemanager.OfTable
+import org.openkilda.rulemanager.OfVersion
 
+import com.google.common.collect.Sets
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
@@ -36,7 +35,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 
 class SwitchActivationSpec extends HealthCheckSpecification {
-    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
+    @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}")
     String speakerTopic
     @Autowired
     @Qualifier("kafkaProducerProperties")
@@ -105,19 +104,41 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
                                                                   .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
-                new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN, 1, 0,
-                        OutputVlanType.REPLACE, false, new FlowEndpoint(sw.dpId, 17), null)).toJson())).get()
-
+                FlowSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .cookie(new Cookie(1))
+                        .table(OfTable.EGRESS)
+                        .priority(100)
+                        .instructions(Instructions.builder().build())
+                        .build()).toJson())).get()
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
-                new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN, false)).toJson())).get()
+                FlowSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .cookie(new Cookie(2))
+                        .table(OfTable.TRANSIT)
+                        .priority(100)
+                        .instructions(Instructions.builder().build())
+                        .build()).toJson())).get()
+        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage([
+                FlowSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .cookie(new Cookie(3))
+                        .table(OfTable.INPUT)
+                        .priority(100)
+                        .instructions(Instructions.builder().build())
+                        .build(),
+                MeterSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .meterId(new MeterId(excessMeterId))
+                        .rate(300)
+                        .burst(300)
+                        .flags(Sets.newHashSet(MeterFlag.PKTPS, MeterFlag.BURST, MeterFlag.STATS))
+                        .build()]).toJson())).get()
 
-        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 1, 0, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN,
-                        OutputVlanType.REPLACE, 300, excessMeterId,
-                        sw.dpId, false, false, false, null)).toJson())).get()
         producer.flush()
 
         Wrappers.wait(WAIT_OFFSET) {
@@ -153,19 +174,41 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
                 .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
-                new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
-                        FlowEncapsulationType.VXLAN, 1, 0,
-                        OutputVlanType.REPLACE, false, new FlowEndpoint(sw.dpId, 17), null)).toJson())).get()
-
+                FlowSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .cookie(buildCookie(1L))
+                        .table(OfTable.EGRESS)
+                        .priority(100)
+                        .instructions(Instructions.builder().build())
+                        .build()).toJson())).get()
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
-                new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 1,
-                        FlowEncapsulationType.VXLAN, false)).toJson())).get()
+                FlowSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .cookie(buildCookie(2L))
+                        .table(OfTable.TRANSIT)
+                        .priority(100)
+                        .instructions(Instructions.builder().build())
+                        .build()).toJson())).get()
+        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage([
+                FlowSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .cookie(buildCookie(3L))
+                        .table(OfTable.INPUT)
+                        .priority(100)
+                        .instructions(Instructions.builder().build())
+                        .build(),
+                MeterSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .meterId(new MeterId(excessMeterId))
+                        .rate(300)
+                        .burst(300)
+                        .flags(Sets.newHashSet(MeterFlag.PKTPS, MeterFlag.BURST, MeterFlag.STATS))
+                        .build()]).toJson())).get()
 
-        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 1, 0, 1,
-                        FlowEncapsulationType.VXLAN,
-                        OutputVlanType.REPLACE, 300, excessMeterId,
-                        sw.dpId, false, false, false, null)).toJson())).get()
         producer.flush()
 
         Wrappers.wait(WAIT_OFFSET) {
@@ -229,10 +272,5 @@ class SwitchActivationSpec extends HealthCheckSpecification {
 
         cleanup:
         initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
-    }
-
-    private static Message buildMessage(final BaseInstallFlow commandData) {
-        InstallFlowForSwitchManagerRequest data = new InstallFlowForSwitchManagerRequest(commandData)
-        return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null)
     }
 }
