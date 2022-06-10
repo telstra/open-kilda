@@ -31,8 +31,8 @@ import org.apache.storm.tuple.Values;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * This class provides main methods for classes acting as a worker with asynchronous operations.
@@ -63,7 +63,7 @@ public abstract class WorkerBolt extends CoordinatedBolt {
         super(persistenceManager, config.isAutoAck(), config.getDefaultTimeout(), null);
 
         requireNonNull(config.getStreamToHub(), "Stream to hub bolt cannot be null");
-        requireNonNull(config.getHubComponent(), "Hub bolt id cannot be null");
+        requireNonNull(config.getHubComponents(), "Hub bolt id cannot be null");
         requireNonNull(config.getWorkerSpoutComponents(), "Worker's spout ids cannot be null");
         this.workerConfig = config;
     }
@@ -71,7 +71,7 @@ public abstract class WorkerBolt extends CoordinatedBolt {
     @Override
     protected void dispatch(Tuple input) throws Exception {
         String sourceComponent = input.getSourceComponent();
-        if (workerConfig.getHubComponent().equals(sourceComponent)) {
+        if (workerConfig.getHubComponents().contains(sourceComponent)) {
             dispatchHub(input);
         } else if (workerConfig.getWorkerSpoutComponents().contains(sourceComponent)) {
             dispatchResponse(input);
@@ -183,9 +183,10 @@ public abstract class WorkerBolt extends CoordinatedBolt {
     @Getter
     public static class Config implements Serializable {
         private String streamToHub;
-        private String hubComponent;
         @Singular
-        private List<String> workerSpoutComponents;
+        private Set<String> hubComponents;
+        @Singular
+        private Set<String> workerSpoutComponents;
 
         @Builder.Default
         private int defaultTimeout = 100;
