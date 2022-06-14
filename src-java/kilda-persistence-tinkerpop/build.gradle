@@ -16,10 +16,10 @@ dependencies {
     api('com.syncleus.ferma:ferma:3.3.0') {
         exclude group: 'org.codehaus.groovy'
     }
-    implementation('org.apache.tinkerpop:gremlin-core:3.3.11') {
+    implementation('org.apache.tinkerpop:gremlin-core:3.4.7') {
         exclude group: 'org.codehaus.groovy'
     }
-    implementation('org.apache.tinkerpop:gremlin-driver:3.3.11') {
+    implementation('org.apache.tinkerpop:gremlin-driver:3.4.7') {
         exclude group: 'org.codehaus.groovy'
     }
 
@@ -33,7 +33,7 @@ dependencies {
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
     testImplementation 'org.junit.vintage:junit-vintage-engine'
-    testImplementation('org.apache.tinkerpop:tinkergraph-gremlin:3.3.11') {
+    testImplementation('org.apache.tinkerpop:tinkergraph-gremlin:3.4.7') {
         exclude group: 'org.codehaus.groovy'
     }
     testImplementation 'org.mockito:mockito-junit-jupiter'
@@ -52,7 +52,7 @@ configurations {
 }
 
 dependencies {
-    testArtifacts('org.apache.tinkerpop:tinkergraph-gremlin:3.3.11') {
+    testArtifacts('org.apache.tinkerpop:tinkergraph-gremlin:3.4.7') {
         exclude group: 'org.codehaus.groovy'
     }
     testArtifacts project(':kilda-persistence-tinkerpop')

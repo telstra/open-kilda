@@ -244,7 +244,7 @@ subprojects {
                     JarFile jf = new JarFile(jar)
                     jf.entries().each { file ->
                         // TODO: it's good to reuse shadowJar plugin's patterns
-                        if (file.name.endsWith('.class') && file.name != 'module-info.class') {
+                        if (file.name.endsWith('.class') && !file.name.endsWith('module-info.class')) {
                             if (classes.containsKey(file.name)) {
                                 throw new GradleException("shadowJar failure: ${file.name} conflicts in jars:${classes.get(file.name)} and ${jar}")
                             }

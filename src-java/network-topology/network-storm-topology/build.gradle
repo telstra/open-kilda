@@ -60,6 +60,7 @@ jar {
 }
 
 shadowJar {
+    zip64 true
     classifier = ''
     mergeServiceFiles()
 }

@@ -17,7 +17,7 @@
 # liquebase-orientdb(https://github.com/unbroken-dome/liquibase-orientdb) plugin
 # can work up to version 3.5.3
 
-FROM openjdk:11-jre-slim-buster
+FROM openjdk:8-jre-slim-buster
 
 # Install GPG for package vefification
 RUN apt-get update \
@@ -52,8 +52,8 @@ RUN GNUPGHOME="$(mktemp -d)"
 
 RUN set -x \
   && mkdir -p /liquibase/lib/ \
-  && wget -O /liquibase/lib/orientdb-jdbc-3.0.34-all.jar \
-             "https://repo1.maven.org/maven2/com/orientechnologies/orientdb-jdbc/3.0.34/orientdb-jdbc-3.0.34-all.jar"  \
+  && wget -O /liquibase/lib/orientdb-jdbc-3.2.5-all.jar \
+             "https://repo1.maven.org/maven2/com/orientechnologies/orientdb-jdbc/3.2.5/orientdb-jdbc-3.2.5-all.jar"  \
   # && wget -O /liquibase/lib/liquibase-orientdb-0.3.0.jar \
   #            "https://dl.bintray.com/till-krullmann/tools/org/unbroken-dome/liquibase-orientdb/liquibase-orientdb/0.3.0/liquibase-orientdb-0.3.0.jar"  \
   # black magic satisfying dependencies of `liquibase-orientdb-0.3.0.jar`
@@ -77,10 +77,13 @@ RUN set -x \
 
 COPY --chown=liquibase:liquibase lib/liquibase-orientdb-0.3.0.jar /liquibase/lib/liquibase-orientdb-0.3.0.jar
 
+ENV KILDA_ORIENTDB_ROOT_USER=root
+ENV KILDA_ORIENTDB_ROOT_PASSWORD=root
 ENV KILDA_ORIENTDB_USER=kilda
 ENV KILDA_ORIENTDB_PASSWORD=kilda
 ENV KILDA_ORIENTDB_HOST=odb1.pendev
 ENV KILDA_ORIENTDB_DB_NAME=kilda
+ENV APPLY_PREHISTORY_MIGRATIONS=no
 
 USER root
 
@@ -90,4 +93,4 @@ COPY migrations /liquibase/migrations
 
 USER liquibase
 
-CMD /kilda/migrate.sh
+CMD if [ "$APPLY_PREHISTORY_MIGRATIONS" = "yes" ] ; then /kilda/migrate-develop.sh ; else /kilda/migrate.sh ; fi
