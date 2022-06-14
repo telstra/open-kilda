@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -70,6 +73,23 @@ public class FlowCreateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
                 .build();
         preparePathComputation(request.getFlowId(), make3SwitchesPathPair());
         testHappyPath(request, "successful_flow_create");
+    }
+
+    @Test
+    public void shouldCreateFlowWithVlanStatistics() throws Exception {
+        HashSet<Integer> vlanStatistics = new HashSet<>();
+        vlanStatistics.add(7);
+
+        FlowRequest request = makeRequest()
+                .flowId("test_successful_flow_id")
+                .source(new FlowEndpoint(flowSource.getSwitchId(), flowSource.getPortNumber()))
+                .vlanStatistics(vlanStatistics)
+                .build();
+        preparePathComputation(request.getFlowId(), make3SwitchesPathPair());
+        Flow result = testHappyPath(request, "successful_flow_create");
+
+        assertThat(result.getVlanStatistics(), notNullValue());
+        assertThat(result.getVlanStatistics(), containsInAnyOrder(vlanStatistics.toArray()));
     }
 
     @Test

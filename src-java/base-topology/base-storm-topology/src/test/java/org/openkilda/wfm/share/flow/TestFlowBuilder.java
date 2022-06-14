@@ -48,6 +48,7 @@ import lombok.experimental.Accessors;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Setter
@@ -83,6 +84,7 @@ public class TestFlowBuilder {
     private FlowEncapsulationType encapsulationType;
     private PathComputationStrategy pathComputationStrategy;
     private String description;
+    private Set<Integer> vlanStatistics;
 
     public TestFlowBuilder() {
     }
@@ -131,6 +133,11 @@ public class TestFlowBuilder {
         return this;
     }
 
+    public TestFlowBuilder vlanStatistics(Set<Integer> vlanStatistics) {
+        this.vlanStatistics = vlanStatistics;
+        return this;
+    }
+
     /**
      * Build a Flow with set properties.
      */
@@ -164,6 +171,7 @@ public class TestFlowBuilder {
                 .detectConnectedDevices(detectConnectedDevices)
                 .pathComputationStrategy(pathComputationStrategy)
                 .description(description)
+                .vlanStatistics(vlanStatistics)
                 .build();
         flow.setStatus(status);
 

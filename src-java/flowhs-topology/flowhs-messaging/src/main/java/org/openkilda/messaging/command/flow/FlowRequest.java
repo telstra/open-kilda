@@ -73,6 +73,8 @@ public class FlowRequest extends CommandData {
     Set<String> bulkUpdateFlowIds = new HashSet<>();
     boolean doNotRevert;
 
+    private Set<Integer> vlanStatistics;
+
     public enum Type {
         CREATE,
         READ,

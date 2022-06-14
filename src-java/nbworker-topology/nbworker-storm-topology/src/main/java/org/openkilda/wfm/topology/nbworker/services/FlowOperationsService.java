@@ -377,6 +377,8 @@ public class FlowOperationsService {
                 }
             });
 
+            Optional.ofNullable(flowPatch.getVlanStatistics()).ifPresent(currentFlow::setVlanStatistics);
+
             return Optional.of(result.updatedFlow(currentFlow).build());
 
         }).orElseThrow(() -> new FlowNotFoundException(flowId));
@@ -413,6 +415,8 @@ public class FlowOperationsService {
 
         updateRequired |= flowPatch.getEncapsulationType() != null
                 && !flow.getEncapsulationType().equals(flowPatch.getEncapsulationType());
+
+        updateRequired |= updateRequiredByVlanStatistics(flowPatch, flow);
 
         return UpdateFlowResult.builder()
                 .needUpdateFlow(updateRequired);
@@ -474,6 +478,19 @@ public class FlowOperationsService {
                 && !flowPatch.getDestination().getTrackArpConnectedDevices()
                 .equals(flow.getDetectConnectedDevices().isDstArp());
         return updateRequired;
+    }
+
+    private boolean updateRequiredByVlanStatistics(FlowPatch flowPatch, Flow flow) {
+        Set<Integer> patchVlanStatistics = flowPatch.getVlanStatistics();
+        if (patchVlanStatistics == null) {
+            return false;
+        }
+
+        if (Objects.equals(patchVlanStatistics, flow.getVlanStatistics())) {
+            return false;
+        }
+
+        return true;
     }
 
     private boolean updateRequiredByDiverseFlowIdField(FlowPatch flowPatch, Flow flow) {
@@ -557,6 +574,27 @@ public class FlowOperationsService {
             throw new IllegalArgumentException("Can not turn on ignore bandwidth flag and strict bandwidth flag "
                     + "at the same time");
         }
+
+        if ((flow.getVlanStatistics() != null && !flow.getVlanStatistics().isEmpty())
+                || (flowPatch.getVlanStatistics() != null && !flowPatch.getVlanStatistics().isEmpty())) {
+            boolean zeroResultSrcVlan = isResultingVlanValueIsZero(flowPatch.getSource(), flow);
+            boolean zeroResultDstVlan = isResultingVlanValueIsZero(flowPatch.getDestination(), flow);
+
+            if (!zeroResultSrcVlan && !zeroResultDstVlan) {
+                throw new IllegalArgumentException("To collect vlan statistics you need to set source or "
+                        + "destination vlan_id to zero");
+            }
+        }
+    }
+
+    private boolean isResultingVlanValueIsZero(PatchEndpoint patchEndpoint, Flow flow) {
+        boolean isResultVlanIsZero = flow.getSrcVlan() == 0;
+        Integer patchVlanResult = Optional.ofNullable(patchEndpoint)
+                .map(PatchEndpoint::getVlanId).orElse(null);
+        if (patchVlanResult != null) {
+            isResultVlanIsZero = patchVlanResult == 0;
+        }
+        return isResultVlanIsZero;
     }
 
     /**

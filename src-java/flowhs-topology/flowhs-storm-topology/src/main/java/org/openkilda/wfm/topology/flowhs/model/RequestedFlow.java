@@ -23,6 +23,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.Objects;
+import java.util.Set;
 
 @Data
 @Builder
@@ -59,6 +60,8 @@ public class RequestedFlow {
     private SwitchId loopSwitchId;
 
     private String yFlowId;
+
+    private Set<Integer> vlanStatistics;
 
     public boolean isOneSwitchFlow() {
         return Objects.equals(srcSwitch, destSwitch);
