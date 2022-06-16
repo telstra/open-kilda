@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,24 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.switches;
+package org.openkilda.wfm.topology.network.model;
 
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.model.SwitchId;
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
-@EqualsAndHashCode(callSuper = false)
-public class SwitchRulesValidateRequest extends CommandData {
-
-    @JsonProperty("switch_id")
-    private SwitchId switchId;
-
-    public SwitchRulesValidateRequest(@JsonProperty("switch_id") SwitchId switchId) {
-        this.switchId = switchId;
-    }
+public class PortDataHolder {
+    long maxSpeed;
+    long currentSpeed;
 }
-

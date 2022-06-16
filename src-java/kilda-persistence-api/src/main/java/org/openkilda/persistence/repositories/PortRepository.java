@@ -13,24 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.persistence.repositories;
 
-import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.Port;
 import org.openkilda.model.SwitchId;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import java.util.Collection;
+import java.util.Optional;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class ModifyDefaultMeterForSwitchManagerRequest extends CommandData {
-    private SwitchId switchId;
-    private long meterId;
+public interface PortRepository extends Repository<Port> {
+    Collection<Port> getAllBySwitchId(SwitchId switchId);
+
+    Optional<Port> getBySwitchIdAndPort(SwitchId switchId, int port);
 }

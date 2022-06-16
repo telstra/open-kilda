@@ -49,6 +49,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
+import org.openkilda.persistence.repositories.PortRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectRepository;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
@@ -92,6 +93,7 @@ public class SwitchOperationsService {
     private FlowRepository flowRepository;
     private FlowPathRepository flowPathRepository;
     private PhysicalPortRepository physicalPortRepository;
+    private PortRepository portRepository;
 
     public SwitchOperationsService(
             RepositoryFactory repositoryFactory, TransactionManager transactionManager,
@@ -111,6 +113,7 @@ public class SwitchOperationsService {
         this.flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
         this.flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
         this.physicalPortRepository = repositoryFactory.createPhysicalPortRepository();
+        this.portRepository = repositoryFactory.createPortRepository();
         this.carrier = carrier;
     }
 
@@ -200,6 +203,8 @@ public class SwitchOperationsService {
                     .ifPresent(sp -> switchPropertiesRepository.remove(sp));
             portPropertiesRepository.getAllBySwitchId(sw.getSwitchId())
                     .forEach(portPropertiesRepository::remove);
+            portRepository.getAllBySwitchId(sw.getSwitchId())
+                    .forEach(portRepository::remove);
             if (force) {
                 // remove() removes switch along with all relationships.
                 switchRepository.remove(sw);

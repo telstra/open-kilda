@@ -43,16 +43,15 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class OfBatchExecutor {
@@ -106,7 +105,7 @@ public class OfBatchExecutor {
     public void executeBatch() {
         log.debug("Execute batch start (key={})", kafkaKey);
         List<UUID> stageCommandsUuids = holder.getCurrentStage();
-        Map<SpeakerData, OFMessage> stageMessages = new HashMap<>();
+        List<BatchData> stageMessages = new ArrayList<>();
         for (UUID uuid : stageCommandsUuids) {
             if (holder.canExecute(uuid)) {
                 BatchData batchData = holder.getByUUid(uuid);
@@ -116,10 +115,7 @@ public class OfBatchExecutor {
                 hasFlows |= batchData.isFlow();
                 hasMeters |= batchData.isMeter();
                 hasGroups |= batchData.isGroup();
-                OFMessage previous = stageMessages.put(holder.getSpeakerDataByUUid(uuid), batchData.getMessage());
-                if (previous != null) {
-                    log.warn("Command with uuid {} already processed.", uuid);
-                }
+                stageMessages.add(batchData);
             } else {
                 Map<UUID, String> blockingDependencies = holder.getBlockingDependencies(uuid);
                 if (!blockingDependencies.isEmpty()) {
@@ -137,7 +133,9 @@ public class OfBatchExecutor {
             removeAlreadyExists(stageMessages);
         }
 
-        Collection<OFMessage> ofMessages = stageMessages.values();
+        Collection<OFMessage> ofMessages = stageMessages.stream()
+                .map(BatchData::getMessage)
+                .collect(Collectors.toList());
         List<CompletableFuture<Optional<OFMessage>>> requests = new ArrayList<>();
         try (Session session = sessionService.open(messageContext, iofSwitch)) {
             for (OFMessage message : ofMessages) {
@@ -175,7 +173,7 @@ public class OfBatchExecutor {
                 });
     }
 
-    private void removeAlreadyExists(Map<SpeakerData, OFMessage> stageMessages) {
+    private void removeAlreadyExists(List<BatchData> stageMessages) {
         if (hasMeters) {
             meterStats = switchDataProvider.getMeters();
         }
@@ -186,15 +184,15 @@ public class OfBatchExecutor {
         try {
             List<SpeakerData> speakerData = new ArrayList<>(meterStats.get());
             speakerData.addAll(groupStats.get());
-            Set<SpeakerData> toRemove = new HashSet<>();
-            for (Entry<SpeakerData, OFMessage> entry : stageMessages.entrySet()) {
-                if (speakerData.contains(entry.getKey())) {
-                    toRemove.add(entry.getKey());
+            Set<BatchData> toRemove = new HashSet<>();
+            for (BatchData batchData : stageMessages) {
+                if (speakerData.contains(batchData.getOrigin())) {
+                    toRemove.add(batchData);
                 }
             }
             toRemove.forEach(data -> {
                 log.debug("OpenFlow entry is already exist. Skipping command {}", data);
-                holder.recordSuccessUuid(data.getUuid());
+                holder.recordSuccessUuid(data.getOrigin().getUuid());
                 stageMessages.remove(data);
             });
         } catch (ExecutionException | InterruptedException e) {

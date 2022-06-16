@@ -435,14 +435,14 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to delete/install the server42 ISL RTT turning rule on a switch"() {
         setup: "Select a switch which support server42 turning rule"
-        def sw = topology.getActiveServer42Switches().find(s -> northbound.getSwitchProperties(s.dpId).server42IslRtt != "DISABLED");
+        def sw = topology.getActiveServer42Switches().find(s -> switchHelper.getCachedSwProps(s.dpId).server42IslRtt != "DISABLED");
         assumeTrue(sw != null, "No suiting switch found")
 
         and: "Server42 is enabled in feature toggle"
         assumeTrue(northbound.getFeatureToggles().server42IslRtt)
 
         and: "server42IslRtt is enabled on the switch"
-        def originSwProps = northbound.getSwitchProperties(sw.dpId)
+        def originSwProps = switchHelper.getCachedSwProps(sw.dpId)
         northbound.updateSwitchProperties(sw.dpId, originSwProps.jacksonCopy().tap({
             it.server42IslRtt = RttState.ENABLED.toString()
         }))

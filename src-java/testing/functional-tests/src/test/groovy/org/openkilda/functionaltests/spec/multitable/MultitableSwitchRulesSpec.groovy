@@ -18,7 +18,7 @@ class MultitableSwitchRulesSpec extends HealthCheckSpecification {
     def "Switch migration to multi table mode and vice-versa leave no discrepancies in default rules"() {
         given: "An active switch with disabled multi-table mode"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.MULTI_TABLE) }
-        def initSwProps = northbound.getSwitchProperties(sw.dpId)
+        def initSwProps = switchHelper.getCachedSwProps(sw.dpId)
         initSwProps.multiTable && northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
             it.multiTable = false
         })

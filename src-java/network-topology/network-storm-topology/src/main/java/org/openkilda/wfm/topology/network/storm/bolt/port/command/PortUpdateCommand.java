@@ -13,8 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
+package org.openkilda.wfm.topology.network.storm.bolt.port.command;
 
-public enum RuleType {
-    INGRESS, POST_INGRESS, TRANSIT, EGRESS;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.topology.network.model.PortDataHolder;
+import org.openkilda.wfm.topology.network.storm.bolt.port.PortHandler;
+
+public class PortUpdateCommand extends PortCommand {
+    private final PortDataHolder portData;
+
+    public PortUpdateCommand(Endpoint endpoint, PortDataHolder portData) {
+        super(endpoint);
+        this.portData = portData;
+    }
+
+    @Override
+    public void apply(PortHandler handler) {
+        handler.processUpdate(getEndpoint(), portData);
+    }
 }

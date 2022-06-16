@@ -47,7 +47,20 @@ public class NetworkTopologyDashboardLogger extends AbstractDashboardLogger {
         populateEvent(context, "add");
         invokeLogger(Level.INFO,
                 String.format("Add port %d on switch %s",
-                              port.getPortNumber(), port.getEndpoint().getDatapath()), context);
+                        port.getPortNumber(), port.getEndpoint().getDatapath()), context);
+    }
+
+    /**
+     * Log a port update event.
+     *
+     * @param port a port number
+     */
+    public void onPortUpdate(AbstractPort port) {
+        Map<String, String> context = makePortContext(port.getEndpoint(), port.makeDashboardPortLabel(this));
+        populateEvent(context, "update");
+        invokeLogger(Level.INFO,
+                String.format("Update port %d on switch %s",
+                        port.getPortNumber(), port.getEndpoint().getDatapath()), context);
     }
 
     /**
@@ -60,7 +73,7 @@ public class NetworkTopologyDashboardLogger extends AbstractDashboardLogger {
         populateEvent(context, "delete");
         invokeLogger(Level.INFO,
                 String.format("Delete port %d on switch %s",
-                              port.getPortNumber(), port.getEndpoint().getDatapath()), context);
+                        port.getPortNumber(), port.getEndpoint().getDatapath()), context);
     }
 
     public void onPortUp(Endpoint endpoint) {
@@ -149,7 +162,7 @@ public class NetworkTopologyDashboardLogger extends AbstractDashboardLogger {
         Map<String, String> context = makePortContext(endpoint);
         populateEvent(context, event);
         String message = String.format("Port status event: switch_id=%s, port_id=%d, state=%s",
-                                       endpoint.getDatapath().toString(), endpoint.getPortNumber(), event);
+                endpoint.getDatapath().toString(), endpoint.getPortNumber(), event);
         invokeLogger(Level.INFO, message, context);
     }
 

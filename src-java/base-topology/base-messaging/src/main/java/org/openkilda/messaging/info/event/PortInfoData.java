@@ -26,12 +26,12 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * Defines the payload payload of a Message representing a port info.
+ * Defines the payload of a Message representing a port info.
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
-@EqualsAndHashCode(of = {"switchId", "portNo", "maxCapacity", "state"}, callSuper = false)
+@EqualsAndHashCode(of = {"switchId", "portNo", "maxSpeed", "currentSpeed", "state"}, callSuper = false)
 public class PortInfoData extends InfoData {
     /**
      * Serialization version number constant.
@@ -49,11 +49,18 @@ public class PortInfoData extends InfoData {
      */
     @JsonProperty("port_no")
     private int portNo;
+
     /**
-     * Maximum capacity.
+     * Maximum port speed.
      */
-    @JsonProperty("max_capacity")
-    private Integer maxCapacity;
+    @JsonProperty("max_speed")
+    private Long maxSpeed;
+
+    /**
+     * Current port speed.
+     */
+    @JsonProperty("curr_speed")
+    private Long currentSpeed;
 
     /**
      * Port state.
@@ -85,41 +92,45 @@ public class PortInfoData extends InfoData {
      * Instance constructor.
      *
      * @param switchId switch id
-     * @param portNo   port number
-     * @param state    port state
+     * @param portNo port number
+     * @param state port state
      */
     public PortInfoData(final SwitchId switchId, final int portNo, final PortChangeType state) {
-        this(switchId, portNo, null, state, null);
+        this(switchId, portNo, null, null, state, null);
     }
 
     public PortInfoData(SwitchId switchId, int portNo, PortChangeType event, Boolean enabled) {
-        this(switchId, portNo, null, event, enabled);
+        this(switchId, portNo, null, null, event, enabled);
     }
 
     public PortInfoData(final SwitchId switchId,
                         final int portNo,
-                        final Integer maxCapacity,
+                        final Long maxSpeed,
+                        final Long currentSpeed,
                         PortChangeType state) {
-        this(switchId, portNo, maxCapacity, state, null);
+        this(switchId, portNo, maxSpeed, currentSpeed, state, null);
     }
 
     /**
      * Instance constructor.
      *
-     * @param switchId    switch id
-     * @param portNo      port number
-     * @param maxCapacity maximum capacity
-     * @param state       port state
+     * @param switchId switch id
+     * @param portNo port number
+     * @param maxSpeed maximum port speed
+     * @param currentSpeed current port speed
+     * @param state port state
      */
     @JsonCreator
     public PortInfoData(@JsonProperty("switch_id") final SwitchId switchId,
                         @JsonProperty("port_no") final int portNo,
-                        @JsonProperty("max_capacity") final Integer maxCapacity,
+                        @JsonProperty("max_speed") final Long maxSpeed,
+                        @JsonProperty("curr_speed") final Long currentSpeed,
                         @JsonProperty("state") final PortChangeType state,
                         @JsonProperty("enabled") Boolean enabled) {
         this.switchId = switchId;
         this.portNo = portNo;
-        this.maxCapacity = maxCapacity;
+        this.maxSpeed = maxSpeed;
+        this.currentSpeed = currentSpeed;
         this.state = state;
         this.enabled = enabled;
     }

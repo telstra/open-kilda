@@ -59,6 +59,7 @@ import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.wfm.error.MessageDispatchException;
 import org.openkilda.wfm.error.UnexpectedInputException;
+import org.openkilda.wfm.topology.switchmanager.error.SpeakerFailureException;
 import org.openkilda.wfm.topology.switchmanager.model.SwitchEntities;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
@@ -296,7 +297,8 @@ public class SwitchValidateServiceTest {
         SwitchValidationResponse response = (SwitchValidationResponse) responseCaptor.getValue().getData();
 
         assertEquals(singletonList(flowSpeakerData.getCookie().getValue()), response.getRules().getMissing());
-        assertEquals(response.getLogicalPorts().getError(), getErrorMessage().getData().getErrorMessage());
+        assertEquals(SpeakerFailureException.makeMessage(getErrorMessage().getData()),
+                response.getLogicalPorts().getError());
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);

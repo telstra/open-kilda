@@ -25,6 +25,7 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PhysicalPort;
+import org.openkilda.model.Port;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
@@ -35,6 +36,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
+import org.openkilda.persistence.repositories.PortRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -75,6 +77,7 @@ public class LagPortOperationService {
     private final IslRepository islRepository;
     private final FlowRepository flowRepository;
     private final FlowMirrorPathRepository flowMirrorPathRepository;
+    private final PortRepository portRepository;
 
     private final LagPortOperationConfig config;
 
@@ -91,6 +94,7 @@ public class LagPortOperationService {
         this.islRepository = repositoryFactory.createIslRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
+        this.portRepository = repositoryFactory.createPortRepository();
 
         this.config = config;
 
@@ -118,7 +122,6 @@ public class LagPortOperationService {
                 () -> targetsBeforeUpdate.addAll(updateTransaction(switchId, logicalPortNumber, targetPorts)));
         return targetsBeforeUpdate;
     }
-
 
     /**
      * Delete LAG logical port.
@@ -244,6 +247,7 @@ public class LagPortOperationService {
         Switch sw = querySwitch(switchId);
         ensureLagDataValid(sw, targetPorts);
         ensureNoLagCollisions(switchId, targetPorts, logicalPortNumber);
+        ensureTargetPortsBandwidthValid(sw, targetPorts, logicalPortNumber);
 
         LagLogicalPort port = queryLagPort(sw.getSwitchId(), logicalPortNumber);
         Set<Integer> targetsBeforeUpdate = port.getPhysicalPorts().stream()
@@ -254,7 +258,6 @@ public class LagPortOperationService {
                 logicalPortNumber, switchId,
                 formatPortNumbersSet(targetPorts), formatPortNumbersSet(targetsBeforeUpdate));
         replacePhysicalPorts(port, switchId, targetPorts);
-
 
         return targetsBeforeUpdate;
     }
@@ -289,6 +292,22 @@ public class LagPortOperationService {
         }
     }
 
+    private void ensureTargetPortsBandwidthValid(Switch sw, Set<Integer> targetPorts, int logicalPortNumber) {
+        long portBandwidthSum = portRepository.getAllBySwitchId(sw.getSwitchId()).stream()
+                .filter(p -> targetPorts.contains(p.getPortNo()))
+                .mapToLong(Port::getCurrentSpeed)
+                .sum();
+
+        long flowBandwidthSum = flowRepository.findByEndpoint(sw.getSwitchId(), logicalPortNumber).stream()
+                .filter(f -> !f.isIgnoreBandwidth())
+                .mapToLong(Flow::getBandwidth)
+                .sum();
+
+        if (flowBandwidthSum > portBandwidthSum) {
+            throw new InvalidDataException(format("Not enough bandwidth for LAG port %s.", logicalPortNumber));
+        }
+    }
+
     private void ensureNoLagCollisions(SwitchId switchId, Set<Integer> targetPorts) {
         ensureNoLagCollisions(switchId, targetPorts, null);
     }
@@ -310,7 +329,7 @@ public class LagPortOperationService {
 
         SetView<Integer> intersection = Sets.intersection(deniedTargets, new HashSet<>(targetPorts));
 
-        if (! intersection.isEmpty()) {
+        if (!intersection.isEmpty()) {
             throw new InvalidDataException(
                     format("Physical ports [%s] on switch %s already occupied by other LAG group(s).",
                             intersection.stream().sorted()

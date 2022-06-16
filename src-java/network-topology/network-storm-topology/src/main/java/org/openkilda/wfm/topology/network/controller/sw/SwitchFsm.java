@@ -253,7 +253,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     public void handlePortAdd(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                               SwitchFsmContext context) {
-        AbstractPort port = makePortRecord(Endpoint.of(switchId, context.getPortNumber()));
+        AbstractPort port = makePortRecord(Endpoint.of(switchId, context.getPortNumber()),
+                context.getPortMaxSpeed(), context.getPortCurrentSpeed());
         log.info("Receive port-add notification for {}", port);
 
         portAdd(port, context);
@@ -266,6 +267,17 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         }
         port.setLinkStatus(isPortEnabled ? LinkStatus.UP : LinkStatus.DOWN);
         updatePortLinkMode(port, context);
+    }
+
+    public void handlePortUpdate(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                 SwitchFsmContext context) {
+        AbstractPort port = portByNumber.get(context.getPortNumber());
+        if (port == null) {
+            log.error("Port {} is not listed into {}", context.getPortNumber(), switchId);
+            return;
+        }
+        log.info("Receive port-update notification for {}", port.getEndpoint());
+        portUpdate(port, context);
     }
 
     public void handlePortDel(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
@@ -451,6 +463,16 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         return port;
     }
 
+    private AbstractPort portUpdate(AbstractPort port, SwitchFsmContext context) {
+        logWrapper.onPortUpdate(port);
+        port.setMaxSpeed(context.getPortMaxSpeed());
+        port.setCurrentSpeed(context.getPortCurrentSpeed());
+
+        port.portUpdate(context.getOutput());
+
+        return port;
+    }
+
     private void portDel(AbstractPort port, SwitchFsmContext context) {
         portByNumber.remove(port.getPortNumber());
         port.portDel(context.getOutput());
@@ -615,15 +637,16 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     private AbstractPort makePortRecord(SpeakerSwitchPortView speakerPort) {
-        AbstractPort port = makePortRecord(Endpoint.of(switchId, speakerPort.getNumber()));
+        AbstractPort port = makePortRecord(Endpoint.of(switchId, speakerPort.getNumber()), speakerPort.getMaxSpeed(),
+                speakerPort.getCurrentSpeed());
         port.setLinkStatus(LinkStatus.of(speakerPort.getState()));
         return port;
     }
 
-    private AbstractPort makePortRecord(Endpoint endpoint) {
+    private AbstractPort makePortRecord(Endpoint endpoint, Long maxSpeed, Long currentSpeed) {
         AbstractPort record;
         if (isPhysicalPort(endpoint.getPortNumber())) {
-            record = new PhysicalPort(endpoint);
+            record = new PhysicalPort(endpoint, maxSpeed, currentSpeed);
         } else if (isBfdPort(endpoint.getPortNumber())) {
             record = new LogicalBfdPort(endpoint, endpoint.getPortNumber() - options.getBfdLogicalPortOffset());
         } else if (isLagPort(endpoint.getPortNumber())) {
@@ -726,6 +749,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
             builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_ADD)
                     .callMethod("handlePortAdd");
+            builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_DATA)
+                    .callMethod("handlePortUpdate");
             builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_DEL)
                     .callMethod("handlePortDel");
             builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_UP)
@@ -772,6 +797,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         private Integer portNumber;
         private Boolean portEnabled;
+        private Long portMaxSpeed;
+        private Long portCurrentSpeed;
 
         private Boolean isRegionOffline;
         private boolean missingInPeriodicDumps;
@@ -796,7 +823,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         ONLINE, OFFLINE,
         CONNECTIONS_UPDATE,
 
-        PORT_ADD, PORT_DEL, PORT_UP, SWITCH_REMOVE, PORT_DOWN
+        PORT_ADD, PORT_DEL, PORT_UP, SWITCH_REMOVE, PORT_DOWN, PORT_DATA
     }
 
     public enum SwitchFsmState {

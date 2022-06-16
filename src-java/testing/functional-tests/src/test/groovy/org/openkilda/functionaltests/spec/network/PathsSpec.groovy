@@ -138,16 +138,8 @@ class PathsSpec extends HealthCheckSpecification {
             })
         }
         assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
-        def srcProps = northbound.getSwitchProperties(switchPair.src.dpId)
-        def dstProps = northbound.getSwitchProperties(switchPair.dst.dpId)
-
-        def swWithoutVxlan = switchPair.src
-        def encapsTypesWithoutVxlan = srcProps.supportedTransitEncapsulation.collect {it.toString().toUpperCase()}
-
-        if (srcProps.supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())) {
-            swWithoutVxlan = switchPair.dst
-            encapsTypesWithoutVxlan = dstProps.supportedTransitEncapsulation.collect {it.toString().toUpperCase()}
-        }
+        def encapsTypesWithoutVxlan = northbound.getSwitchProperties(switchPair.src.dpId)
+                .supportedTransitEncapsulation.collect { it.toString().toUpperCase() }
 
         when: "Try to get a path for a 'vxlan' flowEncapsulationType between the given switches"
         northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId, FlowEncapsulationType.VXLAN, null, null, null)
@@ -156,7 +148,7 @@ class PathsSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Switch $swWithoutVxlan.dpId doesn't support $FlowEncapsulationType.VXLAN " +
+        errorDetails.errorMessage == "Switch $switchPair.src.dpId doesn't support $FlowEncapsulationType.VXLAN " +
                 "encapslation type. Choose one of the supported encapsulation types $encapsTypesWithoutVxlan or " +
                 "update switch properties and add needed encapsulation type."
 

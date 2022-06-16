@@ -21,9 +21,6 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
-import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
-import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
-import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForFlowHsRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
@@ -90,10 +87,7 @@ public class ControllerToSpeakerSharedProxyBolt extends ControllerToSpeakerProxy
             getOutput().emit(Stream.FLOWHS_WORKER, input, makeFlowHsWorkerTuple(
                     commandMessage.getCorrelationId(), result));
         } else if (commandMessage.getData() instanceof DumpRulesForSwitchManagerRequest
-                || commandMessage.getData() instanceof DumpMetersForSwitchManagerRequest
-                || commandMessage.getData() instanceof InstallFlowForSwitchManagerRequest
-                || commandMessage.getData() instanceof RemoveFlowForSwitchManagerRequest
-                || commandMessage.getData() instanceof ReinstallDefaultFlowForSwitchManagerRequest) {
+                || commandMessage.getData() instanceof DumpMetersForSwitchManagerRequest) {
             getOutput().emit(Stream.KILDA_SWITCH_MANAGER, input, makeSwitchManagerTuple(
                     commandMessage.getCorrelationId(), errorMessage));
         } else if (commandMessage.getData() instanceof DumpSwitchPortsDescriptionRequest

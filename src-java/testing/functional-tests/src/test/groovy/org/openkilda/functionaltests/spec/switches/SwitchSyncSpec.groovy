@@ -11,25 +11,26 @@ import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandMessage
-import org.openkilda.messaging.command.flow.BaseInstallFlow
-import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest
-import org.openkilda.messaging.command.flow.InstallIngressFlow
-import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.MeterId
-import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
+import org.openkilda.rulemanager.FlowSpeakerData
+import org.openkilda.rulemanager.Instructions
+import org.openkilda.rulemanager.MeterFlag
+import org.openkilda.rulemanager.MeterSpeakerData
+import org.openkilda.rulemanager.OfTable
+import org.openkilda.rulemanager.OfVersion
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import com.google.common.collect.Sets
 import groovy.transform.Memoized
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -43,7 +44,7 @@ import spock.lang.See
 @Tags([SMOKE_SWITCHES])
 class SwitchSyncSpec extends BaseSpecification {
 
-    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
+    @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}")
     String speakerTopic
 
     @Autowired
@@ -109,7 +110,7 @@ class SwitchSyncSpec extends BaseSpecification {
                 assert validationResultsMap[it.dpId].meters.missing.meterId.sort() == it.defaultMeters.sort()
             }
             [switchPair.src, switchPair.dst].each {
-                def swProps = northbound.getSwitchProperties(it.dpId)
+                def swProps = switchHelper.getCachedSwProps(it.dpId)
                 def amountFlowRules = 2 //INGRESS_REVERSE, INGRESS_FORWARD
                 def amountS42Rules = swProps.server42FlowRtt ? 1 : 0
                 def amountMultiTableSharedRules = 0
@@ -195,22 +196,51 @@ class SwitchSyncSpec extends BaseSpecification {
                 - northbound.getAllMeters(srcSwitch.dpId).meterEntries*.meterId
                 - northbound.getAllMeters(dstSwitch.dpId).meterEntries*.meterId)[0]
 
-        producer.send(new ProducerRecord(speakerTopic, srcSwitch.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, srcSwitch.dpId, 1, 2, 1, 0, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN,
-                        OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, dstSwitch.dpId, false,
-                        false, false, null)).toJson())).get()
+        producer.send(new ProducerRecord(speakerTopic, srcSwitch.dpId.toString(), buildMessage([
+                FlowSpeakerData.builder()
+                        .switchId(srcSwitch.dpId)
+                        .ofVersion(OfVersion.of(srcSwitch.ofVersion))
+                        .cookie(new Cookie(excessRuleCookie))
+                        .table(OfTable.INPUT)
+                        .priority(100)
+                        .instructions(Instructions.builder().build())
+                        .build(),
+                MeterSpeakerData.builder()
+                        .switchId(srcSwitch.dpId)
+                        .ofVersion(OfVersion.of(srcSwitch.ofVersion))
+                        .meterId(new MeterId(excessMeterId))
+                        .rate(flow.getMaximumBandwidth())
+                        .burst(flow.getMaximumBandwidth())
+                        .flags(Sets.newHashSet(MeterFlag.PKTPS, MeterFlag.BURST, MeterFlag.STATS))
+                        .build()]).toJson())).get()
         involvedSwitches[1..-2].each { transitSw ->
             producer.send(new ProducerRecord(speakerTopic, transitSw.toString(), buildMessage(
-                    new InstallTransitFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, transitSw.dpId, 1, 2, 1,
-                            FlowEncapsulationType.TRANSIT_VLAN, false))
-                    .toJson())).get()
+                    FlowSpeakerData.builder()
+                            .switchId(transitSw.dpId)
+                            .ofVersion(OfVersion.of(transitSw.ofVersion))
+                            .cookie(new Cookie(excessRuleCookie))
+                            .table(OfTable.TRANSIT)
+                            .priority(100)
+                            .instructions(Instructions.builder().build())
+                            .build()).toJson())).get()
         }
-        producer.send(new ProducerRecord(speakerTopic, dstSwitch.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), flow.flowId, excessRuleCookie, dstSwitch.dpId, 1, 2, 1, 0, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN,
-                        OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, srcSwitch.dpId, false,
-                        false, false, null)).toJson())).get()
+        producer.send(new ProducerRecord(speakerTopic, dstSwitch.dpId.toString(), buildMessage([
+                FlowSpeakerData.builder()
+                        .switchId(dstSwitch.dpId)
+                        .ofVersion(OfVersion.of(dstSwitch.ofVersion))
+                        .cookie(new Cookie(excessRuleCookie))
+                        .table(OfTable.INPUT)
+                        .priority(100)
+                        .instructions(Instructions.builder().build())
+                        .build(),
+                MeterSpeakerData.builder()
+                        .switchId(dstSwitch.dpId)
+                        .ofVersion(OfVersion.of(dstSwitch.ofVersion))
+                        .meterId(new MeterId(excessMeterId))
+                        .rate(flow.getMaximumBandwidth())
+                        .burst(flow.getMaximumBandwidth())
+                        .flags(Sets.newHashSet(MeterFlag.PKTPS, MeterFlag.BURST, MeterFlag.STATS))
+                        .build()]).toJson())).get()
 
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
@@ -290,7 +320,7 @@ class SwitchSyncSpec extends BaseSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
             involvedSwitches.each {
-                def swProps = northbound.getSwitchProperties(it.dpId)
+                def swProps = switchHelper.getCachedSwProps(it.dpId)
                 def switchIdInSrcOrDst = (it.dpId in [switchPair.src.dpId, switchPair.dst.dpId])
                 def defaultAmountOfFlowRules = 2 // ingress + egress
                 def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
@@ -467,10 +497,5 @@ class SwitchSyncSpec extends BaseSpecification {
     def isVxlanEnabled(SwitchId switchId) {
         return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
                 .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
-    }
-
-    private static Message buildMessage(final BaseInstallFlow commandData) {
-        InstallFlowForSwitchManagerRequest data = new InstallFlowForSwitchManagerRequest(commandData)
-        return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null)
     }
 }
