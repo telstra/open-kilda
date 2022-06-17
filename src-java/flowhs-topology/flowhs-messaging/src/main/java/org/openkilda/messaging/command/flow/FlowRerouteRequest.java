@@ -58,14 +58,13 @@ public class FlowRerouteRequest extends CommandData {
     /**
      * Create Simplified request usable only for northbound API.
      */
-    public static FlowRerouteRequest createManualFlowRerouteRequest(String flowId, boolean force,
+    public static FlowRerouteRequest createManualFlowRerouteRequest(String flowId,
                                                                     boolean ignoreBandwidth, String reason) {
-        return new FlowRerouteRequest(flowId, force, false, ignoreBandwidth, Collections.emptySet(), reason, true);
+        return new FlowRerouteRequest(flowId, false, ignoreBandwidth, Collections.emptySet(), reason, true);
     }
 
     @JsonCreator
     public FlowRerouteRequest(@NonNull @JsonProperty("flowid") String flowId,
-                              @JsonProperty("force") boolean force,
                               @JsonProperty("effectively_down") boolean effectivelyDown,
                               @JsonProperty("ignore_bandwidth") boolean ignoreBandwidth,
                               @NonNull @JsonProperty("path_ids") Set<IslEndpoint> affectedIsl,
@@ -77,12 +76,5 @@ public class FlowRerouteRequest extends CommandData {
         this.reason = reason;
         this.ignoreBandwidth = ignoreBandwidth;
         this.manual = manual;
-
-        // field "force" have been removed as part of "true flow sync" feature. Constructor argument left for now, to
-        // not ruin JSON compatibility for transition period.
-    }
-
-    public boolean isForce() {
-        return false;  // dummy getter for removed "force" field.
     }
 }
