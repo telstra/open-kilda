@@ -74,12 +74,13 @@ public class OnSubFlowAllocatedAction extends
                     stateMachine.addCreatingSubFlow(requestedFlowId);
                     stateMachine.notifyEventListeners(listener ->
                             listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
-                    CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
                     if (!requestedFlow.getSrcSwitch().equals(requestedFlow.getDestSwitch())) {
                         // One-switch flow can't be added to an affinity group.
                         requestedFlow.setAffinityFlowId(stateMachine.getMainAffinityFlowId());
                     }
+                    requestedFlow.setDiverseFlowId(stateMachine.getDiverseFlowId());
                     requestedFlow.setYFlowId(stateMachine.getYFlowId());
+                    CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
                     flowCreateService.startFlowCreation(flowContext, requestedFlow, yFlowId);
                 }
             });

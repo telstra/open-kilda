@@ -22,8 +22,6 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
-import org.openkilda.model.YFlow;
-import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -45,9 +43,7 @@ import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.shade.com.google.common.base.Objects;
 
-import java.util.Collection;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 @Slf4j
 public class UpdateFlowAction extends
@@ -120,11 +116,13 @@ public class UpdateFlowAction extends
             if (targetFlow.getDiverseFlowId().isEmpty()) {
                 flow.setDiverseGroupId(null);
             } else {
-                flow.setDiverseGroupId(getOrCreateDiverseFlowGroupId(targetFlow.getDiverseFlowId()));
+                flow.setDiverseGroupId(getOrCreateFlowDiverseGroup(targetFlow.getDiverseFlowId()));
             }
         } else if (targetFlow.isAllocateProtectedPath()) {
             if (flow.getDiverseGroupId() == null) {
-                flow.setDiverseGroupId(getOrCreateDiverseFlowGroupId(flow.getFlowId()));
+                flow.setDiverseGroupId(flowRepository.getOrCreateDiverseFlowGroupId(flow.getFlowId())
+                        .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                                format("Diverse flow %s not found", flow.getFlowId()))));
             }
         }
 
@@ -197,19 +195,20 @@ public class UpdateFlowAction extends
         return targetFlow;
     }
 
-    private String getOrCreateDiverseFlowGroupId(String diverseFlowId) throws FlowProcessingException {
+    private String getOrCreateFlowDiverseGroup(String diverseFlowId) throws FlowProcessingException {
         log.debug("Getting flow diverse group for flow with id {}", diverseFlowId);
-        String flowId = yFlowRepository.findById(diverseFlowId).map(Stream::of).orElseGet(Stream::empty)
-                .map(YFlow::getSubFlows)
-                .flatMap(Collection::stream)
-                .map(YSubFlow::getFlow)
-                .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
-                .map(Flow::getFlowId)
-                .findFirst()
-                .orElse(diverseFlowId);
-        return flowRepository.getOrCreateDiverseFlowGroupId(flowId)
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                        format("Flow %s not found", flowId)));
+        Optional<String> groupId;
+        if (yFlowRepository.exists(diverseFlowId)) {
+            groupId = yFlowRepository.getOrCreateDiverseYFlowGroupId(diverseFlowId);
+        } else if (yFlowRepository.isSubFlow(diverseFlowId)) {
+            groupId = flowRepository.findById(diverseFlowId)
+                    .map(Flow::getYFlowId)
+                    .flatMap(yFlowRepository::getOrCreateDiverseYFlowGroupId);
+        } else {
+            groupId = flowRepository.getOrCreateDiverseFlowGroupId(diverseFlowId);
+        }
+        return groupId.orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                format("Diverse flow %s not found", diverseFlowId)));
     }
 
     private String getOrCreateAffinityFlowGroupId(String flowId) throws FlowProcessingException {

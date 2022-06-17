@@ -117,6 +117,9 @@ public abstract class FlowPathMapper {
                             + "%s and %s have different switches", ingress.getSwitchId(), right));
                 }
                 resultList.add(new PathNodePayload(ingress.getSwitchId(), ingress.getPortNumber(), right.getSrcPort()));
+            } else {
+                // The case of the same dest port, but different src port.
+                resultList.add(new PathNodePayload(right.getSrcSwitchId(), null, right.getSrcPort()));
             }
             while (rightIter.hasNext()) {
                 left = leftIter.next();
@@ -134,6 +137,9 @@ public abstract class FlowPathMapper {
                             + "%s and %s have different switches", egress.getSwitchId(), right));
                 }
                 resultList.add(new PathNodePayload(egress.getSwitchId(), right.getDestPort(), egress.getPortNumber()));
+            } else {
+                // The case of the same src port, but different dest port.
+                resultList.add(new PathNodePayload(right.getDestSwitchId(), right.getDestPort(), null));
             }
         }
 
