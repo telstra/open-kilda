@@ -43,12 +43,6 @@ public class FlowRerouteRequest extends CommandData {
     @JsonProperty("path_ids")
     protected Set<IslEndpoint> affectedIsl;
 
-    /**
-     * Update flow even if path will not be changed.
-     */
-    @JsonProperty("force")
-    private boolean force;
-
     @JsonProperty("effectively_down")
     private boolean effectivelyDown;
 
@@ -78,11 +72,17 @@ public class FlowRerouteRequest extends CommandData {
                               @JsonProperty("reason") String reason,
                               @JsonProperty("manual") boolean manual) {
         this.flowId = flowId;
-        this.force = force;
         this.effectivelyDown = effectivelyDown;
         this.affectedIsl = affectedIsl;
         this.reason = reason;
         this.ignoreBandwidth = ignoreBandwidth;
         this.manual = manual;
+
+        // field "force" have been removed as part of "true flow sync" feature. Constructor argument left for now, to
+        // not ruin JSON compatibility for transition period.
+    }
+
+    public boolean isForce() {
+        return false;  // dummy getter for removed "force" field.
     }
 }

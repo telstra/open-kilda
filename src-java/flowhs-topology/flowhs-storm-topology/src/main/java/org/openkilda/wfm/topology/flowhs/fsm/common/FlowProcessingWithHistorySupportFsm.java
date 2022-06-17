@@ -23,6 +23,7 @@ import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.utils.KeyProvider;
+import org.openkilda.wfm.topology.flowhs.service.common.FlowHistoryCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;
@@ -35,7 +36,8 @@ import java.util.Collection;
 
 public abstract class FlowProcessingWithHistorySupportFsm<T extends StateMachine<T, S, E, C>, S, E, C,
         R extends NorthboundResponseCarrier & HistoryUpdateCarrier, L extends ProcessingEventListener>
-        extends NbTrackableFlowProcessingFsm<T, S, E, C, R, L> {
+        extends NbTrackableFlowProcessingFsm<T, S, E, C, R, L>
+        implements FlowHistoryCarrier {
     private Instant lastHistoryEntryTime;
 
     protected FlowProcessingWithHistorySupportFsm(@NonNull E nextEvent, @NonNull E errorEvent,
@@ -57,9 +59,7 @@ public abstract class FlowProcessingWithHistorySupportFsm<T extends StateMachine
         sendHistoryData(action, null);
     }
 
-    /**
-     * Add a history record on the action.
-     */
+    @Override
     public void saveActionToHistory(String action, String description) {
         log.debug("Flow {} action - {} : {}", getFlowId(), action, description);
         sendHistoryData(action, description);
@@ -83,17 +83,13 @@ public abstract class FlowProcessingWithHistorySupportFsm<T extends StateMachine
         sendHistoryData(flowId, action, description, taskId);
     }
 
-    /**
-     * Add a history record on the error.
-     */
+    @Override
     public void saveErrorToHistory(String action, String errorMessage) {
         log.error("Flow {} error - {} : {}", getFlowId(), action, errorMessage);
         sendHistoryData(action, errorMessage);
     }
 
-    /**
-     * Add a history record on the error.
-     */
+    @Override
     public void saveErrorToHistory(String errorMessage) {
         log.error("Flow {} error - {}", getFlowId(), errorMessage);
         sendHistoryData(errorMessage, null);

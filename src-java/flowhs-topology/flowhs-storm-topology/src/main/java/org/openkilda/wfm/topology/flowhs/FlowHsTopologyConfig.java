@@ -115,6 +115,18 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("3")
     int getRerouteSpeakerCommandRetries();
 
+    @Key("flow.sync.hub.timeout.seconds")
+    @Default("30")
+    int getSyncHubTimeoutSeconds();
+
+    @Key("flow.sync.speaker.timeout.seconds")
+    @Default("10")
+    int getSyncSpeakerTimeoutSeconds();
+
+    @Key("flow.sync.speaker.command.retries")
+    @Default("3")
+    int getSyncSpeakerCommandRetries();
+
     @Key("flow.delete.hub.timeout.seconds")
     @Default("30")
     int getDeleteHubTimeoutSeconds();

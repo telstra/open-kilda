@@ -1,0 +1,46 @@
+@startuml
+title Flow sync FSM state diagram
+
+[*] -> SETUP
+SETUP: enter / fire "error" if flow is IN_PROGRESS status
+SETUP: enter / set flow status to IN_PROGRESS
+SETUP: enter / apply postponed flow changes
+SETUP --> SYNC: next
+SETUP --> COMMIT_ERROR: error
+
+SYNC: enter / launch main path install operation
+SYNC: enter / [have protected path] launch protected path install operation
+SYNC --> SYNC_FAIL: sync_fail
+SYNC --> COMMIT_SUCCESS: guard_passed
+SYNC --> CANCEL: error
+SYNC --> CANCEL: timeout / report global timeout
+SYNC: path_operation_response / handle path operation response
+SYNC: path_operation_response / fire "sync_fail" on failed path response
+SYNC: path_operation_response / fire "guard_passed" if no more pending operations
+
+CANCEL: enter / request cancel path operation for all pending operations
+CANCEL --> COMMIT_ERROR: guard_passed
+CANCEL: path_operation_response / handle path operation response
+CANCEL: path_operation_response / fire "guard_passed" if no more pending operations
+CANCEL: error / fire "guard_passed" if no pending operations
+CANCEL: timeout / report global timeout
+
+SYNC_FAIL: enter / fire "guard_passed" if no pending operations
+SYNC_FAIL --> COMMIT_ERROR: guard_passed
+SYNC_FAIL --> CANCEL: error
+SYNC_FAIL --> CANCEL: timeout / report global timeout
+SYNC_FAIL: path_operation_response / handle path operation response
+SYNC_FAIL: path_operation_response / fire "guard_passed" if no more pending operations
+
+COMMIT_SUCCESS: enter / update flow status
+COMMIT_SUCCESS: enter / send success response
+COMMIT_SUCCESS --> FINISHED: next
+COMMIT_SUCCESS --> COMMIT_ERROR: error
+
+COMMIT_ERROR: enter / update flow status
+COMMIT_ERROR: enter / send failed response
+COMMIT_ERROR --> FINISHED_WITH_ERROR: next
+
+FINISHED --> [*]
+FINISHED_WITH_ERROR --> [*]
+@enduml

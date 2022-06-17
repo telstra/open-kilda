@@ -22,10 +22,12 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.ToString;
 
 import java.util.UUID;
 
 @Getter
+@ToString(callSuper = true)
 public abstract class SpeakerResponse extends AbstractMessage {
     @JsonProperty("command_id")
     protected final UUID commandId;
