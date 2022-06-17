@@ -285,6 +285,8 @@ public abstract class FlowMapper {
     @Mapping(target = "destinationPort", source = "destination.portNumber")
     @Mapping(target = "sourceVlan", source = "source.vlanId")
     @Mapping(target = "destinationVlan", source = "destination.vlanId")
+    @Mapping(target = "destinationInnerVlan", source = "destination.innerVlanId")
+    @Mapping(target = "sourceInnerVlan", source = "source.innerVlanId")
     public abstract SwapFlowDto toSwapFlowDto(SwapFlowPayload request);
 
     public abstract FlowValidationDto toFlowValidationDto(FlowValidationResponse response);

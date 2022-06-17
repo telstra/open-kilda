@@ -1333,7 +1333,6 @@ switches"() {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/4409")
     def "Able to swap endpoints (#data.description) for two qinq flows with the same source and destination switches"() {
         given: "Two flows with the same source and destination switches"
         flow1.source.innerVlanId = 300
