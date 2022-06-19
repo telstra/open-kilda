@@ -28,6 +28,7 @@ import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyMeterDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
+import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowSubDescriptor;
 
@@ -83,6 +84,11 @@ public final class MeterStatsHandler extends BaseStatsEntryHandler {
 
     @Override
     public void handleStatsEntry(DummyFlowDescriptor descriptor) {
+        throw new IllegalArgumentException(formatUnexpectedDescriptorMessage(descriptor.getClass()));
+    }
+
+    @Override
+    public void handleStatsEntry(StatVlanDescriptor descriptor) {
         throw new IllegalArgumentException(formatUnexpectedDescriptorMessage(descriptor.getClass()));
     }
 

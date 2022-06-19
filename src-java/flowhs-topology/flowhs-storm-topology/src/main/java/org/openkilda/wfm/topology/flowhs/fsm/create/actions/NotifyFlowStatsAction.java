@@ -42,7 +42,7 @@ public class NotifyFlowStatsAction extends
             Flow flow = flowPath.getFlow();
             UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
                     flow.getFlowId(), flow.getYFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
-                    FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath));
+                    FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath), flow.getVlanStatistics());
             carrier.sendNotifyFlowStats(pathInfo);
         });
     }
