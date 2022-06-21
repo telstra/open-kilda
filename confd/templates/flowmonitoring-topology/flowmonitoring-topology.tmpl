@@ -17,3 +17,5 @@ bolts:
     parallelism: 1
   - id: "FLOW_STATE_CACHE_BOLT"
     parallelism: 1
+  - id: "ACTION_BOLT"
+    parallelism: {{ getv "/kilda_storm_flow_monitoring_action_bolt_parallelism" }}
