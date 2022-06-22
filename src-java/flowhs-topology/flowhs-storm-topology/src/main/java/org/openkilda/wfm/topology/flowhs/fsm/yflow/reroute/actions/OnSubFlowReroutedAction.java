@@ -60,7 +60,8 @@ public class OnSubFlowReroutedAction extends
                     stateMachine.notifyEventListeners(listener ->
                             listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
                     CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
-                    flowRerouteService.startFlowRerouting(rerouteRequest, flowContext, yFlowId);
+                    flowRerouteService.startFlowRerouting(rerouteRequest, flowContext, yFlowId,
+                            stateMachine.isForceReroute());
                 }
             });
         }

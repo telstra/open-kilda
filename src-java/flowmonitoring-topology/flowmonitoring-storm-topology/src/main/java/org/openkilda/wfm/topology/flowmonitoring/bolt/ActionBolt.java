@@ -27,6 +27,7 @@ import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt.CO
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.flow.FlowSyncRequest;
 import org.openkilda.messaging.info.flow.UpdateFlowCommand;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.server42.messaging.FlowDirection;
@@ -121,14 +122,13 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
 
     @Override
     public void sendFlowSyncRequest(String flowId) {
-        FlowRerouteRequest request = new FlowRerouteRequest(flowId, true, false, false, Collections.emptySet(),
-                "Flow latency become healthy", false);
+        FlowSyncRequest request = new FlowSyncRequest(flowId);
         emit(getCurrentTuple(), new Values(request, getCommandContext()));
     }
 
     @Override
     public void sendFlowRerouteRequest(String flowId) {
-        FlowRerouteRequest request = new FlowRerouteRequest(flowId, false, false, false, Collections.emptySet(),
+        FlowRerouteRequest request = new FlowRerouteRequest(flowId, false, false, Collections.emptySet(),
                 "Flow latency become unhealthy", false);
         emit(getCurrentTuple(), new Values(request, getCommandContext()));
     }

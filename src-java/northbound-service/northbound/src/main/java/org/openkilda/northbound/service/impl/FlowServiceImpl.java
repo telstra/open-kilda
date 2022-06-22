@@ -589,7 +589,7 @@ public class FlowServiceImpl implements FlowService {
     public CompletableFuture<FlowReroutePayload> rerouteFlow(String flowId) {
         logger.info("Reroute flow: {}={}", FLOW_ID, flowId);
 
-        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, false, false, "initiated via Northbound");
+        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, false, "initiated via Northbound");
         CommandMessage command = new CommandMessage(
                 payload, System.currentTimeMillis(), RequestCorrelationId.getId());
 
@@ -656,7 +656,7 @@ public class FlowServiceImpl implements FlowService {
     public CompletableFuture<FlowRerouteResponseV2> rerouteFlowV2(String flowId) {
         logger.info("Processing flow reroute: {}", flowId);
 
-        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, false, false, "initiated via Northbound");
+        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, false, "initiated via Northbound");
         CommandMessage command = new CommandMessage(
                 payload, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
 

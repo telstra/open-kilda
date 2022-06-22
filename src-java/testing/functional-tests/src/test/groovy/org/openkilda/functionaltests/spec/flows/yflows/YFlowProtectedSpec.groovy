@@ -43,7 +43,7 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
         def swT = topologyHelper.switchTriplets.find {
             def ep1paths = it.pathsEp1.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
             def ep2paths = it.pathsEp2.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def yPoints = findPotentialYPoints(it)
+            def yPoints = yFlowHelper.findPotentialYPoints(it)
             //se == yp
             yPoints.size() == 1 && yPoints[0] == it.shared && yPoints[0] != it.ep1 && yPoints[0] != it.ep2 &&
                     it.ep1 != it.ep2 && ep1paths.size() >= 2 && ep2paths.size() >= 2
@@ -118,25 +118,5 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
-    }
-
-    @Memoized
-    List<Switch> findPotentialYPoints(SwitchTriplet swT) {
-        def sortedEp1Paths = swT.pathsEp1.sort { it.size() }
-        def potentialEp1Paths = sortedEp1Paths.takeWhile { it.size() == sortedEp1Paths[0].size() }
-        def potentialEp2Paths = potentialEp1Paths.collect { potentialEp1Path ->
-            def sortedEp2Paths = swT.pathsEp2.sort {
-                it.size() - it.intersect(potentialEp1Path).size()
-            }
-            [path1          : potentialEp1Path,
-             potentialPaths2: sortedEp2Paths.takeWhile { it.size() == sortedEp2Paths[0].size() }]
-        }
-        return potentialEp2Paths.collectMany { path1WithPath2 ->
-            path1WithPath2.potentialPaths2.collect { List<PathNode> potentialPath2 ->
-                def switches = pathHelper.getInvolvedSwitches(path1WithPath2.path1)
-                        .intersect(pathHelper.getInvolvedSwitches(potentialPath2))
-                switches ? switches[-1] : null
-            }
-        }.findAll().unique()
     }
 }
