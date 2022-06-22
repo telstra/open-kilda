@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowmonitoring.bolt;
 import static org.openkilda.wfm.share.bolt.KafkaEncoder.FIELD_ID_PAYLOAD;
 import static org.openkilda.wfm.share.bolt.MonotonicClock.FIELD_ID_TICK_IDENTIFIER;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_HS_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_REMOVE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_DIRECTION_FIELD;
@@ -116,6 +117,7 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
+        declarer.declareStream(FLOW_HS_STREAM_ID.name(), new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
         declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
                 ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
@@ -123,7 +125,7 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
     @Override
     public void sendFlowSyncRequest(String flowId) {
         FlowSyncRequest request = new FlowSyncRequest(flowId);
-        emit(getCurrentTuple(), new Values(request, getCommandContext()));
+        emit(FLOW_HS_STREAM_ID.name(), getCurrentTuple(), new Values(request, getCommandContext()));
     }
 
     @Override
