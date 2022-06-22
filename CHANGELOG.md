@@ -1,7 +1,28 @@
 # Changelog
 
-## v1.120.2 (10/06/2022)
+## v1.121.0 (22/06/2022)
 
+### Bug Fixes:
+-  [#4846](https://github.com/telstra/open-kilda/pull/4846) Fix y-flow sync after flow sync reimplementation [**storm-topologies**]
+-  [#4831](https://github.com/telstra/open-kilda/pull/4831) Fix validation and sync for one-switch y-flow (Issues: [#4824](https://github.com/telstra/open-kilda/issues/4824) [#4825](https://github.com/telstra/open-kilda/issues/4825))
+
+### Improvements:
+-  [#4840](https://github.com/telstra/open-kilda/pull/4840) Return diversity info in get paths response [**northbound**][**storm-topologies**]
+-  [#4847](https://github.com/telstra/open-kilda/pull/4847) Set Stats topology parallelism to 1 for local env (Issue: [#4844](https://github.com/telstra/open-kilda/issues/4844)) [**storm-topologies**]
+
+### Other changes:
+-  [#4817](https://github.com/telstra/open-kilda/pull/4817) True flow sync [**storm-topologies**]
+-  [#4796](https://github.com/telstra/open-kilda/pull/4796) Unmark DRAFT from y-flow API [**northbound**]
+-  [#4830](https://github.com/telstra/open-kilda/pull/4830) Update rule manager docs [**docs**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.120.2...v1.121.0).
+
+### Affected Components:
+nbworker, stats, nb, flow-hs
+
+---
+
+## v1.120.2 (10/06/2022)
 
 ### Bug Fixes:
 -  [#4839](https://github.com/telstra/open-kilda/pull/4839) Fix switch sync to be able to repair misconfigured rules with the same cookie (Issue: [#4838](https://github.com/telstra/open-kilda/issues/4838)) [**floodlight**]
@@ -27,6 +48,8 @@ flow-hs, fl, stats, swmanager, nb, network
 ### Upgrade notes:
 
 OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
 
 ## v1.120.1 (01/06/2022)
 
