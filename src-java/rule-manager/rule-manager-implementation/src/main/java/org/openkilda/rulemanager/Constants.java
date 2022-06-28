@@ -80,6 +80,7 @@ public final class Constants {
         public static final int INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
         public static final int ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 5;
         public static final int DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1;
+        public static final int DEFAULT_FLOW_VLAN_STATS_PRIORITY = FLOW_PRIORITY - 10;
         public static final int DOUBLE_VLAN_FLOW_PRIORITY = FLOW_PRIORITY + 10;
 
         public static final int MIRROR_FLOW_PRIORITY = FLOW_PRIORITY + 50;

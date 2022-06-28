@@ -30,6 +30,9 @@ public class FlowSegmentCookie extends Cookie {
     // update ALL_FIELDS if modify fields list
     //                                     used by generic cookie -> 0x9FF0_0000_0000_0000L
     static final BitField FLOW_EFFECTIVE_ID_FIELD     = new BitField(0x0000_0000_000F_FFFFL);
+    // Can be used for other purposes
+    static final BitField STATS_VLAN_ID_FIELD         = new BitField(0x0000_0000_FFF0_0000L);
+
     static final BitField FLOW_REVERSE_DIRECTION_FLAG = new BitField(0x2000_0000_0000_0000L);
     static final BitField FLOW_FORWARD_DIRECTION_FLAG = new BitField(0x4000_0000_0000_0000L);
     static final BitField FLOW_LOOP_FLAG              = new BitField(0x0008_0000_0000_0000L);
@@ -39,11 +42,12 @@ public class FlowSegmentCookie extends Cookie {
     // used by unit tests to check fields intersections
     static final BitField[] ALL_FIELDS = ArrayUtils.addAll(
             CookieBase.ALL_FIELDS, FLOW_FORWARD_DIRECTION_FLAG, FLOW_REVERSE_DIRECTION_FLAG, FLOW_EFFECTIVE_ID_FIELD,
-            FLOW_LOOP_FLAG, FLOW_MIRROR_FLAG, Y_FLOW_FLAG);
+            FLOW_LOOP_FLAG, FLOW_MIRROR_FLAG, Y_FLOW_FLAG, STATS_VLAN_ID_FIELD);
 
     private static final Set<CookieType> VALID_TYPES = ImmutableSet.of(
                     CookieType.SERVICE_OR_FLOW_SEGMENT,
-                    CookieType.SERVER_42_FLOW_RTT_INGRESS);
+                    CookieType.SERVER_42_FLOW_RTT_INGRESS,
+                    CookieType.VLAN_STATS_PRE_INGRESS);
 
     @JsonCreator
     public FlowSegmentCookie(long value) {
@@ -51,7 +55,7 @@ public class FlowSegmentCookie extends Cookie {
     }
 
     public FlowSegmentCookie(FlowPathDirection direction, long flowEffectiveId) {
-        this(CookieType.SERVICE_OR_FLOW_SEGMENT, direction, flowEffectiveId, false, false, false);
+        this(CookieType.SERVICE_OR_FLOW_SEGMENT, direction, flowEffectiveId, false, false, false, 0);
     }
 
     FlowSegmentCookie(CookieType type, long value) {
@@ -60,8 +64,8 @@ public class FlowSegmentCookie extends Cookie {
 
     @Builder
     private FlowSegmentCookie(CookieType type, FlowPathDirection direction, long flowEffectiveId, boolean looped,
-                              boolean mirror, boolean yFlow) {
-        super(makeValue(type, direction, flowEffectiveId, looped, mirror, yFlow), type);
+                              boolean mirror, boolean yFlow, int statsVlan) {
+        super(makeValue(type, direction, flowEffectiveId, looped, mirror, yFlow, statsVlan), type);
     }
 
     @Override
@@ -94,7 +98,8 @@ public class FlowSegmentCookie extends Cookie {
                 .flowEffectiveId(getFlowEffectiveId())
                 .looped(isLooped())
                 .mirror(isMirror())
-                .yFlow(isYFlow());
+                .yFlow(isYFlow())
+                .statsVlan(getStatsVlan());
     }
 
     /**
@@ -127,6 +132,10 @@ public class FlowSegmentCookie extends Cookie {
         return getField(FLOW_EFFECTIVE_ID_FIELD);
     }
 
+    public int getStatsVlan() {
+        return (int) getField(STATS_VLAN_ID_FIELD);
+    }
+
     public boolean isLooped() {
         return getField(FLOW_LOOP_FLAG) == 1;
     }
@@ -145,7 +154,7 @@ public class FlowSegmentCookie extends Cookie {
     }
 
     private static long makeValue(CookieType type, FlowPathDirection direction, long flowEffectiveId,
-                                  boolean looped, boolean mirror, boolean yFlow) {
+                                  boolean looped, boolean mirror, boolean yFlow, int statsVlan) {
         if (!VALID_TYPES.contains(type)) {
             throw new IllegalArgumentException(formatIllegalTypeError(type, VALID_TYPES));
         }
@@ -155,6 +164,7 @@ public class FlowSegmentCookie extends Cookie {
             value = makeValueDirection(direction);
         }
         long result = setField(value, FLOW_EFFECTIVE_ID_FIELD, flowEffectiveId);
+        result = setField(result, STATS_VLAN_ID_FIELD, statsVlan);
         if (looped) {
             result = setField(result, FLOW_LOOP_FLAG, 1);
         }

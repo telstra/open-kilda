@@ -42,6 +42,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
@@ -73,6 +74,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     public static final int VLAN_1 = 3;
     public static final int VLAN_2 = 4;
     public static final int VLAN_3 = 5;
+    public static final Set<Integer> STAT_VLANS = Sets.newHashSet(6, 7, 8);
 
     FlowRepository flowRepository;
     FlowPathRepository flowPathRepository;
@@ -639,6 +641,22 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
                         .map(Flow::getFlowId)
                         .collect(Collectors.toList());
         assertEquals(3, foundFlows.size());
+    }
+
+    @Test
+    public void shouldUpdateStatVlans() {
+        Flow flow = createTestFlow(TEST_FLOW_ID, switchA, switchB);
+        assertNull(flow.getVlanStatistics());
+        flow.setVlanStatistics(STAT_VLANS);
+
+        Optional<Flow> foundFlow = flowRepository.findById(flow.getFlowId());
+        assertTrue(foundFlow.isPresent());
+        assertEquals(STAT_VLANS, foundFlow.get().getVlanStatistics());
+
+        foundFlow.get().setVlanStatistics(new HashSet<>());
+        Optional<Flow> emptyStatsFlow = flowRepository.findById(flow.getFlowId());
+        assertTrue(emptyStatsFlow.isPresent());
+        assertTrue(emptyStatsFlow.get().getVlanStatistics().isEmpty());
     }
 
     private Flow createTestFlow(String flowId, Switch srcSwitch, Switch destSwitch) {

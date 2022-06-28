@@ -30,6 +30,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -46,9 +47,10 @@ public class IngressMirrorFlowSegmentInstallCommand extends IngressFlowSegmentIn
             @JsonProperty("isl_port") int islPort,
             @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
             @JsonProperty("rules_context") RulesContext rulesContext,
-            @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
+            @JsonProperty("mirror_config") MirrorConfig mirrorConfig,
+            @JsonProperty("stat_vlans") Set<Integer> statVlans) {
         super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                rulesContext, mirrorConfig);
+                rulesContext, mirrorConfig, statVlans);
     }
 
     @Override

@@ -260,6 +260,7 @@ public class FlowDto implements Serializable {
      * @param reverseLatency            reverse path latency nanoseconds
      * @param latencyLastModifiedTime   latency fields last modified time
      * @param yFlowId                   the y-flow ID in the case of sub-flow
+     * @param vlanStatistics            flow vlan statistics
      */
     @JsonCreator
     @Builder(toBuilder = true)

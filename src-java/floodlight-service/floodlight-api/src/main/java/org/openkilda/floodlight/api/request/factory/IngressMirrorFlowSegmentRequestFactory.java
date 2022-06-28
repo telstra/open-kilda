@@ -30,6 +30,7 @@ import org.openkilda.model.SwitchId;
 
 import lombok.Builder;
 
+import java.util.Set;
 import java.util.UUID;
 
 public class IngressMirrorFlowSegmentRequestFactory extends FlowSegmentRequestFactory {
@@ -40,9 +41,10 @@ public class IngressMirrorFlowSegmentRequestFactory extends FlowSegmentRequestFa
     public IngressMirrorFlowSegmentRequestFactory(
             MessageContext messageContext, FlowSegmentMetadata metadata,
             FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
-            FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig) {
+            FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig,
+            Set<Integer> statVlans) {
         this(new RequestBlank(messageContext, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                rulesContext, mirrorConfig));
+                rulesContext, mirrorConfig, statVlans));
     }
 
     private IngressMirrorFlowSegmentRequestFactory(IngressFlowSegmentRequest requestBlank) {
@@ -69,9 +71,10 @@ public class IngressMirrorFlowSegmentRequestFactory extends FlowSegmentRequestFa
         RequestBlank(
                 MessageContext context, FlowSegmentMetadata metadata,
                 FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
-                FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig) {
+                FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig,
+                Set<Integer> statVlans) {
             super(context, dummyCommandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                    rulesContext, mirrorConfig);
+                    rulesContext, mirrorConfig, statVlans);
         }
     }
 }

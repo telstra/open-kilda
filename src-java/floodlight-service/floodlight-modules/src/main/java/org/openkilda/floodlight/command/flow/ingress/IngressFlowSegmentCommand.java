@@ -27,6 +27,7 @@ import org.openkilda.model.SwitchId;
 import lombok.Getter;
 import lombok.NonNull;
 
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -38,9 +39,10 @@ public abstract class IngressFlowSegmentCommand extends IngressFlowSegmentBase {
     IngressFlowSegmentCommand(
             MessageContext messageContext, UUID commandId, FlowSegmentMetadata metadata,
             FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
-            @NonNull FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig) {
+            @NonNull FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig,
+            Set<Integer> statVlans) {
         super(messageContext, endpoint.getSwitchId(), commandId, metadata, endpoint, meterConfig,
-                egressSwitchId, encapsulation, rulesContext, mirrorConfig);
+                egressSwitchId, encapsulation, rulesContext, mirrorConfig, statVlans);
         this.islPort = islPort;
     }
 
