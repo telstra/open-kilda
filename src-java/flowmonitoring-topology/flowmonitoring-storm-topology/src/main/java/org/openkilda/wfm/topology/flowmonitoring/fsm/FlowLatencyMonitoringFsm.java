@@ -125,7 +125,19 @@ public class FlowLatencyMonitoringFsm extends AbstractBaseFsm<FlowLatencyMonitor
     }
 
     public void enterUnstable(State from, State to, Event event, Context context) {
-        saveLastEventInfo(lastStableState);
+        switch (event) {
+            case HEALTHY:
+                saveLastEventInfo(HEALTHY);
+                break;
+            case TIER_1_FAILED:
+                saveLastEventInfo(TIER_1_FAILED);
+                break;
+            case TIER_2_FAILED:
+                saveLastEventInfo(TIER_2_FAILED);
+                break;
+            default:
+                throw new IllegalArgumentException(format("Wrong event type '%s' for unstable state.", event));
+        }
     }
 
     public void saveHealthyEventInfo(State from, State to, Event event, Context context) {
@@ -156,13 +168,17 @@ public class FlowLatencyMonitoringFsm extends AbstractBaseFsm<FlowLatencyMonitor
     }
 
     public void sendFlowSyncRequest(State from, State to, Event event, Context context) {
-        log.info("Flow {} {} latency moved to healthy.", flowId, direction);
-        context.getCarrier().sendFlowSyncRequest(flowId);
+        if (lastStableState != HEALTHY) {
+            log.info("Flow {} {} latency moved to healthy.", flowId, direction);
+            context.getCarrier().sendFlowSyncRequest(flowId);
+        }
     }
 
     public void sendFlowRerouteRequest(State from, State to, Event event, Context context) {
-        log.info("Flow {} {} latency moved to unhealthy.", flowId, direction);
-        context.getCarrier().sendFlowRerouteRequest(flowId);
+        if (lastStableState != TIER_1_FAILED && lastStableState != TIER_2_FAILED) {
+            log.info("Flow {} {} latency moved to unhealthy.", flowId, direction);
+            context.getCarrier().sendFlowRerouteRequest(flowId);
+        }
     }
 
     public void saveTier2FailedEventInfo(State from, State to, Event event, Context context) {
@@ -294,10 +310,6 @@ public class FlowLatencyMonitoringFsm extends AbstractBaseFsm<FlowLatencyMonitor
 
     public long getMaxLatencyTier2() {
         return maxLatencyTier2;
-    }
-
-    public State getLastStableState() {
-        return lastStableState;
     }
 
     @Value
