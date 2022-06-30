@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowmonitoring;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_HS_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_REMOVE_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_STATS_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ISL_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.STATS_STREAM_ID;
@@ -36,6 +37,7 @@ import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowHsEncoder;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowStateCacheBolt;
+import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowStatsBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.IslCacheBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.IslDataSplitterBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.RerouteEncoder;
@@ -79,6 +81,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         islCacheBolt(tb, persistenceManager);
 
         actionBolt(tb, persistenceManager);
+        flowStatsBolt(tb, persistenceManager);
         outputReroute(tb);
         outputFlowHs(tb);
 
@@ -171,6 +174,12 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
+    private void flowStatsBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
+        declareBolt(topologyBuilder, new FlowStatsBolt(persistenceManager),
+                ComponentId.FLOW_STATS_BOLT.name())
+                .fieldsGrouping(ComponentId.ACTION_BOLT.name(), FLOW_STATS_STREAM_ID.name(), FLOW_ID_FIELDS);
+    }
+
     private void outputReroute(TopologyBuilder topology) {
         RerouteEncoder encoder = new RerouteEncoder();
         declareBolt(topology, encoder, RerouteEncoder.BOLT_ID)
@@ -233,6 +242,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         FLOW_CACHE_BOLT("flow.cache.bolt"),
         ISL_CACHE_BOLT("isl.cache.bolt"),
         ACTION_BOLT("action.bolt"),
+        FLOW_STATS_BOLT("flow.stats.bolt"),
 
         STATS_BOLT("stats.bolt"),
 
@@ -258,6 +268,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
 
     public enum Stream {
         ACTION_STREAM_ID,
+        FLOW_STATS_STREAM_ID,
         STATS_STREAM_ID,
         FLOW_UPDATE_STREAM_ID,
         FLOW_REMOVE_STREAM_ID,
