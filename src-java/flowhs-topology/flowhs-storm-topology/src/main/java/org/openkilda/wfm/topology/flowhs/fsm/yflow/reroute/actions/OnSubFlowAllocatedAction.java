@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
@@ -25,7 +26,6 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
 import org.openkilda.model.YSubFlow;
@@ -91,7 +91,7 @@ public class OnSubFlowAllocatedAction extends
                     .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                             format("Y-flow %s not found", yFlowId)));
             SwitchId sharedSwitchId = yflow.getSharedEndpoint().getSwitchId();
-            List<FlowPath> paths =  new ArrayList<>();
+            List<FlowPath> paths = new ArrayList<>();
             for (YSubFlow subFlow : yflow.getSubFlows()) {
                 Flow flow = subFlow.getFlow();
                 FlowPath flowPath = flow.getPaths().stream()
@@ -106,8 +106,11 @@ public class OnSubFlowAllocatedAction extends
             return paths;
         });
 
-        List<PathSegment> sharedPathSegments = IntersectionComputer.calculatePathIntersectionFromSource(flowPaths);
-        PathInfoData sharedPath = FlowPathMapper.INSTANCE.map(sharedPathSegments);
+        List<FlowPath> nonEmptyPaths = flowPaths.stream()
+                .filter(fp -> !fp.getSegments().isEmpty()).collect(Collectors.toList());
+        PathInfoData sharedPath = FlowPathMapper.INSTANCE.map(nonEmptyPaths.size() >= 2
+                ? IntersectionComputer.calculatePathIntersectionFromSource(nonEmptyPaths) : emptyList());
+
         List<SubFlowPathDto> subFlowPathDtos = flowPaths.stream()
                 .map(flowPath -> new SubFlowPathDto(flowPath.getFlowId(), FlowPathMapper.INSTANCE.map(flowPath)))
                 .sorted(Comparator.comparing(SubFlowPathDto::getFlowId))

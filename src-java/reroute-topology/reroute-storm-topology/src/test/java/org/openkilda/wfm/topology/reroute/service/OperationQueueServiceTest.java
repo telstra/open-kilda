@@ -39,9 +39,9 @@ public class OperationQueueServiceTest {
     @Test
     public void shouldAddFirst() {
         service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_A,
-                createManualFlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
+                createManualFlowRerouteRequest(TEST_FLOW_ID, false, ""));
         service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_C,
-                createManualFlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
+                createManualFlowRerouteRequest(TEST_FLOW_ID, false, ""));
 
         FlowQueueData flowQueueData = service.getFlowCommands().get(TEST_FLOW_ID);
 
@@ -74,9 +74,9 @@ public class OperationQueueServiceTest {
     @Test
     public void shouldAddLast() {
         service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_A,
-                createManualFlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
+                createManualFlowRerouteRequest(TEST_FLOW_ID, false, ""));
         service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_B,
-                createManualFlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
+                createManualFlowRerouteRequest(TEST_FLOW_ID, false, ""));
 
         FlowQueueData flowQueueData = service.getFlowCommands().get(TEST_FLOW_ID);
 
@@ -100,9 +100,9 @@ public class OperationQueueServiceTest {
     @Test
     public void shouldHandleTimeout() {
         service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_A,
-                createManualFlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
+                createManualFlowRerouteRequest(TEST_FLOW_ID, false, ""));
         service.addLast(TEST_FLOW_ID, TEST_CORRELATION_ID_B,
-                createManualFlowRerouteRequest(TEST_FLOW_ID, false, false, ""));
+                createManualFlowRerouteRequest(TEST_FLOW_ID, false, ""));
 
         FlowQueueData flowQueueData = service.getFlowCommands().get(TEST_FLOW_ID);
 

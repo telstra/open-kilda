@@ -32,6 +32,7 @@ import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.flow.FlowSyncRequest;
 import org.openkilda.messaging.command.flow.FlowValidationRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.error.ErrorType;
@@ -584,19 +585,29 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(flowMapper::toFlowResponseOutput);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public CompletableFuture<FlowReroutePayload> rerouteFlow(String flowId) {
-        logger.info("Reroute flow request for flow {}", flowId);
-        return reroute(flowId, false);
+        logger.info("Reroute flow: {}={}", FLOW_ID, flowId);
+
+        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, false, "initiated via Northbound");
+        CommandMessage command = new CommandMessage(
+                payload, System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(rerouteTopic, command)
+                .thenApply(FlowRerouteResponse.class::cast)
+                .thenApply(response ->
+                        flowMapper.toReroutePayload(flowId, response.getPayload(), response.isRerouted()));
     }
 
     @Override
     public CompletableFuture<FlowReroutePayload> syncFlow(String flowId) {
-        logger.info("Forced reroute request for flow {}", flowId);
-        return reroute(flowId, true);
+        logger.info("Sync flow {}", flowId);
+        FlowSyncRequest payload = new FlowSyncRequest(flowId);
+        CommandMessage command = new CommandMessage(payload, System.currentTimeMillis(), RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(FlowRerouteResponse.class::cast)
+                .thenApply(response ->
+                        flowMapper.toReroutePayload(flowId, response.getPayload(), response.isRerouted()));
     }
 
     /**
@@ -645,7 +656,7 @@ public class FlowServiceImpl implements FlowService {
     public CompletableFuture<FlowRerouteResponseV2> rerouteFlowV2(String flowId) {
         logger.info("Processing flow reroute: {}", flowId);
 
-        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, false, false, "initiated via Northbound");
+        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, false, "initiated via Northbound");
         CommandMessage command = new CommandMessage(
                 payload, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
 
@@ -653,19 +664,6 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(FlowRerouteResponse.class::cast)
                 .thenApply(response ->
                         flowMapper.toRerouteResponseV2(flowId, response.getPayload(), response.isRerouted()));
-    }
-
-    private CompletableFuture<FlowReroutePayload> reroute(String flowId, boolean forced) {
-        logger.debug("Reroute flow: {}={}, forced={}", FLOW_ID, flowId, forced);
-        String correlationId = RequestCorrelationId.getId();
-        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, forced, false, "initiated via Northbound");
-        CommandMessage command = new CommandMessage(
-                payload, System.currentTimeMillis(), correlationId, Destination.WFM);
-
-        return messagingChannel.sendAndGet(rerouteTopic, command)
-                .thenApply(FlowRerouteResponse.class::cast)
-                .thenApply(response ->
-                        flowMapper.toReroutePayload(flowId, response.getPayload(), response.isRerouted()));
     }
 
     @Override

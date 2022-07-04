@@ -43,12 +43,6 @@ public class FlowRerouteRequest extends CommandData {
     @JsonProperty("path_ids")
     protected Set<IslEndpoint> affectedIsl;
 
-    /**
-     * Update flow even if path will not be changed.
-     */
-    @JsonProperty("force")
-    private boolean force;
-
     @JsonProperty("effectively_down")
     private boolean effectivelyDown;
 
@@ -64,21 +58,19 @@ public class FlowRerouteRequest extends CommandData {
     /**
      * Create Simplified request usable only for northbound API.
      */
-    public static FlowRerouteRequest createManualFlowRerouteRequest(String flowId, boolean force,
+    public static FlowRerouteRequest createManualFlowRerouteRequest(String flowId,
                                                                     boolean ignoreBandwidth, String reason) {
-        return new FlowRerouteRequest(flowId, force, false, ignoreBandwidth, Collections.emptySet(), reason, true);
+        return new FlowRerouteRequest(flowId, false, ignoreBandwidth, Collections.emptySet(), reason, true);
     }
 
     @JsonCreator
     public FlowRerouteRequest(@NonNull @JsonProperty("flowid") String flowId,
-                              @JsonProperty("force") boolean force,
                               @JsonProperty("effectively_down") boolean effectivelyDown,
                               @JsonProperty("ignore_bandwidth") boolean ignoreBandwidth,
                               @NonNull @JsonProperty("path_ids") Set<IslEndpoint> affectedIsl,
                               @JsonProperty("reason") String reason,
                               @JsonProperty("manual") boolean manual) {
         this.flowId = flowId;
-        this.force = force;
         this.effectivelyDown = effectivelyDown;
         this.affectedIsl = affectedIsl;
         this.reason = reason;

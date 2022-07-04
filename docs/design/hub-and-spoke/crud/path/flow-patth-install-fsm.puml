@@ -1,0 +1,41 @@
+@startuml
+title Flow path install FSM state diagram
+
+[*] --> INSTALL
+
+INSTALL: enter / activate next segments chunk
+INSTALL: enter / fire "no_more_chunks" if there is no more chunks
+INSTALL: enter / emit INSTALL request for each segment in active chunk
+INSTALL: enter / fire "chunk_complete" if there is no more pending requests
+INSTALL --> REVERT: error / set result_code into SPEAKER_ERROR
+INSTALL --> REVERT_WAIT_PENDING: cancel / set result_code into CANCEL
+INSTALL --> VERIFY: chunk_complete
+INSTALL --> END: no_more_chunks
+INSTALL: speaker_response / handle speaker response
+INSTALL: speaker_response / [no more pending request && no error responses received] fire "chunk_complete"
+INSTALL: speaker_response / [no more pending request && error responses are present] fire "error"
+
+VERIFY: enter / emit VERIFY request for each segment in active chunk
+VERIFY --> REVERT: error / set result_code into SPEAKER_ERROR
+VERIFY --> REVERT_WAIT_PENDING: cancel / set result_code into CANCEL
+VERIFY --> INSTALL: chunk_complete
+VERIFY: speaker_response / handle speaker response
+VERIFY: speaker_response / [no more pending request && no error responses received] fire "chunk_complete"
+VERIFY: speaker_response / [no more pending request && error responses are present] fire "error"
+
+REVERT_WAIT_PENDING --> END: (chunk_complete | error)
+REVERT_WAIT_PENDING: speaker_response / handle speaker response
+REVERT_WAIT_PENDING: speaker_response / [no more pending request && no error responses received] fire "chunk_complete"
+REVERT_WAIT_PENDING: speaker_response / [no more pending request && error responses are present] fire "error"
+
+REVERT: enter / [! is revert enabled] fire "chunk_complete"
+REVERT: enter / assemble and activate revert chunk
+REVERT: enter / emit DELETE request for each segment in active chunk
+REVERT --> END: (chunk_complete | error)
+REVERT: speaker_response / handle speaker response
+REVERT: speaker_response / [no more pending request && no error responses received] fire "chunk_complete"
+REVERT: speaker_response / [no more pending request && error responses are present] fire "error"
+
+END: enter / [result code is null] set result_code into success
+END --> [*]
+@enduml

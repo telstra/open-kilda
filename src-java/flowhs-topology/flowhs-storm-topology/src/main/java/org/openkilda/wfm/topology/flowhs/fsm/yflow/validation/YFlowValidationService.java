@@ -179,6 +179,12 @@ public class YFlowValidationService {
                     break;
                 }
             }
+        } else {
+            List<SimpleSwitchRule> reverseIngressRules =
+                    simpleSwitchRuleConverter.buildIngressSimpleSwitchRules(subFlow, reverse, null,
+                            flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
+            result.addAll(simpleSwitchRuleConverter.buildYFlowIngressSimpleSwitchRules(reverseIngressRules,
+                    yPoint, yPointMeterId));
         }
         return result;
     }

@@ -551,7 +551,7 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
                      !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2) }],
                 [name     : "yp==se",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = findPotentialYPoints(swT)
+                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
                      yPoints.size() == 1 && yPoints[0] == swT.shared && swT.shared != swT.ep1 && swT.shared != swT.ep2 }]
         ]
         requiredCases.each { it.picked = false }

@@ -71,19 +71,19 @@ public class FlowRerouteService extends FlowProcessingService<FlowRerouteFsm, Ev
             return;
         }
 
-        startFlowRerouting(key, reroute, commandContext, flowId);
+        startFlowRerouting(key, reroute, commandContext, flowId, false);
     }
 
     /**
      * Handles request for flow reroute.
      */
     public void startFlowRerouting(@NonNull FlowRerouteRequest reroute, @NonNull CommandContext commandContext,
-                                   @NonNull String sharedBandwidthGroupId) {
-        startFlowRerouting(reroute.getFlowId(), reroute, commandContext, sharedBandwidthGroupId);
+                                   @NonNull String sharedBandwidthGroupId, boolean forceReroute) {
+        startFlowRerouting(reroute.getFlowId(), reroute, commandContext, sharedBandwidthGroupId, forceReroute);
     }
 
     private void startFlowRerouting(String key, FlowRerouteRequest reroute, CommandContext commandContext,
-                                   String sharedBandwidthGroupId) {
+                                    String sharedBandwidthGroupId, boolean forceReroute) {
         String flowId = reroute.getFlowId();
         log.debug("Handling flow reroute request with key {} and flow ID: {}", key, flowId);
 
@@ -109,7 +109,7 @@ public class FlowRerouteService extends FlowProcessingService<FlowRerouteFsm, Ev
         FlowRerouteContext context = FlowRerouteContext.builder()
                 .flowId(flowId)
                 .affectedIsl(reroute.getAffectedIsl())
-                .forceReroute(reroute.isForce())
+                .forceReroute(forceReroute)
                 .ignoreBandwidth(reroute.isIgnoreBandwidth())
                 .effectivelyDown(reroute.isEffectivelyDown())
                 .rerouteReason(reroute.getReason())

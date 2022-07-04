@@ -45,6 +45,7 @@ public class FlowEventData implements Serializable {
         UPDATE("Flow updating"),
         REROUTE("Flow rerouting"),
         DELETE("Flow deleting"),
+        SYNC("Flow paths sync"),
         PATH_SWAP("Flow paths swap"),
         SWAP_ENDPOINTS("Flows swap endpoints"),
         FLOW_LOOP_CREATE("Flow loop creating"),

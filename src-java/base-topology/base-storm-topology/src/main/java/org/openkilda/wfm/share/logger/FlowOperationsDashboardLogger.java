@@ -41,6 +41,8 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String UPDATE_RESULT_EVENT = "flow_update_result";
     private static final String FLOW_DELETE_EVENT = "flow_delete";
     private static final String DELETE_RESULT_EVENT = "flow_delete_result";
+    private static final String FLOW_SYNC_EVENT = "flow_sync";
+    private static final String SYNC_RESULT_EVENT = "flow_sync_result";
     private static final String PATHS_SWAP_EVENT = "paths_swap";
     private static final String REROUTE_EVENT = "flow_reroute";
     private static final String REROUTE_RESULT_EVENT = "flow_reroute_result";
@@ -302,6 +304,45 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put("delete-result", "failed");
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed delete of the flow %s, reason: %s", flowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a flow-sync event.
+     */
+    public void onFlowSync(String flowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "flow-sync");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_SYNC_EVENT);
+        invokeLogger(Level.INFO, String.format("Performing flow \"%s\" SYNC", flowId), data);
+    }
+
+    /**
+     * Log a flow-sync-successful event.
+     */
+    public void onSuccessfulFlowSync(String flowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "flow-sync-success");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_SYNC_EVENT);
+        data.put("sync-result", "successful");
+        invokeLogger(Level.INFO, String.format("Flow \"%s\" SYNC success", flowId), data);
+    }
+
+    /**
+     * Log a flow-sync-failed event.
+     */
+    public void onFailedFlowSync(String flowId, int failedPathsCount, int totalPathsCount) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "flow-sync-failed");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_SYNC_EVENT);
+        data.put("sync-result", "failed");
+        invokeLogger(
+                Level.INFO, String.format(
+                        "Flow \"%s\" SYNC failed - %d of %d path have failed to sync",
+                        flowId, failedPathsCount, totalPathsCount),
                 data);
     }
 

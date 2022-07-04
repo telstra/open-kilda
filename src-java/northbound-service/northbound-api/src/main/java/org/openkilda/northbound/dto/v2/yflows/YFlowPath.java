@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.dto.v2.yflows;
 
+import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -38,6 +39,7 @@ import java.util.List;
 public class YFlowPath {
     List<PathNodePayload> forward;
     List<PathNodePayload> reverse;
+    DiverseGroupPayload diverseGroup;
     YFlowProtectedPath protectedPath;
 
     @Data
@@ -48,5 +50,6 @@ public class YFlowPath {
     public static class YFlowProtectedPath {
         List<PathNodePayload> forward;
         List<PathNodePayload> reverse;
+        DiverseGroupPayload diverseGroup;
     }
 }
