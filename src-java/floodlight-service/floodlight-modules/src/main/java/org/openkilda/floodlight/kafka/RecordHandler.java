@@ -817,7 +817,7 @@ class RecordHandler implements Runnable {
         if (handleSpeakerCommand()) {
             return;
         }
-        if (handleRuleManagerCommand()) {
+        if (handleRuleManagerCommand(record.topic())) {
             return;
         }
 
@@ -876,9 +876,11 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private boolean handleRuleManagerCommand() {
+    private boolean handleRuleManagerCommand(String topic) {
         try {
             BaseSpeakerCommandsRequest request = MAPPER.readValue(record.value(), BaseSpeakerCommandsRequest.class);
+            request.setSender(topic);
+
             handleRuleManagerCommand(request);
             return true;
         } catch (JsonMappingException e) {

@@ -22,7 +22,6 @@ import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
 import org.openkilda.floodlight.KafkaChannel;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.session.Session;
@@ -65,7 +64,7 @@ public class OfBatchExecutor {
     private final OfBatchHolder holder;
     private final Set<SwitchFeature> switchFeatures;
     private final String kafkaKey;
-    private final Origin origin;
+    private final String replyTo;
     private final boolean failIfExists;
 
     private boolean hasMeters;
@@ -80,7 +79,7 @@ public class OfBatchExecutor {
     public OfBatchExecutor(IOFSwitch iofSwitch, KafkaUtilityService kafkaUtilityService,
                            IKafkaProducerService kafkaProducerService, SessionService sessionService,
                            MessageContext messageContext, OfBatchHolder holder,
-                           Set<SwitchFeature> switchFeatures, String kafkaKey, Origin origin, Boolean failIfExists) {
+                           Set<SwitchFeature> switchFeatures, String kafkaKey, String replyTo, Boolean failIfExists) {
         this.iofSwitch = iofSwitch;
         this.kafkaUtilityService = kafkaUtilityService;
         this.kafkaProducerService = kafkaProducerService;
@@ -95,7 +94,7 @@ public class OfBatchExecutor {
         this.holder = holder;
         this.switchFeatures = switchFeatures;
         this.kafkaKey = kafkaKey;
-        this.origin = origin;
+        this.replyTo = replyTo;
         this.failIfExists = failIfExists == null || failIfExists;
     }
 
@@ -349,19 +348,7 @@ public class OfBatchExecutor {
 
     private void sendResponse() {
         KafkaChannel kafkaChannel = kafkaUtilityService.getKafkaChannel();
-        String topic = getTopic(kafkaChannel);
-        log.debug("Send response to {} (key={})", topic, kafkaKey);
-        kafkaProducerService.sendMessageAndTrack(topic, kafkaKey, holder.getResult());
-    }
-
-    private String getTopic(KafkaChannel kafkaChannel) {
-        switch (origin) {
-            case FLOW_HS:
-                return kafkaChannel.getSpeakerFlowHsTopic();
-            case SW_MANAGER:
-                return kafkaChannel.getSpeakerSwitchManagerResponseTopic();
-            default:
-                throw new IllegalStateException(format("Unknown message origin %s", origin));
-        }
+        log.debug("Send response to {} (key={})", replyTo, kafkaKey);
+        kafkaProducerService.sendMessageAndTrack(replyTo, kafkaKey, holder.getResult());
     }
 }

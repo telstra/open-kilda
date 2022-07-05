@@ -24,7 +24,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.floodlight.KafkaChannel;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
@@ -79,7 +78,6 @@ public class OfBatchExecutorTest {
             .holder(holder)
             .switchFeatures(Collections.emptySet())
             .kafkaKey("kafka-key")
-            .origin(Origin.SW_MANAGER)
             .build();
 
     @Test
