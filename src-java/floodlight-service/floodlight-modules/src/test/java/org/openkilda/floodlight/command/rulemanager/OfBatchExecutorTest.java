@@ -78,6 +78,7 @@ public class OfBatchExecutorTest {
             .holder(holder)
             .switchFeatures(Collections.emptySet())
             .kafkaKey("kafka-key")
+            .replyTo("flow-hs")
             .build();
 
     @Test
