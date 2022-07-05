@@ -78,7 +78,7 @@ public class OfBatchExecutorTest {
             .holder(holder)
             .switchFeatures(Collections.emptySet())
             .kafkaKey("kafka-key")
-            .replyTo("flow-hs")
+            .replyTo("kafka-topic")
             .build();
 
     @Test
@@ -94,9 +94,6 @@ public class OfBatchExecutorTest {
         SettableFuture<List<OFFlowStatsReply>> future = SettableFuture.create();
         future.set(Collections.singletonList(reply));
         when(sw.writeStatsRequest(any(OFFlowStatsRequest.class))).thenReturn(future);
-        KafkaChannel kafkaChannel = mock(KafkaChannel.class);
-        when(kafkaChannel.getSpeakerSwitchManagerResponseTopic()).thenReturn("kafka-topic");
-        when(kafkaUtilityService.getKafkaChannel()).thenReturn(kafkaChannel);
 
         holder.addDeleteFlow(FlowSpeakerData.builder()
                 .switchId(SWITCH_ID)
@@ -128,9 +125,6 @@ public class OfBatchExecutorTest {
         OFFlowStatsReply reply = mock(OFFlowStatsReply.class);
         SettableFuture<List<OFFlowStatsReply>> future = SettableFuture.create();
         future.set(Collections.singletonList(reply));
-        KafkaChannel kafkaChannel = mock(KafkaChannel.class);
-        when(kafkaChannel.getSpeakerSwitchManagerResponseTopic()).thenReturn("kafka-topic");
-        when(kafkaUtilityService.getKafkaChannel()).thenReturn(kafkaChannel);
 
         holder.addDeleteFlow(FlowSpeakerData.builder()
                 .switchId(SWITCH_ID)
