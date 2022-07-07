@@ -19,7 +19,6 @@ import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsReque
 import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.command.CommandData;
@@ -211,7 +210,6 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
                 .switchId(switchId)
                 .commandId(commandId)
                 .commands(commands)
-                .origin(Origin.NETWORK)
                 .failIfExists(false)
                 .build();
         emit(STREAM_SPEAKER_RULES_ID, getCurrentTuple(), makeSpeakerRulesTuple(request));
@@ -229,7 +227,6 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
                 .switchId(switchId)
                 .commandId(commandId)
                 .commands(commands)
-                .origin(Origin.NETWORK)
                 .build();
         emit(STREAM_SPEAKER_RULES_ID, getCurrentTuple(), makeSpeakerRulesTuple(request));
     }

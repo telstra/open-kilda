@@ -20,7 +20,6 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
@@ -63,14 +62,14 @@ public class UpdateSharedEndpointRulesAction
         stateMachine.setInstallNewYFlowOfCommands(installOfCommands);
         InstallSpeakerCommandsRequest installRequest =
                 FlowRulesConverter.INSTANCE.buildFlowInstallCommand(sharedEndpoint, installOfCommands,
-                        stateMachine.getCommandContext(), Origin.FLOW_HS);
+                        stateMachine.getCommandContext());
         stateMachine.addInstallSpeakerCommand(installRequest.getCommandId(), installRequest);
 
         List<OfCommand> deleteOfCommands = stateMachine.getDeleteOldYFlowOfCommands();
         deleteOfCommands = OfCommandConverter.INSTANCE.reverseDependenciesForDeletion(deleteOfCommands);
         DeleteSpeakerCommandsRequest deleteRequest =
                 FlowRulesConverter.INSTANCE.buildFlowDeleteCommand(sharedEndpoint, deleteOfCommands,
-                        stateMachine.getCommandContext(), Origin.FLOW_HS);
+                        stateMachine.getCommandContext());
         stateMachine.addDeleteSpeakerCommand(deleteRequest.getCommandId(), deleteRequest);
 
         if (stateMachine.getInstallSpeakerRequests().isEmpty() && stateMachine.getDeleteSpeakerRequests().isEmpty()) {

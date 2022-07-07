@@ -20,7 +20,6 @@ import static java.util.stream.Collectors.toList;
 import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.SpeakerData;
@@ -46,11 +45,11 @@ public final class FlowRulesConverter {
      * Build a list of InstallSpeakerCommandsRequest from the provided speakerData.
      */
     public Collection<InstallSpeakerCommandsRequest> buildFlowInstallCommands(
-            Map<SwitchId, List<SpeakerData>> speakerData, CommandContext context, Origin origin) {
+            Map<SwitchId, List<SpeakerData>> speakerData, CommandContext context) {
         return speakerData.entrySet().stream()
                 .map(entry -> {
                     List<OfCommand> ofCommands = OfCommandConverter.INSTANCE.toOfCommands(entry.getValue());
-                    return buildFlowInstallCommand(entry.getKey(), ofCommands, context, origin);
+                    return buildFlowInstallCommand(entry.getKey(), ofCommands, context);
                 })
                 .collect(Collectors.toList());
     }
@@ -59,7 +58,7 @@ public final class FlowRulesConverter {
      * Build a InstallSpeakerCommandsRequest from the provided OF commands.
      */
     public InstallSpeakerCommandsRequest buildFlowInstallCommand(SwitchId switchId, List<OfCommand> ofCommands,
-                                                                 CommandContext context, Origin origin) {
+                                                                 CommandContext context) {
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
         return InstallSpeakerCommandsRequest.builder()
@@ -67,7 +66,6 @@ public final class FlowRulesConverter {
                 .switchId(switchId)
                 .commandId(commandId)
                 .commands(ofCommands)
-                .origin(origin)
                 .build();
     }
 
@@ -76,12 +74,12 @@ public final class FlowRulesConverter {
      * NOTICE: the given dependencies are reversed as required for deletion.
      */
     public Collection<DeleteSpeakerCommandsRequest> buildFlowDeleteCommands(
-            Map<SwitchId, List<SpeakerData>> speakerData, CommandContext context, Origin origin) {
+            Map<SwitchId, List<SpeakerData>> speakerData, CommandContext context) {
         return speakerData.entrySet().stream()
                 .map(entry -> {
                     List<OfCommand> ofCommands = OfCommandConverter.INSTANCE.toOfCommands(entry.getValue());
                     ofCommands = OfCommandConverter.INSTANCE.reverseDependenciesForDeletion(ofCommands);
-                    return buildFlowDeleteCommand(entry.getKey(), ofCommands, context, origin);
+                    return buildFlowDeleteCommand(entry.getKey(), ofCommands, context);
                 })
                 .collect(toList());
     }
@@ -90,9 +88,9 @@ public final class FlowRulesConverter {
      * Build a DeleteSpeakerCommandsRequest from the provided OF commands.
      */
     public DeleteSpeakerCommandsRequest buildFlowDeleteCommand(SwitchId switchId, List<OfCommand> ofCommands,
-                                                               CommandContext context, Origin origin) {
+                                                               CommandContext context) {
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
-        return new DeleteSpeakerCommandsRequest(messageContext, switchId, commandId, ofCommands, origin);
+        return new DeleteSpeakerCommandsRequest(messageContext, switchId, commandId, ofCommands);
     }
 }

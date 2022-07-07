@@ -22,7 +22,6 @@ import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowPathDirection;
@@ -58,7 +57,6 @@ public final class KafkaUtils {
                 .switchId(speakerData.get(0).getSwitchId())
                 .commandId(UUID.randomUUID())
                 .commands(toCommands(speakerData))
-                .origin(Origin.SW_MANAGER)
                 .build();
     }
 
