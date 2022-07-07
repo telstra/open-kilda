@@ -10,6 +10,8 @@ spouts:
     parallelism: 1
 # bolt definitions
 bolts:
+  - id: "STATS_REQUESTER_BOLT"
+    parallelism: 1
   - id: "TICK_BOLT"
     parallelism: 1
   - id: "zookeeper.bolt"
