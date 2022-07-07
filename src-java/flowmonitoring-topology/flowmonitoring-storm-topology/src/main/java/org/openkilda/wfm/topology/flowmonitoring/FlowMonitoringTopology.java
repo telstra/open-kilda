@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowmonitoring;
 
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_HS_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_REMOVE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ISL_UPDATE_STREAM_ID;
@@ -23,6 +24,7 @@ import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.S
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_ID_FIELD;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.IslDataSplitterBolt.ISL_KEY_FIELD;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.zk.ZkStreams;
@@ -31,6 +33,7 @@ import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.ActionBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt;
+import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowHsEncoder;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowStateCacheBolt;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.IslCacheBolt;
@@ -77,6 +80,7 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
 
         actionBolt(tb, persistenceManager);
         outputReroute(tb);
+        outputFlowHs(tb);
 
         statsBolt(tb);
 
@@ -168,13 +172,23 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
     }
 
     private void outputReroute(TopologyBuilder topology) {
-        RerouteEncoder bolt = new RerouteEncoder();
-        declareBolt(topology, bolt, RerouteEncoder.BOLT_ID)
+        RerouteEncoder encoder = new RerouteEncoder();
+        declareBolt(topology, encoder, RerouteEncoder.BOLT_ID)
                 .shuffleGrouping(ComponentId.ACTION_BOLT.name());
 
-        KafkaBolt output = buildKafkaBolt(getConfig().getKafkaTopoRerouteTopic());
+        KafkaBolt<String, Message> output = buildKafkaBolt(getConfig().getKafkaTopoRerouteTopic());
         declareBolt(topology, output, ComponentId.REROUTE_BOLT.name())
                 .shuffleGrouping(RerouteEncoder.BOLT_ID);
+    }
+
+    private void outputFlowHs(TopologyBuilder topology) {
+        FlowHsEncoder encoder = new FlowHsEncoder();
+        declareBolt(topology, encoder, FlowHsEncoder.BOLT_ID)
+                .shuffleGrouping(ComponentId.ACTION_BOLT.name(), FLOW_HS_STREAM_ID.name());
+
+        KafkaBolt<String, Message> output = buildKafkaBolt(getConfig().getKafkaTopoFlowHsTopic());
+        declareBolt(topology, output, ComponentId.FLOW_HS_BOLT.name())
+                .shuffleGrouping(FlowHsEncoder.BOLT_ID);
     }
 
     private void statsBolt(TopologyBuilder topologyBuilder) {
@@ -223,7 +237,9 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         STATS_BOLT("stats.bolt"),
 
         REROUTE_ENCODER("reroute.encoder"),
+        FLOW_HS_ENCODER("flow.hs.encoder"),
         REROUTE_BOLT("reroute.bolt"),
+        FLOW_HS_BOLT("flow.hs.bolt"),
 
         TICK_BOLT("tick.bolt");
 
@@ -245,7 +261,8 @@ public class FlowMonitoringTopology extends AbstractTopology<FlowMonitoringTopol
         STATS_STREAM_ID,
         FLOW_UPDATE_STREAM_ID,
         FLOW_REMOVE_STREAM_ID,
-        ISL_UPDATE_STREAM_ID
+        ISL_UPDATE_STREAM_ID,
+        FLOW_HS_STREAM_ID
     }
 
     /**
