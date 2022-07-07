@@ -77,11 +77,13 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     public static final String SRC_ARP_PROPERTY = "detect_src_arp_connected_devices";
     public static final String DST_ARP_PROPERTY = "detect_dst_arp_connected_devices";
     public static final String LOOP_SWITCH_ID_PROPERTY = "loop_switch_id";
+    public static final String VLAN_STATISTICS_PROPERTY = "vlan_statistics";
 
     private Switch srcSwitch;
     private Switch destSwitch;
     private Set<PathId> pathIds;
     private Map<PathId, FlowPath> paths;
+    private Set<Integer> vlanStatistics;
 
     @Override
     @Property(FLOW_ID_PROPERTY)
@@ -368,6 +370,14 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     @Property(LOOP_SWITCH_ID_PROPERTY)
     @Convert(SwitchIdConverter.class)
     public abstract void setLoopSwitchId(SwitchId loopSwitchId);
+
+    @Override
+    @Property(VLAN_STATISTICS_PROPERTY)
+    public abstract void setVlanStatistics(Set<Integer> vlanStatistics);
+
+    @Override
+    @Property(VLAN_STATISTICS_PROPERTY)
+    public abstract Set<Integer> getVlanStatistics();
 
     @Override
     public Switch getSrcSwitch() {

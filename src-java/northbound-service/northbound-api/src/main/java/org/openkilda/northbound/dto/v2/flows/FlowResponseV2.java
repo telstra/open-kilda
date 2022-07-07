@@ -77,4 +77,6 @@ public class FlowResponseV2 {
     @JsonProperty("y_flow_id")
     @JsonInclude(Include.NON_NULL)
     private String yFlowId;
+
+    private FlowStatistics statistics;
 }

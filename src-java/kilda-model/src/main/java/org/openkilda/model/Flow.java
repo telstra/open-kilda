@@ -94,7 +94,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
                 Long maxLatency, Long maxLatencyTier2, Integer priority, boolean pinned,
                 DetectConnectedDevices detectConnectedDevices, PathComputationStrategy pathComputationStrategy,
                 PathComputationStrategy targetPathComputationStrategy, SwitchId loopSwitchId, String affinityGroupId,
-                String yFlowId, YFlow yFlow) {
+                String yFlowId, YFlow yFlow, Set<Integer> vlanStatistics) {
         FlowDataImpl.FlowDataImplBuilder builder = FlowDataImpl.builder()
                 .flowId(flowId).srcSwitch(srcSwitch).destSwitch(destSwitch)
                 .srcPort(srcPort).srcVlan(srcVlan).srcInnerVlan(srcInnerVlan)
@@ -107,6 +107,9 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
                 .targetPathComputationStrategy(targetPathComputationStrategy)
                 .loopSwitchId(loopSwitchId).affinityGroupId(affinityGroupId)
                 .yFlowId(yFlowId).yFlow(yFlow);
+        if (vlanStatistics != null) {
+            builder.vlanStatistics(vlanStatistics);
+        }
         if (detectConnectedDevices != null) {
             builder.detectConnectedDevices(detectConnectedDevices);
         }
@@ -606,6 +609,10 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
         String getYFlowId();
 
         YFlow getYFlow();
+
+        void setVlanStatistics(Set<Integer> vlanStatistics);
+
+        Set<Integer> getVlanStatistics();
     }
 
     /**
@@ -656,6 +663,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
         String yFlowId;
         @Setter(AccessLevel.NONE)
         YFlow yFlow;
+        Set<Integer> vlanStatistics;
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
         final Set<FlowPath> paths = new HashSet<>();
