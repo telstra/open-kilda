@@ -19,11 +19,7 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
-import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.convertDpIdToMac;
 import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.isOvs;
-import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 
@@ -39,9 +35,6 @@ import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
-import org.openkilda.floodlight.switchmanager.factory.SwitchFlowFactory;
-import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;
-import org.openkilda.floodlight.switchmanager.factory.generator.SwitchFlowGenerator;
 import org.openkilda.floodlight.switchmanager.web.SwitchManagerWebRoutable;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
@@ -53,10 +46,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.Meter;
 import org.openkilda.model.MeterId;
-import org.openkilda.model.SwitchFeature;
-import org.openkilda.model.cookie.Cookie;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -72,13 +62,11 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.FlowModUtils;
-import org.apache.commons.collections4.CollectionUtils;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
@@ -96,7 +84,6 @@ import org.projectfloodlight.openflow.protocol.OFPortConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortMod;
 import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.Match.Builder;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -106,7 +93,6 @@ import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -164,7 +150,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final IPv4Address STUB_VXLAN_IPV4_DST = IPv4Address.of("127.0.0.2");
     public static final int STUB_VXLAN_UDP_SRC = 4500;
     public static final int SERVER_42_FLOW_RTT_FORWARD_UDP_PORT = 4700;
-    public static final int SERVER_42_ISL_RTT_FORWARD_UDP_PORT = 4710;
     public static final int VXLAN_UDP_DST = 4789;
 
     public static final int INPUT_TABLE_ID = 0;
@@ -182,8 +167,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     private IOFSwitchService ofSwitchService;
     private IKafkaProducerService producerService;
-    private FeatureDetectorService featureDetectorService;
-    private SwitchFlowFactory switchFlowFactory;
 
     private SwitchManagerConfig config;
 
@@ -194,8 +177,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         return ImmutableList.of(
                 ISwitchManager.class,
-                SwitchTrackingService.class,
-                SwitchFlowFactory.class);
+                SwitchTrackingService.class);
     }
 
     /**
@@ -206,7 +188,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return ImmutableMap.<Class<? extends IFloodlightService>, IFloodlightService>builder()
                 .put(ISwitchManager.class, this)
                 .put(SwitchTrackingService.class, new SwitchTrackingService())
-                .put(SwitchFlowFactory.class, new SwitchFlowFactory())
                 .build();
     }
 
@@ -233,10 +214,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         ofSwitchService = context.getServiceImpl(IOFSwitchService.class);
         producerService = context.getServiceImpl(IKafkaProducerService.class);
-        featureDetectorService = context.getServiceImpl(FeatureDetectorService.class);
         FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(context, this);
         config = provider.getConfiguration(SwitchManagerConfig.class);
-        switchFlowFactory = context.getServiceImpl(SwitchFlowFactory.class);
     }
 
     /**
@@ -246,8 +225,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public void startUp(FloodlightModuleContext context) {
         logger.info("Module {} - start up", SwitchTrackingService.class.getName());
         context.getServiceImpl(SwitchTrackingService.class).setup(context);
-        logger.info("Module {} - start up", SwitchFlowFactory.class.getName());
-        context.getServiceImpl(SwitchFlowFactory.class).setup(context);
 
         context.getServiceImpl(IFloodlightProviderService.class).addOFMessageListener(OFType.ERROR, this);
         context.getServiceImpl(IRestApiService.class).addRestletRoutable(new SwitchManagerWebRoutable());
@@ -312,39 +289,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFlowStatsRequest flowRequest = ofFactory.buildFlowStatsRequest()
                 .setOutGroup(OFGroup.ANY)
                 .setCookieMask(U64.ZERO)
-                .build();
-
-        try {
-            Future<List<OFFlowStatsReply>> future = sw.writeStatsRequest(flowRequest);
-            List<OFFlowStatsReply> values = future.get(10, TimeUnit.SECONDS);
-            if (values != null) {
-                entries = values.stream()
-                        .map(OFFlowStatsReply::getEntries)
-                        .flatMap(List::stream)
-                        .collect(toList());
-            }
-        } catch (ExecutionException | TimeoutException e) {
-            logger.error("Could not get flow stats for {}.", dpid, e);
-            throw new SwitchNotFoundException(dpid);
-        } catch (InterruptedException e) {
-            logger.error("Could not get flow stats for {}.", dpid, e);
-            Thread.currentThread().interrupt();
-            throw new SwitchNotFoundException(dpid);
-        }
-
-        return entries;
-    }
-
-    private List<OFFlowStatsEntry> dumpFlowTable(final DatapathId dpid, final int tableId)
-            throws SwitchNotFoundException {
-        List<OFFlowStatsEntry> entries = new ArrayList<>();
-        IOFSwitch sw = lookupSwitch(dpid);
-
-        OFFactory ofFactory = sw.getOFFactory();
-        OFFlowStatsRequest flowRequest = ofFactory.buildFlowStatsRequest()
-                .setOutGroup(OFGroup.ANY)
-                .setCookieMask(U64.ZERO)
-                .setTableId(TableId.of(tableId))
                 .build();
 
         try {
@@ -553,222 +497,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .collect(toList());
     }
 
-    private Optional<OFGroupDescStatsEntry> getGroup(IOFSwitch sw, int groupId) {
-        return dumpGroups(sw).stream()
-                .filter(groupDesc -> groupDesc.getGroup().getGroupNumber() == groupId)
-                .findFirst();
-    }
-
-    private List<Long> removeFlowByOfFlowDelete(DatapathId dpid, int tableId,
-                                                OFFlowDelete dropFlowDelete)
-            throws SwitchOperationException {
-        List<OFFlowStatsEntry> flowStatsBefore = dumpFlowTable(dpid, tableId);
-
-        IOFSwitch sw = lookupSwitch(dpid);
-
-        pushFlow(sw, "--DeleteFlow--", dropFlowDelete);
-
-        // Wait for OFFlowDelete to be processed.
-        sendBarrierRequest(sw);
-
-        List<OFFlowStatsEntry> flowStatsAfter = dumpFlowTable(dpid, tableId);
-        Set<Long> cookiesAfter = flowStatsAfter.stream()
-                .map(entry -> entry.getCookie().getValue())
-                .collect(toSet());
-
-        return flowStatsBefore.stream()
-                .map(entry -> entry.getCookie().getValue())
-                .filter(cookie -> !cookiesAfter.contains(cookie))
-                .peek(cookie -> logger.info("Rule with cookie {} has been removed from switch {}.", cookie, dpid))
-                .collect(toList());
-    }
-
-    @Override
-    public long installEgressIslVxlanRule(DatapathId dpid, int port) throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
-        OFFlowMod flowMod = buildEgressIslVxlanRule(ofFactory, dpid, port);
-        String flowName = "--Isl egress rule for VXLAN--" + dpid.toString();
-        pushFlow(sw, flowName, flowMod);
-        return flowMod.getCookie().getValue();
-    }
-
-    private OFFlowMod buildEgressIslVxlanRule(OFFactory ofFactory, DatapathId dpid, int port) {
-        Match match = buildEgressIslVxlanRuleMatch(dpid, port, ofFactory);
-        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(EGRESS_TABLE_ID));
-        return prepareFlowModBuilder(
-                ofFactory, Cookie.encodeIslVxlanEgress(port),
-                ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE, INPUT_TABLE_ID)
-                .setMatch(match)
-                .setInstructions(ImmutableList.of(goToTable)).build();
-    }
-
-    @Override
-    public long removeEgressIslVxlanRule(DatapathId dpid, int port) throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
-        OFFlowDelete.Builder builder = ofFactory.buildFlowDelete();
-        long cookie = Cookie.encodeIslVxlanEgress(port);
-        builder.setCookie(U64.of(cookie));
-        builder.setCookieMask(U64.NO_MASK);
-        Match match = buildEgressIslVxlanRuleMatch(dpid, port, ofFactory);
-        builder.setMatch(match);
-        builder.setPriority(ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE);
-
-        removeFlowByOfFlowDelete(dpid, INPUT_TABLE_ID, builder.build());
-        return cookie;
-    }
-
-    private Match buildEgressIslVxlanRuleMatch(DatapathId dpid, int port, OFFactory ofFactory) {
-        return ofFactory.buildMatch()
-                .setExact(MatchField.ETH_DST, convertDpIdToMac(dpid))
-                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-                .setExact(MatchField.IN_PORT, OFPort.of(port))
-                .setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC))
-                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST))
-                .build();
-    }
-
-    @Override
-    public long installTransitIslVxlanRule(DatapathId dpid, int port) throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
-        OFFlowMod flowMod = buildTransitIslVxlanRule(ofFactory, port);
-        String flowName = "--Isl transit rule for VXLAN--" + dpid.toString();
-        pushFlow(sw, flowName, flowMod);
-        return flowMod.getCookie().getValue();
-    }
-
-    private OFFlowMod buildTransitIslVxlanRule(OFFactory ofFactory, int port) {
-        Match match = buildTransitIslVxlanRuleMatch(port, ofFactory);
-        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(TRANSIT_TABLE_ID));
-        return prepareFlowModBuilder(
-                ofFactory, Cookie.encodeIslVxlanTransit(port),
-                ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE, INPUT_TABLE_ID)
-                .setMatch(match)
-                .setInstructions(ImmutableList.of(goToTable)).build();
-    }
-
-    @Override
-    public long removeTransitIslVxlanRule(DatapathId dpid, int port) throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
-        OFFlowDelete.Builder builder = ofFactory.buildFlowDelete();
-        long cookie = Cookie.encodeIslVxlanTransit(port);
-        builder.setCookie(U64.of(cookie));
-        builder.setCookieMask(U64.NO_MASK);
-        Match match = buildTransitIslVxlanRuleMatch(port, ofFactory);
-        builder.setMatch(match);
-        builder.setPriority(ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE);
-        removeFlowByOfFlowDelete(dpid, INPUT_TABLE_ID, builder.build());
-        return cookie;
-    }
-
-    private Match buildTransitIslVxlanRuleMatch(int port, OFFactory ofFactory) {
-        return ofFactory.buildMatch()
-                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-                .setExact(MatchField.IN_PORT, OFPort.of(port))
-                .setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC))
-                .setExact(MatchField.UDP_DST, TransportPort.of(VXLAN_UDP_DST))
-                .build();
-    }
-
-    @Override
-    public long installEgressIslVlanRule(DatapathId dpid, int port) throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
-        OFFlowMod flowMod = buildEgressIslVlanRule(ofFactory, port);
-        String flowName = "--Isl egress rule for VLAN--" + dpid.toString();
-        pushFlow(sw, flowName, flowMod);
-        return flowMod.getCookie().getValue();
-    }
-
-    private OFFlowMod buildEgressIslVlanRule(OFFactory ofFactory, int port) {
-        Match match = buildInPortMatch(port, ofFactory);
-        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(EGRESS_TABLE_ID));
-        return prepareFlowModBuilder(
-                ofFactory, Cookie.encodeIslVlanEgress(port),
-                ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE, INPUT_TABLE_ID)
-                .setMatch(match)
-                .setInstructions(ImmutableList.of(goToTable)).build();
-    }
-
-    @Override
-    public Long installServer42IslRttInputFlow(DatapathId dpid, int server42Port, int islPort)
-            throws SwitchOperationException {
-        return installDefaultFlow(dpid, switchFlowFactory.getServer42IslRttInputFlowGenerator(
-                server42Port, islPort), "--server 42 isl RTT input rule--");
-    }
-
-    @Override
-    public long removeEgressIslVlanRule(DatapathId dpid, int port) throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
-        OFFlowDelete.Builder builder = ofFactory.buildFlowDelete();
-        long cookie = Cookie.encodeIslVlanEgress(port);
-        builder.setCookie(U64.of(cookie));
-        builder.setCookieMask(U64.NO_MASK);
-        Match match = buildInPortMatch(port, ofFactory);
-        builder.setMatch(match);
-        builder.setPriority(ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE);
-        removeFlowByOfFlowDelete(dpid, EGRESS_TABLE_ID, builder.build());
-        return cookie;
-    }
-
-    @Override
-    public Long removeServer42IslRttInputFlow(DatapathId dpid, int islPort) throws SwitchOperationException {
-        long cookie = Cookie.encodeServer42IslRttInput(islPort);
-        IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
-
-        OFFlowDelete.Builder builder = ofFactory.buildFlowDelete();
-        builder.setCookie(U64.of(cookie));
-        builder.setCookieMask(U64.NO_MASK);
-
-        builder.setPriority(SERVER_42_ISL_RTT_INPUT_PRIORITY);
-
-        removeFlowByOfFlowDelete(dpid, INPUT_TABLE_ID, builder.build());
-        return cookie;
-    }
-
-    @Override
-    public List<Long> installMultitableEndpointIslRules(DatapathId dpid, int port) throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        List<Long> installedRules = new ArrayList<>();
-        Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
-        if (features.contains(NOVIFLOW_PUSH_POP_VXLAN) || features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-            installedRules.add(installEgressIslVxlanRule(dpid, port));
-            installedRules.add(installTransitIslVxlanRule(dpid, port));
-        } else {
-            logger.info("Skip installation of isl multitable vxlan rule for switch {} {}", dpid, port);
-        }
-        installedRules.add(installEgressIslVlanRule(dpid, port));
-        return installedRules;
-    }
-
-    @Override
-    public List<Long> removeMultitableEndpointIslRules(DatapathId dpid, int port) throws SwitchOperationException {
-        IOFSwitch sw = lookupSwitch(dpid);
-        List<Long> removedFlows = new ArrayList<>();
-        Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
-        if (features.contains(NOVIFLOW_PUSH_POP_VXLAN) || features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-            removedFlows.add(removeEgressIslVxlanRule(dpid, port));
-            removedFlows.add(removeTransitIslVxlanRule(dpid, port));
-        } else {
-            logger.info("Skip removing of isl multitable vxlan rule for switch {} {}", dpid, port);
-        }
-        removedFlows.add(removeEgressIslVlanRule(dpid, port));
-        return removedFlows;
-    }
-
-    private Match buildInPortMatch(int port, OFFactory ofFactory) {
-        return ofFactory.buildMatch()
-                .setExact(MatchField.IN_PORT, OFPort.of(port))
-                .build();
-    }
-
     private void verifySwitchSupportsMeters(IOFSwitch sw) throws UnsupportedSwitchOperationException {
         if (!config.isOvsMetersEnabled() && isOvs(sw)) {
             throw new UnsupportedSwitchOperationException(sw.getId(),
@@ -941,27 +669,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     /**
-     * Create an OFFlowMod builder and set required fields.
-     *
-     * @param ofFactory OF factory for the switch
-     * @param cookie cookie for the flow
-     * @param priority priority to set on the flow
-     * @return {@link OFFlowMod}
-     */
-    private OFFlowMod.Builder prepareFlowModBuilder(final OFFactory ofFactory, final long cookie, final int priority,
-                                                    final int tableId) {
-        OFFlowMod.Builder fmb = ofFactory.buildFlowAdd();
-        fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
-        fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
-        fmb.setBufferId(OFBufferId.NO_BUFFER);
-        fmb.setCookie(U64.of(cookie));
-        fmb.setPriority(priority);
-        fmb.setTableId(TableId.of(tableId));
-
-        return fmb;
-    }
-
-    /**
      * Pushes a single flow modification command to the switch with the given datapath ID.
      *
      * @param sw open flow switch descriptor
@@ -1043,11 +750,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return new ArrayList<>(sw.getPorts());
     }
 
-    @Override
-    public SwitchManagerConfig getSwitchManagerConfig() {
-        return config;
-    }
-
     private void updatePortStatus(IOFSwitch sw, int portNumber, boolean isAdminDown) throws SwitchOperationException {
         Set<OFPortConfig> config = new HashSet<>(1);
         if (isAdminDown) {
@@ -1081,93 +783,5 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                             portNumber, sw.getId()));
         }
         return portDesc.getHwAddr();
-    }
-
-
-    private OFMeterConfig getMeter(DatapathId dpid, long meter) throws SwitchOperationException {
-        return dumpMeters(dpid).stream()
-                .filter(meterConfig -> meterConfig.getMeterId() == meter)
-                .findFirst()
-                .orElse(null);
-    }
-
-    private Long installDefaultFlow(DatapathId dpid, SwitchFlowGenerator flowGeneratorSupplier,
-                                    String flowDescription)
-            throws SwitchNotFoundException, OfInstallException {
-        IOFSwitch sw = lookupSwitch(dpid);
-
-        SwitchFlowTuple switchFlowTuple = flowGeneratorSupplier.generateFlow(sw);
-        if (switchFlowTuple.getFlow() == null) {
-            logger.debug("Skip installation of {} rule for switch {}", flowDescription, dpid);
-            return null;
-        } else {
-            String flowName = flowDescription + dpid.toString();
-            installSwitchFlowTuple(switchFlowTuple, flowName);
-            return switchFlowTuple.getFlow().getCookie().getValue();
-        }
-    }
-
-    private void installSwitchFlowTuple(SwitchFlowTuple switchFlowTuple, String flowName) throws OfInstallException {
-        IOFSwitch sw = switchFlowTuple.getSw();
-        if (switchFlowTuple.getMeter() != null) {
-            processMeter(sw, switchFlowTuple.getMeter());
-        }
-        pushFlow(sw, flowName, switchFlowTuple.getFlow());
-    }
-
-    @VisibleForTesting
-    void processMeter(IOFSwitch sw, OFMeterMod meterMod) {
-        long meterId = meterMod.getMeterId();
-        OFMeterConfig actualMeterConfig;
-        try {
-            actualMeterConfig = getMeter(sw.getId(), meterId);
-        } catch (SwitchOperationException e) {
-            logger.warn("Meter {} won't be installed on the switch {}: {}", meterId, sw.getId(), e.getMessage());
-            return;
-        }
-
-        OFMeterBandDrop actualMeterBandDrop = Optional.ofNullable(actualMeterConfig)
-                .map(OFMeterConfig::getEntries)
-                .flatMap(entries -> entries.stream().findFirst())
-                .map(OFMeterBandDrop.class::cast)
-                .orElse(null);
-
-        try {
-            OFMeterBandDrop expectedMeterBandDrop = sw.getOFFactory().getVersion().compareTo(OF_13) > 0
-                    ? (OFMeterBandDrop) meterMod.getBands().get(0) : (OFMeterBandDrop) meterMod.getMeters().get(0);
-            long expectedRate = expectedMeterBandDrop.getRate();
-            long expectedBurstSize = expectedMeterBandDrop.getBurstSize();
-            Set<OFMeterFlags> expectedFlags = meterMod.getFlags();
-
-            if (actualMeterBandDrop != null && actualMeterBandDrop.getRate() == expectedRate
-                    && actualMeterBandDrop.getBurstSize() == expectedBurstSize
-                    && CollectionUtils.isEqualCollection(actualMeterConfig.getFlags(), expectedFlags)) {
-                logger.debug("Meter {} won't be reinstalled on switch {}. It already exists", meterId, sw.getId());
-                return;
-            }
-
-            if (actualMeterBandDrop != null) {
-                logger.info("Meter {} on switch {} has rate={}, burst size={} and flags={} but it must have "
-                                + "rate={}, burst size={} and flags={}. Meter will be reinstalled.",
-                        meterId, sw.getId(), actualMeterBandDrop.getRate(), actualMeterBandDrop.getBurstSize(),
-                        actualMeterConfig.getFlags(), expectedRate, expectedBurstSize, expectedFlags);
-                buildAndDeleteMeter(sw, sw.getId(), meterId);
-                sendBarrierRequest(sw);
-            }
-
-            installMeterMod(sw, meterMod);
-        } catch (SwitchOperationException e) {
-            logger.warn("Failed to (re)install meter {} on switch {}: {}", meterId, sw.getId(), e.getMessage());
-        }
-    }
-
-    private void installMeterMod(IOFSwitch sw, OFMeterMod meterMod) throws OfInstallException {
-        logger.info("Installing meter {} on switch {}", meterMod.getMeterId(), sw.getId());
-
-        pushFlow(sw, "--InstallMeter--", meterMod);
-
-        // All cases when we're installing meters require that we wait until the command is processed and
-        // the meter is installed.
-        sendBarrierRequest(sw);
     }
 }

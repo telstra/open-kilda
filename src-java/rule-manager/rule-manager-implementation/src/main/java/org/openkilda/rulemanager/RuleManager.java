@@ -52,4 +52,9 @@ public interface RuleManager {
      * Build all required rules and meters y-flow.
      */
     List<SpeakerData> buildRulesForYFlow(List<FlowPath> flowPaths, DataAdapter adapter);
+
+    /**
+     * Build all required service rules for ISL on specified port.
+     */
+    List<SpeakerData> buildIslServiceRules(SwitchId switchId, int port, DataAdapter adapter);
 }

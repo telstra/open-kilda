@@ -48,8 +48,8 @@ state OPERATIONAL {
         SET_UP_RESOURCES : enter / send install isl rules for Z-end
         SET_UP_RESOURCES : isl-rule-installed / mark setup done for mentioned endpoint
         SET_UP_RESOURCES : isl-rule-installed [both sides are valid] / emit _setup_done
-        SET_UP_RESOURCES : isl-rule-timeout [has attempts] / emit install isl rules for timeout endpoint
-        SET_UP_RESOURCES : isl-rule-timeout [!has attempts] / emit _setup_done
+        SET_UP_RESOURCES : isl-rule-failed [has attempts] / emit install isl rules for failed endpoint
+        SET_UP_RESOURCES : isl-rule-failed [!has attempts] / emit _setup_done
 
         USABLE : enter / persist state
         USABLE : enter [isBfdEnabled] / emit bisl-bfd-properties-update
@@ -91,8 +91,8 @@ CLEAN_UP_RESOURCES : enter / send remove isl rules for A-end endpoint
 CLEAN_UP_RESOURCES : enter / send remove isl rules for Z-end endpoint
 CLEAN_UP_RESOURCES : isl-rule-installed / mark remove done for mentioned endpoint
 CLEAN_UP_RESOURCES : isl-rule-removed [both endpoints are valid] / emit isl-remove-finished
-CLEAN_UP_RESOURCES : isl-rule-timeout [has attempts] / emit remove isl rules for timeout endpoint
-CLEAN_UP_RESOURCES : isl-rule-timeout [!has attempts] / emit isl-remove-finished
+CLEAN_UP_RESOURCES : isl-rule-failed [has attempts] / emit remove isl rules for failed endpoint
+CLEAN_UP_RESOURCES : isl-rule-failed [!has attempts] / emit isl-remove-finished
 CLEAN_UP_RESOURCES --> DELETED : _resources_done
 CLEAN_UP_RESOURCES --> OPERATIONAL : isl-(up|move)|round-trip-status[status!=down]
 

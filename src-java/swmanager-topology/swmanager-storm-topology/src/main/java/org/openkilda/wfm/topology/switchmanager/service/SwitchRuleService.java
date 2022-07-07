@@ -288,7 +288,7 @@ public class SwitchRuleService implements SwitchManagerHubService {
             carrier.response(key, message);
         } else {
             carrier.errorResponse(key, ErrorType.INTERNAL_ERROR, "Failed to process rules",
-                    response.getFailedCommandIds().values().stream().reduce("", String::concat));
+                    String.join(" ", response.getFailedCommandIds().values()));
         }
         commandsCache.remove(key);
 

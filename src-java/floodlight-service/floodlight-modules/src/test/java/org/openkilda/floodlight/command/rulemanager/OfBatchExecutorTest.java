@@ -23,11 +23,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.floodlight.KafkaChannel;
+import org.openkilda.floodlight.api.BatchCommandProcessor;
 import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
-import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
-import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.messaging.MessageContext;
@@ -63,8 +61,7 @@ public class OfBatchExecutorTest {
     private static final SwitchId SWITCH_ID = new SwitchId("1");
 
     IOFSwitch sw = mock(IOFSwitch.class);
-    KafkaUtilityService kafkaUtilityService = mock(KafkaUtilityService.class);
-    IKafkaProducerService kafkaProducerService = mock(IKafkaProducerService.class);
+    BatchCommandProcessor batchCommandProcessor = mock(BatchCommandProcessor.class);
     SessionService sessionService = mock(SessionService.class);
     IOFSwitchService switchService = mock(IOFSwitchService.class);
 
@@ -72,8 +69,7 @@ public class OfBatchExecutorTest {
             UUID.randomUUID(), SWITCH_ID);
     private final OfBatchExecutor executor = OfBatchExecutor.builder()
             .iofSwitch(sw)
-            .kafkaUtilityService(kafkaUtilityService)
-            .kafkaProducerService(kafkaProducerService)
+            .commandProcessor(batchCommandProcessor)
             .sessionService(sessionService)
             .messageContext(MESSAGE_CONTEXT)
             .holder(holder)
@@ -95,9 +91,6 @@ public class OfBatchExecutorTest {
         SettableFuture<List<OFFlowStatsReply>> future = SettableFuture.create();
         future.set(Collections.singletonList(reply));
         when(sw.writeStatsRequest(any(OFFlowStatsRequest.class))).thenReturn(future);
-        KafkaChannel kafkaChannel = mock(KafkaChannel.class);
-        when(kafkaChannel.getSpeakerSwitchManagerResponseTopic()).thenReturn("kafka-topic");
-        when(kafkaUtilityService.getKafkaChannel()).thenReturn(kafkaChannel);
 
         holder.addDeleteFlow(FlowSpeakerData.builder()
                 .switchId(SWITCH_ID)
@@ -110,11 +103,10 @@ public class OfBatchExecutorTest {
         executor.executeBatch();
 
         ArgumentCaptor<SpeakerCommandResponse> captor = ArgumentCaptor.forClass(SpeakerCommandResponse.class);
-        verify(kafkaProducerService).sendMessageAndTrack(any(String.class), any(String.class),
-                captor.capture());
+        verify(batchCommandProcessor).processResponse(captor.capture(), any(String.class), any(Origin.class));
         assertTrue(captor.getValue().isSuccess());
 
-        verifyNoMoreInteractions(kafkaProducerService);
+        verifyNoMoreInteractions(batchCommandProcessor);
     }
 
     @Test
@@ -129,9 +121,6 @@ public class OfBatchExecutorTest {
         OFFlowStatsReply reply = mock(OFFlowStatsReply.class);
         SettableFuture<List<OFFlowStatsReply>> future = SettableFuture.create();
         future.set(Collections.singletonList(reply));
-        KafkaChannel kafkaChannel = mock(KafkaChannel.class);
-        when(kafkaChannel.getSpeakerSwitchManagerResponseTopic()).thenReturn("kafka-topic");
-        when(kafkaUtilityService.getKafkaChannel()).thenReturn(kafkaChannel);
 
         holder.addDeleteFlow(FlowSpeakerData.builder()
                 .switchId(SWITCH_ID)
@@ -144,10 +133,9 @@ public class OfBatchExecutorTest {
         executor.executeBatch();
 
         ArgumentCaptor<SpeakerCommandResponse> captor = ArgumentCaptor.forClass(SpeakerCommandResponse.class);
-        verify(kafkaProducerService).sendMessageAndTrack(any(String.class), any(String.class),
-                captor.capture());
+        verify(batchCommandProcessor).processResponse(captor.capture(), any(String.class), any(Origin.class));
         assertFalse(captor.getValue().isSuccess());
 
-        verifyNoMoreInteractions(kafkaProducerService);
+        verifyNoMoreInteractions(batchCommandProcessor);
     }
 }

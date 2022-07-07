@@ -34,98 +34,6 @@ import java.util.Map;
 public interface ISwitchManager extends IFloodlightService {
 
     /**
-     * Install intermediate rule for isl on switch in table 0 to route egress in case of vxlan.
-     *
-     * @param dpid datapathId of the switch
-     * @param port isl port
-     * @throws SwitchOperationException Switch not found
-     */
-    long installEgressIslVxlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
-
-    /**
-     * Remove intermediate rule for isl on switch in table 0 to route egress in case of vxlan.
-     *
-     * @param dpid datapathId of the switch
-     * @param port isl port
-     * @throws SwitchOperationException Switch not found
-     */
-    long removeEgressIslVxlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
-
-    /**
-     * Install intermediate rule for isl on switch in table 0 to route transit in case of vxlan.
-     *
-     * @param dpid datapathId of the switch
-     * @param port isl port
-     * @throws SwitchOperationException Switch not found
-     */
-    long installTransitIslVxlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
-
-    /**
-     * Remove intermediate rule for isl on switch in table 0 to route transit in case of vxlan.
-     *
-     * @param dpid datapathId of the switch
-     * @param port isl port
-     * @throws SwitchOperationException Switch not found
-     */
-    long removeTransitIslVxlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
-
-    /**
-     * Install intermediate rule for isl on switch in table 0 to route egress in case of vlan.
-     *
-     * @param dpid datapathId of the switch
-     * @param port isl port
-     * @throws SwitchOperationException Switch not found
-     */
-    long installEgressIslVlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
-
-    /**
-     * Install the Server 42 ISL RTT input rule which forwards a Ping packet into the ISL port.
-     *
-     * @param dpid datapathId of the switch
-     * @param server42Port server 42 port
-     * @param islPort rule forwards Ping packet to the port
-     * @throws SwitchOperationException Switch not found
-     */
-    Long installServer42IslRttInputFlow(DatapathId dpid, int server42Port, int islPort) throws SwitchOperationException;
-
-    /**
-     * Remove intermediate rule for isl on switch in table 0 to route egress in case of vlan.
-     *
-     * @param dpid datapathId of the switch
-     * @param port isl port
-     * @throws SwitchOperationException Switch not found
-     */
-    long removeEgressIslVlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
-
-
-    /**
-     * Remove the Server 42 ISL RTT input rule which forwards a Ping packet into the ISL port.
-     *
-     * @param dpid datapathId of the switch
-     * @param islPort ISL port
-     * @throws SwitchOperationException Switch not found
-     */
-    Long removeServer42IslRttInputFlow(DatapathId dpid, int islPort) throws SwitchOperationException;
-
-    /**
-     * Install isl rules for switch endpoint.
-     *
-     * @param dpid datapathId of the switch
-     * @param port target port
-     * @throws SwitchOperationException Switch not found
-     */
-    List<Long> installMultitableEndpointIslRules(final DatapathId dpid, final int port) throws SwitchOperationException;
-
-    /**
-     * Remove isl rules for switch endpoint.
-     *
-     * @param dpid datapathId of the switch
-     * @param port target port
-     * @throws SwitchOperationException Switch not found
-     */
-    List<Long> removeMultitableEndpointIslRules(final DatapathId dpid, final int port) throws SwitchOperationException;
-
-    /**
      * Returns list of groups installed on switch.
      * @param dpid switch id
      * @return list of groups
@@ -235,11 +143,4 @@ public interface ISwitchManager extends IFloodlightService {
      * @throws SwitchOperationException Switch not found.
      */
     List<OFPortDesc> dumpPortsDescription(DatapathId dpid) throws SwitchOperationException;
-
-    /**
-     * Return switch manager config.
-     *
-     * @return SwitchManagerConfig.
-     */
-    SwitchManagerConfig getSwitchManagerConfig();
 }
