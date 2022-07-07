@@ -70,6 +70,7 @@ import org.openkilda.wfm.topology.TestKafkaConsumer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
@@ -85,10 +86,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -102,11 +105,13 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static final String POLL_DATAPOINT_ASSERT_MESSAGE = "Could not poll all %d datapoints, got only %d records";
     private static final String METRIC_PREFIX = "kilda.";
     private static final int ENCAPSULATION_ID = 123;
-    private static final UUID TRANSACTION_ID = UUID.randomUUID();
     private static final ObjectMapper objectMapper = new ObjectMapper();
     public static final String COMPONENT_NAME = "stats";
     public static final String RUN_ID = "blue";
     public static final String ROOT_NODE = "kilda";
+    private static final int STAT_VLAN_1 = 4;
+    private static final int STAT_VLAN_2 = 5;
+    public static final HashSet<Integer> STAT_VLANS = Sets.newHashSet(STAT_VLAN_1, STAT_VLAN_2);
     private static InMemoryGraphPersistenceManager persistenceManager;
     private static StatsTopologyConfig statsTopologyConfig;
     private static TestKafkaConsumer otsdbConsumer;
@@ -124,6 +129,14 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static final FlowSegmentCookie MAIN_REVERSE_COOKIE = new FlowSegmentCookie(REVERSE, MAIN_COOKIE);
     private static final FlowSegmentCookie PROTECTED_FORWARD_COOKIE = new FlowSegmentCookie(FORWARD, PROTECTED_COOKIE);
     private static final FlowSegmentCookie PROTECTED_REVERSE_COOKIE = new FlowSegmentCookie(REVERSE, PROTECTED_COOKIE);
+    private static final FlowSegmentCookie STAT_VLAN_FORWARD_COOKIE_1 = MAIN_FORWARD_COOKIE.toBuilder()
+            .type(CookieType.VLAN_STATS_PRE_INGRESS).statsVlan(STAT_VLAN_1).build();
+    private static final FlowSegmentCookie STAT_VLAN_FORWARD_COOKIE_2 = MAIN_FORWARD_COOKIE.toBuilder()
+            .type(CookieType.VLAN_STATS_PRE_INGRESS).statsVlan(STAT_VLAN_2).build();
+    private static final FlowSegmentCookie STAT_VLAN_REVERSE_COOKIE_1 = MAIN_REVERSE_COOKIE.toBuilder()
+            .type(CookieType.VLAN_STATS_PRE_INGRESS).statsVlan(STAT_VLAN_1).build();
+    private static final FlowSegmentCookie STAT_VLAN_REVERSE_COOKIE_2 = MAIN_REVERSE_COOKIE.toBuilder()
+            .type(CookieType.VLAN_STATS_PRE_INGRESS).statsVlan(STAT_VLAN_2).build();
     private final String flowId = "f253423454343";
 
     @BeforeClass
@@ -174,7 +187,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
         // need clear data in CacheBolt
         for (Flow flow : flowRepository.findAll()) {
-            flow.getPaths().forEach(this::sendRemoveFlowPathInfo);
+            flow.getPaths().forEach(path -> sendRemoveFlowPathInfo(path, flow.getVlanStatistics()));
         }
 
         persistenceManager.getInMemoryImplementation().purgeData();
@@ -319,7 +332,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     public void meterFlowRulesStatsTest() {
         Flow flow = createOneSwitchFlow(SWITCH_ID_1);
         FlowPath flowPath = flow.getForwardPath();
-        sendUpdateFlowPathInfo(flowPath);
+        sendUpdateFlowPathInfo(flowPath, flow.getVlanStatistics());
 
         MeterStatsEntry meterStats = new MeterStatsEntry(flowPath.getMeterId().getValue(), 500L, 700L);
 
@@ -383,7 +396,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     @Test
     public void flowStatsTest() {
         Flow flow = createOneSwitchFlow(SWITCH_ID_1);
-        sendUpdateFlowPathInfo(flow.getForwardPath());
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
 
         FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, MAIN_FORWARD_COOKIE.getValue(), 150L, 300L, 10, 10);
 
@@ -394,10 +407,10 @@ public class StatsTopologyTest extends AbstractStormTest {
     @Test
     public void flowStatsWithProtectedTest() {
         Flow flow = createFlowWithProtectedPath();
-        sendUpdateFlowPathInfo(flow.getForwardPath());
-        sendUpdateFlowPathInfo(flow.getReversePath());
-        sendUpdateFlowPathInfo(flow.getProtectedForwardPath());
-        sendUpdateFlowPathInfo(flow.getProtectedReversePath());
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getReversePath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getProtectedForwardPath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getProtectedReversePath(), flow.getVlanStatistics());
 
         FlowStatsEntry mainForwardStats = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(mainForwardStats)));
@@ -421,12 +434,37 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
+    public void flowVlanStatsTest() {
+        Flow flow = createFlowWithProtectedPath();
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getReversePath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getProtectedForwardPath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getProtectedReversePath(), flow.getVlanStatistics());
+
+        FlowStatsEntry vlanForwardStats1 = new FlowStatsEntry(1, STAT_VLAN_FORWARD_COOKIE_1.getValue(), 1, 2, 3, 4);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(vlanForwardStats1)));
+        validateStatVlan(vlanForwardStats1, STAT_VLAN_FORWARD_COOKIE_1, SWITCH_ID_1);
+
+        FlowStatsEntry vlanForwardStats2 = new FlowStatsEntry(1, STAT_VLAN_FORWARD_COOKIE_2.getValue(), 5, 6, 7, 8);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(vlanForwardStats2)));
+        validateStatVlan(vlanForwardStats2, STAT_VLAN_FORWARD_COOKIE_2, SWITCH_ID_1);
+
+        FlowStatsEntry vlanReverseStats1 = new FlowStatsEntry(1, STAT_VLAN_REVERSE_COOKIE_1.getValue(), 9, 10, 11, 12);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(vlanReverseStats1)));
+        validateStatVlan(vlanReverseStats1, STAT_VLAN_REVERSE_COOKIE_1, SWITCH_ID_3);
+
+        FlowStatsEntry vlanReverseStats2 = new FlowStatsEntry(1, STAT_VLAN_REVERSE_COOKIE_2.getValue(), 13, 14, 15, 16);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(vlanReverseStats2)));
+        validateStatVlan(vlanReverseStats2, STAT_VLAN_REVERSE_COOKIE_2, SWITCH_ID_3);
+    }
+
+    @Test
     public void flowStatsSwapPathTest() {
         Flow flow = createFlowWithProtectedPath();
-        sendUpdateFlowPathInfo(flow.getForwardPath());
-        sendUpdateFlowPathInfo(flow.getReversePath());
-        sendUpdateFlowPathInfo(flow.getProtectedForwardPath());
-        sendUpdateFlowPathInfo(flow.getProtectedReversePath());
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getReversePath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getProtectedForwardPath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getProtectedReversePath(), flow.getVlanStatistics());
 
         // check ingress protected rule on switch 1
         FlowStatsEntry protectedForwardStats = new FlowStatsEntry(1, PROTECTED_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
@@ -522,6 +560,38 @@ public class StatsTopologyTest extends AbstractStormTest {
         });
     }
 
+    private void validateStatVlan(FlowStatsEntry flowStats, FlowSegmentCookie cookie, SwitchId switchId) {
+        List<Datapoint> datapoints = pollDatapoints(3);
+        Map<String, Datapoint> datapointMap = createDatapointMap(datapoints);
+
+        assertEquals(flowStats.getPacketCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.vlan.packets").getValue().longValue());
+        assertEquals(flowStats.getByteCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.vlan.bytes").getValue().longValue());
+        assertEquals(flowStats.getByteCount() * 8,
+                datapointMap.get(METRIC_PREFIX + "flow.vlan.bits").getValue().longValue());
+
+        String direction = cookie.getDirection().name().toLowerCase();
+
+        datapoints.forEach(datapoint -> {
+            switch (datapoint.getMetric()) {
+                case METRIC_PREFIX + "flow.vlan.packets":
+                case METRIC_PREFIX + "flow.vlan.bytes":
+                case METRIC_PREFIX + "flow.vlan.bits":
+                    assertEquals(6, datapoint.getTags().size());
+                    assertEquals(flowId, datapoint.getTags().get("flowid"));
+                    assertEquals(direction, datapoint.getTags().get("direction"));
+                    assertEquals(Long.toString(cookie.getValue()), datapoint.getTags().get("cookie"));
+                    assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
+                    assertEquals(Integer.toString(cookie.getStatsVlan()), datapoint.getTags().get("vlan"));
+                    assertEquals(Integer.toString(flowStats.getInPort()), datapoint.getTags().get("inPort"));
+                    break;
+                default:
+                    throw new AssertionError(format("Unknown metric: %s", datapoint.getMetric()));
+            }
+        });
+    }
+
     @Test
     @Ignore
     public void flowLldpStatsTest() {
@@ -570,11 +640,11 @@ public class StatsTopologyTest extends AbstractStormTest {
 
         sendStatsMessage(new FlowStatsData(ingress.getSwitchId(), Collections.singletonList(measure0)));
 
-        sendUpdateFlowPathInfo(flow.getForwardPath());
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
 
         sendStatsMessage(new FlowStatsData(ingress.getSwitchId(), Collections.singletonList(measure1)));
 
-        sendRemoveFlowPathInfo(flow.getForwardPath());
+        sendRemoveFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
 
         sendStatsMessage(new FlowStatsData(ingress.getSwitchId(), Collections.singletonList(measure2)));
 
@@ -710,6 +780,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                 .forwardTransitEncapsulationId(ENCAPSULATION_ID)
                 .reverseTransitEncapsulationId(ENCAPSULATION_ID + 1)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .vlanStatistics(STAT_VLANS)
                 .build();
 
         flowRepository.add(flow);
@@ -737,6 +808,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                 .destPort(PORT_3)
                 .destVlan(5)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .vlanStatistics(STAT_VLANS)
                 .build();
         flowRepository.add(flow);
         return flow;
@@ -774,6 +846,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                 .destPort(PORT_3)
                 .destVlan(5)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .vlanStatistics(STAT_VLANS)
                 .build();
         flowRepository.add(flow);
         return flow;
@@ -785,18 +858,18 @@ public class StatsTopologyTest extends AbstractStormTest {
         sendMessage(infoMessage, statsTopologyConfig.getKafkaStatsTopic());
     }
 
-    private void sendRemoveFlowPathInfo(FlowPath flowPath) {
+    private void sendRemoveFlowPathInfo(FlowPath flowPath, Set<Integer> vlanStatistics) {
         RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
                 flowPath.getFlowId(), null, flowPath.getCookie(), flowPath.getMeterId(),
-                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath));
+                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath), vlanStatistics);
         InfoMessage infoMessage = new InfoMessage(pathInfo, timestamp, UUID.randomUUID().toString(), null, null);
         sendMessage(infoMessage, statsTopologyConfig.getFlowStatsNotifyTopic());
     }
 
-    private void sendUpdateFlowPathInfo(FlowPath flowPath) {
+    private void sendUpdateFlowPathInfo(FlowPath flowPath, Set<Integer> vlanStatistics) {
         UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
                 flowPath.getFlowId(), null, flowPath.getCookie(), flowPath.getMeterId(),
-                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath));
+                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath), vlanStatistics);
         InfoMessage infoMessage = new InfoMessage(pathInfo, timestamp, UUID.randomUUID().toString(), null, null);
         sendMessage(infoMessage, statsTopologyConfig.getFlowStatsNotifyTopic());
     }

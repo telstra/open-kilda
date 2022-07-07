@@ -108,6 +108,10 @@ public class TagsFormatter {
         tags.put("is_y_flow_subflow", mapTagValue(value));
     }
 
+    public void addVlanTag(int value) {
+        tags.put("vlan", String.valueOf(value));
+    }
+
     private static String mapTagValue(boolean value) {
         if (value) {
             return "true";

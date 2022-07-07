@@ -48,6 +48,7 @@ import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptorHandler;
 import org.openkilda.wfm.topology.stats.model.MeasurePoint;
 import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
+import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.SwitchFlowStats;
 import org.openkilda.wfm.topology.stats.model.SwitchMeterStats;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
@@ -59,6 +60,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @Slf4j
 public class KildaEntryCacheService {
@@ -146,7 +148,7 @@ public class KildaEntryCacheService {
     private void updateCache(KildaEntryDescriptorHandler cacheHandler, BaseFlowPathInfo pathInfo) {
         updateCache(
                 cacheHandler, pathInfo.getFlowId(), pathInfo.getYFlowId(), pathInfo.getCookie(), pathInfo.getMeterId(),
-                pathInfo.getPathNodes());
+                pathInfo.getPathNodes(), pathInfo.getStatVlans());
     }
 
     private void updateCache(KildaEntryDescriptorHandler cacheHandler, BaseYFlowStatsInfo yFlowStatsInfo) {
@@ -165,7 +167,7 @@ public class KildaEntryCacheService {
 
     private void updateCache(
             KildaEntryDescriptorHandler cacheHandler, String flowId, String yFlowId, FlowSegmentCookie cookie,
-            MeterId meterId, List<PathNodePayload> pathNodes) {
+            MeterId meterId, List<PathNodePayload> pathNodes, Set<Integer> statsVlan) {
         if (pathNodes.isEmpty()) {
             throw new IllegalArgumentException("The path can't be empty");
         }
@@ -182,6 +184,8 @@ public class KildaEntryCacheService {
             cacheHandler.handle(newPathEntry(srcSwitchId, INGRESS, flowId, yFlowId, cookie, meterId));
             cacheHandler.handle(newPathEntry(dstSwitchId, EGRESS, flowId, yFlowId, cookie));
         }
+        cacheHandler.handle(new StatVlanDescriptor(srcSwitchId, INGRESS, flowId, cookie, statsVlan));
+        cacheHandler.handle(new StatVlanDescriptor(dstSwitchId, EGRESS, flowId, cookie, statsVlan));
     }
 
     private void updateCache(
@@ -206,7 +210,7 @@ public class KildaEntryCacheService {
                     Flow flow = path.getFlow();
                     updateCache(
                             cacheHandler, flow.getFlowId(), flow.getYFlowId(), path.getCookie(), path.getMeterId(),
-                            FlowPathMapper.INSTANCE.mapToPathNodes(flow, path));
+                            FlowPathMapper.INSTANCE.mapToPathNodes(flow, path), flow.getVlanStatistics());
                 });
     }
 

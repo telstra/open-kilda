@@ -13,31 +13,33 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.stats;
+package org.openkilda.wfm.topology.stats.model;
 
-import org.openkilda.messaging.payload.flow.PathNodePayload;
-import org.openkilda.model.MeterId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.ToString;
+import lombok.Value;
 
-import java.util.List;
 import java.util.Set;
 
-/**
- * A base for path info messages.
- */
-@Getter
-@AllArgsConstructor
-@ToString
-public abstract class BaseFlowPathInfo extends StatsNotification {
-    @NonNull String flowId;
-    String yFlowId;
-    @NonNull FlowSegmentCookie cookie;
-    MeterId meterId;
-    @NonNull List<PathNodePayload> pathNodes;
+@Value
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
+public class StatVlanDescriptor extends CommonFlowDescriptor {
     Set<Integer> statVlans;
+
+    public StatVlanDescriptor(
+            SwitchId switchId, MeasurePoint measurePoint, @NonNull String flowId, @NonNull FlowSegmentCookie cookie,
+            Set<Integer> statVlans) {
+        super(switchId, measurePoint, flowId, cookie, null);
+        this.statVlans = statVlans;
+    }
+
+    @Override
+    public void handle(KildaEntryDescriptorHandler handler) {
+        handler.handleStatsEntry(this);
+    }
 }
