@@ -20,6 +20,7 @@ import static org.openkilda.wfm.share.bolt.MonotonicClock.FIELD_ID_TICK_IDENTIFI
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_HS_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_REMOVE_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_STATS_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_DIRECTION_FIELD;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_ID_FIELD;
@@ -118,6 +119,8 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
         declarer.declareStream(FLOW_HS_STREAM_ID.name(), new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
+        declarer.declareStream(FLOW_STATS_STREAM_ID.name(),
+                new Fields(FLOW_ID_FIELD, FLOW_DIRECTION_FIELD, LATENCY_FIELD));
         declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
                 ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
@@ -133,5 +136,10 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
         FlowRerouteRequest request = new FlowRerouteRequest(flowId, false, false, Collections.emptySet(),
                 "Flow latency become unhealthy", false);
         emit(getCurrentTuple(), new Values(request, getCommandContext()));
+    }
+
+    @Override
+    public void persistFlowStats(String flowId, String direction, long latency) {
+        emit(FLOW_STATS_STREAM_ID.name(), getCurrentTuple(), new Values(flowId, direction, latency));
     }
 }

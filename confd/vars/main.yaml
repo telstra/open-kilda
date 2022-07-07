@@ -177,6 +177,7 @@ kilda_storm_stats_parallelism: 2
 kilda_storm_spout_parallelism: 2
 
 kilda_storm_flow_monitoring_parallelism: 2
+kilda_storm_flow_monitoring_flow_stats_bolt_parallelism: 2
 
 kilda_storm_disruptor_wait_timeout: 1000
 kilda_storm_disruptor_batch_timeout: 10
