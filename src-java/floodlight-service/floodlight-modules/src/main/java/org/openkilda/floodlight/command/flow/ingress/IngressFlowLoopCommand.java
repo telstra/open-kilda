@@ -21,6 +21,7 @@ import org.openkilda.model.FlowEndpoint;
 
 import lombok.Getter;
 
+import java.util.HashSet;
 import java.util.UUID;
 
 @Getter
@@ -29,7 +30,7 @@ public abstract class IngressFlowLoopCommand extends IngressFlowSegmentBase {
     IngressFlowLoopCommand(MessageContext messageContext, UUID commandId, FlowSegmentMetadata metadata,
                            FlowEndpoint endpoint) {
         super(messageContext, endpoint.getSwitchId(), commandId, metadata, endpoint,
-                null, endpoint.getSwitchId(), null, null, null);
+                null, endpoint.getSwitchId(), null, null, null, new HashSet<>());
     }
 
     /**

@@ -562,6 +562,8 @@ public class FlowOperationsService {
         Optional.ofNullable(flowPatch.getPathComputationStrategy()).map(PathComputationStrategy::toString)
                 .ifPresent(flowRequest::setPathComputationStrategy);
         Optional.ofNullable(flowPatch.getDiverseFlowId()).ifPresent(flowRequest::setDiverseFlowId);
+        Optional.ofNullable(flowPatch.getVlanStatistics())
+                .ifPresent(vlans -> flowRequest.setVlanStatistics(new HashSet<>(vlans)));
 
         return flowRequest;
     }

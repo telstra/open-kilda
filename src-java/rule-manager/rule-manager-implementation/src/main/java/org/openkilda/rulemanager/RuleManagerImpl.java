@@ -313,6 +313,7 @@ public class RuleManagerImpl implements RuleManager {
             generators.add(flowRulesFactory.getIngressMirrorRuleGenerator(
                     flowPath, flow, encapsulation, ingressMeterCommandUuid));
         }
+        generators.add(flowRulesFactory.getVlanStatsRuleGenerator(flowPath, flow));
 
         ingressCommands.addAll(generateRules(sw, generators));
         return ingressCommands;

@@ -30,6 +30,8 @@ import org.openkilda.model.cookie.Cookie;
 
 import org.junit.Assert;
 
+import java.util.HashSet;
+
 abstract class OneSwitchFlowCommandJsonTest
         extends AbstractSpeakerCommandJsonTest<OneSwitchFlowRequest> {
     protected void verifyPayload(OneSwitchFlowRequest request, OneSwitchFlowCommand command) {
@@ -53,7 +55,8 @@ abstract class OneSwitchFlowCommandJsonTest
                 new MeterConfig(new MeterId(6), 7000),
                 new FlowEndpoint(swId, 8, 9),
                 RulesContext.builder().build(),
-                MirrorConfig.builder().build());
+                MirrorConfig.builder().build(),
+                new HashSet<>());
         return makeRequest(factory);
     }
 

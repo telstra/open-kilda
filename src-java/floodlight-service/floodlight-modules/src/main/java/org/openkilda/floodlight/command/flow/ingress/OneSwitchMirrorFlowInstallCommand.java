@@ -27,6 +27,7 @@ import org.openkilda.model.MirrorConfig;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Set;
 import java.util.UUID;
 
 @SuppressWarnings("squid:MaximumInheritanceDepth")
@@ -40,8 +41,10 @@ public class OneSwitchMirrorFlowInstallCommand extends OneSwitchFlowInstallComma
             @JsonProperty("meter_config") MeterConfig meterConfig,
             @JsonProperty("egress_endpoint") FlowEndpoint egressEndpoint,
             @JsonProperty("rules_context") RulesContext rulesContext,
-            @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext, mirrorConfig);
+            @JsonProperty("mirror_config") MirrorConfig mirrorConfig,
+            @JsonProperty("stat_vlans") Set<Integer> statVlans) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext, mirrorConfig,
+                statVlans);
     }
 
     @Override

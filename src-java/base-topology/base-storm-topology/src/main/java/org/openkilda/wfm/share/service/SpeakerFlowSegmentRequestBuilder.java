@@ -63,6 +63,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -338,7 +339,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             if (lastSegment == null) {
                 if (doIngress) {
                     requests.addAll(makeIngressSegmentRequests(context, path, encapsulation, ingressSide, segment,
-                            egressSide, rulesContext, mirrorContext));
+                            egressSide, rulesContext, mirrorContext, flow.getVlanStatistics()));
                     if (ingressLoopRuleRequired(flow, ingressSide)) {
                         requests.addAll(makeLoopRequests(
                                 context, path, encapsulation, ingressSide, egressSide, segment));
@@ -359,7 +360,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             }
         } else if (flow.isOneSwitchFlow()) {
             // one switch flow (path without path segments)
-            requests.addAll(makeOneSwitchRequest(context, path, ingressSide, egressSide, rulesContext, mirrorContext));
+            requests.addAll(makeOneSwitchRequest(context, path, ingressSide, egressSide, rulesContext, mirrorContext,
+                    flow.getVlanStatistics()));
             if (singleSwitchLoopRuleRequired(flow)) {
                 requests.add(makeSingleSwitchIngressLoopRequest(context, path, ingressSide));
             }
@@ -371,7 +373,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     private List<FlowSegmentRequestFactory> makeIngressSegmentRequests(
             CommandContext context, FlowPath path, FlowTransitEncapsulation encapsulation,
             FlowSideAdapter flowSide, PathSegment segment, FlowSideAdapter egressFlowSide,
-            RulesContext rulesContext, MirrorContext mirrorContext) {
+            RulesContext rulesContext, MirrorContext mirrorContext, Set<Integer> statVlans) {
         PathSegmentSide segmentSide = makePathSegmentSourceSide(segment);
 
         UUID commandId = commandIdGenerator.generate();
@@ -396,6 +398,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     .islPort(segmentSide.getEndpoint().getPortNumber())
                     .encapsulation(encapsulation)
                     .rulesContext(rulesContext)
+                    .statVlans(statVlans)
                     .build());
         }
 
@@ -417,6 +420,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                             .installServer42OuterVlanMatchSharedRule(false)
                             .build())
                     .mirrorConfig(mirrorConfig.orElse(null))
+                    .statVlans(new HashSet<>())
                     .build());
         }
 
@@ -551,7 +555,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
 
     private List<FlowSegmentRequestFactory> makeOneSwitchRequest(
             CommandContext context, FlowPath path, FlowSideAdapter ingressSide, FlowSideAdapter egressSide,
-            RulesContext rulesContext, MirrorContext mirrorContext) {
+            RulesContext rulesContext, MirrorContext mirrorContext, Set<Integer> statVlans) {
         Flow flow = ingressSide.getFlow();
 
         UUID commandId = commandIdGenerator.generate();
@@ -572,6 +576,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     .meterConfig(getMeterConfig(path))
                     .egressEndpoint(egressSide.getEndpoint())
                     .rulesContext(rulesContext)
+                    .statVlans(statVlans)
                     .build());
         }
 
@@ -587,6 +592,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     .egressEndpoint(egressSide.getEndpoint())
                     .rulesContext(rulesContext)
                     .mirrorConfig(mirrorConfig.orElse(null))
+                    .statVlans(new HashSet<>())
                     .build());
         }
 

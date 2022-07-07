@@ -45,6 +45,7 @@ import org.projectfloodlight.openflow.types.U64;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -388,7 +389,7 @@ abstract class IngressFlowSegmentInstallFlowModFactoryTest extends IngressFlowMo
         return new IngressFlowSegmentInstallCommand(
                 new MessageContext(commandId.toString()), commandId, makeMetadata(), endpoint, meterConfig,
                 new SwitchId(datapathIdBeta.getLong()), 1, encapsulation,
-                RulesContext.builder().build(), null);
+                RulesContext.builder().build(), null, new HashSet<>());
     }
 
     private List<Integer> makeTransitVlanStack(FlowEndpoint ingressEndpoint, int transitVlanId) {
