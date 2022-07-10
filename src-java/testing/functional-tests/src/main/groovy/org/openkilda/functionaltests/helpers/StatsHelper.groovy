@@ -6,7 +6,7 @@ import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.yflows.YFlow
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.service.otsdb.OtsdbQueryService
+import org.openkilda.testing.service.stats.StatsQueryService
 import org.openkilda.testing.tools.SoftAssertions
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -19,13 +19,13 @@ class StatsHelper {
     private static int STATS_INTERVAL = 65
 
     @Autowired
-    OtsdbQueryService otsdb
+    StatsQueryService statsTsdb
     @Autowired
     Database database
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
 
-    @Value('${opentsdb.metric.prefix}')
+    @Value('${stats.tsdb.metric.prefix}')
     String metricPrefix
 
     void verifyFlowsWriteStats(List<String> flowIds) {
@@ -47,7 +47,7 @@ class StatsHelper {
 
     void verifyFlowWritesStats(String flowId, Date from, boolean expectTraffic) {
         Wrappers.wait(STATS_INTERVAL) {
-            def dps = otsdb.query(from, metricPrefix + "flow.raw.bytes", [flowid: flowId]).dps
+            def dps = statsTsdb.query(from, metricPrefix + "flow.raw.bytes", [flowid: flowId]).dps
             if(expectTraffic) {
                 assert dps.values().any { it > 0 }, flowId
             } else {
@@ -59,8 +59,8 @@ class StatsHelper {
     void verifyYFlowWritesMeterStats(YFlow yFlow, Date from, boolean expectTraffic) {
         Wrappers.wait(STATS_INTERVAL) {
             def yFlowId = yFlow.YFlowId
-            def dpsShared = otsdb.query(from, metricPrefix + "yFlow.meter.shared.bytes", ["y_flow_id": yFlowId]).dps
-            def dpsYPoint = otsdb.query(from, metricPrefix + "yFlow.meter.yPoint.bytes", ["y_flow_id": yFlowId]).dps
+            def dpsShared = statsTsdb.query(from, metricPrefix + "yFlow.meter.shared.bytes", ["y_flow_id": yFlowId]).dps
+            def dpsYPoint = statsTsdb.query(from, metricPrefix + "yFlow.meter.yPoint.bytes", ["y_flow_id": yFlowId]).dps
             if (expectTraffic) {
                 assert dpsShared.values().any { it > 0 }, yFlowId
                 //TODO: an issue to be fixed https://github.com/telstra/open-kilda/issues/4852

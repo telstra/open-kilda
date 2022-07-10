@@ -24,7 +24,7 @@ import spock.util.mop.Use
 class OpenTsdbSpec extends HealthCheckSpecification {
 
     @Shared
-    @Value('${opentsdb.metric.prefix}')
+    @Value('${stats.tsdb.metric.prefix}')
     String metricPrefix
 
     @Tidy
@@ -32,7 +32,7 @@ class OpenTsdbSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Basic stats are being logged"(metric, tags) {
         expect: "At least 1 result in the past 5 minutes"
-        assert otsdb.query(5.minutes.ago, metric, tags).dps.size() > 0, "tags: $tags"
+        assert statsTsdb.query(5.minutes.ago, metric, tags).dps.size() > 0, "tags: $tags"
 
         where:
         [metric, tags] << (
@@ -54,7 +54,7 @@ class OpenTsdbSpec extends HealthCheckSpecification {
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
     def "Basic stats are being logged (10min interval)"() {
         expect: "At least 1 result in the past 10 minutes"
-        otsdb.query(10.minutes.ago, metric, [:]).dps.size() > 0
+        statsTsdb.query(10.minutes.ago, metric, [:]).dps.size() > 0
         where:
         [metric, tags] << (
                 [[metricPrefix + "switch.flow.system.meter.packets", metricPrefix + "switch.flow.system.meter.bytes",
@@ -69,7 +69,7 @@ class OpenTsdbSpec extends HealthCheckSpecification {
         assumeTrue(northbound.getFeatureToggles().collectGrpcStats,
 "This test is skipped because 'collectGrpcStats' is disabled")
         expect: "At least 1 result in the past 15 minutes"
-        assert otsdb.query(15.minutes.ago, metricPrefix + metric, tags).dps.size() > 0, "sw: $sw.dpId"
+        assert statsTsdb.query(15.minutes.ago, metricPrefix + metric, tags).dps.size() > 0, "sw: $sw.dpId"
 
         where:
         [metric, sw] << (

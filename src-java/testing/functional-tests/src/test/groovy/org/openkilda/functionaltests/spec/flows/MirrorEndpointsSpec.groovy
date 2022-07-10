@@ -58,7 +58,7 @@ import javax.inject.Provider
 class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     @Shared
-    @Value('${opentsdb.metric.prefix}')
+    @Value('${stats.tsdb.metric.prefix}')
     String metricPrefix
 
     @Autowired

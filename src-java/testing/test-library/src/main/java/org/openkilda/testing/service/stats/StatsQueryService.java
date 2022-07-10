@@ -13,31 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.otsdb;
+package org.openkilda.testing.service.stats;
 
-import org.openkilda.testing.service.otsdb.model.Aggregator;
-import org.openkilda.testing.service.otsdb.model.StatsResult;
+import org.openkilda.testing.service.stats.model.StatsResult;
 
 import java.util.Date;
 import java.util.Map;
 
-public interface OtsdbQueryService {
+public interface StatsQueryService {
+    StatsResult query(Date start, String metric, Map<String, Object> tags);
+
     /**
      * Query OpenTsdb with given params.
      *
      * @param start gather stats 'after' this date
      * @param end gather stats 'before' this date
-     * @param aggregator The name of an aggregation function to use. {@link Aggregator}
      * @param metric Metric name, e.g. "kilda.switch.state"
      * @param tags tags in form of key-value pairs
      * @return query results
      * @see <a href="http://opentsdb.net/docs/build/html/api_http/query/index.html:>OpenTsdb HTTP API</a>
      */
-    StatsResult query(Date start, Date end, Aggregator aggregator, String metric, Map<String, Object> tags);
-
-    StatsResult query(Date start, Aggregator aggregator, String metric, Map<String, Object> tags);
-
-    StatsResult query(Date start, String metric, Map<String, Object> tags);
-
     StatsResult query(Date start, Date end, String metric, Map<String, Object> tags);
 }

@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit
 @Tags([TOPOLOGY_DEPENDENT])
 class IslReplugSpec extends HealthCheckSpecification {
 
-    @Value('${opentsdb.metric.prefix}')
+    @Value('${stats.tsdb.metric.prefix}')
     String metricPrefix
 
     @Tidy
@@ -245,7 +245,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         and: "Self-loop rule packet counter is incremented and logged in otsdb"
         def statsData = null
         Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
-            statsData = otsdb.query(beforeReplugTime, metricPrefix + "switch.flow.system.packets",
+            statsData = statsTsdb.query(beforeReplugTime, metricPrefix + "switch.flow.system.packets",
                     [switchid : expectedIsl.srcSwitch.dpId.toOtsdFormat(),
                      cookieHex: DefaultRule.DROP_LOOP_RULE.toHexString()]).dps
             assert statsData && !statsData.empty

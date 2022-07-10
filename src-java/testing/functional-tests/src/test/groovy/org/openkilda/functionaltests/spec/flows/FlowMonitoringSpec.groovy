@@ -14,7 +14,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.model.system.FeatureTogglesDto
@@ -38,7 +37,7 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
     @Shared
     SwitchPair switchPair
     @Shared
-    @Value('${opentsdb.metric.prefix}')
+    @Value('${stats.tsdb.metric.prefix}')
     String metricPrefix
 
     /** System tries to reroute a flow in case latency on a path is (flowLatency + flowLatency * 0.05);
@@ -95,11 +94,11 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
         //wait for generating some flow-monitoring stats
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-         assert !otsdb.query(createFlowTime, metricPrefix + "flow.rtt",
+         assert !statsTsdb.query(createFlowTime, metricPrefix + "flow.rtt",
                  [flowid   : flow.flowId,
                   direction: "forward",
                   origin   : "flow-monitoring"]).dps.isEmpty()
-        assert !otsdb.query(createFlowTime, metricPrefix + "flow.rtt",
+        assert !statsTsdb.query(createFlowTime, metricPrefix + "flow.rtt",
                 [flowid   : flow.flowId,
                  direction: "reverse",
                  origin   : "flow-monitoring"]).dps.isEmpty()
@@ -166,11 +165,11 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         flowHelperV2.addFlow(flow)
         //wait for generating some flow-monitoring stats
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-            assert !otsdb.query(createFlowTime, metricPrefix + "flow.rtt",
+            assert !statsTsdb.query(createFlowTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "forward",
                      origin   : "flow-monitoring"]).dps.isEmpty()
-            assert !otsdb.query(createFlowTime, metricPrefix + "flow.rtt",
+            assert !statsTsdb.query(createFlowTime, metricPrefix + "flow.rtt",
                     [flowid   : flow.flowId,
                      direction: "reverse",
                      origin   : "flow-monitoring"]).dps.isEmpty()
@@ -218,7 +217,7 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
     }
 
     void verifyLatencyInOpenTSDB(date, flowId, expectedMs) {
-        def actual = otsdb.query(date, metricPrefix + "flow.rtt",
+        def actual = statsTsdb.query(date, metricPrefix + "flow.rtt",
                 [flowid   : flowId,
                  direction: "forward",
                  origin   : "flow-monitoring"]).dps.values().last()

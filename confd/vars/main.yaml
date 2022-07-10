@@ -18,8 +18,9 @@ kilda_zookeeper_state_root: "kilda"
 kilda_zookeeper_reconnect_delay_ms: 100
 kilda_zookeeper_reconnect_delay_ms_server42: 10000
 kilda_zookeeper_reconnect_delay_ms_speaker: 1000
-kilda_opentsdb_hosts: "opentsdb.pendev"
+kilda_opentsdb_hosts: "victoriametrics.pendev"
 kilda_opentsdb_port: "4242"
+kilda_stats_tsdb_endpoint: "http://victoriametrics.pendev:8428"
 kilda_storm_numbus_hosts: "nimbus.pendev"
 
 kilda_hibernate_url: jdbc:mysql://mysql.pendev:3306/kilda

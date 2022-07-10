@@ -306,7 +306,7 @@ services:
     depends_on:
       zookeeper:
         condition: service_healthy
-{{if not (exists "/no_opentsdb")}}      opentsdb:
+{{if not (exists "/no_victoriametrics")}}      victoriametrics:
         condition: service_started
 {{end}}    ports:
       - "6627:6627"
@@ -361,7 +361,7 @@ services:
         condition: service_healthy
 {{if not (exists "/no_logstash")}}      logstash:
         condition: service_healthy
-{{end}}{{if not (exists "/no_opentsdb")}}      opentsdb:
+{{end}}{{if not (exists "/no_victoriametrics")}}      victoriametrics:
         condition: service_started
 {{end}}    ports:
       - "6700:6700"
@@ -606,27 +606,27 @@ services:
         aliases:
          - grpc-speaker.pendev
     mem_limit: ${GRPC_MEM_LIMIT:-1073741824}
-{{end}}
-{{if not (exists "/no_opentsdb")}}
-  opentsdb:
-    container_name: opentsdb
-    hostname: opentsdb.pendev
-    image: kilda/opentsdb:latest
-    command: /app/wait-for-it.sh -t 120 -h hbase.pendev -p 9090 -- /app/start-opentsdb
-    depends_on:
-      zookeeper:
-        condition: service_healthy
-      hbase:
-        condition: service_healthy
+
+{{end}}{{if not (exists "/no_victoriametrics")}}
+  victoriametrics:
+    container_name: victoriametrics
+    hostname: victoriametrics.pendev
+    image: victoriametrics/victoria-metrics:v1.78.1
+    command:
+      - "--opentsdbListenAddr=:4242"
+      - "--retentionPeriod=1200"  # in months
+    volumes:
+      - victoriametrics_data:/victoria-metrics-data
     ports:
       - "4242:4242"
+      - "8428:8428"
     networks:
       default:
         aliases:
-         - opentsdb.pendev
-    mem_limit: ${OTSDB_MEM_LIMIT:-1073741824}
-{{end}}
-{{if not (exists "/no_gui")}}
+         - victoriametrics.pendev
+    mem_limit: ${VICTORIAMETRICS_MEM_LIMIT:-1073741824}
+
+{{end}}{{if not (exists "/no_gui")}}
   gui:
     container_name: gui
     build:
@@ -637,7 +637,7 @@ services:
     depends_on:
       northbound:
         condition: service_started
-{{if not (exists "/no_opentsdb")}}      opentsdb:
+{{if not (exists "/no_victoriametrics")}}      victoriametrics:
         condition: service_started
 {{end}}    networks:
       default:
@@ -838,8 +838,8 @@ volumes:
   app_server_data:
   hbase_data:
   odb1_data:
-{{if not (exists "/single_orientdb")}}
-  odb2_data:
-  odb3_data:
-{{end}}
   sql_data:
+{{if not (exists "/single_orientdb")}}  odb2_data:
+  odb3_data:
+{{end}}{{if not (exists "/no_victoriametrics")}}  victoriametrics_data:
+{{end}}

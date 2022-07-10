@@ -13,13 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.otsdb.model;
+package org.openkilda.testing.service.stats.model;
 
-public enum Aggregator {
-    MIN, MAX, SUM, AVG, MULT, DEV;
+import lombok.Data;
 
-    @Override
-    public String toString() {
-        return this.name().toLowerCase();
-    }
+import java.util.List;
+import java.util.Map;
+
+// TODO(surabujin): move to more generic/own stats format, current one is mostly OpenTSDB /api/query response payload
+//  stub (the OpenTSDB is not the only option for stats DB now).
+@Data
+public class StatsResult {
+    String metric;
+    Map<String, String> tags;
+    List<String> aggregateTags;
+    Map dps;
 }

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,17 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.otsdb.model;
+package org.openkilda.testing.service.stats.model;
 
-import lombok.Data;
+import java.util.Collections;
 
-import java.util.List;
-import java.util.Map;
-
-@Data
-public class StatsResult {
-    String metric;
-    Map tags;
-    List<String> aggregateTags;
-    Map dps;
+public class EmptyStatsResult extends StatsResult {
+    public EmptyStatsResult() {
+        super();
+        tags = Collections.emptyMap();
+        aggregateTags = Collections.emptyList();
+        dps = Collections.emptyMap();
+    }
 }

@@ -31,7 +31,7 @@ import javax.inject.Provider
 @Narrative("Verify that statistic is collected for different type of flow")
 class FlowStatSpec extends HealthCheckSpecification {
     @Shared
-    @Value('${opentsdb.metric.prefix}')
+    @Value('${stats.tsdb.metric.prefix}')
     String metricPrefix
 
     @Autowired
@@ -78,7 +78,7 @@ class FlowStatSpec extends HealthCheckSpecification {
             exam.setResources(traffExam.startExam(exam))
             assert traffExam.waitExam(exam).hasTraffic()
             Wrappers.wait(statsRouterInterval, waitInterval) {
-                mainPathStat = otsdb.query(startTime, metric, tags).dps
+                mainPathStat = statsTsdb.query(startTime, metric, tags).dps
                 assert mainPathStat.size() == count + 1
             }
         }
@@ -87,8 +87,8 @@ class FlowStatSpec extends HealthCheckSpecification {
         def flowInfo = database.getFlow(flow.flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
-        def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
-        def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
+        def mainForwardCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
+        def mainReverseCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
         [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
             assert stats.size() > 0
             stats.values().each { assert it != 0 }
@@ -96,7 +96,7 @@ class FlowStatSpec extends HealthCheckSpecification {
 
         and: "System collects stats for egress cookie of protected path with zero value"
         def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
-        def protectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
+        def protectedReverseCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
         protectedReverseCookieStat.size() == 1
         protectedReverseCookieStat.values().first() == 0
 
@@ -116,8 +116,8 @@ class FlowStatSpec extends HealthCheckSpecification {
             exam.setResources(traffExam.startExam(exam))
             assert traffExam.waitExam(exam).hasTraffic()
             Wrappers.wait(statsRouterInterval, waitInterval) {
-                assert otsdb.query(startTime, metric, tags).dps.size() > mainPathStat.size()
-                newProtectedReverseCookieStat = otsdb.query(startTime, metric,
+                assert statsTsdb.query(startTime, metric, tags).dps.size() > mainPathStat.size()
+                newProtectedReverseCookieStat = statsTsdb.query(startTime, metric,
                         tags + [cookie: protectedReverseCookie]).dps
                 assert newProtectedReverseCookieStat.size() == count + 2 // 2 because we have already one point of stat
             }
@@ -127,8 +127,8 @@ class FlowStatSpec extends HealthCheckSpecification {
         newProtectedReverseCookieStat.values().takeRight(2).each { assert it != 0 }
 
         and: "System doesn't collect stats anymore for previous ingress/egress cookie of main path"
-        otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps.size() == mainReverseCookieStat.size()
-        otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps.size() == mainForwardCookieStat.size()
+        statsTsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps.size() == mainReverseCookieStat.size()
+        statsTsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps.size() == mainForwardCookieStat.size()
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
@@ -167,14 +167,14 @@ class FlowStatSpec extends HealthCheckSpecification {
         def waitInterval = 10
         def mainPathStat
         Wrappers.wait(statsRouterInterval, waitInterval) {
-            mainPathStat = otsdb.query(startTime, metric, tags).dps
+            mainPathStat = statsTsdb.query(startTime, metric, tags).dps
             assert mainPathStat.size() >= 1
         }
         def flowInfo = database.getFlow(flow.flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
-        def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
-        def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
+        def mainForwardCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
+        def mainReverseCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
         [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
             assert stats.size() > 0
             stats.values().each { assert it != 0 }
@@ -182,7 +182,7 @@ class FlowStatSpec extends HealthCheckSpecification {
 
         and: "Stats is empty for protected path egress cookie"
         def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
-        def protectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
+        def protectedReverseCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
         protectedReverseCookieStat.size() > 0
         protectedReverseCookieStat.values().each { assert it == 0 }
 
@@ -210,8 +210,8 @@ class FlowStatSpec extends HealthCheckSpecification {
         def newMainForwardCookie = newFlowInfo.forwardPath.cookie.value
         def newMainReverseCookie = newFlowInfo.reversePath.cookie.value
         Wrappers.wait(statsRouterInterval, waitInterval) {
-            def newMainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: newMainForwardCookie]).dps
-            def newMainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: newMainReverseCookie]).dps
+            def newMainForwardCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: newMainForwardCookie]).dps
+            def newMainReverseCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: newMainReverseCookie]).dps
             [newMainForwardCookieStat, newMainReverseCookieStat].each { stats ->
                 assert stats.size() > 0
                 stats.values().each { assert it != 0 }
@@ -220,7 +220,7 @@ class FlowStatSpec extends HealthCheckSpecification {
 
         and: "Stats is empty for a new protected path egress cookie"
         def newProtectedReverseCookie = newFlowInfo.protectedReversePath.cookie.value
-        def newProtectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: newProtectedReverseCookie]).dps
+        def newProtectedReverseCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: newProtectedReverseCookie]).dps
         newProtectedReverseCookieStat.size() > 0
         newProtectedReverseCookieStat.values().each { assert it == 0 }
 
@@ -262,14 +262,14 @@ class FlowStatSpec extends HealthCheckSpecification {
         def waitInterval = 10
         def mainPathStat
         Wrappers.wait(statsRouterInterval, waitInterval) {
-            mainPathStat = otsdb.query(startTime, metric, tags).dps
+            mainPathStat = statsTsdb.query(startTime, metric, tags).dps
             assert mainPathStat.size() >= 1
         }
         def flowInfo = database.getFlow(flow.id)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
-        def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
-        def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
+        def mainForwardCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
+        def mainReverseCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
         [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
             assert stats.size() > 0
             stats.values().each { assert it != 0 }
@@ -277,7 +277,7 @@ class FlowStatSpec extends HealthCheckSpecification {
 
         and: "System collects stats for egress cookie of protected path with zero value"
         def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
-        def protectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
+        def protectedReverseCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
         protectedReverseCookieStat.values().each { assert it == 0 }
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
@@ -295,15 +295,15 @@ class FlowStatSpec extends HealthCheckSpecification {
 
         then: "System collects stats for previous egress cookie of protected path with non zero value"
         Wrappers.wait(statsRouterInterval, waitInterval) {
-            def protectedPathStat = otsdb.query(startTime, metric, tags).dps
+            def protectedPathStat = statsTsdb.query(startTime, metric, tags).dps
             assert protectedPathStat.size() > mainPathStat.size()
-            def newProtectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
+            def newProtectedReverseCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
             assert !newProtectedReverseCookieStat.values().findAll { it != 0 }.empty
         }
 
         and: "System doesn't collect stats for previous main path cookies due to main path is broken"
-        def newMainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
-        def newMainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
+        def newMainForwardCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
+        def newMainReverseCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
         newMainForwardCookieStat.size() == mainForwardCookieStat.size()
         newMainReverseCookieStat.size() == mainReverseCookieStat.size()
 
@@ -376,14 +376,14 @@ class FlowStatSpec extends HealthCheckSpecification {
         def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
         def waitInterval = 10
         Wrappers.wait(statsRouterInterval, waitInterval) {
-            def mainPathStat = otsdb.query(startTime, metric, tags).dps
+            def mainPathStat = statsTsdb.query(startTime, metric, tags).dps
             assert mainPathStat.size() >= 1
         }
         def flowInfo = database.getFlow(flow.flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
-        def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
-        def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
+        def mainForwardCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
+        def mainReverseCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
         [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
             assert stats.size() > 0
             stats.values().each { assert it != 0 }
@@ -430,13 +430,13 @@ class FlowStatSpec extends HealthCheckSpecification {
         def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
         def waitInterval = 10
         Wrappers.wait(statsRouterInterval + WAIT_OFFSET, waitInterval) {
-            assert otsdb.query(startTime, metric, tags).dps.size() >= 1
+            assert statsTsdb.query(startTime, metric, tags).dps.size() >= 1
         }
         def flowInfo = database.getFlow(flow.flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
-        def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
-        def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
+        def mainForwardCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
+        def mainReverseCookieStat = statsTsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
         [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
             assert stats.size() > 0
             stats.values().each { assert it != 0 }
@@ -480,10 +480,10 @@ class FlowStatSpec extends HealthCheckSpecification {
         def metric = metricPrefix + "flow.raw.bytes"
         def waitInterval = 5
         Wrappers.wait(statsRouterInterval, waitInterval) {
-            def forwardStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
+            def forwardStats = statsTsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
             assert forwardStats.size() > 0
             assert forwardStats.values().each { it != 0 }
-            def reverseStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps
+            def reverseStats = statsTsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps
             assert reverseStats.size() > 0
             assert reverseStats.values().each { it != 0 }
         }
@@ -524,10 +524,10 @@ class FlowStatSpec extends HealthCheckSpecification {
         def metric = metricPrefix + "flow.raw.bytes"
         def waitInterval = 5
         Wrappers.wait(statsRouterInterval, waitInterval) {
-            def forwardStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
+            def forwardStats = statsTsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
             assert forwardStats.size() > 0
             assert forwardStats.values().each { it != 0 }
-            def reverseStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps
+            def reverseStats = statsTsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps
             assert reverseStats.size() > 0
             assert reverseStats.values().each { it != 0 }
         }
@@ -567,10 +567,10 @@ class FlowStatSpec extends HealthCheckSpecification {
         def metric = metricPrefix + "flow.raw.bytes"
         def waitInterval = 5
         Wrappers.wait(statsRouterInterval, waitInterval) {
-            def forwardStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
+            def forwardStats = statsTsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
             assert forwardStats.size() > 0
             assert forwardStats.values().each { it != 0 }
-            def reverseStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps
+            def reverseStats = statsTsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps
             assert reverseStats.size() > 0
             assert reverseStats.values().each { it != 0 }
         }

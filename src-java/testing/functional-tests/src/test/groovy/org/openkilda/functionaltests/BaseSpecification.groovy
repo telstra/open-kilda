@@ -18,7 +18,7 @@ import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
-import org.openkilda.testing.service.otsdb.OtsdbQueryService
+import org.openkilda.testing.service.stats.StatsQueryService
 import org.openkilda.testing.tools.IslUtils
 import org.openkilda.testing.tools.TopologyPool
 
@@ -49,7 +49,7 @@ class BaseSpecification extends Specification {
     @Autowired @Shared
     Database database
     @Autowired @Shared
-    OtsdbQueryService otsdb
+    StatsQueryService statsTsdb
     @Autowired @Shared
     IslUtils islUtils
     @Autowired @Shared

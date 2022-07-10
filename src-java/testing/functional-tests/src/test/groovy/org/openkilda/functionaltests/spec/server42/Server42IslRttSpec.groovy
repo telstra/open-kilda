@@ -43,7 +43,7 @@ import spock.lang.Shared
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class Server42IslRttSpec extends HealthCheckSpecification {
     @Shared
-    @Value('${opentsdb.metric.prefix}')
+    @Value('${stats.tsdb.metric.prefix}')
     String metricPrefix
 
     @Shared
@@ -702,7 +702,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     }
 
     void checkIslRttStats(Isl isl, Date checkpointTime, Boolean statExist) {
-        def stats = otsdb.query(checkpointTime, metricPrefix + "isl.rtt",
+        def stats = statsTsdb.query(checkpointTime, metricPrefix + "isl.rtt",
                 [src_switch: isl.srcSwitch.dpId.toOtsdFormat(),
                  src_port  : String.valueOf(isl.srcPort),
                  dst_switch: isl.dstSwitch.dpId.toOtsdFormat(),
@@ -714,7 +714,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     void verifyLatencyValueIsCorrect(Isl isl) {
         def t = new Date()
         t.setSeconds(t.getSeconds() - 600) //kilda_latency_update_time_range: 600
-        def stats = otsdb.query(t, new Date(), metricPrefix + "isl.rtt",
+        def stats = statsTsdb.query(t, new Date(), metricPrefix + "isl.rtt",
                 [src_switch: isl.srcSwitch.dpId.toOtsdFormat(),
                  src_port  : String.valueOf(isl.srcPort),
                  dst_switch: isl.dstSwitch.dpId.toOtsdFormat(),

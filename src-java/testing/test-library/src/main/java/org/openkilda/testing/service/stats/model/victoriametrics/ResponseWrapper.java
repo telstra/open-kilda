@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,15 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.otsdb.model;
+package org.openkilda.testing.service.stats.model.victoriametrics;
 
-import java.util.Collections;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
 
-public class EmptyStatsResult extends StatsResult {
-    public EmptyStatsResult() {
-        super();
-        tags = Collections.emptyMap();
-        aggregateTags = Collections.emptyList();
-        dps = Collections.emptyMap();
+@Getter
+public class ResponseWrapper {
+    private final String status;
+
+    private final MatrixPayloadWrapper data;
+
+    @JsonCreator
+    public ResponseWrapper(@JsonProperty("status") String status, @JsonProperty("data") MatrixPayloadWrapper data) {
+        this.status = status;
+        this.data = data;
     }
 }

@@ -42,7 +42,7 @@ be delivered at the other end. 'Pings' the flow in both directions(forward and r
 """)
 class FlowPingSpec extends HealthCheckSpecification {
 
-    @Value('${opentsdb.metric.prefix}')
+    @Value('${stats.tsdb.metric.prefix}')
     String metricPrefix
     @Value('${flow.ping.interval}')
     int pingInterval
@@ -79,7 +79,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         and: "Unicast rule packet count is increased and logged to otsdb"
         def statsData = null
         Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
-            statsData = otsdb.query(beforePingTime, metricPrefix + "switch.flow.system.bytes",
+            statsData = statsTsdb.query(beforePingTime, metricPrefix + "switch.flow.system.bytes",
                     [switchid : srcSwitch.dpId.toOtsdFormat(),
                      cookieHex: DefaultRule.VERIFICATION_UNICAST_RULE.toHexString()]).dps
             assert statsData && !statsData.empty

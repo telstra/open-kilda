@@ -40,7 +40,7 @@ class SimulateStatsSpec extends HealthCheckSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
     @Shared
-    @Value('${opentsdb.metric.prefix}')
+    @Value('${stats.tsdb.metric.prefix}')
     String metricPrefix
 
     @Tidy
@@ -85,7 +85,7 @@ class SimulateStatsSpec extends HealthCheckSpecification {
             def soft = new SoftAssertions()
             expectedMetricValueMap.each { metric, expectedValue ->
                 soft.checkSucceeds {
-                    def values = otsdb.query(1.minute.ago, "$metricPrefix$metric", [flowid: flow.flowId]).dps.values()
+                    def values = statsTsdb.query(1.minute.ago, "$metricPrefix$metric", [flowid: flow.flowId]).dps.values()
                     assert values.contains(expectedValue), "metric: $metric"
                 }
             }

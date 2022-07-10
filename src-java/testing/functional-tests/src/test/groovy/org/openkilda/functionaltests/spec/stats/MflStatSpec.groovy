@@ -36,7 +36,7 @@ import javax.inject.Provider
 class MflStatSpec extends HealthCheckSpecification {
 
     @Shared
-    @Value('${opentsdb.metric.prefix}')
+    @Value('${stats.tsdb.metric.prefix}')
     String metricPrefix
 
     @Autowired
@@ -59,13 +59,13 @@ class MflStatSpec extends HealthCheckSpecification {
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
-        then: "Stat in openTSDB is created"
+        then: "Stat in TSDB is created"
         def metric = metricPrefix + "flow.raw.bytes"
         def tags = [switchid: srcSwitch.dpId.toOtsdFormat(), flowid: flow.id]
         def waitInterval = 10
         def initStat
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            initStat = otsdb.query(startTime, metric, tags).dps
+            initStat = statsTsdb.query(startTime, metric, tags).dps
             assert initStat.size() >= 1
         }
 
@@ -81,7 +81,7 @@ class MflStatSpec extends HealthCheckSpecification {
         def statFromMgmtController
         //first 60 seconds - trying to retrieve stats from management controller, next 60 seconds from stat controller
         Wrappers.wait(statsRouterRequestInterval * 2 + WAIT_OFFSET, waitInterval) {
-            statFromMgmtController = otsdb.query(startTime, metric, tags).dps
+            statFromMgmtController = statsTsdb.query(startTime, metric, tags).dps
             assert statFromMgmtController.size() > initStat.size()
             assert statFromMgmtController.entrySet()[-2].value < statFromMgmtController.entrySet()[-1].value
         }
@@ -99,7 +99,7 @@ class MflStatSpec extends HealthCheckSpecification {
         then: "Stat on the src switch should be collected because statistic controller is set"
         def statFromStatsController
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            statFromStatsController = otsdb.query(startTime, metric, tags).dps
+            statFromStatsController = statsTsdb.query(startTime, metric, tags).dps
             assert statFromStatsController.size() > statFromMgmtController.size()
             assert statFromStatsController.entrySet()[-2].value < statFromStatsController.entrySet()[-1].value
         }
@@ -116,7 +116,7 @@ class MflStatSpec extends HealthCheckSpecification {
         then: "Stat on the src switch should not be collected because it is disconnected from controllers"
         def statAfterDeletingControllers
         Wrappers.timedLoop(statsRouterRequestInterval) {
-            statAfterDeletingControllers = otsdb.query(startTime, metric, tags).dps
+            statAfterDeletingControllers = statsTsdb.query(startTime, metric, tags).dps
             assert statAfterDeletingControllers.size() == statFromStatsController.size()
             sleep((waitInterval * 1000).toLong())
         }
@@ -132,7 +132,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         then: "Old statistic should be collected"
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            def oldStats = otsdb.query(startTime, metric, tags).dps
+            def oldStats = statsTsdb.query(startTime, metric, tags).dps
             oldStats.size() > statAfterDeletingControllers.size()
             assert oldStats.entrySet()[-2].value < oldStats.entrySet()[-1].value
         }
@@ -171,7 +171,7 @@ class MflStatSpec extends HealthCheckSpecification {
         def waitInterval = 10
         def initStat
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            initStat = otsdb.query(startTime, metric, tags).dps
+            initStat = statsTsdb.query(startTime, metric, tags).dps
             assert initStat.size() >= 1
         }
 
@@ -187,7 +187,7 @@ class MflStatSpec extends HealthCheckSpecification {
         def statFromMgmtController
         //first 60 seconds - trying to retrieve stats from management controller, next 60 seconds from stat controller
         Wrappers.wait(statsRouterRequestInterval * 2 + WAIT_OFFSET, waitInterval) {
-            statFromMgmtController = otsdb.query(startTime, metric, tags).dps
+            statFromMgmtController = statsTsdb.query(startTime, metric, tags).dps
             assert statFromMgmtController.size() > initStat.size()
             assert statFromMgmtController.entrySet()[-2].value < statFromMgmtController.entrySet()[-1].value
         }
@@ -205,7 +205,7 @@ class MflStatSpec extends HealthCheckSpecification {
         then: "Stat on the src switch should be collected because statistic controller is set"
         def statFromStatsController
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            statFromStatsController = otsdb.query(startTime, metric, tags).dps
+            statFromStatsController = statsTsdb.query(startTime, metric, tags).dps
             assert statFromStatsController.size() > statFromMgmtController.size()
             assert statFromStatsController.entrySet()[-2].value < statFromStatsController.entrySet()[-1].value
         }
@@ -223,7 +223,7 @@ class MflStatSpec extends HealthCheckSpecification {
         def statAfterDeletingControllers
         Wrappers.timedLoop(statsRouterRequestInterval) {
             sleep((waitInterval * 1000).toLong())
-            statAfterDeletingControllers = otsdb.query(startTime, metric, tags).dps
+            statAfterDeletingControllers = statsTsdb.query(startTime, metric, tags).dps
             assert statAfterDeletingControllers.size() == statFromStatsController.size()
         }
 
@@ -239,7 +239,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         then: "Old statistic should be collected"
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            def oldStats = otsdb.query(startTime, metric, tags).dps
+            def oldStats = statsTsdb.query(startTime, metric, tags).dps
             oldStats.size() > statAfterDeletingControllers.size()
             assert oldStats.entrySet()[-2].value < oldStats.entrySet()[-1].value
         }
@@ -294,7 +294,7 @@ class MflStatSpec extends HealthCheckSpecification {
         def initStats
         //first 60 seconds - trying to retrieve stats from management controller, next 60 seconds from stat controller
         Wrappers.wait(statsRouterRequestInterval * 2 + WAIT_OFFSET, waitInterval) {
-            initStats = otsdb.query(startTime, metric, tags).dps
+            initStats = statsTsdb.query(startTime, metric, tags).dps
             assert initStats.size() >= 1
         }
 
@@ -318,7 +318,7 @@ class MflStatSpec extends HealthCheckSpecification {
         def newStats
         //first 60 seconds - trying to retrieve stats from management controller, next 60 seconds from stat controller
         Wrappers.wait(statsRouterRequestInterval * 2 + WAIT_OFFSET, waitInterval) {
-            newStats = otsdb.query(startTime, metric, tags).dps
+            newStats = statsTsdb.query(startTime, metric, tags).dps
             assert newStats.size() > initStats.size()
             assert newStats.entrySet()[-2].value < newStats.entrySet()[-1].value
         }
@@ -341,7 +341,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         then: "Stat on the src switch should be collected (first RO switch available)"
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            newStats = otsdb.query(startTime, metric, tags).dps
+            newStats = statsTsdb.query(startTime, metric, tags).dps
             assert newStats.size() > initStats.size()
             assert newStats.entrySet()[-2].value < newStats.entrySet()[-1].value
         }
@@ -364,7 +364,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         then: "Stat on the src switch should be collected (second RO switch available)"
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            newStats = otsdb.query(startTime, metric, tags).dps
+            newStats = statsTsdb.query(startTime, metric, tags).dps
             assert newStats.size() > initStats.size()
             assert newStats.entrySet()[-2].value < newStats.entrySet()[-1].value
         }

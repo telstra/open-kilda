@@ -21,7 +21,7 @@ import spock.lang.Narrative
 @Tags([SMOKE_SWITCHES])
 class SwitchPortConfigSpec extends HealthCheckSpecification {
 
-    @Value('${opentsdb.metric.prefix}')
+    @Value('${stats.tsdb.metric.prefix}')
     String metricPrefix
 
     def otsdbPortUp = 1
@@ -44,7 +44,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
         and: "Port failure is logged in OpenTSDB"
         def statsData = [:]
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
-            statsData = otsdb.query(portDownTime, metricPrefix + "switch.state",
+            statsData = statsTsdb.query(portDownTime, metricPrefix + "switch.state",
                     [switchid: isl.srcSwitch.dpId.toOtsdFormat(), port: isl.srcPort]).dps
             assert statsData.size() == 1
         }
@@ -63,7 +63,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
 
         and: "Port UP event is logged in OpenTSDB"
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
-            statsData = otsdb.query(portUpTime, metricPrefix + "switch.state",
+            statsData = statsTsdb.query(portUpTime, metricPrefix + "switch.state",
                     [switchid: isl.srcSwitch.dpId.toOtsdFormat(), port: isl.srcPort]).dps
             assert statsData.size() == 1
         }
