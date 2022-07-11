@@ -51,18 +51,26 @@ public abstract class FlowProcessingWithHistorySupportFsm<T extends StateMachine
         super(nextEvent, errorEvent, commandContext, carrier, eventListeners);
     }
 
+    protected String[] getFlowIdsForHistory() {
+        return new String[]{getFlowId()};
+    }
+
     /**
      * Add a history record on the action.
      */
     public void saveActionToHistory(String action) {
-        log.debug("Flow {} action - {}", getFlowId(), action);
-        sendHistoryData(action, null);
+        for (String flowId : getFlowIdsForHistory()) {
+            log.debug("Flow {} action - {}", flowId, action);
+            sendHistoryData(flowId, action, null);
+        }
     }
 
     @Override
     public void saveActionToHistory(String action, String description) {
-        log.debug("Flow {} action - {} : {}", getFlowId(), action, description);
-        sendHistoryData(action, description);
+        for (String flowId : getFlowIdsForHistory()) {
+            log.debug("Flow {} action - {} : {}", flowId, action, description);
+            sendHistoryData(flowId, action, description);
+        }
     }
 
     /**
@@ -85,26 +93,32 @@ public abstract class FlowProcessingWithHistorySupportFsm<T extends StateMachine
 
     @Override
     public void saveErrorToHistory(String action, String errorMessage) {
-        log.error("Flow {} error - {} : {}", getFlowId(), action, errorMessage);
-        sendHistoryData(action, errorMessage);
+        for (String flowId : getFlowIdsForHistory()) {
+            log.error("Flow {} error - {} : {}", flowId, action, errorMessage);
+            sendHistoryData(flowId, action, errorMessage);
+        }
     }
 
     @Override
     public void saveErrorToHistory(String errorMessage) {
-        log.error("Flow {} error - {}", getFlowId(), errorMessage);
-        sendHistoryData(errorMessage, null);
+        for (String flowId : getFlowIdsForHistory()) {
+            log.error("Flow {} error - {}", flowId, errorMessage);
+            sendHistoryData(flowId, errorMessage, null);
+        }
     }
 
     /**
      * Add a history record on the error.
      */
     public void saveErrorToHistory(String errorMessage, Exception ex) {
-        log.error("Flow {} error - {}", getFlowId(), errorMessage, ex);
-        sendHistoryData(errorMessage, null);
+        for (String flowId : getFlowIdsForHistory()) {
+            log.error("Flow {} error - {}", flowId, errorMessage, ex);
+            sendHistoryData(flowId, errorMessage, null);
+        }
     }
 
-    protected void sendHistoryData(String action, String description) {
-        sendHistoryData(getFlowId(), action, description, getCommandContext().getCorrelationId());
+    protected void sendHistoryData(String flowId, String action, String description) {
+        sendHistoryData(flowId, action, description, getCommandContext().getCorrelationId());
     }
 
     protected void sendHistoryData(String flowId, String action, String description, String taskId) {
@@ -141,7 +155,9 @@ public abstract class FlowProcessingWithHistorySupportFsm<T extends StateMachine
     public void saveNewEventToHistory(String action, FlowEventData.Event event,
                                       FlowEventData.Initiator initiator,
                                       String details) {
-        saveNewEventToHistory(getFlowId(), action, event, initiator, details, getCommandContext().getCorrelationId());
+        for (String flowId : getFlowIdsForHistory()) {
+            saveNewEventToHistory(flowId, action, event, initiator, details, getCommandContext().getCorrelationId());
+        }
     }
 
     /**
@@ -176,19 +192,21 @@ public abstract class FlowProcessingWithHistorySupportFsm<T extends StateMachine
      */
     public void saveActionWithDumpToHistory(String action, String description,
                                             FlowDumpData flowDumpData) {
-        log.debug("Flow {} action - {} : {}", getFlowId(), action, description);
+        for (String flowId : getFlowIdsForHistory()) {
+            log.debug("Flow {} action - {} : {}", flowId, action, description);
 
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(getCommandContext().getCorrelationId())
-                .flowDumpData(flowDumpData)
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action(action)
-                        .time(getNextHistoryEntryTime())
-                        .description(description)
-                        .flowId(getFlowId())
-                        .build())
-                .build();
-        getCarrier().sendHistoryUpdate(historyHolder);
+            FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
+                    .taskId(getCommandContext().getCorrelationId())
+                    .flowDumpData(flowDumpData)
+                    .flowHistoryData(FlowHistoryData.builder()
+                            .action(action)
+                            .time(getNextHistoryEntryTime())
+                            .description(description)
+                            .flowId(flowId)
+                            .build())
+                    .build();
+            getCarrier().sendHistoryUpdate(historyHolder);
+        }
     }
 
     public final Instant getNextHistoryEntryTime() {
@@ -205,8 +223,10 @@ public abstract class FlowProcessingWithHistorySupportFsm<T extends StateMachine
     }
 
     public void saveGlobalTimeoutToHistory() {
-        saveErrorToHistory(String.format(
-                "Global timeout reached for %s operation on flow \"%s\"", getCrudActionName(), getFlowId()));
+        for (String flowId : getFlowIdsForHistory()) {
+            saveErrorToHistory(String.format(
+                    "Global timeout reached for %s operation on flow \"%s\"", getCrudActionName(), flowId));
+        }
     }
 
     protected abstract String getCrudActionName();

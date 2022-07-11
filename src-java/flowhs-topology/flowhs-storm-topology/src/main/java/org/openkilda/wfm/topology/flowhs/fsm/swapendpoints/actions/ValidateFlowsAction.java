@@ -58,7 +58,9 @@ public class ValidateFlowsAction
         RequestedFlow secondTargetFlow = stateMachine.getSecondTargetFlow();
 
         if (!featureTogglesRepository.getOrDefault().getUpdateFlowEnabled()) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Flow update feature is disabled");
+            stateMachine.fireValidationError(
+                    new ErrorData(ErrorType.NOT_PERMITTED, FlowSwapEndpointsFsm.GENERIC_ERROR_MESSAGE,
+                            "Flow update feature is disabled"));
         }
 
         try {
