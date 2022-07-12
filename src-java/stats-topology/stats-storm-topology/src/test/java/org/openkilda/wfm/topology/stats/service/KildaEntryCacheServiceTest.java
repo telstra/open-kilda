@@ -16,7 +16,10 @@
 package org.openkilda.wfm.topology.stats.service;
 
 import static java.util.Arrays.asList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openkilda.wfm.topology.stats.model.MeasurePoint.EGRESS;
@@ -134,7 +137,7 @@ public class KildaEntryCacheServiceTest {
         when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
         when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
 
-        service.refreshCache();
+        service.activate();
 
         final FlowPath forwardPath = flow.getForwardPath();
 
@@ -265,7 +268,7 @@ public class KildaEntryCacheServiceTest {
         when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
         when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
 
-        service.refreshCache();
+        service.activate();
 
         final FlowSegmentCookie forwardPathCookie = flow.getForwardPath().getCookie();
         final FlowSegmentCookie reversePathCookie = flow.getReversePath().getCookie();
@@ -332,7 +335,7 @@ public class KildaEntryCacheServiceTest {
         Flow flow = buildFlow();
         when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
 
-        service.refreshCache();
+        service.activate();
 
         MeterStatsData statsOriginSrc = getMeterStatsDataSrcSwitch();
         service.completeAndForwardMeterStats(statsOriginSrc);
@@ -423,7 +426,7 @@ public class KildaEntryCacheServiceTest {
         when(flowRepository.findAll()).thenReturn(Collections.emptyList());
         when(yFlowRepository.findAll()).thenReturn(Collections.singletonList(yFlow));
 
-        service.refreshCache();
+        service.activate();
 
         // shared endpoint
         service.completeAndForwardMeterStats(new MeterStatsData(
@@ -660,6 +663,73 @@ public class KildaEntryCacheServiceTest {
         assertDescriptionPopulation(statsEntries, statsOrigin.getStats().size(), 0);
     }
 
+    @Test
+    public void serviceActivationAndDeactivationTest() {
+        Flow flow = buildFlow();
+        when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
+        when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
+
+        FlowStatsData flowStats = new FlowStatsData(SRC_SWITCH_ID, Collections.singletonList(
+                new FlowStatsEntry(0, FORWARD_PATH_COOKIE.getValue(), 0, 0, 0, 0)));
+
+        service.activate();
+        service.completeAndForwardFlowStats(flowStats);
+        verify(carrier, atLeastOnce()).emitFlowStats(cookieCacheCaptor.capture());
+        assertEquals(1, cookieCacheCaptor.getValue().getStatsEntries().size());
+        assertEquals(flow.getFlowId(), ((CommonFlowDescriptor) cookieCacheCaptor.getValue().getStatsEntries().get(0)
+                .getDescriptor()).getFlowId());
+
+        service.deactivate();
+        service.completeAndForwardFlowStats(flowStats);
+        verify(carrier, atLeastOnce()).emitFlowStats(cookieCacheCaptor.capture());
+        assertEquals(1, cookieCacheCaptor.getValue().getStatsEntries().size());
+        assertNull(cookieCacheCaptor.getValue().getStatsEntries().get(0).getDescriptor());
+
+        service.activate();
+        service.completeAndForwardFlowStats(flowStats);
+        verify(carrier, atLeastOnce()).emitFlowStats(cookieCacheCaptor.capture());
+        assertEquals(1, cookieCacheCaptor.getValue().getStatsEntries().size());
+        assertEquals(flow.getFlowId(), ((CommonFlowDescriptor) cookieCacheCaptor.getValue().getStatsEntries().get(0)
+                .getDescriptor()).getFlowId());
+    }
+
+    @Test
+    public void serviceSingleActivationTest() {
+        when(flowRepository.findAll()).thenReturn(Collections.emptyList());
+        when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
+
+        service.activate();
+
+        verify(flowRepository, times(1)).findAll();
+        verify(yFlowRepository, times(1)).findAll();
+    }
+
+    @Test
+    public void serviceDoubleActivationTest() {
+        when(flowRepository.findAll()).thenReturn(Collections.emptyList());
+        when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
+
+        service.activate();
+        service.activate(); // second activation must not refresh cache
+
+        verify(flowRepository, times(1)).findAll();
+        verify(yFlowRepository, times(1)).findAll();
+    }
+
+
+    @Test
+    public void serviceActivationAfterDeactivationTest() {
+        when(flowRepository.findAll()).thenReturn(Collections.emptyList());
+        when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
+
+        service.activate();
+        service.deactivate();
+        service.activate();
+
+        verify(flowRepository, times(2)).findAll();
+        verify(yFlowRepository, times(2)).findAll();
+    }
+
     private void assertCookieCache(
             List<FlowStatsAndDescriptor> statsEntries, FlowSegmentCookie cookie,
             KildaEntryDescriptor expectedDescriptor) {
@@ -667,7 +737,7 @@ public class KildaEntryCacheServiceTest {
         for (FlowStatsAndDescriptor entry : statsEntries) {
             if (needle == entry.getData().getCookie()) {
                 KildaEntryDescriptor descriptor = entry.getDescriptor();
-                Assert.assertEquals(expectedDescriptor, descriptor);
+                assertEquals(expectedDescriptor, descriptor);
                 return;
             }
         }
@@ -679,7 +749,7 @@ public class KildaEntryCacheServiceTest {
         for (MeterStatsAndDescriptor entry : statsEntries) {
             if (meterId == entry.getData().getMeterId()) {
                 KildaEntryDescriptor descriptor = entry.getDescriptor();
-                Assert.assertEquals(expectedDescriptor, descriptor);
+                assertEquals(expectedDescriptor, descriptor);
                 return;
             }
         }
@@ -688,8 +758,8 @@ public class KildaEntryCacheServiceTest {
 
     private void assertDescriptionPopulation(
             List<? extends StatsAndDescriptor<?>> statsEntries, long expectEntriesTotal, long expectCacheHits) {
-        Assert.assertEquals(expectEntriesTotal, statsEntries.size());
-        Assert.assertEquals(
+        assertEquals(expectEntriesTotal, statsEntries.size());
+        assertEquals(
                 expectCacheHits, statsEntries.stream().filter(entry -> entry.getDescriptor() != null).count());
     }
 
