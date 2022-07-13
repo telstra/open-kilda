@@ -20,12 +20,12 @@ dependencies {
     implementation project(':kilda-model')
     implementation project(':blue-green')
 
-    implementation 'com.google.protobuf:protobuf-java:3.19.2'
+    implementation 'com.google.protobuf:protobuf-java:3.21.2'
     implementation 'io.springfox:springfox-swagger2:2.9.2'
     implementation 'io.springfox:springfox-swagger-ui:2.9.2'
     implementation 'joda-time:joda-time:2.10.13'
-    implementation 'io.micrometer:micrometer-core:1.8.2'
-    implementation 'io.micrometer:micrometer-registry-prometheus:1.8.2'
+    implementation 'io.micrometer:micrometer-core:1.9.2'
+    implementation 'io.micrometer:micrometer-registry-prometheus:1.9.2'
     implementation 'org.zeromq:jeromq:0.4.3'
     implementation 'org.apache.commons:commons-lang3'
 

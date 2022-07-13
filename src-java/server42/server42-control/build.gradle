@@ -18,12 +18,12 @@ dependencies {
     implementation project(':server42-control-messaging')
     implementation project(':server42-messaging')
 
-    implementation 'com.google.protobuf:protobuf-java:3.19.2'
+    implementation 'com.google.protobuf:protobuf-java:3.21.2'
     implementation 'io.springfox:springfox-swagger2:2.9.2'
     implementation 'io.springfox:springfox-swagger-ui:2.9.2'
     implementation 'joda-time:joda-time:2.10.13'
-    implementation 'io.micrometer:micrometer-core:1.8.2'
-    implementation 'io.micrometer:micrometer-registry-prometheus:1.8.2'
+    implementation 'io.micrometer:micrometer-core:1.9.2'
+    implementation 'io.micrometer:micrometer-registry-prometheus:1.9.2'
     implementation 'org.zeromq:jeromq:0.4.3'
 
     implementation 'com.fasterxml.jackson.core:jackson-core'
