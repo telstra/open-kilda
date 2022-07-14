@@ -123,6 +123,7 @@ kilda_bfd_interval_ms: 350
 kilda_bfd_multiplier: 3
 
 kilda_pce_network_strategy: "SYMMETRIC_COST"
+kilda_pce_max_path_count: 500
 
 kilda_floodlight_alive_timeout: 10
 kilda_floodlight_alive_interval: 2

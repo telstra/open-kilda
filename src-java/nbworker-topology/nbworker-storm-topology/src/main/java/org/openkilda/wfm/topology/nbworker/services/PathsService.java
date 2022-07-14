@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class PathsService {
-    public static final int MAX_PATH_COUNT = 500;
+    private final int defaultMaxPathCount;
     private PathComputer pathComputer;
     private SwitchRepository switchRepository;
     private SwitchPropertiesRepository switchPropertiesRepository;
@@ -59,6 +59,7 @@ public class PathsService {
         PathComputerFactory pathComputerFactory = new PathComputerFactory(
                 pathComputerConfig, new AvailableNetworkFactory(pathComputerConfig, repositoryFactory));
         pathComputer = pathComputerFactory.getPathComputer();
+        defaultMaxPathCount = pathComputerConfig.getMaxPathCount();
     }
 
     /**
@@ -66,8 +67,8 @@ public class PathsService {
      */
     public List<PathsInfoData> getPaths(
             SwitchId srcSwitchId, SwitchId dstSwitchId, FlowEncapsulationType requestEncapsulationType,
-            PathComputationStrategy requestPathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2)
-            throws RecoverableException, SwitchNotFoundException, UnroutableFlowException {
+            PathComputationStrategy requestPathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2,
+            Integer maxPathCount) throws RecoverableException, SwitchNotFoundException, UnroutableFlowException {
         if (Objects.equals(srcSwitchId, dstSwitchId)) {
             throw new IllegalArgumentException(
                     String.format("Source and destination switch IDs are equal: '%s'", srcSwitchId));
@@ -103,7 +104,11 @@ public class PathsService {
 
         PathComputationStrategy pathComputationStrategy = Optional.ofNullable(requestPathComputationStrategy)
                 .orElse(kildaConfiguration.getPathComputationStrategy());
-        List<Path> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, MAX_PATH_COUNT, flowEncapsulationType,
+
+        if (maxPathCount == null) {
+            maxPathCount = defaultMaxPathCount;
+        }
+        List<Path> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, maxPathCount, flowEncapsulationType,
                 pathComputationStrategy, maxLatency, maxLatencyTier2);
 
         return flowPaths.stream().map(PathMapper.INSTANCE::map)
