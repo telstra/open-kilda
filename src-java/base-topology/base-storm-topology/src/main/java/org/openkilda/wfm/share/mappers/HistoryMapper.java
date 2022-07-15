@@ -79,8 +79,13 @@ public abstract class HistoryMapper {
     public FlowDumpPayload map(FlowEventDump dump) {
         FlowDumpPayload result = generatedMap(dump);
 
-        result.setForwardCookie(fallbackIfNull(mapCookie(dump.getForwardCookie()), 0L));
-        result.setReverseCookie(fallbackIfNull(mapCookie(dump.getReverseCookie()), 0L));
+        long forwardCookie = fallbackIfNull(mapCookie(dump.getForwardCookie()), 0L);
+        long reverseCookie = fallbackIfNull(mapCookie(dump.getReverseCookie()), 0L);
+
+        result.setForwardCookie(forwardCookie);
+        result.setReverseCookie(reverseCookie);
+        result.setForwardCookieHex(Long.toHexString(forwardCookie));
+        result.setReverseCookieHex(Long.toHexString(reverseCookie));
         return result;
     }
 
@@ -192,6 +197,8 @@ public abstract class HistoryMapper {
 
     @Mapping(target = "forwardCookie", ignore = true)
     @Mapping(target = "reverseCookie", ignore = true)
+    @Mapping(target = "forwardCookieHex", ignore = true)
+    @Mapping(target = "reverseCookieHex", ignore = true)
     protected abstract FlowDumpPayload generatedMap(FlowEventDump dump);
 
     /**
