@@ -50,7 +50,7 @@ public class HistoryMapperTest {
     public static int DESTINATION_VLAN = 6;
     public static String DIVERSE_GROUP_ID = "7";
     public static FlowEncapsulationType FLOW_ENCAPSULATION_TYPE = FlowEncapsulationType.VXLAN;
-    public static int FORWARD_COOKIE = 8;
+    public static String FORWARD_COOKIE = "8";
     public static Long FORWARD_METER_ID = 9L;
     public static String FORWARD_PATH = "10";
     public static String FORWARD_STATUS = "11";
@@ -60,7 +60,7 @@ public class HistoryMapperTest {
     public static PathComputationStrategy PATH_COMPUTATION_STRATEGY = PathComputationStrategy.COST;
     public static boolean PERIODIC_PINGS = false;
     public static boolean PINNED = false;
-    public static int REVERSE_COOKIE = 14;
+    public static String REVERSE_COOKIE = "14";
     public static long REVERSE_METER_ID = 15;
     public static String REVERSE_PATH = "16";
     public static String REVERSE_STATUS = "17";

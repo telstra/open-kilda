@@ -40,9 +40,9 @@ public class FlowDumpPayload {
 
     private boolean strictBandwidth;
 
-    private long forwardCookie;
+    private String forwardCookie;
 
-    private long reverseCookie;
+    private String reverseCookie;
 
     private String sourceSwitch;
 

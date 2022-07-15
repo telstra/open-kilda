@@ -79,8 +79,8 @@ public abstract class HistoryMapper {
     public FlowDumpPayload map(FlowEventDump dump) {
         FlowDumpPayload result = generatedMap(dump);
 
-        result.setForwardCookie(fallbackIfNull(mapCookie(dump.getForwardCookie()), 0L));
-        result.setReverseCookie(fallbackIfNull(mapCookie(dump.getReverseCookie()), 0L));
+        result.setForwardCookie(fallbackIfNull(mapCookie(dump.getForwardCookie()), 0L).toString());
+        result.setReverseCookie(fallbackIfNull(mapCookie(dump.getReverseCookie()), 0L).toString());
         return result;
     }
 
