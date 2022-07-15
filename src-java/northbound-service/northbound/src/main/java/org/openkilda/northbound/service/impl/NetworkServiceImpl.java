@@ -61,6 +61,11 @@ public class NetworkServiceImpl implements NetworkService {
             Integer maxPathCount) {
         String correlationId = RequestCorrelationId.getId();
 
+        if (maxPathCount != null && maxPathCount <= 0) {
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.PARAMETERS_INVALID,
+                    "Bad max_path_count parameter", "The number MAX_PATH_COUNT should be positive");
+        }
+
         if (PathComputationStrategy.MAX_LATENCY.equals(pathComputationStrategy) && maxLatency == null) {
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.PARAMETERS_INVALID,
                     "Missed max_latency parameter.", "MAX_LATENCY path computation strategy requires non null "
