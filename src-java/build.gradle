@@ -149,8 +149,7 @@ subprojects {
             testImplementation 'io.grpc:grpc-testing:1.43.2'
             implementation 'com.google.protobuf:protobuf-java-util:3.19.2'
 
-            implementation 'io.springfox:springfox-swagger2:2.9.2'
-            implementation 'io.springfox:springfox-swagger-ui:2.9.2'
+            implementation 'org.springdoc:springdoc-openapi-ui:1.4.8'
 
             implementation 'com.esotericsoftware:kryo:5.2.1'
         }

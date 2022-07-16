@@ -19,22 +19,28 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.error.MessageException;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 import java.util.Optional;
 import java.util.stream.Stream;
 
-@Api
 @ApiResponses(value = {
-        @ApiResponse(code = 200, message = "Operation is successful"),
-        @ApiResponse(code = 400, response = MessageError.class, message = "Invalid input data"),
-        @ApiResponse(code = 401, response = MessageError.class, message = "Unauthorized"),
-        @ApiResponse(code = 403, response = MessageError.class, message = "Forbidden"),
-        @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
-        @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
-        @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
+        @ApiResponse(responseCode = "200", description = "Operation is successful"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data",
+                content = @Content(schema = @Schema(implementation = MessageError.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized",
+                content = @Content(schema = @Schema(implementation = MessageError.class))),
+        @ApiResponse(responseCode = "403", description = "Forbidden",
+                content = @Content(schema = @Schema(implementation = MessageError.class))),
+        @ApiResponse(responseCode = "404", description = "Not found",
+                content = @Content(schema = @Schema(implementation = MessageError.class))),
+        @ApiResponse(responseCode = "500", description = "General error",
+                content = @Content(schema = @Schema(implementation = MessageError.class))),
+        @ApiResponse(responseCode = "503", description = "Service unavailable",
+                content = @Content(schema = @Schema(implementation = MessageError.class)))})
 public class BaseController {
     protected void exposeBodyValidationResults(Stream<Optional<String>> defectStream) {
         String[] defects = defectStream

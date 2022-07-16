@@ -42,11 +42,11 @@ import javax.servlet.http.HttpServletResponse;
 public class RequestCorrelationInspectorFilter extends OncePerRequestFilter {
 
     private static final List<String> EXCLUDE_PATTERNS = ImmutableList.of(
+            "/",
             "/v1/**",
             // swagger related patterns
             "/swagger*/**",
-            "/webjars/**",
-            "/v2/api-docs"
+            "/v3/api-docs/**"
     );
 
     private final PathMatcher matcher = new AntPathMatcher();

@@ -13,45 +13,29 @@
  *   limitations under the License.
  */
 
-
 package org.openkilda.server42.control.stormstub.swagger;
 
-import org.openkilda.server42.control.messaging.flowrtt.AddFlow;
-import org.openkilda.server42.control.messaging.flowrtt.Message;
-
-import com.fasterxml.classmate.TypeResolver;
-import org.springframework.beans.factory.annotation.Autowired;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
+import org.springdoc.core.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import springfox.documentation.builders.ApiInfoBuilder;
-import springfox.documentation.builders.RequestHandlerSelectors;
-import springfox.documentation.service.ApiInfo;
-import springfox.documentation.spi.DocumentationType;
-import springfox.documentation.spring.web.plugins.Docket;
-import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
-
-@EnableSwagger2
 @Configuration
 public class SwaggerApiDocumentationConfig {
-
-    private ApiInfo apiInfo() {
-        return new ApiInfoBuilder().title("Server42 storm stub REST CRUD")
-                .description(
-                        "HTTP control on server42")
-                .termsOfServiceUrl("").version("0.0.1-SNAPSHOT").build();
+    @Bean
+    public OpenAPI apiInfo() {
+        return new OpenAPI()
+                .info(new Info().title("Server42 storm stub REST CRUD")
+                        .description("HTTP control on server42")
+                        .version("1.0"));
     }
 
-    @Autowired
-    private TypeResolver typeResolver;
-
     @Bean
-    public Docket configureControllerPackageAndConvertors() {
-        return new Docket(DocumentationType.SWAGGER_2)
-                .additionalModels(typeResolver.resolve(AddFlow.class),
-                        typeResolver.resolve(Message.class))
-                .select()
-                .apis(RequestHandlerSelectors.basePackage("org.openkilda.server42.control.stormstub")).build()
-                .apiInfo(apiInfo());
+    public GroupedOpenApi configureControllerPackageAndConvertors() {
+        return GroupedOpenApi.builder()
+                .group("Server42-Control-API")
+                .packagesToScan("org.openkilda.server42.control.stormstub")
+                .build();
     }
 }

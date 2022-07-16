@@ -15,11 +15,11 @@
 
 package org.openkilda.server42.control.swagger;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
-import springfox.documentation.annotations.ApiIgnore;
 
-@ApiIgnore
+@Hidden
 @Controller
 public class SwaggerUiController {
     @RequestMapping(value = "/")

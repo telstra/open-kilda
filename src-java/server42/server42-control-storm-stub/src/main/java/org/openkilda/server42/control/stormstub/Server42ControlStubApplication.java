@@ -19,8 +19,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class StubApplication {
+public class Server42ControlStubApplication {
     public static void main(String[] args) {
-        SpringApplication.run(StubApplication.class, args);
+        SpringApplication.run(Server42ControlStubApplication.class, args);
     }
 }

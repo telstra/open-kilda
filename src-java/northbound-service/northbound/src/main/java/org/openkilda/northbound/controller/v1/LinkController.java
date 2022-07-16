@@ -29,11 +29,13 @@ import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
 import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto;
 import org.openkilda.northbound.service.LinkService;
 
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.PropertySource;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,7 +44,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -53,9 +54,7 @@ import java.util.concurrent.CompletableFuture;
  */
 @RestController
 @RequestMapping("/v1")
-@PropertySource("classpath:northbound.properties")
 public class LinkController extends BaseLinkController {
-
     @Autowired
     private LinkService linkService;
 
@@ -64,9 +63,10 @@ public class LinkController extends BaseLinkController {
      *
      * @return list of links.
      */
-    @ApiOperation(value = "Get all links, based on arguments.", response = LinkDto.class, responseContainer = "List")
     @GetMapping(path = "/links")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Get all links, based on arguments.")
+    @ApiResponse(responseCode = "200",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = LinkDto.class))))
     public CompletableFuture<List<LinkDto>> getLinks(
             @RequestParam(value = "src_switch", required = false) SwitchId srcSwitch,
             @RequestParam(value = "src_port", required = false) Integer srcPort,
@@ -81,11 +81,12 @@ public class LinkController extends BaseLinkController {
      * @param linkParameters properties to find a link for delete.
      * @return deleted link.
      */
-    @ApiOperation(value = "Delete link.", response = LinkDto.class, responseContainer = "List")
     @DeleteMapping(path = "/links")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Delete link.")
+    @ApiResponse(responseCode = "200",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = LinkDto.class))))
     public CompletableFuture<List<LinkDto>> deleteLink(
-            @ApiParam(value = "default: false. True value means that all link checks (link is inactive, "
+            @Parameter(description = "default: false. True value means that all link checks (link is inactive, "
                     + "there is no flow with this link) will be ignored.")
             @RequestParam(name = "force", required = false, defaultValue = "false") boolean force,
             @RequestBody LinkParametersDto linkParameters) {
@@ -97,10 +98,10 @@ public class LinkController extends BaseLinkController {
      *
      * @return list of link properties.
      */
-    @ApiOperation(value = "Get all link properties (static), based on arguments.", response = LinkPropsDto.class,
-            responseContainer = "List")
     @GetMapping(path = "/link/props")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Get all link properties (static), based on arguments.")
+    @ApiResponse(responseCode = "200",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = LinkPropsDto.class))))
     public CompletableFuture<List<LinkPropsDto>> getLinkProps(
             @RequestParam(value = "src_switch", required = false) SwitchId srcSwitch,
             @RequestParam(value = "src_port", required = false) Integer srcPort,
@@ -115,9 +116,9 @@ public class LinkController extends BaseLinkController {
      * @param keysAndProps if null, get all link props. Otherwise, the link props that much the primary keys.
      * @return result of the processing.
      */
-    @ApiOperation(value = "Create/Update link properties", response = BatchResults.class)
     @PutMapping(path = "/link/props")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Create/Update link properties")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = BatchResults.class)))
     public CompletableFuture<BatchResults> putLinkProps(@RequestBody List<LinkPropsDto> keysAndProps) {
         return linkService.setLinkProps(keysAndProps);
     }
@@ -128,9 +129,9 @@ public class LinkController extends BaseLinkController {
      * @param keysAndProps if null, get all link props. Otherwise, the link props that much the primary keys.
      * @return result of the processing.
      */
-    @ApiOperation(value = "Delete link properties (static), based on arguments.", response = BatchResults.class)
     @DeleteMapping(path = "/link/props")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Delete link properties (static), based on arguments.")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = BatchResults.class)))
     public CompletableFuture<BatchResults> delLinkProps(@RequestBody List<LinkPropsDto> keysAndProps) {
         return linkService.delLinkProps(keysAndProps);
     }
@@ -140,19 +141,18 @@ public class LinkController extends BaseLinkController {
      *
      * @return list of flows for a particular link.
      */
-    @ApiOperation(value = "Get all flows for a particular link, based on arguments.",
-            response = FlowResponsePayload.class, responseContainer = "List")
-    @GetMapping(path = "/links/flows",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    @ResponseStatus(HttpStatus.OK)
+    @GetMapping(path = "/links/flows", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @Operation(summary = "Get all flows for a particular link, based on arguments.")
+    @ApiResponse(responseCode = "200",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = FlowResponsePayload.class))))
     public CompletableFuture<List<FlowResponsePayload>> getFlowsForLink(@RequestParam(value = "src_switch")
-                                                                                    SwitchId srcSwitch,
+                                                                        SwitchId srcSwitch,
                                                                         @RequestParam(value = "src_port")
-                                                                                Integer srcPort,
+                                                                        Integer srcPort,
                                                                         @RequestParam(value = "dst_switch")
-                                                                                    SwitchId dstSwitch,
+                                                                        SwitchId dstSwitch,
                                                                         @RequestParam(value = "dst_port")
-                                                                                    Integer dstPort) {
+                                                                        Integer dstPort) {
         return linkService.getFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
@@ -161,15 +161,14 @@ public class LinkController extends BaseLinkController {
      *
      * @return list of flow ids which was sent to reroute.
      */
-    @ApiOperation(value = "Reroute all flows for a particular link, based on arguments.", response = String.class,
-            responseContainer = "List")
-    @PatchMapping(path = "/links/flows/reroute",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    @ResponseStatus(HttpStatus.OK)
+    @PatchMapping(path = "/links/flows/reroute", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @Operation(summary = "Reroute all flows for a particular link, based on arguments.")
+    @ApiResponse(responseCode = "200",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = String.class))))
     public CompletableFuture<List<String>> rerouteFlowsForLink(@RequestParam(value = "src_switch") SwitchId srcSwitch,
-                                                                @RequestParam(value = "src_port") Integer srcPort,
-                                                                @RequestParam(value = "dst_switch") SwitchId dstSwitch,
-                                                                @RequestParam(value = "dst_port") Integer dstPort) {
+                                                               @RequestParam(value = "src_port") Integer srcPort,
+                                                               @RequestParam(value = "dst_switch") SwitchId dstSwitch,
+                                                               @RequestParam(value = "dst_port") Integer dstPort) {
         return linkService.rerouteFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
@@ -178,18 +177,17 @@ public class LinkController extends BaseLinkController {
      *
      * @return updated link.
      */
-    @ApiOperation(value = "Update \"Under maintenance\" flag for the link.", response = LinkDto.class,
-            responseContainer = "List")
-    @PatchMapping(path = "/links/under-maintenance",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    @ResponseStatus(HttpStatus.OK)
+    @PatchMapping(path = "/links/under-maintenance", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @Operation(summary = "Update \"Under maintenance\" flag for the link.")
+    @ApiResponse(responseCode = "200",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = LinkDto.class))))
     public CompletableFuture<List<LinkDto>> updateLinkUnderMaintenance(@RequestBody LinkUnderMaintenanceDto link) {
         return linkService.updateLinkUnderMaintenance(link);
     }
 
-    @ApiOperation(value = "Update maximum bandwidth on the link", response = LinkMaxBandwidthDto.class)
     @PatchMapping(path = "/links/bandwidth")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Update maximum bandwidth on the link")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = LinkMaxBandwidthDto.class)))
     public CompletableFuture<LinkMaxBandwidthDto> updateLinkParams(
             @RequestParam(value = "src_switch") SwitchId srcSwitch,
             @RequestParam(value = "src_port") Integer srcPort,
@@ -204,11 +202,10 @@ public class LinkController extends BaseLinkController {
      *
      * @return updated link.
      */
-    @ApiOperation(value = "Update \"enable bfd\" flag for the link.", response = LinkDto.class,
-            responseContainer = "List")
-    @PatchMapping(path = "/links/enable-bfd",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    @ResponseStatus(HttpStatus.OK)
+    @PatchMapping(path = "/links/enable-bfd", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @Operation(summary = "Update \"enable bfd\" flag for the link.")
+    @ApiResponse(responseCode = "200",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = LinkDto.class))))
     public CompletableFuture<List<LinkDto>> updateLinkEnableBfd(@RequestBody LinkEnableBfdDto link) {
         NetworkEndpoint source = makeSourceEndpoint(new SwitchId(link.getSrcSwitch()), link.getSrcPort());
         NetworkEndpoint destination = makeDestinationEndpoint(new SwitchId(link.getDstSwitch()), link.getDstPort());

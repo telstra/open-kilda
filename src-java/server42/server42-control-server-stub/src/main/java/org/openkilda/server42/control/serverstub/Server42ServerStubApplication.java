@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,24 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound;
 
-import org.openkilda.northbound.config.AppConfig;
+package org.openkilda.server42.control.serverstub;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-/**
- * The Application.
- */
+
 @SpringBootApplication
-public class Application {
-    /**
-     * Main method to start the application.
-     *
-     * @param args application arguments
-     */
+public class Server42ServerStubApplication {
     public static void main(String[] args) {
-        SpringApplication.run(AppConfig.class, args);
+        SpringApplication.run(Server42ServerStubApplication.class, args);
     }
 }

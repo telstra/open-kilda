@@ -76,7 +76,6 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.PathMapper;
-import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
@@ -531,26 +530,6 @@ public class FlowServiceImpl implements FlowService {
                 .filter(predicate)
                 .map(pathMapper::mapGroupFlowPathPayload)
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public CompletableFuture<BatchResults> unpushFlows() {
-        String correlationId = RequestCorrelationId.getId();
-        throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.NOT_PERMITTED,
-                "Operation not permitted", "Unpush flow operation is deprecated");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public CompletableFuture<BatchResults> pushFlows() {
-        String correlationId = RequestCorrelationId.getId();
-        throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.NOT_PERMITTED,
-                "Operation not permitted", "Push flow operation is deprecated");
     }
 
     /**

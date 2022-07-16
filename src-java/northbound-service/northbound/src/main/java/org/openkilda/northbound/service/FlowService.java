@@ -24,7 +24,6 @@ import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.model.SwitchId;
-import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
@@ -168,22 +167,6 @@ public interface FlowService {
      * @return Flow path
      */
     CompletableFuture<FlowPathPayload> pathFlow(final String id);
-
-    /**
-     * Use this to push flows that may not be in the database / caches but they should be.
-     *
-     * @deprecated Push flow operation is deprecated.
-     */
-    @Deprecated
-    CompletableFuture<BatchResults> pushFlows();
-
-    /**
-     * Use this to unpush flows .. ie undo a push
-     *
-     * @deprecated Unpush flow operation is deprecated.
-     */
-    @Deprecated
-    CompletableFuture<BatchResults> unpushFlows();
 
     /**
      * Performs rerouting of specific flow.

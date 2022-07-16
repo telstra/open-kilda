@@ -4,5 +4,4 @@
         "http://checkstyle.sourceforge.net/dtds/suppressions_1_2.dtd">
 
 <suppressions>
-    <suppress files="src/main/java/org/openkilda/grpc/speaker/GrpcSpeaker.java" checks="HideUtilityClassConstructor"/>
 </suppressions>

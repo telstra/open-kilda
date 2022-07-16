@@ -25,8 +25,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 @EnableConfigurationProperties(SwitchToVlanMapping.class)
-public class ControlApplication {
+public class Server42ControlApplication {
     public static void main(String[] args) {
-        SpringApplication.run(ControlApplication.class, args);
+        SpringApplication.run(Server42ControlApplication.class, args);
     }
 }

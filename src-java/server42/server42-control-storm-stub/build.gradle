@@ -10,14 +10,13 @@ configurations {
 description = 'server42-control-storm-stub'
 
 dependencies {
-    implementation(platform('org.springframework:spring-framework-bom:5.2.19.RELEASE'))
+    implementation(platform('org.springframework:spring-framework-bom:5.2.22.RELEASE'))
     implementation(platform('org.springframework.boot:spring-boot-dependencies:2.2.13.RELEASE'))
 
     implementation project(':server42-control-messaging')
     implementation project(':server42-messaging')
 
-    implementation 'io.springfox:springfox-swagger2:2.9.2'
-    implementation 'io.springfox:springfox-swagger-ui:2.9.2'
+    implementation 'org.springdoc:springdoc-openapi-ui:1.4.8'
     implementation 'joda-time:joda-time:2.10.13'
     implementation 'io.micrometer:micrometer-core:1.8.2'
     implementation 'io.micrometer:micrometer-registry-prometheus:1.8.2'
@@ -68,7 +67,7 @@ dependencies {
 }
 
 bootJar {
-    mainClassName = 'org.openkilda.server42.control.stormstub.StubApplication'
+    mainClassName = 'org.openkilda.server42.control.stormstub.Server42ControlStubApplication'
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
 }
 
