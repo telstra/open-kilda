@@ -43,8 +43,11 @@ public class PathDto {
     @JsonProperty("nodes")
     private List<PathNodePayload> nodes;
 
-    public PathDto(Long bandwidth, Duration latency, List<PathNodePayload> nodes) {
-        this(bandwidth, latency.toNanos(), latency.toNanos(), latency.toMillis(), nodes);
+    @JsonProperty("is_backup_path")
+    private Boolean isBackupPath;
+
+    public PathDto(Long bandwidth, Duration latency, List<PathNodePayload> nodes, Boolean isBackupPath) {
+        this(bandwidth, latency.toNanos(), latency.toNanos(), latency.toMillis(), nodes, isBackupPath);
     }
 
     @JsonCreator
@@ -52,11 +55,13 @@ public class PathDto {
                    @JsonProperty("latency") Long latency,
                    @JsonProperty("latency_ns") Long latencyNs,
                    @JsonProperty("latency_ms") Long latencyMs,
-                   @JsonProperty("nodes") List<PathNodePayload> nodes) {
+                   @JsonProperty("nodes") List<PathNodePayload> nodes,
+                   @JsonProperty("is_backup_path") Boolean isBackupPath) {
         this.bandwidth = bandwidth;
         this.latency = latency;
         this.latencyNs = latencyNs;
         this.latencyMs = latencyMs;
         this.nodes = nodes;
+        this.isBackupPath = isBackupPath;
     }
 }
