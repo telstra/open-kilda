@@ -1,6 +1,914 @@
 {
-  "title": "kilda-*",
-  "timeFieldName": "@timestamp",
-  "notExpandable": true,
-  "fields": "[{\"name\":\"@timestamp\",\"type\":\"date\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"@version\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"_id\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"_index\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":false},{\"name\":\"_score\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":false,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"_source\",\"type\":\"_source\",\"count\":0,\"scripted\":false,\"searchable\":false,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"_type\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":false},{\"name\":\"contextMap.correlation_id\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"contextMap.correlation_id.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"correlation_id\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"correlation_id.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"endOfBatch\",\"type\":\"boolean\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"formattedMessage\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"formattedMessage.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"geoip.ip\",\"type\":\"ip\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"geoip.latitude\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"geoip.location\",\"type\":\"geo_point\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"geoip.longitude\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"host\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"host.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"instant.epochSecond\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"instant.nanoOfSecond\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"level\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"level.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"level_value\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"loggerFqcn\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"loggerFqcn.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"loggerName\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"loggerName.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"logger_name\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"logger_name.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"message\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"parameterCount\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"path\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"path.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"port\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"thread\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"thread.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"threadId\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"threadPriority\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"thread_name\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"thread_name.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"timeMillis\",\"type\":\"number\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"type\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"type.keyword\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"contextMap.topology_name\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"name\":\"blue_green_mode\",\"type\":\"string\",\"count\":0,\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true}]"
+  "index_pattern": {
+    "title": "kilda-*",
+    "timeFieldName": "@timestamp",
+    "fields": {
+      "@timestamp": {
+        "count": 0,
+        "name": "@timestamp",
+        "type": "date",
+        "esTypes": [
+          "date"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "format": {
+          "id": "date"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "@version": {
+        "count": 0,
+        "name": "@version",
+        "type": "number",
+        "esTypes": [
+          "long"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "format": {
+          "id": "number"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "_id": {
+        "count": 0,
+        "name": "_id",
+        "type": "string",
+        "esTypes": [
+          "_id"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "_index": {
+        "count": 0,
+        "name": "_index",
+        "type": "string",
+        "esTypes": [
+          "_index"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "_score": {
+        "count": 0,
+        "name": "_score",
+        "type": "number",
+        "scripted": false,
+        "searchable": false,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "number"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "_source": {
+        "count": 0,
+        "name": "_source",
+        "type": "_source",
+        "esTypes": [
+          "_source"
+        ],
+        "scripted": false,
+        "searchable": false,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "_source"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "_type": {
+        "count": 2,
+        "name": "_type",
+        "type": "string",
+        "esTypes": [
+          "_type"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.FLOODLIGHT-DASHBOARD-TAG": {
+        "count": 0,
+        "name": "contextMap.FLOODLIGHT-DASHBOARD-TAG",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.FLOODLIGHT-DASHBOARD-TAG.keyword": {
+        "count": 0,
+        "name": "contextMap.FLOODLIGHT-DASHBOARD-TAG.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "contextMap.FLOODLIGHT-DASHBOARD-TAG"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.correlation_id": {
+        "count": 0,
+        "name": "contextMap.correlation_id",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.correlation_id.keyword": {
+        "count": 0,
+        "name": "contextMap.correlation_id.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "contextMap.correlation_id"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.dashboard": {
+        "count": 0,
+        "name": "contextMap.dashboard",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.dashboard.keyword": {
+        "count": 0,
+        "name": "contextMap.dashboard.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "contextMap.dashboard"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.event_type": {
+        "count": 0,
+        "name": "contextMap.event_type",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.event_type.keyword": {
+        "count": 0,
+        "name": "contextMap.event_type.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "contextMap.event_type"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.latency_ms": {
+        "count": 0,
+        "name": "contextMap.latency_ms",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.latency_ms.keyword": {
+        "count": 0,
+        "name": "contextMap.latency_ms.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "contextMap.latency_ms"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.port": {
+        "count": 0,
+        "name": "contextMap.port",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.port.keyword": {
+        "count": 0,
+        "name": "contextMap.port.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "contextMap.port"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.state": {
+        "count": 0,
+        "name": "contextMap.state",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.state.keyword": {
+        "count": 0,
+        "name": "contextMap.state.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "contextMap.state"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.switch_id": {
+        "count": 0,
+        "name": "contextMap.switch_id",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.switch_id.keyword": {
+        "count": 0,
+        "name": "contextMap.switch_id.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "contextMap.switch_id"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.switch_port": {
+        "count": 0,
+        "name": "contextMap.switch_port",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "contextMap.switch_port.keyword": {
+        "count": 0,
+        "name": "contextMap.switch_port.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "contextMap.switch_port"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "decoded_latency_ms": {
+        "count": 0,
+        "name": "decoded_latency_ms",
+        "type": "number",
+        "esTypes": [
+          "long"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "format": {
+          "id": "number"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "host": {
+        "count": 0,
+        "name": "host",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "host.keyword": {
+        "count": 0,
+        "name": "host.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "host"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "level": {
+        "count": 2,
+        "name": "level",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "level.keyword": {
+        "count": 0,
+        "name": "level.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "level"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "loggerName": {
+        "count": 0,
+        "name": "loggerName",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "loggerName.keyword": {
+        "count": 0,
+        "name": "loggerName.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "loggerName"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "message": {
+        "count": 1,
+        "name": "message",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "message.keyword": {
+        "count": 0,
+        "name": "message.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "message"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "port": {
+        "count": 0,
+        "name": "port",
+        "type": "number",
+        "esTypes": [
+          "long"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "format": {
+          "id": "number"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "region": {
+        "count": 0,
+        "name": "region",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "region.keyword": {
+        "count": 0,
+        "name": "region.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "region"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "role": {
+        "count": 0,
+        "name": "role",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "role.keyword": {
+        "count": 0,
+        "name": "role.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "role"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "stack_trace": {
+        "count": 0,
+        "name": "stack_trace",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "stack_trace.keyword": {
+        "count": 0,
+        "name": "stack_trace.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "stack_trace"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "tags": {
+        "count": 0,
+        "name": "tags",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "tags.keyword": {
+        "count": 0,
+        "name": "tags.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "tags"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "thread": {
+        "count": 0,
+        "name": "thread",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "thread.keyword": {
+        "count": 0,
+        "name": "thread.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "thread"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "type": {
+        "count": 0,
+        "name": "type",
+        "type": "string",
+        "esTypes": [
+          "text"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": false,
+        "readFromDocValues": false,
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      },
+      "type.keyword": {
+        "count": 0,
+        "name": "type.keyword",
+        "type": "string",
+        "esTypes": [
+          "keyword"
+        ],
+        "scripted": false,
+        "searchable": true,
+        "aggregatable": true,
+        "readFromDocValues": true,
+        "subType": {
+          "multi": {
+            "parent": "type"
+          }
+        },
+        "format": {
+          "id": "string"
+        },
+        "shortDotsEnable": false,
+        "isMapped": true
+      }
+    },
+    "typeMeta": {},
+    "fieldFormats": {},
+    "runtimeFieldMap": {},
+    "fieldAttrs": {
+      "_type": {
+        "count": 2
+      },
+      "level": {
+        "count": 2
+      },
+      "message": {
+        "count": 1
+      }
+    },
+    "allowNoIndex": false
+  }
 }

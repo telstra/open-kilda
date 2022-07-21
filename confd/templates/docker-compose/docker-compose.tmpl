@@ -7,7 +7,8 @@ services:
 {{if not (exists "/no_grpc_stub")}}
   grpc-stub:
     container_name: grpc-stub
-    image: kilda/grpc-stub:latest
+    image: "kilda/grpc-stub:${TAG:-latest}"
+    hostname: grpc-stub.pendev
     build:
       context: docker/grpc-stub/
       dockerfile: Dockerfile
@@ -23,10 +24,13 @@ services:
 
   lab-api:
     container_name: lab-api
-    image: kilda_lab-service:latest
+    image: "kilda_lab-service:${TAG:-latest}"
+    hostname: lab-api.pendev
     build:
       context: docker/lab-service/
       dockerfile: Dockerfile
+      args:
+        base_image: "kilda/base-lab-service:${TAG:-latest}"
     ports:
     - "8288:8288"
     privileged: true
@@ -47,7 +51,7 @@ services:
   odb1:
     container_name: odb1
     hostname: odb1.pendev
-    image: orientdb:3.0.34
+    image: "orientdb:${ORIENTDB_TAG:?Error orientdb version tag is not defined}"
     command: dserver.sh
     volumes:
       - ./docker/orientdb/config/odb1:/orientdb/config
@@ -74,7 +78,7 @@ services:
   odb2:
     container_name: odb2
     hostname: odb2.pendev
-    image: orientdb:3.0.34
+    image: "orientdb:${ORIENTDB_TAG:?Error orientdb version tag is not defined}"
     command: dserver.sh
     volumes:
       - ./docker/orientdb/config/odb2:/orientdb/config
@@ -100,7 +104,7 @@ services:
   odb3:
     container_name: odb3
     hostname: odb3.pendev
-    image: orientdb:3.0.34
+    image: "orientdb:${ORIENTDB_TAG:?Error orientdb version tag is not defined}"
     command: dserver.sh
     volumes:
       - ./docker/orientdb/config/odb3:/orientdb/config
@@ -125,8 +129,9 @@ services:
 {{end}}
 
   mysql_db:
+    container_name: mysql_db
     hostname: mysql.pendev
-    image: mysql:5.7.34
+    image: "mysql:${MYSQL_TAG:-5.7.34}"
     command: --default-authentication-plugin=mysql_native_password
     volumes:
       - ./docker/mysql/setup_data:/docker-entrypoint-initdb.d
@@ -150,6 +155,7 @@ services:
   db_migration:
     container_name: db_migration
     build: docker/db-migration
+    image: "kilda/db_migration:${TAG:-latest}"
     command: /kilda/migrate-develop.sh
     depends_on:
       odb1:
@@ -195,7 +201,12 @@ services:
   zookeeper:
     container_name: zookeeper
     hostname: zookeeper.pendev
-    image: kilda/zookeeper:latest
+    image: "kilda/zookeeper:${TAG:-latest}"
+    build:
+      context: docker/zookeeper
+      dockerfile: Dockerfile
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     command: /usr/local/sbin/create-zknode-and-start.sh
     volumes:
       - ./docker/zookeeper/bin/create-zknode-and-start.sh:/usr/local/sbin/create-zknode-and-start.sh
@@ -218,7 +229,12 @@ services:
   kafka:
     container_name: kafka
     hostname: kafka.pendev
-    image: "kilda/kafka:latest"
+    image: "kilda/kafka:${TAG:-latest}"
+    build:
+      context: docker/kafka
+      dockerfile: Dockerfile
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     # run_and_configure is in services/kafka/kafka-conf
     command: /opt/kafka/bin/run_and_configure.sh
     # command: /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/server.properties
@@ -251,6 +267,8 @@ services:
     build:
       context: docker
       dockerfile: wfm/Dockerfile
+      args:
+        base_image: "kilda/storm:${TAG:-latest}"
     depends_on:
       kafka:
         condition: service_healthy
@@ -270,7 +288,12 @@ services:
   hbase:
     container_name: hbase
     hostname: hbase.pendev
-    image: kilda/hbase:latest
+    image: "kilda/hbase:${TAG:-latest}"
+    build:
+      context: docker/hbase
+      dockerfile: Dockerfile
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     command: /opt/hbase/bin/start-hbase
     volumes:
       - hbase_data:/data/hbase
@@ -301,7 +324,12 @@ services:
   storm-nimbus:
     container_name: storm-nimbus
     hostname: nimbus.pendev
-    image: kilda/storm:latest
+    image: "kilda/storm:${TAG:-latest}"
+    build:
+      context: docker/storm
+      dockerfile: Dockerfile
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
     depends_on:
       zookeeper:
@@ -327,7 +355,12 @@ services:
 {{if not (exists "/no_storm_ui")}}
   storm-ui:
     container_name: storm-ui
-    image: kilda/storm:latest
+    image: "kilda/storm:${TAG:-latest}"
+    build:
+      context: docker/storm
+      dockerfile: Dockerfile
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm ui
     depends_on:
       zookeeper:
@@ -352,7 +385,12 @@ services:
   storm-supervisor:
     container_name: storm-supervisor
     hostname: storm-supervisor.pendev
-    image: kilda/storm:latest
+    image: "kilda/storm:${TAG:-latest}"
+    build:
+      context: docker/storm
+      dockerfile: Dockerfile
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
     depends_on:
       zookeeper:
@@ -428,10 +466,12 @@ services:
 
   floodlight_1:
     container_name: floodlight_1
+    image: "kilda/floodlight:${TAG:-latest}"
     build:
       context: docker
       dockerfile: floodlight-modules/Dockerfile
-    image: "kilda/floodlight:${TAG:-latest}"
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
     ports:
       - "6653:6653"
@@ -457,10 +497,12 @@ services:
 {{if not (exists "/no_floodlight_2")}}
   floodlight_2:
     container_name: floodlight_2
+    image: "kilda/floodlight:${TAG:-latest}"
     build:
       context: docker
       dockerfile: floodlight-modules/Dockerfile
-    image: "kilda/floodlight:${TAG:-latest}"
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=2", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_2"]
     ports:
       - "6753:6653"
@@ -484,10 +526,12 @@ services:
 {{if not (exists "/no_floodlight_stats")}}
   floodlight_stats:
     container_name: floodlight_stats
+    image: "kilda/floodlight:${TAG:-latest}"
     build:
       context: docker
       dockerfile: floodlight-modules/Dockerfile
-    image: "kilda/floodlight:${TAG:-latest}"
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     command:
       - "floodlightStats"
       - "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1.stats"
@@ -518,6 +562,8 @@ services:
     build:
       context: docker
       dockerfile: northbound/Dockerfile
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     ports:
       - "8080:8080"
     environment:
@@ -545,6 +591,8 @@ services:
     build:
       context: docker
       dockerfile: northbound/Dockerfile
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     ports:
       - "8080:8080"
     environment:
@@ -571,6 +619,8 @@ services:
     build:
       context: docker
       dockerfile: grpc-service/Dockerfile
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     ports:
     - "8091:8091"
     environment:
@@ -592,6 +642,8 @@ services:
     build:
       context: docker
       dockerfile: grpc-service/Dockerfile
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     ports:
       - "8092:8091"
     environment:
@@ -611,7 +663,12 @@ services:
   opentsdb:
     container_name: opentsdb
     hostname: opentsdb.pendev
-    image: kilda/opentsdb:latest
+    image: "kilda/opentsdb:${TAG:-latest}"
+    build:
+      context: docker/opentsdb
+      dockerfile: Dockerfile
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     command: /app/wait-for-it.sh -t 120 -h hbase.pendev -p 9090 -- /app/start-opentsdb
     depends_on:
       zookeeper:
@@ -629,9 +686,13 @@ services:
 {{if not (exists "/no_gui")}}
   gui:
     container_name: gui
+    image: "kilda/gui:${TAG:-latest}"
+    hostname: gui.pendev
     build:
       context: src-gui
       dockerfile: Dockerfile
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     ports:
       - "8010:1010"
     depends_on:
@@ -649,7 +710,12 @@ services:
 {{if not (exists "/no_elasticsearch")}}
   elasticsearch:
     container_name: elasticsearch
-    image: kilda/elasticsearch:latest
+    image: "kilda/elasticsearch:${ELASTICSEARCH_TAG:?ERROR! Elasticsearch version tag is not defined}"
+    build:
+      context: docker/elasticsearch
+      dockerfile: Dockerfile
+      args:
+        base_image: "elasticsearch:${ELASTICSEARCH_TAG:?ERROR! Elasticsearch version tag is not defined}"
     hostname: elasticsearch.pendev
     ports:
       - "9200:9200"
@@ -659,12 +725,14 @@ services:
         aliases:
          - elasticsearch.pendev
     environment:
-      ES_JAVA_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+      ES_JAVA_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseContainerSupport"
+      "node.name": "kilda-elastic"
+      "discovery.type": "single-node"
     mem_limit: ${ELASTIC_MEM_LIMIT:-1073741824}
 {{end}}
 {{if not (exists "/no_kibana")}}
   kibana:
-    image: kibana:5.6.12
+    image: "kibana:${KIBANA_TAG:?ERROR! Kibana version tag is not defined}"
     container_name: kibana
     hostname: kibana.pendev{{if not (exists "/no_elasticsearch")}}
     depends_on:
@@ -682,10 +750,15 @@ services:
   logstash:
     container_name: logstash
     hostname: logstash.pendev
-    image: "kilda/logstash:latest"{{if not (exists "/no_elasticsearch")}}
+    image: "kilda/logstash:${LOGSTASH_TAG:?ERROR! Logstash version tag is not defined}"{{if not (exists "/no_elasticsearch")}}
     depends_on:
       elasticsearch:
         condition: service_started{{end}}
+    build:
+      context: docker/logstash
+      dockerfile: Dockerfile
+      args:
+        base_image: "logstash:${LOGSTASH_TAG:?ERROR Logstash version tag is not defined}"
     ports:
       - 9600:9600
       - {{ getv "/kilda_logging_port_tests" }}:{{ getv "/kilda_logging_port_tests" }}
@@ -694,11 +767,12 @@ services:
         aliases:
          - logstash.pendev
     environment:
-      LS_JAVA_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XshowSettings:all"
+      LS_JAVA_OPTS: "-Xms512m -Xmx512m -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XshowSettings:all -XX:MinRAMPercentage=50 -XX:MaxRAMPercentage=90 -XX:ActiveProcessorCount=1 -XX:+UseContainerSupport -XX:+AlwaysActAsServerClassMachine"
+      LD_PRELOAD: "/usr/lib64/libjemalloc.so.1"
       LS_OPTS: "--debug-config"
       # remove default 500m heap size in /usr/share/logstash/vendor/jruby/bin/jruby
       JAVA_MEM: " "
-    mem_limit: ${LOGSTASH_MEM_LIMIT:-1073741824}
+    mem_limit: ${LOGSTASH_MEM_LIMIT:-1500M}
     healthcheck:
       test: ["CMD-SHELL", "/simple-logstash-healthcheck.sh"]
       interval: 10s
@@ -708,10 +782,12 @@ services:
 {{if not (exists "/no_server42_control")}}
   server42-control:
     container_name: server42-control
+    image: "kilda/server42:${TAG:-latest}"
     build:
       context: docker
       dockerfile: server42/Dockerfile
-    image: kilda/server42
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-control.jar
     ports:
       - "9002:9002"
@@ -730,10 +806,12 @@ services:
 {{if not (exists "/no_server42_stats")}}
   server42-stats:
     container_name: server42-stats
+    image: "kilda/server42:${TAG:-latest}"
     build:
       context: docker
       dockerfile: server42/Dockerfile
-    image: kilda/server42
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-stats.jar
     ports:
       - "9003:9003"
@@ -752,10 +830,12 @@ services:
 {{if not (exists "/no_server42_server_stub")}}
   server42-server-stub:
     container_name: server42-server-stub
+    image: "kilda/server42:${TAG:-latest}"
     build:
       context: docker
       dockerfile: server42/Dockerfile
-    image: kilda/server42
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-control-server-stub.jar
     ports:
       - "5555:5555"
@@ -776,7 +856,7 @@ services:
 {{if not (exists "/no_server42_server")}}
   server42-server:
     container_name: server42-server
-    image: kilda/server42dpdk:latest
+    image: "kilda/server42dpdk:${TAG:-latest}"
     ports:
       - "5555:5555"
       - "5556:5556"
@@ -805,10 +885,12 @@ services:
 {{if not (exists "/no_server42_storm_stub")}}
   server42-storm-stub:
     container_name: server42-storm-stub
+    image: "kilda/server42:${TAG:-latest}"
     build:
       context: docker
       dockerfile: server42/Dockerfile
-    image: kilda/server42
+      args:
+        base_image: "kilda/base-ubuntu:${TAG:-latest}"
     command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-control-storm-stub.jar
     ports:
       - "9001:9001"
