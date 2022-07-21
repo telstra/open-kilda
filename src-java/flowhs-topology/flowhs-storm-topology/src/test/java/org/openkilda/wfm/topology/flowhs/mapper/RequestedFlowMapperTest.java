@@ -280,17 +280,24 @@ public class RequestedFlowMapperTest {
                 .sourceSwitch(SRC_SWITCH_ID)
                 .sourcePort(SRC_PORT)
                 .sourceVlan(SRC_VLAN)
+                .sourceInnerVlan(SRC_INNER_VLAN)
                 .destinationSwitch(DST_SWITCH_ID)
                 .destinationPort(DST_PORT)
                 .destinationVlan(DST_VLAN)
+                .destinationInnerVlan(DST_INNER_VLAN)
                 .build();
         RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(swapFlowDto);
+
         assertEquals(FLOW_ID, requestedFlow.getFlowId());
+
         assertEquals(SRC_SWITCH_ID, requestedFlow.getSrcSwitch());
         assertEquals(SRC_PORT, requestedFlow.getSrcPort());
         assertEquals(SRC_VLAN, requestedFlow.getSrcVlan());
+        assertEquals(SRC_INNER_VLAN, requestedFlow.getSrcInnerVlan());
+
         assertEquals(DST_SWITCH_ID, requestedFlow.getDestSwitch());
         assertEquals(DST_PORT, requestedFlow.getDestPort());
         assertEquals(DST_VLAN, requestedFlow.getDestVlan());
+        assertEquals(DST_INNER_VLAN, requestedFlow.getDestInnerVlan());
     }
 }

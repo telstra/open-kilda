@@ -15,21 +15,29 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.isl;
 
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
+import org.openkilda.floodlight.api.request.rulemanager.Origin;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.reroute.RerouteFlows;
-import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
-import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
 import org.openkilda.messaging.info.event.IslChangedInfoData;
 import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.model.BfdProperties;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.bolt.KafkaEncoder;
-import org.openkilda.wfm.share.hubandspoke.TaskIdBasedKeyFactory;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.error.ControllerNotFoundException;
@@ -38,6 +46,7 @@ import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.service.IIslCarrier;
+import org.openkilda.wfm.topology.network.service.IslRulesService;
 import org.openkilda.wfm.topology.network.service.NetworkIslService;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubCommand;
@@ -45,11 +54,11 @@ import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubDisab
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubEnableCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.command.BfdHubIslRemoveNotificationCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslCommandBase;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRulesRouter;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRulesWorker;
-import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesIslInstallCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesIslRemoveCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesWorkerCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.ProcessSpeakerRulesCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.UniIslHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslNotifyIslRemovedCommand;
@@ -60,6 +69,9 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+
+import java.util.List;
+import java.util.UUID;
 
 public class IslHandler extends AbstractBolt implements IIslCarrier {
     public static final String BOLT_ID = ComponentId.ISL_HANDLER.toString();
@@ -97,14 +109,16 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
             KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     private final NetworkOptions options;
+    private final RuleManagerConfig ruleManagerConfig;
 
-    private transient NetworkIslService service;
-    // FIXME(surabujin) the keys produced by this factory are not used
-    private transient TaskIdBasedKeyFactory keyFactory;
+    private transient NetworkIslService islService;
+    private transient IslRulesService islRulesService;
 
-    public IslHandler(PersistenceManager persistenceManager, NetworkOptions options) {
+    public IslHandler(PersistenceManager persistenceManager, NetworkOptions options,
+                      RuleManagerConfig ruleManagerConfig) {
         super(persistenceManager);
         this.options = options;
+        this.ruleManagerConfig = ruleManagerConfig;
     }
 
     @Override
@@ -141,14 +155,15 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     }
 
     private void handleSpeakerRulesWorkerInput(Tuple input) throws PipelineException {
-        IslCommand command = pullValue(input, SpeakerRulesWorker.FIELD_ID_PAYLOAD, IslCommand.class);
+        IslCommandBase command = pullValue(input, SpeakerRulesRouter.FIELD_ID_INPUT, IslCommandBase.class);
         command.apply(this);
     }
 
     @Override
     protected void init() {
-        service = new NetworkIslService(this, persistenceManager, options);
-        keyFactory = new TaskIdBasedKeyFactory(getTaskId());
+        islService = new NetworkIslService(this, persistenceManager, options);
+        RuleManager ruleManager = new RuleManagerImpl(ruleManagerConfig);
+        islRulesService = new IslRulesService(this, persistenceManager, ruleManager);
     }
 
     @Override
@@ -185,17 +200,38 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     }
 
     @Override
-    public void islDefaultRulesInstall(Endpoint source, Endpoint destination, boolean multitableMode,
-                                       boolean server42IslRtt, Integer server42Port) {
-        emit(STREAM_SPEAKER_RULES_ID, getCurrentTuple(), makeSpeakerRulesTuple(
-                new SpeakerRulesIslInstallCommand(keyFactory.next(), source, destination, multitableMode,
-                        server42IslRtt, server42Port)));
+    public void islRulesInstall(IslReference reference, Endpoint endpoint) {
+        islRulesService.installIslRules(reference, endpoint);
     }
 
     @Override
-    public void islDefaultRulesDelete(Endpoint source, Endpoint destination) {
-        emit(STREAM_SPEAKER_RULES_ID, getCurrentTuple(), makeSpeakerRulesTuple(
-                new SpeakerRulesIslRemoveCommand(keyFactory.next(), source, destination)));
+    public void sendIslRulesInstallCommand(SwitchId switchId, UUID commandId, List<OfCommand> commands) {
+        InstallSpeakerCommandsRequest request = InstallSpeakerCommandsRequest.builder()
+                .messageContext(new MessageContext(getCommandContext().fork(commandId.toString()).getCorrelationId()))
+                .switchId(switchId)
+                .commandId(commandId)
+                .commands(commands)
+                .origin(Origin.NETWORK)
+                .failIfExists(false)
+                .build();
+        emit(STREAM_SPEAKER_RULES_ID, getCurrentTuple(), makeSpeakerRulesTuple(request));
+    }
+
+    @Override
+    public void islRulesDelete(IslReference reference, Endpoint endpoint) {
+        islRulesService.deleteIslRules(reference, endpoint);
+    }
+
+    @Override
+    public void sendIslRulesDeleteCommand(SwitchId switchId, UUID commandId, List<OfCommand> commands) {
+        DeleteSpeakerCommandsRequest request = DeleteSpeakerCommandsRequest.builder()
+                .messageContext(new MessageContext(getCommandContext().fork(commandId.toString()).getCorrelationId()))
+                .switchId(switchId)
+                .commandId(commandId)
+                .commands(commands)
+                .origin(Origin.NETWORK)
+                .build();
+        emit(STREAM_SPEAKER_RULES_ID, getCurrentTuple(), makeSpeakerRulesTuple(request));
     }
 
     @Override
@@ -205,6 +241,21 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
         // Also, if a cycle appears in the future by the anchor tuple, it will be quite difficult to find it,
         // and we remove the possibility of this cycle appearing initially.
         emit(STREAM_POLL_ID, makePollTuple(command));
+    }
+
+    @Override
+    public void islRulesInstalled(IslReference reference, Endpoint endpoint) {
+        islService.islRulesInstalled(reference, endpoint);
+    }
+
+    @Override
+    public void islRulesDeleted(IslReference reference, Endpoint endpoint) {
+        islService.islRulesDeleted(reference, endpoint);
+    }
+
+    @Override
+    public void islRulesFailed(IslReference reference, Endpoint endpoint) {
+        islService.islRulesFailed(reference, endpoint);
     }
 
     @Override
@@ -226,8 +277,9 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
         emit(STREAM_FLOW_MONITORING_ID, getCurrentTuple(), makeIslChangedTuple(islChangedInfoData));
     }
 
-    private Values makeSpeakerRulesTuple(SpeakerRulesWorkerCommand command) {
-        return new Values(command.getKey(), command, getCommandContext());
+    private Values makeSpeakerRulesTuple(BaseSpeakerCommandsRequest request) {
+        return new Values(request.getCommandId().toString(), new ProcessSpeakerRulesCommand(request),
+                getCommandContext());
     }
 
     private Values makeBfdHubTuple(BfdHubCommand command) {
@@ -258,46 +310,42 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     }
 
     public void processIslSetupFromHistory(Endpoint endpoint, IslReference reference, Isl history) {
-        service.islSetupFromHistory(endpoint, reference, history);
+        islService.islSetupFromHistory(endpoint, reference, history);
     }
 
     public void processIslUp(Endpoint endpoint, IslReference reference, IslDataHolder islData) {
-        service.islUp(endpoint, reference, islData);
+        islService.islUp(endpoint, reference, islData);
     }
 
     public void processIslMove(Endpoint endpoint, IslReference reference) {
-        service.islMove(endpoint, reference);
+        islService.islMove(endpoint, reference);
     }
 
     public void processIslDown(Endpoint endpoint, IslReference reference, IslDownReason reason) {
-        service.islDown(endpoint, reference, reason);
+        islService.islDown(endpoint, reference, reason);
     }
 
     public void processRoundTripStatus(IslReference reference, RoundTripStatus status) {
-        service.roundTripStatusNotification(reference, status);
+        islService.roundTripStatusNotification(reference, status);
     }
 
     public void processBfdStatusUpdate(Endpoint endpoint, IslReference reference, BfdStatusUpdate status) {
-        service.bfdStatusUpdate(endpoint, reference, status);
+        islService.bfdStatusUpdate(endpoint, reference, status);
     }
 
     public void processBfdPropertiesUpdate(IslReference reference) {
-        service.bfdPropertiesUpdate(reference);
+        islService.bfdPropertiesUpdate(reference);
     }
 
-    public void processIslRuleInstalled(IslReference reference, InstallIslDefaultRulesResult payload) {
-        service.islDefaultRuleInstalled(reference, payload);
+    public void processIslRulesResponse(SpeakerCommandResponse response) {
+        islRulesService.handleResponse(response);
     }
 
-    public void processIslRuleDeleted(IslReference reference, RemoveIslDefaultRulesResult payload) {
-        service.islDefaultRuleDeleted(reference, payload);
-    }
-
-    public void processIslRuleTimeout(IslReference reference, Endpoint endpoint) {
-        service.islDefaultTimeout(reference, endpoint);
+    public void processIslRulesTimeout(UUID commandId) {
+        islRulesService.handleTimeout(commandId);
     }
 
     public void processIslRemove(IslReference reference) {
-        service.remove(reference);
+        islService.remove(reference);
     }
 }

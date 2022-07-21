@@ -215,6 +215,9 @@ public class FlowDto implements Serializable {
     @JsonInclude(Include.NON_NULL)
     private String yFlowId;
 
+    @JsonProperty("vlan_statistics")
+    private Set<Integer> vlanStatistics;
+
     public FlowDto() {
     }
 
@@ -257,6 +260,7 @@ public class FlowDto implements Serializable {
      * @param reverseLatency            reverse path latency nanoseconds
      * @param latencyLastModifiedTime   latency fields last modified time
      * @param yFlowId                   the y-flow ID in the case of sub-flow
+     * @param vlanStatistics            flow vlan statistics
      */
     @JsonCreator
     @Builder(toBuilder = true)
@@ -300,7 +304,8 @@ public class FlowDto implements Serializable {
                    @JsonProperty("forward_latency") Long forwardLatency,
                    @JsonProperty("reverse_latency") Long reverseLatency,
                    @JsonProperty("latency_last_modified_time") Instant latencyLastModifiedTime,
-                   @JsonProperty("y_flow_id") @JsonInclude(Include.NON_NULL) String yFlowId) {
+                   @JsonProperty("y_flow_id") @JsonInclude(Include.NON_NULL) String yFlowId,
+                   @JsonProperty("vlan_statistics") Set<Integer> vlanStatistics) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
@@ -341,6 +346,7 @@ public class FlowDto implements Serializable {
         this.reverseLatency = reverseLatency;
         this.latencyLastModifiedTime = latencyLastModifiedTime;
         this.yFlowId = yFlowId;
+        this.vlanStatistics = vlanStatistics;
     }
 
     /**
@@ -382,7 +388,7 @@ public class FlowDto implements Serializable {
                 sourceVlan,
                 destinationVlan, 0, 0,
                 null, 0, null, null, null, null, null, null, pinned, null, detectConnectedDevices, null, null, null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -417,7 +423,7 @@ public class FlowDto implements Serializable {
                         input.getDestination().getDetectConnectedDevices().isArp()),
                 input.getPathComputationStrategy() != null ? PathComputationStrategy.valueOf(
                         input.getPathComputationStrategy().toUpperCase()) : null, null, null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
     }
 
     @JsonIgnore

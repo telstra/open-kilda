@@ -51,9 +51,11 @@ public class UpdateRequestAction extends
                                    FlowSwapEndpointsFsm stateMachine) {
         FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(flow);
         flowRequest.setSource(
-                new FlowEndpoint(targetFlow.getSrcSwitch(), targetFlow.getSrcPort(), targetFlow.getSrcVlan()));
+                new FlowEndpoint(targetFlow.getSrcSwitch(), targetFlow.getSrcPort(), targetFlow.getSrcVlan(),
+                        targetFlow.getSrcInnerVlan()));
         flowRequest.setDestination(
-                new FlowEndpoint(targetFlow.getDestSwitch(), targetFlow.getDestPort(), targetFlow.getDestVlan()));
+                new FlowEndpoint(targetFlow.getDestSwitch(), targetFlow.getDestPort(), targetFlow.getDestVlan(),
+                        targetFlow.getDestInnerVlan()));
 
         if (flow.getLoopSwitchId() != null) {
             boolean flowLoopedOnSrc = flow.getLoopSwitchId().equals(flow.getSrcSwitchId());

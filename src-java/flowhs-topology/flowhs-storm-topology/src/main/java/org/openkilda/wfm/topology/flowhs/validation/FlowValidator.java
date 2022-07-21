@@ -142,6 +142,7 @@ public class FlowValidator {
 
         checkOneSwitchFlowConflict(source, destination);
         checkSwitchesExistsAndActive(flow.getSrcSwitch(), flow.getDestSwitch());
+        checkFlowForCorrectOuterVlansWithVlanStatistics(flow);
 
         for (EndpointDescriptor descriptor : new EndpointDescriptor[]{
                 EndpointDescriptor.makeSource(source),
@@ -162,6 +163,20 @@ public class FlowValidator {
             checkFlowForSinkEndpointConflicts(descriptor);
             checkFlowForMirrorEndpointConflicts(flow.getFlowId(), descriptor);
             checkFlowForServer42Conflicts(descriptor, properties);
+        }
+    }
+
+    @VisibleForTesting
+    void checkFlowForCorrectOuterVlansWithVlanStatistics(RequestedFlow flow) throws InvalidFlowException {
+        Set<Integer> vlanStatistics = flow.getVlanStatistics();
+
+        if (vlanStatistics == null) {
+            return;
+        }
+
+        if (flow.getSrcVlan() != 0 && flow.getDestVlan() != 0) {
+            throw new InvalidFlowException("To collect vlan statistics you need to set source or destination "
+                    + "vlan_id to zero", ErrorType.PARAMETERS_INVALID);
         }
     }
 

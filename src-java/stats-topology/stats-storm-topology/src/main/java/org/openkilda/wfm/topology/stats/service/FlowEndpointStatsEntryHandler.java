@@ -27,6 +27,7 @@ import org.openkilda.wfm.topology.stats.model.DummyFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyMeterDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.MeasurePoint;
+import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowSubDescriptor;
 
@@ -101,6 +102,20 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
         throw new IllegalArgumentException(formatUnexpectedDescriptorMessage(descriptor.getClass()));
     }
 
+    @Override
+    public void handleStatsEntry(StatVlanDescriptor descriptor) {
+        FlowSegmentCookie cookie = new FlowSegmentCookie(statsEntry.getCookie());
+        TagsFormatter tags = new TagsFormatter();
+        tags.addDirectionTag(Direction.UNKNOWN);
+        directionFromCookieIntoTags(cookie, tags);
+        tags.addFlowIdTag(descriptor.getFlowId());
+        tags.addVlanTag(cookie.getStatsVlan());
+        tags.addSwitchIdTag(switchId);
+        tags.addCookieTag(cookie);
+        tags.addInPortTag(statsEntry.getInPort());
+        emitStatVlan(tags);
+    }
+
     private void emitMeterPoints(TagsFormatter tags, MeasurePoint measurePoint) {
         FlowSegmentCookie cookie = decodeFlowSegmentCookie(statsEntry.getCookie());
         if (cookie != null && !isFlowSatelliteEntry(cookie)) {
@@ -143,6 +158,12 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
     private void emitYFlowYPointPoints(TagsFormatter tags) {
         meterEmitter.emitPacketAndBytePoints(
                 new MetricFormatter("yFlow.yPoint."), timestamp,
+                statsEntry.getPacketCount(), statsEntry.getByteCount(), tags.getTags());
+    }
+
+    private void emitStatVlan(TagsFormatter tags) {
+        meterEmitter.emitPacketAndBytePoints(
+                new MetricFormatter("flow.vlan."), timestamp,
                 statsEntry.getPacketCount(), statsEntry.getByteCount(), tags.getTags());
     }
 

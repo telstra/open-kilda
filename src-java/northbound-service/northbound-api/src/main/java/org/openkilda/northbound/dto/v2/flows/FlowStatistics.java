@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,25 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.switchmanager.factory;
+package org.openkilda.northbound.dto.v2.flows;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import net.floodlightcontroller.core.IOFSwitch;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.OFGroupAdd;
-import org.projectfloodlight.openflow.protocol.OFMeterMod;
+
+import java.util.Set;
 
 @Data
 @Builder
-public class SwitchFlowTuple {
-
-    public static SwitchFlowTuple getEmpty() {
-        return SwitchFlowTuple.builder().build();
-    }
-
-    private IOFSwitch sw;
-    private OFFlowMod flow;
-    private OFMeterMod meter;
-    private OFGroupAdd group;
+@AllArgsConstructor
+@JsonNaming(value = PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class FlowStatistics {
+    private Set<Integer> vlans;
 }

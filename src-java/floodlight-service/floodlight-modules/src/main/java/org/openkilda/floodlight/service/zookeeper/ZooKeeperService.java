@@ -44,7 +44,7 @@ public class ZooKeeperService implements IService, LifeCycleObserver {
     // management expected state consists of:
     // 1 producer
     // 5 consumers for following topics: kilda.speaker, kilda.speaker.flow, kilda.speaker.flow.ping,
-    // kilda.speaker.disco, kilda.speaker.switch.manager
+    // kilda.speaker.disco, kilda.speaker.switch.manager, kilda.network.control
     public static final int MANAGEMENT_EXPECTED_STATE = 6;
     // stats expected state consists of:
     // 1 producer

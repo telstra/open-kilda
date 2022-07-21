@@ -52,4 +52,9 @@ abstract class IngressFlowLoopFlowModFactory extends IngressInstallFlowModFactor
     protected OFAction makeOutputAction() {
         throw new UnsupportedOperationException("Output actions aren't supported by flow loop factory.");
     }
+
+    @Override
+    protected List<OFInstruction> makeIngressVlanStatsInstructions() {
+        throw new UnsupportedOperationException("Vlan stats instructions aren't supported by flow loop factory.");
+    }
 }

@@ -32,6 +32,8 @@ import org.openkilda.model.cookie.Cookie;
 
 import org.junit.Assert;
 
+import java.util.HashSet;
+
 abstract class IngressFlowSegmentCommandJsonTest
         extends AbstractSpeakerCommandJsonTest<IngressFlowSegmentRequest> {
     protected void verifyPayload(IngressFlowSegmentRequest request, IngressFlowSegmentCommand command) {
@@ -58,7 +60,8 @@ abstract class IngressFlowSegmentCommandJsonTest
                 8,
                 new FlowTransitEncapsulation(9, FlowEncapsulationType.TRANSIT_VLAN),
                 RulesContext.builder().build(),
-                MirrorConfig.builder().build());
+                MirrorConfig.builder().build(),
+                new HashSet<>());
         return makeRequest(factory);
     }
 

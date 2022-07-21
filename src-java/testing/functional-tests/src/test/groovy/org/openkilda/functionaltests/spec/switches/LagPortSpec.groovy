@@ -586,6 +586,43 @@ class LagPortSpec extends HealthCheckSpecification {
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
     }
 
+    @Tidy
+    def "Unable decrease bandwidth on LAG port lower than connected flows bandwidth sum"() {
+        given: "Flows on a LAG port with switch ports"
+        def switchPair = topologyHelper.getSwitchPairs().first()
+        def testPorts = topology.getAllowedPortsForSwitch(switchPair.src).takeRight(2).sort()
+        assert testPorts.size > 1
+        def maximumBandwidth = testPorts.sum { northbound.getPort(switchPair.src.dpId, it).currentSpeed }
+        def payload = new LagPortRequest(portNumbers: testPorts)
+        def lagPort = northboundV2.createLagLogicalPort(switchPair.src.dpId, payload).logicalPortNumber
+        def flow = flowHelperV2.randomFlow(switchPair).tap {
+            source.portNumber = lagPort
+            it.maximumBandwidth = maximumBandwidth
+        }
+        flowHelperV2.addFlow(flow)
+
+        when: "Decrease LAG port bandwidth by deleting one port to make it lower than connected flows bandwidth sum"
+        def updatePayload = new LagPortRequest(portNumbers: [testPorts.get(0)])
+        northboundV2.updateLagLogicalPort(switchPair.src.dpId, lagPort, updatePayload)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.statusCode == HttpStatus.BAD_REQUEST
+        def errorDetails = exc.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Error processing LAG logical port #$lagPort on $switchPair.src.dpId update request"
+        errorDetails.errorDescription == "Not enough bandwidth for LAG port $lagPort."
+
+        then: "No bandwidth changed for LAG port and all connected ports are in place"
+        with(northboundV2.getLagLogicalPort(switchPair.src.dpId)[0]) {
+            logicalPortNumber == lagPort
+            portNumbers == testPorts
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
+    }
+
     void deleteAllLagPorts(SwitchId switchId) {
         northboundV2.getLagLogicalPort(switchId)*.logicalPortNumber.each { Integer lagPort ->
             northboundV2.deleteLagLogicalPort(switchId, lagPort)

@@ -27,6 +27,7 @@ import org.openkilda.model.MeterConfig;
 import lombok.Getter;
 import org.junit.Assert;
 
+import java.util.HashSet;
 import java.util.UUID;
 
 public class OneSwitchFlowRemoveCommandTest extends IngressCommandRemoveTest {
@@ -60,7 +61,8 @@ public class OneSwitchFlowRemoveCommandTest extends IngressCommandRemoveTest {
                 MessageContext context, UUID commandId, FlowSegmentMetadata metadata, FlowEndpoint endpoint,
                 MeterConfig meterConfig, FlowEndpoint egressEndpoint,
                 RulesContext rulesContext) {
-            super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext, null);
+            super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext, null,
+                    new HashSet<>());
         }
 
         @Override

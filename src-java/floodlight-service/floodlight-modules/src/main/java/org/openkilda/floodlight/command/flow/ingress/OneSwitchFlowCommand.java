@@ -28,6 +28,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowMod;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -37,10 +38,10 @@ public abstract class OneSwitchFlowCommand extends IngressFlowSegmentBase {
     OneSwitchFlowCommand(
             MessageContext messageContext, UUID commandId, FlowSegmentMetadata metadata,
             FlowEndpoint endpoint, MeterConfig meterConfig, @NonNull FlowEndpoint egressEndpoint,
-            RulesContext rulesContext, MirrorConfig mirrorConfig) {
+            RulesContext rulesContext, MirrorConfig mirrorConfig, Set<Integer> statVlans) {
         super(
                 messageContext, endpoint.getSwitchId(), commandId, metadata, endpoint, meterConfig,
-                egressEndpoint.getSwitchId(), null, rulesContext, mirrorConfig);
+                egressEndpoint.getSwitchId(), null, rulesContext, mirrorConfig, statVlans);
         this.egressEndpoint = egressEndpoint;
     }
 

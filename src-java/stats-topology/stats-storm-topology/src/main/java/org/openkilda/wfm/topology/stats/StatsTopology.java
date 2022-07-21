@@ -148,43 +148,37 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
 
         declareBolt(topologyBuilder,
                 new CacheBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID), STATS_CACHE_BOLT.name())
-                .shuffleGrouping(STATS_FLOW_NOTIFY_SPOUT.name())
-                .fieldsGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.TO_CACHE_STREAM,
-                        SpeakerStatsRouterBolt.STATS_FIELDS)
+                .allGrouping(STATS_FLOW_NOTIFY_SPOUT.name())
+                .shuffleGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.TO_CACHE_STREAM)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void outgoingStatsBolts(TopologyBuilder topologyBuilder) {
         declareBolt(topologyBuilder,
                 new PortMetricGenBolt(topologyConfig.getMetricPrefix()), PORT_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.PORT_STATS_STREAM,
-                        SpeakerStatsRouterBolt.STATS_WITH_MESSAGE_FIELDS);
+                .shuffleGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.PORT_STATS_STREAM);
         declareBolt(topologyBuilder,
                 new MeterConfigMetricGenBolt(topologyConfig.getMetricPrefix()), METER_CFG_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.METER_CFG_STATS_STREAM,
-                        SpeakerStatsRouterBolt.STATS_WITH_MESSAGE_FIELDS);
+                .shuffleGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.METER_CFG_STATS_STREAM);
         declareBolt(topologyBuilder,
                 new SystemRuleMetricGenBolt(topologyConfig.getMetricPrefix()), SYSTEM_RULE_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.SYSTEM_RULES_STATS_STREAM,
-                        SpeakerStatsRouterBolt.STATS_FIELDS);
+                .shuffleGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.SYSTEM_RULES_STATS_STREAM);
         declareBolt(topologyBuilder,
                 new TableStatsMetricGenBolt(topologyConfig.getMetricPrefix()), TABLE_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.TABLE_STATS_STREAM,
-                        SpeakerStatsRouterBolt.STATS_FIELDS);
+                .shuffleGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.TABLE_STATS_STREAM);
         declareBolt(topologyBuilder,
                 new PacketInOutMetricGenBolt(topologyConfig.getMetricPrefix()),
                 PACKET_IN_OUT_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.PACKET_IN_OUT_STATS_STREAM,
-                        SpeakerStatsRouterBolt.STATS_FIELDS);
+                .shuffleGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.PACKET_IN_OUT_STATS_STREAM);
     }
 
     private void outgoingStatsWithCacheBolts(TopologyBuilder topologyBuilder) {
         declareBolt(topologyBuilder,
                 new FlowMetricGenBolt(topologyConfig.getMetricPrefix()), FLOW_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_CACHE_BOLT.name(), CacheBolt.FLOW_STATS_STREAM, CacheBolt.STATS_STREAM_FIELDS);
+                .shuffleGrouping(STATS_CACHE_BOLT.name(), CacheBolt.FLOW_STATS_STREAM);
         declareBolt(topologyBuilder,
                 new MeterStatsMetricGenBolt(topologyConfig.getMetricPrefix()), METER_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_CACHE_BOLT.name(), CacheBolt.METER_STATS_STREAM, CacheBolt.STATS_STREAM_FIELDS);
+                .shuffleGrouping(STATS_CACHE_BOLT.name(), CacheBolt.METER_STATS_STREAM);
     }
 
     private void openTsdbBolt(TopologyBuilder topologyBuilder) {

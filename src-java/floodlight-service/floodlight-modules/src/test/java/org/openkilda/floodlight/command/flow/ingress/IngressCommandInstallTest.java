@@ -122,6 +122,7 @@ abstract class IngressCommandInstallTest extends IngressCommandTest {
 
     protected void processZeroVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
         expectMakeDefaultPortForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
+        expectMakeVlanStatsFlowMessage(command);
         expectMakeCustomerPortSharedCatchInstallMessage(command);
         executeCommand(command, 2);
     }

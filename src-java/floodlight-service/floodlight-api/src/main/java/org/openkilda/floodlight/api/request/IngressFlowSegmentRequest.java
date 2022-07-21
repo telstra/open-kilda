@@ -31,6 +31,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.ToString;
 
+import java.util.Set;
 import java.util.UUID;
 
 @JsonIgnoreProperties({"switch_id"})
@@ -48,8 +49,10 @@ public abstract class IngressFlowSegmentRequest extends IngressFlowSegmentBase {
     protected IngressFlowSegmentRequest(
             MessageContext context, UUID commandId, FlowSegmentMetadata metadata,
             FlowEndpoint endpoint, MeterConfig meterConfig, SwitchId egressSwitchId, int islPort,
-            @NonNull FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig) {
-        super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, rulesContext, mirrorConfig);
+            @NonNull FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig,
+            Set<Integer> statVlans) {
+        super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, rulesContext, mirrorConfig,
+                statVlans);
 
         this.islPort = islPort;
         this.encapsulation = encapsulation;
@@ -58,6 +61,7 @@ public abstract class IngressFlowSegmentRequest extends IngressFlowSegmentBase {
     protected IngressFlowSegmentRequest(@NonNull IngressFlowSegmentRequest other, @NonNull UUID commandId) {
         this(
                 other.messageContext, commandId, other.metadata, other.endpoint, other.meterConfig,
-                other.egressSwitchId, other.islPort, other.encapsulation, other.rulesContext, other.mirrorConfig);
+                other.egressSwitchId, other.islPort, other.encapsulation, other.rulesContext, other.mirrorConfig,
+                other.statVlans);
     }
 }

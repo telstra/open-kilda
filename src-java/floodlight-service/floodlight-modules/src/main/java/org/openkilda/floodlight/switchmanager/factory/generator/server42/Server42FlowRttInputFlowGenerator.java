@@ -28,18 +28,12 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.SERVER_42_FLO
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 import static org.openkilda.model.cookie.Cookie.encodeServer42FlowRttInput;
 
-import org.openkilda.floodlight.KildaCore;
-import org.openkilda.floodlight.service.FeatureDetectorService;
-import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;
-import org.openkilda.floodlight.switchmanager.factory.generator.SwitchFlowGenerator;
 import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import lombok.Builder;
-import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -57,23 +51,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public class Server42FlowRttInputFlowGenerator implements SwitchFlowGenerator {
-    private final FeatureDetectorService featureDetectorService;
-    private final KildaCore kildaCore;
-    private final int server42Port;
-    private final int customerPort;
-    private final MacAddress server42macAddress;
+public final class Server42FlowRttInputFlowGenerator {
 
-    @Builder
-    public Server42FlowRttInputFlowGenerator(
-            FeatureDetectorService featureDetectorService, KildaCore kildaCore, int server42Port, int customerPort,
-            MacAddress server42macAddress) {
-        this.featureDetectorService = featureDetectorService;
-        this.kildaCore = kildaCore;
-        this.server42Port = server42Port;
-        this.customerPort = customerPort;
-        this.server42macAddress = server42macAddress;
-    }
+    private Server42FlowRttInputFlowGenerator() {}
 
     /**
      * Generated OFFlowMod for Server 42 Flow RTT input rule.
@@ -101,23 +81,6 @@ public class Server42FlowRttInputFlowGenerator implements SwitchFlowGenerator {
                 .setMatch(match)
                 .setInstructions(instructions)
                 .build());
-    }
-
-    @Override
-    public SwitchFlowTuple generateFlow(IOFSwitch sw) {
-        Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
-        Optional<OFFlowMod> flowMod = generateFlowMod(
-                sw.getOFFactory(), features, kildaCore.getConfig().getServer42FlowRttUdpPortOffset(), customerPort,
-                server42Port, server42macAddress);
-
-        if (!flowMod.isPresent()) {
-            return SwitchFlowTuple.getEmpty();
-        }
-
-        return SwitchFlowTuple.builder()
-                .sw(sw)
-                .flow(flowMod.get())
-                .build();
     }
 
     private static Match buildMatch(OFFactory ofFactory, int server42Port, int udpSrcPort,

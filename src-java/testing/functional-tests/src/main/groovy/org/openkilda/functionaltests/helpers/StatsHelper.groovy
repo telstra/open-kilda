@@ -63,8 +63,7 @@ class StatsHelper {
             def dpsYPoint = otsdb.query(from, metricPrefix + "yFlow.meter.yPoint.bytes", ["y_flow_id": yFlowId]).dps
             if (expectTraffic) {
                 assert dpsShared.values().any { it > 0 }, yFlowId
-                //TODO: an issue to be fixed https://github.com/telstra/open-kilda/issues/4852
-                //assert dpsYPoint.values().any { it > 0 }, yFlowId
+                assert dpsYPoint.values().any { it > 0 }, yFlowId
             } else {
                 assert dpsShared.size() > 0, yFlowId
                 assert dpsYPoint.size() > 0, yFlowId

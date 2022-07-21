@@ -20,4 +20,6 @@ public interface FlowOperationsCarrier {
     void sendFlowSyncRequest(String flowId);
 
     void sendFlowRerouteRequest(String flowId);
+
+    void persistFlowStats(String flowId, String direction, long latency);
 }

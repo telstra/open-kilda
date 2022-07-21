@@ -32,6 +32,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -51,9 +52,10 @@ public class IngressFlowSegmentInstallRequest extends IngressFlowSegmentRequest 
             @JsonProperty("isl_port") int islPort,
             @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
             @JsonProperty("rules_context") RulesContext rulesContext,
-            @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
+            @JsonProperty("mirror_config") MirrorConfig mirrorConfig,
+            @JsonProperty("stat_vlans") Set<Integer> statVlans) {
         super(messageContext, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                rulesContext, mirrorConfig);
+                rulesContext, mirrorConfig, statVlans);
     }
 
     public IngressFlowSegmentInstallRequest(IngressFlowSegmentRequest other, UUID commandId) {

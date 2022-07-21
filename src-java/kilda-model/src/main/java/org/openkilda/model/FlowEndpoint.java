@@ -127,4 +127,9 @@ public class FlowEndpoint extends NetworkEndpoint {
     public boolean isSwitchPortOuterVlanEquals(FlowEndpoint other) {
         return isSwitchPortEquals(other) && outerVlanId == other.getOuterVlanId();
     }
+
+    @JsonIgnore
+    public boolean isFullPort() {
+        return !isVlanIdSet(outerVlanId);
+    }
 }
