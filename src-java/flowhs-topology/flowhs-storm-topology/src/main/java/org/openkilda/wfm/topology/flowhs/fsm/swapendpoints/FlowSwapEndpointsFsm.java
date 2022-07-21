@@ -85,6 +85,11 @@ public class FlowSwapEndpointsFsm extends FlowProcessingWithHistorySupportFsm<Fl
     }
 
     @Override
+    protected String[] getFlowIdsForHistory() {
+        return new String[]{firstFlowId, secondFlowId};
+    }
+
+    @Override
     protected String getCrudActionName() {
         return "swap-endpoints";
     }
