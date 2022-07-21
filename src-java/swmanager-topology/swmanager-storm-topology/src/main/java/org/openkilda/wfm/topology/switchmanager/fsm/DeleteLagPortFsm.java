@@ -140,7 +140,8 @@ public class DeleteLagPortFsm extends AbstractStateMachine<
     }
 
     void removeDbLag(DeleteLagState from, DeleteLagState to, DeleteLagEvent event, DeleteLagContext context) {
-        log.info("Removing LAG  port {} from database. Switch {}. Key={}", context.deletedLogicalPort, switchId, key);
+        log.info("Removing LAG  port {} from database. Switch {}. Key={}",
+                request.getLogicalPortNumber(), switchId, key);
         Integer portNumber = request.getLogicalPortNumber();
         try {
             removedLagPort = lagPortOperationService.removeLagPort(switchId, portNumber);
