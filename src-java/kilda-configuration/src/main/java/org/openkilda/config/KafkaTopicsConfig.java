@@ -121,7 +121,7 @@ public interface KafkaTopicsConfig {
 
     @Key("speaker.network.control.response.priv")
     @Default("kilda.speaker.network.control.response.priv")
-    String getNetworkControlReponseTopic();
+    String getNetworkControlResponseTopic();
 
     @Key("speaker.network.priv.region")
     @Default("kilda.network.control.response.priv.region")
