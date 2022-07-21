@@ -108,6 +108,11 @@ public class PathsService {
         if (maxPathCount == null) {
             maxPathCount = defaultMaxPathCount;
         }
+
+        if (maxPathCount <= 0) {
+            throw new IllegalArgumentException(String.format("Incorrect maxPathCount: %s", maxPathCount));
+        }
+
         List<Path> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, maxPathCount, flowEncapsulationType,
                 pathComputationStrategy, maxLatency, maxLatencyTier2);
 

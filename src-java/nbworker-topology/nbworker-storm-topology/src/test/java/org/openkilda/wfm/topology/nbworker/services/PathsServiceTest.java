@@ -239,6 +239,20 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
+    public void checkMaxPathCountWhenFindNPaths()
+            throws UnroutableFlowException, SwitchNotFoundException, RecoverableException {
+        int maxPathCount = -1;
+        pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, VXLAN, COST, null, null, maxPathCount);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void checkForZeroMaxPathCountWhenFindNPaths()
+            throws UnroutableFlowException, SwitchNotFoundException, RecoverableException {
+        int maxPathCount = 0;
+        pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, VXLAN, COST, null, null, maxPathCount);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
     public void findNPathsByVxlanSrcWithoutVxlanSupport()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
         pathsService.getPaths(SWITCH_ID_3, SWITCH_ID_2, VXLAN, COST, null, null, MAX_PATH_COUNT);
