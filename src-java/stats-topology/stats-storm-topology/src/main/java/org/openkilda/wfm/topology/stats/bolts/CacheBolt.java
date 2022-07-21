@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.stats.bolts;
 import static org.openkilda.wfm.topology.stats.StatsTopology.STATS_FIELD;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
@@ -59,11 +60,22 @@ public class CacheBolt extends AbstractBolt implements KildaEntryCacheCarrier {
     @PersistenceContextRequired(requiresNew = true)
     protected void init() {
         cacheService = new KildaEntryCacheService(persistenceManager, this);
+    }
+
+    @Override
+    protected boolean activateAndConfirm() {
         try {
-            cacheService.refreshCache();
+            cacheService.activate();
         } catch (Exception ex) {
-            log.error("Error on сache initialization", ex);
+            log.error(String.format("Error on cache initialization: %s", ex.getMessage()), ex);
+            return false;
         }
+        return true;
+    }
+
+    @Override
+    protected boolean deactivate(LifecycleEvent event) {
+        return cacheService.deactivate();
     }
 
     @Override

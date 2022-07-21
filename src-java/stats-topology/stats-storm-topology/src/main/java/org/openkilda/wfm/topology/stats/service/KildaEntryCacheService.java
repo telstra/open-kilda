@@ -64,6 +64,7 @@ import java.util.Set;
 
 @Slf4j
 public class KildaEntryCacheService {
+    private boolean active;
     private final FlowRepository commonFlowRepository;
     private final YFlowRepository yFlowRepository;
 
@@ -80,6 +81,7 @@ public class KildaEntryCacheService {
         this.commonFlowRepository = repositoryFactory.createFlowRepository();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
         this.carrier = carrier;
+        this.active = false;
     }
 
     /**
@@ -139,10 +141,36 @@ public class KildaEntryCacheService {
     /**
      * Refresh the cache by rereading the flow data from the persistence.
      */
-    public void refreshCache() {
+    private void refreshCache() {
         refreshCommonFlowsCache();
         refreshYFlowsCache();
         log.debug("cookieToFlow cache: {}, switchAndMeterToFlow cache: {}", cookieToFlow, switchAndMeterToFlow);
+    }
+
+    private void clearCache() {
+        cookieToFlow.clear();
+        switchAndMeterToFlow.clear();
+    }
+
+    /**
+     * Activates the service. Fills cache in particular.
+     */
+    public void activate() {
+        if (!active) {
+            refreshCache();
+        }
+        active = true;
+    }
+
+    /**
+     * Deactivates the service. Clears cache in particular.
+     */
+    public boolean deactivate() {
+        if (active) {
+            clearCache();
+        }
+        active = false;
+        return true;
     }
 
     private void updateCache(KildaEntryDescriptorHandler cacheHandler, BaseFlowPathInfo pathInfo) {

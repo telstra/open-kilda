@@ -182,9 +182,10 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     protected final void handleLifeCycleEvent(LifecycleEvent event) {
         if (Signal.START.equals(event.getSignal())) {
-            emit(ZkStreams.ZK.toString(), currentTuple, new Values(event, commandContext));
             try {
-                activate();
+                if (activateAndConfirm()) {
+                    emit(ZkStreams.ZK.toString(), currentTuple, new Values(event, commandContext));
+                }
             } finally {
                 active = true;
             }
@@ -204,6 +205,11 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     protected void activate() {
         // no actions required
+    }
+
+    protected boolean activateAndConfirm() {
+        activate();
+        return true;
     }
 
     protected boolean deactivate(LifecycleEvent event) {
