@@ -18,8 +18,10 @@ package org.openkilda.northbound.controller.v2;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.TestConfig;
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpoint;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Ignore;
@@ -97,6 +99,7 @@ public class YFlowControllerV2Test {
 
     private YFlowCreatePayload.YFlowCreatePayloadBuilder buildTestYFlowCreatePayload() {
         return YFlowCreatePayload.builder()
+                .sharedEndpoint(new YFlowSharedEndpoint(new SwitchId(1), 1))
                 .encapsulationType("vlan")
                 .pathComputationStrategy("cost");
     }

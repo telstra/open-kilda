@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NonNull;
 
 import java.util.List;
 import javax.validation.constraints.PositiveOrZero;
@@ -32,6 +33,7 @@ import javax.validation.constraints.PositiveOrZero;
 public class YFlowCreatePayload {
     @JsonProperty("y_flow_id")
     String yFlowId;
+    @NonNull
     YFlowSharedEndpoint sharedEndpoint;
 
     @PositiveOrZero(message = "maximumBandwidth can't be negative")

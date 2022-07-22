@@ -22,15 +22,17 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NonNull;
 
-import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.PositiveOrZero;
 
 @Data
 @Builder
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
 public class YFlowSharedEndpoint {
-    @NotBlank(message = "switchId should be provided")
+    @NonNull
     SwitchId switchId;
+    @PositiveOrZero(message = "portNumber can't be negative")
     int portNumber;
 }

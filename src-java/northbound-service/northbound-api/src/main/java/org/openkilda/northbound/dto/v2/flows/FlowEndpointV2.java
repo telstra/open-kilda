@@ -15,6 +15,9 @@
 
 package org.openkilda.northbound.dto.v2.flows;
 
+import static org.openkilda.messaging.Utils.MAX_VLAN_ID;
+import static org.openkilda.messaging.Utils.MIN_VLAN_ID;
+
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -25,21 +28,32 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
 
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.PositiveOrZero;
+
 @Data
 @Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowEndpointV2 {
 
+    @NonNull
     @JsonProperty("switch_id")
     private SwitchId switchId;
 
+    @NonNull
+    @PositiveOrZero(message = "portNumber can't be negative")
     @JsonProperty("port_number")
     private Integer portNumber;
 
     @JsonProperty("vlan_id")
+    @Min(value = MIN_VLAN_ID, message = "vlanId can't be negative")
+    @Max(value = MAX_VLAN_ID, message = "vlanId can't be greater than " + MAX_VLAN_ID)
     private int vlanId;
 
     @JsonProperty("inner_vlan_id")
+    @Min(value = MIN_VLAN_ID, message = "innerVlanId can't be negative")
+    @Max(value = MAX_VLAN_ID, message = "innerVlanId can't be greater than " + MAX_VLAN_ID)
     private int innerVlanId;
 
     @NonNull

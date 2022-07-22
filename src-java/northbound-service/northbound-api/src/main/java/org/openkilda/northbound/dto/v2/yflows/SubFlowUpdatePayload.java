@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NonNull;
 
 @Data
 @Builder
@@ -30,8 +31,10 @@ import lombok.Data;
 @JsonNaming(SnakeCaseStrategy.class)
 public class SubFlowUpdatePayload {
     String flowId;
+    @NonNull
     @JsonIgnoreProperties("detect_connected_devices")
     FlowEndpointV2 endpoint;
+    @NonNull
     YFlowSharedEndpointEncapsulation sharedEndpoint;
     String description;
 }

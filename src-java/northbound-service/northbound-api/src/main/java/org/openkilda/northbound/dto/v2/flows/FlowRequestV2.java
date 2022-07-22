@@ -22,24 +22,30 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
 
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.PositiveOrZero;
+
 @Data
 @Builder
 @AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowRequestV2 {
+    @NotBlank(message = "flowId should be provided")
     @NonNull
     private String flowId;
     @NonNull
     private FlowEndpointV2 source;
     @NonNull
     private FlowEndpointV2 destination;
-
+    @PositiveOrZero(message = "maximumBandwidth can't be negative")
     private long maximumBandwidth;
     private boolean ignoreBandwidth;
     private boolean strictBandwidth;
     private boolean periodicPings;
     private String description;
+    @PositiveOrZero(message = "maxLatency can't be negative")
     private Long maxLatency;
+    @PositiveOrZero(message = "maxLatencyTier2 can't be negative")
     private Long maxLatencyTier2;
     private Integer priority;
 

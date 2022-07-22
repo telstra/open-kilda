@@ -20,9 +20,9 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NonNull;
 
 import java.util.List;
-import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.PositiveOrZero;
 
 @Data
@@ -30,13 +30,12 @@ import javax.validation.constraints.PositiveOrZero;
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
 public class YFlowUpdatePayload {
+    @NonNull
     YFlowSharedEndpoint sharedEndpoint;
 
     @PositiveOrZero(message = "maximumBandwidth can't be negative")
     long maximumBandwidth;
-    @NotBlank(message = "pathComputationStrategy should be provided")
     String pathComputationStrategy;
-    @NotBlank(message = "encapsulationType should be provided")
     String encapsulationType;
     @PositiveOrZero(message = "maxLatency can't be negative")
     Long maxLatency;

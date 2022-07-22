@@ -57,6 +57,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
+import javax.validation.Valid;
 
 @RestController
 @RequestMapping("/v2/flows")
@@ -69,7 +70,7 @@ public class FlowControllerV2 extends BaseController {
     @ApiOperation(value = "Creates new flow", response = FlowResponseV2.class)
     @PostMapping
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowResponseV2> createFlow(@RequestBody FlowRequestV2 flow) {
+    public CompletableFuture<FlowResponseV2> createFlow(@Valid @RequestBody FlowRequestV2 flow) {
         verifyRequest(flow);
         return flowService.createFlow(flow);
     }
@@ -78,7 +79,7 @@ public class FlowControllerV2 extends BaseController {
     @PutMapping(value = "/{flow_id:.+}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> updateFlow(@PathVariable(name = "flow_id") String flowId,
-                                                        @RequestBody FlowRequestV2 flow) {
+                                                        @Valid @RequestBody FlowRequestV2 flow) {
         verifyRequest(flow);
         return flowService.updateFlow(flow);
     }
@@ -166,7 +167,7 @@ public class FlowControllerV2 extends BaseController {
                                                        @ApiParam(value = "To remove flow from a diverse group, "
                                                                + "need to pass the parameter \"diverse_flow_id\" "
                                                                + "equal to the empty string.")
-                                                       @RequestBody FlowPatchV2 flowPatchDto) {
+                                                       @Valid @RequestBody FlowPatchV2 flowPatchDto) {
         return flowService.patchFlow(flowId, flowPatchDto);
     }
 
