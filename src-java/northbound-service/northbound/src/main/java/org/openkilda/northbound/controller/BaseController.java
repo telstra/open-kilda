@@ -18,6 +18,7 @@ package org.openkilda.northbound.controller;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.error.MessageException;
+import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiResponse;
@@ -36,14 +37,17 @@ import java.util.stream.Stream;
         @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
         @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
 public class BaseController {
-    protected void exposeBodyValidationResults(Stream<Optional<String>> defectStream) {
+    protected void exposeBodyValidationResults(Stream<Optional<String>> defectStream, final String errorMsg) {
         String[] defects = defectStream
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toArray(String[]::new);
         if (defects.length != 0) {
-            String errorDescription = "Errors:\n" + String.join("\n", defects);
-            throw new MessageException(ErrorType.DATA_INVALID, "Invalid request payload", errorDescription);
+            String errorDescription = "Errors: "
+                    + String.join(", ", defects);
+            throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    errorMsg, errorDescription);
         }
     }
 }
+
