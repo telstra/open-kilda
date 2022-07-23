@@ -35,6 +35,7 @@ public abstract class AbstractMessage {
         return Arrays.asList(packed);
     }
 
+    // TODO: revise the purpose and name of the method.
     protected Object packField(String fieldId) throws JsonProcessingException {
         throw new ImplementationError(String.format(
                 "Class %s does not implement packField(\"%s\")",

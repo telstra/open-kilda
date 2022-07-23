@@ -6,12 +6,12 @@ description = 'Kilda Persistence Hibernate Implemention'
 dependencies {
     api project(':kilda-persistence-api')
     api project(':kilda-model')
-    api project(':base-messaging')
     implementation project(':kilda-configuration')
 
     implementation 'com.google.guava:guava'
     implementation 'net.jodah:failsafe'
     implementation 'commons-codec:commons-codec'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 
     implementation ('org.hibernate:hibernate-core:5.4.32.Final') {
         // To avoid collision between javax and jakarta implementations.

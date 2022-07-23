@@ -21,11 +21,11 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
-import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
+import org.openkilda.wfm.topology.flowhs.service.speaker.FlowCommandBuilderFactory;
+import org.openkilda.wfm.topology.flowhs.service.speaker.SpeakerRequestBuildContext;
+import org.openkilda.wfm.topology.flowhs.service.speaker.SpeakerRequestBuildContext.PathContext;
 
 import lombok.extern.slf4j.Slf4j;
 

@@ -43,10 +43,10 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.mappers.FlowMapper;
-import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
-import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exceptions.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
+import org.openkilda.wfm.topology.flowhs.service.speaker.SpeakerRequestBuildContext;
+import org.openkilda.wfm.topology.flowhs.service.speaker.SpeakerRequestBuildContext.PathContext;
 
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;

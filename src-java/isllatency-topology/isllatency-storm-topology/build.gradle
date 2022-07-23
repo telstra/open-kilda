@@ -8,18 +8,18 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'Isl Latency Storm Topology'
 dependencies {
+    implementation project(':blue-green')
     implementation project(':base-storm-topology')
     runtimeOnly project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
-    implementation project(':isllatency-messaging')
-    implementation project(':network-messaging')
-    implementation project(':floodlight-api')
     runtimeOnly project(':kilda-persistence-orientdb')
     runtimeOnly project(':kilda-persistence-hibernate')
     aspect project(':kilda-persistence-api')
     testImplementation project(path: ':kilda-persistence-api', configuration: 'testArtifacts')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
-    implementation project(':blue-green')
+    implementation project(':isllatency-messaging')
+    implementation project(':network-messaging')
+    implementation project(':floodlight-api')
 
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core')

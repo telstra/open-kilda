@@ -52,9 +52,9 @@ import org.openkilda.persistence.repositories.PortPropertiesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.wfm.error.IllegalSwitchPropertiesException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.topology.nbworker.exceptions.IllegalSwitchPropertiesException;
 
 import com.google.common.collect.Lists;
 import org.junit.BeforeClass;

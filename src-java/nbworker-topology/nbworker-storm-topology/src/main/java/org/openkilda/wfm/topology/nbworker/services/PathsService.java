@@ -34,7 +34,7 @@ import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
-import org.openkilda.wfm.share.mappers.PathMapper;
+import org.openkilda.wfm.topology.nbworker.mappers.PathMapper;
 
 import lombok.extern.slf4j.Slf4j;
 

@@ -6,21 +6,10 @@
 <suppressions>
     <suppress files="src/main/.*Fsm\.java$" checks="JavadocMethod" />
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
-    <suppress files="src/main/java/org/openkilda/wfm/ctrl/RouteBolt.java" lines="47" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/ctrl/CtrlAction.java" lines="94" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/error/MessageFormatException.java" lines="21" checks="MutableException"/>
     <suppress files="src/main/java/org/openkilda/wfm/LaunchEnvironment.java" lines="79" checks="JavadocMethod"/>
     <suppress files="src/main/java/org/openkilda/wfm/protocol/AbstractMessage.java" lines="27" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/share/utils/FlowCollector.java" lines="29" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/share/utils/FlowCollector.java" lines="54" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/share/utils/FlowCollector.java" lines="66" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/utils/FilerBolt.java" lines="53" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/utils/FileUtil.java" lines="44" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/utils/FileUtil.java" lines="70" checks="SummaryJavadoc"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/utils/KafkaFilerTopology.java" lines="73" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/utils/KafkaLoggerTopology.java" lines="83" checks="JavadocMethod"/>
-    <suppress files="src/main/java/org/openkilda/wfm/topology/utils/LoggerBolt.java" lines="40" checks="MissingSwitchDefault"/>
-    <suppress files="src/main/java/org/openkilda/wfm/WatchDog.java" lines="46" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/TestUtils.java" lines="39" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/TestUtils.java" lines="47" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/wfm/TestUtils.java" lines="69" checks="JavadocMethod"/>

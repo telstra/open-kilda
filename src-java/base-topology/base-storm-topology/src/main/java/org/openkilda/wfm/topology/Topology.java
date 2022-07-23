@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology;
 
-import org.openkilda.wfm.error.NameCollisionException;
-
 import org.apache.storm.generated.StormTopology;
 
 /**
@@ -37,5 +35,5 @@ public interface Topology {
      *
      * @return {@link StormTopology}
      */
-    StormTopology createTopology() throws NameCollisionException;
+    StormTopology createTopology();
 }

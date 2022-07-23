@@ -7,13 +7,13 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'Floodlight Service Modules'
 dependencies {
-    implementation project(':floodlight-api')
+    implementation project(':blue-green')
     implementation project(':kilda-configuration')
     implementation project(':kilda-model')
     implementation project(':kilda-reporting')
-    implementation project(':blue-green')
-    implementation project(':rule-manager-api')
     testImplementation project(':kilda-utils:stubs')
+    implementation project(':floodlight-api')
+    implementation project(':rule-manager-api')
 
     implementation('org.projectfloodlight:openflowj')
     compileOnly('org.projectfloodlight:floodlight')

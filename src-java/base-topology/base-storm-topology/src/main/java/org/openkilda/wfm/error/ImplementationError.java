@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.error;
 
+// TODO: revise the purpose of the class (what's specific in this error?) and provide javadoc.
 public class ImplementationError extends Error {
     public ImplementationError(String message) {
         super(message);

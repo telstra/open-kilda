@@ -61,8 +61,6 @@ import org.openkilda.server42.control.messaging.flowrtt.DeactivateFlowMonitoring
 import org.openkilda.server42.control.messaging.islrtt.ActivateIslMonitoringOnSwitchInfoData;
 import org.openkilda.server42.control.messaging.islrtt.DeactivateIslMonitoringOnSwitchInfoData;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.error.IllegalSwitchPropertiesException;
-import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.mappers.ConnectedDeviceMapper;
@@ -72,6 +70,8 @@ import org.openkilda.wfm.share.metrics.TimedExecution;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.nbworker.StreamType;
+import org.openkilda.wfm.topology.nbworker.exceptions.IllegalSwitchPropertiesException;
+import org.openkilda.wfm.topology.nbworker.exceptions.IllegalSwitchStateException;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 import org.openkilda.wfm.topology.nbworker.services.ILinkOperationsServiceCarrier;
 import org.openkilda.wfm.topology.nbworker.services.SwitchOperationsService;

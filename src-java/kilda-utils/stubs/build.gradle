@@ -1,5 +1,1 @@
-plugins {
-    id 'java-library'
-}
-
 description = 'Kilda tests stubs'

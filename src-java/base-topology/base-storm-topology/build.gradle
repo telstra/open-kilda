@@ -22,15 +22,13 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'Base Storm Topology'
 dependencies {
+    api project(':blue-green')
     api project(':base-messaging')
+    api project(':base-messaging-mappers')
     api project(':kilda-configuration')
     api project(':kilda-persistence-api')
     aspect project(':kilda-persistence-api')
-    api project(':blue-green')
-    implementation project(':kilda-pce')
     implementation project(':kilda-reporting')
-    implementation project(':floodlight-api')
-    implementation project(':grpc-api')
     testImplementation project(path: ':kilda-persistence-api', configuration: 'testArtifacts')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
     testImplementation project(':kilda-utils:stubs')

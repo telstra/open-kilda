@@ -22,7 +22,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exceptions.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.YFlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.validation.YFlowValidationContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.validation.YFlowValidationFsm;

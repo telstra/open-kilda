@@ -8,16 +8,17 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'Ping Storm Topology'
 dependencies {
-    implementation project(':ping-messaging')
+    implementation project(':blue-green')
     implementation project(':base-storm-topology')
     runtimeOnly project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     implementation project(':kilda-reporting')
-    implementation project(':floodlight-api')
-    implementation project(':blue-green')
+    aspect project(':kilda-persistence-api')
     runtimeOnly project(':kilda-persistence-orientdb')
     runtimeOnly project(':kilda-persistence-hibernate')
-    aspect project(':kilda-persistence-api')
+    implementation project(':kilda-resource-pools')
+    implementation project(':ping-messaging')
+    implementation project(':floodlight-api')
 
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core')

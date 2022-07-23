@@ -8,18 +8,18 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'Stats Storm Topology'
 dependencies {
-    implementation project(':stats-messaging')
+    implementation project(':blue-green')
     implementation project(':base-storm-topology')
     runtimeOnly project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     implementation project(':kilda-reporting')
-    implementation project(':floodlight-api')
-    implementation project(':grpc-api')
-    implementation project(':blue-green')
     runtimeOnly project(':kilda-persistence-orientdb')
     runtimeOnly project(':kilda-persistence-hibernate')
     aspect project(':kilda-persistence-api')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
+    implementation project(':stats-messaging')
+    implementation project(':floodlight-api')
+    implementation project(':grpc-api')
 
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core')

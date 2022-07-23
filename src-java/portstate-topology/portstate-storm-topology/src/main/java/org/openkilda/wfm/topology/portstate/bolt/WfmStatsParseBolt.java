@@ -22,10 +22,9 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
-import org.openkilda.wfm.error.MessageException;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
-import org.openkilda.wfm.topology.utils.AbstractKafkaParserBolt;
+import org.openkilda.wfm.topology.portstate.exceptions.MessageException;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.extern.slf4j.Slf4j;

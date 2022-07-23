@@ -36,7 +36,6 @@ import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.config.naming.TopologyNamingStrategy;
 import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.error.ConfigurationException;
-import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.kafka.AbstractMessageDeserializer;
 import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.kafka.MessageDeserializer;
@@ -161,7 +160,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return Optional.empty();
     }
 
-    protected void setup() throws TException, NameCollisionException {
+    protected void setup() throws TException {
         if (topologyConfig.getUseLocalCluster()) {
             setupLocal();
         } else {
@@ -169,7 +168,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         }
     }
 
-    private void setupRemote() throws TException, NameCollisionException {
+    private void setupRemote() throws TException {
         Config config = makeStormConfig();
         config.setDebug(false);
 
@@ -177,7 +176,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         StormSubmitter.submitTopology(topologyName, config, createTopology());
     }
 
-    private void setupLocal() throws NameCollisionException {
+    private void setupLocal() {
         Config config = makeStormConfig();
         config.setDebug(true);
 
