@@ -49,4 +49,5 @@ public class FlowRequestV2 {
     private boolean allocateProtectedPath;
     private String encapsulationType;
     private String pathComputationStrategy;
+    private FlowStatistics statistics;
 }

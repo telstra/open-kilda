@@ -21,14 +21,10 @@ import static org.openkilda.server42.messaging.FlowDirection.REVERSE;
 
 import org.openkilda.messaging.info.flow.UpdateFlowCommand;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowStats;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
-import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowOperationsCarrier;
@@ -58,9 +54,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
 
     private final FlowOperationsCarrier carrier;
     private final FlowRepository flowRepository;
-    private final FlowStatsRepository flowStatsRepository;
     private final KildaFeatureTogglesRepository featureTogglesRepository;
-    private final TransactionManager transactionManager;
     private final FlowLatencyMonitoringFsmFactory fsmFactory;
     private final FsmExecutor<FlowLatencyMonitoringFsm, State, Event, Context> fsmExecutor;
 
@@ -73,9 +67,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
                          Clock clock, Duration timeout, float threshold, int shardCount) {
         this.carrier = carrier;
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        flowStatsRepository = persistenceManager.getRepositoryFactory().createFlowStatsRepository();
         featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
-        transactionManager = persistenceManager.getTransactionManager();
         fsmFactory = FlowLatencyMonitoringFsm.factory(clock, timeout, threshold);
         fsmExecutor = fsmFactory.produceExecutor();
         this.shardCount = shardCount;
@@ -163,29 +155,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
 
     @Override
     public void saveFlowLatency(String flowId, String direction, long latency) {
-        try {
-            transactionManager.doInTransaction(() -> {
-                FlowStats flowStats = flowStatsRepository.findByFlowId(flowId).orElse(null);
-                if (flowStats == null) {
-                    Optional<Flow> flow = flowRepository.findById(flowId);
-                    if (flow.isPresent()) {
-                        FlowStats toCreate = new FlowStats(flow.get(), null, null);
-                        flowStatsRepository.add(toCreate);
-                        flowStats = toCreate;
-                    } else {
-                        log.warn("Can't save latency for flow '{}'. Flow not found.", flowId);
-                        return;
-                    }
-                }
-                if (FORWARD.name().toLowerCase().equals(direction)) {
-                    flowStats.setForwardLatency(latency);
-                } else {
-                    flowStats.setReverseLatency(latency);
-                }
-            });
-        } catch (PersistenceException e) {
-            log.error("Can't save latency for flow '{}'.", flowId, e);
-        }
+        carrier.persistFlowStats(flowId, direction, latency);
     }
 
     @Override

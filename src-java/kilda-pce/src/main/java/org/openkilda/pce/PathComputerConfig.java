@@ -24,6 +24,10 @@ import java.io.Serializable;
 @Configuration
 @Key("pce")
 public interface PathComputerConfig extends Serializable {
+    @Key("max.path.count")
+    @Default("500")
+    int getMaxPathCount();
+
     @Key("max.allowed.depth")
     @Default("35")
     int getMaxAllowedDepth();

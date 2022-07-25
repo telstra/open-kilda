@@ -15,21 +15,15 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.speaker;
 
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
-import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
-import org.openkilda.messaging.payload.switches.InstallIslDefaultRulesCommand;
-import org.openkilda.messaging.payload.switches.RemoveIslDefaultRulesCommand;
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
-import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.topology.network.storm.ICommand;
 import org.openkilda.wfm.topology.network.storm.bolt.SpeakerRulesEncoder;
-import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.BfdHub;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
-import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslDefaultRuleCreatedCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslDefaultRuleRemovedCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslDefaultRuleTimeoutCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslRulesFailedCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslRulesResponseCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesWorkerCommand;
 
 import lombok.extern.slf4j.Slf4j;
@@ -55,22 +49,18 @@ public class SpeakerRulesWorker extends WorkerBolt {
 
     @Override
     protected void onHubRequest(Tuple input) throws PipelineException {
-        // At this moment only one bolt(BfdPortHandler) can write into this worker so can rely on routing performed
-        // in our superclass. Once this situation changed we will need to make our own request routing or extend
-        // routing in superclass.
         handleCommand(input, IslHandler.FIELD_ID_COMMAND);
     }
 
     @Override
-    protected void onAsyncResponse(Tuple request, Tuple response) throws Exception {
+    protected void onAsyncResponse(Tuple request, Tuple response) throws PipelineException {
         handleCommand(response, SpeakerRouter.FIELD_ID_INPUT);
-
     }
 
     @Override
     public void onRequestTimeout(Tuple request) {
         try {
-            handleTimeout(request, BfdHub.FIELD_ID_COMMAND);
+            handleTimeout(request, IslHandler.FIELD_ID_COMMAND);
         } catch (PipelineException e) {
             log.error("Unable to unpack original tuple in timeout processing - {}", e.getMessage());
         }
@@ -80,44 +70,17 @@ public class SpeakerRulesWorker extends WorkerBolt {
 
     /**
      * Process request to speaker.
-     *
-     * @param key key
-     * @param source endpoint
-     * @param destination endpoint
      */
-    public void processSetupIslRulesRequest(String key, Endpoint source, Endpoint destination,
-                                            boolean multitableMode, boolean server42IslRtt, Integer server42Port) {
-        emitSpeakerRequest(key, InstallIslDefaultRulesCommand.builder().srcSwitch(source.getDatapath())
-                .srcPort(source.getPortNumber()).dstSwitch(destination.getDatapath())
-                .dstPort(destination.getPortNumber())
-                .multitableMode(multitableMode).server42IslRtt(server42IslRtt).server42Port(server42Port).build());
+    public void processIslRulesRequest(String key, BaseSpeakerCommandsRequest request) {
+        emitSpeakerRequest(key, request);
     }
 
-    /**
-     * Process request to speaker.
-     *
-     * @param key key
-     * @param source endpoint
-     * @param destination endpoint
-     */
-    public void processRemoveIslRulesRequest(String key, Endpoint source, Endpoint destination) {
-        emitSpeakerRequest(key, RemoveIslDefaultRulesCommand.builder().srcSwitch(source.getDatapath())
-                .srcPort(source.getPortNumber()).dstSwitch(destination.getDatapath())
-                .dstPort(destination.getPortNumber()).build());
+    public void processIslRulesResponse(String key, SpeakerCommandResponse response) {
+        emitResponseToHub(getCurrentTuple(), makeHubTuple(key, new IslRulesResponseCommand(response)));
     }
 
-    public void processSetupIslDefaultRulesResponse(String key, InstallIslDefaultRulesResult response) {
-        emitResponseToHub(getCurrentTuple(), makeHubTuple(
-                key, new IslDefaultRuleCreatedCommand(response)));
-    }
-
-    public void processRemoveIslDefaultRulesResponse(String key, RemoveIslDefaultRulesResult response) {
-        emitResponseToHub(getCurrentTuple(), makeHubTuple(
-                key, new IslDefaultRuleRemovedCommand(response)));
-    }
-
-    public void timeoutIslRuleRequest(String key, Endpoint source, Endpoint destination) {
-        emitResponseToHub(getCurrentTuple(), makeHubTuple(key, new IslDefaultRuleTimeoutCommand(source, destination)));
+    public void timeoutIslRuleRequest(String key, BaseSpeakerCommandsRequest request) {
+        emitResponseToHub(getCurrentTuple(), makeHubTuple(key, new IslRulesFailedCommand(request.getCommandId())));
     }
 
     // -- setup --
@@ -139,15 +102,15 @@ public class SpeakerRulesWorker extends WorkerBolt {
         command.timeout(this);
     }
 
-    public void emitSpeakerRequest(String key, CommandData payload) {
+    public void emitSpeakerRequest(String key, BaseSpeakerCommandsRequest payload) {
         emit(getCurrentTuple(), makeSpeakerTuple(key, payload));
     }
 
-    private Values makeSpeakerTuple(String key, CommandData payload) {
+    private Values makeSpeakerTuple(String key, BaseSpeakerCommandsRequest payload) {
         return new Values(key, payload, getCommandContext());
     }
 
-    private Values makeHubTuple(String key, IslCommand command) {
-        return new Values(key, command, getCommandContext());
+    private Values makeHubTuple(String key, ICommand<IslHandler> islCommand) {
+        return new Values(key, islCommand, getCommandContext());
     }
 }

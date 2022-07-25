@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,13 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.switchmanager.factory.generator;
+package org.openkilda.wfm.topology.flowmonitoring.bolt;
 
-import org.openkilda.floodlight.switchmanager.factory.SwitchFlowTuple;
+import org.openkilda.wfm.share.bolt.KafkaEncoder;
+import org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.ComponentId;
 
-import net.floodlightcontroller.core.IOFSwitch;
-
-public interface SwitchFlowGenerator {
-
-    SwitchFlowTuple generateFlow(IOFSwitch sw);
+public class FlowHsEncoder extends KafkaEncoder {
+    public static final String BOLT_ID = ComponentId.FLOW_HS_ENCODER.toString();
 }

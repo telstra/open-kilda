@@ -77,8 +77,6 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
-import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
 import org.openkilda.messaging.info.flow.FlowDumpResponse;
 import org.openkilda.messaging.info.flow.SingleFlowDumpResponse;
 import org.openkilda.messaging.info.group.GroupDumpResponse;
@@ -97,8 +95,6 @@ import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
-import org.openkilda.messaging.payload.switches.InstallIslDefaultRulesCommand;
-import org.openkilda.messaging.payload.switches.RemoveIslDefaultRulesCommand;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
@@ -187,10 +183,6 @@ class RecordHandler implements Runnable {
             doModifyMeterRequest(message);
         } else if (data instanceof AliveRequest) {
             doAliveRequest(message);
-        } else if (data instanceof InstallIslDefaultRulesCommand) {
-            doInstallIslDefaultRule(message);
-        } else if (data instanceof RemoveIslDefaultRulesCommand) {
-            doRemoveIslDefaultRule(message);
         } else if (data instanceof DumpGroupsForSwitchManagerRequest) {
             doDumpGroupsForSwitchManagerRequest(message);
         } else if (data instanceof DumpGroupsForFlowHsRequest) {
@@ -217,45 +209,6 @@ class RecordHandler implements Runnable {
         getKafkaProducer().sendMessageAndTrack(context.getKafkaTopoDiscoTopic(),
                 new InfoMessage(new AliveResponse(context.getRegion(), totalFailedAmount), System.currentTimeMillis(),
                         message.getCorrelationId(), context.getRegion()));
-    }
-
-    private void doInstallIslDefaultRule(CommandMessage message) {
-        InstallIslDefaultRulesCommand toSetup = (InstallIslDefaultRulesCommand) message.getData();
-        InstallIslDefaultRulesResult result = new InstallIslDefaultRulesResult(toSetup.getSrcSwitch(),
-                toSetup.getSrcPort(), toSetup.getDstSwitch(), toSetup.getDstPort(), true);
-        DatapathId dpid = DatapathId.of(toSetup.getSrcSwitch().toLong());
-        try {
-            if (toSetup.isMultitableMode()) {
-                context.getSwitchManager().installMultitableEndpointIslRules(dpid, toSetup.getSrcPort());
-            }
-            if (toSetup.isServer42IslRtt()) {
-                context.getSwitchManager().installServer42IslRttInputFlow(dpid,
-                        toSetup.getServer42Port(), toSetup.getSrcPort());
-            }
-        } catch (SwitchOperationException e) {
-            logger.error("Failed to install isl rules for switch: '{}'", toSetup.getSrcSwitch(), e);
-            result.setSuccess(false);
-        }
-
-        getKafkaProducer().sendMessageAndTrack(context.getKafkaSwitchManagerTopic(), record.key(),
-                new InfoMessage(result, System.currentTimeMillis(), message.getCorrelationId(), context.getRegion()));
-    }
-
-    private void doRemoveIslDefaultRule(CommandMessage message) {
-        RemoveIslDefaultRulesCommand toRemove = (RemoveIslDefaultRulesCommand) message.getData();
-        RemoveIslDefaultRulesResult result = new RemoveIslDefaultRulesResult(toRemove.getSrcSwitch(),
-                toRemove.getSrcPort(), toRemove.getDstSwitch(), toRemove.getDstPort(), true);
-        DatapathId dpid = DatapathId.of(toRemove.getSrcSwitch().toLong());
-        try {
-            context.getSwitchManager().removeMultitableEndpointIslRules(dpid, toRemove.getSrcPort());
-            context.getSwitchManager().removeServer42IslRttInputFlow(dpid, toRemove.getSrcPort());
-        } catch (SwitchOperationException e) {
-            logger.error("Failed to remove isl rules for switch: '{}'", toRemove.getSrcSwitch(), e);
-            result.setSuccess(false);
-        }
-
-        getKafkaProducer().sendMessageAndTrack(context.getKafkaSwitchManagerTopic(), record.key(),
-                new InfoMessage(result, System.currentTimeMillis(), message.getCorrelationId(), context.getRegion()));
     }
 
     private void doDiscoverIslCommand(DiscoverIslCommandData command, String correlationId) {
@@ -817,7 +770,7 @@ class RecordHandler implements Runnable {
         if (handleSpeakerCommand()) {
             return;
         }
-        if (handleRuleManagerCommand()) {
+        if (handleRuleManagerCommand(record.topic())) {
             return;
         }
 
@@ -876,17 +829,25 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private boolean handleRuleManagerCommand() {
+    private boolean handleRuleManagerCommand(String sourceTopic) {
+        BaseSpeakerCommandsRequest request;
         try {
-            BaseSpeakerCommandsRequest request = MAPPER.readValue(record.value(), BaseSpeakerCommandsRequest.class);
-            handleRuleManagerCommand(request);
-            return true;
+            request = MAPPER.readValue(record.value(), BaseSpeakerCommandsRequest.class);
         } catch (JsonMappingException e) {
             logger.trace("Received deprecated command message");
+            return false;
         } catch (IOException e) {
             logger.error("Error while parsing record {}", record.value(), e);
+            return false;
         }
-        return false;
+
+        request.setSourceTopic(sourceTopic);
+        try {
+            handleRuleManagerCommand(request);
+        } catch (Exception e) {
+            logger.error("Error while processing request {}", request, e);
+        }
+        return true;
     }
 
     private void handleRuleManagerCommand(BaseSpeakerCommandsRequest command) {

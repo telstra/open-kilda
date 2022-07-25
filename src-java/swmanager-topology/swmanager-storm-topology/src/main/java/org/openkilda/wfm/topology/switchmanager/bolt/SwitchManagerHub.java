@@ -23,7 +23,6 @@ import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsReq
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.ModifySpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
@@ -423,7 +422,6 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                         .switchId(switchId)
                         .commandId(commandId)
                         .commands(commands)
-                        .origin(Origin.SW_MANAGER)
                         .build();
             case INSTALL_IF_NOT_EXIST:
                 return InstallSpeakerCommandsRequest.builder()
@@ -431,15 +429,12 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                         .switchId(switchId)
                         .commandId(commandId)
                         .commands(commands)
-                        .origin(Origin.SW_MANAGER)
                         .failIfExists(false)
                         .build();
             case MODIFY:
-                return new ModifySpeakerCommandsRequest(messageContext, switchId, commandId, commands,
-                        Origin.SW_MANAGER);
+                return new ModifySpeakerCommandsRequest(messageContext, switchId, commandId, commands);
             case DELETE:
-                return new DeleteSpeakerCommandsRequest(messageContext, switchId, commandId, commands,
-                        Origin.SW_MANAGER);
+                return new DeleteSpeakerCommandsRequest(messageContext, switchId, commandId, commands);
             default:
                 throw new IllegalStateException(format("Unknown OpenFlow command type %s", action));
         }

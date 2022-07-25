@@ -165,6 +165,66 @@ public class FlowValidatorTest {
         flowValidator.checkForEqualsEndpoints(firstFlow, secondFlow);
     }
 
+    @Test
+    public void shouldNotFailOnSpecifiedDestOuterVlansAndVlanStatistics() throws InvalidFlowException {
+        HashSet<Integer> vlanStatistics = new HashSet<>();
+        vlanStatistics.add(235);
+
+        RequestedFlow flow = RequestedFlow.builder()
+                .flowId("firstFlow")
+                .srcSwitch(SWITCH_ID_1)
+                .srcPort(10)
+                .srcVlan(0)
+                .destSwitch(SWITCH_ID_2)
+                .destPort(10)
+                .destVlan(11)
+                .detectConnectedDevices(new DetectConnectedDevices())
+                .vlanStatistics(vlanStatistics)
+                .build();
+
+        flowValidator.checkFlowForCorrectOuterVlansWithVlanStatistics(flow);
+    }
+
+    @Test
+    public void shouldNotFailOnSpecifiedSrcOuterVlansAndVlanStatistics() throws InvalidFlowException {
+        HashSet<Integer> vlanStatistics = new HashSet<>();
+        vlanStatistics.add(235);
+
+        RequestedFlow flow = RequestedFlow.builder()
+                .flowId("firstFlow")
+                .srcSwitch(SWITCH_ID_1)
+                .srcPort(10)
+                .srcVlan(11)
+                .destSwitch(SWITCH_ID_2)
+                .destPort(10)
+                .destVlan(0)
+                .detectConnectedDevices(new DetectConnectedDevices())
+                .vlanStatistics(vlanStatistics)
+                .build();
+
+        flowValidator.checkFlowForCorrectOuterVlansWithVlanStatistics(flow);
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void shouldFailOnSpecifiedBothOuterVlansAndVlanStatistics() throws InvalidFlowException {
+        HashSet<Integer> vlanStatistics = new HashSet<>();
+        vlanStatistics.add(235);
+
+        RequestedFlow flow = RequestedFlow.builder()
+                .flowId("firstFlow")
+                .srcSwitch(SWITCH_ID_1)
+                .srcPort(10)
+                .srcVlan(11)
+                .destSwitch(SWITCH_ID_2)
+                .destPort(10)
+                .destVlan(11)
+                .detectConnectedDevices(new DetectConnectedDevices())
+                .vlanStatistics(vlanStatistics)
+                .build();
+
+        flowValidator.checkFlowForCorrectOuterVlansWithVlanStatistics(flow);
+    }
+
     @Test(expected = InvalidFlowException.class)
     public void checkForEncapsulationTypeRequirementNullTypesTest() throws InvalidFlowException {
         SwitchProperties properties = SwitchProperties.builder()

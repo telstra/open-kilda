@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,25 +15,24 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.speaker.command;
 
-import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRulesWorker;
 
-public class SpeakerRulesIslRemoveCommand extends SpeakerRulesWorkerCommand {
-    Endpoint source;
-    Endpoint destination;
+public class ProcessSpeakerRulesResponseCommand extends SpeakerRulesWorkerCommand {
 
-    public SpeakerRulesIslRemoveCommand(String key, Endpoint source, Endpoint destination) {
-        super(key);
-        this.source = source;
-        this.destination = destination;
+    private final SpeakerCommandResponse response;
+
+    public ProcessSpeakerRulesResponseCommand(SpeakerCommandResponse response) {
+        super(response.getCommandId().toString());
+        this.response = response;
     }
 
     @Override
     public void apply(SpeakerRulesWorker handler) {
-        handler.processRemoveIslRulesRequest(getKey(), source, destination);
+        handler.processIslRulesResponse(getKey(), response);
     }
 
+    @Override
     public void timeout(SpeakerRulesWorker handler) {
-        handler.timeoutIslRuleRequest(getKey(), source, destination);
     }
 }

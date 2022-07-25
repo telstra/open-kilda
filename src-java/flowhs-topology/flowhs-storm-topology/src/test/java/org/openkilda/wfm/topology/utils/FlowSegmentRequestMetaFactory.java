@@ -32,6 +32,8 @@ import org.openkilda.model.cookie.Cookie;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.HashSet;
+
 @Getter
 @Setter
 public class FlowSegmentRequestMetaFactory {
@@ -67,7 +69,7 @@ public class FlowSegmentRequestMetaFactory {
         }
         return new IngressFlowSegmentRequestFactory(
                 messageContext, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
-                new RulesContext(), null);
+                new RulesContext(), null, new HashSet<>());
     }
 
     /**

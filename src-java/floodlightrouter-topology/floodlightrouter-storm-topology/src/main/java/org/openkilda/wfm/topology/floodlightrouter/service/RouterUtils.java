@@ -40,8 +40,6 @@ import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.floodlight.request.RemoveBfdSession;
 import org.openkilda.messaging.floodlight.request.SetupBfdSession;
-import org.openkilda.messaging.payload.switches.InstallIslDefaultRulesCommand;
-import org.openkilda.messaging.payload.switches.RemoveIslDefaultRulesCommand;
 import org.openkilda.model.SwitchId;
 
 public final class RouterUtils {
@@ -100,10 +98,6 @@ public final class RouterUtils {
                 return ((SetupBfdSession) commandData).getBfdSession().getTarget().getDatapath();
             } else if (commandData instanceof RemoveBfdSession) {
                 return ((RemoveBfdSession) commandData).getBfdSession().getTarget().getDatapath();
-            } else if (commandData instanceof InstallIslDefaultRulesCommand) {
-                return ((InstallIslDefaultRulesCommand) commandData).getSrcSwitch();
-            } else if (commandData instanceof RemoveIslDefaultRulesCommand) {
-                return ((RemoveIslDefaultRulesCommand) commandData).getSrcSwitch();
             } else if (commandData instanceof DumpGroupsForSwitchManagerRequest) {
                 return ((DumpGroupsForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpGroupsForFlowHsRequest) {

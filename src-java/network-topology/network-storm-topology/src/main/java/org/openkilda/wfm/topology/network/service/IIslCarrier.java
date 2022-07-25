@@ -15,11 +15,16 @@
 
 package org.openkilda.wfm.topology.network.service;
 
+import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.messaging.command.reroute.RerouteFlows;
 import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.model.BfdProperties;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
+
+import java.util.List;
+import java.util.UUID;
 
 public interface IIslCarrier {
     void bfdPropertiesApplyRequest(Endpoint physicalEndpoint, IslReference reference, BfdProperties properties);
@@ -30,10 +35,19 @@ public interface IIslCarrier {
 
     void islStatusUpdateNotification(IslStatusUpdateNotification trigger);
 
-    void islDefaultRulesInstall(Endpoint source, Endpoint destination, boolean multitableMode,
-                                boolean server42IslRtt, Integer server42Port);
+    void islRulesInstall(IslReference reference, Endpoint endpoint);
 
-    void islDefaultRulesDelete(Endpoint source, Endpoint destination);
+    void sendIslRulesInstallCommand(SwitchId switchId, UUID commandId, List<OfCommand> speakerData);
+
+    void islRulesDelete(IslReference reference, Endpoint endpoint);
+
+    void sendIslRulesDeleteCommand(SwitchId switchId, UUID commandId, List<OfCommand> speakerData);
+
+    void islRulesInstalled(IslReference reference, Endpoint endpoint);
+
+    void islRulesDeleted(IslReference reference, Endpoint endpoint);
+
+    void islRulesFailed(IslReference reference, Endpoint endpoint);
 
     void auxiliaryPollModeUpdateRequest(Endpoint endpoint, boolean enableAuxiliaryPollMode);
 

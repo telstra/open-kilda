@@ -15,18 +15,10 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.speaker;
 
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
-import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.PipelineException;
-import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
-import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesIslInstalledCommand;
-import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesIslRemovedCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.ProcessSpeakerRulesResponseCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerRulesWorkerCommand;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
@@ -50,35 +42,15 @@ public class SpeakerRulesRouter extends AbstractBolt {
     protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
         if (ComponentId.INPUT_SPEAKER_RULES.toString().equals(source)) {
-            Message message = pullValue(input, FIELD_ID_INPUT, Message.class);
-            speakerMessage(input, message);
+            SpeakerCommandResponse response = pullValue(input, FIELD_ID_INPUT, SpeakerCommandResponse.class);
+            speakerMessage(input, response);
         } else {
             unhandledInput(input);
         }
     }
 
-    private void speakerMessage(Tuple input, Message message) throws PipelineException {
-        proxySpeaker(input, message);
-    }
-
-    private void proxySpeaker(Tuple input, Message message) throws PipelineException {
-        if (message instanceof InfoMessage) {
-            proxySpeaker(input, ((InfoMessage) message).getData());
-        } else {
-            log.debug("Do not proxy speaker message - unexpected message type \"{}\"", message.getClass());
-        }
-    }
-
-    private void proxySpeaker(Tuple input, InfoData payload) throws PipelineException {
-        if (payload instanceof InstallIslDefaultRulesResult) {
-            emit(STREAM_WORKER_ID, input, makeWorkerTuple(new SpeakerRulesIslInstalledCommand(
-                    input.getStringByField(FIELD_ID_KEY), (InstallIslDefaultRulesResult) payload)));
-        } else if (payload instanceof RemoveIslDefaultRulesResult) {
-            emit(STREAM_WORKER_ID, input, makeWorkerTuple(new SpeakerRulesIslRemovedCommand(
-                    input.getStringByField(FIELD_ID_KEY), (RemoveIslDefaultRulesResult) payload)));
-        } else {
-            log.debug("Do not proxy speaker message - unexpected message payload \"{}\"", payload);
-        }
+    private void speakerMessage(Tuple input, SpeakerCommandResponse response) {
+        emit(STREAM_WORKER_ID, input, makeWorkerTuple(new ProcessSpeakerRulesResponseCommand(response)));
     }
 
     @Override
@@ -87,12 +59,7 @@ public class SpeakerRulesRouter extends AbstractBolt {
 
     }
 
-    private Values makeWorkerTuple(SpeakerRulesWorkerCommand command) throws PipelineException {
+    private Values makeWorkerTuple(SpeakerRulesWorkerCommand command) {
         return new Values(command.getKey(), command, getCommandContext());
-    }
-
-    private Values makeIslTuple(Tuple input, IslCommand command) throws PipelineException {
-        IslReference reference = command.getReference();
-        return new Values(reference.getSource(), reference.getDest(), command, pullContext(input));
     }
 }

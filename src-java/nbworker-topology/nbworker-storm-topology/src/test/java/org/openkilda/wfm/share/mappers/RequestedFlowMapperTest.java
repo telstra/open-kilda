@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.share.mappers;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.collection.IsIterableContainingInAnyOrder.containsInAnyOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -29,6 +32,10 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 
 import org.junit.Test;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 public class RequestedFlowMapperTest {
 
@@ -48,6 +55,7 @@ public class RequestedFlowMapperTest {
     public static final Long MAX_LATENCY = 200L;
     public static final Long MAX_LATENCY_TIER_2 = 400L;
     public static final String PATH_COMPUTATION_STRATEGY = PathComputationStrategy.COST.toString().toLowerCase();
+    private static final Set<Integer> STATISTICS = new HashSet<>(Collections.singletonList(8080));
 
     private static final Flow FLOW = Flow.builder()
             .flowId(FLOW_ID)
@@ -73,6 +81,7 @@ public class RequestedFlowMapperTest {
             .allocateProtectedPath(true)
             .ignoreBandwidth(true)
             .periodicPings(true)
+            .vlanStatistics(STATISTICS)
             .build();
 
     private static final FlowRequest FLOW_REQUEST = FlowRequest.builder()
@@ -102,6 +111,7 @@ public class RequestedFlowMapperTest {
             .encapsulationType(org.openkilda.messaging.payload.flow.FlowEncapsulationType.VXLAN)
             .pathComputationStrategy(PATH_COMPUTATION_STRATEGY)
             .loopSwitchId(LOOP_SWITCH_ID)
+            .vlanStatistics(STATISTICS)
             .build();
 
     @Test
@@ -131,6 +141,7 @@ public class RequestedFlowMapperTest {
         assertTrue(flowRequest.isPeriodicPings());
         assertEquals(new DetectConnectedDevicesDto(true, true, true, true, true, true, true, true),
                 flowRequest.getDetectConnectedDevices());
+        assertThat(flowRequest.getVlanStatistics(), equalTo(STATISTICS));
     }
 
     @Test
@@ -159,5 +170,6 @@ public class RequestedFlowMapperTest {
         assertTrue(flow.isPeriodicPings());
         assertEquals(new DetectConnectedDevices(true, true, true, true, true, true, true, true),
                 flow.getDetectConnectedDevices());
+        assertThat(flow.getVlanStatistics(), containsInAnyOrder(STATISTICS.toArray()));
     }
 }

@@ -68,6 +68,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     protected final SwitchId egressSwitchId;
     protected final RulesContext rulesContext;
     protected final FlowTransitEncapsulation encapsulation;
+    protected final Set<Integer> statVlans;
 
     // operation data
     @Getter(AccessLevel.PROTECTED)
@@ -77,13 +78,15 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     IngressFlowSegmentBase(
             MessageContext messageContext, SwitchId switchId, UUID commandId, FlowSegmentMetadata metadata,
             @NonNull FlowEndpoint endpoint, MeterConfig meterConfig, @NonNull SwitchId egressSwitchId,
-            FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig) {
+            FlowTransitEncapsulation encapsulation, RulesContext rulesContext, MirrorConfig mirrorConfig,
+            Set<Integer> statVlans) {
         super(messageContext, switchId, commandId, metadata, mirrorConfig);
         this.endpoint = endpoint;
         this.meterConfig = meterConfig;
         this.egressSwitchId = egressSwitchId;
         this.encapsulation = encapsulation;
         this.rulesContext = rulesContext;
+        this.statVlans = statVlans;
     }
 
     @Override
@@ -272,6 +275,9 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
             }
         } else {
             ofMessages.add(flowModFactory.makeDefaultPortForwardMessage(effectiveIds));
+        }
+        if (endpoint.isFullPort()) {
+            ofMessages.addAll(flowModFactory.makeVlanStatsFlowMessage());
         }
 
         return ofMessages;

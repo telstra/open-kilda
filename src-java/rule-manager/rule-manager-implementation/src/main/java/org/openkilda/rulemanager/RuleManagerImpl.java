@@ -197,11 +197,7 @@ public class RuleManagerImpl implements RuleManager {
 
             Set<Integer> islPorts = adapter.getSwitchIslPorts(switchId);
 
-            islPorts.forEach(islPort -> {
-                generators.add(serviceRulesFactory.getEgressIslVxlanRuleGenerator(islPort));
-                generators.add(serviceRulesFactory.getEgressIslVlanRuleGenerator(islPort));
-                generators.add(serviceRulesFactory.getTransitIslVxlanRuleGenerator(islPort));
-            });
+            islPorts.forEach(islPort -> generators.addAll(getIslServiceRuleGenerators(islPort)));
         }
 
         Integer server42Port = switchProperties.getServer42Port();
@@ -233,6 +229,14 @@ public class RuleManagerImpl implements RuleManager {
         }
 
         return generators;
+    }
+
+    private List<RuleGenerator> getIslServiceRuleGenerators(int port) {
+        List<RuleGenerator> result = new ArrayList<>();
+        result.add(serviceRulesFactory.getEgressIslVxlanRuleGenerator(port));
+        result.add(serviceRulesFactory.getEgressIslVlanRuleGenerator(port));
+        result.add(serviceRulesFactory.getTransitIslVxlanRuleGenerator(port));
+        return result;
     }
 
     private List<SpeakerData> buildFlowRulesForSwitch(SwitchId switchId, DataAdapter adapter) {
@@ -309,6 +313,7 @@ public class RuleManagerImpl implements RuleManager {
             generators.add(flowRulesFactory.getIngressMirrorRuleGenerator(
                     flowPath, flow, encapsulation, ingressMeterCommandUuid));
         }
+        generators.add(flowRulesFactory.getVlanStatsRuleGenerator(flowPath, flow));
 
         ingressCommands.addAll(generateRules(sw, generators));
         return ingressCommands;
@@ -417,6 +422,23 @@ public class RuleManagerImpl implements RuleManager {
             result.addAll(buildYPointYFlowCommands(flowPathsForYPoint, adapter));
         }
         return result;
+    }
+
+    @Override
+    public List<SpeakerData> buildIslServiceRules(SwitchId switchId, int port, DataAdapter adapter) {
+        SwitchProperties switchProperties = adapter.getSwitchProperties(switchId);
+        if (!switchProperties.isMultiTable()) {
+            return emptyList();
+        }
+        Switch sw = adapter.getSwitch(switchId);
+        List<RuleGenerator> generators = getIslServiceRuleGenerators(port);
+        if (adapter.getFeatureToggles().getServer42IslRtt() && switchProperties.hasServer42IslRttEnabled()) {
+            generators.add(serviceRulesFactory
+                    .getServer42IslRttInputRuleGenerator(switchProperties.getServer42Port(), port));
+        }
+        return generators.stream()
+                .flatMap(g -> g.generateCommands(sw).stream())
+                .collect(toList());
     }
 
     private List<SpeakerData> buildSharedEndpointYFlowCommands(List<FlowPath> flowPaths, DataAdapter adapter) {

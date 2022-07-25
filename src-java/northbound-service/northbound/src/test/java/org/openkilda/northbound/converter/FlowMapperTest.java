@@ -15,10 +15,15 @@
 
 package org.openkilda.northbound.converter;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.openkilda.northbound.converter.PingMapper.TIMEOUT_ERROR_MESSAGE;
 
 import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
@@ -27,6 +32,8 @@ import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.info.flow.FlowMirrorPointResponse;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
+import org.openkilda.messaging.model.DetectConnectedDevicesDto;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.model.Ping.Errors;
 import org.openkilda.messaging.model.PingMeters;
@@ -37,8 +44,12 @@ import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.FlowStatusDetails;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
@@ -50,7 +61,11 @@ import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointsResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.flows.FlowStatistics;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import org.assertj.core.util.Lists;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -59,10 +74,15 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @RunWith(SpringRunner.class)
 public class FlowMapperTest {
+    public static final int ENCAPSULATION_ID = 18;
     private static final String FLOW_ID = "flow1";
     private static final String DIVERSE_FLOW_ID = "flow2";
     private static final String AFFINITY_FLOW_ID = "flow3";
@@ -80,13 +100,14 @@ public class FlowMapperTest {
     private static final boolean PERIODIC_PINGS = true;
     private static final boolean ALLOCATE_PROTECTED_PATH = true;
     private static final boolean PINNED = true;
-    private static final Long LATENCY = 10L;
-    private static final Long LATENCY_TIER2 = 101L;
+    private static final Long LATENCY = 10_000_000L;
+    private static final Long LATENCY_TIER2 = 11_000_000L;
     private static final Integer PRIORITY = 15;
     private static final String DESCRIPTION = "Description";
     private static final String ENCAPSULATION_TYPE = "transit_vlan";
     private static final String PATH_COMPUTATION_STRATEGY = "latency";
     private static final String TARGET_PATH_COMPUTATION_STRATEGY = "cost";
+    private static final long COOKIE = 16;
     private static final DetectConnectedDevicesV2 SRC_DETECT_CONNECTED_DEVICES = new DetectConnectedDevicesV2(
             true, false);
     private static final DetectConnectedDevicesV2 DST_DETECT_CONNECTED_DEVICES = new DetectConnectedDevicesV2(
@@ -100,6 +121,7 @@ public class FlowMapperTest {
             = new FlowEndpointPayload(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, SRC_DETECT_CONNECTED_DEVICES_PAYLOAD);
     private static final FlowEndpointPayload DST_FLOW_ENDPOINT_PAYLOAD
             = new FlowEndpointPayload(DST_SWITCH_ID, DST_PORT, DST_VLAN, DST_DETECT_CONNECTED_DEVICES_PAYLOAD);
+    private static final FlowStatistics FLOW_STATISTICS = new FlowStatistics(ImmutableSet.of(1, 5, 100));
     private static final FlowCreatePayload FLOW_CREATE_PAYLOAD
             = new FlowCreatePayload(FLOW_ID, SRC_FLOW_ENDPOINT_PAYLOAD, DST_FLOW_ENDPOINT_PAYLOAD, BANDWIDTH,
             IGNORE_BANDWIDTH, PERIODIC_PINGS, ALLOCATE_PROTECTED_PATH, DESCRIPTION, "created", "lastUpdated",
@@ -115,7 +137,17 @@ public class FlowMapperTest {
     private static final String MIRROR_POINT_DIRECTION_B = "reverse";
 
     private static final long MS_TO_NS_MULTIPLIER = 1000000L;
+
     public static final String ERROR_MESSAGE = "Error";
+    public static final String CREATE_TIME = "123";
+    public static final String UPDATE_TIME = "345";
+    public static final int METER_ID = 17;
+    public static final FlowStatusDetails FLOW_STATUS_DETAILS = new FlowStatusDetails(
+            FlowPathStatus.ACTIVE, FlowPathStatus.DEGRADED);
+    public static final String FLOW_ID_2 = "flow2";
+    public static final Long FORWARD_LATENCY = 18L;
+    public static final Long REVERSE_LATENCY = 19L;
+    public static final String Y_FLOW_ID = "y_flow_id";
 
     @Autowired
     private FlowMapper flowMapper;
@@ -133,6 +165,7 @@ public class FlowMapperTest {
                 .maxLatencyTier2(LATENCY_TIER2)
                 .priority(PRIORITY)
                 .diverseFlowId(DIVERSE_FLOW_ID)
+                .statistics(FLOW_STATISTICS)
                 .build();
         FlowRequest flowRequest = flowMapper.toFlowRequest(flowRequestV2);
 
@@ -154,6 +187,51 @@ public class FlowMapperTest {
         assertEquals(SRC_DETECT_CONNECTED_DEVICES.isArp(), flowRequest.getDetectConnectedDevices().isSrcArp());
         assertEquals(DST_DETECT_CONNECTED_DEVICES.isLldp(), flowRequest.getDetectConnectedDevices().isDstLldp());
         assertEquals(DST_DETECT_CONNECTED_DEVICES.isArp(), flowRequest.getDetectConnectedDevices().isDstArp());
+        assertThat(flowRequest.getVlanStatistics(), containsInAnyOrder(FLOW_STATISTICS.getVlans().toArray()));
+    }
+
+    @Test
+    public void testFlowResponseV2Mapping() {
+        FlowDto flowDto = new FlowDto(FLOW_ID, BANDWIDTH, true, false, true, false, COOKIE, DESCRIPTION, CREATE_TIME,
+                UPDATE_TIME, SRC_SWITCH_ID, DST_SWITCH_ID, SRC_PORT, DST_PORT, SRC_VLAN, DST_VLAN, SRC_INNER_VLAN,
+                DST_INNER_VLAN, METER_ID, ENCAPSULATION_ID, FlowState.UP, FLOW_STATUS_DETAILS, "UP", LATENCY,
+                LATENCY_TIER2, PRIORITY, true, FlowEncapsulationType.TRANSIT_VLAN, new DetectConnectedDevicesDto(),
+                PathComputationStrategy.COST, PathComputationStrategy.LATENCY, Sets.newHashSet(FLOW_ID_2),
+                new HashSet<>(), FLOW_ID_2, DST_SWITCH_ID, new ArrayList<>(), FORWARD_LATENCY, REVERSE_LATENCY,
+                Instant.MIN, Y_FLOW_ID, FLOW_STATISTICS.getVlans());
+
+        FlowResponseV2 response = flowMapper.toFlowResponseV2(flowDto);
+        assertEquals(FLOW_ID, response.getFlowId());
+        assertEquals(BANDWIDTH, response.getMaximumBandwidth());
+        assertTrue(response.isIgnoreBandwidth());
+        assertFalse(response.isStrictBandwidth());
+        assertTrue(response.isPeriodicPings());
+        assertFalse(response.isAllocateProtectedPath());
+        assertEquals(CREATE_TIME, response.getCreated());
+        assertEquals(UPDATE_TIME, response.getLastUpdated());
+        assertEquals(SRC_SWITCH_ID, response.getSource().getSwitchId());
+        assertEquals(SRC_PORT, response.getSource().getPortNumber().intValue());
+        assertEquals(SRC_VLAN, response.getSource().getVlanId());
+        assertEquals(SRC_INNER_VLAN, response.getSource().getInnerVlanId());
+        assertEquals(DST_SWITCH_ID, response.getDestination().getSwitchId());
+        assertEquals(DST_PORT, response.getDestination().getPortNumber().intValue());
+        assertEquals(DST_VLAN, response.getDestination().getVlanId());
+        assertEquals(DST_INNER_VLAN, response.getDestination().getInnerVlanId());
+        assertEquals(FlowState.UP.toString(), response.getStatus());
+        assertEquals("Up", response.getStatusDetails().getMainPath());
+        assertEquals("degraded", response.getStatusDetails().getProtectedPath());
+        assertEquals("UP", response.getStatusInfo());
+        assertEquals((Long) (LATENCY / 1_000_000), response.getMaxLatency());
+        assertEquals((Long) (LATENCY_TIER2 / 1_000_000), response.getMaxLatencyTier2());
+        assertEquals(PRIORITY, response.getPriority());
+        assertTrue(response.isPinned());
+        assertEquals(FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase(), response.getEncapsulationType());
+        assertEquals(PathComputationStrategy.COST.toString().toLowerCase(), response.getPathComputationStrategy());
+        assertEquals(PathComputationStrategy.LATENCY.toString().toLowerCase(),
+                response.getTargetPathComputationStrategy());
+        assertEquals(Sets.newHashSet(FLOW_ID_2), response.getDiverseWith());
+        assertEquals(FLOW_ID_2, response.getAffinityWith());
+        assertEquals(FLOW_STATISTICS.getVlans(), response.getStatistics().getVlans());
     }
 
     @Test
@@ -254,7 +332,7 @@ public class FlowMapperTest {
                 new FlowPatchEndpoint(DST_SWITCH_ID, DST_PORT, DST_VLAN, DST_INNER_VLAN, DST_DETECT_CONNECTED_DEVICES),
                 (long) BANDWIDTH, IGNORE_BANDWIDTH, STRICT_BANDWIDTH, PERIODIC_PINGS, DESCRIPTION,
                 LATENCY, LATENCY_TIER2, PRIORITY, DIVERSE_FLOW_ID, AFFINITY_FLOW_ID, PINNED, ALLOCATE_PROTECTED_PATH,
-                ENCAPSULATION_TYPE, PATH_COMPUTATION_STRATEGY, TARGET_PATH_COMPUTATION_STRATEGY);
+                ENCAPSULATION_TYPE, PATH_COMPUTATION_STRATEGY, TARGET_PATH_COMPUTATION_STRATEGY, FLOW_STATISTICS);
         FlowPatch flowPatch = flowMapper.toFlowPatch(flowPatchDto);
 
         assertEquals(flowPatchDto.getSource().getSwitchId(), flowPatch.getSource().getSwitchId());
@@ -290,6 +368,8 @@ public class FlowMapperTest {
         assertEquals(flowPatchDto.getEncapsulationType(), flowPatch.getEncapsulationType().name().toLowerCase());
         assertEquals(flowPatchDto.getPathComputationStrategy(),
                 flowPatch.getPathComputationStrategy().name().toLowerCase());
+        assertThat(flowPatch.getVlanStatistics(),
+                containsInAnyOrder(flowPatchDto.getStatistics().getVlans().toArray()));
     }
 
     @Test
@@ -411,6 +491,24 @@ public class FlowMapperTest {
         assertEquals(response.getReverse().isPingSuccess(), output.getReverse().isPingSuccess());
         assertEquals(1, output.getReverse().getLatency());
         assertNull(output.getReverse().getError());
+    }
+
+    @Test
+    public void testVlanStatisticsMapping() {
+        Set<Integer> vlanStatistics = new HashSet<>();
+        vlanStatistics.add(5);
+        FlowEndpointV2 endpointV2 = new FlowEndpointV2(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, SRC_DETECT_CONNECTED_DEVICES);
+
+        FlowDto sourceDto = FlowDto.builder()
+                .vlanStatistics(vlanStatistics)
+                .state(FlowState.IN_PROGRESS)
+                .flowId("some id")
+                .build();
+
+        FlowResponseV2 result = flowMapper.generatedMap(sourceDto, endpointV2, endpointV2);
+
+        assertThat(result.getStatistics(), is(notNullValue()));
+        assertThat(result.getStatistics().getVlans(), containsInAnyOrder(vlanStatistics.toArray()));
     }
 
     @TestConfiguration

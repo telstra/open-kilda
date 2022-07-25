@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,10 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.api.request.rulemanager;
+package org.openkilda.northbound.dto.v2.flows;
 
-public enum Origin {
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
 
-    FLOW_HS,
-    SW_MANAGER
+import java.util.Set;
+
+@Data
+@Builder
+@AllArgsConstructor
+@JsonNaming(value = PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class FlowStatistics {
+    private Set<Integer> vlans;
 }

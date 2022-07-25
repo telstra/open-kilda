@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,25 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.switchmanager.factory;
+package org.openkilda.model;
 
-import lombok.Builder;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.AllArgsConstructor;
 import lombok.Data;
-import net.floodlightcontroller.core.IOFSwitch;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.OFGroupAdd;
-import org.projectfloodlight.openflow.protocol.OFMeterMod;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
 
 @Data
-@Builder
-public class SwitchFlowTuple {
-
-    public static SwitchFlowTuple getEmpty() {
-        return SwitchFlowTuple.builder().build();
-    }
-
-    private IOFSwitch sw;
-    private OFFlowMod flow;
-    private OFMeterMod meter;
-    private OFGroupAdd group;
+@NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@AllArgsConstructor
+public class MirrorPointStatus implements Serializable {
+    String mirrorPointId;
+    String status;
 }

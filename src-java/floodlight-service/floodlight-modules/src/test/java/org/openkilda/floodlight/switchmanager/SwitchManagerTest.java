@@ -15,7 +15,6 @@
 
 package org.openkilda.floodlight.switchmanager;
 
-import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -28,31 +27,17 @@ import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.isA;
 import static org.easymock.EasyMock.mock;
 import static org.easymock.EasyMock.replay;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
-import static org.hamcrest.core.Every.everyItem;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.openkilda.floodlight.switchmanager.SwitchFlowUtils.buildMeterMod;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
-import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
-import static org.openkilda.model.SwitchFeature.BFD;
-import static org.openkilda.model.SwitchFeature.GROUP_PACKET_OUT_CONTROLLER;
-import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
 import static org.openkilda.model.SwitchFeature.METERS;
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
-import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
-import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 import static org.openkilda.model.cookie.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
-import static org.projectfloodlight.openflow.protocol.OFMeterModCommand.ADD;
 
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.KildaCoreConfig;
@@ -63,20 +48,13 @@ import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationServiceConfig;
 import org.openkilda.floodlight.service.FeatureDetectorService;
-import org.openkilda.floodlight.switchmanager.factory.SwitchFlowFactory;
-import org.openkilda.floodlight.test.standard.OutputCommands;
-import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
-import com.sabre.oss.conf4j.source.MapConfigurationSource;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
@@ -84,7 +62,6 @@ import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.restserver.IRestApiService;
-import org.apache.commons.lang3.StringUtils;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
@@ -100,47 +77,35 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsRequest;
-import org.projectfloodlight.openflow.protocol.OFMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.U64;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 public class SwitchManagerTest {
-    private static final OutputCommands scheme = new ReplaceSchemeOutputCommands();
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
     private static final long cookie = 123L;
     private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
-    private static final long unicastMeterId = createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue();
     private SwitchManager switchManager;
     private IOFSwitchService ofSwitchService;
     private FeatureDetectorService featureDetectorService;
     private IOFSwitch iofSwitch;
     private SwitchDescription switchDescription;
     private DatapathId dpid;
-    private SwitchManagerConfig config;
 
     @Before
     public void setUp() throws FloodlightModuleException {
-        JdkProxyStaticConfigurationFactory factory = new JdkProxyStaticConfigurationFactory();
-        config = factory.createConfiguration(SwitchManagerConfig.class, new MapConfigurationSource(emptyMap()));
-
         ofSwitchService = createMock(IOFSwitchService.class);
         IRestApiService restApiService = createMock(IRestApiService.class);
         featureDetectorService = createMock(FeatureDetectorService.class);
-        SwitchFlowFactory switchFlowFactory = new SwitchFlowFactory();
 
         iofSwitch = createMock(IOFSwitch.class);
 
@@ -175,43 +140,12 @@ public class SwitchManagerTest {
         context.addService(IRestApiService.class, restApiService);
         context.addService(IOFSwitchService.class, ofSwitchService);
         context.addService(FeatureDetectorService.class, featureDetectorService);
-        context.addService(SwitchFlowFactory.class, switchFlowFactory);
         context.addService(IPathVerificationService.class, pathVerificationService);
 
         switchManager = new SwitchManager();
         context.addService(ISwitchManager.class, switchManager);
         switchManager.init(context);
         switchManager.startUp(context);
-    }
-
-    @Test
-    public void installEgressIslVxlanRule() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        switchManager.installEgressIslVxlanRule(dpid, 1);
-
-        OFFlowMod result = capture.getValue();
-        assertEquals(scheme.installEgressIslVxlanRule(dpid, 1), result);
-    }
-
-    @Test
-    public void installTransitIslVxlanRule() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        switchManager.installTransitIslVxlanRule(dpid, 1);
-
-        OFFlowMod result = capture.getValue();
-        assertEquals(scheme.installTransitIslVxlanRule(dpid, 1), result);
-    }
-
-    @Test
-    public void installEgressIslVlanRule() throws Exception {
-        Capture<OFFlowMod> capture = prepareForInstallTest();
-
-        switchManager.installEgressIslVlanRule(dpid, 1);
-
-        OFFlowMod result = capture.getValue();
-        assertEquals(scheme.installEgressIslVlanRule(dpid, 1), result);
     }
 
     @Test
@@ -636,161 +570,6 @@ public class SwitchManagerTest {
         assertThat(deletedRules, containsInAnyOrder(cookie));
     }
 
-    @Test
-    public void shouldInstallMeterWithKbpsFlag() throws Exception {
-        // given
-        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
-        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
-        expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
-        expect(iofSwitch.getId()).andStubReturn(dpid);
-        // define that switch is Centec
-        expect(switchDescription.getManufacturerDescription()).andStubReturn("Centec Inc.");
-        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(Sets.newHashSet(METERS));
-        mockGetMetersRequest(Collections.emptyList(), true, 0, 0);
-        mockBarrierRequest();
-
-        Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(1);
-
-        replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
-
-        // when
-        long rate = 100L;
-        long burstSize = 1000L;
-        Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
-        OFMeterMod ofMeterMod = buildMeterMod(iofSwitch.getOFFactory(), rate, burstSize, unicastMeterId, flags, ADD);
-        switchManager.processMeter(iofSwitch, ofMeterMod);
-
-        // then
-        final List<OFMeterMod> actual = capture.getValues();
-        assertEquals(1, actual.size());
-
-        // verify meters creation
-        assertThat(actual, everyItem(hasProperty("command", equalTo(ADD))));
-        assertThat(actual, everyItem(hasProperty("meterId", equalTo(unicastMeterId))));
-        assertThat(actual, everyItem(hasProperty("flags", containsInAnyOrder(flags.toArray()))));
-        for (OFMeterMod mod : actual) {
-            assertThat(mod.getMeters(), everyItem(hasProperty("rate", is(rate))));
-            assertThat(mod.getMeters(), everyItem(hasProperty("burstSize", is(burstSize))));
-        }
-    }
-
-    @Test
-    public void shouldReinstallMeterIfFlagIsIncorrect() throws Exception {
-        long expectedRate = config.getUnicastRateLimit();
-        // given
-        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
-        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
-        expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
-        expect(iofSwitch.getId()).andStubReturn(dpid);
-        // define that switch is Centec
-        expect(switchDescription.getManufacturerDescription()).andStubReturn("Centec Inc.");
-        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(Sets.newHashSet(METERS));
-        mockBarrierRequest();
-        mockGetMetersRequest(Lists.newArrayList(unicastMeterId), false, expectedRate,
-                config.getSystemMeterBurstSizeInPackets());
-
-        Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(2);
-
-        replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
-
-        // when
-        Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST);
-        OFMeterMod ofMeterMod = buildMeterMod(iofSwitch.getOFFactory(), expectedRate,
-                config.getSystemMeterBurstSizeInPackets(), unicastMeterId, flags, ADD);
-        switchManager.processMeter(iofSwitch, ofMeterMod);
-
-        // verify meters installation
-        final List<OFMeterMod> actual = capture.getValues();
-        assertEquals(2, actual.size());
-
-        // verify meters deletion
-        assertThat(actual.get(0), hasProperty("command", equalTo(OFMeterModCommand.DELETE)));
-        // verify meter installation
-        assertThat(actual.get(1), hasProperty("command", equalTo(ADD)));
-        assertThat(actual.get(1), hasProperty("meterId", equalTo(unicastMeterId)));
-        assertThat(actual.get(1), hasProperty("flags", containsInAnyOrder(flags.toArray())));
-    }
-
-    @Test
-    public void shouldRenstallMetersIfRateIsUpdated() throws Exception {
-        long unicastMeter = createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue();
-        long originRate = config.getBroadcastRateLimit();
-        long updatedRate = config.getBroadcastRateLimit() + 10;
-
-        // given
-        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
-        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
-        expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
-        expect(iofSwitch.getId()).andStubReturn(dpid);
-        expect(switchDescription.getManufacturerDescription()).andStubReturn(StringUtils.EMPTY);
-        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(Sets.newHashSet(PKTPS_FLAG));
-        Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        // 1 meter deletion + 1 meters installation
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(2);
-
-        mockBarrierRequest();
-        mockGetMetersRequest(Lists.newArrayList(unicastMeter), true, originRate,
-                config.getSystemMeterBurstSizeInPackets());
-        replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
-
-        //when
-        Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
-        OFMeterMod ofMeterMod = buildMeterMod(iofSwitch.getOFFactory(), updatedRate,
-                config.getSystemMeterBurstSizeInPackets(), unicastMeter, flags, ADD);
-        switchManager.processMeter(iofSwitch, ofMeterMod);
-
-        final List<OFMeterMod> actual = capture.getValues();
-        assertEquals(2, actual.size());
-
-        // verify meters deletion
-        assertThat(actual.get(0), hasProperty("command", equalTo(OFMeterModCommand.DELETE)));
-        // verify meter installation
-        assertThat(actual.get(1), hasProperty("command", equalTo(ADD)));
-        assertThat(actual.get(1), hasProperty("meterId", equalTo(unicastMeter)));
-        assertThat(actual.get(1), hasProperty("flags", containsInAnyOrder(flags.toArray())));
-    }
-
-    @Test
-    public void shouldRenstallMetersIfBurstSizeIsUpdated() throws Exception {
-        long unicastMeter = createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue();
-        long originBurstSize = config.getSystemMeterBurstSizeInPackets();
-        long updatedBurstSize = config.getSystemMeterBurstSizeInPackets() + 10;
-
-        // given
-        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
-        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
-        expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
-        expect(iofSwitch.getId()).andStubReturn(dpid);
-        expect(switchDescription.getManufacturerDescription()).andStubReturn(StringUtils.EMPTY);
-        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(Sets.newHashSet(PKTPS_FLAG));
-        Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        // 1 meter deletion + 1 meters installation
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(2);
-
-        mockBarrierRequest();
-        mockGetMetersRequest(Lists.newArrayList(unicastMeter), true, config.getUnicastRateLimit(),
-                originBurstSize);
-        replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
-
-        //when
-        Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
-        OFMeterMod ofMeterMod = buildMeterMod(iofSwitch.getOFFactory(), config.getUnicastRateLimit(),
-                updatedBurstSize, unicastMeter, flags, ADD);
-        switchManager.processMeter(iofSwitch, ofMeterMod);
-
-        final List<OFMeterMod> actual = capture.getValues();
-        assertEquals(2, actual.size());
-
-        // verify meters deletion
-        assertThat(actual.get(0), hasProperty("command", equalTo(OFMeterModCommand.DELETE)));
-        // verify meter installation
-        assertThat(actual.get(1), hasProperty("command", equalTo(ADD)));
-        assertThat(actual.get(1), hasProperty("meterId", equalTo(unicastMeter)));
-        assertThat(actual.get(1), hasProperty("flags", containsInAnyOrder(flags.toArray())));
-    }
-
     private void mockBarrierRequest() throws InterruptedException, ExecutionException, TimeoutException {
         OFBarrierReply ofBarrierReply = mock(OFBarrierReply.class);
 
@@ -829,39 +608,6 @@ public class SwitchManagerTest {
         expect(iofSwitch.writeStatsRequest(isA(OFFlowStatsRequest.class))).andReturn(ofStatsFuture);
     }
 
-
-    private Capture<OFFlowMod> prepareForInstallTest() {
-        return prepareForInstallTest(false);
-    }
-
-    private Capture<OFFlowMod> prepareForInstallTest(boolean isCentecSwitch) {
-        Capture<OFFlowMod> capture = EasyMock.newCapture();
-
-        Set<SwitchFeature> features;
-        if (isCentecSwitch) {
-            features = Sets.newHashSet(METERS, LIMITED_BURST_SIZE);
-        } else {
-            features = Sets.newHashSet(BFD, GROUP_PACKET_OUT_CONTROLLER, NOVIFLOW_PUSH_POP_VXLAN, NOVIFLOW_COPY_FIELD,
-                    RESET_COUNTS_FLAG);
-        }
-        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(features);
-
-        expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
-        expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
-        expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
-        expect(iofSwitch.getId()).andStubReturn(dpid);
-        expect(switchDescription.getManufacturerDescription()).andStubReturn(isCentecSwitch ? "Centec" : "");
-        expect(iofSwitch.write(capture(capture))).andReturn(true);
-        expectLastCall();
-
-        replay(ofSwitchService);
-        replay(iofSwitch);
-        replay(switchDescription);
-        replay(featureDetectorService);
-
-        return capture;
-    }
-
     private Capture<OFMeterMod> prepareForMeterTest() {
         Capture<OFMeterMod> capture = EasyMock.newCapture();
 
@@ -876,35 +622,5 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
 
         return capture;
-    }
-
-    private void mockGetMetersRequest(List<Long> meterIds, boolean supportsPkts, long rate, long burstSize)
-            throws Exception {
-        List<OFMeterConfig> meterConfigs = new ArrayList<>(meterIds.size());
-        for (Long meterId : meterIds) {
-            OFMeterBandDrop bandDrop = mock(OFMeterBandDrop.class);
-            expect(bandDrop.getRate()).andStubReturn(rate);
-            expect(bandDrop.getBurstSize()).andStubReturn(burstSize);
-
-            OFMeterConfig meterConfig = mock(OFMeterConfig.class);
-            expect(meterConfig.getEntries()).andStubReturn(Collections.singletonList(bandDrop));
-            expect(meterConfig.getMeterId()).andStubReturn(meterId);
-
-            Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.STATS, OFMeterFlags.BURST,
-                    supportsPkts ? OFMeterFlags.PKTPS : OFMeterFlags.KBPS);
-            expect(meterConfig.getFlags()).andStubReturn(flags);
-            replay(bandDrop, meterConfig);
-            meterConfigs.add(meterConfig);
-        }
-
-        OFMeterConfigStatsReply statsReply = mock(OFMeterConfigStatsReply.class);
-        expect(statsReply.getEntries()).andStubReturn(meterConfigs);
-
-        ListenableFuture<List<OFMeterConfigStatsReply>> ofStatsFuture = mock(ListenableFuture.class);
-        expect(ofStatsFuture.get(anyLong(), anyObject())).andStubReturn(Collections.singletonList(statsReply));
-
-        replay(statsReply, ofStatsFuture);
-        expect(iofSwitch.writeStatsRequest(isA(OFMeterConfigStatsRequest.class)))
-                .andStubReturn(ofStatsFuture);
     }
 }

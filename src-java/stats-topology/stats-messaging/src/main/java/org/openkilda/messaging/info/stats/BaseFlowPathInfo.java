@@ -25,6 +25,7 @@ import lombok.NonNull;
 import lombok.ToString;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * A base for path info messages.
@@ -38,4 +39,5 @@ public abstract class BaseFlowPathInfo extends StatsNotification {
     @NonNull FlowSegmentCookie cookie;
     MeterId meterId;
     @NonNull List<PathNodePayload> pathNodes;
+    Set<Integer> statVlans;
 }

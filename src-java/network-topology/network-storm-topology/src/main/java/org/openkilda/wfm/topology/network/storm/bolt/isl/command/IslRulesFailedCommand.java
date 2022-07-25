@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,23 +15,20 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.isl.command;
 
-import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
-import org.openkilda.wfm.share.model.Endpoint;
-import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 
-public class IslDefaultRuleCreatedCommand extends IslCommand {
-    private final InstallIslDefaultRulesResult payload;
+import java.util.UUID;
 
-    public IslDefaultRuleCreatedCommand(InstallIslDefaultRulesResult payload) {
-        super(Endpoint.of(payload.getSrcSwitch(), payload.getSrcPort()),
-                new IslReference(Endpoint.of(payload.getSrcSwitch(), payload.getSrcPort()),
-                        Endpoint.of(payload.getDstSwitch(), payload.getDstPort())));
-        this.payload = payload;
+public class IslRulesFailedCommand implements IslCommandBase {
+
+    private final UUID commandId;
+
+    public IslRulesFailedCommand(UUID commandId) {
+        this.commandId = commandId;
     }
 
     @Override
     public void apply(IslHandler handler) {
-        handler.processIslRuleInstalled(getReference(), payload);
+        handler.processIslRulesTimeout(commandId);
     }
 }

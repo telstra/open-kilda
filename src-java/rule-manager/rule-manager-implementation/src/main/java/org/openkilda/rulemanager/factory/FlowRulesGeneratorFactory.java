@@ -27,6 +27,7 @@ import org.openkilda.model.SwitchProperties;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.factory.generator.flow.EgressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.EgressYRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.EmptyGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.InputArpRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.InputLldpRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressRuleGenerator;
@@ -37,14 +38,18 @@ import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressYRuleG
 import org.openkilda.rulemanager.factory.generator.flow.SingleTableServer42IngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitYRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.VlanStatsRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopTransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.mirror.EgressMirrorRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.mirror.IngressMirrorRuleGenerator;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 public class FlowRulesGeneratorFactory {
 
     private final RuleManagerConfig config;
@@ -101,6 +106,22 @@ public class FlowRulesGeneratorFactory {
                     .encapsulation(encapsulation)
                     .switchProperties(switchProperties)
                     .build();
+        }
+    }
+
+    /**
+     * Get vlan stats rule generator.
+     */
+    public RuleGenerator getVlanStatsRuleGenerator(FlowPath flowPath, Flow flow) {
+        boolean multiTable = isPathSrcMultiTable(flowPath, flow);
+        if (multiTable) {
+            return VlanStatsRuleGenerator.builder()
+                    .flow(flow)
+                    .flowPath(flowPath)
+                    .build();
+        } else {
+            // Vlan stats feature is not supported in single table mode.
+            return new EmptyGenerator();
         }
     }
 

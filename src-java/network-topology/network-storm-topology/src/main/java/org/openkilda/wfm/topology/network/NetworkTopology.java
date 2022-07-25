@@ -16,9 +16,12 @@
 package org.openkilda.wfm.topology.network;
 
 import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.kafka.AbstractMessageSerializer;
 import org.openkilda.wfm.kafka.MessageSerializer;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
@@ -35,7 +38,6 @@ import org.openkilda.wfm.topology.network.storm.bolt.NetworkPersistedStateImport
 import org.openkilda.wfm.topology.network.storm.bolt.NorthboundEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.RerouteEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.SpeakerEncoder;
-import org.openkilda.wfm.topology.network.storm.bolt.SpeakerRulesEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.StatusEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.SwitchManagerEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.hub.BfdHub;
@@ -88,7 +90,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
         workerSwitchManager(topology);
 
         inputSpeaker(topology);
-        inputSpeakerRules(topology);
+        inputSpeakerControl(topology);
         workerSpeakerRules(topology);
 
         inputGrpc(topology);
@@ -112,7 +114,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
 
         outputSpeaker(topology);
         outputSwitchManager(topology);
-        outputSpeakerRules(topology);
+        outputSpeakerControl(topology);
         outputReroute(topology);
         outputStatus(topology);
         outputNorthbound(topology);
@@ -152,9 +154,9 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
                 kafkaTopics.getNorthboundTopic(), ComponentId.INPUT_SWMANAGER.toString());
     }
 
-    private void inputSpeakerRules(TopologyBuilder topology) {
-        declareKafkaSpout(topology,
-                kafkaTopics.getTopoSwitchManagerTopic(), ComponentId.INPUT_SPEAKER_RULES.toString());
+    private void inputSpeakerControl(TopologyBuilder topology) {
+        declareKafkaSpoutForAbstractMessage(topology,
+                kafkaTopics.getNetworkControlResponseTopic(), ComponentId.INPUT_SPEAKER_RULES.toString());
     }
 
     private void workerSpeakerRules(TopologyBuilder topology) {
@@ -326,7 +328,8 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
     }
 
     private void islHandler(TopologyBuilder topology) {
-        IslHandler bolt = new IslHandler(persistenceManager, options);
+        IslHandler bolt = new IslHandler(persistenceManager, options,
+                configurationProvider.getConfiguration(RuleManagerConfig.class));
         Fields islGrouping = new Fields(UniIslHandler.FIELD_ID_ISL_SOURCE, UniIslHandler.FIELD_ID_ISL_DEST);
         declareBolt(topology, bolt, IslHandler.BOLT_ID)
                 .fieldsGrouping(UniIslHandler.BOLT_ID, islGrouping)
@@ -355,15 +358,11 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
                 .shuffleGrouping(SwitchManagerEncoder.BOLT_ID);
     }
 
-    private void outputSpeakerRules(TopologyBuilder topology) {
-        SpeakerRulesEncoder encoderRules = new SpeakerRulesEncoder();
-        declareBolt(topology, encoderRules, SpeakerRulesEncoder.BOLT_ID)
-                .shuffleGrouping(SpeakerRulesWorker.BOLT_ID);
-
-        KafkaBolt outputRules = buildKafkaBolt(kafkaTopics.getSpeakerTopic());
+    private void outputSpeakerControl(TopologyBuilder topology) {
+        KafkaBolt<String, AbstractMessage> outputRules =
+                makeKafkaBolt(kafkaTopics.getNetworkControlTopic(), AbstractMessageSerializer.class);
         declareBolt(topology, outputRules, ComponentId.SPEAKER_RULES_OUTPUT.toString())
-                .shuffleGrouping(SpeakerRulesEncoder.BOLT_ID);
-
+                .shuffleGrouping(SpeakerRulesWorker.BOLT_ID);
     }
 
     private void outputReroute(TopologyBuilder topology) {

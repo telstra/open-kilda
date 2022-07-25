@@ -57,8 +57,14 @@ public class NetworkServiceImpl implements NetworkService {
     @Override
     public CompletableFuture<PathsDto> getPaths(
             SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType encapsulationType,
-            PathComputationStrategy pathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2) {
+            PathComputationStrategy pathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2,
+            Integer maxPathCount) {
         String correlationId = RequestCorrelationId.getId();
+
+        if (maxPathCount != null && maxPathCount <= 0) {
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.PARAMETERS_INVALID,
+                    "Bad max_path_count parameter", "The number MAX_PATH_COUNT should be positive");
+        }
 
         if (PathComputationStrategy.MAX_LATENCY.equals(pathComputationStrategy) && maxLatency == null) {
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.PARAMETERS_INVALID,
@@ -68,7 +74,7 @@ public class NetworkServiceImpl implements NetworkService {
         }
 
         GetPathsRequest request = new GetPathsRequest(srcSwitch, dstSwitch, encapsulationType, pathComputationStrategy,
-                maxLatency, maxLatencyTier2);
+                maxLatency, maxLatencyTier2, maxPathCount);
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)

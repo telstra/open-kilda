@@ -21,10 +21,7 @@ import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
-import org.openkilda.floodlight.KafkaChannel;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
-import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
-import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
+import org.openkilda.floodlight.api.BatchCommandProcessor;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.messaging.MessageContext;
@@ -57,16 +54,15 @@ import java.util.stream.Collectors;
 public class OfBatchExecutor {
 
     private final IOFSwitch iofSwitch;
-    private final KafkaUtilityService kafkaUtilityService;
-    private final IKafkaProducerService kafkaProducerService;
+    private final BatchCommandProcessor commandProcessor;
     private final SessionService sessionService;
     private final SwitchDataProvider switchDataProvider;
     private final MessageContext messageContext;
     private final OfBatchHolder holder;
     private final Set<SwitchFeature> switchFeatures;
     private final String kafkaKey;
-    private final Origin origin;
     private final boolean failIfExists;
+    private final String sourceTopic;
 
     private boolean hasMeters;
     private boolean hasGroups;
@@ -77,13 +73,12 @@ public class OfBatchExecutor {
     private CompletableFuture<List<FlowSpeakerData>> flowStats = CompletableFuture.completedFuture(emptyList());
 
     @Builder
-    public OfBatchExecutor(IOFSwitch iofSwitch, KafkaUtilityService kafkaUtilityService,
-                           IKafkaProducerService kafkaProducerService, SessionService sessionService,
+    public OfBatchExecutor(IOFSwitch iofSwitch, BatchCommandProcessor commandProcessor, SessionService sessionService,
                            MessageContext messageContext, OfBatchHolder holder,
-                           Set<SwitchFeature> switchFeatures, String kafkaKey, Origin origin, Boolean failIfExists) {
+                           Set<SwitchFeature> switchFeatures, String kafkaKey, String sourceTopic,
+                           Boolean failIfExists) {
         this.iofSwitch = iofSwitch;
-        this.kafkaUtilityService = kafkaUtilityService;
-        this.kafkaProducerService = kafkaProducerService;
+        this.commandProcessor = commandProcessor;
         this.sessionService = sessionService;
         this.switchDataProvider = SwitchDataProvider.builder()
                 .iofSwitch(iofSwitch)
@@ -95,7 +90,7 @@ public class OfBatchExecutor {
         this.holder = holder;
         this.switchFeatures = switchFeatures;
         this.kafkaKey = kafkaKey;
-        this.origin = origin;
+        this.sourceTopic = sourceTopic;
         this.failIfExists = failIfExists == null || failIfExists;
     }
 
@@ -348,20 +343,6 @@ public class OfBatchExecutor {
     }
 
     private void sendResponse() {
-        KafkaChannel kafkaChannel = kafkaUtilityService.getKafkaChannel();
-        String topic = getTopic(kafkaChannel);
-        log.debug("Send response to {} (key={})", topic, kafkaKey);
-        kafkaProducerService.sendMessageAndTrack(topic, kafkaKey, holder.getResult());
-    }
-
-    private String getTopic(KafkaChannel kafkaChannel) {
-        switch (origin) {
-            case FLOW_HS:
-                return kafkaChannel.getSpeakerFlowHsTopic();
-            case SW_MANAGER:
-                return kafkaChannel.getSpeakerSwitchManagerResponseTopic();
-            default:
-                throw new IllegalStateException(format("Unknown message origin %s", origin));
-        }
+        commandProcessor.processResponse(holder.getResult(), kafkaKey, sourceTopic);
     }
 }

@@ -29,6 +29,7 @@ import lombok.ToString;
 import lombok.Value;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Represents update path info.
@@ -45,7 +46,8 @@ public class UpdateFlowPathInfo extends BaseFlowPathInfo {
                               @JsonProperty("yflow_id") String yFlowId,
                               @NonNull @JsonProperty("cookie") FlowSegmentCookie cookie,
                               @JsonProperty("meter_id") MeterId meterId,
-                              @NonNull @JsonProperty("path_nodes") List<PathNodePayload> pathNodes) {
-        super(flowId, yFlowId, cookie, meterId, pathNodes);
+                              @NonNull @JsonProperty("path_nodes") List<PathNodePayload> pathNodes,
+                              @JsonProperty("stat_vlans") Set<Integer> statVlans) {
+        super(flowId, yFlowId, cookie, meterId, pathNodes, statVlans);
     }
 }

@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.122.0 (07/07/2022)
+
+### Features:
+-  [#4848](https://github.com/telstra/open-kilda/pull/4848) Added vlan statistics field to FlowV2 CRUD api (Issue: [#4855](https://github.com/telstra/open-kilda/issues/4855)) 
+-  [#4849](https://github.com/telstra/open-kilda/pull/4849) Add flow statistics per vlan docs (Issue: [#4855](https://github.com/telstra/open-kilda/issues/4855)) [**docs**]
+-  [#4857](https://github.com/telstra/open-kilda/pull/4857) Added ability to collect vlan statisctics on full port flows [**storm-topologies**]
+-  [#4858](https://github.com/telstra/open-kilda/pull/4858) Added vlan stats Floodlighs commands (Issue: [#4855](https://github.com/telstra/open-kilda/issues/4855)) [**floodlight**]
+
+### Bug Fixes:
+-  [#4867](https://github.com/telstra/open-kilda/pull/4867) Fixed grpc-stub error reply (Issue: [#4729](https://github.com/telstra/open-kilda/issues/4729)) [**tests**]
+-  [#4845](https://github.com/telstra/open-kilda/pull/4845) Fix swap endpoint inner_vlan_id (Issue: [#4409](https://github.com/telstra/open-kilda/issues/4409)) 
+-  [#4853](https://github.com/telstra/open-kilda/pull/4853) Rework flow monitoring to use flow sync instead of force reroute 
+-  [#4856](https://github.com/telstra/open-kilda/pull/4856) Fix missing y-point metrics in y-flow specs (Issue: [#4852](https://github.com/telstra/open-kilda/issues/4852)) 
+-  [#4859](https://github.com/telstra/open-kilda/pull/4859) Fix flow monitoring issue (Issue: [#4810](https://github.com/telstra/open-kilda/issues/4810)) 
+
+### Improvements:
+-  [#4864](https://github.com/telstra/open-kilda/pull/4864) Added missing flow history dump fields (Issue: [#4785](https://github.com/telstra/open-kilda/issues/4785)) 
+-  [#4869](https://github.com/telstra/open-kilda/pull/4869) Revert #4637 as issue was fixed (Issue: [#4637](https://github.com/telstra/open-kilda/issues/4637)) [**tests**]
+-  [#4854](https://github.com/telstra/open-kilda/pull/4854) Changed messages grouping in Stats topology to increase its parallelism (Issue: [#4844](https://github.com/telstra/open-kilda/issues/4844)) [**storm-topologies**]
+-  [#4863](https://github.com/telstra/open-kilda/pull/4863) Move flow stats writing to separate bolt 
+
+### Other changes:
+-  [#4843](https://github.com/telstra/open-kilda/pull/4843) Rework isl service rules to use RuleManager [**floodlight**][**storm-topologies**]
+-  [#4850](https://github.com/telstra/open-kilda/pull/4850) LAG port update request validation test #4776 (Issue: [#4776](https://github.com/telstra/open-kilda/issues/4776)) [**tests**]
+-  [#4861](https://github.com/telstra/open-kilda/pull/4861) Fix StormHeavyLoadSpec.groovy after #4776 merge (Issue: [#4776](https://github.com/telstra/open-kilda/issues/4776)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.121.0...v1.122.0).
+
+### Affected Components:
+history, flow-hs, fl, flow-monitor, network, stats
+
+---
+
 ## v1.121.0 (22/06/2022)
 
 ### Bug Fixes:
