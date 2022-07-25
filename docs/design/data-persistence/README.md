@@ -1,7 +1,7 @@
 # Kilda Persistence Layer
 
 ## Overview
-Kilda has a well-defined persistence layer, which provides access to the data in the system database / graph storage.
+Kilda has a well-defined persistence layer, which provides access to the data in the system database(s) / graph storage.
 The layer consists of API and the actual implementation of its components (storage implementations, repositories, 
 persistence context and transaction managers).
 

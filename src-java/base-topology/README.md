@@ -10,7 +10,7 @@ To start a specific topology in `local` mode:
 java -cp TOPOLOGY_JAR.FILE:build/dependency-jars/* CLASS --local arguments...
 ```
 
-To submit the topology into storm:
+To submit the topology into Storm:
 ```bash
 storm jar TOPOLOGY_JAR.FILE class --jars "DEPENDENCY_JAR1.FILE,DEPENDENCY_JAR2.FILE" arguments...
 ```
@@ -47,21 +47,7 @@ approach allow to pass options bounded to specific name, to specific topology an
 
 ## Debugging Tips
 
-A lot of message passing is done through kafka topics.
-
-### WFM Debugging
-
-#### Deploying the Kafka Splitter
-
-* assuming you've built the all-in-one jar, from within `services/wfm`: 
-    * option 1: ``` gradle build -x test ```
-    * option 2: ``` gradle build ```
-* you can deploy the topology (with kilda running):
-    ```
-    storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-    org.openkilda.wfm.topology.event.OFEventSplitterTopology \
-    --name splitter-1
-    ```
+A lot of message passing is done through Kafka topics.
 
 ### Kafka Debugging
 
@@ -82,9 +68,9 @@ One way to look at what is going on in a topic:
 
 #### Configuring Developer Environment
 
-* On the mac, you can use brew to install storm. That'll give you the `storm` CLI.
-* Ensure you configure ~/.storm/storm.yaml so that it points to your storm cluster.
-    * Normally, this is the kilda cluster.
+* On the mac, you can use brew to install Storm. That'll give you the `storm` CLI.
+* Ensure you configure ~/.storm/storm.yaml so that it points to your Storm cluster.
+    * Normally, this is the Kilda cluster.
     * The storm.yaml file should look like this at a minimum:
         ```
         nimbus.seeds: ["127.0.0.1"]
@@ -97,8 +83,8 @@ One way to look at what is going on in a topic:
     ```
 
 #### Viewing Logs
-Whereas you should be able to look at logs through the storm UI (ie localhost:8888), 
-you can also look at the log files directly on the storm cluster:
+Whereas you should be able to look at logs through the Storm UI (ie localhost:8888), 
+you can also look at the log files directly on the Storm cluster:
 
 * connect to the supervisor: ```docker-compose exec storm-supervisor /bin/bash```
 * cd to the base of the workers ```cd /opt/storm/logs/workers-artifacts```

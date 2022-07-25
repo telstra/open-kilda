@@ -8,17 +8,35 @@ An overview how the project is structured
   │    └...
   │
   ├── docker                      # Directory with Dockerfile(s)
-  │    ├── base
-  │    ├── floodlight-modules     # Dockerfile for Floodlight-Modules component
-  │    ├── kafka                  # Dockerfile for Kafka image (applicable to all-in-one environemnts)
-  │    ├── neo4j                  # Dockerfile for Neo4j image (applicable to all-in-one environemnts)
-  │    ├── network-topology       # Dockerfile for Network Topology submitter
-  │    ├── flow-topology          # Dockerfile for Flow Topology submitter
+  │    ├── base                   # Base Docker images
+  │    │
+  │    ├── db-migration           # Migration scripts for OrientDB
+  │    ├── db-mysql-migration     # Migration scripts for MySql
+  │    ├── floodlight-modules     # Floodlight along with Floodlight-Modules component
+  │    ├── grpc-service           # GRPC service
+  │    ├── northbound             # Northbound service
+  │    ├── server42               # Server42 Control and Stats components
+  │    ├── wfm                    # WFM (Storm Topologies) submitter
+  │    │
+  │    ├── elasticsearch          # Elasticseach (applicable to all-in-one environemnts)
+  │    ├── hbase                  # HBase (applicable to all-in-one environemnts)
+  │    ├── kafka                  # Kafka (applicable to all-in-one environemnts)
+  │    ├── lab-service            # KildaLab and Traffgen (applicable to all-in-one environemnts)
+  │    ├── logstash               # Logstash (applicable to all-in-one environemnts)
+  │    ├── opentsdb               # OpenTSDB (applicable to all-in-one environemnts)
+  │    ├── orientdb               # OrientDB (applicable to all-in-one environemnts)
+  │    ├── zookeeper              # Zookeeper (applicable to all-in-one environemnts)
   │    └...
   │
   ├── docs
   │    ├── design                 # Project and feature design documentation
   │    ├── guidelines             # OpenKilda developer's guidelines and conventions
+  │    └...
+  │  
+  ├── src-cpp                     # Source code of C++ -based components
+  │    ├── server42               # Server42 source code.
+  │    │    ├── README.md
+  │    │    └...
   │    └...
   │  
   ├── src-gui                     # OpenKilda GUI source code
@@ -68,7 +86,7 @@ An overview how the project is structured
   │    │    └── network-storm-topology
   │    │         └...
   │    │
-  │    ├── testing                     # Functional, ATDD and other tests
+  │    ├── testing                     # Functional, performance and other tests
   │    │    ├── test-library
   │    │    │    └...
   │    │    ├── functional-tests
@@ -89,9 +107,9 @@ An overview how the project is structured
   │    └...
   │  
   ├── Makefile                    # Script for local builds
+  ├── generated.mk                # Generated part of the Makefile (Confd template is used)
+  │  
   ├── docker-compose.yml
-  ├── Jenkinsfile                 # Scripts used for Continuous Integration
-  ├── .travis.yml                 # Scripts used for Continuous Integration
   │  
   ├── CHANGELOG.md                # A log of made changes and release notes
   ├── LICENSE.txt
@@ -100,7 +118,7 @@ An overview how the project is structured
 
 ## Directory Overview
 ### Source files
-Source files of system components / modules are placed under `src-java` and `src-python` in a corresponding sub-folder (e.g. `src-java/northbound-service`). 
+Source files of system components / modules are placed under `src-java`, `src-gui`, `src-cpp` and `src-python` in a corresponding sub-folder (e.g. `src-java/northbound-service`). 
 
 The structure of component folders should correspond requirements or best-practices of the tool used to build it.
 
@@ -112,13 +130,13 @@ If a system component / module is shared among others, it should be placed under
 ### Automated tests
 Unit tests are located next to the source code according to the requirements or best-practices of the tool used to build the component.
 
-Automated functional and ATDD tests are placed into the `testing` folder.
+Automated functional and performance tests are placed into the `testing` folder.
 
 ### Documentation
 System-wide and component specific documentation is placed under the `docs` folder. 
 
 ### Database migration scripts
->TBD
+Migration scripts are grouped by target database (OrientDB, MySQL) and placed under the `docker` folder (e.g. `docker/db-migration`)..
 
 ### Tools and utilities
 See the `tools` folder.
