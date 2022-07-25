@@ -105,15 +105,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                         field   : "pinned",
                         newValue: true
                 ],
-                //https://github.com/telstra/open-kilda/issues/3896
-//                [
-//                        field   : "pathComputationStrategy",
-//                        newValue: PathComputationStrategy.LATENCY.toString().toLowerCase()
-//                ],
-//                [
-//                        field   : "ignoreBandwidth",
-//                        newValue: true
-//                ]
                 [
                         field   : "description",
                         newValue: "updated"
