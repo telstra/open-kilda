@@ -158,12 +158,11 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         and: "Original flow rule counter is not increased"
         flowRule.packetCount == findFlowRule(getFlowRules(swPair.src.dpId), mirrorDirection).packetCount
 
-        //https://github.com/telstra/open-kilda/issues/4517
-//        and: "System collects stat for mirror cookie in otsdb"
-//        Wrappers.wait(statsRouterRequestInterval) {
-//            def tags = [flowid: flow.flowId, cookie: mirrorRule.cookie]
-//            assert otsdb.query(genTrafficTime, metricPrefix + "flow.raw.bytes", tags).dps.size() > 0
-//        }
+        and: "System collects stat for mirror cookie in otsdb"
+        Wrappers.wait(statsRouterRequestInterval) {
+            def tags = [flowid: flow.flowId, cookie: mirrorRule.cookie]
+            assert otsdb.query(genTrafficTime, metricPrefix + "flow.raw.bytes", tags).dps.size() > 0
+        }
 
         and: "Traffic is also received at the mirror point (check only if second tg available)"
         if (mirrorTg) {
