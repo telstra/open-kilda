@@ -31,7 +31,7 @@ jobs:
         id: ml
         uses: megalinter/megalinter@v6
         env:
-          ENABLE: JAVA,PYTHON,GROOVY,JSON,YAML,DOCKERFILE,CREDENTIALS
+          ENABLE: GROOVY
           VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
