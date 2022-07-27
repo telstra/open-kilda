@@ -74,10 +74,10 @@ public class CompleteFlowPathRemovalAction extends
         // Iterate to remove each path in a dedicated transaction.
         flow.getPathIds().forEach(pathId -> {
             Optional<FlowPath> deletedPath = flowPathRepository.remove(pathId);
-            deletedPath.ifPresent(this::updateIslsForFlowPath);
+            deletedPath.ifPresent(path -> {
+                updateIslsForFlowPath(path);
+                saveRemovalActionWithDumpToHistory(stateMachine, flow, new FlowPathPair(path, path));
+            });
         });
-
-        saveRemovalActionWithDumpToHistory(stateMachine, flow, new FlowPathPair(
-                flow.getForwardPath(), flow.getReversePath()));
     }
 }
