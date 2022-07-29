@@ -13,25 +13,17 @@
  *   limitations under the License.
  */
 
-
-package org.openkilda.server42.control.serverstub;
+package org.openkilda.server42.stats;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-public class ServerApplication {
-
-    private final ControlServer controlServer;
-    private final StatsServer statsServer;
-
-    public ServerApplication(ControlServer controlServer, StatsServer statsServer) {
-        this.controlServer = controlServer;
-        this.statsServer = statsServer;
-    }
-
+@EnableScheduling
+public class Server42StatsApplication {
     public static void main(String[] args) {
-        SpringApplication.run(ServerApplication.class, args);
+        SpringApplication.run(Server42StatsApplication.class, args);
     }
+
 }

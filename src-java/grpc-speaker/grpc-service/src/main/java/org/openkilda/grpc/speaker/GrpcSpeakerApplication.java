@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,15 +15,14 @@
 
 package org.openkilda.grpc.speaker;
 
-import org.openkilda.grpc.speaker.config.AppConfig;
-
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.PropertySource;
 
 @SpringBootApplication
-public class GrpcSpeaker {
-
+@PropertySource("classpath:grpc-service.properties")
+public class GrpcSpeakerApplication {
     public static void main(String[] args) {
-        SpringApplication.run(AppConfig.class, args);
+        SpringApplication.run(GrpcSpeakerApplication.class, args);
     }
 }

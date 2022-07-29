@@ -31,13 +31,16 @@ import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
 import org.openkilda.northbound.service.SwitchService;
 
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.format.annotation.DateTimeFormat.ISO;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -47,7 +50,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
@@ -72,19 +74,19 @@ public class SwitchControllerV2 extends BaseController {
      * @param port the port of the switch.
      * @return port history.
      */
-    @ApiOperation(value = "Get port history of the switch", response = PortHistoryResponse.class,
-            responseContainer = "List")
     @GetMapping(value = "/{switch_id}/ports/{port}/history")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Get port history of the switch")
+    @ApiResponse(responseCode = "200",
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = PortHistoryResponse.class))))
     public CompletableFuture<List<PortHistoryResponse>> getPortHistory(
             @PathVariable("switch_id") SwitchId switchId,
             @PathVariable("port") int port,
-            @ApiParam(value = "default: the day before timeTo.")
+            @Parameter(description = "default: the day before timeTo.")
             @RequestParam(value = "timeFrom", required = false) @DateTimeFormat(iso = ISO.DATE_TIME)
-                    Optional<Date> optionalFrom,
-            @ApiParam(value = "default: now.")
+            Optional<Date> optionalFrom,
+            @Parameter(description = "default: now.")
             @RequestParam(value = "timeTo", required = false) @DateTimeFormat(iso = ISO.DATE_TIME)
-                    Optional<Date> optionalTo) {
+            Optional<Date> optionalTo) {
         Instant timeTo = optionalTo.map(Date::toInstant).orElseGet(Instant::now);
         Instant timeFrom = optionalFrom.map(Date::toInstant).orElseGet(() ->
                 timeTo.minus(1, ChronoUnit.DAYS));
@@ -99,9 +101,10 @@ public class SwitchControllerV2 extends BaseController {
      * @param port the port of the switch.
      * @return port properties.
      */
-    @ApiOperation(value = "Get port properties", response = PortPropertiesResponse.class)
     @GetMapping(value = "/{switch_id}/ports/{port}/properties")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Get port properties")
+    @ApiResponse(responseCode = "200",
+            content = @Content(schema = @Schema(implementation = PortPropertiesResponse.class)))
     public CompletableFuture<PortPropertiesResponse> getPortProperties(@PathVariable("switch_id") SwitchId switchId,
                                                                        @PathVariable("port") int port) {
         return switchService.getPortProperties(switchId, port);
@@ -113,9 +116,10 @@ public class SwitchControllerV2 extends BaseController {
      * @param switchId the switch id.
      * @param port the port of the switch.
      */
-    @ApiOperation(value = "Update port properties", response = PortPropertiesResponse.class)
     @PutMapping(value = "/{switch_id}/ports/{port}/properties")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Update port properties")
+    @ApiResponse(responseCode = "200",
+            content = @Content(schema = @Schema(implementation = PortPropertiesResponse.class)))
     public CompletableFuture<PortPropertiesResponse> updatePortProperties(@PathVariable("switch_id") SwitchId switchId,
                                                                           @PathVariable("port") int port,
                                                                           @RequestBody PortPropertiesDto dto) {
@@ -125,12 +129,13 @@ public class SwitchControllerV2 extends BaseController {
     /**
      * Gets switch connected devices.
      */
-    @ApiOperation(value = "Gets switch connected devices", response = SwitchConnectedDevicesResponse.class)
     @GetMapping(path = "/{switch_id}/devices")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Gets switch connected devices")
+    @ApiResponse(responseCode = "200",
+            content = @Content(schema = @Schema(implementation = SwitchConnectedDevicesResponse.class)))
     public CompletableFuture<SwitchConnectedDevicesResponse> getConnectedDevices(
             @PathVariable("switch_id") SwitchId switchId,
-            @ApiParam(value = "Device will be included in response if it's `time_last_seen` >= `since`. "
+            @Parameter(description = "Device will be included in response if it's `time_last_seen` >= `since`. "
                     + "Example of `since` value: `2019-09-30T16:14:12.538Z`",
                     required = false)
             @RequestParam(value = "since", required = false) Optional<String> since) {
@@ -156,11 +161,11 @@ public class SwitchControllerV2 extends BaseController {
      * @param switchId the switch
      * @return switch.
      */
-    @ApiOperation(value = "Update switch", response = SwitchDtoV2.class)
     @PatchMapping(value = "/{switch_id}")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Update switch")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = SwitchDtoV2.class)))
     public CompletableFuture<SwitchDtoV2> patchSwitch(@PathVariable("switch_id") SwitchId switchId,
-                                                      @ApiParam(value = "To remove the pop value, "
+                                                      @Parameter(description = "To remove the pop value, "
                                                               + "need to pass an empty string.")
                                                       @RequestBody SwitchPatchDto dto) {
         return switchService.patchSwitch(switchId, dto);
@@ -169,8 +174,10 @@ public class SwitchControllerV2 extends BaseController {
     /**
      * Return active switch connections to the speakers.
      */
-    @ApiOperation(value = "Get active switch connections", response = SwitchConnectionsResponse.class)
     @GetMapping(path = "/{switch_id}/connections")
+    @Operation(summary = "Get active switch connections")
+    @ApiResponse(responseCode = "200",
+            content = @Content(schema = @Schema(implementation = SwitchConnectionsResponse.class)))
     public CompletableFuture<SwitchConnectionsResponse> getConnections(@PathVariable("switch_id") SwitchId switchId) {
         return switchService.getSwitchConnections(switchId);
     }
@@ -180,9 +187,10 @@ public class SwitchControllerV2 extends BaseController {
      *
      * @return switch ports description.
      */
-    @ApiOperation(value = "Get switch properties for all switches", response = SwitchPropertiesDump.class)
     @GetMapping(value = "/properties")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Get switch properties for all switches")
+    @ApiResponse(responseCode = "200",
+            content = @Content(schema = @Schema(implementation = SwitchPropertiesDump.class)))
     public CompletableFuture<SwitchPropertiesDump> getSwitchProperties() {
         return switchService.dumpSwitchProperties();
     }
@@ -192,12 +200,12 @@ public class SwitchControllerV2 extends BaseController {
      *
      * @param switchId the switch
      */
-    @ApiOperation(value = "Create LAG logical port", response = LagPortResponse.class)
     @PostMapping(value = "/{switch_id}/lags")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Create LAG logical port")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = LagPortResponse.class)))
     public CompletableFuture<LagPortResponse> createLagPort(
             @PathVariable("switch_id") SwitchId switchId,
-            @ApiParam(value = "Physical ports which will be grouped")
+            @Parameter(description = "Physical ports which will be grouped")
             @RequestBody LagPortRequest lagPortRequest) {
         return switchService.createLag(switchId, lagPortRequest);
     }
@@ -207,9 +215,9 @@ public class SwitchControllerV2 extends BaseController {
      *
      * @param switchId the switch
      */
-    @ApiOperation(value = "Read all LAG logical ports on specific switch", response = LagPortResponse.class)
     @GetMapping(value = "/{switch_id}/lags")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Read all LAG logical ports on specific switch")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = LagPortResponse.class)))
     public CompletableFuture<List<LagPortResponse>> getLagPorts(@PathVariable("switch_id") SwitchId switchId) {
         return switchService.getLagPorts(switchId);
     }
@@ -217,9 +225,9 @@ public class SwitchControllerV2 extends BaseController {
     /**
      * Update LAG logical port.
      */
-    @ApiOperation(value = "Update LAG logical port", response = LagPortResponse.class)
     @PutMapping(value = "/{switch_id}/lags/{logical_port_number}")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Update LAG logical port")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = LagPortResponse.class)))
     public CompletableFuture<LagPortResponse> updateLagPort(
             @PathVariable("switch_id") SwitchId switchId,
             @PathVariable("logical_port_number") int logicalPortNumber,
@@ -233,9 +241,9 @@ public class SwitchControllerV2 extends BaseController {
      * @param switchId the switch
      * @param logicalPortNumber the switch
      */
-    @ApiOperation(value = "Delete LAG logical port", response = LagPortResponse.class)
     @DeleteMapping(value = "/{switch_id}/lags/{logical_port_number}")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Delete LAG logical port")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = LagPortResponse.class)))
     public CompletableFuture<LagPortResponse> deleteLagPort(
             @PathVariable("switch_id") SwitchId switchId,
             @PathVariable("logical_port_number") int logicalPortNumber) {

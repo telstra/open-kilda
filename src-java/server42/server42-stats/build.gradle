@@ -9,7 +9,7 @@ configurations {
 
 description = 'server42-stats'
 dependencies {
-    implementation(platform('org.springframework:spring-framework-bom:5.2.19.RELEASE'))
+    implementation(platform('org.springframework:spring-framework-bom:5.2.22.RELEASE'))
     implementation(platform('org.springframework.boot:spring-boot-dependencies:2.2.13.RELEASE'))
 
     implementation project(':server42-stats-messaging')
@@ -21,8 +21,7 @@ dependencies {
     implementation project(':blue-green')
 
     implementation 'com.google.protobuf:protobuf-java:3.19.2'
-    implementation 'io.springfox:springfox-swagger2:2.9.2'
-    implementation 'io.springfox:springfox-swagger-ui:2.9.2'
+    implementation 'org.springdoc:springdoc-openapi-ui:1.4.8'
     implementation 'joda-time:joda-time:2.10.13'
     implementation 'io.micrometer:micrometer-core:1.8.2'
     implementation 'io.micrometer:micrometer-registry-prometheus:1.8.2'
@@ -36,6 +35,8 @@ dependencies {
     implementation('org.springframework.boot:spring-boot-starter')
     implementation 'org.springframework.boot:spring-boot-starter-log4j2'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
     implementation('org.springframework.kafka:spring-kafka') {
@@ -66,7 +67,7 @@ dependencies {
 }
 
 bootJar {
-    mainClassName = 'org.openkilda.server42.stats.StatsApplication'
+    mainClassName = 'org.openkilda.server42.stats.Server42StatsApplication'
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
 }
 

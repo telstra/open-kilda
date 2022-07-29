@@ -4,5 +4,5 @@
         "http://checkstyle.sourceforge.net/dtds/suppressions_1_2.dtd">
 
 <suppressions>
-    <suppress files="src/main/java/org/openkilda/server42/stats/StatsApplication" checks="HideUtilityClassConstructor"/>
+    <suppress files="src/main/java/org/openkilda/server42/stats/Server42StatsApplication.java" checks="HideUtilityClassConstructor"/>
 </suppressions>

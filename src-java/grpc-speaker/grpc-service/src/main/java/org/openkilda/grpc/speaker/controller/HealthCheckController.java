@@ -18,11 +18,13 @@ package org.openkilda.grpc.speaker.controller;
 import org.openkilda.grpc.speaker.service.HealthCheckService;
 import org.openkilda.messaging.model.HealthCheck;
 
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +35,6 @@ import org.springframework.web.bind.annotation.RestController;
  * REST Controller for health-check request.
  */
 @RestController
-@PropertySource("classpath:grpc-service.properties")
 public class HealthCheckController {
     private static final Logger logger = LoggerFactory.getLogger(HealthCheckController.class);
 
@@ -45,8 +46,9 @@ public class HealthCheckController {
      *
      * @return health-check model entity
      */
-    @ApiOperation(value = "Gets health-check status", response = HealthCheck.class)
     @GetMapping(value = "/health-check")
+    @Operation(summary = "Gets health-check status")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = HealthCheck.class)))
     public ResponseEntity<HealthCheck> getHealthCheck() {
         logger.debug("getHealthCheck");
 

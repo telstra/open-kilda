@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -26,23 +26,18 @@ import org.openkilda.config.naming.KafkaNamingStrategy;
 import com.sabre.oss.conf4j.processor.ConfigurationValueProcessor;
 import com.sabre.oss.conf4j.spring.annotation.ConfigurationType;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 
 import java.util.List;
 
 /**
- * The Application configuration. This configuration is used for application run. It includes configs of different
- * components via {@link Import} annotation.
+ * The Conf4J configuration.
  */
 @Configuration
 @ConfigurationType(name = "kafkaTopicsConfig", value = KafkaTopicsConfig.class)
 @ConfigurationType(name = "kafkaGroupConfig", value = KafkaGrpcSpeakerConfig.class)
 @ConfigurationType(EnvironmentConfig.class)
-@ComponentScan({"org.openkilda.grpc.speaker"})
-public class AppConfig {
-
+public class Conf4jConfig {
     @Bean(CONF4J_CONFIGURATION_VALUE_PROCESSORS)
     List<ConfigurationValueProcessor> configurationValueProcessors(EnvironmentConfig environmentConfig) {
         String namingPrefix = environmentConfig.getNamingPrefix();

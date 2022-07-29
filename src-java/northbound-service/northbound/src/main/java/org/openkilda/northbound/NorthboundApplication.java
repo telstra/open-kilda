@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,18 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.server42.stats;
+package org.openkilda.northbound;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration;
+import org.springframework.context.annotation.PropertySource;
 
-@SpringBootApplication
-@EnableScheduling
-public class StatsApplication {
-
+@SpringBootApplication(exclude = {ErrorMvcAutoConfiguration.class})
+@PropertySource("classpath:northbound.properties")
+public class NorthboundApplication {
     public static void main(String[] args) {
-        SpringApplication.run(StatsApplication.class, args);
+        SpringApplication.run(NorthboundApplication.class, args);
     }
-
 }

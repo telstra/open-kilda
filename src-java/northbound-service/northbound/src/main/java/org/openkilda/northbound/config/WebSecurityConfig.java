@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -35,12 +34,19 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  */
 @Configuration
 @EnableWebSecurity
-@PropertySource("classpath:northbound.properties")
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     /**
      * Default role for admin user.
      */
     private static final String DEFAULT_ROLE = "ADMIN";
+
+    private static final String[] EXCLUDE_PATTERNS = {
+            "/",
+            "/v1/health-check",
+            // swagger related patterns
+            "/swagger*/**",
+            "/v3/api-docs/**"
+    };
 
     /**
      * The environment variable for username.
@@ -96,7 +102,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.csrf().disable()
-                .authorizeRequests().antMatchers("/v1/health-check").permitAll().and()
+                .authorizeRequests().antMatchers(EXCLUDE_PATTERNS).permitAll().and()
                 .authorizeRequests().anyRequest().fullyAuthenticated().and()
                 .httpBasic().authenticationEntryPoint(authenticationEntryPoint).and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);

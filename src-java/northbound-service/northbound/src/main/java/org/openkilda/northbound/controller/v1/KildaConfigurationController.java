@@ -19,15 +19,15 @@ import org.openkilda.messaging.model.system.KildaConfigurationDto;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.service.KildaConfigurationService;
 
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.PropertySource;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.concurrent.CompletableFuture;
@@ -37,22 +37,22 @@ import java.util.concurrent.CompletableFuture;
  */
 @RestController
 @RequestMapping("/v1/config")
-@PropertySource("classpath:northbound.properties")
 public class KildaConfigurationController extends BaseController {
-
     @Autowired
     private KildaConfigurationService kildaConfigurationService;
 
     @GetMapping
-    @ApiOperation(value = "Get kilda configuration", response = KildaConfigurationDto.class)
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Get kilda configuration")
+    @ApiResponse(responseCode = "200",
+            content = @Content(schema = @Schema(implementation = KildaConfigurationDto.class)))
     public CompletableFuture<KildaConfigurationDto> getKildaConfiguration() {
         return kildaConfigurationService.getKildaConfiguration();
     }
 
     @PatchMapping
-    @ApiOperation(value = "Update kilda configuration", response = KildaConfigurationDto.class)
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Update kilda configuration")
+    @ApiResponse(responseCode = "200",
+            content = @Content(schema = @Schema(implementation = KildaConfigurationDto.class)))
     public CompletableFuture<KildaConfigurationDto> updateKildaConfiguration(@RequestBody KildaConfigurationDto dto) {
         return kildaConfigurationService.updateKildaConfiguration(dto);
     }

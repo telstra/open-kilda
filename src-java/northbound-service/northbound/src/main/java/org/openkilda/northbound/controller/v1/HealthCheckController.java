@@ -19,11 +19,11 @@ import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.service.HealthCheckService;
 
-import io.swagger.annotations.ApiOperation;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,13 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/v1")
-@PropertySource("classpath:northbound.properties")
 public class HealthCheckController extends BaseController {
-    /**
-     * The logger.
-     */
-    private static final Logger logger = LoggerFactory.getLogger(HealthCheckController.class);
-
     /**
      * The health-check instance.
      */
@@ -54,11 +48,10 @@ public class HealthCheckController extends BaseController {
      *
      * @return health-check model entity
      */
-    @ApiOperation(value = "Gets health-check status", response = HealthCheck.class)
     @GetMapping(value = "/health-check")
+    @Operation(summary = "Gets health-check status")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = HealthCheck.class)))
     public ResponseEntity<HealthCheck> getHealthCheck() {
-        logger.debug("getHealthCheck");
-
         HealthCheck healthCheck = healthCheckService.getHealthCheck();
         HttpStatus status = healthCheck.hasNonOperational() ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.OK;
 

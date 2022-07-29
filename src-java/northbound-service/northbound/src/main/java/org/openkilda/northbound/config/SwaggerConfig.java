@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,70 +19,77 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
 import org.openkilda.model.SwitchId;
 
+import io.swagger.v3.oas.models.media.StringSchema;
+import io.swagger.v3.oas.models.parameters.HeaderParameter;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.security.SecurityScheme.Type;
+import org.springdoc.core.GroupedOpenApi;
+import org.springdoc.core.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import springfox.documentation.builders.ApiInfoBuilder;
-import springfox.documentation.builders.ParameterBuilder;
-import springfox.documentation.builders.RequestHandlerSelectors;
-import springfox.documentation.schema.ModelRef;
-import springfox.documentation.service.Tag;
-import springfox.documentation.spi.DocumentationType;
-import springfox.documentation.spring.web.plugins.Docket;
-import springfox.documentation.swagger2.annotations.EnableSwagger2;
-
-import java.util.Collections;
 
 @Configuration
-@EnableSwagger2
 public class SwaggerConfig {
-    public static final String DRAFT_API_TAG = "DRAFT";
-
-    private final ParameterBuilder correlationIdParameter = new ParameterBuilder()
-                .name(CORRELATION_ID)
-                .description("Request's unique identifier")
-                .parameterType("header")
-                .modelRef(new ModelRef("string"));
-
     /**
      * Swagger configuration for API version 1.
-     *
-     * @return {@link Docket} instance
      */
     @Bean
-    public Docket apiV1() {
-        return new Docket(DocumentationType.SWAGGER_2)
-                .directModelSubstitute(SwitchId.class, String.class)
-                .groupName("API v1")
-                .apiInfo(new ApiInfoBuilder()
-                        .title("Northbound")
-                        .description("Kilda SDN Controller API")
-                        .version("1.0")
-                        .build())
-                .globalOperationParameters(Collections.singletonList(correlationIdParameter.build()))
-                .select()
-                .apis(RequestHandlerSelectors.basePackage("org.openkilda.northbound.controller.v1"))
+    public GroupedOpenApi apiV1() {
+        SpringDocUtils.getConfig()
+                .replaceWithClass(SwitchId.class, String.class);
+
+        return GroupedOpenApi.builder()
+                .group("Northbound-API-v1")
+                .packagesToScan("org.openkilda.northbound.controller.v1")
+                .addOpenApiCustomiser(openApi -> {
+                    openApi.getInfo().title("Northbound")
+                            .description("Kilda SDN Controller API")
+                            .version("1.0");
+
+                    openApi.getComponents()
+                            .addSecuritySchemes("basicAuth", new SecurityScheme().type(Type.HTTP).scheme("basic"));
+                    openApi.addSecurityItem(new SecurityRequirement().addList("basicAuth"));
+
+                    openApi.getPaths().values().stream().flatMap(pathItem -> pathItem.readOperations().stream())
+                            .forEach(operation -> operation.addParametersItem(
+                                    new HeaderParameter()
+                                            .name(CORRELATION_ID)
+                                            .description("Request's unique identifier")
+                                            .schema(new StringSchema())));
+                })
                 .build();
     }
 
     /**
      * Swagger configuration for API version 2.
-     *
-     * @return {@link Docket} instance
      */
     @Bean
-    public Docket apiV2() {
-        return new Docket(DocumentationType.SWAGGER_2)
-                .directModelSubstitute(SwitchId.class, String.class)
-                .groupName("API v2")
-                .apiInfo(new ApiInfoBuilder()
-                        .title("Northbound")
-                        .description("Kilda SDN Controller API")
-                        .version("2.0")
-                        .build())
-                .globalOperationParameters(Collections.singletonList(correlationIdParameter.required(true).build()))
-                .select()
-                .apis(RequestHandlerSelectors.basePackage("org.openkilda.northbound.controller.v2"))
-                .build()
-                .tags(new Tag(DRAFT_API_TAG, "This API is still under development and may be changed in the future"));
+    public GroupedOpenApi apiV2() {
+        SpringDocUtils.getConfig()
+                .replaceWithClass(SwitchId.class, String.class);
+
+        return GroupedOpenApi.builder()
+                .group("Northbound-API-v2")
+                .packagesToScan("org.openkilda.northbound.controller.v2")
+                .addOpenApiCustomiser(openApi -> {
+                    openApi.getInfo().title("Northbound")
+                            .description("Kilda SDN Controller API")
+                            .version("2.0");
+
+                    openApi.getComponents()
+                            .addSecuritySchemes("basicAuth", new SecurityScheme().type(Type.HTTP).scheme("basic"));
+                    openApi.addSecurityItem(new SecurityRequirement().addList("basicAuth"));
+
+                    openApi.getPaths().values().stream().flatMap(pathItem -> pathItem.readOperations().stream())
+                            .forEach(operation ->
+                                    operation.addParametersItem(
+                                            new HeaderParameter()
+                                                    .name(CORRELATION_ID)
+                                                    .description("Request's unique identifier")
+                                                    .required(true)
+                                                    .schema(new StringSchema())));
+                })
+                .build();
     }
 }

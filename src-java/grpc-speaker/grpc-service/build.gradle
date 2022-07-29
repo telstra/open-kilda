@@ -9,7 +9,7 @@ configurations {
 
 description = 'GRPC service'
 dependencies {
-    implementation(platform('org.springframework:spring-framework-bom:5.2.19.RELEASE'))
+    implementation(platform('org.springframework:spring-framework-bom:5.2.22.RELEASE'))
     implementation(platform('org.springframework.boot:spring-boot-dependencies:2.2.13.RELEASE'))
 
     implementation project(':grpc-api')
@@ -51,8 +51,7 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.commons:commons-lang3'
     implementation 'com.sabre.oss.conf4j:conf4j-spring-boot'
-    implementation 'io.springfox:springfox-swagger2'
-    implementation 'io.springfox:springfox-swagger-ui'
+    implementation 'org.springdoc:springdoc-openapi-ui'
     implementation files('lib/noviflow-grpc-lib-1.0.jar')
     //system group: 'io.grpc.noviflow', name: 'noviflow-grpc-lib', version:'1.0'
 
@@ -78,7 +77,7 @@ compileJava {
 }
 
 bootJar {
-    mainClassName = 'org.openkilda.grpc.speaker.GrpcSpeaker'
+    mainClassName = 'org.openkilda.grpc.speaker.GrpcSpeakerApplication'
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
 }
 

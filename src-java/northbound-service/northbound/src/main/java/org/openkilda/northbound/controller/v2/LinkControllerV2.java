@@ -22,7 +22,10 @@ import org.openkilda.northbound.dto.v2.links.BfdProperties;
 import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
 import org.openkilda.northbound.service.LinkService;
 
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,9 +56,10 @@ public class LinkControllerV2 extends BaseLinkController {
     /**
      * Write/update/enable BFD properties for specific ISL.
      */
-    @ApiOperation(value = "Set/update BFD properties", response = BfdPropertiesPayload.class)
     @PutMapping(value = "/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Set/update BFD properties")
+    @ApiResponse(responseCode = "200",
+            content = @Content(schema = @Schema(implementation = BfdPropertiesPayload.class)))
     public CompletableFuture<BfdPropertiesPayload> bfdPropertiesWrite(
             @PathVariable("src-switch") SwitchId srcSwitchId,
             @PathVariable("src-port") int srcPortNumber,
@@ -71,9 +75,10 @@ public class LinkControllerV2 extends BaseLinkController {
     /**
      * Read BFD properties for specific ISL.
      */
-    @ApiOperation(value = "Read BFD properties", response = BfdPropertiesPayload.class)
     @GetMapping(value = "/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd")
-    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Read BFD properties")
+    @ApiResponse(responseCode = "200",
+            content = @Content(schema = @Schema(implementation = BfdPropertiesPayload.class)))
     public CompletableFuture<BfdPropertiesPayload> bfdPropertiesRead(
             @PathVariable("src-switch") SwitchId srcSwitchId,
             @PathVariable("src-port") int srcPortNumber,
@@ -87,8 +92,8 @@ public class LinkControllerV2 extends BaseLinkController {
     /**
      * Disable BFD for specific ISL.
      */
-    @ApiOperation(value = "Delete/disable BFD")
     @DeleteMapping(value = "/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd")
+    @Operation(summary = "Delete/disable BFD")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public CompletableFuture<BfdPropertiesPayload> bfdPropertiesDelete(
             @PathVariable("src-switch") SwitchId srcSwitchId,
