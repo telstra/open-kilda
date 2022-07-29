@@ -1,0 +1,23 @@
+description = 'Kilda History Records'
+dependencies {
+    implementation project(':base-messaging')
+    implementation project(':base-messaging-mappers')
+    implementation project(':kilda-model')
+    implementation project(':kilda-persistence-api')
+    implementation project(':kilda-resource-pools')
+
+    implementation 'org.slf4j:slf4j-api'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'net.jodah:failsafe'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
+
+    implementation 'org.mapstruct:mapstruct'
+    implementation 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
+    testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+}

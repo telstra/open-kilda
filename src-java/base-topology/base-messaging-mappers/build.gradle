@@ -1,0 +1,18 @@
+description = 'Base Topology Messaging Mappers'
+dependencies {
+    implementation project(':base-messaging')
+
+    implementation 'com.google.guava:guava'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
+
+    implementation 'org.mapstruct:mapstruct'
+    implementation 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
+    testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+}

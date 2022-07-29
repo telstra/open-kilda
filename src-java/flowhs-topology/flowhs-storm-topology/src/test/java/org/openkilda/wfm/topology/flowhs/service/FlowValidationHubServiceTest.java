@@ -36,8 +36,8 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
-import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.FlowValidationService;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.FlowValidationTestBase;
 

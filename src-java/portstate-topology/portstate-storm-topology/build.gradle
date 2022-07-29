@@ -8,15 +8,15 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'Port State Storm Topology'
 dependencies {
+    implementation project(':blue-green')
     implementation project(':base-storm-topology')
     runtimeOnly project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     implementation project(':kilda-reporting')
+    runtimeOnly project(':kilda-persistence-orientdb')
+    runtimeOnly project(':kilda-persistence-hibernate')
     implementation project(':network-messaging')
     implementation project(':nbworker-messaging')
     implementation project(':floodlight-api')
-    implementation project(':blue-green')
-    runtimeOnly project(':kilda-persistence-orientdb')
-    runtimeOnly project(':kilda-persistence-hibernate')
 
     compileOnly('org.apache.storm:storm-core')
 

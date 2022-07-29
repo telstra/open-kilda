@@ -56,13 +56,13 @@ import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.tx.TransactionManager;
-import org.openkilda.wfm.error.IllegalSwitchPropertiesException;
-import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
 import org.openkilda.wfm.share.mappers.SwitchPropertiesMapper;
+import org.openkilda.wfm.topology.nbworker.exceptions.IllegalSwitchPropertiesException;
+import org.openkilda.wfm.topology.nbworker.exceptions.IllegalSwitchStateException;
 
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;

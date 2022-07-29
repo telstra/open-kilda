@@ -35,8 +35,8 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
-import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
-import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.UnknownKeyException;
 
 import org.hamcrest.Matchers;
 import org.junit.Assert;

@@ -17,8 +17,8 @@ package org.openkilda.wfm.topology.flowhs.service.path;
 
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
-import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.path.FlowPathInstallFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.path.FlowPathOperation;
 import org.openkilda.wfm.topology.flowhs.fsm.path.FlowPathRemoveFsm;

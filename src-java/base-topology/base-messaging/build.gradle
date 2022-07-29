@@ -4,8 +4,8 @@ plugins {
 
 description = 'Base Topology Messaging'
 dependencies {
-    api project(':kilda-model')
     implementation project(':blue-green')
+    api project(':kilda-model')
 
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-annotations'

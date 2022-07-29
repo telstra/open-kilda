@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
-import org.openkilda.wfm.error.WorkflowException;
+import org.openkilda.wfm.topology.ping.exceptions.WorkflowException;
 import org.openkilda.wfm.topology.ping.model.CollectorDescriptor;
 import org.openkilda.wfm.topology.ping.model.ExpirableMap;
 import org.openkilda.wfm.topology.ping.model.Group;

@@ -49,7 +49,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
 import org.openkilda.model.YSubFlow;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.validation.YFlowSwitchFlowEntriesBuilder;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.validation.YFlowValidationService;
 import org.openkilda.wfm.topology.flowhs.service.AbstractYFlowTest;

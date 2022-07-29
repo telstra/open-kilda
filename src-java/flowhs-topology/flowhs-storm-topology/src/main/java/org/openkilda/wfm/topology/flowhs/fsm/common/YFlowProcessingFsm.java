@@ -23,7 +23,7 @@ import org.openkilda.messaging.payload.yflow.YFlowEndpointResources;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.topology.flowhs.exception.InsufficientDataException;
+import org.openkilda.wfm.topology.flowhs.exceptions.InsufficientDataException;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;

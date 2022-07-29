@@ -8,11 +8,12 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'History Storm Topology'
 dependencies {
-    implementation project(':base-storm-topology')
     implementation project(':blue-green')
+    implementation project(':base-storm-topology')
     runtimeOnly project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     runtimeOnly project(':kilda-persistence-orientdb')
     runtimeOnly project(':kilda-persistence-hibernate')
+    implementation project(':kilda-history-records')
 
     compileOnly('org.apache.storm:storm-core')
 

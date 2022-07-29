@@ -29,14 +29,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.TransitVlan;
-import org.openkilda.model.Vxlan;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
-import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
-import org.openkilda.wfm.share.flow.resources.vxlan.VxlanEncapsulation;
-import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
-import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation.FlowPathsWithEncapsulationBuilder;
 
 import com.google.common.collect.Lists;
 import lombok.AccessLevel;
@@ -232,51 +225,6 @@ public class TestFlowBuilder {
                 .ignoreBandwidth(flow.isIgnoreBandwidth())
                 .segments(pathSegments)
                 .build();
-    }
-
-    /**
-     * Build a UnidirectionalFlow with set properties.
-     */
-    public FlowPathsWithEncapsulation buildFlowPathsWithEncapsulation() {
-        Flow flow = build();
-        FlowPathsWithEncapsulationBuilder encapsulationBuilder = FlowPathsWithEncapsulation.builder()
-                .flow(flow)
-                .forwardPath(flow.getForwardPath())
-                .forwardEncapsulation(
-                        buildEncapsulationResources(flow.getForwardPathId(), forwardTransitEncapsulationId))
-                .reversePath(flow.getReversePath())
-                .reverseEncapsulation(
-                        buildEncapsulationResources(flow.getReversePathId(), reverseTransitEncapsulationId));
-        if (flow.getProtectedForwardPathId() != null) {
-            encapsulationBuilder.protectedForwardEncapsulation(
-                    buildEncapsulationResources(flow.getProtectedForwardPathId(),
-                            protectedForwardTransitEncapsulationId));
-        }
-        if (flow.getProtectedReversePathId() != null) {
-            encapsulationBuilder.protectedReverseEncapsulation(
-                    buildEncapsulationResources(flow.getProtectedReversePathId(),
-                            protectedReverseTransitEncapsulationId));
-        }
-        return encapsulationBuilder.build();
-    }
-
-    private EncapsulationResources buildEncapsulationResources(PathId pathId, int encapsulationId) {
-        if (FlowEncapsulationType.TRANSIT_VLAN.equals(encapsulationType)) {
-            TransitVlan transitVlan = TransitVlan.builder()
-                    .flowId(flowId)
-                    .pathId(pathId)
-                    .vlan(encapsulationId > 0 ? encapsulationId : srcVlan + destVlan + 1)
-                    .build();
-            return TransitVlanEncapsulation.builder().transitVlan(transitVlan).build();
-        } else if (FlowEncapsulationType.VXLAN.equals(encapsulationType)) {
-            Vxlan vxlan = Vxlan.builder()
-                    .flowId(flowId)
-                    .pathId(pathId)
-                    .vni(encapsulationId > 0 ? encapsulationId : srcVlan + destVlan + 1)
-                    .build();
-            return VxlanEncapsulation.builder().vxlan(vxlan).build();
-        }
-        throw new IllegalStateException("Unsupported encapsulation type: " + encapsulationType);
     }
 
     @Data

@@ -8,13 +8,8 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'NB Worker Storm Topology'
 dependencies {
-    implementation project(':nbworker-messaging')
-    implementation project(':flowhs-messaging')
-    implementation project(':network-messaging')
-    implementation project(':ping-messaging')
-    implementation project(':server42-control-messaging')
-    implementation project(':base-storm-topology')
     implementation project(':blue-green')
+    implementation project(':base-storm-topology')
     aspect project(':base-storm-topology')
     runtimeOnly project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
@@ -25,6 +20,12 @@ dependencies {
     runtimeOnly project(':kilda-persistence-hibernate')
     testImplementation project(path: ':kilda-persistence-api', configuration: 'testArtifacts')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
+    implementation project(':kilda-history-records')
+    implementation project(':nbworker-messaging')
+    implementation project(':flowhs-messaging')
+    implementation project(':network-messaging')
+    implementation project(':ping-messaging')
+    implementation project(':server42-control-messaging')
 
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core')

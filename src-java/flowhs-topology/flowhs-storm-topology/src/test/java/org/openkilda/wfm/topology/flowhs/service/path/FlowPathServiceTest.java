@@ -44,7 +44,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathChunk;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathOperationConfig;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathReference;

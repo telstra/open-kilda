@@ -8,20 +8,21 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 
 description = 'Switch Manager Storm Topology'
 dependencies {
+    implementation project(':blue-green')
     implementation project(':base-storm-topology')
-    implementation project(':swmanager-messaging')
-    implementation project(':grpc-api')
     aspect project(':base-storm-topology')
     runtimeOnly project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
-    implementation project(':flowhs-messaging')
-    implementation project(':floodlight-api')
     implementation project(':kilda-reporting')
     runtimeOnly project(':kilda-persistence-orientdb')
     runtimeOnly project(':kilda-persistence-hibernate')
-    implementation project(':blue-green')
+    implementation project(':kilda-resource-pools')
     implementation project(':rule-manager-api')
     implementation project(':rule-manager-implementation')
+    implementation project(':swmanager-messaging')
+    implementation project(':flowhs-messaging')
+    implementation project(':grpc-api')
+    implementation project(':floodlight-api')
 
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core')

@@ -4,6 +4,7 @@ includeBuild('projectfloodlight/floodlight')
 includeBuild('projectfloodlight/openflowj')
 
 include 'base-messaging'
+include 'base-messaging-mappers'
 include 'base-storm-topology'
 include 'connecteddevices-storm-topology'
 include 'floodlightrouter-storm-topology'
@@ -19,6 +20,7 @@ include 'history-storm-topology'
 include 'isllatency-messaging'
 include 'isllatency-storm-topology'
 include 'kilda-configuration'
+include 'kilda-history-records'
 include 'kilda-model'
 include 'kilda-pce'
 include 'kilda-persistence-api'
@@ -26,6 +28,7 @@ include 'kilda-persistence-orientdb'
 include 'kilda-persistence-tinkerpop'
 include 'kilda-persistence-hibernate'
 include 'kilda-reporting'
+include 'kilda-resource-pools'
 include 'kilda-utils:stubs'
 include 'nbworker-messaging'
 include 'nbworker-storm-topology'
@@ -59,6 +62,7 @@ include 'test-library'
 include 'blue-green'
 
 project(':base-messaging').projectDir = "$rootDir/base-topology/base-messaging" as File
+project(':base-messaging-mappers').projectDir = "$rootDir/base-topology/base-messaging-mappers" as File
 project(':base-storm-topology').projectDir = "$rootDir/base-topology/base-storm-topology" as File
 project(':connecteddevices-storm-topology').projectDir = "$rootDir/connecteddevices-topology/connecteddevices-storm-topology" as File
 project(':floodlightrouter-storm-topology').projectDir = "$rootDir/floodlightrouter-topology/floodlightrouter-storm-topology" as File

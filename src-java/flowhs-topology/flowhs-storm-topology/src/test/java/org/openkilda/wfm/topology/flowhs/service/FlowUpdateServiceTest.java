@@ -58,8 +58,8 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
-import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
-import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.UnknownKeyException;
 
 import com.google.common.collect.Sets;
 import org.junit.Assert;

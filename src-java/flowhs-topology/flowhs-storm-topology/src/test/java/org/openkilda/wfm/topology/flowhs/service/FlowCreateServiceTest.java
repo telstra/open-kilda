@@ -40,8 +40,8 @@ import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
-import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.UnknownKeyException;
 
 import org.junit.Assert;
 import org.junit.Before;

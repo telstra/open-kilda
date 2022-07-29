@@ -15,14 +15,16 @@
 
 package org.openkilda.persistence.hibernate;
 
-import org.openkilda.messaging.SerializationUtils;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.vladmihalcea.hibernate.type.util.ObjectMapperSupplier;
 
 public class KildaObjectMapperSupplier implements ObjectMapperSupplier {
+    private static ObjectMapper MAPPER = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
+
     @Override
     public ObjectMapper get() {
-        return SerializationUtils.MAPPER;
+        return MAPPER;
     }
 }

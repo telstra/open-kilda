@@ -17,8 +17,8 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.model.PathId;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
-import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exceptions.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathOperationConfig;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathRequest;
 
