@@ -71,6 +71,7 @@ public class CompleteFlowPathRemovalAction extends
             return foundFlow;
         });
 
+        
         // Iterate to remove each path in a dedicated transaction.
         flow.getPathIds().forEach(pathId -> {
             Optional<FlowPath> deletedPath = flowPathRepository.remove(pathId);
