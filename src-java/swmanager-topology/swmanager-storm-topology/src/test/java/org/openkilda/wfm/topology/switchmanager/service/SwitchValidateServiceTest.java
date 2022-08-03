@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
-import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
@@ -42,7 +41,8 @@ import org.openkilda.messaging.info.flow.FlowDumpResponse;
 import org.openkilda.messaging.info.group.GroupDumpResponse;
 import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
-import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
 import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
@@ -55,18 +55,20 @@ import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.MeterFlag;
 import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.wfm.error.MessageDispatchException;
 import org.openkilda.wfm.error.UnexpectedInputException;
 import org.openkilda.wfm.topology.switchmanager.error.SpeakerFailureException;
 import org.openkilda.wfm.topology.switchmanager.model.SwitchEntities;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateMetersResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateRulesResultV2;
 import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceImpl;
 
 import com.google.common.collect.Sets;
+import org.apache.storm.shade.com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -125,7 +127,8 @@ public class SwitchValidateServiceTest {
                 .table(OfTable.INPUT)
                 .priority(10)
                 .match(emptySet())
-                .instructions(Instructions.builder().build())
+                .instructions(Instructions.builder().goToMeter(new MeterId(888)).goToTable(OfTable.EGRESS)
+                        .writeMetadata(new OfMetadata(1, 1)).build())
                 .flags(emptySet())
                 .build();
         meterSpeakerData = MeterSpeakerData.builder()
@@ -136,11 +139,16 @@ public class SwitchValidateServiceTest {
                 .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
                 .build();
 
+        RuleInfoEntryV2 ruleEntry = RuleInfoEntryV2.builder()
+                .cookie(flowSpeakerData.getCookie().getValue())
+                .build();
+
         when(validationService.validateRules(any(), any(), any()))
-                .thenReturn(new ValidateRulesResult(newHashSet(flowSpeakerData.getCookie().getValue()), emptySet(),
+                .thenReturn(new ValidateRulesResultV2(false, Sets.newHashSet(ruleEntry), emptySet(),
                         emptySet(), emptySet()));
         when(validationService.validateMeters(any(), any(), any()))
-                .thenReturn(new ValidateMetersResult(emptyList(), emptyList(), emptyList(), emptyList()));
+                .thenReturn(new ValidateMetersResultV2(false, emptyList(), emptyList(), emptyList(),
+                        emptyList()));
     }
 
     @Test
@@ -206,8 +214,9 @@ public class SwitchValidateServiceTest {
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
-        SwitchValidationResponse response = (SwitchValidationResponse) responseCaptor.getValue().getData();
-        assertEquals(singletonList(flowSpeakerData.getCookie().getValue()), response.getRules().getMissing());
+        SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue().getData();
+        assertEquals(flowSpeakerData.getCookie().getValue(),
+                Lists.newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
@@ -233,8 +242,9 @@ public class SwitchValidateServiceTest {
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
 
-        SwitchValidationResponse response = (SwitchValidationResponse) responseCaptor.getValue().getData();
-        assertEquals(singletonList(flowSpeakerData.getCookie().getValue()), response.getRules().getMissing());
+        SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue().getData();
+        assertEquals(flowSpeakerData.getCookie().getValue(),
+                Lists.newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
         assertNull(response.getMeters());
 
         verifyNoMoreInteractions(carrier);
@@ -256,8 +266,9 @@ public class SwitchValidateServiceTest {
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
 
-        SwitchValidationResponse response = (SwitchValidationResponse) responseCaptor.getValue().getData();
-        assertEquals(singletonList(flowSpeakerData.getCookie().getValue()), response.getRules().getMissing());
+        SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue().getData();
+        assertEquals(flowSpeakerData.getCookie().getValue(),
+                Lists.newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
         assertNull(response.getMeters());
 
         verifyNoMoreInteractions(carrier);
@@ -294,9 +305,10 @@ public class SwitchValidateServiceTest {
 
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
-        SwitchValidationResponse response = (SwitchValidationResponse) responseCaptor.getValue().getData();
+        SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue().getData();
 
-        assertEquals(singletonList(flowSpeakerData.getCookie().getValue()), response.getRules().getMissing());
+        assertEquals(flowSpeakerData.getCookie().getValue(),
+                Lists.newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
         assertEquals(SpeakerFailureException.makeMessage(getErrorMessage().getData()),
                 response.getLogicalPorts().getError());
 

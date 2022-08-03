@@ -41,7 +41,7 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
@@ -61,11 +61,12 @@ import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchVali
 import org.openkilda.wfm.topology.switchmanager.mappers.FlowEntryConverter;
 import org.openkilda.wfm.topology.switchmanager.mappers.ValidationMapper;
 import org.openkilda.wfm.topology.switchmanager.model.SwitchValidationContext;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateGroupsResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateLogicalPortsResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateMetersResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateRulesResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidationResultV2;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
@@ -302,7 +303,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
             log.warn("Got error from GRPC request (cookie={})", sourceCookie);
             pendingRequests.remove(ExternalResources.ACTUAL_LOGICAL_PORTS);
             validationContext = validationContext.toBuilder()
-                    .validateLogicalPortResult(ValidateLogicalPortsResult.newErrorMessage(error.getMessage()))
+                    .validateLogicalPortResult(ValidateLogicalPortsResultV2.newErrorMessage(error.getMessage())) //TODO
                     .build();
             fireReadyIfAllResourcesReceived();
         } else {
@@ -329,7 +330,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
             List<FlowEntry> flowEntries = validationContext.getActualOfFlows().stream()
                     .map(FlowEntryConverter.INSTANCE::toFlowEntry)
                     .collect(Collectors.toList());
-            ValidationResult results = new ValidationResult(flowEntries,
+            ValidationResultV2 results = new ValidationResultV2(flowEntries,
                     validationContext.getMetersValidationReport() != null,
                     validationContext.getExpectedSwitchEntities(),
                     validationContext.getActualOfFlows(),
@@ -337,9 +338,11 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                     validationContext.getActualGroupEntries(),
                     validationContext.getOfFlowsValidationReport(), validationContext.getMetersValidationReport(),
                     validationContext.getValidateGroupsResult(), validationContext.getValidateLogicalPortResult());
-            carrier.runSwitchSync(key, request, results);
+            //TODO: check if mapping works correctly
+            ValidationResult validationResult = ValidationMapper.INSTANCE.toValidationResult(results);
+            carrier.runSwitchSync(key, request, validationResult);
         } else {
-            SwitchValidationResponse response = ValidationMapper.INSTANCE.toSwitchResponse(validationContext);
+            SwitchValidationResponseV2 response = ValidationMapper.INSTANCE.toSwitchResponse(validationContext);
             InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
 
             carrier.cancelTimeoutCallback(key);
@@ -352,6 +355,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         ErrorType type;
         String description;
         SwitchManagerException error = context.getError();
+
         if (error != null) {
             log.error("Switch {} (key: {}) validation failed - {}", getSwitchId(), key, error.getMessage());
             type = error.getError();
@@ -428,8 +432,9 @@ public class SwitchValidateFsm extends AbstractStateMachine<
 
     private void validateRules(List<FlowSpeakerData> expectedRules) {
         log.info("Validate rules (switch={}, key={})", getSwitchId(), key);
-        ValidateRulesResult results = validationService.validateRules(
+        ValidateRulesResultV2 results = validationService.validateRules(
                 getSwitchId(), validationContext.getActualOfFlows(), expectedRules);
+        log.error("Validation result {}", results);
         validationContext = validationContext.toBuilder()
                 .ofFlowsValidationReport(results)
                 .build();
@@ -441,7 +446,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         }
 
         log.info("Validate meters (switch={}, key={})", getSwitchId(), key);
-        ValidateMetersResult results = validationService.validateMeters(
+        ValidateMetersResultV2 results = validationService.validateMeters(
                 getSwitchId(), validationContext.getActualMeters(), expectedMeters);
         validationContext = validationContext.toBuilder()
                 .metersValidationReport(results)
@@ -450,7 +455,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
 
     protected void validateGroups(List<GroupSpeakerData> expectedGroups) {
         log.info("Validate groups (switch={}, key={})", getSwitchId(), key);
-        ValidateGroupsResult results = validationService.validateGroups(
+        ValidateGroupsResultV2 results = validationService.validateGroups(
                 getSwitchId(), validationContext.getActualGroupEntries(), expectedGroups);
         validationContext = validationContext.toBuilder()
                 .validateGroupsResult(results)
@@ -462,7 +467,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
             return;
         }
         log.info("Validate logical ports (switch={}, key={})", getSwitchId(), key);
-        ValidateLogicalPortsResult results = validationService.validateLogicalPorts(
+        ValidateLogicalPortsResultV2 results = validationService.validateLogicalPorts(
                 getSwitchId(), validationContext.getActualLogicalPortEntries());
         validationContext = validationContext.toBuilder()
                 .validateLogicalPortResult(results)

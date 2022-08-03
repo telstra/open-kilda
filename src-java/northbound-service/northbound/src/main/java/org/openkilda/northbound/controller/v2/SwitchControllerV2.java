@@ -29,6 +29,7 @@ import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
+import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
 import org.openkilda.northbound.service.SwitchService;
 
 import io.swagger.annotations.ApiOperation;
@@ -240,5 +241,24 @@ public class SwitchControllerV2 extends BaseController {
             @PathVariable("switch_id") SwitchId switchId,
             @PathVariable("logical_port_number") int logicalPortNumber) {
         return switchService.deleteLagPort(switchId, logicalPortNumber);
+    }
+
+    /**
+     * Validate the rules, groups, lags and the meters installed on the switch against the flows in the database.
+     *
+     * @param include validated fields to include in response
+     * @param exclude drop flow id, flow path and y flow id
+     * @return the validation details.
+     */
+    @ApiOperation(value = "Validate rules, lags, groups and meters installed on the switch",
+            response = SwitchValidationResultV2.class)
+    @GetMapping(path = "/{switch_id}/validate")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchValidationResultV2> validateSwitch(
+            @PathVariable(name = "switch_id") SwitchId switchId,
+            @RequestParam(name = "include", required = false) String include,
+            @RequestParam(name = "exclude", required = false) String exclude) {
+        //TODO parse params
+        return switchService.validateSwitch(switchId, "TBD");
     }
 }

@@ -305,11 +305,13 @@ Response payload
   "flags": [
     "RESET_COUNTERS"
   ],
-  "match": [
-    {
-      "in_port": {"value": 1, "mask": 0, "is_masked": false}
+  "match": {
+    "in_port": {
+      "value": 1,
+      "mask": 0,
+      "is_masked": false
     }
-  ],
+  },
   "instructions": {
     "go_to_table": 30,
     "go_to_meter": 40,
@@ -336,14 +338,14 @@ Response payload
 **By Default:**
 
 * `flow info` is set of values: for groups - `flow_id, flow_path`, for meters and rules - `flow_id, flow_path, y_flow_id`.
-* without any query params response contains v2 info about groups, lags, meters and rules (with flow_info).
+* without any query params response contains v2 info about groups, lags, meters and rules (with flow_info for all mentioned fields).
 * groups[excess], meters[excess] and rule[excess] do not contain flow info.
 * for groups, lags, meters and rules flow info will be presented in misconfigured[expected] field.
 * misconfigured[id] is 
   * meter_id for meters
   * logical_port_id for logical_ports
   * group_id for groups
-  * (priority + match).toString() for rules // may change during api implementation
+  * (priority + match + tableId).toString() for rules // may change during api implementation
 
 Response payload
 

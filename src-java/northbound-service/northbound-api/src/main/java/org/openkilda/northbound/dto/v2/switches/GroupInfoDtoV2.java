@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v1.switches;
+package org.openkilda.northbound.dto.v2.switches;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
@@ -30,11 +30,12 @@ import java.util.List;
 @NoArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class GroupInfoDto {
+public class GroupInfoDtoV2 {
+
+    private String flowId;
+    private String flowPath;
     private Integer groupId;
-    private List<BucketDto> groupBuckets;
-    private List<BucketDto> missingGroupBuckets;
-    private List<BucketDto> excessGroupBuckets;
+    private List<BucketDto> buckets;
 
     @Data
     @AllArgsConstructor

@@ -214,7 +214,7 @@ public class SwitchMapperTest {
     }
 
     private void assertEqualsLogicalPortInfoDto(LogicalPortInfoDto port, int logicalPortNumber, String type,
-                                            Integer... physicalPorts) {
+                                                Integer... physicalPorts) {
         assertEquals(logicalPortNumber, port.getLogicalPortNumber().intValue());
         assertEquals(type, port.getType());
         assertEquals(Arrays.asList(physicalPorts), port.getPhysicalPorts());
