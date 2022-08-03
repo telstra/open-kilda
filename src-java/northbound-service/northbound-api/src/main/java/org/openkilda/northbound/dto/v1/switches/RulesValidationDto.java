@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.dto.v1.switches;
 
+import org.openkilda.northbound.dto.HexView;
+
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;

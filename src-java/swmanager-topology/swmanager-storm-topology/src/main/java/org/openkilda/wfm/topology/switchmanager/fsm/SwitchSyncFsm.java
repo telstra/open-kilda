@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.switchmanager.fsm;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 import static org.apache.storm.shade.org.apache.commons.collections.ListUtils.union;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.COMMANDS_PROCESSED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.ERROR;
@@ -654,7 +655,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     protected void finished(SwitchSyncState from, SwitchSyncState to,
                             SwitchSyncEvent event, Object context) {
-        ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
+        ValidateRulesResult validateRulesResult = Optional.ofNullable(validationResult.getValidateRulesResult())
+                .orElse(new ValidateRulesResult(emptySet(), emptySet(), emptySet(), emptySet()));
         ValidateMetersResult validateMetersResult = validationResult.getValidateMetersResult();
         ValidateGroupsResult validateGroupsResult = validationResult.getValidateGroupsResult();
         ValidateLogicalPortsResult validateLogicalPortsResult = Optional.ofNullable(
@@ -730,7 +732,6 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                                      SwitchSyncEvent event, Object context) {
         ErrorData payload = (ErrorData) context;
         ErrorMessage message = new ErrorMessage(payload, System.currentTimeMillis(), key);
-
         log.error(ERROR_LOG_MESSAGE, key, message.getData().getErrorMessage());
 
         carrier.cancelTimeoutCallback(key);

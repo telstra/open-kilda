@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.group.GroupDumpResponse;
 import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
+import org.openkilda.messaging.model.IncludeFilter;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.MessageDispatchException;
 import org.openkilda.wfm.error.UnexpectedInputException;
@@ -43,8 +44,11 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -142,8 +146,31 @@ public class SwitchValidateService implements SwitchManagerHubService {
         });
         handlers.put(key, fsm);
 
+        // nrydanov: This case is possible when V1 API is used
+        if (request.getIncludeFilters() == null) {
+            // nrydanov: In V1 API we include all except meters by default
+            Set<IncludeFilter> includeFilters = new HashSet<>(Arrays.asList(IncludeFilter.GROUPS,
+                    IncludeFilter.RULES, IncludeFilter.LOGICAL_PORTS));
+            // nrydanov: And check if we need to also include meters
+            if (request.isProcessMeters()) {
+                includeFilters.add(IncludeFilter.METERS);
+            }
+            request = request.toBuilder().includeFilters(includeFilters).build();
+        }
+
+        // nrydanov: Also in case of V1 API usage
+        if (request.getExcludeFilters() == null) {
+            request = request.toBuilder().excludeFilters(new HashSet<>()).build();
+        }
+
+        SwitchValidateContext initialContext = SwitchValidateContext.builder()
+                .includeFilters(request.getIncludeFilters())
+                .excludeFilters(request.getExcludeFilters())
+                .build();
+
         fsm.start();
-        handle(fsm, SwitchValidateEvent.NEXT, SwitchValidateContext.builder().build());
+
+        handle(fsm, SwitchValidateEvent.NEXT, initialContext);
     }
 
     private void handleFlowEntriesResponse(FlowDumpResponse data, MessageCookie cookie)

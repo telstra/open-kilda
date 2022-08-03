@@ -41,6 +41,8 @@ public interface FlowPathRepository extends Repository<FlowPath> {
 
     Optional<FlowPath> findByFlowIdAndCookie(String flowId, FlowSegmentCookie flowCookie);
 
+    Optional<FlowPath> findByCookie(FlowSegmentCookie flowCookie);
+
     Collection<FlowPath> findByFlowId(String flowId);
 
     Collection<FlowPath> findByFlowGroupId(String flowGroupId);
