@@ -47,6 +47,7 @@ import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
@@ -101,6 +102,7 @@ import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
+import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -266,9 +268,27 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     public CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId) {
         logger.info("Validate request for switch {}", switchId);
 
-        return performValidate(
+        return performValidateV2(
                 SwitchValidateRequest.builder().switchId(switchId).processMeters(true).build())
-                .thenApply(switchMapper::toSwitchValidationResult);
+                .thenApply(switchMapper::toSwitchValidationResultV1);
+    }
+
+    @Override
+    public CompletableFuture<SwitchValidationResultV2> validateSwitch(SwitchId switchId, String params) {
+        logger.info("Validate api V2 request for switch {}", switchId);
+
+        return performValidateV2(
+                SwitchValidateRequest.builder().switchId(switchId).processMeters(true).build())
+                .thenApply(switchMapper::toSwitchValidationResultV2);
+    }
+
+    private CompletableFuture<SwitchValidationResponseV2> performValidateV2(SwitchValidateRequest request) {
+        CommandMessage validateCommandMessage = new CommandMessage(
+                request,
+                System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(switchManagerTopic, validateCommandMessage)
+                .thenApply(SwitchValidationResponseV2.class::cast);
     }
 
     private CompletableFuture<SwitchValidationResponse> performValidate(SwitchValidateRequest request) {

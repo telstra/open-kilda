@@ -13,36 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v1.switches;
+package org.openkilda.messaging.info.switches.v2;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.List;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class GroupInfoDto {
-    private Integer groupId;
-    private List<BucketDto> groupBuckets;
-    private List<BucketDto> missingGroupBuckets;
-    private List<BucketDto> excessGroupBuckets;
-
-    @Data
-    @AllArgsConstructor
-    @JsonNaming(value = SnakeCaseStrategy.class)
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class BucketDto implements Serializable {
-        private Integer port;
-        private Integer vlan;
-        private Integer vni;
-    }
+public class LogicalPortsValidationEntryV2 implements Serializable {
+    private boolean asExpected;
+    private String error;
+    private List<LogicalPortInfoEntryV2> excess;
+    private List<LogicalPortInfoEntryV2> proper;
+    private List<LogicalPortInfoEntryV2> missing;
+    private List<MisconfiguredInfo<LogicalPortInfoEntryV2>> misconfigured;
 }

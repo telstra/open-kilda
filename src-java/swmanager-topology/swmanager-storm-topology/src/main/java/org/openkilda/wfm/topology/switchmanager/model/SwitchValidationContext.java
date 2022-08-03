@@ -21,6 +21,10 @@ import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.SpeakerData;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateGroupsResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateLogicalPortsResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateMetersResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateRulesResultV2;
 
 import com.google.common.collect.ImmutableList;
 import lombok.Builder;
@@ -40,10 +44,10 @@ public class SwitchValidationContext {
     List<LogicalPort> actualLogicalPortEntries;
     List<SpeakerData> expectedSwitchEntities;
 
-    ValidateRulesResult ofFlowsValidationReport;
-    ValidateMetersResult metersValidationReport;
-    ValidateGroupsResult validateGroupsResult;
-    ValidateLogicalPortsResult validateLogicalPortResult;
+    ValidateRulesResultV2 ofFlowsValidationReport;
+    ValidateMetersResultV2 metersValidationReport;
+    ValidateGroupsResultV2 validateGroupsResult;
+    ValidateLogicalPortsResultV2 validateLogicalPortResult;
 
     @Builder(toBuilder = true)
     protected SwitchValidationContext(
@@ -51,8 +55,8 @@ public class SwitchValidationContext {
             List<MeterSpeakerData> actualMeters, List<GroupSpeakerData> actualGroupEntries,
             List<LogicalPort> actualLogicalPortEntries,
             List<SpeakerData> expectedSwitchEntities,
-            ValidateRulesResult ofFlowsValidationReport, ValidateMetersResult metersValidationReport,
-            ValidateGroupsResult validateGroupsResult, ValidateLogicalPortsResult validateLogicalPortResult) {
+            ValidateRulesResultV2 ofFlowsValidationReport, ValidateMetersResultV2 metersValidationReport,
+            ValidateGroupsResultV2 validateGroupsResult, ValidateLogicalPortsResultV2 validateLogicalPortResult) {
         this.switchId = switchId;
 
         this.actualOfFlows = actualOfFlows != null ? ImmutableList.copyOf(actualOfFlows) : null;

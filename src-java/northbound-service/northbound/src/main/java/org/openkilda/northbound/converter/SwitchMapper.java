@@ -30,6 +30,15 @@ import org.openkilda.messaging.info.switches.RulesSyncEntry;
 import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.LogicalPortInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.LogicalPortsValidationEntryV2;
+import org.openkilda.messaging.info.switches.v2.MeterInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.MetersValidationEntryV2;
+import org.openkilda.messaging.info.switches.v2.MisconfiguredInfo;
+import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.RulesValidationEntryV2;
+import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
 import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.messaging.model.SwitchAvailabilityEntry;
 import org.openkilda.messaging.model.SwitchLocation;
@@ -42,6 +51,7 @@ import org.openkilda.northbound.dto.v1.switches.GroupInfoDto;
 import org.openkilda.northbound.dto.v1.switches.GroupInfoDto.BucketDto;
 import org.openkilda.northbound.dto.v1.switches.GroupsSyncDto;
 import org.openkilda.northbound.dto.v1.switches.GroupsValidationDto;
+import org.openkilda.northbound.dto.v1.switches.LogicalPortInfoDto;
 import org.openkilda.northbound.dto.v1.switches.LogicalPortsSyncDto;
 import org.openkilda.northbound.dto.v1.switches.LogicalPortsValidationDto;
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto;
@@ -56,12 +66,19 @@ import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
+import org.openkilda.northbound.dto.v2.switches.GroupInfoDtoV2;
+import org.openkilda.northbound.dto.v2.switches.LogicalPortsValidationDtoV2;
+import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2;
+import org.openkilda.northbound.dto.v2.switches.MetersValidationDtoV2;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
+import org.openkilda.northbound.dto.v2.switches.RuleInfoDtoV2;
+import org.openkilda.northbound.dto.v2.switches.RulesValidationDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectEntry;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
+import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -210,4 +227,95 @@ public abstract class SwitchMapper {
         }
         return String.format("%s:%d", address.getAddress(), address.getPort());
     }
+
+    //from v2 to v1 api
+    public abstract SwitchValidationResult toSwitchValidationResultV1(SwitchValidationResponseV2 response);
+
+    @Mapping(source = "buckets", target = "groupBuckets")
+    @Mapping(target = "missingGroupBuckets", ignore = true)
+    @Mapping(target = "excessGroupBuckets", ignore = true) //TODO omit missing and excess coz they'e only for misconfig?
+    public abstract GroupInfoDto toGroupInfoDtoV1(GroupInfoEntryV2 data);
+
+    @Mapping(source = "expected.buckets", target = "groupBuckets")
+    @Mapping(source = "expected.groupId", target = "groupId")
+    @Mapping(target = "missingGroupBuckets", ignore = true)
+    @Mapping(target = "excessGroupBuckets", ignore = true) //TODO calculate missing and excess
+    public abstract GroupInfoDto toGroupInfoDtoV1(MisconfiguredInfo<GroupInfoEntryV2> data);
+
+    @Mapping(target = "actual", ignore = true)
+    @Mapping(target = "expected", ignore = true)
+    public abstract LogicalPortInfoDto toLogicalPortInfoV1(LogicalPortInfoEntryV2 data);
+
+    @Mapping(source = "id", target = "logicalPortNumber")
+    @Mapping(source = "expected.type", target = "type")
+    @Mapping(source = "expected.physicalPorts", target = "physicalPorts")
+    @Mapping(source = "expected.type", target = "expected.type")
+    @Mapping(source = "expected.physicalPorts", target = "expected.physicalPorts")
+    @Mapping(source = "discrepancies.type", target = "actual.type")
+    @Mapping(source = "discrepancies.physicalPorts", target = "actual.physicalPorts")
+    public abstract LogicalPortInfoDto toLogicalPortInfoV1(MisconfiguredInfo<LogicalPortInfoEntryV2> data);
+
+    @Mapping(target = "actual", ignore = true)
+    @Mapping(target = "expected", ignore = true)
+    public abstract MeterInfoDto toMeterInfoDtoV1(MeterInfoDtoV2 data);
+
+    @Mapping(target = "actual", ignore = true)
+    @Mapping(target = "expected", ignore = true)
+    public abstract MeterInfoDto toMeterInfoDtoV1(MeterInfoEntryV2 data);
+
+    @Mapping(source = "id", target = "meterId")
+    @Mapping(source = "expected.cookie", target = "cookie")
+    @Mapping(source = "expected.flowId", target = "flowId")
+    @Mapping(source = "expected.rate", target = "rate")
+    @Mapping(source = "expected.burstSize", target = "burstSize")
+    @Mapping(source = "expected.flags", target = "flags")
+    @Mapping(source = "expected.rate", target = "expected.rate")
+    @Mapping(source = "expected.flags", target = "expected.flags")
+    @Mapping(source = "expected.burstSize", target = "expected.burstSize")
+    @Mapping(source = "discrepancies.rate", target = "actual.rate")
+    @Mapping(source = "discrepancies.flags", target = "actual.flags")
+    @Mapping(source = "discrepancies.burstSize", target = "actual.burstSize")
+    public abstract MeterInfoDto toMeterInfoDtoV1(MisconfiguredInfo<MeterInfoEntryV2> data);
+
+    /**
+     * Convert api v2 rule entry into rule dto v1.
+     *
+     * @param response rule v1 validation entry.
+     * @return rule validation v1 dto
+     */
+    public RulesValidationDto toRulesValidationDtoV1(RulesValidationEntryV2 response) {
+        if (response == null) {
+            return null;
+        }
+        RulesValidationDto rulesValidationDto = new RulesValidationDto();
+        rulesValidationDto.setExcess(response.getExcess().stream()
+                .map(RuleInfoEntryV2::getCookie).collect(Collectors.toList()));
+        rulesValidationDto.setProper(response.getProper().stream()
+                .map(RuleInfoEntryV2::getCookie).collect(Collectors.toList()));
+        rulesValidationDto.setMissing(response.getMissing().stream()
+                .map(RuleInfoEntryV2::getCookie).collect(Collectors.toList()));
+        rulesValidationDto.setMisconfigured(response.getMisconfigured().stream()
+                .map(MisconfiguredInfo::getDiscrepancies)
+                .map(RuleInfoEntryV2::getCookie)
+                .collect(Collectors.toList()));
+
+        return rulesValidationDto;
+    }
+
+    //v2 api
+    public abstract SwitchValidationResultV2 toSwitchValidationResultV2(SwitchValidationResponseV2 response);
+
+    public abstract LogicalPortsValidationDtoV2 toLogicalPortsValidationDtoV2(LogicalPortsValidationEntryV2 data);
+
+    public abstract MetersValidationDtoV2 toMetersValidationDtoV2(MetersValidationEntryV2 data);
+
+    public abstract RulesValidationDtoV2 toRulesValidationDtoV2(RulesValidationEntryV2 data);
+
+    @Mapping(source = "YFlowId", target = "yFlowId") //TODO: why doesnt jsonNaming work properly?
+    public abstract RuleInfoDtoV2 toRuleInfoDtoV2(RuleInfoEntryV2 data);
+
+    @Mapping(source = "masked", target = "isMasked") //TODO: the same
+    public abstract RuleInfoDtoV2.FieldMatch toFieldMatch(RuleInfoEntryV2.FieldMatch fieldMatch);
+
+    public abstract GroupInfoDtoV2 toGroupInfoDtoV2(GroupInfoEntryV2 data);
 }
