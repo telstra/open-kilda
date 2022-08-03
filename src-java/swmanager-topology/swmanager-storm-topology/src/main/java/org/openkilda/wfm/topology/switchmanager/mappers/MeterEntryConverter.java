@@ -15,14 +15,18 @@
 
 package org.openkilda.wfm.topology.switchmanager.mappers;
 
-import org.openkilda.messaging.info.switches.MeterInfoEntry;
+import org.openkilda.messaging.info.switches.v2.MeterInfoEntryV2;
 import org.openkilda.rulemanager.MeterFlag;
 import org.openkilda.rulemanager.MeterSpeakerData;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Mapper
 public class MeterEntryConverter {
@@ -31,18 +35,18 @@ public class MeterEntryConverter {
     /**
      * Converts meter representation.
      */
-    public MeterInfoEntry toMeterEntry(MeterSpeakerData meterSpeakerData) {
-        return MeterInfoEntry.builder()
+    public MeterInfoEntryV2 toMeterEntry(MeterSpeakerData meterSpeakerData) {
+        return MeterInfoEntryV2.builder()
                 .meterId(meterSpeakerData.getMeterId().getValue())
                 .rate(meterSpeakerData.getRate())
                 .burstSize(meterSpeakerData.getBurst())
-                .flags(convertFlags(meterSpeakerData.getFlags()))
+                .flags(convertFlags(Optional.ofNullable(meterSpeakerData.getFlags()).orElse(Collections.emptySet())))
                 .build();
     }
 
-    private String[] convertFlags(Set<MeterFlag> flags) {
+    private List<String> convertFlags(Set<MeterFlag> flags) {
         return flags.stream()
                 .map(MeterFlag::name)
-                .toArray(String[]::new);
+                .collect(Collectors.toList());
     }
 }
