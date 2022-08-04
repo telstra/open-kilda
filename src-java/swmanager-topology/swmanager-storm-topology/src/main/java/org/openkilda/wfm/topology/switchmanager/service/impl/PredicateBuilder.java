@@ -158,9 +158,9 @@ public final class PredicateBuilder {
                 return ignore -> true;
             case REMOVE_DEFAULTS:
             case REMOVE_ADD_DEFAULTS:
+            case OVERWRITE_DEFAULTS:
                 return PredicateBuilder::allServiceRulesPredicate;
             case IGNORE_DEFAULTS:
-            case OVERWRITE_DEFAULTS:
                 return PredicateBuilder::allNotServiceRulesPredicate;
             case REMOVE_DROP:
                 return buildPredicate(DROP_RULE_COOKIE);
