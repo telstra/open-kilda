@@ -37,6 +37,7 @@ import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.PathFinder;
 import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.FindOneDirectionPathResult;
 import org.openkilda.pce.model.FindPathResult;
 import org.openkilda.pce.model.PathWeight;
 import org.openkilda.pce.model.WeightFunction;
@@ -88,9 +89,11 @@ public class InMemoryPathComputer implements PathComputer {
         if (flow.isOneSwitchFlow()) {
             log.info("No path computation for one-switch flow");
             SwitchId singleSwitchId = flow.getSrcSwitchId();
+            FindOneDirectionPathResult pathResult = FindOneDirectionPathResult.builder()
+                    .foundPath(emptyList()).backUpPathComputationWayUsed(false).build();
             return GetPathsResult.builder()
-                    .forward(convertToPath(singleSwitchId, singleSwitchId, emptyList()))
-                    .reverse(convertToPath(singleSwitchId, singleSwitchId, emptyList()))
+                    .forward(convertToPath(singleSwitchId, singleSwitchId, pathResult))
+                    .reverse(convertToPath(singleSwitchId, singleSwitchId, pathResult))
                     .backUpPathComputationWayUsed(false)
                     .build();
         }
@@ -173,7 +176,7 @@ public class InMemoryPathComputer implements PathComputer {
             pathComputationStrategy = LATENCY;
         }
 
-        List<List<Edge>> paths;
+        List<FindOneDirectionPathResult> paths;
         switch (pathComputationStrategy) {
             case COST:
             case LATENCY:
@@ -199,7 +202,7 @@ public class InMemoryPathComputer implements PathComputer {
         }
 
         return paths.stream()
-                .map(edges -> convertToPath(srcSwitchId, dstSwitchId, edges))
+                .map(foundPathResult -> convertToPath(srcSwitchId, dstSwitchId, foundPathResult))
                 .sorted(comparator)
                 .limit(count)
                 .collect(Collectors.toList());
@@ -268,14 +271,21 @@ public class InMemoryPathComputer implements PathComputer {
             SwitchId srcSwitchId, SwitchId dstSwitchId, FindPathResult findPathResult,
             PathComputationStrategy strategy, PathComputationStrategy originalStrategy) {
         return GetPathsResult.builder()
-                .forward(convertToPath(srcSwitchId, dstSwitchId, findPathResult.getFoundPath().getLeft()))
-                .reverse(convertToPath(dstSwitchId, srcSwitchId, findPathResult.getFoundPath().getRight()))
+                .forward(convertToPath(srcSwitchId, dstSwitchId, findPathResult.getFoundPath().getLeft(),
+                        findPathResult.isBackUpPathComputationWayUsed()))
+                .reverse(convertToPath(dstSwitchId, srcSwitchId, findPathResult.getFoundPath().getRight(),
+                        findPathResult.isBackUpPathComputationWayUsed()))
                 .backUpPathComputationWayUsed(findPathResult.isBackUpPathComputationWayUsed()
                         || !Objects.equals(originalStrategy, strategy))
                 .build();
     }
 
-    private Path convertToPath(SwitchId srcSwitchId, SwitchId dstSwitchId, List<Edge> edges) {
+    private Path convertToPath(SwitchId srcSwitchId, SwitchId dstSwitchId, List<Edge> edges, boolean isBackupPath) {
+        return convertToPath(srcSwitchId, dstSwitchId, new FindOneDirectionPathResult(edges, isBackupPath));
+    }
+
+    private Path convertToPath(SwitchId srcSwitchId, SwitchId dstSwitchId, FindOneDirectionPathResult pathResult) {
+        List<Edge> edges = pathResult.getFoundPath();
         List<Path.Segment> segments = new LinkedList<>();
 
         long latency = 0L;
@@ -292,6 +302,7 @@ public class InMemoryPathComputer implements PathComputer {
                 .segments(segments)
                 .latency(latency)
                 .minAvailableBandwidth(minAvailableBandwidth)
+                .isBackupPath(pathResult.isBackUpPathComputationWayUsed())
                 .build();
     }
 

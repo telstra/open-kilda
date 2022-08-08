@@ -60,6 +60,7 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.BestWeightAndShortestPathFinder;
 import org.openkilda.pce.finder.PathFinder;
 import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.FindOneDirectionPathResult;
 import org.openkilda.pce.model.Node;
 import org.openkilda.pce.model.WeightFunction;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
@@ -349,14 +350,19 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         return new InMemoryPathComputer(availableNetworkFactory, pathFinderMock, config);
     }
 
-    private List<List<Edge>> getPaths() {
+    private List<FindOneDirectionPathResult> getPaths() {
         List<Edge> path1 = createPath(10, 5);
         List<Edge> path2 = createPath(10, 4);
         List<Edge> path3 = createPath(15, 5);
         List<Edge> path4 = createPath(100, 100);
         List<Edge> path5 = createPath(1, 1);
 
-        return Lists.newArrayList(path1, path2, path3, path4, path5);
+        return Lists.newArrayList(
+                new FindOneDirectionPathResult(path1, false),
+                new FindOneDirectionPathResult(path2, false),
+                new FindOneDirectionPathResult(path3, false),
+                new FindOneDirectionPathResult(path4, false),
+                new FindOneDirectionPathResult(path5, false));
     }
 
     private void assertSortedByBandwidthAndLatency(List<Path> paths) {

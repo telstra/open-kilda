@@ -17,6 +17,7 @@ package org.openkilda.pce.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 import java.util.List;
@@ -24,6 +25,7 @@ import java.util.List;
 @Getter
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode
 public class FindOneDirectionPathResult {
     List<Edge> foundPath;
     boolean backUpPathComputationWayUsed;
