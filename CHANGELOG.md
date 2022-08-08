@@ -1,6 +1,38 @@
 # Changelog
 
-## v1.122.0 (07/07/2022)
+## v1.123.0 (08/08/2022)
+
+### Features:
+-  [#4866](https://github.com/telstra/open-kilda/pull/4866) Added possibility to delete lagPort in case no lagPort on a switch (Issue: [#4729](https://github.com/telstra/open-kilda/issues/4729)) [**storm-topologies**]
+-  [#4877](https://github.com/telstra/open-kilda/pull/4877) Added query parameter to /api/v1/network/paths for limiting amount of computed paths
+-  [#4842](https://github.com/telstra/open-kilda/pull/4842) Add information about misconfigured rules into switch validation response (Issue: [#4834](https://github.com/telstra/open-kilda/issues/4834)) [**docs**]
+
+### Bug Fixes:
+-  [#4871](https://github.com/telstra/open-kilda/pull/4871) Fix swap-endpoint history recording - response timeout if flow update is disabled (Issue: [#4788](https://github.com/telstra/open-kilda/issues/4788))
+-  [#4879](https://github.com/telstra/open-kilda/pull/4879) Added hex field, which should display correctly in Swagger UI (Issue: [#2120](https://github.com/telstra/open-kilda/issues/2120)) [**api**]
+-  [#4891](https://github.com/telstra/open-kilda/pull/4891) Added command context in ActionBolt
+
+### Improvements:
+-  [#4870](https://github.com/telstra/open-kilda/pull/4870) Reworked FL RuleManager response topic handling (Issue: [#4860](https://github.com/telstra/open-kilda/issues/4860)) [**floodlight**]
+-  [#4872](https://github.com/telstra/open-kilda/pull/4872) Stats topology cache notifies zookeeper about readiness only after initialization [**storm-topologies**]
+-  [#4875](https://github.com/telstra/open-kilda/pull/4875) Add static code analysis for Groovy
+-  [#4883](https://github.com/telstra/open-kilda/pull/4883) Added test relating to issue #4517 (Issues: [#4517](https://github.com/telstra/open-kilda/issues/4517) [#4517](https://github.com/telstra/open-kilda/issues/4517)) [**tests**]
+-  [#4887](https://github.com/telstra/open-kilda/pull/4887) Add test for limiting amount of computed paths #4877 (Issues: [#4877](https://github.com/telstra/open-kilda/issues/4877) [#4877](https://github.com/telstra/open-kilda/issues/4877)) [**tests**]
+-  [#4888](https://github.com/telstra/open-kilda/pull/4888) Test/deleting already deleted lag port [**tests**]
+-  [#4894](https://github.com/telstra/open-kilda/pull/4894) Set version of @types/geojson to "7946.0.8" [**gui**]
+-  [#4895](https://github.com/telstra/open-kilda/pull/4895) Add notification to templates
+-  [#4897](https://github.com/telstra/open-kilda/pull/4897) Remove commented test data (Issue: [#3896](https://github.com/telstra/open-kilda/issues/3896)) [**tests**]
+-  [#4898](https://github.com/telstra/open-kilda/pull/4898) Remove unnecessary MegaLinter options [**tests**]
+-  [#4862](https://github.com/telstra/open-kilda/pull/4862) Removed unused methods and constructors from FlowDto
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.122.0...v1.123.0).
+
+### Affected Components:
+flow-hs, history, flow-monitor, fl, gui, swmanager, stats
+
+---
+
+## v1.122.0 (21/07/2022)
 
 ### Features:
 -  [#4848](https://github.com/telstra/open-kilda/pull/4848) Added vlan statistics field to FlowV2 CRUD api (Issue: [#4855](https://github.com/telstra/open-kilda/issues/4855)) 
