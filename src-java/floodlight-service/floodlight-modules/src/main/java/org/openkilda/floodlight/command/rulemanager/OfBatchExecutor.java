@@ -22,7 +22,6 @@ import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
 import org.openkilda.floodlight.api.BatchCommandProcessor;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.messaging.MessageContext;
@@ -62,8 +61,8 @@ public class OfBatchExecutor {
     private final OfBatchHolder holder;
     private final Set<SwitchFeature> switchFeatures;
     private final String kafkaKey;
-    private final Origin origin;
     private final boolean failIfExists;
+    private final String sourceTopic;
 
     private boolean hasMeters;
     private boolean hasGroups;
@@ -76,7 +75,8 @@ public class OfBatchExecutor {
     @Builder
     public OfBatchExecutor(IOFSwitch iofSwitch, BatchCommandProcessor commandProcessor, SessionService sessionService,
                            MessageContext messageContext, OfBatchHolder holder,
-                           Set<SwitchFeature> switchFeatures, String kafkaKey, Origin origin, Boolean failIfExists) {
+                           Set<SwitchFeature> switchFeatures, String kafkaKey, String sourceTopic,
+                           Boolean failIfExists) {
         this.iofSwitch = iofSwitch;
         this.commandProcessor = commandProcessor;
         this.sessionService = sessionService;
@@ -90,7 +90,7 @@ public class OfBatchExecutor {
         this.holder = holder;
         this.switchFeatures = switchFeatures;
         this.kafkaKey = kafkaKey;
-        this.origin = origin;
+        this.sourceTopic = sourceTopic;
         this.failIfExists = failIfExists == null || failIfExists;
     }
 
@@ -343,6 +343,6 @@ public class OfBatchExecutor {
     }
 
     private void sendResponse() {
-        commandProcessor.processResponse(holder.getResult(), kafkaKey, origin);
+        commandProcessor.processResponse(holder.getResult(), kafkaKey, sourceTopic);
     }
 }

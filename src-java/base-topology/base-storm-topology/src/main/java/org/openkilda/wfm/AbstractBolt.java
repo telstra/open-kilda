@@ -182,9 +182,10 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     protected final void handleLifeCycleEvent(LifecycleEvent event) {
         if (Signal.START.equals(event.getSignal())) {
-            emit(ZkStreams.ZK.toString(), currentTuple, new Values(event, commandContext));
             try {
-                activate();
+                if (activateAndConfirm()) {
+                    emit(ZkStreams.ZK.toString(), currentTuple, new Values(event, commandContext));
+                }
             } finally {
                 active = true;
             }
@@ -204,6 +205,11 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     protected void activate() {
         // no actions required
+    }
+
+    protected boolean activateAndConfirm() {
+        activate();
+        return true;
     }
 
     protected boolean deactivate(LifecycleEvent event) {
@@ -268,7 +274,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
             context = new CommandContext().fork("trace-fail");
 
             log.warn("The command context is missing in input tuple received by {} on stream {}:{}, execution context"
-                            + " can't  be traced. Create new command context for possible tracking of following"
+                            + " can't be traced. Create new command context for possible tracking of following"
                             + " processing [{}].",
                     getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(),
                     formatTuplePayload(input), e);

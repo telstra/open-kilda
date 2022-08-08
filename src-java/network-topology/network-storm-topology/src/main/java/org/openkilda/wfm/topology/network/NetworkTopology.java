@@ -156,7 +156,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
 
     private void inputSpeakerControl(TopologyBuilder topology) {
         declareKafkaSpoutForAbstractMessage(topology,
-                kafkaTopics.getNetworkControlReponseTopic(), ComponentId.INPUT_SPEAKER_RULES.toString());
+                kafkaTopics.getNetworkControlResponseTopic(), ComponentId.INPUT_SPEAKER_RULES.toString());
     }
 
     private void workerSpeakerRules(TopologyBuilder topology) {

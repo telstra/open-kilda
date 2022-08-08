@@ -33,5 +33,6 @@ public interface NetworkService {
      */
     CompletableFuture<PathsDto> getPaths(
             SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType encapsulationType,
-            PathComputationStrategy pathComputationStrategy, Duration maxLatencyMs, Duration maxLatencyTier2);
+            PathComputationStrategy pathComputationStrategy, Duration maxLatencyMs, Duration maxLatencyTier2,
+            Integer maxPathCount);
 }

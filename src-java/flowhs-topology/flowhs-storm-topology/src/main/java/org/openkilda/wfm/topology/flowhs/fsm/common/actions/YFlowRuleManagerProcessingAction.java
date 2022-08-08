@@ -22,7 +22,6 @@ import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsReq
 import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
@@ -64,12 +63,12 @@ public abstract class YFlowRuleManagerProcessingAction<T extends YFlowProcessing
 
     protected Collection<InstallSpeakerCommandsRequest> buildYFlowInstallRequests(YFlow yFlow, CommandContext context) {
         Map<SwitchId, List<SpeakerData>> speakerData = buildYFlowSpeakerData(yFlow);
-        return FlowRulesConverter.INSTANCE.buildFlowInstallCommands(speakerData, context, Origin.FLOW_HS);
+        return FlowRulesConverter.INSTANCE.buildFlowInstallCommands(speakerData, context);
     }
 
     protected Collection<DeleteSpeakerCommandsRequest> buildYFlowDeleteRequests(YFlow yFlow, CommandContext context) {
         Map<SwitchId, List<SpeakerData>> speakerData = buildYFlowSpeakerData(yFlow);
-        return FlowRulesConverter.INSTANCE.buildFlowDeleteCommands(speakerData, context, Origin.FLOW_HS);
+        return FlowRulesConverter.INSTANCE.buildFlowDeleteCommands(speakerData, context);
     }
 
     private Map<SwitchId, List<SpeakerData>> buildYFlowSpeakerData(YFlow yFlow) {

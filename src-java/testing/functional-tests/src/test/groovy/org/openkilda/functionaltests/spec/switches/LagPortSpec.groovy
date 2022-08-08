@@ -623,6 +623,29 @@ class LagPortSpec extends HealthCheckSpecification {
         lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
     }
 
+    @Tidy
+    def "Able to delete LAG port if it is already removed from switch"() {
+        given: "A switch with a LAG port"
+        def sw = topology.getActiveSwitches().first()
+        def portsArray = topology.getAllowedPortsForSwitch(sw)[-2,-1]
+        def payload = new LagPortRequest(portNumbers: portsArray)
+        def lagPort = northboundV2.createLagLogicalPort(sw.dpId, payload).logicalPortNumber
+
+        when: "Delete LAG port via grpc"
+        grpc.deleteSwitchLogicalPort(northbound.getSwitch(sw.dpId).address, lagPort)
+
+        then: "Able to delete LAG port from switch with no exception"
+        def deleteResponse = northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
+
+        with(deleteResponse) {
+            logicalPortNumber == lagPort
+            portNumbers.sort() == portsArrayUpdate.sort()
+        }
+
+        cleanup:
+        lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
+    }
+
     void deleteAllLagPorts(SwitchId switchId) {
         northboundV2.getLagLogicalPort(switchId)*.logicalPortNumber.each { Integer lagPort ->
             northboundV2.deleteLagLogicalPort(switchId, lagPort)
