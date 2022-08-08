@@ -71,13 +71,21 @@ public class CompleteFlowPathRemovalAction extends
             return foundFlow;
         });
 
+        Set<FlowPathPair> flowPathPairs = new HashSet<>();
+
+        flowPathPairs.add(new FlowPathPair(flow.getForwardPath(), flow.getReversePath()));
+        flowPathPairs.add(new FlowPathPair(flow.getProtectedForwardPath(), flow.getProtectedReversePath()));
+
         // Iterate to remove each path in a dedicated transaction.
         flow.getPathIds().forEach(pathId -> {
             Optional<FlowPath> deletedPath = flowPathRepository.remove(pathId);
-            deletedPath.ifPresent(path -> {
-                updateIslsForFlowPath(path);
-                saveRemovalActionWithDumpToHistory(stateMachine, flow, new FlowPathPair(path, path));
-            });
+            deletedPath.ifPresent(this::updateIslsForFlowPath);
+        });
+
+        flowPathPairs.forEach(flowPathPair -> {
+            if (flowPathPair.getForward() != null && flowPathPair.getReverse() != null) {
+                saveRemovalActionWithDumpToHistory(stateMachine, flow, flowPathPair);
+            }
         });
     }
 }
