@@ -17,10 +17,8 @@ package org.openkilda.northbound.controller.v2;
 
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
-import org.openkilda.messaging.model.IncludeFilter;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.BaseController;
-import org.openkilda.northbound.converter.ValidationFilterMapper;
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
 import org.openkilda.northbound.dto.v2.switches.LagPortResponse;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
@@ -56,7 +54,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -249,8 +246,8 @@ public class SwitchControllerV2 extends BaseController {
     /**
      * Validate the rules, groups, lags and the meters installed on the switch against the flows in the database.
      *
-     * @param include validated fields to include in response
-     * @param exclude drop flow id, flow path and y flow id
+     * @param includeString validated fields to include in response
+     * @param excludeString drop flow id, flow path and y flow id
      * @return the validation details.
      */
     @ApiOperation(value = "Validate rules, lags, groups and meters installed on the switch",
