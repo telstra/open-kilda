@@ -311,10 +311,10 @@ public abstract class SwitchMapper {
 
     public abstract RulesValidationDtoV2 toRulesValidationDtoV2(RulesValidationEntryV2 data);
 
-    @Mapping(source = "YFlowId", target = "yFlowId") //TODO: why doesnt jsonNaming work properly?
+    @Mapping(target = "yFlowId", ignore = true)
     public abstract RuleInfoDtoV2 toRuleInfoDtoV2(RuleInfoEntryV2 data);
 
-    @Mapping(source = "masked", target = "isMasked") //TODO: the same
+    @Mapping(target = "isMasked", ignore = true)
     public abstract RuleInfoDtoV2.FieldMatch toFieldMatch(RuleInfoEntryV2.FieldMatch fieldMatch);
 
     public abstract GroupInfoDtoV2 toGroupInfoDtoV2(GroupInfoEntryV2 data);

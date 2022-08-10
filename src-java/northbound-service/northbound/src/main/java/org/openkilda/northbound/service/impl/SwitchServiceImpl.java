@@ -48,6 +48,8 @@ import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
+import org.openkilda.messaging.model.ExcludeFilter;
+import org.openkilda.messaging.model.IncludeFilter;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
@@ -82,6 +84,7 @@ import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.LagPortMapper;
 import org.openkilda.northbound.converter.PortPropertiesMapper;
 import org.openkilda.northbound.converter.SwitchMapper;
+import org.openkilda.northbound.converter.ValidationFilterMapper;
 import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.v1.switches.DeleteSwitchResult;
 import org.openkilda.northbound.dto.v1.switches.PortDto;
@@ -115,6 +118,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -140,6 +144,9 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Autowired
     private FlowMapper flowMapper;
+
+    @Autowired
+    private ValidationFilterMapper validationFilterMapper;
 
     @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
     private String floodlightTopic;
@@ -274,11 +281,24 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     }
 
     @Override
-    public CompletableFuture<SwitchValidationResultV2> validateSwitch(SwitchId switchId, String params) {
+    public CompletableFuture<SwitchValidationResultV2> validateSwitch(SwitchId switchId,
+                                                                      String includeString,
+                                                                      String excludeString) {
         logger.info("Validate api V2 request for switch {}", switchId);
 
+        List<IncludeFilter> includeFilters = validationFilterMapper
+                .toIncludeFilters(Arrays.stream(includeString.split("\\|"))
+                        .collect(Collectors.toList()));
+
+        List<ExcludeFilter> excludeFilters = validationFilterMapper
+                .toExcludeFilters(Arrays.stream(excludeString.split("\\|"))
+                        .collect(Collectors.toList()));
+
         return performValidateV2(
-                SwitchValidateRequest.builder().switchId(switchId).processMeters(true).build())
+                SwitchValidateRequest.builder().switchId(switchId)
+                        .includeFilters(includeFilters)
+                        .excludeFilters(excludeFilters)
+                        .build())
                 .thenApply(switchMapper::toSwitchValidationResultV2);
     }
 

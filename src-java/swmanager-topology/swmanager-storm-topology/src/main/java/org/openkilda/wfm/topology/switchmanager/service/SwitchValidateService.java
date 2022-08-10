@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.group.GroupDumpResponse;
 import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
+import org.openkilda.messaging.model.IncludeFilter;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.MessageDispatchException;
 import org.openkilda.wfm.error.UnexpectedInputException;
@@ -142,8 +143,19 @@ public class SwitchValidateService implements SwitchManagerHubService {
         });
         handlers.put(key, fsm);
 
+        // nrydanov: FSM uses V2 validation mechanism, so we need to add corresponding filter
+        if (request.isProcessMeters()) {
+            request.getIncludeFilters().add(IncludeFilter.METERS);
+        }
+
+        SwitchValidateContext initialContext = SwitchValidateContext.builder()
+                .includeFilters(request.getIncludeFilters())
+                .excludeFilters(request.getExcludeFilters())
+                .build();
+
         fsm.start();
-        handle(fsm, SwitchValidateEvent.NEXT, SwitchValidateContext.builder().build());
+
+        handle(fsm, SwitchValidateEvent.NEXT, initialContext);
     }
 
     private void handleFlowEntriesResponse(FlowDumpResponse data, MessageCookie cookie)

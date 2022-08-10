@@ -17,8 +17,10 @@ package org.openkilda.northbound.controller.v2;
 
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
+import org.openkilda.messaging.model.IncludeFilter;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.BaseController;
+import org.openkilda.northbound.converter.ValidationFilterMapper;
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
 import org.openkilda.northbound.dto.v2.switches.LagPortResponse;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
@@ -54,6 +56,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -256,9 +259,8 @@ public class SwitchControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<SwitchValidationResultV2> validateSwitch(
             @PathVariable(name = "switch_id") SwitchId switchId,
-            @RequestParam(name = "include", required = false) String include,
-            @RequestParam(name = "exclude", required = false) String exclude) {
-        //TODO parse params
-        return switchService.validateSwitch(switchId, "TBD");
+            @RequestParam(name = "include", required = false) String includeString,
+            @RequestParam(name = "exclude", required = false) String excludeString) {
+        return switchService.validateSwitch(switchId, includeString, includeString);
     }
 }

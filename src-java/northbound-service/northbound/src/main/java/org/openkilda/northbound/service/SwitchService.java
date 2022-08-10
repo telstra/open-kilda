@@ -134,10 +134,13 @@ public interface SwitchService {
      * Validate rules, meters, groups and logical ports installed on a switch against the flows in the database.
      *
      * @param switchId switch to validate.
-     * @param params fields to include/exclude in response
+     * @param includeString validation include filters
+     * @param excludeString validation exclude filters
      * @return the validation details.
      */
-    CompletableFuture<SwitchValidationResultV2> validateSwitch(SwitchId switchId, String params);
+    CompletableFuture<SwitchValidationResultV2> validateSwitch(SwitchId switchId,
+                                                               String includeString,
+                                                               String excludeString);
 
     /**
      * Synchronize (install) missing rules that should be on the switch but exist only in the database.

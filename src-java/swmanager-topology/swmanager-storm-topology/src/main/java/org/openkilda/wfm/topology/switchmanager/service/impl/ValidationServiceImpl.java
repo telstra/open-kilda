@@ -205,8 +205,8 @@ public class ValidationServiceImpl implements ValidationService {
 
         return new ValidateLogicalPortsResultV2(
                 missingPorts.isEmpty() && excessPorts.isEmpty() && misconfiguredPorts.isEmpty(),
-                ImmutableList.copyOf(missingPorts),
                 ImmutableList.copyOf(properPorts),
+                ImmutableList.copyOf(missingPorts),
                 ImmutableList.copyOf(excessPorts),
                 ImmutableList.copyOf(misconfiguredPorts),
                 "");
@@ -472,7 +472,11 @@ public class ValidationServiceImpl implements ValidationService {
     MisconfiguredInfo<LogicalPortInfoEntryV2> calculateMisconfiguredLogicalPort(LogicalPortInfoEntryV2 expectedPort,
                                                                                 LogicalPortInfoEntryV2 actualPort) {
 
+        LogicalPortInfoEntryV2.LogicalPortInfoEntryV2Builder expected = LogicalPortInfoEntryV2.builder();
         LogicalPortInfoEntryV2.LogicalPortInfoEntryV2Builder discrepancies = LogicalPortInfoEntryV2.builder();
+
+        expected.type(expectedPort.getType()); //why do we use new expected obj?
+        expected.physicalPorts(expectedPort.getPhysicalPorts());
 
         if (!Objects.equals(expectedPort.getType(), actualPort.getType())) {
             discrepancies.type(actualPort.getType());
@@ -486,7 +490,7 @@ public class ValidationServiceImpl implements ValidationService {
 
         return MisconfiguredInfo.<LogicalPortInfoEntryV2>builder()
                 .id(Long.valueOf(actualPort.getLogicalPortNumber()))
-                .expected(expectedPort)
+                .expected(expected.build())
                 .discrepancies(discrepancies.build())
                 .build();
     }
@@ -517,9 +521,6 @@ public class ValidationServiceImpl implements ValidationService {
                                                                           RuleInfoEntryV2 actual) {
         RuleInfoEntryV2.RuleInfoEntryV2Builder discrepancies = RuleInfoEntryV2.builder();
 
-        if (!expected.getCookie().equals(actual.getCookie())) {
-            discrepancies.cookie(actual.getCookie());
-        }
         if (!expected.getCookieHex().equals(actual.getCookieHex())) {
             discrepancies.cookieHex(actual.getCookieHex());
         }
@@ -532,17 +533,14 @@ public class ValidationServiceImpl implements ValidationService {
         if (!expected.getTableId().equals(actual.getTableId())) {
             discrepancies.tableId(actual.getTableId());
         }
-        if (!expected.getMatch().equals(actual.getMatch())) {
-            discrepancies.match(actual.getMatch());
-        }
         if (!flagsAreEqual(expected.getFlags(), actual.getFlags())) {
             discrepancies.flags(actual.getFlags());
         }
         if (!expected.getInstructions().equals(actual.getInstructions())) {
             discrepancies.instructions(actual.getInstructions());
-        }
+        } //TODO
         return MisconfiguredInfo.<RuleInfoEntryV2>builder()
-                .id(expected.getCookie()) //TODO: table id + priority + match?
+                .id(expected.getCookie()) //TODO
                 .expected(expected)
                 .discrepancies(discrepancies.build())
                 .build();
