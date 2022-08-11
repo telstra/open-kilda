@@ -53,6 +53,7 @@ class FlowPingSpec extends HealthCheckSpecification {
     def "Able to ping a flow with vlan"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with random vlan"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flow.encapsulationType=  FlowEncapsulationType.TRANSIT_VLAN
         flowHelperV2.addFlow(flow)
 
         when: "Ping the flow"
@@ -82,6 +83,50 @@ class FlowPingSpec extends HealthCheckSpecification {
             statsData = otsdb.query(beforePingTime, metricPrefix + "switch.flow.system.bytes",
                     [switchid : srcSwitch.dpId.toOtsdFormat(),
                      cookieHex: DefaultRule.VERIFICATION_UNICAST_RULE.toHexString()]).dps
+            assert statsData && !statsData.empty
+        }
+        statsData.values().last().toLong() > unicastCounterBefore
+
+        cleanup: "Remove the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
+
+        where:
+        [srcSwitch, dstSwitch] << ofSwitchCombinations
+        swPair = new SwitchPair(src: srcSwitch, dst: dstSwitch, paths: [])
+    }
+
+    @Tidy
+    @Unroll("Able to ping a flow with vxlan between switches #swPair.toString()")
+    @Tags([TOPOLOGY_DEPENDENT])
+    def "Able to ping a flow with vxlan"(Switch srcSwitch, Switch dstSwitch) {
+        given: "A flow with random vxlan"
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flow.encapsulationType=  FlowEncapsulationType.VXLAN
+        flowHelperV2.addFlow(flow)
+
+        when: "Ping the flow"
+        def beforePingTime = new Date()
+        def unicastCounterBefore = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.find {
+            it.cookie == DefaultRule.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE.cookie //rule for the vxlan differs from vlan
+        }.byteCount
+        def response = northbound.pingFlow(flow.flowId, new PingInput())
+
+        then: "Ping is successful"
+        response.forward.pingSuccess
+        response.reverse.pingSuccess
+
+        and: "No errors"
+        !response.error
+        !response.forward.error
+        !response.reverse.error
+
+
+        and: "Unicast rule packet count is increased and logged to otsdb"
+        def statsData = null
+        Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
+            statsData = otsdb.query(beforePingTime, metricPrefix + "switch.flow.system.bytes",
+                    [switchid : srcSwitch.dpId.toOtsdFormat(),
+                     cookieHex: DefaultRule.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE.toHexString()]).dps
             assert statsData && !statsData.empty
         }
         statsData.values().last().toLong() > unicastCounterBefore
