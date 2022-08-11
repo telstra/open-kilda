@@ -50,6 +50,7 @@ public final class Constants {
         DROP_RULE(Cookie.DROP_RULE_COOKIE), //drop all unknown packets
         VERIFICATION_BROADCAST_RULE(Cookie.VERIFICATION_BROADCAST_RULE_COOKIE), //ISL discovery packets
         VERIFICATION_UNICAST_RULE(Cookie.VERIFICATION_UNICAST_RULE_COOKIE), //catch rule for flow pings
+        VERIFICATION_UNICAST_VXLAN_RULE_COOKIE(Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE),
         DROP_LOOP_RULE(Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE), //drop packets that'll lead to self-loop ISLs
         CATCH_BFD_RULE(Cookie.CATCH_BFD_RULE_COOKIE); //catch rule for BFD sessions (noviflow-specific)
 
