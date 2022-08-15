@@ -41,6 +41,8 @@ import org.openkilda.messaging.info.switches.v2.MisconfiguredInfo;
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.RulesValidationEntryV2;
 import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
+import org.openkilda.messaging.model.ExcludeFilter;
+import org.openkilda.messaging.model.IncludeFilter;
 import org.openkilda.messaging.info.switches.v2.action.BaseAction;
 import org.openkilda.messaging.info.switches.v2.action.CopyFieldActionEntry;
 import org.openkilda.messaging.info.switches.v2.action.GroupActionEntry;
@@ -416,6 +418,41 @@ public abstract class SwitchMapper {
     public abstract RuleInfoDtoV2 toRuleInfoDtoV2(RuleInfoEntryV2 data);
 
     public abstract GroupInfoDtoV2 toGroupInfoDtoV2(GroupInfoEntryV2 data);
+
+    private IncludeFilter toIncludeFilter(String value) {
+        switch (value) {
+            case("meters"):
+                return IncludeFilter.METERS;
+            case("groups"):
+                return IncludeFilter.GROUPS;
+            case("logical_ports"):
+                return IncludeFilter.LOGICAL_PORTS;
+            case("rules"):
+                return IncludeFilter.RULES;
+            default:
+                throw new IllegalArgumentException("Unexpected include filter");
+        }
+    }
+
+    private ExcludeFilter toExcludeFilter(String value) {
+        switch (value) {
+            case("flow_info"):
+                return ExcludeFilter.FLOW_INFO;
+            default:
+                throw new IllegalArgumentException("Unexpected exclude filter");
+        }
+    }
+
+    /**
+     * Convert list of {@link String} into list of {@link IncludeFilter}.
+     */
+    public List<IncludeFilter> toIncludeFilters(List<String> value) {
+        return value.stream().map(this::toIncludeFilter).collect(Collectors.toList());
+    }
+
+    public List<ExcludeFilter> toExcludeFilters(List<String> value) {
+        return value.stream().map(this::toExcludeFilter).collect(Collectors.toList());
+    }
 
     public abstract MeterInfoDtoV2 toMeterInfoDtoV2(MeterInfoEntryV2 data);
 

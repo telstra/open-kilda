@@ -27,6 +27,7 @@ import org.openkilda.wfm.topology.switchmanager.service.configs.SwitchSyncConfig
 
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -89,7 +90,8 @@ public class SwitchSyncFsmTest {
     }
 
     private SwitchSyncFsm buildFsm(int batchSize) {
-        SwitchValidateRequest request = new SwitchValidateRequest(new SwitchId(1), true, true, true);
+        SwitchValidateRequest request = new SwitchValidateRequest(new SwitchId(1), true,
+                true, true, Collections.emptyList(), Collections.emptyList());
         return new SwitchSyncFsm(null, null, null, request, null, new SwitchSyncConfig(batchSize));
     }
 

@@ -48,6 +48,8 @@ import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
+import org.openkilda.messaging.model.ExcludeFilter;
+import org.openkilda.messaging.model.IncludeFilter;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
@@ -115,6 +117,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -274,11 +278,30 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     }
 
     @Override
-    public CompletableFuture<SwitchValidationResultV2> validateSwitch(SwitchId switchId, String params) {
+    public CompletableFuture<SwitchValidationResultV2> validateSwitch(SwitchId switchId,
+                                                                      String includeString,
+                                                                      String excludeString) {
         logger.info("Validate api V2 request for switch {}", switchId);
 
+        List<IncludeFilter> includeFilters = new LinkedList<>();
+        if (includeString != null) {
+            includeFilters = switchMapper
+                    .toIncludeFilters(Arrays.stream(includeString.split("\\|"))
+                            .collect(Collectors.toList()));
+        }
+
+        List<ExcludeFilter> excludeFilters = new LinkedList<>();
+        if (excludeString != null) {
+            excludeFilters = switchMapper
+                    .toExcludeFilters(Arrays.stream(excludeString.split("\\|"))
+                            .collect(Collectors.toList()));
+        }
+
         return performValidateV2(
-                SwitchValidateRequest.builder().switchId(switchId).processMeters(true).build())
+                SwitchValidateRequest.builder().switchId(switchId)
+                        .includeFilters(includeFilters)
+                        .excludeFilters(excludeFilters)
+                        .build())
                 .thenApply(switchMapper::toSwitchValidationResultV2);
     }
 

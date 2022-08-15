@@ -78,6 +78,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Optional;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -277,7 +278,13 @@ public class SwitchValidateServiceTest {
 
     @Test
     public void validationSuccessWithUnavailableGrpc() throws UnexpectedInputException, MessageDispatchException {
-        request = SwitchValidateRequest.builder().switchId(LAG_SWITCH_ID).processMeters(true).build();
+        request = SwitchValidateRequest.builder()
+                .switchId(LAG_SWITCH_ID)
+                .processMeters(true)
+                .includeFilters(new LinkedList<>())
+                .excludeFilters(new LinkedList<>())
+                .build();
+
         service.handleSwitchValidateRequest(KEY, request);
 
         verify(carrier, times(4))
@@ -343,7 +350,13 @@ public class SwitchValidateServiceTest {
 
     @Test
     public void validationPerformSync() throws UnexpectedInputException, MessageDispatchException {
-        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).processMeters(true).build();
+        request = SwitchValidateRequest.builder()
+                .switchId(SWITCH_ID)
+                .performSync(true)
+                .processMeters(true)
+                .includeFilters(new LinkedList<>())
+                .excludeFilters(new LinkedList<>())
+                .build();
 
         handleRequestAndInitDataReceive();
         handleDataReceiveAndValidate();
@@ -355,8 +368,12 @@ public class SwitchValidateServiceTest {
 
     @Test
     public void errorResponseOnSwitchNotFound() {
-        request = SwitchValidateRequest
-                .builder().switchId(SWITCH_ID_MISSING).performSync(true).processMeters(true).build();
+        request = SwitchValidateRequest.builder()
+                .switchId(SWITCH_ID_MISSING)
+                .performSync(true).processMeters(true)
+                .includeFilters(new LinkedList<>())
+                .excludeFilters(new LinkedList<>())
+                .build();
         service.handleSwitchValidateRequest(KEY, request);
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
