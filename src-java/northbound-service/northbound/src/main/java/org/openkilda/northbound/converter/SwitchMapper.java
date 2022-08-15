@@ -31,6 +31,7 @@ import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.GroupsValidationEntryV2;
 import org.openkilda.messaging.info.switches.v2.LogicalPortInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.LogicalPortsValidationEntryV2;
 import org.openkilda.messaging.info.switches.v2.MeterInfoEntryV2;
@@ -67,6 +68,8 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v2.switches.GroupInfoDtoV2;
+import org.openkilda.northbound.dto.v2.switches.GroupsValidationDtoV2;
+import org.openkilda.northbound.dto.v2.switches.LogicalPortInfoDtoV2;
 import org.openkilda.northbound.dto.v2.switches.LogicalPortsValidationDtoV2;
 import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2;
 import org.openkilda.northbound.dto.v2.switches.MetersValidationDtoV2;
@@ -233,37 +236,33 @@ public abstract class SwitchMapper {
 
     @Mapping(source = "buckets", target = "groupBuckets")
     @Mapping(target = "missingGroupBuckets", ignore = true)
-    @Mapping(target = "excessGroupBuckets", ignore = true) //TODO omit missing and excess coz they'e only for misconfig?
+    @Mapping(target = "excessGroupBuckets", ignore = true)
     public abstract GroupInfoDto toGroupInfoDtoV1(GroupInfoEntryV2 data);
 
-    @Mapping(source = "expected.buckets", target = "groupBuckets")
-    @Mapping(source = "expected.groupId", target = "groupId")
+    @Mapping(source = "discrepancies.buckets", target = "groupBuckets")
+    @Mapping(source = "discrepancies.groupId", target = "groupId")
     @Mapping(target = "missingGroupBuckets", ignore = true)
-    @Mapping(target = "excessGroupBuckets", ignore = true) //TODO calculate missing and excess
+    @Mapping(target = "excessGroupBuckets", ignore = true)
     public abstract GroupInfoDto toGroupInfoDtoV1(MisconfiguredInfo<GroupInfoEntryV2> data);
 
     @Mapping(target = "actual", ignore = true)
     @Mapping(target = "expected", ignore = true)
-    public abstract LogicalPortInfoDto toLogicalPortInfoV1(LogicalPortInfoEntryV2 data);
+    public abstract LogicalPortInfoDto toLogicalPortInfoDtoV1(LogicalPortInfoEntryV2 data);
 
-    @Mapping(source = "id", target = "logicalPortNumber")
+    @Mapping(source = "expected.logicalPortNumber", target = "logicalPortNumber")
     @Mapping(source = "expected.type", target = "type")
     @Mapping(source = "expected.physicalPorts", target = "physicalPorts")
     @Mapping(source = "expected.type", target = "expected.type")
     @Mapping(source = "expected.physicalPorts", target = "expected.physicalPorts")
     @Mapping(source = "discrepancies.type", target = "actual.type")
     @Mapping(source = "discrepancies.physicalPorts", target = "actual.physicalPorts")
-    public abstract LogicalPortInfoDto toLogicalPortInfoV1(MisconfiguredInfo<LogicalPortInfoEntryV2> data);
-
-    @Mapping(target = "actual", ignore = true)
-    @Mapping(target = "expected", ignore = true)
-    public abstract MeterInfoDto toMeterInfoDtoV1(MeterInfoDtoV2 data);
+    public abstract LogicalPortInfoDto toLogicalPortInfoDtoV1(MisconfiguredInfo<LogicalPortInfoEntryV2> data);
 
     @Mapping(target = "actual", ignore = true)
     @Mapping(target = "expected", ignore = true)
     public abstract MeterInfoDto toMeterInfoDtoV1(MeterInfoEntryV2 data);
 
-    @Mapping(source = "id", target = "meterId")
+    @Mapping(source = "expected.meterId", target = "meterId")
     @Mapping(source = "expected.cookie", target = "cookie")
     @Mapping(source = "expected.flowId", target = "flowId")
     @Mapping(source = "expected.rate", target = "rate")
@@ -278,24 +277,24 @@ public abstract class SwitchMapper {
     public abstract MeterInfoDto toMeterInfoDtoV1(MisconfiguredInfo<MeterInfoEntryV2> data);
 
     /**
-     * Convert api v2 rule entry into rule dto v1.
+     * Convert api v2 rule validation entry into v1 rule dto.
      *
-     * @param response rule v1 validation entry.
-     * @return rule validation v1 dto
+     * @param data rule v2 validation data.
+     * @return rule v1 validation dto
      */
-    public RulesValidationDto toRulesValidationDtoV1(RulesValidationEntryV2 response) {
-        if (response == null) {
+    public RulesValidationDto toRulesValidationDtoV1(RulesValidationEntryV2 data) {
+        if (data == null) {
             return null;
         }
         RulesValidationDto rulesValidationDto = new RulesValidationDto();
-        rulesValidationDto.setExcess(response.getExcess().stream()
+        rulesValidationDto.setExcess(data.getExcess().stream()
                 .map(RuleInfoEntryV2::getCookie).collect(Collectors.toList()));
-        rulesValidationDto.setProper(response.getProper().stream()
+        rulesValidationDto.setProper(data.getProper().stream()
                 .map(RuleInfoEntryV2::getCookie).collect(Collectors.toList()));
-        rulesValidationDto.setMissing(response.getMissing().stream()
+        rulesValidationDto.setMissing(data.getMissing().stream()
                 .map(RuleInfoEntryV2::getCookie).collect(Collectors.toList()));
-        rulesValidationDto.setMisconfigured(response.getMisconfigured().stream()
-                .map(MisconfiguredInfo::getDiscrepancies)
+        rulesValidationDto.setMisconfigured(data.getMisconfigured().stream()
+                .map(MisconfiguredInfo::getExpected)
                 .map(RuleInfoEntryV2::getCookie)
                 .collect(Collectors.toList()));
 
@@ -304,6 +303,8 @@ public abstract class SwitchMapper {
 
     //v2 api
     public abstract SwitchValidationResultV2 toSwitchValidationResultV2(SwitchValidationResponseV2 response);
+
+    public abstract GroupsValidationDtoV2 toGroupsValidationDtoV2(GroupsValidationEntryV2 data);
 
     public abstract LogicalPortsValidationDtoV2 toLogicalPortsValidationDtoV2(LogicalPortsValidationEntryV2 data);
 
@@ -318,4 +319,8 @@ public abstract class SwitchMapper {
     public abstract RuleInfoDtoV2.FieldMatch toFieldMatch(RuleInfoEntryV2.FieldMatch fieldMatch);
 
     public abstract GroupInfoDtoV2 toGroupInfoDtoV2(GroupInfoEntryV2 data);
+
+    public abstract MeterInfoDtoV2 toMeterInfoDtoV2(MeterInfoEntryV2 data);
+
+    public abstract LogicalPortInfoDtoV2 toLogicalPortInfoDtoV2(LogicalPortInfoEntryV2 data);
 }

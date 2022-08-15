@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.switches.v2.LogicalPortInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.MeterInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.MisconfiguredInfo;
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2.FieldMatch;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.FlowMeter;
 import org.openkilda.model.FlowPath;
@@ -459,7 +460,7 @@ public class ValidationServiceImpl implements ValidationService {
             //TODO: add flow id,flow path for expected entry
 
             misconfiguredGroups.add(MisconfiguredInfo.<GroupInfoEntryV2>builder()
-                    .id(Long.valueOf(expectedEntry.getGroupId()))
+                    .id(expectedEntry.getGroupId().toString())
                     .expected(expectedEntry)
                     .discrepancies(discrepancies)
                     .build());
@@ -485,7 +486,7 @@ public class ValidationServiceImpl implements ValidationService {
         discrepancies.build();
 
         return MisconfiguredInfo.<LogicalPortInfoEntryV2>builder()
-                .id(Long.valueOf(actualPort.getLogicalPortNumber()))
+                .id(expectedPort.getLogicalPortNumber().toString())
                 .expected(expectedPort)
                 .discrepancies(discrepancies.build())
                 .build();
@@ -507,7 +508,7 @@ public class ValidationServiceImpl implements ValidationService {
         }
 
         return MisconfiguredInfo.<MeterInfoEntryV2>builder()
-                .id(actualMeter.getMeterId())
+                .id(expectedMeter.getMeterId().toString())
                 .expected(expectedMeter)
                 .discrepancies(discrepancies.build())
                 .build();
@@ -541,8 +542,17 @@ public class ValidationServiceImpl implements ValidationService {
         if (!expected.getInstructions().equals(actual.getInstructions())) {
             discrepancies.instructions(actual.getInstructions());
         }
+        StringBuilder id = new StringBuilder(format("tableId=%s,priority=%s,", expected.getTableId(),
+                expected.getPriority()));
+
+        for (String match : expected.getMatch().keySet()) {
+            FieldMatch value = expected.getMatch().get(match);
+            id.append(format("%s:value=%s,mask=%s,isMasked=%s,", match, value.getValue(), value.getMask(),
+                    value.isMasked()));
+        }
+
         return MisconfiguredInfo.<RuleInfoEntryV2>builder()
-                .id(expected.getCookie()) //TODO: table id + priority + match?
+                .id(id.toString()) // tableId + priority + match
                 .expected(expected)
                 .discrepancies(discrepancies.build())
                 .build();

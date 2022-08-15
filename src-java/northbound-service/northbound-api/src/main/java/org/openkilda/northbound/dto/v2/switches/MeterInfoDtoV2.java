@@ -30,12 +30,12 @@ import java.util.List;
 @JsonNaming(value = SnakeCaseStrategy.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class MeterInfoDtoV2 {
-    private Integer cookie;
+    private Long cookie;
     private String flowId;
     private String flowPath;
     private String yFlowId;
-    private Integer meterId;
+    private Long meterId;
     private List<String> flags;
-    private Integer rate;
-    private Integer burstSize;
+    private Long rate;
+    private Long burstSize;
 }

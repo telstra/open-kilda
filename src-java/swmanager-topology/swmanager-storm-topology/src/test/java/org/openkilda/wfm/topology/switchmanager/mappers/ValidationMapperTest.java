@@ -240,7 +240,7 @@ public class ValidationMapperTest {
         properGroups.add(GroupEntryConverter.INSTANCE.toGroupEntry(initializeGroupSpeakerData(new SwitchId(2))));
         excessGroups.add(GroupEntryConverter.INSTANCE.toGroupEntry(initializeGroupSpeakerData(new SwitchId(3))));
         misconfiguredGroups.add(MisconfiguredInfo.<GroupInfoEntryV2>builder()
-                .id(11L)
+                .id("11")
                 .expected(GroupEntryConverter.INSTANCE.toGroupEntry(initializeGroupSpeakerData(new SwitchId(4))))
                 .discrepancies(GroupEntryConverter.INSTANCE.toGroupEntry(initializeGroupSpeakerData(new SwitchId(5))))
                 .build());
@@ -249,7 +249,7 @@ public class ValidationMapperTest {
         properRules.add(RuleEntryConverter.INSTANCE.toRuleEntry(initializeFlowSpeakerData(2)));
         excessRules.add(RuleEntryConverter.INSTANCE.toRuleEntry(initializeFlowSpeakerData(3)));
         misconfiguredRules.add(MisconfiguredInfo.<RuleInfoEntryV2>builder()
-                .id(1L)
+                .id("12")
                 .expected(RuleEntryConverter.INSTANCE.toRuleEntry(initializeFlowSpeakerData(4)))
                 .discrepancies(RuleEntryConverter.INSTANCE.toRuleEntry(initializeFlowSpeakerData(5)))
                 .build());
@@ -260,7 +260,7 @@ public class ValidationMapperTest {
         excessMeters.add(MeterEntryConverter.INSTANCE.toMeterEntry(initializeMeterSpeakerData(
                 new MeterId(3))));
         misconfiguredMeters.add(MisconfiguredInfo.<MeterInfoEntryV2>builder()
-                .id(1L)
+                .id("13")
                 .expected(MeterEntryConverter.INSTANCE.toMeterEntry(initializeMeterSpeakerData(new MeterId(4))))
                 .discrepancies(MeterEntryConverter.INSTANCE.toMeterEntry(
                         initializeMeterSpeakerData(new MeterId(5))))
@@ -270,7 +270,7 @@ public class ValidationMapperTest {
         missingPorts.add(LogicalPortMapper.INSTANCE.map(initializeLogicalPortData(new SwitchId(2))));
         excessPorts.add(LogicalPortMapper.INSTANCE.map(initializeLogicalPortData(new SwitchId(3))));
         misconfiguredPorts.add(MisconfiguredInfo.<LogicalPortInfoEntryV2>builder()
-                .id(1L)
+                .id("14")
                 .expected(LogicalPortMapper.INSTANCE.map(initializeLogicalPortData(new SwitchId(4))))
                 .discrepancies(LogicalPortMapper.INSTANCE.map(initializeLogicalPortData(new SwitchId(5))))
                 .build());

@@ -26,7 +26,7 @@ import java.io.Serializable;
 @Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class MisconfiguredInfo<T> implements Serializable {
-    private Long id;
+    private String id;
     private T discrepancies;
     private T expected;
 }

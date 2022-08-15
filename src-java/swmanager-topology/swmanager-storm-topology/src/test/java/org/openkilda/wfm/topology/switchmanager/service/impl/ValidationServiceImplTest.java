@@ -246,8 +246,8 @@ public class ValidationServiceImplTest {
         assertTrue(response.getProperGroups().isEmpty());
         assertFalse(response.isAsExpected());
 
-        assertEquals(expectedGroupData.get(0).getGroupId().intValue(), response.getMisconfiguredGroups().get(0).getId()
-                .intValue());
+        assertEquals(String.valueOf(expectedGroupData.get(0).getGroupId().getValue()),
+                response.getMisconfiguredGroups().get(0).getId());
 
         assertGroups(response.getMisconfiguredGroups().get(0).getExpected(), expectedGroupData.get(0).getGroupId()
                 .intValue(), PORT_NUMBER.getPortNumber(), VLAN_ID, VNI);
@@ -339,8 +339,8 @@ public class ValidationServiceImplTest {
         assertFalse(response.getMisconfiguredMeters().isEmpty());
         assertFalse(response.isAsExpected());
 
-        assertEquals(expectedMeter.getMeterId().getValue(), response.getMisconfiguredMeters().get(0).getId()
-                .longValue());
+        assertEquals(String.valueOf(expectedMeter.getMeterId().getValue()),
+                response.getMisconfiguredMeters().get(0).getId());
         assertEquals(10002, (long) response.getMisconfiguredMeters().get(0).getDiscrepancies().getRate());
         assertEquals(10498, (long) response.getMisconfiguredMeters().get(0).getDiscrepancies().getBurstSize());
         assertEquals(actualMeter.getFlags().stream().map(MeterFlag::name).collect(Collectors.toList()),
@@ -403,8 +403,8 @@ public class ValidationServiceImplTest {
         //discrepancies
         MeterInfoEntryV2 discrepancies = response.getMisconfiguredMeters().get(0).getDiscrepancies();
 
-        assertEquals(expectedMeter.getMeterId().getValue(), response.getMisconfiguredMeters().get(0).getId()
-                .longValue());
+        assertEquals(String.valueOf(expectedMeter.getMeterId().getValue()),
+                response.getMisconfiguredMeters().get(0).getId());
         assertEquals(actualMeter.getBurst(), (long) discrepancies.getBurstSize());
         assertNull(discrepancies.getRate());
         assertNull(discrepancies.getFlags());
@@ -443,7 +443,7 @@ public class ValidationServiceImplTest {
 
         MisconfiguredInfo<LogicalPortInfoEntryV2> misconfiguredEntry = MisconfiguredInfo
                 .<LogicalPortInfoEntryV2>builder()
-                .id((long) LOGICAL_PORT_NUMBER_2)
+                .id(String.valueOf(LOGICAL_PORT_NUMBER_2))
                 .expected(LogicalPortInfoEntryV2.builder()
                         .logicalPortNumber(misconfigured.getLogicalPortNumber())
                         .physicalPorts(Lists.newArrayList(PHYSICAL_PORT_3, PHYSICAL_PORT_4))

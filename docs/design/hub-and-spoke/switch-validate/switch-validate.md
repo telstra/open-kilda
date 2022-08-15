@@ -434,7 +434,7 @@ Response payload
     ],
     "misconfigured": [
       {
-        "id": "123123123",
+        "id": "tableId=1,priority=2,IN_PORTS:value=1,mask=123,isMasked=true",
         "expected": {
           <v2RuleInfo>
         },
@@ -590,7 +590,7 @@ To exclude flow info from response use `flow_info`.
     ],
     "misconfigured": [
       {
-        "id": "12123213",
+        "id": "tableId=1,priority=2,IN_PORTS:value=1,mask=123,isMasked=true",
         "expected": {
           <v2RuleInfo>  // without flow_id, y_flow_id and flow_path
         },

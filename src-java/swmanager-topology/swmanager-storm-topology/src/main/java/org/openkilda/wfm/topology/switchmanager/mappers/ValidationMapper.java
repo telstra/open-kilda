@@ -190,7 +190,7 @@ public abstract class ValidationMapper {
                 }
         );
         return GroupInfoEntry.builder()
-                .groupId(groupInfo.getId().intValue())
+                .groupId(Integer.getInteger(groupInfo.getId()))
                 .groupBuckets(groupBuckets)
                 .missingGroupBuckets(missingGroupBuckets)
                 .excessGroupBuckets(excessGroupBuckets)

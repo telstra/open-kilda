@@ -21,7 +21,7 @@ import lombok.Data;
 @Data
 @Builder
 public class MisconfiguredInfo<T> {
-    private Integer id;
+    private String id;
     private T expected;
     private T discrepancies;
 }

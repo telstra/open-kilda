@@ -15,8 +15,6 @@
 
 package org.openkilda.northbound.dto.v2.switches;
 
-import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
@@ -48,7 +46,7 @@ public class RuleInfoDtoV2 {
     private String yFlowId;
     List<String> flags;
     Map<String, FieldMatch> match;
-    RuleInfoEntryV2.Instructions instructions;
+    Instructions instructions;
 
     @Data
     @AllArgsConstructor
@@ -81,7 +79,7 @@ public class RuleInfoDtoV2 {
     public static class Instructions {
         Integer goToTable;
         Long goToMeter;
-        RuleInfoEntryV2.WriteMetadata writeMetadata;
+        WriteMetadata writeMetadata;
         List<String> applyActions;
         List<String> writeActions;
     }
