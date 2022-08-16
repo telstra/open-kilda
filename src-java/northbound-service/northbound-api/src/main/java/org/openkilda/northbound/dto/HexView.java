@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v1.switches;
+package org.openkilda.northbound.dto;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,5 +28,18 @@ public interface HexView {
             return null;
         }
         return input.stream().map(Long::toHexString).collect(Collectors.toList());
+    }
+
+    /**
+     * Convert long to hex.
+     *
+     * @param input long value
+     * @return string representation of the long value
+     */
+    default String toHex(Long input) {
+        if (input == null) {
+            return null;
+        }
+        return Long.toHexString(input).toUpperCase();
     }
 }

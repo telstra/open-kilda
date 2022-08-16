@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
@@ -97,6 +98,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -616,7 +618,28 @@ public class ValidationServiceImplTest {
         assertFalse(response.getMisconfiguredRules().isEmpty());
         assertTrue(response.getProperRules().isEmpty());
         assertFalse(response.isAsExpected());
-        //TODO: assert response.getMisconfiguredRules()).get(0).getId()
+
+        StringBuilder id = new StringBuilder(format("tableId=%s,priority=%s,", expected.get(0).getTable().getTableId(),
+                expected.get(0).getPriority()));
+
+        TreeMap<String, RuleInfoEntryV2.FieldMatch> matches = new TreeMap<>();
+
+        for (FieldMatch fieldMatch : expected.get(0).getMatch()) {
+            RuleInfoEntryV2.FieldMatch info = convertFieldMatch(fieldMatch);
+
+            String fieldName = Optional.ofNullable(fieldMatch.getField())
+                    .map(Field::name)
+                    .orElse(null);
+            matches.put(fieldName, info);
+
+        }
+
+        for (String speakerDataMatch : matches.keySet()) {
+            RuleInfoEntryV2.FieldMatch value = matches.get(speakerDataMatch);
+            id.append(format("%s:value=%s,mask=%s,", speakerDataMatch, value.getValue(), value.getMask()));
+        }
+
+        assertEquals(id.toString(), new ArrayList<>(response.getMisconfiguredRules()).get(0).getId());
         assertRules(expected.get(0), new ArrayList<>(response.getMisconfiguredRules()).get(0).getExpected());
 
         //discrepancies
@@ -630,6 +653,16 @@ public class ValidationServiceImplTest {
         assertNull(discrepancies.getMatch());
         assertNull(discrepancies.getTableId());
         assertNull(discrepancies.getPriority());
+    }
+
+    private RuleInfoEntryV2.FieldMatch convertFieldMatch(FieldMatch fieldMatch) {
+        Long mask = fieldMatch.getMask() == null || fieldMatch.getMask() == -1 ? null : fieldMatch.getMask();
+
+        return RuleInfoEntryV2.FieldMatch.builder()
+                .mask(mask)
+                .value(Optional.of(fieldMatch.getValue())
+                        .orElse(null))
+                .build();
     }
 
     //assert
@@ -650,7 +683,6 @@ public class ValidationServiceImplTest {
             assertNotNull(response);
             assertEquals(fieldMatch.getValue(), response.getValue().longValue());
             assertEquals(fieldMatch.getMask(), response.getMask());
-            assertEquals(fieldMatch.isMasked(), response.isMasked());
         }
     }
 

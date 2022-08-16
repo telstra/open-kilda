@@ -308,8 +308,7 @@ Response payload
   "match": {
     "in_port": {
       "value": 1,
-      "mask": 0,
-      "is_masked": false
+      "mask": 0
     }
   },
   "instructions": {
@@ -434,7 +433,7 @@ Response payload
     ],
     "misconfigured": [
       {
-        "id": "tableId=1,priority=2,IN_PORTS:value=1,mask=123,isMasked=true",
+        "id": "tableId=1,priority=2,IN_PORTS:value=1,mask=123",
         "expected": {
           <v2RuleInfo>
         },
@@ -590,7 +589,7 @@ To exclude flow info from response use `flow_info`.
     ],
     "misconfigured": [
       {
-        "id": "tableId=1,priority=2,IN_PORTS:value=1,mask=123,isMasked=true",
+        "id": "tableId=1,priority=2,IN_PORTS:value=1,mask=123",
         "expected": {
           <v2RuleInfo>  // without flow_id, y_flow_id and flow_path
         },

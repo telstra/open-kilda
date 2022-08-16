@@ -315,9 +315,6 @@ public abstract class SwitchMapper {
     @Mapping(source = "YFlowId", target = "yFlowId") //TODO: why doesnt jsonNaming work properly?
     public abstract RuleInfoDtoV2 toRuleInfoDtoV2(RuleInfoEntryV2 data);
 
-    @Mapping(source = "masked", target = "isMasked") //TODO: the same
-    public abstract RuleInfoDtoV2.FieldMatch toFieldMatch(RuleInfoEntryV2.FieldMatch fieldMatch);
-
     public abstract GroupInfoDtoV2 toGroupInfoDtoV2(GroupInfoEntryV2 data);
 
     public abstract MeterInfoDtoV2 toMeterInfoDtoV2(MeterInfoEntryV2 data);

@@ -74,6 +74,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -256,16 +257,6 @@ public class SwitchMapperTest {
         GroupInfoDtoV2 actual = switchMapper.toGroupInfoDtoV2(expected);
 
         assertGroups(expected, actual);
-    }
-
-    @Test
-    public void testToFieldMatchV2() {
-        RuleInfoEntryV2.FieldMatch expected = buildFieldMatchV2(PROPER_BASE);
-        RuleInfoDtoV2.FieldMatch actual = switchMapper.toFieldMatch(expected);
-
-        assertEquals(expected.getValue(), actual.getValue());
-        assertEquals(expected.getMask(), actual.getMask());
-        assertEquals(expected.isMasked(), actual.isMasked());
     }
 
     @Test
@@ -532,7 +523,6 @@ public class SwitchMapperTest {
                     RuleInfoDtoV2.FieldMatch actualFieldMatch = actual.get(key);
 
                     assertNotNull(actualFieldMatch);
-                    assertEquals(expected.get(key).isMasked(), actualFieldMatch.isMasked());
                     assertEquals(expected.get(key).getValue(), actualFieldMatch.getValue());
                     assertEquals(expected.get(key).getMask(), actualFieldMatch.getMask());
                 }
@@ -646,7 +636,6 @@ public class SwitchMapperTest {
         return RuleInfoEntryV2.FieldMatch.builder()
                 .value(base + 1L)
                 .mask(base + 2L)
-                .isMasked(true)
                 .build();
     }
 
@@ -689,7 +678,8 @@ public class SwitchMapperTest {
                 .flowPath(String.format("flow_path_%s", base))
                 .yFlowId(String.format("y_flow_id_%s", base))
                 .match(Stream.of(new SimpleEntry<>("key", buildFieldMatchV2(base)))
-                        .collect(Collectors.toMap(SimpleEntry::getKey, SimpleEntry::getValue)))
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+                                (oldValue, newValue) -> newValue, TreeMap::new)))
                 .instructions(instructions)
                 .flags(Lists.newArrayList(String.format("FLAG_%s", base)))
                 .build();

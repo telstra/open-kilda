@@ -150,6 +150,7 @@ public class ValidationServiceImpl implements ValidationService {
     @Override
     public ValidateGroupsResultV2 validateGroups(SwitchId switchId, List<GroupSpeakerData> groupEntries,
                                                  List<GroupSpeakerData> expectedGroupSpeakerData) {
+        log.debug("Validating groups on a switch {}", switchId);
 
         Set<GroupInfoEntryV2> expectedGroups = convertGroups(expectedGroupSpeakerData);
         Set<GroupInfoEntryV2> presentGroups = convertGroups(groupEntries);
@@ -184,6 +185,8 @@ public class ValidationServiceImpl implements ValidationService {
 
     @Override
     public ValidateLogicalPortsResultV2 validateLogicalPorts(SwitchId switchId, List<LogicalPort> presentLogicalPorts) {
+        log.debug("Validating logical ports on a switch {}", switchId);
+
         Map<Integer, LogicalPortInfoEntryV2> expectedPorts = lagLogicalPortRepository.findBySwitchId(switchId).stream()
                 .map(LogicalPortMapper.INSTANCE::map)
                 .peek(port -> Collections.sort(port.getPhysicalPorts()))
@@ -521,9 +524,6 @@ public class ValidationServiceImpl implements ValidationService {
         if (!expected.getCookie().equals(actual.getCookie())) {
             discrepancies.cookie(actual.getCookie());
         }
-        if (!expected.getCookieHex().equals(actual.getCookieHex())) {
-            discrepancies.cookieHex(actual.getCookieHex());
-        }
         if (!expected.getCookieKind().equals(actual.getCookieKind())) {
             discrepancies.cookieKind(actual.getCookieKind());
         }
@@ -542,20 +542,27 @@ public class ValidationServiceImpl implements ValidationService {
         if (!expected.getInstructions().equals(actual.getInstructions())) {
             discrepancies.instructions(actual.getInstructions());
         }
+
+        return MisconfiguredInfo.<RuleInfoEntryV2>builder()
+                .id(buildRuleId(expected)) // tableId + priority + match
+                .expected(expected)
+                .discrepancies(discrepancies.build())
+                .build();
+    }
+
+    private String buildRuleId(RuleInfoEntryV2 expected) {
         StringBuilder id = new StringBuilder(format("tableId=%s,priority=%s,", expected.getTableId(),
                 expected.getPriority()));
 
         for (String match : expected.getMatch().keySet()) {
             FieldMatch value = expected.getMatch().get(match);
-            id.append(format("%s:value=%s,mask=%s,isMasked=%s,", match, value.getValue(), value.getMask(),
-                    value.isMasked()));
+            id.append(format("%s:value=%s,", match, value.getValue()));
+            if (value.getValue() != null) {
+                id.append(format("mask=%s,", value.getMask()));
+            }
         }
 
-        return MisconfiguredInfo.<RuleInfoEntryV2>builder()
-                .id(id.toString()) // tableId + priority + match
-                .expected(expected)
-                .discrepancies(discrepancies.build())
-                .build();
+        return id.toString();
     }
 
     private static String cookiesIntoLogRepresentation(Collection<RuleInfoEntryV2> rules) {

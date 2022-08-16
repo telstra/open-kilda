@@ -15,8 +15,9 @@
 
 package org.openkilda.messaging.info.switches.v2;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
 
@@ -25,47 +26,16 @@ import java.util.List;
 
 @Data
 @Builder
+@JsonNaming(value = SnakeCaseStrategy.class)
 public class MeterInfoEntryV2 implements Serializable {
-    @JsonProperty("meter_id")
     private Long meterId;
-
-    @JsonProperty("cookie")
     private Long cookie;
-
-    @JsonProperty("flow_id")
     private String flowId;
-
-    @JsonProperty("flow_path")
     private String flowPath;
 
     @JsonProperty("y_flow_id")
     private String yFlowId;
-
-    @JsonProperty("rate")
     private Long rate;
-
-    @JsonProperty("burst_size")
     private Long burstSize;
-
-    @JsonProperty("flags")
     private List<String> flags;
-
-    @JsonCreator
-    public MeterInfoEntryV2(@JsonProperty("meter_id") Long meterId,
-                            @JsonProperty("cookie") Long cookie,
-                            @JsonProperty("flow_id") String flowId,
-                            @JsonProperty("y_flow_id") String yFlowId,
-                            @JsonProperty("flow_path") String flowPath,
-                            @JsonProperty("rate") Long rate,
-                            @JsonProperty("burst_size") Long burstSize,
-                            @JsonProperty("flags") List<String> flags) {
-        this.meterId = meterId;
-        this.cookie = cookie;
-        this.flowId = flowId;
-        this.yFlowId = yFlowId;
-        this.flowPath = flowPath;
-        this.rate = rate;
-        this.burstSize = burstSize;
-        this.flags = flags;
-    }
 }

@@ -25,7 +25,7 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.List;
-import java.util.Map;
+import java.util.TreeMap;
 
 @Data
 @Builder
@@ -42,7 +42,7 @@ public class RuleInfoEntryV2 implements Serializable {
     @JsonProperty("y_flow_id")
     private String yFlowId;
     List<String> flags;
-    Map<String, FieldMatch> match;
+    TreeMap<String, FieldMatch> match;
     Instructions instructions;
 
     @Data
@@ -53,9 +53,6 @@ public class RuleInfoEntryV2 implements Serializable {
     public static class FieldMatch implements Serializable {
         Long value;
         Long mask;
-
-        @JsonProperty("is_masked")
-        boolean isMasked;
     }
 
     @Data

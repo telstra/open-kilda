@@ -15,6 +15,9 @@
 
 package org.openkilda.northbound.dto.v2.switches;
 
+import org.openkilda.northbound.dto.HexView;
+
+import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
@@ -33,9 +36,14 @@ import java.util.Map;
 @NoArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class RuleInfoDtoV2 {
+public class RuleInfoDtoV2 implements HexView {
     Long cookie;
-    String cookieHex;
+
+    @JsonGetter("cookie_hex")
+    String getCookieHex() {
+        return toHex(cookie);
+    }
+
     String cookieKind;
     Integer tableId;
     Integer priority;
@@ -56,9 +64,6 @@ public class RuleInfoDtoV2 {
     public static class FieldMatch {
         Long value;
         Long mask;
-
-        @JsonProperty("is_masked")
-        boolean isMasked;
     }
 
     @Data

@@ -15,7 +15,6 @@
 
 package org.openkilda.messaging.info.switches.v2;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
@@ -28,32 +27,9 @@ import java.util.List;
 @Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class MetersValidationEntryV2 implements Serializable {
-    @JsonProperty("as_expected")
     private boolean asExpected;
-
-    @JsonProperty("excess")
     private List<MeterInfoEntryV2> excess;
-
-    @JsonProperty("proper")
     private List<MeterInfoEntryV2> proper;
-
-    @JsonProperty("missing")
     private List<MeterInfoEntryV2> missing;
-
-    @JsonProperty("misconfigured")
     private List<MisconfiguredInfo<MeterInfoEntryV2>> misconfigured;
-
-    //    @JsonCreator
-    //    public void MetersValidationEntry(@JsonProperty("as_expected") boolean asExpected,
-    //                                      @JsonProperty("missing") List<MeterInfoEntryV2> missing,
-    //                                      @JsonProperty("misconfigured")
-    //                                         List<MisconfiguredInfo<MeterInfoEntryV2>> misconfigured,
-    //                                      @JsonProperty("proper") List<MeterInfoEntryV2> proper,
-    //                                      @JsonProperty("excess") List<MeterInfoEntryV2> excess) {
-    //        this.asExpected = asExpected;
-    //        this.missing = missing;
-    //        this.misconfigured = misconfigured;
-    //        this.proper = proper;
-    //        this.excess = excess;
-    //    }
 }

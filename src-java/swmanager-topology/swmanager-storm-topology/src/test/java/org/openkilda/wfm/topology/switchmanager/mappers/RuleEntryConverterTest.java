@@ -126,7 +126,6 @@ public class RuleEntryConverterTest {
             assertNotNull(entryMatchField.get(fieldName));
             assertEquals(match.getValue(), entryMatchField.get(fieldName).getValue().intValue());
             assertEquals(match.getMask().intValue(), entryMatchField.get(fieldName).getMask().intValue());
-            assertEquals(match.isMasked(), entryMatchField.get(fieldName).isMasked());
         });
 
         // Instructions

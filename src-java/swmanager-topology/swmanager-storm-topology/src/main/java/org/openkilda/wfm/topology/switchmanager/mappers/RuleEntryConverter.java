@@ -33,11 +33,10 @@ import org.mapstruct.factory.Mappers;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 @Mapper
@@ -57,7 +56,6 @@ public class RuleEntryConverter {
                         .map(OfTable::getTableId)
                         .orElse(null))
                 .cookieKind("TBD")
-                .cookieHex("TBD")
                 .flags(Optional.ofNullable(speakerData.getFlags())
                         .map(f -> f.stream().map(OfFlowFlag::name)
                                 .collect(Collectors.toList()))
@@ -69,8 +67,8 @@ public class RuleEntryConverter {
                 .build();
     }
 
-    private Map<String, RuleInfoEntryV2.FieldMatch> convertMatch(Set<FieldMatch> fieldMatches) {
-        Map<String, RuleInfoEntryV2.FieldMatch> matches = new HashMap<>();
+    private TreeMap<String, RuleInfoEntryV2.FieldMatch> convertMatch(Set<FieldMatch> fieldMatches) {
+        TreeMap<String, RuleInfoEntryV2.FieldMatch> matches = new TreeMap<>();
 
         for (FieldMatch fieldMatch : fieldMatches) {
             RuleInfoEntryV2.FieldMatch info = convertFieldMatch(fieldMatch);
@@ -85,11 +83,10 @@ public class RuleEntryConverter {
     }
 
     private RuleInfoEntryV2.FieldMatch convertFieldMatch(FieldMatch fieldMatch) {
+        Long mask = fieldMatch.getMask() == null || fieldMatch.getMask() == -1 ? null : fieldMatch.getMask();
+
         return RuleInfoEntryV2.FieldMatch.builder()
-                .mask(Optional.ofNullable(fieldMatch.getMask())
-                        .orElse(null))
-                .isMasked(Optional.of(fieldMatch.isMasked())
-                        .orElse(null))
+                .mask(mask)
                 .value(Optional.of(fieldMatch.getValue())
                         .orElse(null))
                 .build();
