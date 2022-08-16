@@ -23,6 +23,7 @@ import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.CookieCacheKey;
 import org.openkilda.wfm.topology.stats.model.DummyFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyMeterDescriptor;
+import org.openkilda.wfm.topology.stats.model.EndpointFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptorHandler;
 import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
@@ -62,6 +63,11 @@ abstract class BaseCacheChangeHandler implements KildaEntryDescriptorHandler {
                 cacheAction(new CookieCacheKey(descriptor.getSwitchId(), statVlanCookie), descriptor);
             }
         }
+    }
+
+    @Override
+    public void handleStatsEntry(EndpointFlowDescriptor descriptor) {
+        handleFlowStatsEntry(descriptor.getSwitchId(), descriptor.getCookie(), descriptor.getMeterId(), descriptor);
     }
 
     @Override

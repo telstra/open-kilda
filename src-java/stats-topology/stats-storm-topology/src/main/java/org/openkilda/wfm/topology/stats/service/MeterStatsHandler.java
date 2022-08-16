@@ -27,6 +27,7 @@ import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyMeterDescriptor;
+import org.openkilda.wfm.topology.stats.model.EndpointFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
@@ -56,6 +57,11 @@ public final class MeterStatsHandler extends BaseStatsEntryHandler {
         TagsFormatter tags = initTags();
         tags.addIsYFlowSubFlowTag(false);
         handleFlowStats(tags, descriptor.getCookie(), descriptor.getFlowId());
+    }
+
+    @Override
+    public void handleStatsEntry(EndpointFlowDescriptor descriptor) {
+        handleStatsEntry((CommonFlowDescriptor) descriptor);
     }
 
     @Override

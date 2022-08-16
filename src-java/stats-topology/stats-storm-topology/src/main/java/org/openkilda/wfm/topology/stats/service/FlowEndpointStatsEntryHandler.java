@@ -25,6 +25,7 @@ import org.openkilda.wfm.topology.stats.bolts.metrics.FlowDirectionHelper.Direct
 import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyMeterDescriptor;
+import org.openkilda.wfm.topology.stats.model.EndpointFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.MeasurePoint;
 import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
@@ -52,10 +53,15 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
     }
 
     @Override
-    public void handleStatsEntry(CommonFlowDescriptor descriptor) {
+    public void handleStatsEntry(EndpointFlowDescriptor descriptor) {
         TagsFormatter tags = initTags(false);
         tags.addFlowIdTag(descriptor.getFlowId());
-        emitMeterPoints(tags, descriptor.getMeasurePoint());
+        emitMeterPoints(tags, descriptor.getMeasurePoint(), descriptor.isHasMirror());
+    }
+
+    @Override
+    public void handleStatsEntry(CommonFlowDescriptor descriptor) {
+        // nothing to do here
     }
 
     @Override
@@ -80,7 +86,7 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
         TagsFormatter tags = initTags(true);
         tags.addFlowIdTag(descriptor.getSubFlowId());
         tags.addYFlowIdTag(descriptor.getYFlowId());
-        emitMeterPoints(tags, descriptor.getMeasurePoint());
+        emitMeterPoints(tags, descriptor.getMeasurePoint(), false);
     }
 
     @Override
@@ -116,9 +122,10 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
         emitStatVlan(tags);
     }
 
-    private void emitMeterPoints(TagsFormatter tags, MeasurePoint measurePoint) {
+    private void emitMeterPoints(TagsFormatter tags, MeasurePoint measurePoint, boolean hasMirror) {
         FlowSegmentCookie cookie = decodeFlowSegmentCookie(statsEntry.getCookie());
-        if (cookie != null && !isFlowSatelliteEntry(cookie)) {
+        if (cookie != null && cookie.getType() == CookieType.SERVICE_OR_FLOW_SEGMENT
+                && cookie.isMirror() == hasMirror) {
             directionFromCookieIntoTags(cookie, tags);
             switch (measurePoint) {
                 case INGRESS:
