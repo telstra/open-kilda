@@ -125,4 +125,12 @@ public abstract class KildaFeatureTogglesFrame extends KildaBaseVertexFrame impl
     @Override
     @Property("sync_switch_on_connect")
     public abstract void setSyncSwitchOnConnect(Boolean syncSwitchOnConnect);
+
+    @Override
+    @Property("discover_new_isls_in_under_maintenance_mode")
+    public abstract Boolean getDiscoverNewIslsInUnderMaintenanceMode();
+
+    @Override
+    @Property("discover_new_isls_in_under_maintenance_mode")
+    public abstract void setDiscoverNewIslsInUnderMaintenanceMode(Boolean discoverNewIslsInUnderMaintenanceMode);
 }

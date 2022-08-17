@@ -549,13 +549,28 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .srcPort(sourceEndpoint.getPortNumber())
                 .destSwitch(dest.getSw())
                 .destPort(destEndpoint.getPortNumber())
-                .underMaintenance(source.getSw().isUnderMaintenance() || dest.getSw().isUnderMaintenance());
+                .underMaintenance(source.getSw().isUnderMaintenance()
+                        || dest.getSw().isUnderMaintenance()
+                        || shouldDiscoverNewIslInUnderMaintenance(source, dest));
         initializeFromLinkProps(sourceEndpoint, destEndpoint, islBuilder);
         Isl link = islBuilder.build();
 
         log.info("Create new DB object (prefilled): {}", link);
         islRepository.add(link);
         return link;
+    }
+
+    private Boolean shouldDiscoverNewIslInUnderMaintenance(Anchor source, Anchor dest) {
+        boolean isFeatureToggleEnabled = featureTogglesRepository.getOrDefault()
+                .getDiscoverNewIslsInUnderMaintenanceMode();
+        if (!isFeatureToggleEnabled) {
+            return false;
+        }
+        Optional<Isl> storedIsl = islRepository.findByPartialEndpoints(
+                source.getSw().getSwitchId(), source.getEndpoint().getPortNumber(),
+                dest.getSw().getSwitchId(), dest.getEndpoint().getPortNumber()
+        ).stream().findAny();
+        return !storedIsl.isPresent();
     }
 
     private Anchor loadSwitchCreateIfMissing(Endpoint endpoint) {
