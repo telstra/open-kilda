@@ -129,6 +129,8 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static final FlowSegmentCookie MAIN_REVERSE_COOKIE = new FlowSegmentCookie(REVERSE, MAIN_COOKIE);
     private static final FlowSegmentCookie PROTECTED_FORWARD_COOKIE = new FlowSegmentCookie(FORWARD, PROTECTED_COOKIE);
     private static final FlowSegmentCookie PROTECTED_REVERSE_COOKIE = new FlowSegmentCookie(REVERSE, PROTECTED_COOKIE);
+    private static final FlowSegmentCookie FORWARD_MIRROR_COOKIE = MAIN_FORWARD_COOKIE.toBuilder().mirror(true).build();
+    private static final FlowSegmentCookie REVERSE_MIRROR_COOKIE = MAIN_REVERSE_COOKIE.toBuilder().mirror(true).build();
     private static final FlowSegmentCookie STAT_VLAN_FORWARD_COOKIE_1 = MAIN_FORWARD_COOKIE.toBuilder()
             .type(CookieType.VLAN_STATS_PRE_INGRESS).statsVlan(STAT_VLAN_1).build();
     private static final FlowSegmentCookie STAT_VLAN_FORWARD_COOKIE_2 = MAIN_FORWARD_COOKIE.toBuilder()
@@ -459,6 +461,62 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
+    public void flowStatsMirrorTest() {
+        // FLow without mirrors
+        Flow flow = createFlow();
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics(), false, false);
+        sendUpdateFlowPathInfo(flow.getReversePath(), flow.getVlanStatistics(), false, false);
+
+        // Flow has no mirrors. Ingress rule generates ingress metrics
+        FlowStatsEntry ingressForwardStats = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(ingressForwardStats)));
+        validateFlowStats(ingressForwardStats, MAIN_FORWARD_COOKIE, SWITCH_ID_1, true, false);
+
+        // Flow has no mirrors. Egress rule generates egress metrics
+        FlowStatsEntry egressReverseStats = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 5, 6, 7, 8);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(egressReverseStats)));
+        validateFlowStats(egressReverseStats, MAIN_REVERSE_COOKIE, SWITCH_ID_1, false, true);
+
+        // Add mirrors to the flow
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics(), true, true);
+        sendUpdateFlowPathInfo(flow.getReversePath(), flow.getVlanStatistics(), true, true);
+
+        // Flow has mirrors. Ingress rule generates only raw metrics
+        FlowStatsEntry ingressForwardRawStats = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 9, 10, 11, 12);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(ingressForwardRawStats)));
+        validateFlowStats(ingressForwardRawStats, MAIN_FORWARD_COOKIE, SWITCH_ID_1, false, false);
+
+        // Flow has mirrors. Egress rule generates only raw metrics
+        FlowStatsEntry egressReverseRawStats = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 13, 14, 15, 16);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(egressReverseRawStats)));
+        validateFlowStats(egressReverseRawStats, MAIN_REVERSE_COOKIE, SWITCH_ID_1, false, false);
+
+        // Flow has mirrors. Mirror rule generates ingress metrics
+        FlowStatsEntry mirrorForwardStats = new FlowStatsEntry(1, FORWARD_MIRROR_COOKIE.getValue(), 17, 18, 19, 20);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(mirrorForwardStats)));
+        validateFlowStats(mirrorForwardStats, FORWARD_MIRROR_COOKIE, SWITCH_ID_1, true, false);
+
+        // Flow has mirrors. Mirror rule generates egress metrics
+        FlowStatsEntry mirrorReverseRawStats = new FlowStatsEntry(1, REVERSE_MIRROR_COOKIE.getValue(), 21, 22, 23, 24);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(mirrorReverseRawStats)));
+        validateFlowStats(mirrorReverseRawStats, REVERSE_MIRROR_COOKIE, SWITCH_ID_1, false, true);
+
+        // Remove mirrors from the flow
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics(), false, false);
+        sendUpdateFlowPathInfo(flow.getReversePath(), flow.getVlanStatistics(), false, false);
+
+        // Flow has no mirrors. Ingress rule generates ingress metrics
+        FlowStatsEntry newIngressForwardStats = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 25, 26, 27, 28);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(newIngressForwardStats)));
+        validateFlowStats(newIngressForwardStats, MAIN_FORWARD_COOKIE, SWITCH_ID_1, true, false);
+
+        // Flow has no mirrors. Egress rule generates egress metrics
+        FlowStatsEntry newEgressReverseStats = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 29, 30, 31, 32);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(newEgressReverseStats)));
+        validateFlowStats(newEgressReverseStats, MAIN_REVERSE_COOKIE, SWITCH_ID_1, false, true);
+    }
+
+    @Test
     public void flowStatsSwapPathTest() {
         Flow flow = createFlowWithProtectedPath();
         sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
@@ -528,13 +586,14 @@ public class StatsTopologyTest extends AbstractStormTest {
         }
 
         String direction = cookie.getDirection().name().toLowerCase();
+        int expectedRawTagsCount = cookie.isMirror() ? 12 : 9;
 
         datapoints.forEach(datapoint -> {
             switch (datapoint.getMetric()) {
                 case METRIC_PREFIX + "flow.raw.packets":
                 case METRIC_PREFIX + "flow.raw.bytes":
                 case METRIC_PREFIX + "flow.raw.bits":
-                    assertEquals(9, datapoint.getTags().size());
+                    assertEquals(expectedRawTagsCount, datapoint.getTags().size());
                     assertEquals(flowId, datapoint.getTags().get("flowid"));
                     assertEquals(direction, datapoint.getTags().get("direction"));
                     assertEquals(String.valueOf(flowStats.getTableId()), datapoint.getTags().get("tableid"));
@@ -542,7 +601,15 @@ public class StatsTopologyTest extends AbstractStormTest {
                     assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
                     assertEquals(Integer.toString(flowStats.getOutPort()), datapoint.getTags().get("outPort"));
                     assertEquals(Integer.toString(flowStats.getInPort()), datapoint.getTags().get("inPort"));
-                    assertEquals("false", datapoint.getTags().get("is_flow_satellite"));
+
+                    if (cookie.isMirror()) {
+                        assertEquals("true", datapoint.getTags().get("is_flow_satellite"));
+                        assertEquals("true", datapoint.getTags().get("is_mirror"));
+                        assertEquals("false", datapoint.getTags().get("is_loop"));
+                        assertEquals("false", datapoint.getTags().get("is_flowrtt_inject"));
+                    } else {
+                        assertEquals("false", datapoint.getTags().get("is_flow_satellite"));
+                    }
                     break;
                 case METRIC_PREFIX + "flow.ingress.packets":
                 case METRIC_PREFIX + "flow.ingress.bytes":
@@ -859,17 +926,30 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     private void sendRemoveFlowPathInfo(FlowPath flowPath, Set<Integer> vlanStatistics) {
+        sendRemoveFlowPathInfo(flowPath, vlanStatistics, hasIngressMirror(flowPath), hasEgressMirror(flowPath));
+    }
+
+    private void sendRemoveFlowPathInfo(
+            FlowPath flowPath, Set<Integer> vlanStatistics, boolean ingressMirror, boolean egressMirror) {
         RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
                 flowPath.getFlowId(), null, flowPath.getCookie(), flowPath.getMeterId(),
-                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath), vlanStatistics);
+                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath), vlanStatistics, ingressMirror,
+                egressMirror);
         InfoMessage infoMessage = new InfoMessage(pathInfo, timestamp, UUID.randomUUID().toString(), null, null);
         sendMessage(infoMessage, statsTopologyConfig.getFlowStatsNotifyTopic());
     }
 
+
     private void sendUpdateFlowPathInfo(FlowPath flowPath, Set<Integer> vlanStatistics) {
+        sendUpdateFlowPathInfo(flowPath, vlanStatistics, hasIngressMirror(flowPath), hasEgressMirror(flowPath));
+    }
+
+    private void sendUpdateFlowPathInfo(
+            FlowPath flowPath, Set<Integer> vlanStatistics, boolean ingressMirror, boolean egressMirror) {
         UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
                 flowPath.getFlowId(), null, flowPath.getCookie(), flowPath.getMeterId(),
-                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath), vlanStatistics);
+                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath), vlanStatistics, ingressMirror,
+                egressMirror);
         InfoMessage infoMessage = new InfoMessage(pathInfo, timestamp, UUID.randomUUID().toString(), null, null);
         sendMessage(infoMessage, statsTopologyConfig.getFlowStatsNotifyTopic());
     }
@@ -925,5 +1005,15 @@ public class StatsTopologyTest extends AbstractStormTest {
         return datapoints
                 .stream()
                 .collect(Collectors.toMap(Datapoint::getMetric, Function.identity()));
+    }
+
+    protected boolean hasIngressMirror(FlowPath flowPath) {
+        return flowPath.getFlowMirrorPointsSet().stream()
+                .anyMatch(point -> point.getMirrorSwitchId().equals(flowPath.getSrcSwitchId()));
+    }
+
+    protected boolean hasEgressMirror(FlowPath flowPath) {
+        return flowPath.getFlowMirrorPointsSet().stream()
+                .anyMatch(point -> point.getMirrorSwitchId().equals(flowPath.getDestSwitchId()));
     }
 }

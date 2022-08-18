@@ -40,4 +40,6 @@ public abstract class BaseFlowPathInfo extends StatsNotification {
     MeterId meterId;
     @NonNull List<PathNodePayload> pathNodes;
     Set<Integer> statVlans;
+    boolean ingressMirror;
+    boolean egressMirror;
 }
