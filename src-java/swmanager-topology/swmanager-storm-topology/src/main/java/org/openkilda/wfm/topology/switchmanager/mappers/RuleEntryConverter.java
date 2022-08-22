@@ -17,6 +17,19 @@ package org.openkilda.wfm.topology.switchmanager.mappers;
 
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2.WriteMetadata;
+import org.openkilda.messaging.info.switches.v2.action.BaseAction;
+import org.openkilda.messaging.info.switches.v2.action.CopyFieldActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.GroupActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.MeterActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.PopVlanActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.PopVxlanActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.PortOutActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.PushVlanActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.PushVxlanActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.SetFieldActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.SwapFieldActionEntry;
+import org.openkilda.model.GroupId;
+import org.openkilda.model.IPv4Address;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.cookie.CookieBase;
 import org.openkilda.rulemanager.Field;
@@ -25,15 +38,23 @@ import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
+import org.openkilda.rulemanager.ProtoConstants;
+import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.action.Action;
+import org.openkilda.rulemanager.action.GroupAction;
+import org.openkilda.rulemanager.action.MeterAction;
+import org.openkilda.rulemanager.action.PortOutAction;
+import org.openkilda.rulemanager.action.PushVxlanAction;
+import org.openkilda.rulemanager.action.SetFieldAction;
+import org.openkilda.rulemanager.action.SwapFieldAction;
+import org.openkilda.rulemanager.action.noviflow.CopyFieldAction;
+import org.openkilda.rulemanager.action.noviflow.OpenFlowOxms;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 
-import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -102,10 +123,14 @@ public class RuleEntryConverter {
                         .orElse(null))
                 .writeMetadata(convertWriteMetadata(Optional.ofNullable(instructions.getWriteMetadata())
                         .orElse(null)))
-                .applyActions(convertActions(Optional.ofNullable(instructions.getApplyActions())
-                        .orElse(Collections.emptyList())))
-                .writeActions(convertActions(Optional.ofNullable(instructions.getWriteActions())
-                        .orElse(Collections.emptySet())))
+                .applyActions(Optional.ofNullable(instructions.getApplyActions())
+                        .orElse(Collections.emptyList()).stream()
+                        .map(this::convertActions)
+                        .collect(Collectors.toList()))
+                .writeActions(Optional.ofNullable(instructions.getWriteActions())
+                        .orElse(Collections.emptySet()).stream()
+                        .map(this::convertActions)
+                        .collect(Collectors.toList()))
                 .build();
     }
 
@@ -119,9 +144,104 @@ public class RuleEntryConverter {
                 .build();
     }
 
-    private List<String> convertActions(Collection<Action> actions) {
-        return actions.stream()
-                .map(e -> e.getType().name())
-                .collect(Collectors.toList());
+    private BaseAction convertActions(Action action) {
+        BaseAction result;
+        switch (action.getType()) {
+            case GROUP:
+                GroupAction groupAction = (GroupAction) action;
+                result = GroupActionEntry.builder()
+                        .groupId(Optional.ofNullable(groupAction.getGroupId())
+                                .map(GroupId::getValue)
+                                .orElse(null))
+                        .build();
+                break;
+            case PORT_OUT:
+                PortOutAction portOutAction = (PortOutAction) action;
+                result = PortOutActionEntry.builder()
+                        .portNumber(Optional.ofNullable(portOutAction.getPortNumber())
+                                .map(ProtoConstants.PortNumber::getPortNumber)
+                                .orElse(null))
+                        .portType(Optional.ofNullable(portOutAction.getPortNumber())
+                                .map(ProtoConstants.PortNumber::getPortType)
+                                .map(SpecialPortType::name).orElse(null))
+                        .build();
+                break;
+            case POP_VLAN:
+                result = PopVlanActionEntry.builder().build();
+                break;
+            case PUSH_VLAN:
+                result = PushVlanActionEntry.builder().build();
+                break;
+            case POP_VXLAN_NOVIFLOW:
+            case POP_VXLAN_OVS:
+                result = PopVxlanActionEntry.builder()
+                        .actionType(action.getType().name())
+                        .build();
+                break;
+            case PUSH_VXLAN_NOVIFLOW:
+            case PUSH_VXLAN_OVS:
+                PushVxlanAction pushVxlanAction = (PushVxlanAction) action;
+                result = PushVxlanActionEntry.builder()
+                        .actionType(action.getType().name())
+                        .dstIpv4Address(Optional.ofNullable(pushVxlanAction.getDstIpv4Address())
+                                .map(IPv4Address::getAddress)
+                                .orElse(null))
+                        .srcIpv4Address(Optional.ofNullable(pushVxlanAction.getSrcIpv4Address())
+                                .map(IPv4Address::getAddress)
+                                .orElse(null))
+                        .udpSrc(pushVxlanAction.getUdpSrc())
+                        .vni(pushVxlanAction.getVni())
+                        .build();
+                break;
+            case METER:
+                MeterAction meterAction = (MeterAction) action;
+                result = MeterActionEntry.builder()
+                        .meterId(Optional.ofNullable(meterAction.getMeterId())
+                                .orElse(null))
+                        .build();
+                break;
+            case SET_FIELD:
+                SetFieldAction setField = (SetFieldAction) action;
+                result = SetFieldActionEntry.builder()
+                        .field(Optional.ofNullable(setField.getField())
+                                .map(Field::name)
+                                .orElse(null))
+                        .value(setField.getValue())
+                        .build();
+                break;
+            case NOVI_SWAP_FIELD:
+            case KILDA_SWAP_FIELD:
+                SwapFieldAction noviSwapField = (SwapFieldAction) action;
+                result = SwapFieldActionEntry.builder()
+                        .oxmDstHeader(Optional.ofNullable(noviSwapField.getOxmDstHeader())
+                                .map(OpenFlowOxms::name)
+                                .orElse(null))
+                        .oxmSrcHeader(Optional.ofNullable(noviSwapField.getOxmSrcHeader())
+                                .map(OpenFlowOxms::name)
+                                .orElse(null))
+                        .actionType(action.getType().name())
+                        .dstOffset(noviSwapField.getDstOffset())
+                        .srcOffset(noviSwapField.getSrcOffset())
+                        .numberOfBits(noviSwapField.getNumberOfBits())
+                        .build();
+                break;
+            case NOVI_COPY_FIELD:
+                CopyFieldAction noviCopyField = (CopyFieldAction) action;
+                result = CopyFieldActionEntry.builder()
+                        .oxmDstHeader(Optional.ofNullable(noviCopyField.getOxmDstHeader())
+                                .map(OpenFlowOxms::name)
+                                .orElse(null))
+                        .oxmSrcHeader(Optional.ofNullable(noviCopyField.getOxmSrcHeader())
+                                .map(OpenFlowOxms::name)
+                                .orElse(null))
+                        .dstOffset(noviCopyField.getDstOffset())
+                        .srcOffset(noviCopyField.getSrcOffset())
+                        .numberOfBits(noviCopyField.getNumberOfBits())
+                        .build();
+                break;
+            default:
+                throw new IllegalStateException("Unexpected action type: " + action.getType());
+        }
+        return result;
     }
 }

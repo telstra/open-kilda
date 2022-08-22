@@ -37,6 +37,8 @@ import org.openkilda.messaging.info.switches.v2.MisconfiguredInfo;
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.RulesValidationEntryV2;
 import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
+import org.openkilda.messaging.info.switches.v2.action.BaseAction;
+import org.openkilda.messaging.info.switches.v2.action.CopyFieldActionEntry;
 import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.IpSocketAddress;
@@ -51,6 +53,7 @@ import org.openkilda.northbound.dto.v1.switches.RulesValidationDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
+import org.openkilda.northbound.dto.v2.action.CopyFieldActionDto;
 import org.openkilda.northbound.dto.v2.switches.GroupInfoDtoV2;
 import org.openkilda.northbound.dto.v2.switches.GroupsValidationDtoV2;
 import org.openkilda.northbound.dto.v2.switches.LogicalPortInfoDtoV2;
@@ -72,7 +75,9 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.AbstractMap.SimpleEntry;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -535,8 +540,24 @@ public class SwitchMapperTest {
 
         assertEquals(expected.getWriteMetadata().getValue(), actual.getWriteMetadata().getValue());
         assertEquals(expected.getWriteMetadata().getMask(), actual.getWriteMetadata().getMask());
-        assertEquals(expected.getApplyActions(), actual.getApplyActions());
-        assertEquals(expected.getWriteActions(), actual.getWriteActions());
+
+        //actions
+        CopyFieldActionDto actualAction = (CopyFieldActionDto) actual.getApplyActions().get(0);
+        CopyFieldActionEntry expectedAction = (CopyFieldActionEntry) expected.getApplyActions().get(0);
+        assertActions(expectedAction, actualAction);
+
+        actualAction = (CopyFieldActionDto) actual.getWriteActions().get(0);
+        expectedAction = (CopyFieldActionEntry) expected.getWriteActions().get(0);
+        assertActions(expectedAction, actualAction);
+    }
+
+    private void assertActions(CopyFieldActionEntry expectedAction, CopyFieldActionDto actualAction) {
+        assertEquals(expectedAction.getActionType(), actualAction.getActionType());
+        assertEquals(expectedAction.getDstOffset(), actualAction.getDstOffset());
+        assertEquals(expectedAction.getSrcOffset(), actualAction.getSrcOffset());
+        assertEquals(expectedAction.getNumberOfBits(), actualAction.getNumberOfBits());
+        assertEquals(expectedAction.getOxmDstHeader(), actualAction.getOxmDstHeader());
+        assertEquals(expectedAction.getOxmSrcHeader(), actualAction.getOxmSrcHeader());
     }
 
     private void assertMeters(MeterInfoEntryV2 expected, MeterInfoDtoV2 actual) {
@@ -663,9 +684,9 @@ public class SwitchMapperTest {
         RuleInfoEntryV2.Instructions instructions = RuleInfoEntryV2.Instructions.builder()
                 .goToMeter(base + 1L)
                 .goToTable(base + 2)
-                .applyActions(Lists.newArrayList(String.format("APPLY_ACTION_%s", base)))
+                .applyActions(buildActions())
                 .writeMetadata(RuleInfoEntryV2.WriteMetadata.builder().mask(base + 3L).value(base + 4L).build())
-                .writeActions(Lists.newArrayList(String.format("WRITE_ACTION_%s", base)))
+                .writeActions(buildActions())
                 .build();
 
         return RuleInfoEntryV2.builder()
@@ -683,6 +704,17 @@ public class SwitchMapperTest {
                 .instructions(instructions)
                 .flags(Lists.newArrayList(String.format("FLAG_%s", base)))
                 .build();
+    }
+
+    private List<BaseAction> buildActions() {
+        List<BaseAction> baseActions = new ArrayList<>();
+        baseActions.add(CopyFieldActionEntry.builder()
+                .dstOffset(100)
+                .numberOfBits(200)
+                .oxmDstHeader("oxmDstHeader")
+                .oxmSrcHeader("oxmSrcHeader")
+                .build());
+        return baseActions;
     }
 
     private LogicalPortsValidationEntryV2 buildLogicalPortsValidationEntryV2() {

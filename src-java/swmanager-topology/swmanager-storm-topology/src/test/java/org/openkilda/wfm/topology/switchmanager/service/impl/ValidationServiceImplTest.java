@@ -33,6 +33,7 @@ import org.openkilda.messaging.info.switches.v2.LogicalPortInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.MeterInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.MisconfiguredInfo;
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.action.BaseAction;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.messaging.model.grpc.LogicalPortType;
 import org.openkilda.model.GroupId;
@@ -691,10 +692,13 @@ public class ValidationServiceImplTest {
         assertEquals(expected.getGoToTable().getTableId(), actual.getGoToTable().intValue());
         assertEquals(expected.getWriteMetadata().getValue(), actual.getWriteMetadata().getValue().longValue());
         assertEquals(expected.getWriteMetadata().getMask(), actual.getWriteMetadata().getMask().longValue());
+
         assertEquals(expected.getApplyActions().stream().map(Action::getType).map(ActionType::name)
-                .collect(Collectors.toList()), actual.getApplyActions());
+                        .collect(Collectors.toList()),
+                actual.getApplyActions().stream().map(BaseAction::getType).collect(Collectors.toList()));
         assertEquals(expected.getWriteActions().stream().map(Action::getType).map(ActionType::name)
-                .collect(Collectors.toList()), actual.getWriteActions());
+                        .collect(Collectors.toList()),
+                actual.getWriteActions().stream().map(BaseAction::getType).collect(Collectors.toList()));
     }
 
     private void assertMeters(MeterInfoEntryV2 meterInfoEntry, long expectedId, long expectedRate,

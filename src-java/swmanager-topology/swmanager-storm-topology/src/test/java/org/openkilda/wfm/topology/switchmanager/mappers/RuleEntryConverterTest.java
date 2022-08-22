@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.action.SetFieldActionEntry;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.Field;
@@ -29,13 +30,14 @@ import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.action.Action;
-import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 
+import com.google.common.collect.Lists;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -80,6 +82,7 @@ public class RuleEntryConverterTest {
     public static void initializeData() {
 
         applyActions.add(SET_FIELD_ACTION);
+        writeActions.add(SET_FIELD_ACTION);
         matches.add(new FieldMatch(OF_METADATA_VALUE, (long) OF_METADATA_MASK, Field.METADATA));
 
         for (Field field : Field.values()) {
@@ -135,10 +138,21 @@ public class RuleEntryConverterTest {
         assertEquals(OF_METADATA.getValue(), instructions.getWriteMetadata().getValue().longValue());
         assertEquals(OF_METADATA.getMask(), instructions.getWriteMetadata().getMask().longValue());
 
-        assertEquals(applyActions.stream().map(Action::getType).map(ActionType::name).collect(Collectors.toList()),
-                instructions.getApplyActions());
-        assertEquals(writeActions.stream().map(Action::getType).map(ActionType::name).collect(Collectors.toList()),
-                instructions.getWriteActions());
+        //actions
+        assertEquals(applyActions.get(0).getType().name(),
+                ((SetFieldActionEntry) instructions.getApplyActions().get(0)).getActionType());
+        assertEquals(((SetFieldAction) applyActions.get(0)).getField().name(),
+                ((SetFieldActionEntry) instructions.getApplyActions().get(0)).getField());
+        assertEquals(((SetFieldAction) applyActions.get(0)).getValue(),
+                ((SetFieldActionEntry) instructions.getApplyActions().get(0)).getValue());
+
+        ArrayList<Action> writeActionsList = Lists.newArrayList(writeActions);
+        assertEquals(writeActionsList.get(0).getType().name(),
+                ((SetFieldActionEntry) instructions.getApplyActions().get(0)).getActionType());
+        assertEquals(((SetFieldAction) writeActionsList.get(0)).getField().name(),
+                ((SetFieldActionEntry) instructions.getApplyActions().get(0)).getField());
+        assertEquals(((SetFieldAction) writeActionsList.get(0)).getValue(),
+                ((SetFieldActionEntry) instructions.getApplyActions().get(0)).getValue());
 
         // Flags
         assertEquals(flags.stream().map(OfFlowFlag::toString).collect(Collectors.toList()), entry.getFlags());

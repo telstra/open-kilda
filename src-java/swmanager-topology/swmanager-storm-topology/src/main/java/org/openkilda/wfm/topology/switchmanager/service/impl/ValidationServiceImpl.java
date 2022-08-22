@@ -486,7 +486,6 @@ public class ValidationServiceImpl implements ValidationService {
         if (!CollectionUtils.isEqualCollection(expectedPort.getPhysicalPorts(), actualPort.getPhysicalPorts())) {
             discrepancies.physicalPorts(actualPort.getPhysicalPorts());
         }
-        discrepancies.build();
 
         return MisconfiguredInfo.<LogicalPortInfoEntryV2>builder()
                 .id(expectedPort.getLogicalPortNumber().toString())

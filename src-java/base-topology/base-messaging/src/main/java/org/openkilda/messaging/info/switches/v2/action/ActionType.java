@@ -13,22 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.switches;
+package org.openkilda.messaging.info.switches.v2.action;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+public enum ActionType {
 
-import java.util.List;
-
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class LogicalPortsValidationDtoV2 {
-    String error;
-    private boolean asExpected;
-    private List<LogicalPortInfoDtoV2> missing;
-    private List<MisconfiguredInfoV2<LogicalPortInfoDtoV2>> misconfigured;
-    private List<LogicalPortInfoDtoV2> excess;
-    private List<LogicalPortInfoDtoV2> proper;
+    GROUP,
+    PORT_OUT,
+    POP_VLAN,
+    PUSH_VLAN,
+    POP_VXLAN_NOVIFLOW,
+    POP_VXLAN_OVS,
+    PUSH_VXLAN_NOVIFLOW,
+    PUSH_VXLAN_OVS,
+    SET_FIELD,
+    METER,
+    NOVI_COPY_FIELD,
+    NOVI_SWAP_FIELD,
+    KILDA_SWAP_FIELD
 }

@@ -40,6 +40,17 @@ import org.openkilda.messaging.info.switches.v2.MisconfiguredInfo;
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.RulesValidationEntryV2;
 import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
+import org.openkilda.messaging.info.switches.v2.action.BaseAction;
+import org.openkilda.messaging.info.switches.v2.action.CopyFieldActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.GroupActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.MeterActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.PopVlanActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.PopVxlanActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.PortOutActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.PushVlanActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.PushVxlanActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.SetFieldActionEntry;
+import org.openkilda.messaging.info.switches.v2.action.SwapFieldActionEntry;
 import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.messaging.model.SwitchAvailabilityEntry;
 import org.openkilda.messaging.model.SwitchLocation;
@@ -67,6 +78,16 @@ import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
+import org.openkilda.northbound.dto.v2.action.CopyFieldActionDto;
+import org.openkilda.northbound.dto.v2.action.GroupActionDto;
+import org.openkilda.northbound.dto.v2.action.MeterActionDto;
+import org.openkilda.northbound.dto.v2.action.PopVlanActionDto;
+import org.openkilda.northbound.dto.v2.action.PopVxlanActionDto;
+import org.openkilda.northbound.dto.v2.action.PortOutActionDto;
+import org.openkilda.northbound.dto.v2.action.PushVlanActionDto;
+import org.openkilda.northbound.dto.v2.action.PushVxlanActionDto;
+import org.openkilda.northbound.dto.v2.action.SetFieldActionDto;
+import org.openkilda.northbound.dto.v2.action.SwapFieldActionDto;
 import org.openkilda.northbound.dto.v2.switches.GroupInfoDtoV2;
 import org.openkilda.northbound.dto.v2.switches.GroupsValidationDtoV2;
 import org.openkilda.northbound.dto.v2.switches.LogicalPortInfoDtoV2;
@@ -320,4 +341,59 @@ public abstract class SwitchMapper {
     public abstract MeterInfoDtoV2 toMeterInfoDtoV2(MeterInfoEntryV2 data);
 
     public abstract LogicalPortInfoDtoV2 toLogicalPortInfoDtoV2(LogicalPortInfoEntryV2 data);
+
+    //TODO(vshakirova): mapstruct could be bumped to >=1.5.0 and SubclassMapping annotation could replace instaceof
+    org.openkilda.northbound.dto.v2.action.BaseAction toAction(BaseAction action) {
+        if (action instanceof CopyFieldActionEntry) {
+            return toCopyFieldActionDto((CopyFieldActionEntry) action);
+        }
+        if (action instanceof GroupActionEntry) {
+            return toGroupActionDto((GroupActionEntry) action);
+        }
+        if (action instanceof MeterActionEntry) {
+            return toMeterActionDto((MeterActionEntry) action);
+        }
+        if (action instanceof PopVlanActionEntry) {
+            return toPopVlanActionDto((PopVlanActionEntry) action);
+        }
+        if (action instanceof PopVxlanActionEntry) {
+            return toPopVxlanActionDto((PopVxlanActionEntry) action);
+        }
+        if (action instanceof PortOutActionEntry) {
+            return toPortOutActionDto((PortOutActionEntry) action);
+        }
+        if (action instanceof PushVlanActionEntry) {
+            return toPushVlanActionDto((PushVlanActionEntry) action);
+        }
+        if (action instanceof PushVxlanActionEntry) {
+            return toPushVxlanActionDto((PushVxlanActionEntry) action);
+        }
+        if (action instanceof SetFieldActionEntry) {
+            return toSetFieldActionDto((SetFieldActionEntry) action);
+        }
+        if (action instanceof SwapFieldActionEntry) {
+            return toSwapFieldActionDto((SwapFieldActionEntry) action);
+        }
+        return null;
+    }
+
+    public abstract CopyFieldActionDto toCopyFieldActionDto(CopyFieldActionEntry data);
+
+    public abstract GroupActionDto toGroupActionDto(GroupActionEntry data);
+
+    public abstract MeterActionDto toMeterActionDto(MeterActionEntry data);
+
+    public abstract PopVlanActionDto toPopVlanActionDto(PopVlanActionEntry data);
+
+    public abstract PopVxlanActionDto toPopVxlanActionDto(PopVxlanActionEntry data);
+
+    public abstract PortOutActionDto toPortOutActionDto(PortOutActionEntry data);
+
+    public abstract PushVlanActionDto toPushVlanActionDto(PushVlanActionEntry data);
+
+    public abstract PushVxlanActionDto toPushVxlanActionDto(PushVxlanActionEntry data);
+
+    public abstract SetFieldActionDto toSetFieldActionDto(SetFieldActionEntry data);
+
+    public abstract SwapFieldActionDto toSwapFieldActionDto(SwapFieldActionEntry data);
 }

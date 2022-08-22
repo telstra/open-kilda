@@ -319,15 +319,119 @@ Response payload
       "mask": 200
     },
     "apply_actions": [
-      <will be described later>
+      <V2ActionInfo>
     ],
     "write_actions": [
-      <will be described later>
+      <V2ActionInfo>
     ]
   }
 }
 ```
+</details>
 
+<details><summary>V2ActionInfo</summary>
+
+```json
+{
+  "actionType": "NOVI_COPY_FIELD",
+  "numberOfBits": 12,
+  "srcOffset": 10,
+  "dstOffset": 12,
+  "oxmSrcHeader": "111",
+  "oxmDstHeader": "111"
+}
+```
+```json
+{
+  "actionType": "GROUP",
+  "groupId": 12345
+}
+```
+```json
+{
+  "actionType": "METER",
+  "meterId": 12345
+}
+```
+```json
+{
+  "actionType": "POP_VLAN",
+}
+```
+```json
+{
+  "actionType": "POP_VXLAN_NOVIFLOW",
+}
+```
+```json
+{
+  "actionType": "POP_VXLAN_OVS",
+}
+```
+
+```json
+{
+  "actionType": "PORT_OUT",
+  "portNumber": 123,
+  "portType": "CONTROLLER"
+}
+```
+```json
+{
+  "actionType": "PUSH_VLAN"
+}
+```
+
+```json
+{
+  "actionType": "PUSH_VXLAN_NOVIFLOW",
+  "srcMacAddress": "111",
+  "dstMacAddress": "111",
+  "srcIpv4Address": "123",
+  "dstIpv4Address": "123",
+  "udpSrc": 54321,
+  "vni": 123
+}
+```
+```json
+{
+  "actionType": "PUSH_VXLAN_OVS",
+  "srcMacAddress": "111",
+  "dstMacAddress": "111",
+  "srcIpv4Address": "123",
+  "dstIpv4Address": "123",
+  "udpSrc": 54321,
+  "vni": 123
+}
+```
+```json
+{
+  "actionType": "SET_FIELD",
+  "value": 12345,
+  "field": "some_field"
+}
+```
+
+```json
+{
+  "actionType": "NOVI_SWAP_FIELD",
+  "numberOfBits": 12345,
+  "srcOffset": 10,
+  "dstOffset": 12,
+  "oxmSrcHeader": "1235",
+  "oxmDstHeader": "12312"
+}
+```
+```json
+{
+  "actionType": "KILDA_SWAP_FIELD",
+  "numberOfBits": 12345,
+  "srcOffset": 10,
+  "dstOffset": 12,
+  "oxmSrcHeader": "1235",
+  "oxmDstHeader": "12312"
+}
+```
 </details>
 
 ### Validate rules, meters, lags and groups installed on the switch v2

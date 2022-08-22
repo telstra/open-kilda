@@ -13,22 +13,8 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.switches;
+package org.openkilda.northbound.dto.v2.action;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-import java.util.List;
-
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class LogicalPortsValidationDtoV2 {
-    String error;
-    private boolean asExpected;
-    private List<LogicalPortInfoDtoV2> missing;
-    private List<MisconfiguredInfoV2<LogicalPortInfoDtoV2>> misconfigured;
-    private List<LogicalPortInfoDtoV2> excess;
-    private List<LogicalPortInfoDtoV2> proper;
+public interface BaseAction {
 }

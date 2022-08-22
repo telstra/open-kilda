@@ -16,6 +16,7 @@
 package org.openkilda.northbound.dto.v2.switches;
 
 import org.openkilda.northbound.dto.HexView;
+import org.openkilda.northbound.dto.v2.action.BaseAction;
 
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -38,23 +39,21 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RuleInfoDtoV2 implements HexView {
     Long cookie;
-
-    @JsonGetter("cookie_hex")
-    String getCookieHex() {
-        return toHex(cookie);
-    }
-
     String cookieKind;
     Integer tableId;
     Integer priority;
     String flowId;
     String flowPath;
-
-    @JsonProperty("y_flow_id")
-    private String yFlowId;
     List<String> flags;
     Map<String, FieldMatch> match;
     Instructions instructions;
+    @JsonProperty("y_flow_id")
+    private String yFlowId;
+
+    @JsonGetter("cookie_hex")
+    String getCookieHex() {
+        return toHex(cookie);
+    }
 
     @Data
     @AllArgsConstructor
@@ -85,7 +84,7 @@ public class RuleInfoDtoV2 implements HexView {
         Integer goToTable;
         Long goToMeter;
         WriteMetadata writeMetadata;
-        List<String> applyActions;
-        List<String> writeActions;
+        List<BaseAction> applyActions;
+        List<BaseAction> writeActions;
     }
 }

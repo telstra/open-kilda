@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.info.switches.v2;
 
+import org.openkilda.messaging.info.switches.v2.action.BaseAction;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -38,12 +40,11 @@ public class RuleInfoEntryV2 implements Serializable {
     Integer priority;
     String flowId;
     String flowPath;
-
-    @JsonProperty("y_flow_id")
-    private String yFlowId;
     List<String> flags;
     TreeMap<String, FieldMatch> match;
     Instructions instructions;
+    @JsonProperty("y_flow_id")
+    private String yFlowId;
 
     @Data
     @AllArgsConstructor
@@ -74,7 +75,7 @@ public class RuleInfoEntryV2 implements Serializable {
         Integer goToTable;
         Long goToMeter;
         WriteMetadata writeMetadata;
-        List<String> applyActions;
-        List<String> writeActions;
+        List<BaseAction> applyActions;
+        List<BaseAction> writeActions;
     }
 }
