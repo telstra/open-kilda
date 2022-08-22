@@ -26,6 +26,7 @@ import org.openkilda.messaging.info.switches.v2.MisconfiguredInfo;
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2.FieldMatch;
 import org.openkilda.messaging.model.grpc.LogicalPort;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMeter;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
@@ -33,11 +34,15 @@ import org.openkilda.model.Meter;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterSpeakerData;
@@ -86,15 +91,24 @@ public class ValidationServiceImpl implements ValidationService {
     private final LagLogicalPortRepository lagLogicalPortRepository;
     private final FlowMeterRepository flowMeterRepository;
     private final FlowPathRepository flowPathRepository;
+
+    private final FlowRepository flowRepository;
+
+    private final YFlowRepository yFlowRepository;
     private final RuleManager ruleManager;
 
     public ValidationServiceImpl(PersistenceManager persistenceManager, RuleManager ruleManager) {
         this.persistenceManager = persistenceManager;
-        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        this.lagLogicalPortRepository = persistenceManager.getRepositoryFactory().createLagLogicalPortRepository();
-        this.flowMeterRepository = persistenceManager.getRepositoryFactory().createFlowMeterRepository();
-        this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.ruleManager = ruleManager;
+
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.lagLogicalPortRepository = repositoryFactory.createLagLogicalPortRepository();
+        this.flowMeterRepository = repositoryFactory.createFlowMeterRepository();
+        this.flowPathRepository = repositoryFactory.createFlowPathRepository();
+        this.flowRepository = repositoryFactory.createFlowRepository();
+        this.yFlowRepository = repositoryFactory.createYFlowRepository();
+
     }
 
     @Override
@@ -152,8 +166,11 @@ public class ValidationServiceImpl implements ValidationService {
                                                  List<GroupSpeakerData> expectedGroupSpeakerData) {
         log.debug("Validating groups on a switch {}", switchId);
 
-        Set<GroupInfoEntryV2> expectedGroups = convertGroups(expectedGroupSpeakerData);
-        Set<GroupInfoEntryV2> presentGroups = convertGroups(groupEntries);
+        Set<Flow> flows = (Set<Flow>) flowRepository.findAll();
+        Set<YFlow> yFlows = (Set<YFlow>) yFlowRepository.findAll();
+
+        Set<GroupInfoEntryV2> expectedGroups = convertGroups(expectedGroupSpeakerData, flows, yFlows);
+        Set<GroupInfoEntryV2> presentGroups = convertGroups(groupEntries, flows, yFlows);
 
         Set<GroupInfoEntryV2> missingGroups = new HashSet<>();
         Set<GroupInfoEntryV2> properGroups = new HashSet<>(expectedGroups);
@@ -224,9 +241,12 @@ public class ValidationServiceImpl implements ValidationService {
         Switch sw = switchRepository.findById(switchId)
                 .orElseThrow(() -> new SwitchNotFoundException(switchId));
         boolean isESwitch = Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
+        // TODO(nrydanov): Probably use more proper way to determine what kind of flow is used on a meter.
+        Set<Flow> flows = (Set<Flow>) flowRepository.findAll();
+        Set<YFlow> yFlows = (Set<YFlow>) yFlowRepository.findAll();
 
-        List<MeterInfoEntryV2> actualMeters = convertMeters(switchId, presentMeters);
-        List<MeterInfoEntryV2> expectedMeters = convertMeters(switchId, expectedMeterSpeakerData);
+        List<MeterInfoEntryV2> actualMeters = convertMeters(switchId, presentMeters, flows, yFlows);
+        List<MeterInfoEntryV2> expectedMeters = convertMeters(switchId, expectedMeterSpeakerData, flows, yFlows);
 
         List<MeterInfoEntryV2> missingMeters = new ArrayList<>();
         List<MeterInfoEntryV2> properMeters = new ArrayList<>();
@@ -347,6 +367,10 @@ public class ValidationServiceImpl implements ValidationService {
 
         for (MeterInfoEntryV2 meterEntry : presentMeters) {
             if (!expectedMeterIds.contains(meterEntry.getMeterId())) {
+                // nrydanov: We need to clear unnecessary fields for excess meters
+                meterEntry.setFlowId(null);
+                meterEntry.setYFlowId(null);
+                meterEntry.setFlowPath(null);
                 excessMeters.add(meterEntry);
             }
         }
@@ -365,7 +389,6 @@ public class ValidationServiceImpl implements ValidationService {
                                               List<MisconfiguredInfo<LogicalPortInfoEntryV2>> misconfiguredPorts) {
 
         for (Entry<Integer, LogicalPortInfoEntryV2> entry : expectedPorts.entrySet()) {
-            //TODO: fill out flow_id, flow_path
             int portNumber = entry.getKey();
             LogicalPortInfoEntryV2 expected = entry.getValue();
 
@@ -392,13 +415,38 @@ public class ValidationServiceImpl implements ValidationService {
         }
     }
 
-    private Set<GroupInfoEntryV2> convertGroups(List<GroupSpeakerData> groupEntries) {
+    private boolean isFlowId(String id, Set<Flow> flows, Set<YFlow> yFlows) {
+        if (flows.stream().anyMatch(flow -> flow.getFlowId().equals(id))) {
+            return true;
+        } else if (yFlows.stream().anyMatch(yFlow -> yFlow.getYFlowId().equals(id))) {
+            return false;
+        } else {
+            throw new IllegalStateException("Unexpected flow/yflow id");
+        }
+    }
+
+    private Set<GroupInfoEntryV2> convertGroups(List<GroupSpeakerData> groupEntries, Set<Flow> flows,
+                                                Set<YFlow> yFlows) {
         return groupEntries.stream()
                 .map(GroupEntryConverter.INSTANCE::toGroupEntry)
+                .map(groupEntry -> {
+                    String id = groupEntry.getFlowId();
+                    if (id == null) {
+                        return groupEntry;
+                    }
+
+                    if (isFlowId(id, flows, yFlows)) {
+                        groupEntry.setFlowId(id);
+                    } else {
+                        groupEntry.setYFlowId(id);
+                    }
+                    return groupEntry;
+                })
                 .collect(Collectors.toSet());
     }
 
-    private List<MeterInfoEntryV2> convertMeters(SwitchId switchId, List<MeterSpeakerData> meterSpeakerData) {
+    private List<MeterInfoEntryV2> convertMeters(SwitchId switchId, List<MeterSpeakerData> meterSpeakerData,
+                                                 Set<Flow> flows, Set<YFlow> yFlows) {
         List<MeterInfoEntryV2> meters = new ArrayList<>();
 
         for (MeterSpeakerData meterData : meterSpeakerData) {
@@ -406,12 +454,14 @@ public class ValidationServiceImpl implements ValidationService {
             Optional<FlowMeter> flowMeter = flowMeterRepository.findById(switchId, meterData.getMeterId());
 
             if (flowMeter.isPresent()) {
-                meterInfoEntry.setFlowId(flowMeter.get().getFlowId());
+                String id = flowMeter.get().getFlowId();
+                if (isFlowId(id, flows, yFlows)) {
+                    meterInfoEntry.setFlowId(id);
+                } else {
+                    meterInfoEntry.setYFlowId(id);
+                }
                 Optional<FlowPath> flowPath = flowPathRepository.findById(flowMeter.get().getPathId());
                 flowPath.ifPresent(path -> meterInfoEntry.setCookie(path.getCookie().getValue()));
-
-                meterInfoEntry.setYFlowId("TBD");
-                //TODO: set yFlowId from repo
             }
             meters.add(meterInfoEntry);
         }

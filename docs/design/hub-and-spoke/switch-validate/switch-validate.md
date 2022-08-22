@@ -440,8 +440,10 @@ Response payload
 
 **By Default:**
 
-* `flow info` is set of values: for groups - `flow_id, flow_path`, for meters and rules - `flow_id, flow_path, y_flow_id`.
-* without any query params response contains v2 info about groups, lags, meters and rules (with flow_info for all mentioned fields).
+* `flow info` is set of values: for groups - `flow_id, flow_path`, for meters and rules - `flow_path, flow_id` 
+(or `y_flow_id` in case of YFlow).
+* without any query params response contains v2 info about groups, lags, meters and rules 
+(with flow_info for all mentioned fields).
 * groups[excess], meters[excess] and rule[excess] do not contain flow info.
 * for groups, lags, meters and rules flow info will be presented in misconfigured[expected] field.
 * misconfigured[id] is 
@@ -709,8 +711,8 @@ To exclude flow info from response use `flow_info`.
 
 ### Including/excluding info in response
 
-To exclude flow info from response use `exclude=flow_info`. You can combine it with `include=groups|logical_ports|meters|rules` 
-in query e.g.
+To exclude flow info from response use `exclude=flow_info`. 
+You can combine it with `include=groups|logical_ports|meters|rules` in query e.g.
 
 Ex 1. `GET https://{host}/v2/switches/{switch_id}/validate?exclude=flow_info&include=groups|meters`
 
