@@ -166,8 +166,8 @@ public class ValidationServiceImpl implements ValidationService {
                                                  List<GroupSpeakerData> expectedGroupSpeakerData) {
         log.debug("Validating groups on a switch {}", switchId);
 
-        Set<Flow> flows = (Set<Flow>) flowRepository.findAll();
-        Set<YFlow> yFlows = (Set<YFlow>) yFlowRepository.findAll();
+        Collection<Flow> flows = flowRepository.findAll();
+        Collection<YFlow> yFlows = yFlowRepository.findAll();
 
         Set<GroupInfoEntryV2> expectedGroups = convertGroups(expectedGroupSpeakerData, flows, yFlows);
         Set<GroupInfoEntryV2> presentGroups = convertGroups(groupEntries, flows, yFlows);
@@ -242,8 +242,8 @@ public class ValidationServiceImpl implements ValidationService {
                 .orElseThrow(() -> new SwitchNotFoundException(switchId));
         boolean isESwitch = Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
         // TODO(nrydanov): Probably use more proper way to determine what kind of flow is used on a meter.
-        Set<Flow> flows = (Set<Flow>) flowRepository.findAll();
-        Set<YFlow> yFlows = (Set<YFlow>) yFlowRepository.findAll();
+        Collection<Flow> flows = flowRepository.findAll();
+        Collection<YFlow> yFlows = yFlowRepository.findAll();
 
         List<MeterInfoEntryV2> actualMeters = convertMeters(switchId, presentMeters, flows, yFlows);
         List<MeterInfoEntryV2> expectedMeters = convertMeters(switchId, expectedMeterSpeakerData, flows, yFlows);
@@ -415,7 +415,7 @@ public class ValidationServiceImpl implements ValidationService {
         }
     }
 
-    private boolean isFlowId(String id, Set<Flow> flows, Set<YFlow> yFlows) {
+    private boolean isFlowId(String id, Collection<Flow> flows, Collection<YFlow> yFlows) {
         if (flows.stream().anyMatch(flow -> flow.getFlowId().equals(id))) {
             return true;
         } else if (yFlows.stream().anyMatch(yFlow -> yFlow.getYFlowId().equals(id))) {
@@ -425,8 +425,8 @@ public class ValidationServiceImpl implements ValidationService {
         }
     }
 
-    private Set<GroupInfoEntryV2> convertGroups(List<GroupSpeakerData> groupEntries, Set<Flow> flows,
-                                                Set<YFlow> yFlows) {
+    private Set<GroupInfoEntryV2> convertGroups(List<GroupSpeakerData> groupEntries, Collection<Flow> flows,
+                                                Collection<YFlow> yFlows) {
         return groupEntries.stream()
                 .map(GroupEntryConverter.INSTANCE::toGroupEntry)
                 .map(groupEntry -> {
@@ -446,7 +446,7 @@ public class ValidationServiceImpl implements ValidationService {
     }
 
     private List<MeterInfoEntryV2> convertMeters(SwitchId switchId, List<MeterSpeakerData> meterSpeakerData,
-                                                 Set<Flow> flows, Set<YFlow> yFlows) {
+                                                 Collection<Flow> flows, Collection<YFlow> yFlows) {
         List<MeterInfoEntryV2> meters = new ArrayList<>();
 
         for (MeterSpeakerData meterData : meterSpeakerData) {
