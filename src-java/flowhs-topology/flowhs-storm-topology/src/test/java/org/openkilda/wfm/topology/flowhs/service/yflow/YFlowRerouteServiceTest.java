@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.service.yflow;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -151,7 +152,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         YFlowRequest createYFlowRequest = createYFlow();
         YFlowRerouteRequest request = new YFlowRerouteRequest(createYFlowRequest.getYFlowId(), "reason");
 
-        when(pathComputer.getPath(buildFlowIdArgumentMatch("test_flow_1"), any()))
+        when(pathComputer.getPath(buildFlowIdArgumentMatch("test_flow_1"), any(), anyBoolean()))
                 .thenThrow(new UnroutableFlowException(injectedErrorMessage));
         preparePathComputationForReroute("test_flow_2", buildSecondSubFlowPathPairWithNewTransit());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_NEW_TRANSIT);
@@ -174,7 +175,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         YFlowRerouteRequest request = new YFlowRerouteRequest(createYFlowRequest.getYFlowId(), "reason");
 
         preparePathComputationForReroute("test_flow_1", buildFirstSubFlowPathPairWithNewTransit());
-        when(pathComputer.getPath(buildFlowIdArgumentMatch("test_flow_2"), any()))
+        when(pathComputer.getPath(buildFlowIdArgumentMatch("test_flow_2"), any(), anyBoolean()))
                 .thenThrow(new UnroutableFlowException(injectedErrorMessage));
         prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_NEW_TRANSIT);
 
@@ -528,12 +529,13 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
 
     private void preparePathComputationForReroute(String flowId, GetPathsResult pathPair)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), any())).thenReturn(pathPair);
+        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), any(), anyBoolean())).thenReturn(pathPair);
     }
 
     private void preparePathComputationForReroute(String flowId, GetPathsResult pathPair, GetPathsResult pathPair2)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), any())).thenReturn(pathPair).thenReturn(pathPair2);
+        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), any(), anyBoolean()))
+                .thenReturn(pathPair).thenReturn(pathPair2);
     }
 
     private void prepareYPointComputation(SwitchId sharedEndpoint, SwitchId first, SwitchId second, SwitchId yPoint) {

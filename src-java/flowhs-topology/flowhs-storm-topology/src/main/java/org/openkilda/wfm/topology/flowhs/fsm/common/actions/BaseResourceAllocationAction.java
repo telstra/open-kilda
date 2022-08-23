@@ -220,7 +220,8 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                                               boolean forceToIgnoreBandwidth, List<PathId> pathsToReuseBandwidth,
                                               FlowPathPair oldPaths, boolean allowOldPaths,
                                               String sharedBandwidthGroupId,
-                                              Predicate<GetPathsResult> whetherCreatePathSegments)
+                                              Predicate<GetPathsResult> whetherCreatePathSegments,
+                                              boolean isProtected)
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         // Lazy initialisable map with reused bandwidth...
         Supplier<Map<IslEndpoints, Long>> reuseBandwidthPerIsl = Suppliers.memoize(() -> {
@@ -262,7 +263,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                     potentialPath = pathComputer.getPath(flow);
                     flow.setIgnoreBandwidth(originalIgnoreBandwidth);
                 } else {
-                    potentialPath = pathComputer.getPath(flow, pathsToReuseBandwidth);
+                    potentialPath = pathComputer.getPath(flow, pathsToReuseBandwidth, isProtected);
                 }
 
                 boolean newPathFound = isNotSamePath(potentialPath, oldPaths);

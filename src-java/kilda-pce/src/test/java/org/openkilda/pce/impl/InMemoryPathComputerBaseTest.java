@@ -233,7 +233,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         Flow oldFlow = flowRepository.findById(flowId).orElseThrow(() -> new AssertionError("Flow not found"));
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        GetPathsResult result = pathComputer.getPath(flow, oldFlow.getPathIds());
+        GetPathsResult result = pathComputer.getPath(flow, oldFlow.getPathIds(), false);
 
         assertThat(result.getForward().getSegments(), Matchers.hasSize(2));
         assertThat(result.getReverse().getSegments(), Matchers.hasSize(2));
@@ -269,7 +269,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         thrown.expect(UnroutableFlowException.class);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        pathComputer.getPath(flow, flow.getPathIds());
+        pathComputer.getPath(flow, flow.getPathIds(), false);
     }
 
     @Test
@@ -503,7 +503,8 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     }
 
     // A - B - D    and A-B-D is used in flow affinity group
-    //   + C +
+    //   \   /
+    //     C
     void createDiamondWithAffinity() {
         Switch nodeA = createSwitch("00:0A");
         Switch nodeB = createSwitch("00:0B");

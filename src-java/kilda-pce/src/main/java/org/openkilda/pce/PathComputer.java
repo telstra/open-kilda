@@ -42,7 +42,7 @@ public interface PathComputer {
      * @return {@link GetPathsResult} instance
      */
     default GetPathsResult getPath(Flow flow) throws UnroutableFlowException, RecoverableException {
-        return getPath(flow, Collections.emptyList());
+        return getPath(flow, Collections.emptyList(), false);
     }
 
     /**
@@ -53,7 +53,7 @@ public interface PathComputer {
      *                               be reused in new path computation.
      * @return {@link GetPathsResult} instance
      */
-    GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources)
+    GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources, boolean isProtected)
             throws UnroutableFlowException, RecoverableException;
 
     /**

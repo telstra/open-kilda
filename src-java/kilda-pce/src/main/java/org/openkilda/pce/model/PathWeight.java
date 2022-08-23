@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,67 +15,95 @@
 
 package org.openkilda.pce.model;
 
-import static com.google.common.primitives.Longs.asList;
+import lombok.ToString;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.Map;
 
 /**
  * Vector path weight representation. Each value in vector corresponds to some path param defined
  * by {@link WeightFunction}. Only PathWeights created by one WeightFunction should be added and compared.
  */
+@ToString
 public class PathWeight implements Comparable<PathWeight> {
 
-    private List<Long> params;
+    private final long baseWeight;
+    private final long alternativeBaseWeight;
+    private final Map<Penalty, Long> penalties = new EnumMap<>(Penalty.class);
 
-    public PathWeight(long... params) {
-        this.params = asList(params);
+    public PathWeight() {
+        this(0);
     }
 
-    public PathWeight(List<Long> params) {
-        this.params = params;
+    public PathWeight(long baseWeight) {
+        this(baseWeight, 0L);
+    }
+
+    public PathWeight(long baseWeight, Map<Penalty, Long> penalties) {
+        this(baseWeight, penalties, 0L);
+    }
+
+    public PathWeight(long baseWeight, Long alternativeBaseWeight) {
+        this(baseWeight, Collections.emptyMap(), alternativeBaseWeight);
+    }
+
+    public PathWeight(long baseWeight, Map<Penalty, Long> penalties, Long alternativeBaseWeight) {
+        this.baseWeight = baseWeight;
+        this.penalties.putAll(penalties);
+        this.alternativeBaseWeight = alternativeBaseWeight;
     }
 
     /**
-     * Sum two path weights.
-     * @param toAdd path weight to add.
-     * @return new path weight.
+     * Raw weight without penalties.
      */
-    public PathWeight add(PathWeight toAdd) {
-        List<Long> result = new ArrayList<>();
-        Iterator<Long> firstIterator = params.iterator();
-        Iterator<Long> secondIterator = toAdd.params.iterator();
-        while (firstIterator.hasNext() || secondIterator.hasNext()) {
-            long first = firstIterator.hasNext() ? firstIterator.next() : 0L;
-            long second = secondIterator.hasNext() ? secondIterator.next() : 0L;
-            result.add(first + second);
-        }
-        return new PathWeight(result);
+    public long getBaseWeight() {
+        return baseWeight;
+    }
+
+    public long getAlternativeBaseWeight() {
+        return alternativeBaseWeight;
+    }
+
+    public long getPenaltyValue(Penalty name) {
+        return penalties.getOrDefault(name, 0L);
     }
 
     /**
      * Simple scalar representation of weight.
-     * @return scalar weight representation.
      */
-    public long toLong() {
-        return params.size() > 0 ? params.get(0) : 0;
+    public long getTotalWeight() {
+        Long totalPenalties = penalties.values().stream().reduce(0L, Long::sum);
+        return baseWeight + totalPenalties;
+    }
+
+    /**
+     * Summarize two PathWeights.
+     */
+    public PathWeight add(PathWeight toAdd) {
+        long baseWeightResult = baseWeight + toAdd.getBaseWeight();
+        long alternativeBaseWeightResult = alternativeBaseWeight + toAdd.alternativeBaseWeight;
+        Map<Penalty, Long> penaltiesResult = new EnumMap<>(penalties);
+        toAdd.penalties.forEach((k, v) -> {
+            long result = penaltiesResult.getOrDefault(k, 0L) + v;
+            penaltiesResult.put(k, result);
+        });
+        return new PathWeight(baseWeightResult, penaltiesResult, alternativeBaseWeightResult);
     }
 
     @Override
     public int compareTo(PathWeight o) {
-        int firstSize = params.size();
-        int secondSize = o.params.size();
-        int limit = Math.min(firstSize, secondSize);
-        int i = 0;
-        while (i < limit) {
-            long first = params.get(i).longValue();
-            long second = o.params.get(i).longValue();
-            if (first != second) {
-                return first > second ? 1 : -1;
-            }
-            i++;
+        if (getTotalWeight() != o.getTotalWeight()) {
+            return getTotalWeight() > o.getTotalWeight() ? 1 : -1;
         }
+
+        if (alternativeBaseWeight != o.getAlternativeBaseWeight()) {
+            return alternativeBaseWeight > o.getAlternativeBaseWeight() ? 1 : -1;
+        }
+
+        int firstSize = penalties.size();
+        int secondSize = o.penalties.size();
+
         if (firstSize == secondSize) {
             return 0;
         } else {
@@ -83,10 +111,14 @@ public class PathWeight implements Comparable<PathWeight> {
         }
     }
 
-    @Override
-    public String toString() {
-        return "PathWeight{"
-                + "params="
-                + params + '}';
+    public enum Penalty {
+        UNDER_MAINTENANCE,
+        UNSTABLE,
+        AFFINITY_ISL_LATENCY,
+        DIVERSITY_ISL_LATENCY,
+        DIVERSITY_SWITCH_LATENCY,
+        DIVERSITY_POP_ISL_COST,
+        PROTECTED_DIVERSITY_ISL_LATENCY,
+        PROTECTED_DIVERSITY_SWITCH_LATENCY
     }
 }
