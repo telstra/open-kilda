@@ -478,7 +478,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
     }
 
     private void validateMeters(List<MeterSpeakerData> expectedMeters) {
-        if (!request.isProcessMeters() || validationContext.getActualMeters() == null) {
+        if (validationContext.getActualMeters() == null) {
             return;
         }
 
