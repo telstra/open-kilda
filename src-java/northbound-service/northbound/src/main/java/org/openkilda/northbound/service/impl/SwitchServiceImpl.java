@@ -259,7 +259,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     public CompletableFuture<RulesValidationResult> validateRules(SwitchId switchId) {
         logger.info("Validate rules request for switch {}", switchId);
 
-        return performValidate(
+        return performValidateV2(
                 SwitchValidateRequest.builder().switchId(switchId).build())
                 .thenApply(switchMapper::toRulesValidationResult);
     }

@@ -176,13 +176,28 @@ public abstract class SwitchMapper {
     @Mapping(target = "rules.excessHex", ignore = true)
     public abstract SwitchValidationResult toSwitchValidationResult(SwitchValidationResponse response);
 
-    @Mapping(source = "rules.excess", target = "excessRules")
-    @Mapping(source = "rules.missing", target = "missingRules")
-    @Mapping(source = "rules.proper", target = "properRules")
+    /**
+     * Convert SwitchValidationResponse V2 into api v1 rules representation.
+     * @param response switch validation api v2 response.
+     * @return rules v1 api representation
+     */
     @Mapping(target = "missingRulesHex", ignore = true)
     @Mapping(target = "properRulesHex", ignore = true)
     @Mapping(target = "excessHex", ignore = true)
-    public abstract RulesValidationResult toRulesValidationResult(SwitchValidationResponse response);
+    public RulesValidationResult toRulesValidationResult(SwitchValidationResponseV2 response) {
+        if (response == null) {
+            return null;
+        }
+        RulesValidationResult rulesValidationResult = new RulesValidationResult();
+        rulesValidationResult.setExcessRules(response.getRules().getExcess().stream()
+                .map(RuleInfoEntryV2::getCookie).collect(Collectors.toList()));
+        rulesValidationResult.setProperRules(response.getRules().getProper().stream()
+                .map(RuleInfoEntryV2::getCookie).collect(Collectors.toList()));
+        rulesValidationResult.setMissingRules(response.getRules().getMissing().stream()
+                .map(RuleInfoEntryV2::getCookie).collect(Collectors.toList()));
+
+        return rulesValidationResult;
+    }
 
     @Mapping(target = "missingHex", ignore = true)
     @Mapping(target = "misconfiguredHex", ignore = true)
