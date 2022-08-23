@@ -221,7 +221,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                     totalPath.addAll(pathFromSpurNode.getFoundPath());
                     // Add the potential k-shortest path to the heap.
                     long totalPathWeight = totalPath.stream().map(weightFunction)
-                            .map(PathWeight::toLong)
+                            .map(PathWeight::getTotalWeight)
                             .reduce(0L, Long::sum);
                     // Filtering by maxWeight.
                     if (totalPathWeight < maxWeight) {
@@ -289,7 +289,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         if (path.isEmpty()) {
             return Long.MAX_VALUE;
         }
-        return path.stream().map(weightFunction).mapToLong(PathWeight::toLong).sum();
+        return path.stream().map(weightFunction).mapToLong(PathWeight::getTotalWeight).sum();
     }
 
     private void removeEdge(Edge edge) {
@@ -367,7 +367,8 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
         while (!toVisit.isEmpty()) {
             SearchNode current = toVisit.pop();
-            log.trace("Going to visit node {} with weight {}.", current.dstSw, current.getParentWeight().toLong());
+            log.trace("Going to visit node {} with weight {}.",
+                    current.dstSw, current.getParentWeight().getTotalWeight());
 
             // Determine if this node is the destination node.
             if (current.dstSw.equals(end)) {
@@ -429,7 +430,6 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
      * @return A desired path from start to end as SearchNode representation, or null
      */
     private SearchNode getDesiredPath(Node start, Node end, WeightFunction weightFunction, long maxWeight) {
-        long desiredWeight = Long.MAX_VALUE;
         SearchNode desiredPath = null;
 
         Deque<SearchNode> toVisit = new LinkedList<>();
@@ -439,7 +439,8 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
         while (!toVisit.isEmpty()) {
             SearchNode current = toVisit.pop();
-            log.trace("Going to visit node {} with weight {}.", current.dstSw, current.getParentWeight().toLong());
+            PathWeight currentPathWeight = current.getParentWeight();
+            log.trace("Going to visit node {} with weight {}.", current.dstSw, currentPathWeight);
 
             // Leave if the path contains this node
             if (current.containsSwitch(current.dstSw.getSwitchId())) {
@@ -448,33 +449,78 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
             }
 
             // Shift the current weight relative to maxWeight
-            long shiftedCurrentWeight = Math.abs(maxWeight - current.parentWeight.toLong());
+            long shiftedCurrentWeight = Math.abs(maxWeight - current.parentWeight.getBaseWeight());
 
             // Determine if this node is the destination node.
             if (current.dstSw.equals(end)) {
                 // We found the destination
-                if (shiftedCurrentWeight < desiredWeight && current.parentWeight.toLong() < maxWeight) {
+                if (current.parentWeight.getBaseWeight() < maxWeight) {
                     // We found a best path. If we don't get here, then the entire graph will be
                     // searched until we run out of nodes or the depth is reached.
-                    desiredWeight = shiftedCurrentWeight;
-                    desiredPath = current;
+                    if (desiredPath == null) {
+                        desiredPath = current;
+                        continue;
+                    }
+
+                    long currentDiversitySum = getPathWeightDiversityPenaltiesValue(currentPathWeight);
+                    long desiredDiversitySum = getPathWeightDiversityPenaltiesValue(desiredPath.parentWeight);
+
+                    if (currentDiversitySum > desiredDiversitySum) {
+                        // We found path but it diversity-penalties are worse than existed path
+                        continue;
+                    }
+
+                    if (current.parentWeight.getTotalWeight() < maxWeight
+                            && desiredPath.parentWeight.getTotalWeight() >= maxWeight) {
+                        // New path is suitable by totalWeight, but old is not
+                        desiredPath = current;
+                        continue;
+                    }
+
+                    if (desiredPath.parentWeight.getTotalWeight() >= maxWeight
+                            && currentPathWeight.getTotalWeight() >= maxWeight) {
+                        // Both paths are NOT suitable by totalWeight, choose the nearest to maxWeight
+                        if (currentPathWeight.getTotalWeight() < desiredPath.parentWeight.getTotalWeight()) {
+                            desiredPath = current;
+                            continue;
+                        }
+                    }
+
+                    if (desiredPath.parentWeight.getTotalWeight() < maxWeight
+                            && currentPathWeight.getTotalWeight() < maxWeight) {
+                        // Both paths are suitable by totalWeight, but new path is better by diversity
+                        if (currentDiversitySum > 0) {
+                            desiredPath = current;
+                            continue;
+                        }
+                        // Both paths are suitable by totalWeight, choose the nearest to maxWeight
+                        if (currentPathWeight.getTotalWeight() > desiredPath.parentWeight.getTotalWeight()) {
+                            desiredPath = current;
+                            continue;
+                        }
+                    }
                 }
+
                 // We found dest, no need to keep processing
                 log.trace("Found destination using {} with path {}", current.dstSw, current.parentPath);
                 continue;
             }
 
             // Stop processing entirely if we've gone too far, or over maxWeight
-            if (current.allowedDepth <= 0 || current.parentWeight.toLong() >= maxWeight) {
+            if (current.allowedDepth <= 0 || current.parentWeight.getBaseWeight() >= maxWeight) {
                 continue;
             }
 
             // Otherwise, if we've been here before, see if this path is better
             SearchNode prior = visited.get(current.dstSw);
             // Use non-greedy way to save visited nodes to fix issue mentioned in docs/design/pce/max-latency-issue
-            if (prior != null && shiftedCurrentWeight < Math.abs(maxWeight - prior.parentWeight.toLong())) {
-                log.trace("Skip node {} processing", current.dstSw);
-                continue;
+            if (prior != null && shiftedCurrentWeight < Math.abs(maxWeight - prior.parentWeight.getBaseWeight())) {
+
+                // Should check with penalties too
+                if (currentPathWeight.getTotalWeight() > prior.getParentWeight().getTotalWeight()) {
+                    log.trace("Skip node {} processing", current.dstSw);
+                    continue;
+                }
             }
 
             // Either this is the first time, or this one has less weight .. either way, this node should
@@ -606,5 +652,11 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         boolean containsSwitch(SwitchId switchId) {
             return parentPath.stream().anyMatch(s -> s.getSrcSwitch().getSwitchId().equals(switchId));
         }
+    }
+
+    private long getPathWeightDiversityPenaltiesValue(PathWeight pathWeight) {
+        return pathWeight.getPenaltyValue(PathWeight.Penalty.DIVERSITY_ISL_LATENCY)
+                + pathWeight.getPenaltyValue(PathWeight.Penalty.DIVERSITY_SWITCH_LATENCY)
+                + pathWeight.getPenaltyValue(PathWeight.Penalty.DIVERSITY_POP_ISL_COST);
     }
 }

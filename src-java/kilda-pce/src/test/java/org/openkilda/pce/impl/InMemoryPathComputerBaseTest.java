@@ -503,7 +503,8 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     }
 
     // A - B - D    and A-B-D is used in flow affinity group
-    //   + C +
+    //   \   /
+    //     C
     void createDiamondWithAffinity() {
         Switch nodeA = createSwitch("00:0A");
         Switch nodeB = createSwitch("00:0B");
