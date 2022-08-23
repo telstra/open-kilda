@@ -423,16 +423,12 @@ public abstract class SwitchMapper {
         switch (value) {
             case("meters"):
                 return IncludeFilter.METERS;
-                break;
             case("groups"):
                 return IncludeFilter.GROUPS;
-                break;
             case("logical_ports"):
                 return IncludeFilter.LOGICAL_PORTS;
-                break;
             case("rules"):
                 return IncludeFilter.RULES;
-                break;
             default:
                 throw new IllegalArgumentException(String.format("Unexpected include filter (%s)", value));
         }
@@ -442,7 +438,6 @@ public abstract class SwitchMapper {
         switch (value) {
             case("flow_info"):
                 return ExcludeFilter.FLOW_INFO;
-                break;
             default:
                 throw new IllegalArgumentException(String.format("Unexpected exclude filter (%s)", value));
         }
