@@ -430,7 +430,7 @@ public abstract class SwitchMapper {
             case("rules"):
                 return IncludeFilter.RULES;
             default:
-                throw new IllegalArgumentException("Unexpected include filter");
+                throw new IllegalArgumentException(String.format("Unexpected include filter (%s)", value));
         }
     }
 
@@ -439,7 +439,7 @@ public abstract class SwitchMapper {
             case("flow_info"):
                 return ExcludeFilter.FLOW_INFO;
             default:
-                throw new IllegalArgumentException("Unexpected exclude filter");
+                throw new IllegalArgumentException(String.format("Unexpected exclude filter (%s)", value));
         }
     }
 
@@ -447,6 +447,7 @@ public abstract class SwitchMapper {
      * Convert list of {@link String} into list of {@link IncludeFilter}.
      */
     public List<IncludeFilter> toIncludeFilters(List<String> value) {
+        String kek = "kek";
         return value.stream().map(this::toIncludeFilter).collect(Collectors.toList());
     }
 
