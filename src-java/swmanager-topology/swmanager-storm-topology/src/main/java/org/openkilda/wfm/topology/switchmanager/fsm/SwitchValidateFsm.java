@@ -303,7 +303,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
             log.warn("Got error from GRPC request (cookie={})", sourceCookie);
             pendingRequests.remove(ExternalResources.ACTUAL_LOGICAL_PORTS);
             validationContext = validationContext.toBuilder()
-                    .validateLogicalPortResult(ValidateLogicalPortsResultV2.newErrorMessage(error.getMessage())) //TODO
+                    .validateLogicalPortResult(ValidateLogicalPortsResultV2.newErrorMessage(error.getMessage()))
                     .build();
             fireReadyIfAllResourcesReceived();
         } else {
@@ -338,7 +338,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                     validationContext.getActualGroupEntries(),
                     validationContext.getOfFlowsValidationReport(), validationContext.getMetersValidationReport(),
                     validationContext.getValidateGroupsResult(), validationContext.getValidateLogicalPortResult());
-            //TODO: check if mapping works correctly
+
             ValidationResult validationResult = ValidationMapper.INSTANCE.toValidationResult(results);
             carrier.runSwitchSync(key, request, validationResult);
         } else {
@@ -434,7 +434,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         log.info("Validate rules (switch={}, key={})", getSwitchId(), key);
         ValidateRulesResultV2 results = validationService.validateRules(
                 getSwitchId(), validationContext.getActualOfFlows(), expectedRules);
-        log.error("Validation result {}", results);
+
         validationContext = validationContext.toBuilder()
                 .ofFlowsValidationReport(results)
                 .build();

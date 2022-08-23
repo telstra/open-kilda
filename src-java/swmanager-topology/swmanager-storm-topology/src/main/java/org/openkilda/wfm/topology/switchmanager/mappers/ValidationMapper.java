@@ -48,6 +48,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -77,6 +78,19 @@ public abstract class ValidationMapper {
         if (validationContext.getValidateLogicalPortResult() != null) {
             response.logicalPorts(mapReport(validationContext.getValidateLogicalPortResult()));
         }
+        response.asExpected(
+                Optional.ofNullable(validationContext.getMetersValidationReport())
+                        .map(ValidateMetersResultV2::isAsExpected)
+                        .orElse(true)
+                        && Optional.ofNullable(validationContext.getValidateGroupsResult())
+                        .map(ValidateGroupsResultV2::isAsExpected)
+                        .orElse(true)
+                        && Optional.ofNullable(validationContext.getValidateLogicalPortResult())
+                        .map(ValidateLogicalPortsResultV2::isAsExpected)
+                        .orElse(true)
+                        && Optional.ofNullable(validationContext.getOfFlowsValidationReport())
+                        .map(ValidateRulesResultV2::isAsExpected)
+                        .orElse(true));
 
         return response.build();
     }

@@ -333,80 +333,80 @@ Response payload
 
 ```json
 {
-  "actionType": "NOVI_COPY_FIELD",
-  "numberOfBits": 12,
-  "srcOffset": 10,
-  "dstOffset": 12,
-  "oxmSrcHeader": "111",
-  "oxmDstHeader": "111"
+  "action_type": "NOVI_COPY_FIELD",
+  "number_of_bits": 12,
+  "src_offset": 10,
+  "dst_offset": 12,
+  "oxm_src_header": "111",
+  "oxm_dst_header": "111"
 }
 ```
 ```json
 {
-  "actionType": "GROUP",
-  "groupId": 12345
+  "action_type": "GROUP",
+  "group_id": 12345
 }
 ```
 ```json
 {
-  "actionType": "METER",
-  "meterId": 12345
+  "action_type": "METER",
+  "meter_id": 12345
 }
 ```
 ```json
 {
-  "actionType": "POP_VLAN",
+  "action_type": "POP_VLAN"
 }
 ```
 ```json
 {
-  "actionType": "POP_VXLAN_NOVIFLOW",
+  "action_type": "POP_VXLAN_NOVIFLOW"
 }
 ```
 ```json
 {
-  "actionType": "POP_VXLAN_OVS",
-}
-```
-
-```json
-{
-  "actionType": "PORT_OUT",
-  "portNumber": 123,
-  "portType": "CONTROLLER"
-}
-```
-```json
-{
-  "actionType": "PUSH_VLAN"
+  "action_type": "POP_VXLAN_OVS"
 }
 ```
 
 ```json
 {
-  "actionType": "PUSH_VXLAN_NOVIFLOW",
-  "srcMacAddress": "111",
-  "dstMacAddress": "111",
-  "srcIpv4Address": "123",
-  "dstIpv4Address": "123",
-  "udpSrc": 54321,
+  "action_type": "PORT_OUT",
+  "port_number": 123,
+  "port_type": "CONTROLLER"
+}
+```
+```json
+{
+  "action_type": "PUSH_VLAN"
+}
+```
+
+```json
+{
+  "action_type": "PUSH_VXLAN_NOVIFLOW",
+  "src_mac_address": "111",
+  "dst_mac_address": "111",
+  "src_ipv4_address": "123",
+  "dst_ipv4_address": "123",
+  "udp_src": 54321,
   "vni": 123
 }
 ```
 ```json
 {
-  "actionType": "PUSH_VXLAN_OVS",
-  "srcMacAddress": "111",
-  "dstMacAddress": "111",
-  "srcIpv4Address": "123",
-  "dstIpv4Address": "123",
-  "udpSrc": 54321,
+  "action_type": "PUSH_VXLAN_OVS",
+  "src_mac_address": "111",
+  "dst_mac_address": "111",
+  "src_ipv4_address": "123",
+  "dst_ipv4_address": "123",
+  "udp_src": 54321,
   "vni": 123
 }
 ```
 ```json
 {
-  "actionType": "SET_FIELD",
+  "action_type": "SET_FIELD",
   "value": 12345,
   "field": "some_field"
 }
@@ -414,22 +414,22 @@ Response payload
 
 ```json
 {
-  "actionType": "NOVI_SWAP_FIELD",
-  "numberOfBits": 12345,
-  "srcOffset": 10,
-  "dstOffset": 12,
-  "oxmSrcHeader": "1235",
-  "oxmDstHeader": "12312"
+  "action_type": "NOVI_SWAP_FIELD",
+  "number_of_bits": 12345,
+  "src_offset": 10,
+  "dst_offset": 12,
+  "oxm_src_header": "1235",
+  "oxm_dst_header": "12312"
 }
 ```
 ```json
 {
-  "actionType": "KILDA_SWAP_FIELD",
-  "numberOfBits": 12345,
-  "srcOffset": 10,
-  "dstOffset": 12,
-  "oxmSrcHeader": "1235",
-  "oxmDstHeader": "12312"
+  "action_type": "KILDA_SWAP_FIELD",
+  "number_of_bits": 12345,
+  "src_offset": 10,
+  "dst_offset": 12,
+  "oxm_src_header": "1235",
+  "oxm_dst_header": "12312"
 }
 ```
 </details>

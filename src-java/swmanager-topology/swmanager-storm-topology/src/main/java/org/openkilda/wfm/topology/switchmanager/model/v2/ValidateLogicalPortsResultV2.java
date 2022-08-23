@@ -30,7 +30,8 @@ public class ValidateLogicalPortsResultV2 {
     List<LogicalPortInfoEntryV2> properLogicalPorts;
     List<LogicalPortInfoEntryV2> excessLogicalPorts;
     List<MisconfiguredInfo<LogicalPortInfoEntryV2>> misconfiguredLogicalPorts;
-    String errorMessage; //TODO: for api v1 compatibility, will be removed in the future
+    //TODO(vshakirova): for api v1 compatibility, will be removed in the future
+    String errorMessage;
 
     public static ValidateLogicalPortsResultV2 newEmpty() {
         return new ValidateLogicalPortsResultV2(false, new ArrayList<>(), new ArrayList<>(),
