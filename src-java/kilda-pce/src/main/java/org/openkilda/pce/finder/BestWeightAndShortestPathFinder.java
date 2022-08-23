@@ -327,6 +327,10 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
             backUpPathComputationWayUsed = true;
         }
 
+        if (foundPath.isEmpty()) {
+            foundPath = getPath(start, end, weightFunction);
+        }
+
         return FindOneDirectionPathResult.builder()
                 .foundPath(foundPath)
                 .backUpPathComputationWayUsed(backUpPathComputationWayUsed)
