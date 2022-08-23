@@ -258,6 +258,6 @@ public class SwitchControllerV2 extends BaseController {
             @PathVariable(name = "switch_id") SwitchId switchId,
             @RequestParam(name = "include", required = false) String includeString,
             @RequestParam(name = "exclude", required = false) String excludeString) {
-        return switchService.validateSwitch(switchId, includeString, includeString);
+        return switchService.validateSwitch(switchId, includeString, excludeString);
     }
 }
