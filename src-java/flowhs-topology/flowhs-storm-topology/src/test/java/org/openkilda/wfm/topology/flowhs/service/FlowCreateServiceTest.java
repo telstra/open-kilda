@@ -20,6 +20,8 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
@@ -121,7 +123,9 @@ public class FlowCreateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
                 .build();
 
         when(pathComputer.getPath(makeFlowArgumentMatch(request.getFlowId())))
-                .thenReturn(make2SwitchesPathPair())
+                .thenReturn(make2SwitchesPathPair());
+
+        when(pathComputer.getPath(makeFlowArgumentMatch(request.getFlowId()), anyCollection(), eq(true)))
                 .thenReturn(make3SwitchesPathPair());
 
         Flow result = testHappyPath(request, "successful_flow_create");

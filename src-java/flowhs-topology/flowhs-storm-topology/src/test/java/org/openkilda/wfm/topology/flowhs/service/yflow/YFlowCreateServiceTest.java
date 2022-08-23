@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.service.yflow;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -411,7 +412,9 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
 
     private void preparePathComputation(String flowId, GetPathsResult pathPair, GetPathsResult pathPair2)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId))).thenReturn(pathPair).thenReturn(pathPair2);
+        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId))).thenReturn(pathPair);
+        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), anyCollection(), eq(true)))
+                .thenReturn(pathPair2);
     }
 
     private void prepareYPointComputation(SwitchId sharedEndpoint, SwitchId first, SwitchId second, SwitchId yPoint) {

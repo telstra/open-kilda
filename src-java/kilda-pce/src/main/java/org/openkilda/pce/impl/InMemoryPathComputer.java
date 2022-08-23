@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,6 +19,14 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static org.openkilda.model.PathComputationStrategy.LATENCY;
 import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
+import static org.openkilda.pce.model.PathWeight.Penalty.AFFINITY_ISL_LATENCY;
+import static org.openkilda.pce.model.PathWeight.Penalty.DIVERSITY_ISL_LATENCY;
+import static org.openkilda.pce.model.PathWeight.Penalty.DIVERSITY_POP_ISL_COST;
+import static org.openkilda.pce.model.PathWeight.Penalty.DIVERSITY_SWITCH_LATENCY;
+import static org.openkilda.pce.model.PathWeight.Penalty.PROTECTED_DIVERSITY_ISL_LATENCY;
+import static org.openkilda.pce.model.PathWeight.Penalty.PROTECTED_DIVERSITY_SWITCH_LATENCY;
+import static org.openkilda.pce.model.PathWeight.Penalty.UNDER_MAINTENANCE;
+import static org.openkilda.pce.model.PathWeight.Penalty.UNSTABLE;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -40,6 +48,7 @@ import org.openkilda.pce.model.Edge;
 import org.openkilda.pce.model.FindOneDirectionPathResult;
 import org.openkilda.pce.model.FindPathResult;
 import org.openkilda.pce.model.PathWeight;
+import org.openkilda.pce.model.PathWeight.Penalty;
 import org.openkilda.pce.model.WeightFunction;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -50,9 +59,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -77,14 +88,15 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     @Override
-    public GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources)
+    public GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources, boolean isProtected)
             throws UnroutableFlowException, RecoverableException {
         AvailableNetwork network = availableNetworkFactory.getAvailableNetwork(flow, reusePathsResources);
 
-        return getPath(network, flow, flow.getPathComputationStrategy());
+        return getPath(network, flow, flow.getPathComputationStrategy(), isProtected);
     }
 
-    private GetPathsResult getPath(AvailableNetwork network, Flow flow, PathComputationStrategy strategy)
+    private GetPathsResult getPath(AvailableNetwork network, Flow flow,
+                                   PathComputationStrategy strategy, boolean isProtected)
             throws UnroutableFlowException {
         if (flow.isOneSwitchFlow()) {
             log.info("No path computation for one-switch flow");
@@ -98,7 +110,7 @@ public class InMemoryPathComputer implements PathComputer {
                     .build();
         }
 
-        WeightFunction weightFunction = getWeightFunctionByStrategy(strategy);
+        WeightFunction weightFunction = getWeightFunctionByStrategy(strategy, isProtected);
         FindPathResult findPathResult;
         try {
             findPathResult = findPathInNetwork(flow, network, weightFunction, strategy);
@@ -182,11 +194,11 @@ public class InMemoryPathComputer implements PathComputer {
             case LATENCY:
             case COST_AND_AVAILABLE_BANDWIDTH:
                 paths = pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count,
-                        getWeightFunctionByStrategy(pathComputationStrategy));
+                        getWeightFunctionByStrategy(pathComputationStrategy, false));
                 break;
             case MAX_LATENCY:
                 paths = pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count,
-                        getWeightFunctionByStrategy(pathComputationStrategy), maxLatencyNs, maxLatencyTier2Ns);
+                        getWeightFunctionByStrategy(pathComputationStrategy, false), maxLatencyNs, maxLatencyTier2Ns);
                 break;
             default:
                 throw new UnsupportedOperationException(String.format(
@@ -208,13 +220,14 @@ public class InMemoryPathComputer implements PathComputer {
                 .collect(Collectors.toList());
     }
 
-    private WeightFunction getWeightFunctionByStrategy(PathComputationStrategy strategy) {
+    @VisibleForTesting
+    WeightFunction getWeightFunctionByStrategy(PathComputationStrategy strategy, boolean isProtected) {
         switch (strategy) {
             case COST:
                 return this::weightByCost;
             case LATENCY:
             case MAX_LATENCY:
-                return this::weightByLatency;
+                return edge -> weightByLatency(edge, isProtected);
             case COST_AND_AVAILABLE_BANDWIDTH:
                 return this::weightByCostAndAvailableBandwidth;
             default:
@@ -223,48 +236,116 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     private PathWeight weightByCost(Edge edge) {
-        long total = edge.getCost() == 0 ? config.getDefaultIslCost() : edge.getCost();
+        Map<Penalty, Long> penalties = new EnumMap<>(Penalty.class);
+
         if (edge.isUnderMaintenance()) {
-            total += config.getUnderMaintenanceCostRaise();
+            penalties.put(UNDER_MAINTENANCE, (long) config.getUnderMaintenanceCostRaise());
         }
+
         if (edge.isUnstable()) {
-            total += config.getUnstableCostRaise();
+            penalties.put(UNSTABLE, (long) config.getUnstableCostRaise());
         }
-        total += edge.getDiversityGroupUseCounter() * config.getDiversityIslCost()
-                + edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost()
-                + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchCost()
-                + edge.getAffinityGroupUseCounter() * config.getAffinityIslCost();
-        return new PathWeight(total);
+
+        if (edge.getDiversityGroupUseCounter() > 0) {
+            int value = edge.getDiversityGroupUseCounter() * config.getDiversityIslCost();
+            penalties.put(DIVERSITY_ISL_LATENCY, (long) value);
+        }
+
+        if (edge.getDiversityGroupPerPopUseCounter() > 0) {
+            int value = edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost();
+            penalties.put(DIVERSITY_POP_ISL_COST, (long) value);
+        }
+
+        if (edge.getDestSwitch().getDiversityGroupUseCounter() > 0) {
+            int value = edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchCost();
+            penalties.put(DIVERSITY_SWITCH_LATENCY, (long) value);
+        }
+
+        if (edge.getAffinityGroupUseCounter() > 0) {
+            long value = edge.getAffinityGroupUseCounter() * config.getAffinityIslCost();
+            penalties.put(AFFINITY_ISL_LATENCY, value);
+        }
+
+        long cost = edge.getCost() == 0 ? config.getDefaultIslCost() : edge.getCost();
+        return new PathWeight(cost, penalties);
     }
 
-    private PathWeight weightByLatency(Edge edge) {
-        long total = edge.getLatency() <= 0 ? config.getDefaultIslLatency() : edge.getLatency();
+    private PathWeight weightByLatency(Edge edge, boolean isForProtectedPath) {
+        Map<Penalty, Long> penalties = new EnumMap<>(Penalty.class);
+
         if (edge.isUnderMaintenance()) {
-            total += config.getUnderMaintenanceLatencyRaise();
+            penalties.put(UNDER_MAINTENANCE, config.getUnderMaintenanceLatencyRaise());
         }
+
         if (edge.isUnstable()) {
-            total += config.getUnstableLatencyRaise();
+            penalties.put(UNSTABLE, config.getUnstableLatencyRaise());
         }
-        total += edge.getDiversityGroupUseCounter() * config.getDiversityIslLatency()
-                + edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost()
-                + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchLatency()
-                + edge.getAffinityGroupUseCounter() * config.getAffinityIslLatency();
-        return new PathWeight(total);
+
+        if (edge.getDiversityGroupUseCounter() > 0) {
+            long value = edge.getDiversityGroupUseCounter() * config.getDiversityIslLatency();
+            if (isForProtectedPath) {
+                penalties.put(PROTECTED_DIVERSITY_ISL_LATENCY, value);
+            } else {
+                penalties.put(DIVERSITY_ISL_LATENCY, value);
+            }
+        }
+
+        if (edge.getDiversityGroupPerPopUseCounter() > 0) {
+            int value = edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost();
+            penalties.put(DIVERSITY_POP_ISL_COST, (long) value);
+        }
+
+        if (edge.getDestSwitch().getDiversityGroupUseCounter() > 0) {
+            long value = edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchLatency();
+            if (isForProtectedPath) {
+                penalties.put(PROTECTED_DIVERSITY_SWITCH_LATENCY, value);
+            } else {
+                penalties.put(DIVERSITY_SWITCH_LATENCY, value);
+            }
+        }
+
+        if (edge.getAffinityGroupUseCounter() > 0) {
+            long value = edge.getAffinityGroupUseCounter() * config.getAffinityIslLatency();
+            penalties.put(AFFINITY_ISL_LATENCY, value);
+        }
+
+        long edgeLatency = edge.getLatency() <= 0 ? config.getDefaultIslLatency() : edge.getLatency();
+        return new PathWeight(edgeLatency, penalties);
     }
 
     private PathWeight weightByCostAndAvailableBandwidth(Edge edge) {
-        long total = edge.getCost() == 0 ? config.getDefaultIslCost() : edge.getCost();
+        Map<Penalty, Long> penalties = new EnumMap<>(Penalty.class);
+
         if (edge.isUnderMaintenance()) {
-            total += config.getUnderMaintenanceCostRaise();
+            penalties.put(UNDER_MAINTENANCE, (long) config.getUnderMaintenanceCostRaise());
         }
+
         if (edge.isUnstable()) {
-            total += config.getUnstableCostRaise();
+            penalties.put(UNSTABLE, (long) config.getUnstableCostRaise());
         }
-        total += edge.getDiversityGroupUseCounter() * config.getDiversityIslCost()
-                + edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost()
-                + edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchCost()
-                + edge.getAffinityGroupUseCounter() * config.getAffinityIslCost();
-        return new PathWeight(total, edge.getAvailableBandwidth());
+
+        if (edge.getDiversityGroupUseCounter() > 0) {
+            int value = edge.getDiversityGroupUseCounter() * config.getDiversityIslCost();
+            penalties.put(DIVERSITY_ISL_LATENCY, (long) value);
+        }
+
+        if (edge.getDiversityGroupPerPopUseCounter() > 0) {
+            int value = edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost();
+            penalties.put(DIVERSITY_POP_ISL_COST, (long) value);
+        }
+
+        if (edge.getDestSwitch().getDiversityGroupUseCounter() > 0) {
+            int value = edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchCost();
+            penalties.put(DIVERSITY_SWITCH_LATENCY, (long) value);
+        }
+
+        if (edge.getAffinityGroupUseCounter() > 0) {
+            long value = edge.getAffinityGroupUseCounter() * config.getAffinityIslCost();
+            penalties.put(AFFINITY_ISL_LATENCY, value);
+        }
+
+        long cost = edge.getCost() == 0 ? config.getDefaultIslCost() : edge.getCost();
+        return new PathWeight(cost, penalties, edge.getAvailableBandwidth());
     }
 
     private GetPathsResult convertToGetPathsResult(
