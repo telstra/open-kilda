@@ -245,7 +245,7 @@ public class ValidationServiceImpl implements ValidationService {
         Collection<Flow> flows = flowRepository.findAll();
         Collection<YFlow> yFlows = yFlowRepository.findAll();
 
-        List<MeterInfoEntryV2> actualMeters = convertMeters(switchId, presentMeters, flows, yFlows);
+        List<MeterInfoEntryV2> actualMeters =  convertMeters(switchId, presentMeters, flows, yFlows);
         List<MeterInfoEntryV2> expectedMeters = convertMeters(switchId, expectedMeterSpeakerData, flows, yFlows);
 
         List<MeterInfoEntryV2> missingMeters = new ArrayList<>();
@@ -367,10 +367,10 @@ public class ValidationServiceImpl implements ValidationService {
 
         for (MeterInfoEntryV2 meterEntry : presentMeters) {
             if (!expectedMeterIds.contains(meterEntry.getMeterId())) {
-                // nrydanov: We need to clear unnecessary fields for excess meters
-                meterEntry.setFlowId(null);
-                meterEntry.setYFlowId(null);
-                meterEntry.setFlowPath(null);
+//                // nrydanov: We need to clear unnecessary fields for excess meters
+//                meterEntry.setFlowId(null);
+//                meterEntry.setYFlowId(null);
+//                meterEntry.setFlowPath(null);
                 excessMeters.add(meterEntry);
             }
         }
