@@ -26,10 +26,9 @@ public abstract class FlowHsService {
      * Handles deactivate command.
      */
     public boolean deactivate() {
-        boolean isChanged = active;
+        boolean wasActive = active;
         active = false;
-
-        return isChanged;
+        return wasActive;
     }
 
     /**
