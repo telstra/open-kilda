@@ -241,7 +241,6 @@ public class ValidationServiceImpl implements ValidationService {
         Switch sw = switchRepository.findById(switchId)
                 .orElseThrow(() -> new SwitchNotFoundException(switchId));
         boolean isESwitch = Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
-        // TODO(nrydanov): Probably use more proper way to determine what kind of flow is used on a meter.
         Collection<Flow> flows = flowRepository.findAll();
         Collection<YFlow> yFlows = yFlowRepository.findAll();
 
@@ -452,9 +451,11 @@ public class ValidationServiceImpl implements ValidationService {
         for (MeterSpeakerData meterData : meterSpeakerData) {
             MeterInfoEntryV2 meterInfoEntry = MeterEntryConverter.INSTANCE.toMeterEntry(meterData);
             Optional<FlowMeter> flowMeter = flowMeterRepository.findById(switchId, meterData.getMeterId());
-
+            meterInfoEntry.setFlowId("what?");
             if (flowMeter.isPresent()) {
+                meterInfoEntry.setFlowId("what1?");
                 String id = flowMeter.get().getFlowId();
+                // TODO(nrydanov): Probably use more proper way to determine what kind of flow is used on a meter.
                 if (isFlowId(id, flows, yFlows)) {
                     meterInfoEntry.setFlowId(id);
                 } else {
