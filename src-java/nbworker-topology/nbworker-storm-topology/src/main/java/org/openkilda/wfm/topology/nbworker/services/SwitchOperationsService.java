@@ -205,6 +205,9 @@ public class SwitchOperationsService {
                     .forEach(portPropertiesRepository::remove);
             portRepository.getAllBySwitchId(sw.getSwitchId())
                     .forEach(portRepository::remove);
+            switchConnectedDeviceRepository.findBySwitchId(switchId)
+                    .forEach(switchConnectedDeviceRepository::remove);
+
             if (force) {
                 // remove() removes switch along with all relationships.
                 switchRepository.remove(sw);
