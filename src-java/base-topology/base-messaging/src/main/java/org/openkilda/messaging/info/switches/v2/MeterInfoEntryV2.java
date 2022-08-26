@@ -33,6 +33,9 @@ public class MeterInfoEntryV2 implements Serializable {
     private String flowId;
     private String flowPath;
 
+    @JsonProperty("flow_path_id")
+    private String flowPathId;
+
     @JsonProperty("y_flow_id")
     private String yFlowId;
     private Long rate;

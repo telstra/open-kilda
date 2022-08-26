@@ -30,7 +30,7 @@ import java.util.List;
 public class GroupInfoEntryV2 implements Serializable {
     private String flowId;
     private String yFlowId;
-    private String flowPath;
+    private String flowPathId;
     private Integer groupId;
     private List<BucketEntry> buckets;
 

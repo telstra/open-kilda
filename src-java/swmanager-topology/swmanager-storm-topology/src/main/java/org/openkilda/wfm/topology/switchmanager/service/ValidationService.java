@@ -33,12 +33,12 @@ public interface ValidationService {
                                         List<FlowSpeakerData> expectedRules);
 
     ValidateGroupsResultV2 validateGroups(SwitchId switchId, List<GroupSpeakerData> presentGroups,
-                                          List<GroupSpeakerData> expectedGroups);
+                                          List<GroupSpeakerData> expectedGroups, boolean excludeFlowInfo);
 
     ValidateLogicalPortsResultV2 validateLogicalPorts(SwitchId switchId, List<LogicalPort> presentLogicalPorts);
 
     ValidateMetersResultV2 validateMeters(SwitchId switchId, List<MeterSpeakerData> presentMeters,
-                                          List<MeterSpeakerData> expectedMeters);
+                                          List<MeterSpeakerData> expectedMeters, boolean excludeFlowInfo);
 
     List<SpeakerData> buildExpectedEntities(SwitchId switchId);
 }

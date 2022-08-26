@@ -343,17 +343,18 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         List<GroupSpeakerData> expectedGroups = filterSpeakerData(expectedEntities, GroupSpeakerData.class);
 
         boolean validateAll = includeFilters.isEmpty();
+        boolean excludeFlowInfo = excludeFilters.contains(ExcludeFilter.FLOW_INFO);
 
         if (validateAll || includeFilters.contains(IncludeFilter.RULES)) {
-            validateRules(expectedRules);
+            validateRules(expectedRules, excludeFlowInfo);
         }
 
         if (validateAll || includeFilters.contains(IncludeFilter.METERS)) {
-            validateMeters(expectedMeters);
+            validateMeters(expectedMeters, excludeFlowInfo);
         }
 
         if (validateAll || includeFilters.contains(IncludeFilter.GROUPS)) {
-            validateGroups(expectedGroups);
+            validateGroups(expectedGroups, excludeFlowInfo);
         }
 
         if (validateAll || includeFilters.contains(IncludeFilter.LOGICAL_PORTS)) {
@@ -467,7 +468,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         requestsTable.put(uuid, request);
     }
 
-    private void validateRules(List<FlowSpeakerData> expectedRules) {
+    private void validateRules(List<FlowSpeakerData> expectedRules, boolean excludeFlowinfo) {
         log.info("Validate rules (switch={}, key={})", getSwitchId(), key);
         ValidateRulesResultV2 results = validationService.validateRules(
                 getSwitchId(), validationContext.getActualOfFlows(), expectedRules);
@@ -477,23 +478,23 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 .build();
     }
 
-    private void validateMeters(List<MeterSpeakerData> expectedMeters) {
+    private void validateMeters(List<MeterSpeakerData> expectedMeters, boolean excludeFlowInfo) {
         if (validationContext.getActualMeters() == null) {
             return;
         }
 
         log.info("Validate meters (switch={}, key={})", getSwitchId(), key);
         ValidateMetersResultV2 results = validationService.validateMeters(
-                getSwitchId(), validationContext.getActualMeters(), expectedMeters);
+                getSwitchId(), validationContext.getActualMeters(), expectedMeters, excludeFlowInfo);
         validationContext = validationContext.toBuilder()
                 .metersValidationReport(results)
                 .build();
     }
 
-    protected void validateGroups(List<GroupSpeakerData> expectedGroups) {
+    protected void validateGroups(List<GroupSpeakerData> expectedGroups, boolean excludeFlowInfo) {
         log.info("Validate groups (switch={}, key={})", getSwitchId(), key);
         ValidateGroupsResultV2 results = validationService.validateGroups(
-                getSwitchId(), validationContext.getActualGroupEntries(), expectedGroups);
+                getSwitchId(), validationContext.getActualGroupEntries(), expectedGroups, excludeFlowInfo);
         validationContext = validationContext.toBuilder()
                 .validateGroupsResult(results)
                 .build();

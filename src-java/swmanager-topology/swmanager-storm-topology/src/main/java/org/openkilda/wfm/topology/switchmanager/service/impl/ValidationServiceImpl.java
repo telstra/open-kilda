@@ -163,14 +163,15 @@ public class ValidationServiceImpl implements ValidationService {
 
     @Override
     public ValidateGroupsResultV2 validateGroups(SwitchId switchId, List<GroupSpeakerData> groupEntries,
-                                                 List<GroupSpeakerData> expectedGroupSpeakerData) {
+                                                 List<GroupSpeakerData> expectedGroupSpeakerData,
+                                                 boolean excludeFlowInfo) {
         log.debug("Validating groups on a switch {}", switchId);
 
         Collection<Flow> flows = flowRepository.findAll();
         Collection<YFlow> yFlows = yFlowRepository.findAll();
 
-        Set<GroupInfoEntryV2> expectedGroups = convertGroups(expectedGroupSpeakerData, flows, yFlows);
-        Set<GroupInfoEntryV2> presentGroups = convertGroups(groupEntries, flows, yFlows);
+        Set<GroupInfoEntryV2> expectedGroups = convertGroups(expectedGroupSpeakerData, flows, yFlows, excludeFlowInfo);
+        Set<GroupInfoEntryV2> presentGroups = convertGroups(groupEntries, flows, yFlows, excludeFlowInfo);
 
         Set<GroupInfoEntryV2> missingGroups = new HashSet<>();
         Set<GroupInfoEntryV2> properGroups = new HashSet<>(expectedGroups);
@@ -235,7 +236,8 @@ public class ValidationServiceImpl implements ValidationService {
 
     @Override
     public ValidateMetersResultV2 validateMeters(SwitchId switchId, List<MeterSpeakerData> presentMeters,
-                                                 List<MeterSpeakerData> expectedMeterSpeakerData) {
+                                                 List<MeterSpeakerData> expectedMeterSpeakerData,
+                                                 boolean excludeFlowInfo) {
         log.debug("Validating meters on a switch {}", switchId);
 
         Switch sw = switchRepository.findById(switchId)
@@ -244,8 +246,10 @@ public class ValidationServiceImpl implements ValidationService {
         Collection<Flow> flows = flowRepository.findAll();
         Collection<YFlow> yFlows = yFlowRepository.findAll();
 
-        List<MeterInfoEntryV2> actualMeters =  convertMeters(switchId, presentMeters, flows, yFlows);
-        List<MeterInfoEntryV2> expectedMeters = convertMeters(switchId, expectedMeterSpeakerData, flows, yFlows);
+        List<MeterInfoEntryV2> actualMeters =  convertMeters(switchId, presentMeters, flows, yFlows,
+                excludeFlowInfo);
+        List<MeterInfoEntryV2> expectedMeters = convertMeters(switchId, expectedMeterSpeakerData, flows, yFlows,
+                excludeFlowInfo);
 
         List<MeterInfoEntryV2> missingMeters = new ArrayList<>();
         List<MeterInfoEntryV2> properMeters = new ArrayList<>();
@@ -367,9 +371,9 @@ public class ValidationServiceImpl implements ValidationService {
         for (MeterInfoEntryV2 meterEntry : presentMeters) {
             if (!expectedMeterIds.contains(meterEntry.getMeterId())) {
                 // nrydanov: We need to clear unnecessary fields for excess meters
-                // meterEntry.setFlowId(null);
-                // meterEntry.setYFlowId(null);
-                // meterEntry.setFlowPath(null);
+                meterEntry.setFlowId(null);
+                meterEntry.setYFlowId(null);
+                meterEntry.setFlowPathId(null);
                 excessMeters.add(meterEntry);
             }
         }
@@ -425,15 +429,14 @@ public class ValidationServiceImpl implements ValidationService {
     }
 
     private Set<GroupInfoEntryV2> convertGroups(List<GroupSpeakerData> groupEntries, Collection<Flow> flows,
-                                                Collection<YFlow> yFlows) {
+                                                Collection<YFlow> yFlows, boolean excludeFlowInfo) {
         return groupEntries.stream()
                 .map(GroupEntryConverter.INSTANCE::toGroupEntry)
                 .map(groupEntry -> {
                     String id = groupEntry.getFlowId();
-                    if (id == null) {
+                    if (id == null || excludeFlowInfo) {
                         return groupEntry;
                     }
-
                     if (isFlowId(id, flows, yFlows)) {
                         groupEntry.setFlowId(id);
                     } else {
@@ -445,15 +448,14 @@ public class ValidationServiceImpl implements ValidationService {
     }
 
     private List<MeterInfoEntryV2> convertMeters(SwitchId switchId, List<MeterSpeakerData> meterSpeakerData,
-                                                 Collection<Flow> flows, Collection<YFlow> yFlows) {
+                                                 Collection<Flow> flows, Collection<YFlow> yFlows,
+                                                 boolean excludeFlowInfo) {
         List<MeterInfoEntryV2> meters = new ArrayList<>();
 
         for (MeterSpeakerData meterData : meterSpeakerData) {
             MeterInfoEntryV2 meterInfoEntry = MeterEntryConverter.INSTANCE.toMeterEntry(meterData);
             Optional<FlowMeter> flowMeter = flowMeterRepository.findById(switchId, meterData.getMeterId());
-            meterInfoEntry.setFlowId("what?");
-            if (flowMeter.isPresent()) {
-                meterInfoEntry.setFlowId("what1?");
+            if (flowMeter.isPresent() && !excludeFlowInfo) {
                 String id = flowMeter.get().getFlowId();
                 // TODO(nrydanov): Probably use more proper way to determine what kind of flow is used on a meter.
                 if (isFlowId(id, flows, yFlows)) {
@@ -461,8 +463,12 @@ public class ValidationServiceImpl implements ValidationService {
                 } else {
                     meterInfoEntry.setYFlowId(id);
                 }
-                Optional<FlowPath> flowPath = flowPathRepository.findById(flowMeter.get().getPathId());
-                flowPath.ifPresent(path -> meterInfoEntry.setCookie(path.getCookie().getValue()));
+                PathId pathId = flowMeter.get().getPathId();
+                Optional<FlowPath> flowPath = flowPathRepository.findById(pathId);
+                flowPath.ifPresent(path ->  {
+                    meterInfoEntry.setCookie(path.getCookie().getValue());
+                    meterInfoEntry.setFlowPathId(pathId.getId());
+                });
             }
             meters.add(meterInfoEntry);
         }
