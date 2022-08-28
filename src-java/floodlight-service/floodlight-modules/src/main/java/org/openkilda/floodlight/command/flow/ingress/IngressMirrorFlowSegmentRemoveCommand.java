@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow.ingress;
 
+import org.openkilda.floodlight.command.SpeakerCommandProcessor;
+import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentRemoveMultiTableMirrorFlowModFactory;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentRemoveSingleTableMirrorFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
@@ -30,9 +32,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @SuppressWarnings("squid:MaximumInheritanceDepth")
-public class IngressMirrorFlowSegmentRemoveCommand extends IngressFlowSegmentRemoveCommand {
+public class IngressMirrorFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
     public IngressMirrorFlowSegmentRemoveCommand(
             @JsonProperty("message_context") MessageContext context,
             @JsonProperty("command_id") UUID commandId,
@@ -58,5 +61,15 @@ public class IngressMirrorFlowSegmentRemoveCommand extends IngressFlowSegmentRem
             setFlowModFactory(
                     new IngressFlowSegmentRemoveSingleTableMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
         }
+    }
+
+    @Override
+    protected CompletableFuture<FlowSegmentReport> makeExecutePlan(SpeakerCommandProcessor commandProcessor) {
+        return makeRemovePlan(commandProcessor);
+    }
+
+    @Override
+    protected SegmentAction getSegmentAction() {
+        return SegmentAction.REMOVE;
     }
 }
