@@ -39,7 +39,7 @@ public class RuleInfoEntryV2 implements Serializable {
     Integer tableId;
     Integer priority;
     String flowId;
-    String flowPath;
+    String flowPathId;
     List<String> flags;
     TreeMap<String, FieldMatch> match;
     Instructions instructions;

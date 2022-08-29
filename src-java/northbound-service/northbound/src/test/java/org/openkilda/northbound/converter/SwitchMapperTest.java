@@ -514,10 +514,10 @@ public class SwitchMapperTest {
                 actual.getRules().getMisconfigured().get(0));
     }
 
-    //assert
+    // Asserts
     private void assertRules(RuleInfoEntryV2 ruleInfo, RuleInfoDtoV2 ruleDto) {
         assertEquals(ruleInfo.getCookie(), ruleDto.getCookie());
-        assertEquals(ruleInfo.getFlowPath(), ruleDto.getFlowPath());
+        assertEquals(ruleInfo.getFlowPathId(), ruleDto.getFlowPathId());
         assertEquals(ruleInfo.getFlowId(), ruleDto.getFlowId());
         assertEquals(ruleInfo.getYFlowId(), ruleDto.getYFlowId());
         assertEquals(ruleInfo.getTableId(), ruleDto.getTableId());
@@ -570,7 +570,7 @@ public class SwitchMapperTest {
     private void assertMeters(MeterInfoEntryV2 expected, MeterInfoDtoV2 actual) {
         assertEquals(expected.getMeterId(), actual.getMeterId());
         assertEquals(expected.getFlowId(), actual.getFlowId());
-        assertEquals(expected.getFlowPath(), actual.getFlowPath());
+        assertEquals(expected.getFlowPathId(), actual.getFlowPathId());
         assertEquals(expected.getFlags(), actual.getFlags());
         assertEquals(expected.getBurstSize(), actual.getBurstSize());
         assertEquals(expected.getCookie(), actual.getCookie());
@@ -609,7 +609,7 @@ public class SwitchMapperTest {
     private void assertGroups(GroupInfoEntryV2 expected, GroupInfoDtoV2 actual) {
         assertEquals(expected.getGroupId(), actual.getGroupId());
         assertEquals(expected.getFlowId(), actual.getFlowId());
-        assertEquals(expected.getFlowPath(), actual.getFlowPath());
+        assertEquals(expected.getFlowPathId(), actual.getFlowPathId());
 
         assertEquals(expected.getBuckets().get(0).getVni(), actual.getBuckets().get(0).getVni());
         assertEquals(expected.getBuckets().get(0).getVlan(), actual.getBuckets().get(0).getVlan());
@@ -651,7 +651,7 @@ public class SwitchMapperTest {
         return GroupInfoEntryV2.builder()
                 .groupId(base + 1)
                 .flowId(String.format("flow_id_%s", base))
-                .flowPath(String.format("flow_path_%s", base))
+                .flowPathId(String.format("flow_path_id_%s", base))
                 .buckets(Lists.newArrayList(GroupInfoEntryV2.BucketEntry.builder()
                         .port(base + 2)
                         .vlan(base + 3)
@@ -673,7 +673,7 @@ public class SwitchMapperTest {
                 .rate(base + 2L)
                 .cookie(base + 3L)
                 .yFlowId(String.format("y_flow_id_%s", base))
-                .flowPath(String.format("y_flow_path_%s", base))
+                .flowPathId(String.format("y_flow_path_id_%s", base))
                 .flowId(String.format("flow_id_%s", base))
                 .meterId(base + 4L)
                 .flags(Lists.newArrayList((String.format("FLAG_%s", base))))
@@ -704,7 +704,7 @@ public class SwitchMapperTest {
                 .cookieHex(String.format("cookie_hex_%s", base))
                 .cookieKind(String.format("cookie_kind_%s", base))
                 .flowId(String.format("flow_id_%s", base))
-                .flowPath(String.format("flow_path_%s", base))
+                .flowPathId(String.format("flow_path_id_%s", base))
                 .yFlowId(String.format("y_flow_id_%s", base))
                 .match(Stream.of(new SimpleEntry<>("key", buildFieldMatchV2(base)))
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,

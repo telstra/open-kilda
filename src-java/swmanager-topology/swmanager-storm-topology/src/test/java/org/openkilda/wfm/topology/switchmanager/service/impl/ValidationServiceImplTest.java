@@ -47,9 +47,11 @@ import org.openkilda.model.cookie.Cookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
@@ -851,6 +853,10 @@ public class ValidationServiceImplTest {
         private final FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
         private final FlowMeterRepository flowMeterRepository = mock(FlowMeterRepository.class);
 
+        private final FlowRepository flowRepository = mock(FlowRepository.class);
+
+        private final YFlowRepository yFlowRepository = mock(YFlowRepository.class);
+
         private PersistenceManager build() {
             Switch switchE = Switch.builder()
                     .switchId(SWITCH_ID_E)
@@ -881,6 +887,12 @@ public class ValidationServiceImplTest {
 
             when(flowPathRepository.findById(any())).thenReturn(Optional.empty());
             when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
+
+            when(flowRepository.findAll()).thenReturn(Collections.emptyList());
+            when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
+
+            when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
+            when(repositoryFactory.createYFlowRepository()).thenReturn(yFlowRepository);
 
             PersistenceManager persistenceManager = mock(PersistenceManager.class);
             when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
