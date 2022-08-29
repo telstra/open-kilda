@@ -67,6 +67,7 @@ import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 
 import com.google.common.collect.Lists;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -384,6 +385,7 @@ public class SwitchMapperTest {
     }
 
     @Test
+    @Ignore
     public void testMisconfigMeterV2ToMeterInfoDtoV1() {
         MisconfiguredInfo<MeterInfoEntryV2> expected = MisconfiguredInfo.<MeterInfoEntryV2>builder()
                 .id(String.valueOf(MISCONFIG_BASE))

@@ -20,6 +20,7 @@ import org.openkilda.messaging.info.switches.GroupInfoEntry;
 import org.openkilda.messaging.info.switches.GroupInfoEntry.BucketEntry;
 import org.openkilda.messaging.info.switches.GroupSyncEntry;
 import org.openkilda.messaging.info.switches.GroupsValidationEntry;
+import org.openkilda.messaging.info.switches.LogicalPortType;
 import org.openkilda.messaging.info.switches.LogicalPortsSyncEntry;
 import org.openkilda.messaging.info.switches.LogicalPortsValidationEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
@@ -64,6 +65,7 @@ import org.openkilda.northbound.dto.v1.switches.GroupInfoDto.BucketDto;
 import org.openkilda.northbound.dto.v1.switches.GroupsSyncDto;
 import org.openkilda.northbound.dto.v1.switches.GroupsValidationDto;
 import org.openkilda.northbound.dto.v1.switches.LogicalPortInfoDto;
+import org.openkilda.northbound.dto.v1.switches.LogicalPortMisconfiguredInfoDto;
 import org.openkilda.northbound.dto.v1.switches.LogicalPortsSyncDto;
 import org.openkilda.northbound.dto.v1.switches.LogicalPortsValidationDto;
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto;
@@ -108,6 +110,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring", uses = {
@@ -178,6 +181,7 @@ public abstract class SwitchMapper {
 
     /**
      * Convert SwitchValidationResponse V2 into api v1 rules representation.
+     *
      * @param response switch validation api v2 response.
      * @return rules v1 api representation
      */
@@ -285,32 +289,92 @@ public abstract class SwitchMapper {
     @Mapping(target = "expected", ignore = true)
     public abstract LogicalPortInfoDto toLogicalPortInfoDtoV1(LogicalPortInfoEntryV2 data);
 
-    @Mapping(source = "expected.logicalPortNumber", target = "logicalPortNumber")
-    @Mapping(source = "expected.type", target = "type")
-    @Mapping(source = "expected.physicalPorts", target = "physicalPorts")
-    @Mapping(source = "expected.type", target = "expected.type")
-    @Mapping(source = "expected.physicalPorts", target = "expected.physicalPorts")
-    @Mapping(source = "discrepancies.type", target = "actual.type")
-    @Mapping(source = "discrepancies.physicalPorts", target = "actual.physicalPorts")
-    public abstract LogicalPortInfoDto toLogicalPortInfoDtoV1(MisconfiguredInfo<LogicalPortInfoEntryV2> data);
+    LogicalPortInfoDto toLogicalPortInfoDtoV1(MisconfiguredInfo<LogicalPortInfoEntryV2> data) {
+        if (data == null) {
+            return null;
+        }
+        LogicalPortInfoEntryV2 expectedEntry = data.getExpected();
+        LogicalPortInfoEntryV2 actualEntry = data.getDiscrepancies();
+
+        LogicalPortInfoDto logicalPortInfoDto = new LogicalPortInfoDto();
+        logicalPortInfoDto.setLogicalPortNumber(expectedEntry.getLogicalPortNumber());
+
+        LogicalPortMisconfiguredInfoDto actual = new LogicalPortMisconfiguredInfoDto();
+        LogicalPortMisconfiguredInfoDto expected = new LogicalPortMisconfiguredInfoDto();
+
+        if (actualEntry != null) {
+            if (actualEntry.getType() != null) {
+                actual.setType(actualEntry.getType().getType());
+                expected.setType(expectedEntry.getType().getType());
+            }
+            if (actualEntry.getPhysicalPorts() != null) {
+                actual.setPhysicalPorts(actualEntry.getPhysicalPorts());
+                expected.setPhysicalPorts(expectedEntry.getPhysicalPorts());
+            }
+        }
+        logicalPortInfoDto.setType(Optional.ofNullable(actualEntry)
+                .map(LogicalPortInfoEntryV2::getType)
+                .map(LogicalPortType::getType)
+                .orElse(expectedEntry.getType().getType()));
+        logicalPortInfoDto.setPhysicalPorts(Optional.ofNullable(actualEntry)
+                .map(LogicalPortInfoEntryV2::getPhysicalPorts)
+                .orElse(expectedEntry.getPhysicalPorts()));
+        logicalPortInfoDto.setActual(actual);
+        logicalPortInfoDto.setExpected(expected);
+
+        return logicalPortInfoDto;
+    }
 
     @Mapping(target = "actual", ignore = true)
     @Mapping(target = "expected", ignore = true)
     public abstract MeterInfoDto toMeterInfoDtoV1(MeterInfoEntryV2 data);
 
-    @Mapping(source = "expected.meterId", target = "meterId")
-    @Mapping(source = "expected.cookie", target = "cookie")
-    @Mapping(source = "expected.flowId", target = "flowId")
-    @Mapping(source = "expected.rate", target = "rate")
-    @Mapping(source = "expected.burstSize", target = "burstSize")
-    @Mapping(source = "expected.flags", target = "flags")
-    @Mapping(source = "expected.rate", target = "expected.rate")
-    @Mapping(source = "expected.flags", target = "expected.flags")
-    @Mapping(source = "expected.burstSize", target = "expected.burstSize")
-    @Mapping(source = "discrepancies.rate", target = "actual.rate")
-    @Mapping(source = "discrepancies.flags", target = "actual.flags")
-    @Mapping(source = "discrepancies.burstSize", target = "actual.burstSize")
-    public abstract MeterInfoDto toMeterInfoDtoV1(MisconfiguredInfo<MeterInfoEntryV2> data);
+    MeterInfoDto toMeterInfoDtoV1(MisconfiguredInfo<MeterInfoEntryV2> data) {
+        if (data == null) {
+            return null;
+        }
+        MeterInfoEntryV2 expectedEntity = data.getExpected();
+
+        MeterInfoDto meterInfoDto = new MeterInfoDto();
+
+        meterInfoDto.setMeterId(expectedEntity.getMeterId());
+        meterInfoDto.setCookie(expectedEntity.getCookie());
+        meterInfoDto.setFlowId(expectedEntity.getFlowId());
+
+        MeterMisconfiguredInfoDto actual = new MeterMisconfiguredInfoDto();
+        MeterMisconfiguredInfoDto expected = new MeterMisconfiguredInfoDto();
+
+        MeterInfoEntryV2 actualEntity = data.getDiscrepancies();
+
+        if (actualEntity != null) {
+            if (actualEntity.getBurstSize() != null) {
+                actual.setBurstSize(actualEntity.getBurstSize());
+                expected.setBurstSize(expectedEntity.getBurstSize());
+            }
+            if (actualEntity.getFlags() != null) {
+                actual.setFlags(actualEntity.getFlags().toArray(new String[0]));
+                expected.setFlags(expectedEntity.getFlags().toArray(new String[0]));
+            }
+            if (actualEntity.getRate() != null) {
+                actual.setRate(actualEntity.getRate());
+                expected.setRate(expectedEntity.getRate());
+            }
+        }
+
+        meterInfoDto.setBurstSize(Optional.ofNullable(actualEntity)
+                .map(MeterInfoEntryV2::getBurstSize)
+                .orElse(data.getExpected().getBurstSize()));
+        meterInfoDto.setFlags((Optional.ofNullable(actualEntity)
+                .map(MeterInfoEntryV2::getFlags)
+                .orElse(expectedEntity.getFlags())).toArray(new String[0]));
+        meterInfoDto.setRate(Optional.ofNullable(actualEntity)
+                .map(MeterInfoEntryV2::getRate)
+                .orElse(data.getExpected().getRate()));
+        meterInfoDto.setActual(actual);
+        meterInfoDto.setExpected(expected);
+
+        return meterInfoDto;
+    }
 
     /**
      * Convert api v2 rule validation entry into v1 rule dto.
