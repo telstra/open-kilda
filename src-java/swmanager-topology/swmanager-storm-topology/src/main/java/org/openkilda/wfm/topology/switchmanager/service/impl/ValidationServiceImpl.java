@@ -429,15 +429,8 @@ public class ValidationServiceImpl implements ValidationService {
         }
     }
 
-    // NOTE(nrydanov): Kinda weird
-    private boolean isFlowId(String id, Collection<Flow> flows, Collection<YFlow> yFlows) {
-        if (flows.stream().anyMatch(flow -> flow.getFlowId().equals(id))) {
-            return true;
-        } else if (yFlows.stream().anyMatch(yFlow -> yFlow.getYFlowId().equals(id))) {
-            return false;
-        } else {
-            throw new IllegalStateException("Unexpected flow/yflow id");
-        }
+    private boolean isFlowId(String id, Collection<Flow> flows) {
+        return flows.stream().anyMatch(flow -> flow.getFlowId().equals(id));
     }
 
     private Set<GroupInfoEntryV2> convertGroups(List<GroupSpeakerData> groupEntries, Collection<Flow> flows,
@@ -448,10 +441,10 @@ public class ValidationServiceImpl implements ValidationService {
                     if (!excludeFlowInfo) {
                         mirrorGroupRepository.findByGroupId(data.getGroupId()).ifPresent(mirrorGroup -> {
                             String id = mirrorGroup.getFlowId();
-                            if (isFlowId(id, flows, yFlows)) {
+                            if (isFlowId(id, flows)) {
                                 groupEntry.setFlowId(id);
                             } else {
-                                groupEntry.setYFlowId(id);
+                                yFlowRepository.findYFlowId(id).ifPresent(groupEntry::setYFlowId);
                             }
                             String pathId = mirrorGroup.getPathId().getId();
                             groupEntry.setFlowPathId(pathId);
@@ -472,10 +465,10 @@ public class ValidationServiceImpl implements ValidationService {
             Optional<FlowMeter> flowMeter = flowMeterRepository.findById(switchId, meterData.getMeterId());
             if (flowMeter.isPresent() && !excludeFlowInfo) {
                 String id = flowMeter.get().getFlowId();
-                if (isFlowId(id, flows, yFlows)) {
+                if (isFlowId(id, flows)) {
                     meterInfoEntry.setFlowId(id);
                 } else {
-                    meterInfoEntry.setYFlowId(id);
+                    yFlowRepository.findYFlowId(id).ifPresent(meterInfoEntry::setYFlowId);
                 }
                 PathId pathId = flowMeter.get().getPathId();
                 Optional<FlowPath> flowPath = flowPathRepository.findById(pathId);
