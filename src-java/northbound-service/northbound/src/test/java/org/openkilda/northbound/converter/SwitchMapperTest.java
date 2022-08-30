@@ -395,10 +395,10 @@ public class SwitchMapperTest {
 
         assertEquals(expected.getExpected().getMeterId(), actual.getMeterId());
         assertEquals(expected.getExpected().getFlowId(), actual.getFlowId());
+        assertEquals(expected.getExpected().getCookie(), actual.getCookie());
 
         assertEquals(expected.getDiscrepancies().getFlags(), Lists.newArrayList(actual.getFlags()));
         assertEquals(expected.getDiscrepancies().getBurstSize(), actual.getBurstSize());
-        assertEquals(expected.getDiscrepancies().getCookie(), actual.getCookie());
         assertEquals(expected.getDiscrepancies().getRate(), actual.getRate());
 
         assertEquals(expected.getExpected().getRate(), actual.getExpected().getRate());

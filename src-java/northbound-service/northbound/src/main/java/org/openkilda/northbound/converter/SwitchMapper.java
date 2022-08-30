@@ -359,9 +359,8 @@ public abstract class SwitchMapper {
                 expected.setRate(expectedEntity.getRate());
             }
         }
-        meterInfoDto.setCookie(Optional.ofNullable(actualEntity)
-                .map(MeterInfoEntryV2::getCookie)
-                .orElse(expectedEntity.getCookie()));
+        meterInfoDto.setCookie(Optional.ofNullable(expectedEntity.getCookie())
+                .orElse(null));
         meterInfoDto.setBurstSize(Optional.ofNullable(actualEntity)
                 .map(MeterInfoEntryV2::getBurstSize)
                 .orElse(data.getExpected().getBurstSize()));
