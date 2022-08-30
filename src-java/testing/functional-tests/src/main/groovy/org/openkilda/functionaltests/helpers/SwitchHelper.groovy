@@ -2,7 +2,7 @@ package org.openkilda.functionaltests.helpers
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.hamcrest.MatcherAssert.assertThat
-import static org.hamcrest.Matchers.containsInAnyOrder
+import static org.hamcrest.Matchers.hasItem
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN
 import static org.openkilda.model.cookie.Cookie.ARP_INGRESS_COOKIE
@@ -326,7 +326,10 @@ class SwitchHelper {
             for (long cookie : sw.defaultCookies) {
                 expectedHexCookie.add(new Cookie(cookie).toString())
             }
-            assertThat sw.toString(), actualHexCookie, containsInAnyOrder(expectedHexCookie.toArray())
+             expectedHexCookie.forEach { item ->
+                assertThat sw.toString(), actualHexCookie, hasItem(item)
+            }
+
 
             def actualDefaultMetersIds = northbound.get().getAllMeters(sw.dpId).meterEntries*.meterId.findAll {
                 MeterId.isMeterIdOfDefaultRule((long) it)
