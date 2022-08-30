@@ -505,18 +505,20 @@ public class ValidationServiceImpl implements ValidationService {
                         .type(SERVICE_OR_FLOW_SEGMENT)
                         .build();
 
-                flowPathRepository.findByCookie(pureCookie).ifPresent(flowPath -> {
-                    ruleInfo.setFlowPathId(flowPath.getPathId().getId());
+                if (!excludeFlowInfo) {
+                    flowPathRepository.findByCookie(pureCookie).ifPresent(flowPath -> {
+                        ruleInfo.setFlowPathId(flowPath.getPathId().getId());
 
-                    Flow flow = flowPath.getFlow();
-                    String yFlowId = flow.getYFlowId();
+                        Flow flow = flowPath.getFlow();
+                        String yFlowId = flow.getYFlowId();
 
-                    if (yFlowId != null) {
-                        ruleInfo.setYFlowId(yFlowId);
-                    } else {
-                        ruleInfo.setFlowId(flow.getFlowId());
-                    }
-                });
+                        if (yFlowId != null) {
+                            ruleInfo.setYFlowId(yFlowId);
+                        } else {
+                            ruleInfo.setFlowId(flow.getFlowId());
+                        }
+                    });
+                }
             }
             rules.put(ruleKey, ruleInfo);
         }
