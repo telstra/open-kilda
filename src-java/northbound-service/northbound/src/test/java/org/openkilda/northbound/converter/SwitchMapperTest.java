@@ -67,7 +67,6 @@ import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 
 import com.google.common.collect.Lists;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -371,8 +370,8 @@ public class SwitchMapperTest {
                 .proper(newHashSet(buildRuleInfoEntryV2(PROPER_BASE)))
                 .misconfigured(newHashSet(MisconfiguredInfo.<RuleInfoEntryV2>builder()
                         .id(String.valueOf(MISCONFIG_BASE))
-                        .expected(buildRuleInfoEntryV2(MISCONFIG_BASE))
-                        .discrepancies(buildRuleInfoEntryV2(MISCONFIG_BASE))
+                        .expected(buildRuleInfoEntryV2(MISCONFIG_BASE + 1))
+                        .discrepancies(buildRuleInfoEntryV2(MISCONFIG_BASE + 2))
                         .build()))
                 .build();
         RulesValidationDto actual = switchMapper.toRulesValidationDtoV1(expected);
@@ -385,17 +384,22 @@ public class SwitchMapperTest {
     }
 
     @Test
-    @Ignore
     public void testMisconfigMeterV2ToMeterInfoDtoV1() {
         MisconfiguredInfo<MeterInfoEntryV2> expected = MisconfiguredInfo.<MeterInfoEntryV2>builder()
                 .id(String.valueOf(MISCONFIG_BASE))
-                .expected(buildMeterInfoEntryV2(MISCONFIG_BASE))
-                .discrepancies(buildMeterInfoEntryV2(MISCONFIG_BASE))
+                .expected(buildMeterInfoEntryV2(MISCONFIG_BASE + 1))
+                .discrepancies(buildMeterInfoEntryV2(MISCONFIG_BASE + 2))
                 .build();
 
         MeterInfoDto actual = switchMapper.toMeterInfoDtoV1(expected);
 
-        assertMeters(expected.getExpected(), actual);
+        assertEquals(expected.getExpected().getMeterId(), actual.getMeterId());
+        assertEquals(expected.getExpected().getFlowId(), actual.getFlowId());
+
+        assertEquals(expected.getDiscrepancies().getFlags(), Lists.newArrayList(actual.getFlags()));
+        assertEquals(expected.getDiscrepancies().getBurstSize(), actual.getBurstSize());
+        assertEquals(expected.getDiscrepancies().getCookie(), actual.getCookie());
+        assertEquals(expected.getDiscrepancies().getRate(), actual.getRate());
 
         assertEquals(expected.getExpected().getRate(), actual.getExpected().getRate());
         assertEquals(expected.getExpected().getBurstSize(), actual.getExpected().getBurstSize());
@@ -418,18 +422,19 @@ public class SwitchMapperTest {
     public void testMisconfigLogicalPortV2ToLogicalPortInfoV1() {
         MisconfiguredInfo<LogicalPortInfoEntryV2> expected = MisconfiguredInfo.<LogicalPortInfoEntryV2>builder()
                 .id(String.valueOf(MISCONFIG_BASE))
-                .expected(buildLogicalPortInfoEntryV2(MISCONFIG_BASE))
-                .discrepancies(buildLogicalPortInfoEntryV2(MISCONFIG_BASE))
+                .expected(buildLogicalPortInfoEntryV2(MISCONFIG_BASE + 1))
+                .discrepancies(buildLogicalPortInfoEntryV2(MISCONFIG_BASE + 2))
                 .build();
         LogicalPortInfoDto actual = switchMapper.toLogicalPortInfoDtoV1(expected);
 
-        assertLogicalPorts(expected.getExpected(), actual);
+        assertEquals(expected.getDiscrepancies().getType().toString(), actual.getType());
+        assertEquals(expected.getDiscrepancies().getPhysicalPorts(), actual.getPhysicalPorts());
 
         assertEquals(expected.getExpected().getType().toString(), actual.getExpected().getType());
         assertEquals(expected.getExpected().getPhysicalPorts(), actual.getExpected().getPhysicalPorts());
 
         assertEquals(expected.getDiscrepancies().getType().toString(), actual.getActual().getType());
-        assertEquals(expected.getExpected().getPhysicalPorts(), actual.getPhysicalPorts());
+        assertEquals(expected.getDiscrepancies().getPhysicalPorts(), actual.getActual().getPhysicalPorts());
     }
 
     @Test
@@ -446,8 +451,8 @@ public class SwitchMapperTest {
     public void testMisconfigGroupV2ToGroupInfoDtoV1() {
         MisconfiguredInfo<GroupInfoEntryV2> expected = MisconfiguredInfo.<GroupInfoEntryV2>builder()
                 .id(String.valueOf(MISCONFIG_BASE))
-                .expected(buildGroupInfoEntryV2(MISCONFIG_BASE))
-                .discrepancies(buildGroupInfoEntryV2(MISCONFIG_BASE))
+                .expected(buildGroupInfoEntryV2(MISCONFIG_BASE + 1))
+                .discrepancies(buildGroupInfoEntryV2(MISCONFIG_BASE + 2))
                 .build();
 
         GroupInfoDto actual = switchMapper.toGroupInfoDtoV1(expected);
@@ -669,6 +674,7 @@ public class SwitchMapperTest {
                 .cookie(base + 3L)
                 .yFlowId(String.format("y_flow_id_%s", base))
                 .flowPath(String.format("y_flow_path_%s", base))
+                .flowId(String.format("flow_id_%s", base))
                 .meterId(base + 4L)
                 .flags(Lists.newArrayList((String.format("FLAG_%s", base))))
                 .build();

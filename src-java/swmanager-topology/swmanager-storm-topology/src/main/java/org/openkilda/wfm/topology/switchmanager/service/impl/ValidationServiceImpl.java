@@ -508,6 +508,9 @@ public class ValidationServiceImpl implements ValidationService {
         if (!Sets.newHashSet(actualMeter.getFlags()).equals(Sets.newHashSet(expectedMeter.getFlags()))) {
             discrepancies.flags(actualMeter.getFlags());
         }
+        if (!actualMeter.getCookie().equals(expectedMeter.getCookie())) {
+            discrepancies.cookie(actualMeter.getCookie());
+        }
 
         return MisconfiguredInfo.<MeterInfoEntryV2>builder()
                 .id(expectedMeter.getMeterId().toString())

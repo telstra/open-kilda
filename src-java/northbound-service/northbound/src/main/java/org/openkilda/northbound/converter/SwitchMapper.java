@@ -338,7 +338,6 @@ public abstract class SwitchMapper {
         MeterInfoDto meterInfoDto = new MeterInfoDto();
 
         meterInfoDto.setMeterId(expectedEntity.getMeterId());
-        meterInfoDto.setCookie(expectedEntity.getCookie());
         meterInfoDto.setFlowId(expectedEntity.getFlowId());
 
         MeterMisconfiguredInfoDto actual = new MeterMisconfiguredInfoDto();
@@ -360,7 +359,9 @@ public abstract class SwitchMapper {
                 expected.setRate(expectedEntity.getRate());
             }
         }
-
+        meterInfoDto.setCookie(Optional.ofNullable(actualEntity)
+                .map(MeterInfoEntryV2::getCookie)
+                .orElse(expectedEntity.getCookie()));
         meterInfoDto.setBurstSize(Optional.ofNullable(actualEntity)
                 .map(MeterInfoEntryV2::getBurstSize)
                 .orElse(data.getExpected().getBurstSize()));
