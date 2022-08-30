@@ -16,6 +16,8 @@
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import static java.lang.String.format;
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVER_42_FLOW_RTT_INGRESS;
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT;
 
 import org.openkilda.messaging.info.switches.LogicalPortType;
 import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2;
@@ -29,17 +31,21 @@ import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMeter;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.Meter;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
+import org.openkilda.model.cookie.CookieBase;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
+import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.YFlowRepository;
@@ -95,6 +101,8 @@ public class ValidationServiceImpl implements ValidationService {
     private final FlowRepository flowRepository;
 
     private final YFlowRepository yFlowRepository;
+
+    private final MirrorGroupRepository mirrorGroupRepository;
     private final RuleManager ruleManager;
 
     public ValidationServiceImpl(PersistenceManager persistenceManager, RuleManager ruleManager) {
@@ -108,7 +116,7 @@ public class ValidationServiceImpl implements ValidationService {
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
-
+        this.mirrorGroupRepository = repositoryFactory.createMirrorGroupRepository();
     }
 
     @Override
@@ -132,7 +140,7 @@ public class ValidationServiceImpl implements ValidationService {
 
     @Override
     public ValidateRulesResultV2 validateRules(SwitchId switchId, List<FlowSpeakerData> presentRules,
-                                               List<FlowSpeakerData> expectedRules) {
+                                               List<FlowSpeakerData> expectedRules, boolean excludeFlowInfo) {
         log.debug("Validating rules on switch {}", switchId);
 
         Set<RuleInfoEntryV2> missingRules = new HashSet<>();
@@ -140,8 +148,13 @@ public class ValidationServiceImpl implements ValidationService {
         Set<RuleInfoEntryV2> excessRules = new HashSet<>();
         Set<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules = new HashSet<>();
 
-        processRulesValidation(presentRules, expectedRules, missingRules, properRules, excessRules,
-                misconfiguredRules);
+
+        Map<RuleKey, RuleInfoEntryV2> expectedRulesMap = convertRules(expectedRules, excludeFlowInfo);
+        Map<RuleKey, RuleInfoEntryV2> actualRulesMap = convertRules(presentRules, excludeFlowInfo);
+
+
+        processRulesValidation(missingRules, properRules, excessRules,
+                misconfiguredRules, expectedRulesMap, actualRulesMap);
 
         if (!missingRules.isEmpty() && log.isErrorEnabled()) {
             log.warn("On switch {} the following rules are missed: {}", switchId,
@@ -308,13 +321,11 @@ public class ValidationServiceImpl implements ValidationService {
         misconfiguredGroups.addAll(calculateMisconfiguredGroups(expectedGroups, presentGroups));
     }
 
-    private void processRulesValidation(List<FlowSpeakerData> presentRules, List<FlowSpeakerData> existedRules,
-                                        Set<RuleInfoEntryV2> missingRules, Set<RuleInfoEntryV2> properRules,
+    private void processRulesValidation(Set<RuleInfoEntryV2> missingRules, Set<RuleInfoEntryV2> properRules,
                                         Set<RuleInfoEntryV2> excessRules,
-                                        Set<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules) {
-
-        Map<RuleKey, RuleInfoEntryV2> expectedRules = convertRules(existedRules);
-        Map<RuleKey, RuleInfoEntryV2> actualRules = convertRules(presentRules);
+                                        Set<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules,
+                                        Map<RuleKey, RuleInfoEntryV2> expectedRules,
+                                        Map<RuleKey, RuleInfoEntryV2> actualRules) {
 
         expectedRules.keySet().forEach(expectedRuleKey -> {
             RuleInfoEntryV2 expectedRuleValue = expectedRules.get(expectedRuleKey);
@@ -418,6 +429,7 @@ public class ValidationServiceImpl implements ValidationService {
         }
     }
 
+    // NOTE(nrydanov): Kinda weird
     private boolean isFlowId(String id, Collection<Flow> flows, Collection<YFlow> yFlows) {
         if (flows.stream().anyMatch(flow -> flow.getFlowId().equals(id))) {
             return true;
@@ -431,16 +443,19 @@ public class ValidationServiceImpl implements ValidationService {
     private Set<GroupInfoEntryV2> convertGroups(List<GroupSpeakerData> groupEntries, Collection<Flow> flows,
                                                 Collection<YFlow> yFlows, boolean excludeFlowInfo) {
         return groupEntries.stream()
-                .map(GroupEntryConverter.INSTANCE::toGroupEntry)
-                .map(groupEntry -> {
-                    String id = groupEntry.getFlowId();
-                    if (id == null || excludeFlowInfo) {
-                        return groupEntry;
-                    }
-                    if (isFlowId(id, flows, yFlows)) {
-                        groupEntry.setFlowId(id);
-                    } else {
-                        groupEntry.setYFlowId(id);
+                .map(data -> {
+                    GroupInfoEntryV2 groupEntry = GroupEntryConverter.INSTANCE.toGroupEntry(data);
+                    if (!excludeFlowInfo) {
+                        mirrorGroupRepository.findByGroupId(data.getGroupId()).ifPresent(mirrorGroup -> {
+                            String id = mirrorGroup.getFlowId();
+                            if (isFlowId(id, flows, yFlows)) {
+                                groupEntry.setFlowId(id);
+                            } else {
+                                groupEntry.setYFlowId(id);
+                            }
+                            String pathId = mirrorGroup.getPathId().getId();
+                            groupEntry.setFlowPathId(pathId);
+                        });
                     }
                     return groupEntry;
                 })
@@ -457,7 +472,6 @@ public class ValidationServiceImpl implements ValidationService {
             Optional<FlowMeter> flowMeter = flowMeterRepository.findById(switchId, meterData.getMeterId());
             if (flowMeter.isPresent() && !excludeFlowInfo) {
                 String id = flowMeter.get().getFlowId();
-                // TODO(nrydanov): Probably use more proper way to determine what kind of flow is used on a meter.
                 if (isFlowId(id, flows, yFlows)) {
                     meterInfoEntry.setFlowId(id);
                 } else {
@@ -475,7 +489,7 @@ public class ValidationServiceImpl implements ValidationService {
         return meters;
     }
 
-    private Map<RuleKey, RuleInfoEntryV2> convertRules(List<FlowSpeakerData> flowSpeakerData) {
+    private Map<RuleKey, RuleInfoEntryV2> convertRules(List<FlowSpeakerData> flowSpeakerData, boolean excludeFlowInfo) {
         Map<RuleKey, RuleInfoEntryV2> rules = new HashMap<>();
 
         for (FlowSpeakerData rule : flowSpeakerData) {
@@ -485,6 +499,32 @@ public class ValidationServiceImpl implements ValidationService {
                     .match(ruleInfo.getMatch())
                     .tableId(ruleInfo.getTableId())
                     .build();
+
+            long longCookie = rule.getCookie().getValue();
+            FlowSegmentCookie segmentCookie = new FlowSegmentCookie(longCookie);
+            CookieBase.CookieType type = segmentCookie.getType();
+
+            if ((type == SERVICE_OR_FLOW_SEGMENT || type == SERVER_42_FLOW_RTT_INGRESS)
+                    && segmentCookie.getDirection() != FlowPathDirection.UNDEFINED) {
+                FlowSegmentCookie pureCookie = FlowSegmentCookie.builder()
+                        .direction(segmentCookie.getDirection())
+                        .flowEffectiveId(segmentCookie.getFlowEffectiveId())
+                        .type(SERVICE_OR_FLOW_SEGMENT)
+                        .build();
+
+                flowPathRepository.findByCookie(pureCookie).ifPresent(flowPath -> {
+                    ruleInfo.setFlowPathId(flowPath.getPathId().getId());
+
+                    Flow flow = flowPath.getFlow();
+                    String yFlowId = flow.getYFlowId();
+
+                    if (yFlowId != null) {
+                        ruleInfo.setYFlowId(yFlowId);
+                    } else {
+                        ruleInfo.setFlowId(flow.getFlowId());
+                    }
+                });
+            }
             rules.put(ruleKey, ruleInfo);
         }
         return rules;

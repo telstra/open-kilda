@@ -49,6 +49,7 @@ import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
+import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.YFlowRepository;
@@ -153,7 +154,7 @@ public class ValidationServiceImplTest {
     public void validateGroupsEmpty() {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
         ValidateGroupsResultV2 response = validationService.validateGroups(SWITCH_ID_A, emptyList(), emptyList(),
-                false);
+                true);
 
         assertTrue(response.getExcessGroups().isEmpty());
         assertTrue(response.getMissingGroups().isEmpty());
@@ -177,7 +178,7 @@ public class ValidationServiceImplTest {
         groupSpeakerData.add(buildFullGroupSpeakerCommandData(GroupId.ROUND_TRIP_LATENCY_GROUP_ID, bucket));
 
         ValidateGroupsResultV2 response = validationService.validateGroups(SWITCH_ID_A, groupSpeakerData,
-                groupSpeakerData, false);
+                groupSpeakerData, true);
 
         assertTrue(response.getExcessGroups().isEmpty());
         assertTrue(response.getMissingGroups().isEmpty());
@@ -207,7 +208,7 @@ public class ValidationServiceImplTest {
         actualGroupData.add(buildFullGroupSpeakerCommandData(GroupId.MIN_FLOW_GROUP_ID, bucket));
 
         ValidateGroupsResultV2 response = validationService.validateGroups(SWITCH_ID_A, actualGroupData,
-                expectedGroupData, false);
+                expectedGroupData, true);
 
         assertFalse(response.getExcessGroups().isEmpty());
         assertFalse(response.getMissingGroups().isEmpty());
@@ -244,7 +245,7 @@ public class ValidationServiceImplTest {
         actualGroupData.add(buildFullGroupSpeakerCommandData(GroupId.ROUND_TRIP_LATENCY_GROUP_ID, actualBucket));
 
         ValidateGroupsResultV2 response = validationService.validateGroups(SWITCH_ID_A, actualGroupData,
-                expectedGroupData, false);
+                expectedGroupData, true);
 
         assertTrue(response.getExcessGroups().isEmpty());
         assertTrue(response.getMissingGroups().isEmpty());
@@ -270,7 +271,7 @@ public class ValidationServiceImplTest {
     public void validateMetersEmpty() {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
         ValidateMetersResultV2 response = validationService.validateMeters(SWITCH_ID_A, emptyList(), emptyList(),
-                false);
+                true);
 
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -288,7 +289,7 @@ public class ValidationServiceImplTest {
         ValidateMetersResultV2 response = validationService.validateMeters(SWITCH_ID_B,
                 singletonList(meter),
                 singletonList(meter),
-                false);
+                true);
 
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -313,7 +314,7 @@ public class ValidationServiceImplTest {
         ValidateMetersResultV2 response = validationService.validateMeters(SWITCH_ID_B,
                 singletonList(actualMeter),
                 singletonList(expectedMeter),
-                false);
+                true);
 
         assertFalse(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -341,7 +342,7 @@ public class ValidationServiceImplTest {
         ValidateMetersResultV2 response = validationService.validateMeters(SWITCH_ID_B,
                 singletonList(actualMeter),
                 singletonList(expectedMeter),
-                false);
+                true);
 
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getProperMeters().isEmpty());
@@ -375,7 +376,7 @@ public class ValidationServiceImplTest {
         ValidateMetersResultV2 response = validationService.validateMeters(SWITCH_ID_E,
                 singletonList(meter),
                 singletonList(meter),
-                false);
+                true);
 
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -404,7 +405,7 @@ public class ValidationServiceImplTest {
         ValidateMetersResultV2 response = validationService.validateMeters(SWITCH_ID_E,
                 singletonList(actualMeter),
                 singletonList(expectedMeter),
-                false);
+                true);
 
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getProperMeters().isEmpty());
@@ -495,7 +496,8 @@ public class ValidationServiceImplTest {
     @Test
     public void validateRulesEmpty() {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
-        ValidateRulesResultV2 response = validationService.validateRules(SWITCH_ID_A, emptyList(), emptyList());
+        ValidateRulesResultV2 response = validationService.validateRules(SWITCH_ID_A, emptyList(), emptyList(),
+                true);
 
         assertTrue(response.isAsExpected());
         assertTrue(response.getMissingRules().isEmpty());
@@ -515,7 +517,8 @@ public class ValidationServiceImplTest {
         List<FlowSpeakerData> flowSpeakerData = Lists.newArrayList(buildFullFlowSpeakerCommandData(OfTable.INPUT,
                 PRIORITY, match));
 
-        ValidateRulesResultV2 response = validationService.validateRules(SWITCH_ID_A, flowSpeakerData, flowSpeakerData);
+        ValidateRulesResultV2 response = validationService.validateRules(SWITCH_ID_A, flowSpeakerData, flowSpeakerData,
+                true);
 
         assertTrue(response.getExcessRules().isEmpty());
         assertTrue(response.getMissingRules().isEmpty());
@@ -540,7 +543,8 @@ public class ValidationServiceImplTest {
         List<FlowSpeakerData> actual = Lists.newArrayList(buildFullFlowSpeakerCommandData(
                 OfTable.EGRESS, PRIORITY, match));
 
-        ValidateRulesResultV2 response = validationService.validateRules(SWITCH_ID_A, actual, expected);
+        ValidateRulesResultV2 response = validationService.validateRules(SWITCH_ID_A, actual, expected,
+                true);
 
         assertFalse(response.getExcessRules().isEmpty());
         assertFalse(response.getMissingRules().isEmpty());
@@ -555,7 +559,7 @@ public class ValidationServiceImplTest {
         expected = Lists.newArrayList(buildFullFlowSpeakerCommandData(OfTable.INPUT, PRIORITY, match));
         actual = Lists.newArrayList(buildFullFlowSpeakerCommandData(OfTable.INPUT, PRIORITY + 100, match));
 
-        response = validationService.validateRules(SWITCH_ID_A, actual, expected);
+        response = validationService.validateRules(SWITCH_ID_A, actual, expected, false);
 
         assertFalse(response.getExcessRules().isEmpty());
         assertFalse(response.getMissingRules().isEmpty());
@@ -574,7 +578,7 @@ public class ValidationServiceImplTest {
         expected = Lists.newArrayList(buildFullFlowSpeakerCommandData(OfTable.INPUT, PRIORITY, match));
         actual = Lists.newArrayList(buildFullFlowSpeakerCommandData(OfTable.INPUT, PRIORITY, newMatch));
 
-        response = validationService.validateRules(SWITCH_ID_A, actual, expected);
+        response = validationService.validateRules(SWITCH_ID_A, actual, expected, false);
 
         assertFalse(response.getExcessRules().isEmpty());
         assertFalse(response.getMissingRules().isEmpty());
@@ -621,7 +625,8 @@ public class ValidationServiceImplTest {
 
         List<FlowSpeakerData> actual = Lists.newArrayList(misconfigured);
 
-        ValidateRulesResultV2 response = validationService.validateRules(SWITCH_ID_A, actual, expected);
+        ValidateRulesResultV2 response = validationService.validateRules(SWITCH_ID_A, actual, expected,
+                true);
 
         assertTrue(response.getExcessRules().isEmpty());
         assertTrue(response.getMissingRules().isEmpty());
@@ -852,10 +857,9 @@ public class ValidationServiceImplTest {
         private final LagLogicalPortRepository lagLogicalPortRepository = mock(LagLogicalPortRepository.class);
         private final FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
         private final FlowMeterRepository flowMeterRepository = mock(FlowMeterRepository.class);
-
         private final FlowRepository flowRepository = mock(FlowRepository.class);
-
         private final YFlowRepository yFlowRepository = mock(YFlowRepository.class);
+        private final MirrorGroupRepository mirrorGroupRepository = mock(MirrorGroupRepository.class);
 
         private PersistenceManager build() {
             Switch switchE = Switch.builder()

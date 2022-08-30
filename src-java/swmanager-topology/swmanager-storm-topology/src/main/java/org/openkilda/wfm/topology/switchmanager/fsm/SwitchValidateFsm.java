@@ -358,7 +358,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         }
 
         if (validateAll || includeFilters.contains(IncludeFilter.LOGICAL_PORTS)) {
-            validateLogicalPorts();
+            validateLogicalPorts(excludeFlowInfo);
         }
     }
 
@@ -468,10 +468,10 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         requestsTable.put(uuid, request);
     }
 
-    private void validateRules(List<FlowSpeakerData> expectedRules, boolean excludeFlowinfo) {
+    private void validateRules(List<FlowSpeakerData> expectedRules, boolean excludeFlowInfo) {
         log.info("Validate rules (switch={}, key={})", getSwitchId(), key);
         ValidateRulesResultV2 results = validationService.validateRules(
-                getSwitchId(), validationContext.getActualOfFlows(), expectedRules);
+                getSwitchId(), validationContext.getActualOfFlows(), expectedRules, excludeFlowInfo);
 
         validationContext = validationContext.toBuilder()
                 .ofFlowsValidationReport(results)
@@ -500,7 +500,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 .build();
     }
 
-    protected void validateLogicalPorts() {
+    protected void validateLogicalPorts(boolean excludeFlowInfo) {
         if (validationContext.getActualLogicalPortEntries() == null) {
             return;
         }
