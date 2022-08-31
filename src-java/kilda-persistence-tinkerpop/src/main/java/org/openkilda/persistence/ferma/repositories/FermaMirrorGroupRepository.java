@@ -79,9 +79,10 @@ public class FermaMirrorGroupRepository extends FermaGenericRepository<MirrorGro
     }
 
     @Override
-    public Optional<MirrorGroup> findByGroupId(GroupId groupId) {
+    public Optional<MirrorGroup> findByGroupIdAndSwitchId(GroupId groupId, SwitchId switchId) {
         List<? extends MirrorGroupFrame> mirrorGroupFrames = framedGraph().traverse(g -> g.V()
                 .hasLabel(MirrorGroupFrame.FRAME_LABEL)
+                .has(MirrorGroupFrame.SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
                 .has(MirrorGroupFrame.GROUP_ID_PROPERTY, GroupIdConverter.INSTANCE.toGraphProperty(groupId)))
                 .toListExplicit(MirrorGroupFrame.class);
 

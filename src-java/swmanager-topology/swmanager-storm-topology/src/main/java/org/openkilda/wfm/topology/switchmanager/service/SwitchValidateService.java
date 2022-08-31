@@ -46,9 +46,9 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -149,7 +149,7 @@ public class SwitchValidateService implements SwitchManagerHubService {
         // nrydanov: This case is possible when V1 API is used
         if (request.getIncludeFilters() == null) {
             // nrydanov: In V1 API we include all except meters by default
-            List<IncludeFilter> includeFilters = new LinkedList<>(Arrays.asList(IncludeFilter.GROUPS,
+            Set<IncludeFilter> includeFilters = new HashSet<>(Arrays.asList(IncludeFilter.GROUPS,
                     IncludeFilter.RULES, IncludeFilter.LOGICAL_PORTS));
             // nrydanov: And check if we need to also include meters
             if (request.isProcessMeters()) {
@@ -160,7 +160,7 @@ public class SwitchValidateService implements SwitchManagerHubService {
 
         // nrydanov: Also in case of V1 API usage
         if (request.getExcludeFilters() == null) {
-            request = request.toBuilder().excludeFilters(new LinkedList<>()).build();
+            request = request.toBuilder().excludeFilters(new HashSet<>()).build();
         }
 
         SwitchValidateContext initialContext = SwitchValidateContext.builder()

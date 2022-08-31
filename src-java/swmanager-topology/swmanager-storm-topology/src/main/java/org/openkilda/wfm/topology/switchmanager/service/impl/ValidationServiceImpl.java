@@ -180,11 +180,8 @@ public class ValidationServiceImpl implements ValidationService {
                                                  boolean excludeFlowInfo) {
         log.debug("Validating groups on a switch {}", switchId);
 
-        Collection<Flow> flows = flowRepository.findAll();
-        Collection<YFlow> yFlows = yFlowRepository.findAll();
-
-        Set<GroupInfoEntryV2> expectedGroups = convertGroups(expectedGroupSpeakerData, flows, yFlows, excludeFlowInfo);
-        Set<GroupInfoEntryV2> presentGroups = convertGroups(groupEntries, flows, yFlows, excludeFlowInfo);
+        Set<GroupInfoEntryV2> expectedGroups = convertGroups(expectedGroupSpeakerData, excludeFlowInfo);
+        Set<GroupInfoEntryV2> presentGroups = convertGroups(groupEntries, excludeFlowInfo);
 
         Set<GroupInfoEntryV2> missingGroups = new HashSet<>();
         Set<GroupInfoEntryV2> properGroups = new HashSet<>(expectedGroups);
@@ -259,9 +256,9 @@ public class ValidationServiceImpl implements ValidationService {
         Collection<Flow> flows = flowRepository.findAll();
         Collection<YFlow> yFlows = yFlowRepository.findAll();
 
-        List<MeterInfoEntryV2> actualMeters =  convertMeters(switchId, presentMeters, flows, yFlows,
+        List<MeterInfoEntryV2> actualMeters =  convertMeters(switchId, presentMeters,
                 excludeFlowInfo);
-        List<MeterInfoEntryV2> expectedMeters = convertMeters(switchId, expectedMeterSpeakerData, flows, yFlows,
+        List<MeterInfoEntryV2> expectedMeters = convertMeters(switchId, expectedMeterSpeakerData,
                 excludeFlowInfo);
 
         List<MeterInfoEntryV2> missingMeters = new ArrayList<>();
@@ -425,26 +422,21 @@ public class ValidationServiceImpl implements ValidationService {
         }
     }
 
-    private boolean isFlowId(String id, Collection<Flow> flows) {
-        return flows.stream().anyMatch(flow -> flow.getFlowId().equals(id));
-    }
-
-    private Set<GroupInfoEntryV2> convertGroups(List<GroupSpeakerData> groupEntries, Collection<Flow> flows,
-                                                Collection<YFlow> yFlows, boolean excludeFlowInfo) {
+    private Set<GroupInfoEntryV2> convertGroups(List<GroupSpeakerData> groupEntries, boolean excludeFlowInfo) {
         return groupEntries.stream()
                 .map(data -> {
                     GroupInfoEntryV2 groupEntry = GroupEntryConverter.INSTANCE.toGroupEntry(data);
                     if (!excludeFlowInfo) {
-                        mirrorGroupRepository.findByGroupId(data.getGroupId()).ifPresent(mirrorGroup -> {
-                            String id = mirrorGroup.getFlowId();
-                            if (isFlowId(id, flows)) {
-                                groupEntry.setFlowId(id);
-                            } else {
-                                yFlowRepository.findYFlowId(id).ifPresent(groupEntry::setYFlowId);
-                            }
-                            String pathId = mirrorGroup.getPathId().getId();
-                            groupEntry.setFlowPathId(pathId);
-                        });
+                        mirrorGroupRepository.findByGroupIdAndSwitchId(data.getGroupId(), data.getSwitchId())
+                                .ifPresent(mirrorGroup -> {
+                                    String id = mirrorGroup.getFlowId();
+                                    groupEntry.setFlowId(id);
+                                    // TODO(nrydanov): Probably, it will slow down performance.
+                                    //  Better to cache set of pairs <sub_flow_id, y_flow_id>
+                                    yFlowRepository.findYFlowId(id).ifPresent(groupEntry::setYFlowId);
+                                    String pathId = mirrorGroup.getPathId().getId();
+                                    groupEntry.setFlowPathId(pathId);
+                                });
                     }
                     return groupEntry;
                 })
@@ -452,7 +444,6 @@ public class ValidationServiceImpl implements ValidationService {
     }
 
     private List<MeterInfoEntryV2> convertMeters(SwitchId switchId, List<MeterSpeakerData> meterSpeakerData,
-                                                 Collection<Flow> flows, Collection<YFlow> yFlows,
                                                  boolean excludeFlowInfo) {
         List<MeterInfoEntryV2> meters = new ArrayList<>();
 
@@ -461,11 +452,10 @@ public class ValidationServiceImpl implements ValidationService {
             Optional<FlowMeter> flowMeter = flowMeterRepository.findById(switchId, meterData.getMeterId());
             if (flowMeter.isPresent() && !excludeFlowInfo) {
                 String id = flowMeter.get().getFlowId();
-                if (isFlowId(id, flows)) {
-                    meterInfoEntry.setFlowId(id);
-                } else {
-                    yFlowRepository.findYFlowId(id).ifPresent(meterInfoEntry::setYFlowId);
-                }
+                meterInfoEntry.setFlowId(id);
+                // TODO(nrydanov): Probably, it will slow down performance.
+                //  Better to cache set of pairs <sub_flow_id, y_flow_id>
+                yFlowRepository.findYFlowId(id).ifPresent(meterInfoEntry::setYFlowId);
                 PathId pathId = flowMeter.get().getPathId();
                 Optional<FlowPath> flowPath = flowPathRepository.findById(pathId);
                 flowPath.ifPresent(path ->  {
@@ -493,26 +483,23 @@ public class ValidationServiceImpl implements ValidationService {
             FlowSegmentCookie segmentCookie = new FlowSegmentCookie(longCookie);
             CookieBase.CookieType type = segmentCookie.getType();
 
-            if ((type == SERVICE_OR_FLOW_SEGMENT || type == SERVER_42_FLOW_RTT_INGRESS)
-                    && segmentCookie.getDirection() != FlowPathDirection.UNDEFINED) {
-                FlowSegmentCookie pureCookie = FlowSegmentCookie.builder()
-                        .direction(segmentCookie.getDirection())
-                        .flowEffectiveId(segmentCookie.getFlowEffectiveId())
-                        .type(SERVICE_OR_FLOW_SEGMENT)
-                        .build();
+            if (!excludeFlowInfo) {
+                if ((type == SERVICE_OR_FLOW_SEGMENT || type == SERVER_42_FLOW_RTT_INGRESS)
+                        && segmentCookie.getDirection() != FlowPathDirection.UNDEFINED) {
+                    FlowSegmentCookie pureCookie = FlowSegmentCookie.builder()
+                            .direction(segmentCookie.getDirection())
+                            .flowEffectiveId(segmentCookie.getFlowEffectiveId())
+                            .type(SERVICE_OR_FLOW_SEGMENT)
+                            .build();
 
-                if (!excludeFlowInfo) {
                     flowPathRepository.findByCookie(pureCookie).ifPresent(flowPath -> {
                         ruleInfo.setFlowPathId(flowPath.getPathId().getId());
 
                         Flow flow = flowPath.getFlow();
-                        String yFlowId = flow.getYFlowId();
 
-                        if (yFlowId != null) {
-                            ruleInfo.setYFlowId(yFlowId);
-                        } else {
-                            ruleInfo.setFlowId(flow.getFlowId());
-                        }
+                        String yFlowId = flow.getYFlowId();
+                        ruleInfo.setYFlowId(yFlowId);
+                        ruleInfo.setFlowId(flow.getFlowId());
                     });
                 }
             }
@@ -548,7 +535,6 @@ public class ValidationServiceImpl implements ValidationService {
                     .buckets(Stream.concat(missingBuckets.stream(), excessBuckets.stream())
                             .collect(Collectors.toList()))
                     .build();
-            //TODO: add flow id,flow path for expected entry
 
             misconfiguredGroups.add(MisconfiguredInfo.<GroupInfoEntryV2>builder()
                     .id(expectedEntry.getGroupId().toString())

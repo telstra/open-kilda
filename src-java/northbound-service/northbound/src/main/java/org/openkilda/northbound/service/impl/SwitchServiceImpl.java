@@ -118,8 +118,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.LinkedList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -283,18 +284,28 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
                                                                       String excludeString) {
         logger.info("Validate api V2 request for switch {}", switchId);
 
-        List<IncludeFilter> includeFilters = new LinkedList<>();
+        Set<IncludeFilter> includeFilters = new HashSet<>();
         if (includeString != null) {
-            includeFilters = switchMapper
-                    .toIncludeFilters(Arrays.stream(includeString.split("\\|"))
-                            .collect(Collectors.toList()));
+            try {
+                includeFilters = switchMapper
+                        .toIncludeFilters(Arrays.stream(includeString.split("\\|"))
+                                .collect(Collectors.toList()));
+            } catch (IllegalArgumentException exception) {
+                throw new MessageException(ErrorType.REQUEST_INVALID, exception.getMessage(),
+                        "Error while parsing include parameters");
+            }
         }
 
-        List<ExcludeFilter> excludeFilters = new LinkedList<>();
+        Set<ExcludeFilter> excludeFilters = new HashSet<>();
         if (excludeString != null) {
-            excludeFilters = switchMapper
-                    .toExcludeFilters(Arrays.stream(excludeString.split("\\|"))
-                            .collect(Collectors.toList()));
+            try {
+                excludeFilters = switchMapper
+                        .toExcludeFilters(Arrays.stream(excludeString.split("\\|"))
+                                .collect(Collectors.toList()));
+            } catch (IllegalArgumentException exception) {
+                throw new MessageException(ErrorType.REQUEST_INVALID, exception.getMessage(),
+                        "Error while parsing exclude parameters");
+            }
         }
 
         return performValidateV2(

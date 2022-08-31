@@ -106,9 +106,9 @@ public class SwitchValidateFsm extends AbstractStateMachine<
     private SwitchValidationContext validationContext;
     private final Set<ExternalResources> pendingRequests = new HashSet<>();
 
-    private List<IncludeFilter> includeFilters;
+    private Set<IncludeFilter> includeFilters;
 
-    private List<ExcludeFilter> excludeFilters;
+    private Set<ExcludeFilter> excludeFilters;
 
     public SwitchValidateFsm(
             SwitchManagerCarrier carrier, String key, SwitchValidateRequest request,
@@ -577,8 +577,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
     @Builder
     public static class SwitchValidateContext {
 
-        List<IncludeFilter> includeFilters;
-        List<ExcludeFilter> excludeFilters;
+        Set<IncludeFilter> includeFilters;
+        Set<ExcludeFilter> excludeFilters;
         List<FlowSpeakerData> flowEntries;
         List<MeterSpeakerData> meterEntries;
         List<GroupSpeakerData> groupEntries;

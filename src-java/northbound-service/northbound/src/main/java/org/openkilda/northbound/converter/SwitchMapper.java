@@ -113,6 +113,7 @@ import org.mapstruct.Mapping;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring", uses = {
@@ -420,7 +421,7 @@ public abstract class SwitchMapper {
     public abstract GroupInfoDtoV2 toGroupInfoDtoV2(GroupInfoEntryV2 data);
 
     private IncludeFilter toIncludeFilter(String value) {
-        switch (value) {
+        switch (value.toLowerCase()) {
             case("meters"):
                 return IncludeFilter.METERS;
             case("groups"):
@@ -430,28 +431,30 @@ public abstract class SwitchMapper {
             case("rules"):
                 return IncludeFilter.RULES;
             default:
-                throw new IllegalArgumentException(String.format("Unexpected include filter (%s)", value));
+                throw new IllegalArgumentException(String.format("Unexpected include filter (%s)"
+                        + "possible values are: \"meters\",\"groups\",\"rules\", \"logical_ports\"", value));
         }
     }
 
     private ExcludeFilter toExcludeFilter(String value) {
-        switch (value) {
+        switch (value.toLowerCase()) {
             case("flow_info"):
                 return ExcludeFilter.FLOW_INFO;
             default:
-                throw new IllegalArgumentException(String.format("Unexpected exclude filter (%s)", value));
+                throw new IllegalArgumentException(String.format("Unexpected exclude filter (%s), "
+                        + "possible values are: \"flow_info\"", value));
         }
     }
 
     /**
      * Convert list of {@link String} into list of {@link IncludeFilter}.
      */
-    public List<IncludeFilter> toIncludeFilters(List<String> value) {
-        return value.stream().map(this::toIncludeFilter).collect(Collectors.toList());
+    public Set<IncludeFilter> toIncludeFilters(List<String> value) {
+        return value.stream().map(this::toIncludeFilter).collect(Collectors.toSet());
     }
 
-    public List<ExcludeFilter> toExcludeFilters(List<String> value) {
-        return value.stream().map(this::toExcludeFilter).collect(Collectors.toList());
+    public Set<ExcludeFilter> toExcludeFilters(List<String> value) {
+        return value.stream().map(this::toExcludeFilter).collect(Collectors.toSet());
     }
 
     public abstract MeterInfoDtoV2 toMeterInfoDtoV2(MeterInfoEntryV2 data);

@@ -79,7 +79,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.HashSet;
 import java.util.Optional;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -282,8 +282,8 @@ public class SwitchValidateServiceTest {
         request = SwitchValidateRequest.builder()
                 .switchId(LAG_SWITCH_ID)
                 .processMeters(true)
-                .includeFilters(new LinkedList<>())
-                .excludeFilters(new LinkedList<>())
+                .includeFilters(new HashSet<>())
+                .excludeFilters(new HashSet<>())
                 .build();
 
         service.handleSwitchValidateRequest(KEY, request);
@@ -355,8 +355,8 @@ public class SwitchValidateServiceTest {
                 .switchId(SWITCH_ID)
                 .performSync(true)
                 .processMeters(true)
-                .includeFilters(new LinkedList<>())
-                .excludeFilters(new LinkedList<>())
+                .includeFilters(new HashSet<>())
+                .excludeFilters(new HashSet<>())
                 .build();
 
         handleRequestAndInitDataReceive();
@@ -372,8 +372,8 @@ public class SwitchValidateServiceTest {
         request = SwitchValidateRequest.builder()
                 .switchId(SWITCH_ID_MISSING)
                 .performSync(true).processMeters(true)
-                .includeFilters(new LinkedList<>())
-                .excludeFilters(new LinkedList<>())
+                .includeFilters(new HashSet<>())
+                .excludeFilters(new HashSet<>())
                 .build();
         service.handleSwitchValidateRequest(KEY, request);
 

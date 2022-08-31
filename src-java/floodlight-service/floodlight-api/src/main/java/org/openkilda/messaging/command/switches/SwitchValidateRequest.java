@@ -27,7 +27,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.Value;
 
-import java.util.List;
+import java.util.Set;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
@@ -48,10 +48,10 @@ public class SwitchValidateRequest extends CommandData {
     boolean removeExcess;
 
     @JsonProperty("include_filters")
-    List<IncludeFilter> includeFilters;
+    Set<IncludeFilter> includeFilters;
 
     @JsonProperty("exclude_filters")
-    List<ExcludeFilter> excludeFilters;
+    Set<ExcludeFilter> excludeFilters;
 
     @Builder(toBuilder = true)
     @JsonCreator
@@ -59,8 +59,8 @@ public class SwitchValidateRequest extends CommandData {
                                  @JsonProperty("process_meters") boolean processMeters,
                                  @JsonProperty("perform_sync") boolean performSync,
                                  @JsonProperty("remove_excess") boolean removeExcess,
-                                 @JsonProperty("include_filters") List<IncludeFilter> includeFilters,
-                                 @JsonProperty("exclude_filters") List<ExcludeFilter> excludeFilters) {
+                                 @JsonProperty("include_filters") Set<IncludeFilter> includeFilters,
+                                 @JsonProperty("exclude_filters") Set<ExcludeFilter> excludeFilters) {
         this.switchId = switchId;
         this.processMeters = processMeters;
         this.performSync = performSync;
