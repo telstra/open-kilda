@@ -1385,7 +1385,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     }
 
     @Tidy
-    def "Switch is not containing extra rules after connection devices removal"() {
+    def "Switch is not containing extra rules after connected devices removal"() {
 
         given: "A switch with devices feature turned on"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
@@ -1406,22 +1406,18 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flowHelperV2.addFlow(flow)
 
         when: "Turn LLDP and ARP detection off on switch"
-
         switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
             it.multiTable = true
             it.switchLldp = false
             it.switchArp = false
         })
-
-        flow.maximumBandwidth = flow.maximumBandwidth +1
+        flow.maximumBandwidth = flow.maximumBandwidth + 1
         flowHelperV2.updateFlow(flow.flowId, flow)
 
-        then: "CHeck excess rules are not registered on device"
+        then: "Check excess rules are not registered on device"
         wait(WAIT_OFFSET) {
             { verifySwitchRules(sw.dpId) }
         }
-
-
         cleanup: "Remove created flow and registered devices, revert switch props"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         database.removeConnectedDevices(sw.dpId)
@@ -1445,7 +1441,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
         def initialPropsDst = enableMultiTableIfNeeded(true, dst.dpId)
         def flow = flowHelperV2.randomFlow(sw, dst)
-
         def outerVlan = 100
         flow.source.vlanId = outerVlan
         flow.source.innerVlanId = 200
@@ -1453,10 +1448,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
         flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
         flowHelperV2.addFlow(flow)
-        northboundV2.getConnectedDevices(flow.source.switchId).ports.empty
-        northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
+        def var = false
 
-        when: "update device properties and send lldp and arp packets on src flow endpoint and match outerVlan only"
+        assert northboundV2.getConnectedDevices(flow.source.switchId).ports.empty
+        assert northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
+
+        when: "update device properties and send lldp and arp packets on flow endpoint and match outerVlan only"
         switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
             it.multiTable = true
             it.switchLldp = true
@@ -1476,12 +1473,11 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         then: "Getting connecting devices doesn't show corresponding devices on src endpoint"
-        def response = northboundV2.getConnectedDevices(sw.dpId)
-        sleep(3000)
         Wrappers.timedLoop(3) {
             //under usual condition system needs some time for devices to appear, that's why timeLoop is used here
             verifyAll(northboundV2.getConnectedDevices(sw.dpId)) {
                 !(it.ports.lldp.empty)
+                !(it.ports.arp.empty)
             }
         }
 
@@ -1511,7 +1507,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def outerVlan = 100
         flow.source.vlanId = outerVlan
         flow.source.innerVlanId = 200
-
         flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
         flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
         flowHelperV2.addFlow(flow)
@@ -1522,7 +1517,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             it.switchLldp = false
             it.switchArp = false
         })
-
         def srcLldpData = LldpData.buildRandom()
         def dstLldpData = LldpData.buildRandom()
         def srcArpData = ArpData.buildRandom()
@@ -1536,12 +1530,11 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         then: "Getting connecting devices doesn't show corresponding devices on src endpoint"
-        def response = northboundV2.getConnectedDevices(sw.dpId)
-        sleep(3000)
         Wrappers.timedLoop(3) {
             //under usual condition system needs some time for devices to appear, that's why timeLoop is used here
             verifyAll(northboundV2.getConnectedDevices(sw.dpId)) {
                 (it.ports.lldp.empty)
+                (it.ports.arp.empty)
             }
         }
 
