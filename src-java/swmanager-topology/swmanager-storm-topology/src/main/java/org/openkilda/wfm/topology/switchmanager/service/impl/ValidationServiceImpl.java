@@ -253,8 +253,6 @@ public class ValidationServiceImpl implements ValidationService {
         Switch sw = switchRepository.findById(switchId)
                 .orElseThrow(() -> new SwitchNotFoundException(switchId));
         boolean isESwitch = Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
-        Collection<Flow> flows = flowRepository.findAll();
-        Collection<YFlow> yFlows = yFlowRepository.findAll();
 
         List<MeterInfoEntryV2> actualMeters =  convertMeters(switchId, presentMeters,
                 excludeFlowInfo);
