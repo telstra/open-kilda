@@ -1416,7 +1416,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Check excess rules are not registered on device"
         wait(WAIT_OFFSET) {
-            { verifySwitchRules(sw.dpId) }
+             verifySwitchRules(sw.dpId)
         }
         cleanup: "Remove created flow and registered devices, revert switch props"
         flow && flowHelperV2.deleteFlow(flow.flowId)
@@ -1453,7 +1453,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assert northboundV2.getConnectedDevices(flow.source.switchId).ports.empty
         assert northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
 
-        when: "update device properties and send lldp and arp packets on flow endpoint and match outerVlan only"
+        when: "update device properties and send lldp and arp packets on flow"
         switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
             it.multiTable = true
             it.switchLldp = true
@@ -1485,6 +1485,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flow && flowHelperV2.deleteFlow(flow.flowId)
         initialPropsSource && restoreSwitchProperties(sw.dpId, initialPropsSource)
         initialPropsDst && restoreSwitchProperties(dst.dpId, initialPropsDst)
+        database.removeConnectedDevices(sw.dpId)
     }
 
     @Tidy
@@ -1511,7 +1512,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
         flowHelperV2.addFlow(flow)
 
-        when: "update device properties and send lldp and arp packets on src flow endpoint and match outerVlan only"
+        when: "update device properties and send lldp and arp packets on flow"
         switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
             it.multiTable = true
             it.switchLldp = false
@@ -1529,12 +1530,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 }
         }
 
-        then: "Getting connecting devices doesn't show corresponding devices on src endpoint"
+        then: "Getting connecting devices show corresponding devices on src endpoint"
         Wrappers.timedLoop(3) {
             //under usual condition system needs some time for devices to appear, that's why timeLoop is used here
             verifyAll(northboundV2.getConnectedDevices(sw.dpId)) {
-                (it.ports.lldp.empty)
-                (it.ports.arp.empty)
+                it.ports.lldp.empty
+                it.ports.arp.empty
             }
         }
 
@@ -1542,6 +1543,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flow && flowHelperV2.deleteFlow(flow.flowId)
         initialPropsSource && restoreSwitchProperties(sw.dpId, initialPropsSource)
         initialPropsDst && restoreSwitchProperties(dst.dpId, initialPropsDst)
+        database.removeConnectedDevices(sw.dpId)
     }
 
 
