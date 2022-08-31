@@ -37,7 +37,6 @@ import org.openkilda.model.Meter;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.YFlow;
 import org.openkilda.model.cookie.CookieBase;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
