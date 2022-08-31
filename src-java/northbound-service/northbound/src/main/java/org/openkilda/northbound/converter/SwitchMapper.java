@@ -447,7 +447,6 @@ public abstract class SwitchMapper {
      * Convert list of {@link String} into list of {@link IncludeFilter}.
      */
     public List<IncludeFilter> toIncludeFilters(List<String> value) {
-        String kek = "kek";
         return value.stream().map(this::toIncludeFilter).collect(Collectors.toList());
     }
 
@@ -459,7 +458,7 @@ public abstract class SwitchMapper {
 
     public abstract LogicalPortInfoDtoV2 toLogicalPortInfoDtoV2(LogicalPortInfoEntryV2 data);
 
-    //TODO(vshakirova): mapstruct could be bumped to >=1.5.0 and SubclassMapping annotation could replace instaceof
+    //TODO(vshakirova): mapstruct could be bumped to >=1.5.0 and SubclassMapping annotation could replace instanceof
     org.openkilda.northbound.dto.v2.action.BaseAction toAction(BaseAction action) {
         if (action instanceof CopyFieldActionEntry) {
             return toCopyFieldActionDto((CopyFieldActionEntry) action);

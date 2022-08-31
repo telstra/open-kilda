@@ -381,10 +381,6 @@ public class ValidationServiceImpl implements ValidationService {
 
         for (MeterInfoEntryV2 meterEntry : presentMeters) {
             if (!expectedMeterIds.contains(meterEntry.getMeterId())) {
-                // nrydanov: We need to clear unnecessary fields for excess meters
-                meterEntry.setFlowId(null);
-                meterEntry.setYFlowId(null);
-                meterEntry.setFlowPathId(null);
                 excessMeters.add(meterEntry);
             }
         }

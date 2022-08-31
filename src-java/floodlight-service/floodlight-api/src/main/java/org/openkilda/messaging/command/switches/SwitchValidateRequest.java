@@ -59,7 +59,7 @@ public class SwitchValidateRequest extends CommandData {
                                  @JsonProperty("process_meters") boolean processMeters,
                                  @JsonProperty("perform_sync") boolean performSync,
                                  @JsonProperty("remove_excess") boolean removeExcess,
-                                 @JsonProperty("required_filters") List<IncludeFilter> includeFilters,
+                                 @JsonProperty("include_filters") List<IncludeFilter> includeFilters,
                                  @JsonProperty("exclude_filters") List<ExcludeFilter> excludeFilters) {
         this.switchId = switchId;
         this.processMeters = processMeters;
