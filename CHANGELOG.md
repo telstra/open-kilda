@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.123.1 (01/09/2022)
+
+### Bug Fixes:
+-  [#4928](https://github.com/telstra/open-kilda/pull/4928) Collect `flow.ingress.*` and `flow.*` metrics from mirror rule if it's exist (Issue: [#4915](https://github.com/telstra/open-kilda/issues/4915)) [**storm-topologies**]
+-  [#4929](https://github.com/telstra/open-kilda/pull/4929) Fixed flow monitoring (Issue: [#4923](https://github.com/telstra/open-kilda/issues/4923))
+-  [#4901](https://github.com/telstra/open-kilda/pull/4901) Removal action now saves dump once for both primary and protected paths (Issue: [#4391](https://github.com/telstra/open-kilda/issues/4391))
+-  [#4902](https://github.com/telstra/open-kilda/pull/4902) Added diverse and affinity group IDs to flow history update dump (Issue: [#3807](https://github.com/telstra/open-kilda/issues/3807))
+-  [#4904](https://github.com/telstra/open-kilda/pull/4904) Fixed and enabled test (Issue: [#3627](https://github.com/telstra/open-kilda/issues/3627)) [**tests**]
+-  [#4905](https://github.com/telstra/open-kilda/pull/4905) Changed error message for illegal state in predicate builder [**storm-topologies**]
+-  [#4909](https://github.com/telstra/open-kilda/pull/4909) Fixed OVERWRITE_DEFAULTS action on delete rules (Issue: [#2960](https://github.com/telstra/open-kilda/issues/2960)) [**storm-topologies**]
+-  [#4889](https://github.com/telstra/open-kilda/pull/4889) Fixed path filtering by maxLatency (Issue: [#4525](https://github.com/telstra/open-kilda/issues/4525)) [**storm-topologies**]
+
+### Improvements:
+-  [#4900](https://github.com/telstra/open-kilda/pull/4900) Unignore test according to #3847 (Issues: [#3847](https://github.com/telstra/open-kilda/issues/3847) [#3847](https://github.com/telstra/open-kilda/issues/3847) [#3847](https://github.com/telstra/open-kilda/issues/3847)) [**tests**]
+-  [#4907](https://github.com/telstra/open-kilda/pull/4907) Add note to Northbound API v1 page. [**northbound**]
+-  [#4908](https://github.com/telstra/open-kilda/pull/4908) LAG port removal test fix - removing redundant checks, and fix source of ports array (Issue: [#4729](https://github.com/telstra/open-kilda/issues/4729)) [**tests**]
+-  [#4921](https://github.com/telstra/open-kilda/pull/4921) adding new test for the vxlan flow ping (Issue: [#4920](https://github.com/telstra/open-kilda/issues/4920)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.123.0...v1.123.1).
+
+### Affected Components:
+nb, stats, nbworker, flow-hs, swmanager
+
+---
+
 ## v1.123.0 (08/08/2022)
 
 ### Features:
