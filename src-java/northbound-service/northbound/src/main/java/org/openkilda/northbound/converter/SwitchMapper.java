@@ -52,6 +52,8 @@ import org.openkilda.messaging.info.switches.v2.action.PushVlanActionEntry;
 import org.openkilda.messaging.info.switches.v2.action.PushVxlanActionEntry;
 import org.openkilda.messaging.info.switches.v2.action.SetFieldActionEntry;
 import org.openkilda.messaging.info.switches.v2.action.SwapFieldActionEntry;
+import org.openkilda.messaging.model.ExcludeFilter;
+import org.openkilda.messaging.model.IncludeFilter;
 import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.messaging.model.SwitchAvailabilityEntry;
 import org.openkilda.messaging.model.SwitchLocation;
@@ -111,6 +113,7 @@ import org.mapstruct.Mapping;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring", uses = {
@@ -417,11 +420,48 @@ public abstract class SwitchMapper {
 
     public abstract GroupInfoDtoV2 toGroupInfoDtoV2(GroupInfoEntryV2 data);
 
+    private IncludeFilter toIncludeFilter(String value) {
+        switch (value.toLowerCase()) {
+            case("meters"):
+                return IncludeFilter.METERS;
+            case("groups"):
+                return IncludeFilter.GROUPS;
+            case("logical_ports"):
+                return IncludeFilter.LOGICAL_PORTS;
+            case("rules"):
+                return IncludeFilter.RULES;
+            default:
+                throw new IllegalArgumentException(String.format("Unexpected include filter (%s)"
+                        + "possible values are: \"meters\",\"groups\",\"rules\", \"logical_ports\"", value));
+        }
+    }
+
+    private ExcludeFilter toExcludeFilter(String value) {
+        switch (value.toLowerCase()) {
+            case("flow_info"):
+                return ExcludeFilter.FLOW_INFO;
+            default:
+                throw new IllegalArgumentException(String.format("Unexpected exclude filter (%s), "
+                        + "possible values are: \"flow_info\"", value));
+        }
+    }
+
+    /**
+     * Convert list of {@link String} into list of {@link IncludeFilter}.
+     */
+    public Set<IncludeFilter> toIncludeFilters(List<String> value) {
+        return value.stream().map(this::toIncludeFilter).collect(Collectors.toSet());
+    }
+
+    public Set<ExcludeFilter> toExcludeFilters(List<String> value) {
+        return value.stream().map(this::toExcludeFilter).collect(Collectors.toSet());
+    }
+
     public abstract MeterInfoDtoV2 toMeterInfoDtoV2(MeterInfoEntryV2 data);
 
     public abstract LogicalPortInfoDtoV2 toLogicalPortInfoDtoV2(LogicalPortInfoEntryV2 data);
 
-    //TODO(vshakirova): mapstruct could be bumped to >=1.5.0 and SubclassMapping annotation could replace instaceof
+    //TODO(vshakirova): mapstruct could be bumped to >=1.5.0 and SubclassMapping annotation could replace instanceof
     org.openkilda.northbound.dto.v2.action.BaseAction toAction(BaseAction action) {
         if (action instanceof CopyFieldActionEntry) {
             return toCopyFieldActionDto((CopyFieldActionEntry) action);

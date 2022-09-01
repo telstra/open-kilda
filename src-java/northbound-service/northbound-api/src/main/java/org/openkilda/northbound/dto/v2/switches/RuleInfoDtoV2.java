@@ -43,7 +43,7 @@ public class RuleInfoDtoV2 implements HexView {
     Integer tableId;
     Integer priority;
     String flowId;
-    String flowPath;
+    String flowPathId;
     List<String> flags;
     Map<String, FieldMatch> match;
     Instructions instructions;

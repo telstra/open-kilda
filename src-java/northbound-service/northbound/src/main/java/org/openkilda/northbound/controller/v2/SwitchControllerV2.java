@@ -246,8 +246,8 @@ public class SwitchControllerV2 extends BaseController {
     /**
      * Validate the rules, groups, lags and the meters installed on the switch against the flows in the database.
      *
-     * @param include validated fields to include in response
-     * @param exclude drop flow id, flow path and y flow id
+     * @param includeString validated fields to include in response
+     * @param excludeString drop flow id, flow path and y flow id
      * @return the validation details.
      */
     @ApiOperation(value = "Validate rules, lags, groups and meters installed on the switch",
@@ -256,9 +256,8 @@ public class SwitchControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<SwitchValidationResultV2> validateSwitch(
             @PathVariable(name = "switch_id") SwitchId switchId,
-            @RequestParam(name = "include", required = false) String include,
-            @RequestParam(name = "exclude", required = false) String exclude) {
-        //TODO parse params
-        return switchService.validateSwitch(switchId, "TBD");
+            @RequestParam(name = "include", required = false) String includeString,
+            @RequestParam(name = "exclude", required = false) String excludeString) {
+        return switchService.validateSwitch(switchId, includeString, excludeString);
     }
 }

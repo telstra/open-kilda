@@ -237,14 +237,14 @@ Response payload
 
 ## v2 API : GET
 
-### Groups, meters, lags and rules info include flow_id, flow_path and y_flow_id(for meters,groups and rules).
+### Groups, meters, lags and rules info include flow_id, flow_path_id and y_flow_id(for meters,groups and rules).
 
 <details><summary>v2GroupInfo</summary>
 
 ```json
 {
   "flow_id": "10",
-  "flow_path": "e0b0716e-cc59-4ef6-8572-518bdcdc5c72",
+  "flow_path_id": "e0b0716e-cc59-4ef6-8572-518bdcdc5c72",
   "group_id": 10,
   "buckets": [
     {
@@ -278,7 +278,7 @@ Response payload
 ```json
 {
   "flow_id": "10",
-  "flow_path": "e0b0716e-cc59-4ef6-8572-518bdcdc5c72",
+  "flow_path_id": "e0b0716e-cc59-4ef6-8572-518bdcdc5c72",
   "y_flow_id": "111",
   "meter_id": 1,
   "flags": [
@@ -300,7 +300,7 @@ Response payload
   "table_id": 10,
   "priority": 5,
   "flow_id": "9",
-  "flow_path": "10a1df3a-dc30-453e-8671-246f82ea0e77",
+  "flow_path_id": "10a1df3a-dc30-453e-8671-246f82ea0e77",
   "y_flow_id": "111",
   "flags": [
     "RESET_COUNTERS"
@@ -440,8 +440,10 @@ Response payload
 
 **By Default:**
 
-* `flow info` is set of values: for groups - `flow_id, flow_path`, for meters and rules - `flow_id, flow_path, y_flow_id`.
-* without any query params response contains v2 info about groups, lags, meters and rules (with flow_info for all mentioned fields).
+* `flow info` is set of values: for groups - `flow_id, flow_path_id`, for meters and rules - `flow_path_id, flow_id` 
+(or `y_flow_id` in case of YFlow).
+* without any query params response contains v2 info about groups, lags, meters and rules 
+(with flow_info for all mentioned fields).
 * groups[excess], meters[excess] and rule[excess] do not contain flow info.
 * for groups, lags, meters and rules flow info will be presented in misconfigured[expected] field.
 * misconfigured[id] is 
@@ -458,7 +460,7 @@ Response payload
   "groups": {
     "as_expected": true,
     "excess": [
-      <v2GroupInfo> // without flow_id and flow_path
+      <v2GroupInfo> // without flow_id and flow_path_id
     ],
     "missing": [
       <v2GroupInfo>
@@ -504,7 +506,7 @@ Response payload
   "meters": {
     "as_expected": true,
     "excess": [
-      <v2MeterInfo> // without flow_id, y_flow_id and flow_path
+      <v2MeterInfo> // without flow_id, y_flow_id and flow_path_id
     ],
     "missing": [
       <v2MeterInfo>
@@ -527,7 +529,7 @@ Response payload
   "rules": {
     "as_expected": true,
     "excess": [
-      <v2RuleInfo> // without flow_id, y_flow_id and flow_path
+      <v2RuleInfo> // without flow_id, y_flow_id and flow_path_id
     ],
     "missing": [
       <v2RuleInfo>
@@ -567,7 +569,7 @@ Response payload
   "groups": {
     "as_expected": true,
     "excess": [
-        <v2GroupInfo> // without flow_id and flow_path
+        <v2GroupInfo> // without flow_id and flow_path_id
       ],
       "missing": [
         <v2GroupInfo>
@@ -614,22 +616,22 @@ To exclude flow info from response use `flow_info`.
   "groups": {
     "as_expected": true,
     "excess": [
-      <v2GroupInfo> // without flow_id and flow_path
+      <v2GroupInfo> // without flow_id and flow_path_id
     ],
     "missing": [
-      <v2GroupInfo> // without flow_id and flow_path
+      <v2GroupInfo> // without flow_id and flow_path_id
     ],
     "proper": [
-      <v2GroupInfo> // without flow_id and flow_path
+      <v2GroupInfo> // without flow_id and flow_path_id
     ],
     "misconfigured": [
       {
         "id": "12123213",
         "expected": {
-          <v2GroupInfo>  // without flow_id and flow_path
+          <v2GroupInfo>  // without flow_id and flow_path_id
         },
         "discrepancies": {
-          <v2GroupInfo>  // without flow_id and flow_path
+          <v2GroupInfo>  // without flow_id and flow_path_id
         }
       }
     ]
@@ -660,22 +662,22 @@ To exclude flow info from response use `flow_info`.
   "meters": {
     "as_expected": true,
     "excess": [
-      <v2MeterInfo> // without flow_id, y_flow_id and flow_path
+      <v2MeterInfo> // without flow_id, y_flow_id and flow_path_id
     ],
     "missing": [
-      <v2MeterInfo> // without flow_id, y_flow_id and flow_path
+      <v2MeterInfo> // without flow_id, y_flow_id and flow_path_id
     ],
     "proper": [
-      <v2MeterInfo> // without flow_id, y_flow_id and flow_path
+      <v2MeterInfo> // without flow_id, y_flow_id and flow_path_id
     ],
     "misconfigured": [
       {
         "id": "12123213",
         "expected": {
-          <v2MeterInfo>  // without flow_id, y_flow_id and flow_path
+          <v2MeterInfo>  // without flow_id, y_flow_id and flow_path_id
         },
         "discrepancies": {
-          <v2MeterInfo>  // without flow_id, y_flow_id and flow_path
+          <v2MeterInfo>  // without flow_id, y_flow_id and flow_path_id 
         }
       }
     ]
@@ -683,22 +685,22 @@ To exclude flow info from response use `flow_info`.
   "rules": {
     "as_expected": true,
     "excess": [
-      <v2RuleInfo> // without flow_id, y_flow_id and flow_path
+      <v2RuleInfo> // without flow_id, y_flow_id and flow_path_id
     ],
     "missing": [
-      <v2RuleInfo> // without flow_id, y_flow_id and flow_path
+      <v2RuleInfo> // without flow_id, y_flow_id and flow_path_id
     ],
     "proper": [
-      <v2RuleInfo> // without flow_id, y_flow_id and flow_path
+      <v2RuleInfo> // without flow_id, y_flow_id and flow_path_id
     ],
     "misconfigured": [
       {
         "id": "tableId=1,priority=2,IN_PORTS:value=1,mask=123",
         "expected": {
-          <v2RuleInfo>  // without flow_id, y_flow_id and flow_path
+          <v2RuleInfo>  // without flow_id, y_flow_id and flow_path_id
         },
         "discrepancies": {
-          <v2RuleInfo>  // without flow_id, y_flow_id and flow_path
+          <v2RuleInfo>  // without flow_id, y_flow_id and flow_path_id
         }
       }
     ]
@@ -709,8 +711,8 @@ To exclude flow info from response use `flow_info`.
 
 ### Including/excluding info in response
 
-To exclude flow info from response use `exclude=flow_info`. You can combine it with `include=groups|logical_ports|meters|rules` 
-in query e.g.
+To exclude flow info from response use `exclude=flow_info`. 
+You can combine it with `include=groups|logical_ports|meters|rules` in query e.g.
 
 Ex 1. `GET https://{host}/v2/switches/{switch_id}/validate?exclude=flow_info&include=groups|meters`
 
@@ -725,22 +727,22 @@ Response payload
   "groups": {
     "as_expected": true,
     "excess": [
-      <v2GroupInfo> // without flow_id and flow_path
+      <v2GroupInfo> // without flow_id and flow_path_id
     ],
     "missing": [
-      <v2GroupInfo> // without flow_id and flow_path
+      <v2GroupInfo> // without flow_id and flow_path_id
     ],
     "proper": [
-      <v2GroupInfo> // without flow_id and flow_path
+      <v2GroupInfo> // without flow_id and flow_path_id
     ],
     "misconfigured": [
       {
         "id": "12123213",
         "expected": {
-          <v2GroupInfo>  // without flow_id and flow_path
+          <v2GroupInfo>  // without flow_id and flow_path_id
         },
         "discrepancies": {
-          <v2GroupInfo>  // without flow_id and flow_path
+          <v2GroupInfo>  // without flow_id and flow_path_id
         }
       }
     ]
@@ -748,22 +750,22 @@ Response payload
   "meters": {
     "as_expected": true,
     "excess": [
-      <v2MeterInfo> // without flow_id, y_flow_id and flow_path
+      <v2MeterInfo> // without flow_id, y_flow_id and flow_path_id
     ],
     "missing": [
-      <v2MeterInfo> // without flow_id, y_flow_id and flow_path
+      <v2MeterInfo> // without flow_id, y_flow_id and flow_path_id
     ],
     "proper": [
-      <v2MeterInfo> // without flow_id, y_flow_id and flow_path
+      <v2MeterInfo> // without flow_id, y_flow_id and flow_path_id
     ],
     "misconfigured": [
       {
         "id": "12123213",
         "expected": {
-          <v2MeterInfo>  // without flow_id, y_flow_id and flow_path
+          <v2MeterInfo>  // without flow_id, y_flow_id and flow_path_id
         },
         "discrepancies": {
-          <v2MeterInfo>  // without flow_id, y_flow_id and flow_path
+          <v2MeterInfo>  // without flow_id, y_flow_id and flow_path_id
         }
       }
     ]

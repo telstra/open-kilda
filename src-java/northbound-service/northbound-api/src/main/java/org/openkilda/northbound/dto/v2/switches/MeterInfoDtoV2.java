@@ -32,7 +32,7 @@ import java.util.List;
 public class MeterInfoDtoV2 {
     private Long cookie;
     private String flowId;
-    private String flowPath;
+    private String flowPathId;
     private String yFlowId;
     private Long meterId;
     private List<String> flags;

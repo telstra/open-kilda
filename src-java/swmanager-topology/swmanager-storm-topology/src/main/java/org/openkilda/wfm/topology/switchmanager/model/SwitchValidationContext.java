@@ -34,8 +34,8 @@ import java.util.List;
 
 @Value
 public class SwitchValidationContext {
-    private final SwitchId switchId;
 
+    SwitchId switchId;
     List<FlowSpeakerData> actualOfFlows;
 
     List<MeterSpeakerData> actualMeters;

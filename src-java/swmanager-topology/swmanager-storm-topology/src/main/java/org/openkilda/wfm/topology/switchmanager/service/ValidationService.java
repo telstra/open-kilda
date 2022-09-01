@@ -30,15 +30,15 @@ import java.util.List;
 
 public interface ValidationService {
     ValidateRulesResultV2 validateRules(SwitchId switchId, List<FlowSpeakerData> presentRules,
-                                        List<FlowSpeakerData> expectedRules);
+                                        List<FlowSpeakerData> expectedRules, boolean excludeFlowInfo);
 
     ValidateGroupsResultV2 validateGroups(SwitchId switchId, List<GroupSpeakerData> presentGroups,
-                                          List<GroupSpeakerData> expectedGroups);
+                                          List<GroupSpeakerData> expectedGroups, boolean excludeFlowInfo);
 
     ValidateLogicalPortsResultV2 validateLogicalPorts(SwitchId switchId, List<LogicalPort> presentLogicalPorts);
 
     ValidateMetersResultV2 validateMeters(SwitchId switchId, List<MeterSpeakerData> presentMeters,
-                                          List<MeterSpeakerData> expectedMeters);
+                                          List<MeterSpeakerData> expectedMeters, boolean excludeFlowInfo);
 
     List<SpeakerData> buildExpectedEntities(SwitchId switchId);
 }

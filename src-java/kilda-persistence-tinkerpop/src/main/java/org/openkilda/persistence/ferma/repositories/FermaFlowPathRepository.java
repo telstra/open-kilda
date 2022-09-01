@@ -140,6 +140,18 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
     }
 
     @Override
+    public Optional<FlowPath> findByCookie(FlowSegmentCookie cookie) {
+        List<? extends FlowPathFrame> flowPathFrames = framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowPathFrame.FRAME_LABEL)
+                .has(FlowPathFrame.COOKIE_PROPERTY, FlowSegmentCookieConverter.INSTANCE.toGraphProperty(cookie)))
+                .toListExplicit(FlowPathFrame.class);
+        if (flowPathFrames.size() > 1) {
+            throw new PersistenceException(format("Found more that 1 FlowPath entity by %s", cookie));
+        }
+        return flowPathFrames.isEmpty() ? Optional.empty() : Optional.of(flowPathFrames.get(0)).map(FlowPath::new);
+    }
+
+    @Override
     public Collection<FlowPath> findByFlowId(String flowId) {
         return framedGraph().traverse(g -> g.V()
                 .hasLabel(FlowPathFrame.FRAME_LABEL)

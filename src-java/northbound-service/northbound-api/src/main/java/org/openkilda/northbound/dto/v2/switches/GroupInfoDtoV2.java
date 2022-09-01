@@ -33,7 +33,7 @@ import java.util.List;
 public class GroupInfoDtoV2 {
 
     private String flowId;
-    private String flowPath;
+    private String flowPathId;
     private Integer groupId;
     private List<BucketDto> buckets;
 

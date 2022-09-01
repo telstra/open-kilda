@@ -29,7 +29,8 @@ import java.util.List;
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class GroupInfoEntryV2 implements Serializable {
     private String flowId;
-    private String flowPath;
+    private String yFlowId;
+    private String flowPathId;
     private Integer groupId;
     private List<BucketEntry> buckets;
 
