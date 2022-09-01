@@ -141,21 +141,22 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
     }
 
     @Override
-    public List<List<Edge>> findNPathsBetweenSwitches(
+    public List<FindOneDirectionPathResult> findNPathsBetweenSwitches(
             AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count,
             WeightFunction weightFunction) throws UnroutableFlowException {
         Node end = network.getSwitch(endSwitchId);
         return findNPathsBetweenSwitches(network, startSwitchId, endSwitchId, count, weightFunction,
-                (Node start) -> findOneDirectionPath(start, end, weightFunction));
+                (Node start) -> findOneDirectionPath(start, end, weightFunction), Long.MAX_VALUE, Long.MAX_VALUE);
     }
 
     @Override
-    public List<List<Edge>> findNPathsBetweenSwitches(
+    public List<FindOneDirectionPathResult> findNPathsBetweenSwitches(
             AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count,
             WeightFunction weightFunction, long maxWeight, long backUpMaxWeight) throws UnroutableFlowException {
         Node end = network.getSwitch(endSwitchId);
         return findNPathsBetweenSwitches(network, startSwitchId, endSwitchId, count, weightFunction,
-                (Node start) -> findOneDirectionPath(start, end, weightFunction, maxWeight, backUpMaxWeight));
+                (Node start) -> findOneDirectionPath(start, end, weightFunction, maxWeight, backUpMaxWeight),
+                maxWeight, backUpMaxWeight);
     }
 
     /**
@@ -163,10 +164,10 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
      *
      * @return an list of N (or less) best paths.
      */
-    private List<List<Edge>> findNPathsBetweenSwitches(
+    private List<FindOneDirectionPathResult> findNPathsBetweenSwitches(
             AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count,
-            WeightFunction weightFunction, Function<Node, FindOneDirectionPathResult> getPath)
-            throws UnroutableFlowException {
+            WeightFunction weightFunction, Function<Node, FindOneDirectionPathResult> getPath,
+            long maxWeight, long backUpMaxWeight) throws UnroutableFlowException {
 
         Node start = network.getSwitch(startSwitchId);
         Node end = network.getSwitch(endSwitchId);
@@ -176,28 +177,31 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         }
 
         // Determine the shortest path from the start to the end.
-        List<List<Edge>> bestPaths = new ArrayList<>();
-        List<Edge> firstPath = getPath.apply(start).getFoundPath();
-        if (firstPath.isEmpty()) {
-            return new ArrayList<>();
+        List<FindOneDirectionPathResult> bestPaths = new ArrayList<>();
+        FindOneDirectionPathResult firstPath = getPath.apply(start);
+
+        if (firstPath.getFoundPath().isEmpty()) {
+            return bestPaths;
         }
-        bestPaths.add(getPath.apply(start).getFoundPath());
+        bestPaths.add(firstPath);
 
         // Initialize the set to store the potential kth shortest path.
         // Use LinkedHashSet to have deterministic results.
-        Set<List<Edge>> potentialKthShortestPaths = new LinkedHashSet<>();
+        Set<FindOneDirectionPathResult> potentialKthShortestPaths = new LinkedHashSet<>();
 
         for (int k = 1; k < count; k++) {
-            List<Edge> bestPath = bestPaths.get(k - 1);
-            for (int i = 0; i < bestPath.size(); i++) {
+            FindOneDirectionPathResult bestPath = bestPaths.get(k - 1);
+            List<Edge> edgesList = bestPath.getFoundPath();
+            for (int i = 0; i < edgesList.size(); i++) {
                 // Spur node is retrieved from the previous k-shortest path.
-                Node spurNode = bestPath.get(i).getSrcSwitch();
+                Node spurNode = edgesList.get(i).getSrcSwitch();
                 // The sequence of edges from the start to the spur node (without spur node).
-                List<Edge> rootPath = new ArrayList<>(bestPath.subList(0, i));
+                List<Edge> rootPath = new ArrayList<>(edgesList.subList(0, i));
 
                 Set<Edge> removedEdges = new HashSet<>();
                 // Remove the links that are part of the previous shortest paths which share the same root path.
-                for (List<Edge> path : bestPaths) {
+                for (FindOneDirectionPathResult pathResult : bestPaths) {
+                    List<Edge> path = pathResult.getFoundPath();
                     if (path.size() > i && rootPath.equals(path.subList(0, i))
                             && spurNode.equals(path.get(i).getSrcSwitch())) {
                         removedEdges.add(path.get(i));
@@ -210,13 +214,21 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                 }
 
                 // Calculate the spur path from the spur node to the end.
-                List<Edge> pathFromSpurNode = getPath.apply(spurNode).getFoundPath();
-                if (!pathFromSpurNode.isEmpty()) {
+                FindOneDirectionPathResult pathFromSpurNode = getPath.apply(spurNode);
+                if (!pathFromSpurNode.getFoundPath().isEmpty()) {
                     List<Edge> totalPath = new ArrayList<>(rootPath);
                     // Entire path is made up of the root path and spur path.
-                    totalPath.addAll(pathFromSpurNode);
+                    totalPath.addAll(pathFromSpurNode.getFoundPath());
                     // Add the potential k-shortest path to the heap.
-                    potentialKthShortestPaths.add(totalPath);
+                    long totalPathWeight = totalPath.stream().map(weightFunction)
+                            .map(PathWeight::toLong)
+                            .reduce(0L, Long::sum);
+                    // Filtering by maxWeight.
+                    if (totalPathWeight < maxWeight) {
+                        potentialKthShortestPaths.add(new FindOneDirectionPathResult(totalPath, false));
+                    } else if (totalPathWeight < backUpMaxWeight) {
+                        potentialKthShortestPaths.add(new FindOneDirectionPathResult(totalPath, true));
+                    }
                 }
 
                 // Add back the edges and nodes that were removed from the graph.
@@ -233,34 +245,38 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
             }
 
             // Add the lowest weight path becomes the k-shortest path.
-            List<Edge> newBestPath =
+            FindOneDirectionPathResult newBestPath =
                     getBestPotentialKthShortestPath(potentialKthShortestPaths, bestPaths, weightFunction);
-            bestPaths.add(newBestPath);
+            if (newBestPath != null) {
+                bestPaths.add(newBestPath);
+            }
         }
 
         return bestPaths;
     }
 
-    private List<Edge> getBestPotentialKthShortestPath(Set<List<Edge>> potentialKthShortestPaths,
-                                                       List<List<Edge>> bestPaths,
-                                                       WeightFunction weightFunction) {
-        List<Edge> bestKthShortestPath = new ArrayList<>();
-
+    private FindOneDirectionPathResult getBestPotentialKthShortestPath(Set<FindOneDirectionPathResult> potentialPaths,
+                                                                       List<FindOneDirectionPathResult> bestPaths,
+                                                                       WeightFunction weightFunction) {
+        FindOneDirectionPathResult bestKthShortestPath = null;
         long bestAvailableBandwidth = Long.MIN_VALUE;
         long bestWeight = Long.MAX_VALUE;
 
-        for (List<Edge> path : potentialKthShortestPaths) {
+        for (FindOneDirectionPathResult pathResult : potentialPaths) {
+            List<Edge> path = pathResult.getFoundPath();
             long currentAvailableBandwidth = getMinAvailableBandwidth(path);
             long currentWeight = getTotalWeight(path, weightFunction);
-            if (!bestPaths.contains(path) && (currentAvailableBandwidth > bestAvailableBandwidth
+            if (!bestPaths.contains(pathResult) && (currentAvailableBandwidth > bestAvailableBandwidth
                     || (currentAvailableBandwidth == bestAvailableBandwidth && currentWeight < bestWeight))) {
                 bestAvailableBandwidth = currentAvailableBandwidth;
                 bestWeight = currentWeight;
-                bestKthShortestPath = path;
+                bestKthShortestPath = pathResult;
             }
         }
 
-        potentialKthShortestPaths.remove(bestKthShortestPath);
+        if (bestKthShortestPath != null) {
+            potentialPaths.remove(bestKthShortestPath);
+        }
 
         return bestKthShortestPath;
     }

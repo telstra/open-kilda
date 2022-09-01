@@ -22,6 +22,8 @@ public interface KildaEntryDescriptorHandler {
 
     void handleStatsEntry(StatVlanDescriptor descriptor);
 
+    void handleStatsEntry(EndpointFlowDescriptor descriptor);
+
     void handleStatsEntry(YFlowDescriptor descriptor);
 
     void handleStatsEntry(YFlowSubDescriptor descriptor);

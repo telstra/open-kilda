@@ -32,6 +32,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.Dealloca
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.EmitCommandRequestsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.HandleNotCompletedCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.HandleNotDeallocatedFlowMirrorPathResourceAction;
+import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.NotifyFlowStatsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.OnReceivedCommandResponseAction;
@@ -138,9 +139,16 @@ public final class FlowMirrorPointDeleteFsm extends FlowProcessingWithHistorySup
             builder.onEntry(State.FLOW_MIRROR_POINTS_RECORD_PROCESSED)
                     .perform(new PostFlowMirrorPathDeallocationAction(persistenceManager, resourcesManager));
 
-            builder.transition().from(State.FLOW_MIRROR_POINTS_RECORD_PROCESSED).to(State.FINISHED).on(Event.NEXT);
+            builder.transition().from(State.FLOW_MIRROR_POINTS_RECORD_PROCESSED).to(State.NOTIFY_FLOW_STATS)
+                    .on(Event.NEXT);
             builder.transition().from(State.FLOW_MIRROR_POINTS_RECORD_PROCESSED)
                     .to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
+
+            builder.onEntry(State.NOTIFY_FLOW_STATS).perform(new NotifyFlowStatsAction(persistenceManager));
+
+            builder.transition().from(State.NOTIFY_FLOW_STATS).to(State.FINISHED).on(Event.NEXT);
+            builder.transition().from(State.NOTIFY_FLOW_STATS).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
+
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(persistenceManager, dashboardLogger));
@@ -163,6 +171,7 @@ public final class FlowMirrorPointDeleteFsm extends FlowProcessingWithHistorySup
         REMOVING_GROUP,
         GROUP_REMOVED,
 
+        NOTIFY_FLOW_STATS,
         FLOW_MIRROR_POINTS_RECORD_PROCESSED,
 
         FINISHED,

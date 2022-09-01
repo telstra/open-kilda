@@ -45,7 +45,9 @@ public class RemoveFlowPathInfo extends BaseFlowPathInfo {
                               @NonNull @JsonProperty("cookie") FlowSegmentCookie cookie,
                               @JsonProperty("meter_id") MeterId meterId,
                               @NonNull @JsonProperty("path_nodes") List<PathNodePayload> pathNodes,
-                              @JsonProperty("stat_vlans") Set<Integer> statVlans) {
-        super(flowId, yFlowId, cookie, meterId, pathNodes, statVlans);
+                              @JsonProperty("stat_vlans") Set<Integer> statVlans,
+                              @JsonProperty("ingress_mirror") boolean ingressMirror,
+                              @JsonProperty("egress_mirror") boolean egressMirror) {
+        super(flowId, yFlowId, cookie, meterId, pathNodes, statVlans, ingressMirror, egressMirror);
     }
 }

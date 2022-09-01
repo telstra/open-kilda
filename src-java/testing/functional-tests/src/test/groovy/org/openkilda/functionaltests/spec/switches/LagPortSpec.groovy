@@ -639,11 +639,10 @@ class LagPortSpec extends HealthCheckSpecification {
 
         with(deleteResponse) {
             logicalPortNumber == lagPort
-            portNumbers.sort() == portsArrayUpdate.sort()
+            portNumbers.sort() == portsArray.sort()
         }
 
-        cleanup:
-        lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
+
     }
 
     void deleteAllLagPorts(SwitchId switchId) {

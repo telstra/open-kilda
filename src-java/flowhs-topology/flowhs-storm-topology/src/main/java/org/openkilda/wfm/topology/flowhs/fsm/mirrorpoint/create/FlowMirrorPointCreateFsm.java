@@ -31,6 +31,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.EmitUpda
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.EmitVerifyRulesRequestsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.HandleNotCompletedCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.HandleNotDeallocatedFlowMirrorPathResourceAction;
+import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.NotifyFlowStatsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.OnReceivedInstallResponseAction;
@@ -155,6 +156,11 @@ public final class FlowMirrorPointCreateFsm extends FlowPathSwappingFsm<FlowMirr
                     .onEach(Event.TIMEOUT, Event.MISSING_RULE_FOUND, Event.ERROR);
 
             builder.transitions().from(State.RULES_VALIDATED)
+                    .toAmong(State.NOTIFY_FLOW_STATS, State.NOTIFY_FLOW_STATS)
+                    .onEach(Event.NEXT, Event.ERROR)
+                    .perform(new NotifyFlowStatsAction(persistenceManager));
+
+            builder.transitions().from(State.NOTIFY_FLOW_STATS)
                     .toAmong(State.MIRROR_PATH_INSTALLATION_COMPLETED, State.MIRROR_PATH_INSTALLATION_COMPLETED)
                     .onEach(Event.NEXT, Event.ERROR)
                     .perform(new PostFlowMirrorPathInstallationAction(persistenceManager));
@@ -220,6 +226,7 @@ public final class FlowMirrorPointCreateFsm extends FlowPathSwappingFsm<FlowMirr
         VALIDATING_RULES,
         RULES_VALIDATED,
 
+        NOTIFY_FLOW_STATS,
         MIRROR_PATH_INSTALLATION_COMPLETED,
 
         FINISHED,

@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,38 +13,35 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.create.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions;
 
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateContext;
+import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.State;
 
-public class NotifyFlowStatsAction extends
-        FlowProcessingWithHistorySupportAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-    private FlowGenericCarrier carrier;
+public class NotifyFlowStatsAction extends FlowProcessingWithHistorySupportAction<FlowMirrorPointCreateFsm,
+        FlowMirrorPointCreateFsm.State, FlowMirrorPointCreateFsm.Event, FlowMirrorPointCreateContext> {
 
-    public NotifyFlowStatsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {
+    public NotifyFlowStatsAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        this.carrier = carrier;
     }
 
     @Override
-    protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        String flowId = stateMachine.getFlowId();
-        flowPathRepository.findByFlowId(flowId).forEach(flowPath -> {
+    protected void perform(FlowMirrorPointCreateFsm.State from, State to, Event event,
+                           FlowMirrorPointCreateContext context, FlowMirrorPointCreateFsm stateMachine) {
+        flowPathRepository.findById(stateMachine.getFlowPathId()).ifPresent(flowPath -> {
             Flow flow = flowPath.getFlow();
             UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
                     flow.getFlowId(), flow.getYFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
                     FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath), flow.getVlanStatistics(),
                     hasIngressMirror(flowPath), hasEgressMirror(flowPath));
-            carrier.sendNotifyFlowStats(pathInfo);
+            stateMachine.getCarrier().sendNotifyFlowStats(pathInfo);
         });
     }
 }

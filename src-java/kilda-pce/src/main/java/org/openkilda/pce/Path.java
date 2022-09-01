@@ -46,6 +46,8 @@ public class Path implements Serializable {
     @NonNull
     private List<Segment> segments;
 
+    private boolean isBackupPath;
+
     @Value
     @Builder(toBuilder = true)
     @EqualsAndHashCode

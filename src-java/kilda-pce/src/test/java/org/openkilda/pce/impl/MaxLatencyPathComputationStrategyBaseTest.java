@@ -17,10 +17,13 @@ package org.openkilda.pce.impl;
 
 import static java.lang.String.format;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.Flow;
@@ -30,12 +33,16 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.GetPathsResult;
+import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.BestWeightAndShortestPathFinder;
 
 import org.junit.Test;
+
+import java.time.Duration;
+import java.util.List;
 
 public class MaxLatencyPathComputationStrategyBaseTest extends InMemoryPathComputerBaseTest {
 
@@ -271,6 +278,26 @@ public class MaxLatencyPathComputationStrategyBaseTest extends InMemoryPathCompu
         assertNotNull(path);
         assertEquals(path.getForward().getSegments().size(), 2);
         assertEquals(path.getForward().getSegments().get(1).getSrcSwitchId(), new SwitchId("00:03"));
+    }
+
+    @Test
+    public void shouldNotFindPathsGreaterThenMaxLatency() throws Exception {
+        createThreeWaysTopo();
+        PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
+                new BestWeightAndShortestPathFinder(200), config);
+        long maxLatencyNs = 20;
+        List<Path> paths = pathComputer.getNPaths(
+                getSwitchById("00:01").getSwitchId(),
+                getSwitchById("00:05").getSwitchId(),
+                10,
+                FlowEncapsulationType.TRANSIT_VLAN,
+                PathComputationStrategy.MAX_LATENCY,
+                Duration.ofNanos(maxLatencyNs),
+                null
+        );
+
+        assertThat(paths, not(empty()));
+        paths.forEach(path -> assertThat(path.getLatency(), not(greaterThan(maxLatencyNs))));
     }
 
     private void createThreeWaysTopo() {

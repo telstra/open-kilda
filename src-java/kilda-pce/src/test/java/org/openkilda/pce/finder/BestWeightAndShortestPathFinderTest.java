@@ -25,6 +25,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.FindOneDirectionPathResult;
 import org.openkilda.pce.model.FindPathResult;
 import org.openkilda.pce.model.PathWeight;
 import org.openkilda.pce.model.WeightFunction;
@@ -841,7 +842,7 @@ public class BestWeightAndShortestPathFinderTest {
 
         // Cost is 5
         expectedPaths.add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_D, SWITCH_ID_C, SWITCH_ID_F));
-        List<List<Edge>> paths =
+        List<FindOneDirectionPathResult> paths =
                 pathFinder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 1, WEIGHT_FUNCTION);
         assertEquals(expectedPaths, convertPaths(paths));
 
@@ -937,9 +938,10 @@ public class BestWeightAndShortestPathFinderTest {
         return network;
     }
 
-    private List<List<SwitchId>> convertPaths(List<List<Edge>> paths) {
+    private List<List<SwitchId>> convertPaths(List<FindOneDirectionPathResult> paths) {
         List<List<SwitchId>> convertedPaths = new ArrayList<>();
-        for (List<Edge> path : paths) {
+        for (FindOneDirectionPathResult pathResult : paths) {
+            List<Edge> path = pathResult.getFoundPath();
             List<SwitchId> convertedPath = getInvolvedSwitches(path);
             convertedPaths.add(convertedPath);
         }
