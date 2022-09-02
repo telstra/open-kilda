@@ -1420,7 +1420,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
         cleanup: "Remove created flow and registered devices, revert switch props"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        database.removeConnectedDevices(sw.dpId)
+        sw && database.removeConnectedDevices(sw.dpId)
         initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
     }
 
@@ -1472,8 +1472,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 }
         }
 
-        then: "Getting connecting devices doesn't show corresponding devices on src endpoint"
-        Wrappers.timedLoop(3) {
+        then: "Getting connecting devices show corresponding devices on src endpoint"
+        Wrappers.wait(3) {
             //under usual condition system needs some time for devices to appear, that's why timeLoop is used here
             verifyAll(northboundV2.getConnectedDevices(sw.dpId)) {
                 !(it.ports.lldp.empty)
@@ -1530,7 +1530,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 }
         }
 
-        then: "Getting connecting devices show corresponding devices on src endpoint"
+        then: "Getting connecting devices doesn't show corresponding devices on src endpoint"
         Wrappers.timedLoop(3) {
             //under usual condition system needs some time for devices to appear, that's why timeLoop is used here
             verifyAll(northboundV2.getConnectedDevices(sw.dpId)) {
