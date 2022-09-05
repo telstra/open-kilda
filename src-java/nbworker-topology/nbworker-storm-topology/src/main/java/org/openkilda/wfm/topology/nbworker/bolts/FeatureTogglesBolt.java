@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.FeatureTogglesUpdate;
+import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.CreateOrUpdateFeatureTogglesRequest;
@@ -95,6 +96,7 @@ public class FeatureTogglesBolt extends PersistenceOperationsBolt implements IFe
                 .performSync(true)
                 .processMeters(true)
                 .removeExcess(true)
+                .validationFilters(ValidationFilter.ALL_WITHOUT_FLOW_INFO)
                 .build();
         getOutput().emit(StreamType.TO_SWITCH_MANAGER.toString(), getCurrentTuple(),
                 new Values(data, KeyProvider.generateChainedKey(getCorrelationId())));

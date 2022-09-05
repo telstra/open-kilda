@@ -271,7 +271,7 @@ public class ValidationServiceImplTest {
     public void validateMetersEmpty() {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
         ValidateMetersResultV2 response = validationService.validateMeters(SWITCH_ID_A, emptyList(), emptyList(),
-                true);
+                true, false);
 
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -289,7 +289,7 @@ public class ValidationServiceImplTest {
         ValidateMetersResultV2 response = validationService.validateMeters(SWITCH_ID_B,
                 singletonList(meter),
                 singletonList(meter),
-                true);
+                true, false);
 
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -314,7 +314,7 @@ public class ValidationServiceImplTest {
         ValidateMetersResultV2 response = validationService.validateMeters(SWITCH_ID_B,
                 singletonList(actualMeter),
                 singletonList(expectedMeter),
-                true);
+                true, false);
 
         assertFalse(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -342,7 +342,7 @@ public class ValidationServiceImplTest {
         ValidateMetersResultV2 response = validationService.validateMeters(SWITCH_ID_B,
                 singletonList(actualMeter),
                 singletonList(expectedMeter),
-                true);
+                true, false);
 
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getProperMeters().isEmpty());
@@ -377,7 +377,7 @@ public class ValidationServiceImplTest {
         ValidateMetersResultV2 response = validationService.validateMeters(SWITCH_ID_E,
                 singletonList(meter),
                 singletonList(meter),
-                true);
+                true, false);
 
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -406,7 +406,7 @@ public class ValidationServiceImplTest {
         ValidateMetersResultV2 response = validationService.validateMeters(SWITCH_ID_E,
                 singletonList(actualMeter),
                 singletonList(expectedMeter),
-                true);
+                true, false);
 
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getProperMeters().isEmpty());
@@ -860,6 +860,7 @@ public class ValidationServiceImplTest {
         private final FlowMeterRepository flowMeterRepository = mock(FlowMeterRepository.class);
         private final FlowRepository flowRepository = mock(FlowRepository.class);
         private final YFlowRepository yFlowRepository = mock(YFlowRepository.class);
+
         private final MirrorGroupRepository mirrorGroupRepository = mock(MirrorGroupRepository.class);
 
         private PersistenceManager build() {
@@ -898,6 +899,9 @@ public class ValidationServiceImplTest {
 
             when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
             when(repositoryFactory.createYFlowRepository()).thenReturn(yFlowRepository);
+
+            when(mirrorGroupRepository.findByGroupIdAndSwitchId(any(), any())).thenReturn(Optional.empty());
+            when(repositoryFactory.createMirrorGroupRepository()).thenReturn(mirrorGroupRepository);
 
             PersistenceManager persistenceManager = mock(PersistenceManager.class);
             when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);

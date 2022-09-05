@@ -42,8 +42,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
-import org.openkilda.messaging.model.ExcludeFilter;
-import org.openkilda.messaging.model.IncludeFilter;
+import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
@@ -106,9 +105,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
     private SwitchValidationContext validationContext;
     private final Set<ExternalResources> pendingRequests = new HashSet<>();
 
-    private Set<IncludeFilter> includeFilters;
-
-    private Set<ExcludeFilter> excludeFilters;
+    private Set<ValidationFilter> validationFilters;
 
     public SwitchValidateFsm(
             SwitchManagerCarrier carrier, String key, SwitchValidateRequest request,
@@ -201,24 +198,21 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 throw new SwitchNotFoundException(switchId);
             }
 
-            this.includeFilters = context.getIncludeFilters();
-            this.excludeFilters = context.getExcludeFilters();
+            this.validationFilters = context.getValidationFilters();
 
             requestSwitchExpectedEntities();
 
-            boolean includeAll = includeFilters.isEmpty();
-
-            if (includeAll || includeFilters.contains(IncludeFilter.RULES)) {
+            if (validationFilters.contains(ValidationFilter.RULES)) {
                 requestSwitchOfFlows();
             }
 
-            if (includeAll || includeFilters.contains(IncludeFilter.GROUPS)) {
+            if (validationFilters.contains(ValidationFilter.GROUPS)) {
                 requestSwitchOfGroups();
             }
 
             boolean hasLagFeature = sw.get().getFeatures().contains(LAG);
 
-            if ((includeAll || includeFilters.contains(IncludeFilter.LOGICAL_PORTS)) && hasLagFeature) {
+            if ((validationFilters.contains(ValidationFilter.LOGICAL_PORTS)) && hasLagFeature) {
                 // at this moment Kilda validated only LAG logical ports
                 Optional<String> ipAddress = sw.map(Switch::getSocketAddress).map(IpSocketAddress::getAddress);
                 if (ipAddress.isPresent()) {
@@ -228,7 +222,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 }
             }
 
-            if (includeAll || includeFilters.contains(IncludeFilter.METERS)) {
+            if (validationFilters.contains(ValidationFilter.METERS)) {
                 requestSwitchMeters();
             }
 
@@ -342,23 +336,23 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         List<MeterSpeakerData> expectedMeters = filterSpeakerData(expectedEntities, MeterSpeakerData.class);
         List<GroupSpeakerData> expectedGroups = filterSpeakerData(expectedEntities, GroupSpeakerData.class);
 
-        boolean validateAll = includeFilters.isEmpty();
-        boolean excludeFlowInfo = excludeFilters.contains(ExcludeFilter.FLOW_INFO);
+        boolean includeFlowInfo = validationFilters.contains(ValidationFilter.FLOW_INFO);
 
-        if (validateAll || includeFilters.contains(IncludeFilter.RULES)) {
-            validateRules(expectedRules, excludeFlowInfo);
+        if (validationFilters.contains(ValidationFilter.RULES)) {
+            validateRules(expectedRules, includeFlowInfo);
         }
 
-        if (validateAll || includeFilters.contains(IncludeFilter.METERS)) {
-            validateMeters(expectedMeters, excludeFlowInfo);
+        if (validationFilters.contains(ValidationFilter.METERS)) {
+            validateMeters(expectedMeters, includeFlowInfo, validationFilters.contains(
+                    ValidationFilter.METER_FLOW_INFO));
         }
 
-        if (validateAll || includeFilters.contains(IncludeFilter.GROUPS)) {
-            validateGroups(expectedGroups, excludeFlowInfo);
+        if (validationFilters.contains(ValidationFilter.GROUPS)) {
+            validateGroups(expectedGroups, includeFlowInfo);
         }
 
-        if (validateAll || includeFilters.contains(IncludeFilter.LOGICAL_PORTS)) {
-            validateLogicalPorts(excludeFlowInfo);
+        if (validationFilters.contains(ValidationFilter.LOGICAL_PORTS)) {
+            validateLogicalPorts();
         }
     }
 
@@ -468,39 +462,41 @@ public class SwitchValidateFsm extends AbstractStateMachine<
         requestsTable.put(uuid, request);
     }
 
-    private void validateRules(List<FlowSpeakerData> expectedRules, boolean excludeFlowInfo) {
+    private void validateRules(List<FlowSpeakerData> expectedRules, boolean includeFlowInfo) {
         log.info("Validate rules (switch={}, key={})", getSwitchId(), key);
         ValidateRulesResultV2 results = validationService.validateRules(
-                getSwitchId(), validationContext.getActualOfFlows(), expectedRules, excludeFlowInfo);
+                getSwitchId(), validationContext.getActualOfFlows(), expectedRules, includeFlowInfo);
 
         validationContext = validationContext.toBuilder()
                 .ofFlowsValidationReport(results)
                 .build();
     }
 
-    private void validateMeters(List<MeterSpeakerData> expectedMeters, boolean excludeFlowInfo) {
+    private void validateMeters(List<MeterSpeakerData> expectedMeters, boolean includeAllFlowInfo,
+                                boolean includeMeterFlowInfo) {
         if (validationContext.getActualMeters() == null) {
             return;
         }
 
         log.info("Validate meters (switch={}, key={})", getSwitchId(), key);
         ValidateMetersResultV2 results = validationService.validateMeters(
-                getSwitchId(), validationContext.getActualMeters(), expectedMeters, excludeFlowInfo);
+                getSwitchId(), validationContext.getActualMeters(), expectedMeters, includeAllFlowInfo,
+                includeMeterFlowInfo);
         validationContext = validationContext.toBuilder()
                 .metersValidationReport(results)
                 .build();
     }
 
-    protected void validateGroups(List<GroupSpeakerData> expectedGroups, boolean excludeFlowInfo) {
+    protected void validateGroups(List<GroupSpeakerData> expectedGroups, boolean includeFlowInfo) {
         log.info("Validate groups (switch={}, key={})", getSwitchId(), key);
         ValidateGroupsResultV2 results = validationService.validateGroups(
-                getSwitchId(), validationContext.getActualGroupEntries(), expectedGroups, excludeFlowInfo);
+                getSwitchId(), validationContext.getActualGroupEntries(), expectedGroups, includeFlowInfo);
         validationContext = validationContext.toBuilder()
                 .validateGroupsResult(results)
                 .build();
     }
 
-    protected void validateLogicalPorts(boolean excludeFlowInfo) {
+    protected void validateLogicalPorts() {
         if (validationContext.getActualLogicalPortEntries() == null) {
             return;
         }
@@ -577,8 +573,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
     @Builder
     public static class SwitchValidateContext {
 
-        Set<IncludeFilter> includeFilters;
-        Set<ExcludeFilter> excludeFilters;
+        Set<ValidationFilter> validationFilters;
         List<FlowSpeakerData> flowEntries;
         List<MeterSpeakerData> meterEntries;
         List<GroupSpeakerData> groupEntries;

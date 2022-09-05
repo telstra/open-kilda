@@ -44,6 +44,7 @@ import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
+import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
@@ -68,6 +69,7 @@ import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateMetersResultV2;
 import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateRulesResultV2;
 import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceImpl;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import org.apache.storm.shade.com.google.common.collect.Lists;
 import org.junit.Before;
@@ -79,7 +81,6 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Optional;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -122,7 +123,11 @@ public class SwitchValidateServiceTest {
 
         service = new SwitchValidateService(carrier, persistenceManager, validationService);
 
-        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).processMeters(true).build();
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID)
+                .validationFilters(ImmutableSet.of(ValidationFilter.METERS, ValidationFilter.GROUPS,
+                        ValidationFilter.RULES, ValidationFilter.LOGICAL_PORTS,
+                        ValidationFilter.FLOW_INFO)).build();
+
         flowSpeakerData = FlowSpeakerData.builder()
                 .ofVersion(OfVersion.OF_13)
                 .cookie(new Cookie(1L))
@@ -148,7 +153,7 @@ public class SwitchValidateServiceTest {
         when(validationService.validateRules(any(), any(), any(), anyBoolean()))
                 .thenReturn(new ValidateRulesResultV2(false, Sets.newHashSet(ruleEntry), emptySet(),
                         emptySet(), emptySet()));
-        when(validationService.validateMeters(any(), any(), any(), anyBoolean()))
+        when(validationService.validateMeters(any(), any(), any(), anyBoolean(), anyBoolean()))
                 .thenReturn(new ValidateMetersResultV2(false, emptyList(), emptyList(), emptyList(),
                         emptyList()));
     }
@@ -226,7 +231,9 @@ public class SwitchValidateServiceTest {
 
     @Test
     public void validationWithoutMetersSuccess() throws UnexpectedInputException, MessageDispatchException {
-        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).build();
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID)
+                .validationFilters(ImmutableSet.of(ValidationFilter.GROUPS,
+                        ValidationFilter.RULES, ValidationFilter.LOGICAL_PORTS)).build();
 
         service.handleSwitchValidateRequest(KEY, request);
         verify(carrier, times(2))
@@ -279,11 +286,8 @@ public class SwitchValidateServiceTest {
 
     @Test
     public void validationSuccessWithUnavailableGrpc() throws UnexpectedInputException, MessageDispatchException {
-        request = SwitchValidateRequest.builder()
+        request = request.toBuilder()
                 .switchId(LAG_SWITCH_ID)
-                .processMeters(true)
-                .includeFilters(new HashSet<>())
-                .excludeFilters(new HashSet<>())
                 .build();
 
         service.handleSwitchValidateRequest(KEY, request);
@@ -307,7 +311,7 @@ public class SwitchValidateServiceTest {
 
         verify(validationService).validateRules(eq(LAG_SWITCH_ID), any(), any(), anyBoolean());
         verify(validationService).validateGroups(eq(LAG_SWITCH_ID), any(), any(), anyBoolean());
-        verify(validationService).validateMeters(eq(LAG_SWITCH_ID), any(), any(), anyBoolean());
+        verify(validationService).validateMeters(eq(LAG_SWITCH_ID), any(), any(), anyBoolean(), anyBoolean());
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
 
@@ -351,12 +355,8 @@ public class SwitchValidateServiceTest {
 
     @Test
     public void validationPerformSync() throws UnexpectedInputException, MessageDispatchException {
-        request = SwitchValidateRequest.builder()
-                .switchId(SWITCH_ID)
+        request = request.toBuilder()
                 .performSync(true)
-                .processMeters(true)
-                .includeFilters(new HashSet<>())
-                .excludeFilters(new HashSet<>())
                 .build();
 
         handleRequestAndInitDataReceive();
@@ -369,12 +369,11 @@ public class SwitchValidateServiceTest {
 
     @Test
     public void errorResponseOnSwitchNotFound() {
-        request = SwitchValidateRequest.builder()
+        request = request.toBuilder()
+                .performSync(true)
                 .switchId(SWITCH_ID_MISSING)
-                .performSync(true).processMeters(true)
-                .includeFilters(new HashSet<>())
-                .excludeFilters(new HashSet<>())
                 .build();
+
         service.handleSwitchValidateRequest(KEY, request);
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
@@ -405,7 +404,7 @@ public class SwitchValidateServiceTest {
         service.dispatchWorkerMessage(new SwitchEntities(new ArrayList<>()), new MessageCookie(KEY));
 
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any(), anyBoolean());
-        verify(validationService).validateMeters(eq(SWITCH_ID), any(), any(), anyBoolean());
+        verify(validationService).validateMeters(eq(SWITCH_ID), any(), any(), anyBoolean(), anyBoolean());
         verify(validationService).validateGroups(eq(SWITCH_ID), any(), any(), anyBoolean());
     }
 
