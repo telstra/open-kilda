@@ -147,10 +147,8 @@ public class ValidationServiceImpl implements ValidationService {
         Set<RuleInfoEntryV2> excessRules = new HashSet<>();
         Set<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules = new HashSet<>();
 
-
         Map<RuleKey, RuleInfoEntryV2> expectedRulesMap = convertRules(expectedRules, excludeFlowInfo);
         Map<RuleKey, RuleInfoEntryV2> actualRulesMap = convertRules(presentRules, excludeFlowInfo);
-
 
         processRulesValidation(missingRules, properRules, excessRules,
                 misconfiguredRules, expectedRulesMap, actualRulesMap);
@@ -202,6 +200,12 @@ public class ValidationServiceImpl implements ValidationService {
                             .collect(Collectors.joining(", ", "[", "]")));
         }
 
+        if (!misconfiguredGroups.isEmpty() && log.isWarnEnabled()) {
+            log.warn("On switch {} the following groups are misconfigured: {}", switchId,
+                    misconfiguredGroups.stream().map(MisconfiguredInfo::getId)
+                            .collect(Collectors.joining(", ", "[", "]")));
+        }
+
         return new ValidateGroupsResultV2(
                 missingGroups.isEmpty() && excessGroups.isEmpty() && misconfiguredGroups.isEmpty(),
                 ImmutableList.copyOf(missingGroups),
@@ -232,7 +236,23 @@ public class ValidationServiceImpl implements ValidationService {
         processLogicalPortValidation(actualPorts, expectedPorts, missingPorts, properPorts, excessPorts,
                 misconfiguredPorts);
 
-        //TODO: add logging
+        if (!excessPorts.isEmpty() && log.isWarnEnabled()) {
+            log.warn("On switch {} the following logical ports are excessive: {}", switchId,
+                    excessPorts.stream().map(x -> Integer.toString(x.getLogicalPortNumber()))
+                            .collect(Collectors.joining(", ", "[", "]")));
+        }
+
+        if (!missingPorts.isEmpty() && log.isErrorEnabled()) {
+            log.warn("On switch {} the following logical ports are missed: {}", switchId,
+                    missingPorts.stream().map(x -> Integer.toString(x.getLogicalPortNumber()))
+                            .collect(Collectors.joining(", ", "[", "]")));
+        }
+
+        if (!misconfiguredPorts.isEmpty() && log.isWarnEnabled()) {
+            log.warn("On switch {} the following logical ports are misconfigured: {}", switchId,
+                    misconfiguredPorts.stream().map(MisconfiguredInfo::getId)
+                            .collect(Collectors.joining(", ", "[", "]")));
+        }
 
         return new ValidateLogicalPortsResultV2(
                 missingPorts.isEmpty() && excessPorts.isEmpty() && misconfiguredPorts.isEmpty(),
@@ -301,8 +321,6 @@ public class ValidationServiceImpl implements ValidationService {
                 .forEach(missingGroups::add);
 
         properGroups.retainAll(presentGroups);
-
-        //TODO: add flow_id and flow_path for proper groups
 
         Set<Integer> expectedGroupsIds = expectedGroups.stream()
                 .map(GroupInfoEntryV2::getGroupId)
@@ -428,9 +446,6 @@ public class ValidationServiceImpl implements ValidationService {
                                 .ifPresent(mirrorGroup -> {
                                     String id = mirrorGroup.getFlowId();
                                     groupEntry.setFlowId(id);
-                                    // TODO(nrydanov): Probably, it will slow down performance.
-                                    //  Better to cache set of pairs <sub_flow_id, y_flow_id>
-                                    yFlowRepository.findYFlowId(id).ifPresent(groupEntry::setYFlowId);
                                     String pathId = mirrorGroup.getPathId().getId();
                                     groupEntry.setFlowPathId(pathId);
                                 });
@@ -503,10 +518,6 @@ public class ValidationServiceImpl implements ValidationService {
             rules.put(ruleKey, ruleInfo);
         }
         return rules;
-    }
-
-    private void convertLogicalPorts() {
-        //TODO: do we have the ability to generalize it for logical port?
     }
 
     private Set<MisconfiguredInfo<GroupInfoEntryV2>> calculateMisconfiguredGroups(Set<GroupInfoEntryV2> expected,
@@ -594,9 +605,6 @@ public class ValidationServiceImpl implements ValidationService {
         if (!expected.getCookie().equals(actual.getCookie())) {
             discrepancies.cookie(actual.getCookie());
         }
-        if (!expected.getCookieKind().equals(actual.getCookieKind())) {
-            discrepancies.cookieKind(actual.getCookieKind());
-        }
         if (!expected.getPriority().equals(actual.getPriority())) {
             discrepancies.priority(actual.getPriority());
         }
@@ -667,17 +675,5 @@ public class ValidationServiceImpl implements ValidationService {
         Set<String> right = Sets.newHashSet(expected);
 
         return left.size() == right.size() && left.containsAll(right);
-    }
-
-    private String getFlowId() {
-        return "";
-    }
-
-    private String getFlowPath() {
-        return "";
-    }
-
-    private String getYFlowId() {
-        return "";
     }
 }

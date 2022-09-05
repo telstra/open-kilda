@@ -28,6 +28,7 @@ import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
 import org.openkilda.messaging.info.switches.LogicalPortMisconfiguredInfoEntry;
 import org.openkilda.messaging.info.switches.LogicalPortsValidationEntry;
 import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2.BucketEntry;
 import org.openkilda.messaging.info.switches.v2.GroupsValidationEntryV2;
 import org.openkilda.messaging.info.switches.v2.LogicalPortInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.LogicalPortsValidationEntryV2;
@@ -449,15 +450,35 @@ public class SwitchMapperTest {
 
     @Test
     public void testMisconfigGroupV2ToGroupInfoDtoV1() {
+        BucketEntry excessBucket = new BucketEntry(100, 200, 300);
+        BucketEntry missingBucket = buildGroupInfoEntryV2(MISCONFIG_BASE + 1).getBuckets().get(0);
+
+        GroupInfoEntryV2 discrepancies = GroupInfoEntryV2.builder()
+                .groupId(MISCONFIG_BASE + 1)
+                .flowId(String.format("flow_id_%s", MISCONFIG_BASE))
+                .flowPathId(String.format("flow_path_id_%s", MISCONFIG_BASE))
+                .buckets(Lists.newArrayList(missingBucket, excessBucket))
+                .build();
+
         MisconfiguredInfo<GroupInfoEntryV2> expected = MisconfiguredInfo.<GroupInfoEntryV2>builder()
                 .id(String.valueOf(MISCONFIG_BASE))
                 .expected(buildGroupInfoEntryV2(MISCONFIG_BASE + 1))
-                .discrepancies(buildGroupInfoEntryV2(MISCONFIG_BASE + 2))
+                .discrepancies(discrepancies)
                 .build();
 
         GroupInfoDto actual = switchMapper.toGroupInfoDtoV1(expected);
 
-        assertGroups(expected.getDiscrepancies(), actual);
+        assertEquals(expected.getExpected().getGroupId(), actual.getGroupId());
+        assertFalse(actual.getMissingGroupBuckets().isEmpty());
+        assertFalse(actual.getExcessGroupBuckets().isEmpty());
+
+        assertEquals(excessBucket.getPort(), actual.getExcessGroupBuckets().get(0).getPort());
+        assertEquals(excessBucket.getVlan(), actual.getExcessGroupBuckets().get(0).getVlan());
+        assertEquals(excessBucket.getVni(), actual.getExcessGroupBuckets().get(0).getVni());
+
+        assertEquals(missingBucket.getPort(), actual.getMissingGroupBuckets().get(0).getPort());
+        assertEquals(missingBucket.getVlan(), actual.getMissingGroupBuckets().get(0).getVlan());
+        assertEquals(missingBucket.getVni(), actual.getMissingGroupBuckets().get(0).getVni());
     }
 
     @Test
@@ -488,8 +509,7 @@ public class SwitchMapperTest {
         assertGroups(expected.getGroups().getExcess().get(0), actual.getGroups().getExcess().get(0));
         assertGroups(expected.getGroups().getProper().get(0), actual.getGroups().getProper().get(0));
         assertGroups(expected.getGroups().getMissing().get(0), actual.getGroups().getMissing().get(0));
-        assertGroups(expected.getGroups().getMisconfigured().get(0).getDiscrepancies(),
-                actual.getGroups().getMisconfigured().get(0));
+        assertFalse(actual.getGroups().getMisconfigured().get(0).getMissingGroupBuckets().isEmpty());
 
         assertMeters(expected.getMeters().getExcess().get(0), actual.getMeters().getExcess().get(0));
         assertMeters(expected.getMeters().getProper().get(0), actual.getMeters().getProper().get(0));
@@ -617,8 +637,6 @@ public class SwitchMapperTest {
     }
 
     private void assertGroups(GroupInfoEntryV2 expected, GroupInfoDto actual) {
-        assertEquals(expected.getGroupId(), actual.getGroupId());
-
         assertEquals(expected.getBuckets().get(0).getVni(), actual.getGroupBuckets().get(0).getVni());
         assertEquals(expected.getBuckets().get(0).getVlan(), actual.getGroupBuckets().get(0).getVlan());
         assertEquals(expected.getBuckets().get(0).getPort(), actual.getGroupBuckets().get(0).getPort());

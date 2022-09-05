@@ -76,7 +76,7 @@ public class RuleEntryConverter {
                 .tableId(Optional.ofNullable(speakerData.getTable())
                         .map(OfTable::getTableId)
                         .orElse(null))
-                .cookieKind("TBD")
+                .cookieKind(null) // TODO(vshakirova): add cookie kind info
                 .flags(Optional.ofNullable(speakerData.getFlags())
                         .map(f -> f.stream().map(OfFlowFlag::name)
                                 .collect(Collectors.toList()))

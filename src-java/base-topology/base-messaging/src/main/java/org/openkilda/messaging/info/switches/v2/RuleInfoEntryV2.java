@@ -33,16 +33,17 @@ import java.util.TreeMap;
 @Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class RuleInfoEntryV2 implements Serializable {
-    Long cookie;
-    String cookieHex;
-    String cookieKind;
-    Integer tableId;
-    Integer priority;
-    String flowId;
-    String flowPathId;
-    List<String> flags;
-    TreeMap<String, FieldMatch> match;
-    Instructions instructions;
+    private Long cookie;
+    private String cookieHex;
+    private String cookieKind;
+    private Integer tableId;
+    private Integer priority;
+    private String flowId;
+    private String flowPathId;
+    private List<String> flags;
+    private TreeMap<String, FieldMatch> match;
+    private Instructions instructions;
+
     @JsonProperty("y_flow_id")
     private String yFlowId;
 

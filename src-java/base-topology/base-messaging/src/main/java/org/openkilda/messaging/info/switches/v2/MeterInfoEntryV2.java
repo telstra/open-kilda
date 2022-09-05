@@ -31,8 +31,6 @@ public class MeterInfoEntryV2 implements Serializable {
     private Long meterId;
     private Long cookie;
     private String flowId;
-
-    @JsonProperty("flow_path_id")
     private String flowPathId;
 
     @JsonProperty("y_flow_id")

@@ -16,6 +16,7 @@
 package org.openkilda.northbound.dto.v2.switches;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
@@ -33,6 +34,8 @@ public class MeterInfoDtoV2 {
     private Long cookie;
     private String flowId;
     private String flowPathId;
+
+    @JsonProperty("y_flow_id")
     private String yFlowId;
     private Long meterId;
     private List<String> flags;

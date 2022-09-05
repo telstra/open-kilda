@@ -111,6 +111,7 @@ import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -277,16 +278,35 @@ public abstract class SwitchMapper {
     //from v2 to v1 api
     public abstract SwitchValidationResult toSwitchValidationResultV1(SwitchValidationResponseV2 response);
 
+    public abstract BucketDto toBucketDtoV1(GroupInfoEntryV2.BucketEntry data);
+
     @Mapping(source = "buckets", target = "groupBuckets")
     @Mapping(target = "missingGroupBuckets", ignore = true)
     @Mapping(target = "excessGroupBuckets", ignore = true)
     public abstract GroupInfoDto toGroupInfoDtoV1(GroupInfoEntryV2 data);
 
-    @Mapping(source = "discrepancies.buckets", target = "groupBuckets")
-    @Mapping(source = "discrepancies.groupId", target = "groupId")
-    @Mapping(target = "missingGroupBuckets", ignore = true)
-    @Mapping(target = "excessGroupBuckets", ignore = true)
-    public abstract GroupInfoDto toGroupInfoDtoV1(MisconfiguredInfo<GroupInfoEntryV2> data);
+    GroupInfoDto toGroupInfoDtoV1(MisconfiguredInfo<GroupInfoEntryV2> data) {
+        if (data == null) {
+            return null;
+        }
+        GroupInfoDto groupInfoDto = new GroupInfoDto();
+        List<BucketDto> missingBuckets = new ArrayList<>();
+        List<BucketDto> excessBuckets = new ArrayList<>();
+
+        groupInfoDto.setGroupId(data.getExpected().getGroupId());
+
+        for (GroupInfoEntryV2.BucketEntry bucketEntry : data.getDiscrepancies().getBuckets()) {
+            if (data.getExpected().getBuckets().contains(bucketEntry)) {
+                missingBuckets.add(toBucketDtoV1(bucketEntry));
+                continue;
+            }
+            excessBuckets.add(toBucketDtoV1(bucketEntry));
+        }
+        groupInfoDto.setExcessGroupBuckets(excessBuckets);
+        groupInfoDto.setMissingGroupBuckets(missingBuckets);
+
+        return groupInfoDto;
+    }
 
     @Mapping(target = "actual", ignore = true)
     @Mapping(target = "expected", ignore = true)
@@ -415,20 +435,19 @@ public abstract class SwitchMapper {
 
     public abstract RulesValidationDtoV2 toRulesValidationDtoV2(RulesValidationEntryV2 data);
 
-    @Mapping(source = "YFlowId", target = "yFlowId") //TODO: why doesnt jsonNaming work properly?
     public abstract RuleInfoDtoV2 toRuleInfoDtoV2(RuleInfoEntryV2 data);
 
     public abstract GroupInfoDtoV2 toGroupInfoDtoV2(GroupInfoEntryV2 data);
 
     private IncludeFilter toIncludeFilter(String value) {
         switch (value.toLowerCase()) {
-            case("meters"):
+            case ("meters"):
                 return IncludeFilter.METERS;
-            case("groups"):
+            case ("groups"):
                 return IncludeFilter.GROUPS;
-            case("logical_ports"):
+            case ("logical_ports"):
                 return IncludeFilter.LOGICAL_PORTS;
-            case("rules"):
+            case ("rules"):
                 return IncludeFilter.RULES;
             default:
                 throw new IllegalArgumentException(String.format("Unexpected include filter (%s)"
@@ -438,7 +457,7 @@ public abstract class SwitchMapper {
 
     private ExcludeFilter toExcludeFilter(String value) {
         switch (value.toLowerCase()) {
-            case("flow_info"):
+            case ("flow_info"):
                 return ExcludeFilter.FLOW_INFO;
             default:
                 throw new IllegalArgumentException(String.format("Unexpected exclude filter (%s), "

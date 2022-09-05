@@ -32,21 +32,21 @@ import java.util.List;
 import java.util.Map;
 
 @Data
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RuleInfoDtoV2 implements HexView {
-    Long cookie;
-    String cookieKind;
-    Integer tableId;
-    Integer priority;
-    String flowId;
-    String flowPathId;
-    List<String> flags;
-    Map<String, FieldMatch> match;
-    Instructions instructions;
+    private Long cookie;
+    private String cookieKind;
+    private Integer tableId;
+    private Integer priority;
+    private String flowId;
+    private String flowPathId;
+    private List<String> flags;
+    private Map<String, FieldMatch> match;
+    private Instructions instructions;
+
     @JsonProperty("y_flow_id")
     private String yFlowId;
 

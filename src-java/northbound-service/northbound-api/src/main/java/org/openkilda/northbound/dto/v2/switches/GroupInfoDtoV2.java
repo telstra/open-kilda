@@ -31,7 +31,6 @@ import java.util.List;
 @JsonNaming(value = SnakeCaseStrategy.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class GroupInfoDtoV2 {
-
     private String flowId;
     private String flowPathId;
     private Integer groupId;
