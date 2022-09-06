@@ -450,7 +450,7 @@ public abstract class SwitchMapper {
             case ("rules"):
                 return IncludeFilter.RULES;
             default:
-                throw new IllegalArgumentException(String.format("Unexpected include filter (%s)"
+                throw new IllegalArgumentException(String.format("Unexpected include filter \"%s\", "
                         + "possible values are: \"meters\",\"groups\",\"rules\", \"logical_ports\"", value));
         }
     }
@@ -460,7 +460,7 @@ public abstract class SwitchMapper {
             case ("flow_info"):
                 return ExcludeFilter.FLOW_INFO;
             default:
-                throw new IllegalArgumentException(String.format("Unexpected exclude filter (%s), "
+                throw new IllegalArgumentException(String.format("Unexpected exclude filter \"%s\", "
                         + "possible values are: \"flow_info\"", value));
         }
     }
