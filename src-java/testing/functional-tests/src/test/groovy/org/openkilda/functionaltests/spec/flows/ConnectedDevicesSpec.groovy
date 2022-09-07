@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.cookie.Cookie.LLDP_INGRESS_COOKIE
@@ -1382,6 +1383,169 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         1                 | 2                | 4                | FlowEncapsulationType.TRANSIT_VLAN
         1                 | 3                | 5                | FlowEncapsulationType.VXLAN
     }
+
+    @Tidy
+    def "Switch is not containing extra rules after connected devices removal"() {
+
+        given: "A switch with devices feature turned on"
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
+        def tg = topology.activeTraffGens[0]
+        def sw = tg.switchConnected
+        def initialProps = switchHelper.getCachedSwProps(sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
+            it.multiTable = true
+            it.switchLldp = true
+            it.switchArp = true
+        })
+
+        and: "Flow is created on a target switch with devices feature 'off'"
+        def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        def flow = flowHelperV2.randomFlow(sw, dst)
+        flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
+        flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
+        flowHelperV2.addFlow(flow)
+
+        when: "Turn LLDP and ARP detection off on switch"
+        switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
+            it.multiTable = true
+            it.switchLldp = false
+            it.switchArp = false
+        })
+        flow.maximumBandwidth = flow.maximumBandwidth + 1
+        flowHelperV2.updateFlow(flow.flowId, flow)
+
+        then: "Check excess rules are not registered on device"
+        wait(WAIT_OFFSET) {
+             verifySwitchRules(sw.dpId)
+        }
+        cleanup: "Remove created flow and registered devices, revert switch props"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        sw && database.removeConnectedDevices(sw.dpId)
+        initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
+    }
+
+    @Tidy
+    def "System starts detect connected after device properties turned on"() {
+        given: "A switch with devices feature turned off"
+        def tgService = traffExamProvider.get()
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
+        def sw = topology.activeTraffGens[0].switchConnected
+        def initialPropsSource = enableMultiTableIfNeeded(true, sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
+            it.multiTable = true
+            it.switchLldp = false
+            it.switchArp = false
+        })
+
+        and: "Flow is created on a target switch with devices feature 'off'"
+        def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        def initialPropsDst = enableMultiTableIfNeeded(true, dst.dpId)
+        def flow = flowHelperV2.randomFlow(sw, dst)
+        def outerVlan = 100
+        flow.source.vlanId = outerVlan
+        flow.source.innerVlanId = 200
+
+        flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
+        flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
+        flowHelperV2.addFlow(flow)
+        def var = false
+
+        assert northboundV2.getConnectedDevices(flow.source.switchId).ports.empty
+        assert northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
+
+        when: "update device properties and send lldp and arp packets on flow"
+        switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
+            it.multiTable = true
+            it.switchLldp = true
+            it.switchArp = true
+        })
+
+        def srcLldpData = LldpData.buildRandom()
+        def dstLldpData = LldpData.buildRandom()
+        def srcArpData = ArpData.buildRandom()
+        def dstArpData = ArpData.buildRandom()
+        [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
+            endpoint, lldpData, arpData ->
+                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [outerVlan]).withCloseable {
+                    it.sendLldp(lldpData)
+                    it.sendArp(arpData)
+                }
+        }
+
+        then: "Getting connecting devices show corresponding devices on src endpoint"
+        Wrappers.wait(3) {
+            //under usual condition system needs some time for devices to appear, that's why timeLoop is used here
+            verifyAll(northboundV2.getConnectedDevices(sw.dpId)) {
+                !(it.ports.lldp.empty)
+                !(it.ports.arp.empty)
+            }
+        }
+
+        cleanup: "Delete the flow and restore initial switch properties"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        initialPropsSource && restoreSwitchProperties(sw.dpId, initialPropsSource)
+        initialPropsDst && restoreSwitchProperties(dst.dpId, initialPropsDst)
+        database.removeConnectedDevices(sw.dpId)
+    }
+
+    @Tidy
+    def "System stops receiving statistics if config is changed to 'off'"() {
+        given: "A switch with devices feature turned on"
+        def tgService = traffExamProvider.get()
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
+        def sw = topology.activeTraffGens[0].switchConnected
+        def initialPropsSource = enableMultiTableIfNeeded(true, sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
+            it.multiTable = true
+            it.switchLldp = true
+            it.switchArp = true
+        })
+
+        and: "Flow is created on a target switch with devices feature 'off'"
+        def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        def initialPropsDst = enableMultiTableIfNeeded(true, dst.dpId)
+        def flow = flowHelperV2.randomFlow(sw, dst)
+        def outerVlan = 100
+        flow.source.vlanId = outerVlan
+        flow.source.innerVlanId = 200
+        flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
+        flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
+        flowHelperV2.addFlow(flow)
+
+        when: "update device properties and send lldp and arp packets on flow"
+        switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
+            it.multiTable = true
+            it.switchLldp = false
+            it.switchArp = false
+        })
+        def srcLldpData = LldpData.buildRandom()
+        def dstLldpData = LldpData.buildRandom()
+        def srcArpData = ArpData.buildRandom()
+        def dstArpData = ArpData.buildRandom()
+        [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
+            endpoint, lldpData, arpData ->
+                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [outerVlan]).withCloseable {
+                    it.sendLldp(lldpData)
+                    it.sendArp(arpData)
+                }
+        }
+
+        then: "Getting connecting devices doesn't show corresponding devices on src endpoint"
+        Wrappers.timedLoop(3) {
+            //under usual condition system needs some time for devices to appear, that's why timeLoop is used here
+            verifyAll(northboundV2.getConnectedDevices(sw.dpId)) {
+                it.ports.lldp.empty
+                it.ports.arp.empty
+            }
+        }
+
+        cleanup: "Delete the flow and restore initial switch properties"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        initialPropsSource && restoreSwitchProperties(sw.dpId, initialPropsSource)
+        initialPropsDst && restoreSwitchProperties(dst.dpId, initialPropsDst)
+        database.removeConnectedDevices(sw.dpId)
+    }
+
 
     /**
      * Returns a potential flow for creation according to passed params.
