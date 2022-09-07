@@ -24,6 +24,7 @@ import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchConnectionsResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
+import org.openkilda.model.DetectConnectedDevices.DetectConnectedDevicesBuilder;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
@@ -344,6 +345,8 @@ public class SwitchOperationsService {
 
             // must be called before updating of switchProperties object
             final boolean isSwitchSyncNeeded = isSwitchSyncNeeded(switchProperties, update);
+            final boolean switchLldpChanged = switchProperties.isSwitchLldp() != update.isSwitchLldp();
+            final boolean switchArpChanged = switchProperties.isSwitchArp() != update.isSwitchArp();
 
             switchProperties.setMultiTable(update.isMultiTable());
             switchProperties.setSwitchLldp(update.isSwitchLldp());
@@ -358,8 +361,14 @@ public class SwitchOperationsService {
             log.info("Updating {} switch properties from {} to {}. Is switch sync needed: {}",
                     switchId, oldProperties, switchProperties, isSwitchSyncNeeded);
             return new UpdateSwitchPropertiesResult(
-                    SwitchPropertiesMapper.INSTANCE.map(switchProperties), isSwitchSyncNeeded);
+                    SwitchPropertiesMapper.INSTANCE.map(switchProperties), isSwitchSyncNeeded,
+                    switchLldpChanged, switchArpChanged);
         });
+
+
+        if (result.switchLldpChanged || result.switchArpChanged) {
+            updateFLowDetectedConnectedDevices(switchId, update);
+        }
 
         if (result.isSwitchSyncRequired()) {
             carrier.requestSwitchSync(switchId);
@@ -378,6 +387,25 @@ public class SwitchOperationsService {
         }
 
         return result.switchPropertiesDto;
+    }
+
+    private void updateFLowDetectedConnectedDevices(SwitchId switchId, SwitchProperties updateProperties) {
+        transactionManager.doInTransaction(() -> {
+            Collection<Flow> flows = flowRepository.findByEndpointSwitch(switchId);
+
+            for (Flow flow : flows) {
+                DetectConnectedDevicesBuilder updatedConnectedDevices = flow.getDetectConnectedDevices().toBuilder();
+                if (switchId.equals(flow.getSrcSwitchId())) {
+                    updatedConnectedDevices.srcSwitchLldp(updateProperties.isSwitchLldp());
+                    updatedConnectedDevices.srcSwitchArp(updateProperties.isSwitchArp());
+                }
+                if (switchId.equals(flow.getDestSwitchId())) {
+                    updatedConnectedDevices.dstSwitchLldp(updateProperties.isSwitchLldp());
+                    updatedConnectedDevices.dstSwitchArp(updateProperties.isSwitchArp());
+                }
+                flow.setDetectConnectedDevices(updatedConnectedDevices.build());
+            }
+        });
     }
 
     private boolean isSwitchSyncNeeded(SwitchProperties current, SwitchProperties updated) {
@@ -592,8 +620,9 @@ public class SwitchOperationsService {
 
     @Value
     private class UpdateSwitchPropertiesResult {
-        private SwitchPropertiesDto switchPropertiesDto;
-        private boolean switchSyncRequired;
-
+        SwitchPropertiesDto switchPropertiesDto;
+        boolean switchSyncRequired;
+        boolean switchLldpChanged;
+        boolean switchArpChanged;
     }
 }
