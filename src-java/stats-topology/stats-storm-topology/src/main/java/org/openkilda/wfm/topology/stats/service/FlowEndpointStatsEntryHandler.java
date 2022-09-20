@@ -20,6 +20,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.rulemanager.RulePriorityAnalyzer;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.stats.bolts.metrics.FlowDirectionHelper.Direction;
 import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
@@ -83,6 +84,9 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
 
     @Override
     public void handleStatsEntry(YFlowSubDescriptor descriptor) {
+        if (RulePriorityAnalyzer.isGenericFlowEndpoint(statsEntry.getPriority())) {
+            return; // we must ignore stats from sub flow endpoints rule
+        }
         TagsFormatter tags = initTags(true);
         tags.addFlowIdTag(descriptor.getSubFlowId());
         tags.addYFlowIdTag(descriptor.getYFlowId());

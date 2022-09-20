@@ -287,7 +287,9 @@ public abstract class OfFlowStatsMapper {
      */
     public FlowStatsEntry toFlowStatsEntry(OFFlowStatsEntry entry) {
         try {
-            return new FlowStatsEntry(entry.getTableId().getValue(),
+            return new FlowStatsEntry(
+                    entry.getTableId().getValue(),
+                    entry.getPriority(),
                     entry.getCookie().getValue(),
                     entry.getPacketCount().getValue(),
                     entry.getByteCount().getValue(),
