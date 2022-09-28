@@ -50,6 +50,7 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult;
 
 import java.util.Date;
 import java.util.List;
@@ -166,4 +167,6 @@ public interface NorthboundServiceV2 {
     YFlowPingResult pingYFlow(String yFlowId, YFlowPingPayload payload);
 
     YFlow swapYFlowPaths(String yFlowId);
+
+    SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId);
 }

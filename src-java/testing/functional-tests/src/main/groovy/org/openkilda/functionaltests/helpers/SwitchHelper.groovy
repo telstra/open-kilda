@@ -52,6 +52,7 @@ import org.openkilda.model.cookie.ServiceCookie.ServiceCookieTag
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -66,6 +67,7 @@ import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult
+import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult
 import org.openkilda.testing.tools.IslUtils
 import org.openkilda.testing.tools.SoftAssertions
 
@@ -412,6 +414,24 @@ class SwitchHelper {
         }
         assertions.verify()
     }
+    static void verifyMeterSectionsAreEmpty(SwitchValidationV2ExtendedResult switchValidateInfo,
+                                            List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
+        def assertions = new SoftAssertions()
+        if (switchValidateInfo.meters) {
+            sections.each { section ->
+                if (section == "proper") {
+                    assertions.checkSucceeds {
+                        assert switchValidateInfo.meters.proper.findAll { !it.defaultMeter }.empty
+                    }
+                } else {
+                    assertions.checkSucceeds { assert switchValidateInfo.meters."$section".empty }
+                }
+            }
+        }
+        assertions.verify()
+    }
+
+
 
     /**
      * Verifies that specified rule sections in the validation response are empty.
@@ -427,6 +447,23 @@ class SwitchHelper {
                 assertions.checkSucceeds {
                     assert switchValidateInfo.rules.proper.findAll {
                         def cookie = new Cookie(it)
+                        !cookie.serviceFlag && cookie.type != CookieType.SHARED_OF_FLOW
+                    }.empty
+                }
+            } else {
+                assertions.checkSucceeds { assert switchValidateInfo.rules."$section".empty }
+            }
+        }
+        assertions.verify()
+    }
+    static void verifyRuleSectionsAreEmpty(SwitchValidationV2ExtendedResult switchValidateInfo,
+                                           List<String> sections = ["missing", "proper", "excess", "misconfigured"]) {
+        def assertions = new SoftAssertions()
+        sections.each { String section ->
+            if (section == "proper") {
+                assertions.checkSucceeds {
+                    assert switchValidateInfo.rules.proper.findAll {
+                        def cookie = new Cookie(it.cookie)
                         !cookie.serviceFlag && cookie.type != CookieType.SHARED_OF_FLOW
                     }.empty
                 }
@@ -468,6 +505,9 @@ class SwitchHelper {
     }
 
     static boolean isDefaultMeter(MeterInfoDto dto) {
+        return MeterId.isMeterIdOfDefaultRule(dto.getMeterId())
+    }
+    static boolean isDefaultMeter(MeterInfoDtoV2 dto) {
         return MeterId.isMeterIdOfDefaultRule(dto.getMeterId())
     }
 
