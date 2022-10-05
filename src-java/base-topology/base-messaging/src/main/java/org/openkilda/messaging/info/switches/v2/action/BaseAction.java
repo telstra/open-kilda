@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,36 +15,13 @@
 
 package org.openkilda.messaging.info.switches.v2.action;
 
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
+import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY;
+
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 
 import java.io.Serializable;
 
-@JsonTypeInfo(use = Id.NAME, property = "clazz")
-@JsonSubTypes({
-        @Type(value = CopyFieldActionEntry.class,
-                name = "org.openkilda.messaging.info.switches.v2.action.noviflow.CopyFieldAction"),
-        @Type(value = GroupActionEntry.class,
-                name = "org.openkilda.messaging.info.switches.v2.action.GroupActionEntry"),
-        @Type(value = MeterActionEntry.class,
-                name = "org.openkilda.messaging.info.switches.v2.action.MeterAction"),
-        @Type(value = PopVlanActionEntry.class,
-                name = "org.openkilda.messaging.info.switches.v2.action.PopVlanAction"),
-        @Type(value = PopVxlanActionEntry.class,
-                name = "org.openkilda.messaging.info.switches.v2.action.PopVxlanAction"),
-        @Type(value = PortOutActionEntry.class,
-                name = "org.openkilda.messaging.info.switches.v2.action.PortOutAction"),
-        @Type(value = PushVlanActionEntry.class,
-                name = "org.openkilda.messaging.info.switches.v2.action.PushVlanAction"),
-        @Type(value = PushVxlanActionEntry.class,
-                name = "org.openkilda.messaging.info.switches.v2.action.PushVxlanAction"),
-        @Type(value = SetFieldActionEntry.class,
-                name = "org.openkilda.messaging.info.switches.v2.action.SetFieldAction"),
-        @Type(value = SwapFieldActionEntry.class,
-                name = "org.openkilda.messaging.info.switches.v2.action.SwapFieldAction"),
-})
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = PROPERTY, property = "clazz")
 public interface BaseAction extends Serializable {
     String getActionType();
 }

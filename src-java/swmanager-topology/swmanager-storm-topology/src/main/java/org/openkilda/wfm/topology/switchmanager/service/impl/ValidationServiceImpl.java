@@ -37,6 +37,7 @@ import org.openkilda.model.Meter;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.CookieBase;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
@@ -641,7 +642,7 @@ public class ValidationServiceImpl implements ValidationService {
     }
 
     private static String cookiesIntoLogRepresentation(Collection<RuleInfoEntryV2> rules) {
-        return rules.stream().map(r -> r.getCookie().toString()).collect(Collectors.joining(", ", "[", "]"));
+        return rules.stream().map(r -> Cookie.toString(r.getCookie())).collect(Collectors.joining(", ", "[", "]"));
     }
 
     private static String metersIntoLogRepresentation(Collection<MeterInfoEntryV2> meters) {
