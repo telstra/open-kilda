@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.124.0 (07/09/2022)
+
+### Features:
+-  [#4932](https://github.com/telstra/open-kilda/pull/4932) Added "discover new isls in under maintenance mode" feature with toggle; (Issue: [#4930](https://github.com/telstra/open-kilda/issues/4930)) [**storm-topologies**]
+-  [#4943](https://github.com/telstra/open-kilda/pull/4943) Added description about vlan stat rules into cookies.md [**docs**]
+
+### Bug Fixes:
+-  [#4902](https://github.com/telstra/open-kilda/pull/4902) Added diverse and affinity group IDs to flow history update dump (Issue: [#3807](https://github.com/telstra/open-kilda/issues/3807))
+-  [#4935](https://github.com/telstra/open-kilda/pull/4935) Fix flow sync deactivate action
+-  [#4936](https://github.com/telstra/open-kilda/pull/4936) Delete switch connected devices before switch delete (Issue: [#4934](https://github.com/telstra/open-kilda/issues/4934)) [**storm-topologies**]
+-  [#4937](https://github.com/telstra/open-kilda/pull/4937) Do not install/remove shared rules for mirrors (Issue: [#4938](https://github.com/telstra/open-kilda/issues/4938)) [**floodlight**]
+-  [#4939](https://github.com/telstra/open-kilda/pull/4939) Test/connected devices fix and extension [**tests**]
+-  [#4941](https://github.com/telstra/open-kilda/pull/4941) Relaxing devel env memory limits
+-  [#4914](https://github.com/telstra/open-kilda/pull/4914) Fixed incorrect updating of LLDP/ARP connected devices on switch (Issues: [#4911](https://github.com/telstra/open-kilda/issues/4911) [#4912](https://github.com/telstra/open-kilda/issues/4912) [#4913](https://github.com/telstra/open-kilda/issues/4913)) [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.123.1...v1.124.0).
+
+### Affected Components:
+network, flow-hs, fl, nbworker
+
+---
+
 ## v1.123.1 (01/09/2022)
 
 ### Bug Fixes:

@@ -114,10 +114,6 @@ public class FlowPathService extends FlowHsService {
 
         registry.remove(requestKey);
         carrier.processFlowPathOperationResults(result);
-
-        if (registry.isEmpty()) {
-            carrier.sendInactive();
-        }
     }
 
     private void ensureNoOperationCollisions(String requestKey, String operationName) throws DuplicateKeyException {
