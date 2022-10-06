@@ -33,7 +33,9 @@ import org.openkilda.model.FlowMeter;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.GroupId;
 import org.openkilda.model.Meter;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -88,6 +90,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class ValidationServiceImpl implements ValidationService {
@@ -96,9 +99,7 @@ public class ValidationServiceImpl implements ValidationService {
     private final LagLogicalPortRepository lagLogicalPortRepository;
     private final FlowMeterRepository flowMeterRepository;
     private final FlowPathRepository flowPathRepository;
-
     private final FlowRepository flowRepository;
-
     private final YFlowRepository yFlowRepository;
 
     private final MirrorGroupRepository mirrorGroupRepository;
@@ -139,7 +140,7 @@ public class ValidationServiceImpl implements ValidationService {
 
     @Override
     public ValidateRulesResultV2 validateRules(SwitchId switchId, List<FlowSpeakerData> presentRules,
-                                               List<FlowSpeakerData> expectedRules, boolean excludeFlowInfo) {
+                                               List<FlowSpeakerData> expectedRules, boolean includeFlowInfo) {
         log.debug("Validating rules on switch {}", switchId);
 
         Set<RuleInfoEntryV2> missingRules = new HashSet<>();
@@ -147,11 +148,11 @@ public class ValidationServiceImpl implements ValidationService {
         Set<RuleInfoEntryV2> excessRules = new HashSet<>();
         Set<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules = new HashSet<>();
 
-        Map<RuleKey, RuleInfoEntryV2> expectedRulesMap = convertRules(expectedRules, excludeFlowInfo);
-        Map<RuleKey, RuleInfoEntryV2> actualRulesMap = convertRules(presentRules, excludeFlowInfo);
+        Map<RuleKey, RuleInfoEntryV2> expectedRulesMap = convertRules(expectedRules);
+        Map<RuleKey, RuleInfoEntryV2> actualRulesMap = convertRules(presentRules);
 
-        processRulesValidation(switchId, missingRules, properRules, excessRules,  misconfiguredRules, expectedRulesMap,
-                actualRulesMap);
+        processRulesValidation(switchId, missingRules, properRules, excessRules, misconfiguredRules, expectedRulesMap,
+                actualRulesMap, includeFlowInfo);
 
         if (!missingRules.isEmpty() && log.isErrorEnabled()) {
             log.error("On switch {} the following rules are missed: {}", switchId,
@@ -174,19 +175,19 @@ public class ValidationServiceImpl implements ValidationService {
     @Override
     public ValidateGroupsResultV2 validateGroups(SwitchId switchId, List<GroupSpeakerData> groupEntries,
                                                  List<GroupSpeakerData> expectedGroupSpeakerData,
-                                                 boolean excludeFlowInfo) {
+                                                 boolean includeFlowInfo) {
         log.debug("Validating groups on a switch {}", switchId);
 
-        List<GroupInfoEntryV2> expectedGroups = convertGroups(expectedGroupSpeakerData, excludeFlowInfo);
-        List<GroupInfoEntryV2> presentGroups = convertGroups(groupEntries, excludeFlowInfo);
+        List<GroupInfoEntryV2> expectedGroups = convertGroups(expectedGroupSpeakerData);
+        List<GroupInfoEntryV2> presentGroups = convertGroups(groupEntries);
 
         List<GroupInfoEntryV2> missingGroups = new ArrayList<>();
         List<GroupInfoEntryV2> properGroups = new ArrayList<>();
         List<GroupInfoEntryV2> excessGroups = new ArrayList<>();
         List<MisconfiguredInfo<GroupInfoEntryV2>> misconfiguredGroups = new ArrayList<>();
 
-        processGroupsValidation(presentGroups, expectedGroups, missingGroups, properGroups, excessGroups,
-                misconfiguredGroups);
+        processGroupsValidation(switchId, presentGroups, expectedGroups, missingGroups, properGroups, excessGroups,
+                misconfiguredGroups, includeFlowInfo);
 
         if (!excessGroups.isEmpty() && log.isWarnEnabled()) {
             log.warn("On switch {} the following groups are excessive: {}", switchId,
@@ -264,27 +265,25 @@ public class ValidationServiceImpl implements ValidationService {
     }
 
     @Override
-    public ValidateMetersResultV2 validateMeters(SwitchId switchId, List<MeterSpeakerData> presentMeters,
-                                                 List<MeterSpeakerData> expectedMeterSpeakerData,
-                                                 boolean excludeFlowInfo) {
+    public ValidateMetersResultV2 validateMeters(
+            SwitchId switchId, List<MeterSpeakerData> presentMeters, List<MeterSpeakerData> expectedMeterSpeakerData,
+            boolean includeAllFlowInfo, boolean includeMeterFlowInfo) {
         log.debug("Validating meters on a switch {}", switchId);
 
         Switch sw = switchRepository.findById(switchId)
                 .orElseThrow(() -> new SwitchNotFoundException(switchId));
         boolean isESwitch = Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
 
-        List<MeterInfoEntryV2> actualMeters =  convertMeters(switchId, presentMeters,
-                excludeFlowInfo);
-        List<MeterInfoEntryV2> expectedMeters = convertMeters(switchId, expectedMeterSpeakerData,
-                excludeFlowInfo);
+        List<MeterInfoEntryV2> actualMeters = convertMeters(presentMeters);
+        List<MeterInfoEntryV2> expectedMeters = convertMeters(expectedMeterSpeakerData);
 
         List<MeterInfoEntryV2> missingMeters = new ArrayList<>();
         List<MeterInfoEntryV2> properMeters = new ArrayList<>();
         List<MeterInfoEntryV2> excessMeters = new ArrayList<>();
         List<MisconfiguredInfo<MeterInfoEntryV2>> misconfiguredMeters = new ArrayList<>();
 
-        processMeterValidation(isESwitch, actualMeters, expectedMeters, missingMeters, properMeters, excessMeters,
-                misconfiguredMeters);
+        processMeterValidation(switchId, isESwitch, actualMeters, expectedMeters, missingMeters, properMeters,
+                excessMeters, misconfiguredMeters, includeAllFlowInfo, includeMeterFlowInfo);
 
         if (!missingMeters.isEmpty() && log.isErrorEnabled()) {
             log.error("On switch {} the following meters are missed: {}", switchId,
@@ -308,10 +307,11 @@ public class ValidationServiceImpl implements ValidationService {
                 missingMeters, properMeters, excessMeters, misconfiguredMeters);
     }
 
-    private void processGroupsValidation(List<GroupInfoEntryV2> presentGroups, List<GroupInfoEntryV2> expectedGroups,
-                                         List<GroupInfoEntryV2> missingGroups, List<GroupInfoEntryV2> properGroups,
-                                         List<GroupInfoEntryV2> excessGroups,
-                                         List<MisconfiguredInfo<GroupInfoEntryV2>> misconfiguredGroups) {
+    private void processGroupsValidation(SwitchId switchId, List<GroupInfoEntryV2> presentGroups,
+                                         List<GroupInfoEntryV2> expectedGroups, List<GroupInfoEntryV2> missingGroups,
+                                         List<GroupInfoEntryV2> properGroups, List<GroupInfoEntryV2> excessGroups,
+                                         List<MisconfiguredInfo<GroupInfoEntryV2>> misconfiguredGroups,
+                                         boolean includeFlowInfo) {
         Map<Integer, GroupInfoEntryV2> presentGroupMap = presentGroups.stream()
                 .collect(Collectors.toMap(GroupInfoEntryV2::getGroupId, Function.identity()));
 
@@ -326,7 +326,7 @@ public class ValidationServiceImpl implements ValidationService {
             if (CollectionUtils.isEqualCollection(expectedGroup.getBuckets(), presentedGroup.getBuckets())) {
                 properGroups.add(presentedGroup);
             } else {
-                misconfiguredGroups.add(calculateMisconfiguredGroups(expectedGroup, presentedGroup));
+                misconfiguredGroups.add(calculateMisconfiguredGroup(expectedGroup, presentedGroup));
             }
         }
 
@@ -344,15 +344,23 @@ public class ValidationServiceImpl implements ValidationService {
         missingGroups.sort(Comparator.comparing(GroupInfoEntryV2::getGroupId));
         misconfiguredGroups.sort(Comparator.comparing(MisconfiguredInfo::getId));
         properGroups.sort(Comparator.comparing(GroupInfoEntryV2::getGroupId));
+
+        if (includeFlowInfo) {
+            concatStreams(missingGroups.stream(), properGroups.stream(),
+                    misconfiguredGroups.stream().map(MisconfiguredInfo::getExpected))
+                    .forEach(group -> addGroupFlowInfo(switchId, group));
+        }
     }
 
     private void processRulesValidation(SwitchId switchId, Set<RuleInfoEntryV2> missingRules,
                                         Set<RuleInfoEntryV2> properRules, Set<RuleInfoEntryV2> excessRules,
                                         Set<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules,
                                         Map<RuleKey, RuleInfoEntryV2> expectedRules,
-                                        Map<RuleKey, RuleInfoEntryV2> actualRules) {
+                                        Map<RuleKey, RuleInfoEntryV2> actualRules,
+                                        boolean includeFlowInfo) {
 
         expectedRules.keySet().forEach(expectedRuleKey -> {
+
             RuleInfoEntryV2 expectedRuleValue = expectedRules.get(expectedRuleKey);
             RuleInfoEntryV2 actualRuleValue = actualRules.get(expectedRuleKey);
 
@@ -374,12 +382,20 @@ public class ValidationServiceImpl implements ValidationService {
                 excessRules.add(actualRules.get(actualRuleKey));
             }
         });
+
+        if (includeFlowInfo) {
+            concatStreams(missingRules.stream(), properRules.stream(),
+                    misconfiguredRules.stream().map(MisconfiguredInfo::getExpected))
+                    .forEach(this::addFlowInfo);
+        }
     }
 
-    private void processMeterValidation(boolean isESwitch, List<MeterInfoEntryV2> presentMeters,
-                                        List<MeterInfoEntryV2> expectedMeters, List<MeterInfoEntryV2> missingMeters,
-                                        List<MeterInfoEntryV2> properMeters, List<MeterInfoEntryV2> excessMeters,
-                                        List<MisconfiguredInfo<MeterInfoEntryV2>> misconfiguredMeters) {
+    private void processMeterValidation(
+            SwitchId switchId, boolean isESwitch, List<MeterInfoEntryV2> presentMeters,
+            List<MeterInfoEntryV2> expectedMeters, List<MeterInfoEntryV2> missingMeters,
+            List<MeterInfoEntryV2> properMeters, List<MeterInfoEntryV2> excessMeters,
+            List<MisconfiguredInfo<MeterInfoEntryV2>> misconfiguredMeters, boolean includeAllFlowInfo,
+            boolean includeMeterFlowInfo) {
 
         Map<Long, MeterInfoEntryV2> presentMeterMap = presentMeters.stream()
                 .collect(Collectors.toMap(MeterInfoEntryV2::getMeterId, Function.identity()));
@@ -415,6 +431,12 @@ public class ValidationServiceImpl implements ValidationService {
         missingMeters.sort(Comparator.comparing(MeterInfoEntryV2::getMeterId));
         misconfiguredMeters.sort(Comparator.comparing(MisconfiguredInfo::getId));
         properMeters.sort(Comparator.comparing(MeterInfoEntryV2::getMeterId));
+
+        if (includeAllFlowInfo || includeMeterFlowInfo) {
+            concatStreams(missingMeters.stream(), properMeters.stream(),
+                    misconfiguredMeters.stream().map(MisconfiguredInfo::getExpected))
+                    .forEach(meter -> addMeterFlowInfo(switchId, meter, includeAllFlowInfo));
+        }
     }
 
     private void processLogicalPortValidation(Map<Integer, LogicalPortInfoEntryV2> actualPorts,
@@ -451,50 +473,20 @@ public class ValidationServiceImpl implements ValidationService {
         }
     }
 
-    private List<GroupInfoEntryV2> convertGroups(List<GroupSpeakerData> groupEntries, boolean excludeFlowInfo) {
+    private List<GroupInfoEntryV2> convertGroups(List<GroupSpeakerData> groupEntries) {
         return groupEntries.stream()
-                .map(data -> {
-                    GroupInfoEntryV2 groupEntry = GroupEntryConverter.INSTANCE.toGroupEntry(data);
-                    if (!excludeFlowInfo) {
-                        mirrorGroupRepository.findByGroupIdAndSwitchId(data.getGroupId(), data.getSwitchId())
-                                .ifPresent(mirrorGroup -> {
-                                    String id = mirrorGroup.getFlowId();
-                                    groupEntry.setFlowId(id);
-                                    String pathId = mirrorGroup.getPathId().getId();
-                                    groupEntry.setFlowPathId(pathId);
-                                });
-                    }
-                    return groupEntry;
-                })
+                .map(GroupEntryConverter.INSTANCE::toGroupEntry)
                 .collect(Collectors.toList());
     }
 
-    private List<MeterInfoEntryV2> convertMeters(SwitchId switchId, List<MeterSpeakerData> meterSpeakerData,
-                                                 boolean excludeFlowInfo) {
-        List<MeterInfoEntryV2> meters = new ArrayList<>();
-
-        for (MeterSpeakerData meterData : meterSpeakerData) {
-            MeterInfoEntryV2 meterInfoEntry = MeterEntryConverter.INSTANCE.toMeterEntry(meterData);
-            Optional<FlowMeter> flowMeter = flowMeterRepository.findById(switchId, meterData.getMeterId());
-            if (flowMeter.isPresent() && !excludeFlowInfo) {
-                String id = flowMeter.get().getFlowId();
-                meterInfoEntry.setFlowId(id);
-                // TODO(nrydanov): Probably, it will slow down performance.
-                //  Better to cache set of pairs <sub_flow_id, y_flow_id>
-                yFlowRepository.findYFlowId(id).ifPresent(meterInfoEntry::setYFlowId);
-                PathId pathId = flowMeter.get().getPathId();
-                Optional<FlowPath> flowPath = flowPathRepository.findById(pathId);
-                flowPath.ifPresent(path ->  {
-                    meterInfoEntry.setCookie(path.getCookie().getValue());
-                    meterInfoEntry.setFlowPathId(pathId.getId());
-                });
-            }
-            meters.add(meterInfoEntry);
-        }
-        return meters;
+    private List<MeterInfoEntryV2> convertMeters(List<MeterSpeakerData> meterSpeakerData) {
+        return meterSpeakerData.stream()
+                .map(MeterEntryConverter.INSTANCE::toMeterEntry)
+                .collect(Collectors.toList());
     }
 
-    private Map<RuleKey, RuleInfoEntryV2> convertRules(List<FlowSpeakerData> flowSpeakerData, boolean excludeFlowInfo) {
+
+    private Map<RuleKey, RuleInfoEntryV2> convertRules(List<FlowSpeakerData> flowSpeakerData) {
         Map<RuleKey, RuleInfoEntryV2> rules = new HashMap<>();
 
         for (FlowSpeakerData rule : flowSpeakerData) {
@@ -505,36 +497,70 @@ public class ValidationServiceImpl implements ValidationService {
                     .tableId(ruleInfo.getTableId())
                     .build();
 
-            long longCookie = rule.getCookie().getValue();
-            FlowSegmentCookie segmentCookie = new FlowSegmentCookie(longCookie);
-            CookieBase.CookieType type = segmentCookie.getType();
-
-            if (!excludeFlowInfo) {
-                if ((type == SERVICE_OR_FLOW_SEGMENT || type == SERVER_42_FLOW_RTT_INGRESS)
-                        && segmentCookie.getDirection() != FlowPathDirection.UNDEFINED) {
-                    FlowSegmentCookie pureCookie = FlowSegmentCookie.builder()
-                            .direction(segmentCookie.getDirection())
-                            .flowEffectiveId(segmentCookie.getFlowEffectiveId())
-                            .type(SERVICE_OR_FLOW_SEGMENT)
-                            .build();
-
-                    flowPathRepository.findByCookie(pureCookie).ifPresent(flowPath -> {
-                        ruleInfo.setFlowPathId(flowPath.getPathId().getId());
-
-                        Flow flow = flowPath.getFlow();
-
-                        String yFlowId = flow.getYFlowId();
-                        ruleInfo.setYFlowId(yFlowId);
-                        ruleInfo.setFlowId(flow.getFlowId());
-                    });
-                }
-            }
             rules.put(ruleKey, ruleInfo);
         }
         return rules;
     }
 
-    private MisconfiguredInfo<GroupInfoEntryV2> calculateMisconfiguredGroups(
+    private void addFlowInfo(RuleInfoEntryV2 rule) {
+        long longCookie = rule.getCookie();
+        FlowSegmentCookie segmentCookie = new FlowSegmentCookie(longCookie);
+        CookieBase.CookieType type = segmentCookie.getType();
+
+        if ((type == SERVICE_OR_FLOW_SEGMENT || type == SERVER_42_FLOW_RTT_INGRESS)
+                && segmentCookie.getDirection() != FlowPathDirection.UNDEFINED) {
+            FlowSegmentCookie pureCookie = FlowSegmentCookie.builder()
+                    .direction(segmentCookie.getDirection())
+                    .flowEffectiveId(segmentCookie.getFlowEffectiveId())
+                    .type(SERVICE_OR_FLOW_SEGMENT)
+                    .build();
+
+            flowPathRepository.findByCookie(pureCookie).ifPresent(flowPath -> {
+                rule.setFlowPathId(flowPath.getPathId().getId());
+
+                Flow flow = flowPath.getFlow();
+                rule.setYFlowId(flow.getYFlowId());
+                rule.setFlowId(flow.getFlowId());
+            });
+        }
+    }
+
+    private void addMeterFlowInfo(SwitchId switchId, MeterInfoEntryV2 meterEntry, boolean includeAllFlowInfo) {
+        Optional<FlowMeter> flowMeter = flowMeterRepository.findById(switchId, new MeterId(meterEntry.getMeterId()));
+        if (!flowMeter.isPresent()) {
+            return;
+        }
+        String id = flowMeter.get().getFlowId(); // Can be flow ID or Y-flow ID
+        // TODO(nrydanov): Probably, it will slow down performance.
+        // Maybe we should cache data from this repositories.
+        if (flowRepository.exists(id)) {
+            meterEntry.setFlowId(id);
+        }
+        if (includeAllFlowInfo && yFlowRepository.exists(id)) {
+            meterEntry.setYFlowId(id);
+        }
+        if (flowMeter.get().getPathId() != null) {
+            flowPathRepository.findById(flowMeter.get().getPathId())
+                    .ifPresent(path -> {
+                        meterEntry.setCookie(path.getCookie().getValue());
+                        if (includeAllFlowInfo) {
+                            meterEntry.setFlowPathId(path.getPathId().getId());
+                        }
+                    });
+        }
+    }
+
+    private void addGroupFlowInfo(SwitchId switchId, GroupInfoEntryV2 groupEntry) {
+        mirrorGroupRepository.findByGroupIdAndSwitchId(new GroupId(groupEntry.getGroupId()), switchId)
+                .ifPresent(mirrorGroup -> {
+                    String id = mirrorGroup.getFlowId();
+                    groupEntry.setFlowId(id);
+                    String pathId = mirrorGroup.getPathId().getId();
+                    groupEntry.setFlowPathId(pathId);
+                });
+    }
+
+    private MisconfiguredInfo<GroupInfoEntryV2> calculateMisconfiguredGroup(
             GroupInfoEntryV2 expected, GroupInfoEntryV2 actual) {
 
         GroupInfoEntryV2Builder discrepancies = GroupInfoEntryV2.builder();
@@ -668,10 +694,14 @@ public class ValidationServiceImpl implements ValidationService {
         return String.join(", ", difference);
     }
 
-    private boolean flagsAreEqual(List<String> present, List<String> expected) {
+    private static boolean flagsAreEqual(List<String> present, List<String> expected) {
         Set<String> left = Sets.newHashSet(present);
         Set<String> right = Sets.newHashSet(expected);
 
         return left.size() == right.size() && left.containsAll(right);
+    }
+
+    private static <T> Stream<T> concatStreams(Stream<T> stream1, Stream<T> stream2, Stream<T> stream3) {
+        return Stream.concat(Stream.concat(stream1, stream2), stream3);
     }
 }

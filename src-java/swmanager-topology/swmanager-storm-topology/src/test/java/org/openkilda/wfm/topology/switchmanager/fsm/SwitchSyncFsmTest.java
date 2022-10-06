@@ -91,7 +91,7 @@ public class SwitchSyncFsmTest {
 
     private SwitchSyncFsm buildFsm(int batchSize) {
         SwitchValidateRequest request = new SwitchValidateRequest(new SwitchId(1), true,
-                true, true, Collections.emptySet(), Collections.emptySet());
+                true, true, Collections.emptySet());
         return new SwitchSyncFsm(null, null, null, request, null, new SwitchSyncConfig(batchSize));
     }
 

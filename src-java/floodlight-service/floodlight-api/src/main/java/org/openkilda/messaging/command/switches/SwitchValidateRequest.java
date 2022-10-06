@@ -16,8 +16,7 @@
 package org.openkilda.messaging.command.switches;
 
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.model.ExcludeFilter;
-import org.openkilda.messaging.model.IncludeFilter;
+import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -47,11 +46,8 @@ public class SwitchValidateRequest extends CommandData {
     @JsonProperty("remove_excess")
     boolean removeExcess;
 
-    @JsonProperty("include_filters")
-    Set<IncludeFilter> includeFilters;
-
-    @JsonProperty("exclude_filters")
-    Set<ExcludeFilter> excludeFilters;
+    @JsonProperty("validation_filters")
+    Set<ValidationFilter> validationFilters;
 
     @Builder(toBuilder = true)
     @JsonCreator
@@ -59,14 +55,12 @@ public class SwitchValidateRequest extends CommandData {
                                  @JsonProperty("process_meters") boolean processMeters,
                                  @JsonProperty("perform_sync") boolean performSync,
                                  @JsonProperty("remove_excess") boolean removeExcess,
-                                 @JsonProperty("include_filters") Set<IncludeFilter> includeFilters,
-                                 @JsonProperty("exclude_filters") Set<ExcludeFilter> excludeFilters) {
+                                 @JsonProperty("validation_filters") Set<ValidationFilter> validationFilters) {
         this.switchId = switchId;
         this.processMeters = processMeters;
         this.performSync = performSync;
         this.removeExcess = removeExcess;
-        this.includeFilters = includeFilters;
-        this.excludeFilters = excludeFilters;
+        this.validationFilters = validationFilters;
     }
 }
 

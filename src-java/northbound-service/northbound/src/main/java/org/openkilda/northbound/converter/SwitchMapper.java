@@ -52,12 +52,11 @@ import org.openkilda.messaging.info.switches.v2.action.PushVlanActionEntry;
 import org.openkilda.messaging.info.switches.v2.action.PushVxlanActionEntry;
 import org.openkilda.messaging.info.switches.v2.action.SetFieldActionEntry;
 import org.openkilda.messaging.info.switches.v2.action.SwapFieldActionEntry;
-import org.openkilda.messaging.model.ExcludeFilter;
-import org.openkilda.messaging.model.IncludeFilter;
 import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.messaging.model.SwitchAvailabilityEntry;
 import org.openkilda.messaging.model.SwitchLocation;
 import org.openkilda.messaging.model.SwitchPatch;
+import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
@@ -112,6 +111,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -439,41 +439,33 @@ public abstract class SwitchMapper {
 
     public abstract GroupInfoDtoV2 toGroupInfoDtoV2(GroupInfoEntryV2 data);
 
-    private IncludeFilter toIncludeFilter(String value) {
+    private ValidationFilter toValidationFilter(String value) {
         switch (value.toLowerCase()) {
             case ("meters"):
-                return IncludeFilter.METERS;
+                return ValidationFilter.METERS;
             case ("groups"):
-                return IncludeFilter.GROUPS;
+                return ValidationFilter.GROUPS;
             case ("logical_ports"):
-                return IncludeFilter.LOGICAL_PORTS;
+                return ValidationFilter.LOGICAL_PORTS;
             case ("rules"):
-                return IncludeFilter.RULES;
+                return ValidationFilter.RULES;
+            case("flow_info"):
+                return ValidationFilter.FLOW_INFO;
             default:
-                throw new IllegalArgumentException(String.format("Unexpected include filter \"%s\", "
-                        + "possible values are: \"meters\",\"groups\",\"rules\", \"logical_ports\"", value));
-        }
-    }
-
-    private ExcludeFilter toExcludeFilter(String value) {
-        switch (value.toLowerCase()) {
-            case ("flow_info"):
-                return ExcludeFilter.FLOW_INFO;
-            default:
-                throw new IllegalArgumentException(String.format("Unexpected exclude filter \"%s\", "
-                        + "possible values are: \"flow_info\"", value));
+                StringBuilder builder = new StringBuilder();
+                builder.append(String.format("Unexpected filter \"%s\", possible values are: ", value));
+                builder.append(Arrays.stream(ValidationFilter.values())
+                        .map(filter -> String.format("\"%s\"", filter))
+                        .collect(Collectors.joining(",")));
+                throw new IllegalArgumentException(builder.toString());
         }
     }
 
     /**
-     * Convert list of {@link String} into list of {@link IncludeFilter}.
+     * Convert list of {@link String} into list of {@link ValidationFilter}.
      */
-    public Set<IncludeFilter> toIncludeFilters(List<String> value) {
-        return value.stream().map(this::toIncludeFilter).collect(Collectors.toSet());
-    }
-
-    public Set<ExcludeFilter> toExcludeFilters(List<String> value) {
-        return value.stream().map(this::toExcludeFilter).collect(Collectors.toSet());
+    public Set<ValidationFilter> toValidationFilters(List<String> value) {
+        return value.stream().map(this::toValidationFilter).collect(Collectors.toSet());
     }
 
     public abstract MeterInfoDtoV2 toMeterInfoDtoV2(MeterInfoEntryV2 data);
@@ -527,7 +519,6 @@ public abstract class SwitchMapper {
 
     public abstract PortOutActionDto toPortOutActionDto(PortOutActionEntry data);
 
-    @Mapping(source = "actionType", target = "actionType")
     public abstract PushVlanActionDto toPushVlanActionDto(PushVlanActionEntry data);
 
     public abstract PushVxlanActionDto toPushVxlanActionDto(PushVxlanActionEntry data);

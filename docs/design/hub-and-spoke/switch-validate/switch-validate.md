@@ -444,6 +444,9 @@ Response payload
 (or `y_flow_id` in case of YFlow).
 * without any query params response contains v2 info about groups, lags, meters and rules 
 (with flow_info for all mentioned fields).
+* with empty `include` query param response contains v2 info about groups, lags, meters and rules, 
+  with flow_info for all mentioned fields (flow info data can be removed from response with query param 
+  `exclude=flow_info`).
 * groups[excess], meters[excess] and rule[excess] do not contain flow info.
 * for groups, lags, meters and rules flow info will be presented in misconfigured[expected] field.
 * misconfigured[id] is 
