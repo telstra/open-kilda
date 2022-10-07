@@ -16,20 +16,13 @@
 package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.messaging.command.flow.FlowSyncRequest;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncContext;
 import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncFsm.Event;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathOperationConfig;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathReference;
-import org.openkilda.wfm.topology.flowhs.model.path.FlowPathResultCode;
-import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
-import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingService;
+import org.openkilda.wfm.topology.flowhs.service.common.SyncServiceBase;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -37,68 +30,35 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Optional;
 
 @Slf4j
-public class FlowSyncService extends FlowProcessingService<FlowSyncFsm, Event, FlowSyncContext, FlowSyncCarrier,
-        FlowProcessingFsmRegister<FlowSyncFsm>, FlowProcessingEventListener> {
+public class FlowSyncService extends SyncServiceBase<FlowSyncFsm, FlowSyncFsm.Event> {
     private final FlowSyncFsm.Factory handlerFactory;
 
     public FlowSyncService(
             @NonNull FlowSyncCarrier carrier, @NonNull PersistenceManager persistenceManager,
             @NonNull FlowResourcesManager flowResourcesManager,
             @NonNull FlowPathOperationConfig flowPathOperationConfig) {
-        super(new FlowProcessingFsmRegister<>(), FlowSyncFsm.EXECUTOR, carrier, persistenceManager);
+        super(FlowSyncFsm.EXECUTOR, carrier, persistenceManager);
         handlerFactory = new FlowSyncFsm.Factory(
                 carrier, persistenceManager, flowResourcesManager, flowPathOperationConfig);
     }
 
-    /**
-     * Handle flow sync request.
-     */
+    @Override
+    protected void handleRequest(String requestKey, String targetId, CommandContext commandContext) {
+        log.debug("Handling flow sync request with key {} and flow ID: {}", requestKey, targetId);
+        super.handleRequest(requestKey, targetId, commandContext);
+    }
+
     public void handleRequest(String requestKey, FlowSyncRequest request, CommandContext commandContext) {
-        String flowId = request.getFlowId();
-        log.debug("Handling flow reroute request with key {} and flow ID: {}", requestKey, flowId);
-
-        // Because of field grouping specific flowId goes into specific bolt instance, so we can do such checks
-        if (fsmRegister.hasRegisteredFsmWithFlowId(flowId)) {
-            ErrorData payload = new ErrorData(
-                    ErrorType.BUSY, "Overlapping flow sync requests",
-                    String.format("Flow %s are doing \"sync\" already", flowId));
-            carrier.sendNorthboundResponse(new ErrorMessage(
-                    payload, commandContext.getCreateTime(), commandContext.getCorrelationId()));
-            return;
-        }
-
-        FlowSyncFsm handler = handlerFactory.newInstance(request.getFlowId(), commandContext);
-        fsmRegister.registerFsm(requestKey, handler);
-        handler.getResultFuture()
-                .thenAccept(dummy -> onComplete(requestKey));
+        handleRequest(requestKey, request.getFlowId(), commandContext);
     }
 
-    /**
-     * Handle global operation timeout.
-     */
-    public void handleTimeout(String requestKey) {
-        fsmRegister.getFsmByKey(requestKey)
-                .ifPresent(FlowSyncFsm::handleTimeout);
+    @Override
+    protected Optional<FlowSyncFsm> lookupHandler(FlowPathReference reference) {
+        return fsmRegister.getFsmByFlowId(reference.getFlowId());
     }
 
-    /**
-     * Handle flow path sync(install) operation results.
-     */
-    public void handlePathSyncResponse(FlowPathReference reference, FlowPathResultCode result) {
-        Optional<FlowSyncFsm> handler = fsmRegister.getFsmByFlowId(reference.getFlowId());
-        if (handler.isPresent()) {
-            handler.get().handlePathOperationResult(reference.getPathId(), result);
-        } else {
-            log.error("Got path sync result for {} but there is no relative sync handler", reference);
-        }
-    }
-
-    private void onComplete(String requestKey) {
-        fsmRegister.unregisterFsm(requestKey);
-        carrier.cancelTimeoutCallback(requestKey);
-
-        if (!isActive() && !fsmRegister.hasAnyRegisteredFsm()) {
-            carrier.sendInactive();
-        }
+    @Override
+    protected FlowSyncFsm newHandler(String flowId, CommandContext commandContext) {
+        return handlerFactory.newInstance(flowId, commandContext);
     }
 }

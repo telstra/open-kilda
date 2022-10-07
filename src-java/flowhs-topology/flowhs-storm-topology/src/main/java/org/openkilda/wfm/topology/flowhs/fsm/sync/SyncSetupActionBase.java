@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.sync.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.sync;
 
 import static java.lang.String.format;
 
@@ -25,27 +25,28 @@ import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncContext;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
-public class FlowSyncSetupAction
-        extends FlowProcessingWithHistorySupportAction<FlowSyncFsm, State, Event, FlowSyncContext> {
-    private final FlowOperationsDashboardLogger dashboardLogger;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-    public FlowSyncSetupAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {
+@Slf4j
+public abstract class SyncSetupActionBase<F extends SyncFsmBase<F, S, E>, S, E, T>
+        extends FlowProcessingWithHistorySupportAction<F, S, E, FlowSyncContext> {
+
+    protected final FlowOperationsDashboardLogger dashboardLogger;
+
+    public SyncSetupActionBase(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
         this.dashboardLogger = dashboardLogger;
     }
 
     @Override
-    protected void perform(State from, State to, Event event, FlowSyncContext context, FlowSyncFsm stateMachine) {
+    protected void perform(S from, S to, E event, FlowSyncContext context, F stateMachine) {
         try {
-            transactionManager.doInTransaction(() -> transaction(stateMachine));
+            transactionManager.doInTransaction(() -> transaction(stateMachine, loadContainer(stateMachine)));
             stateMachine.fireNext(context);
         } catch (FlowProcessingException e) {
             FlowSyncContext errorContext = FlowSyncContext.builder()
@@ -56,20 +57,29 @@ public class FlowSyncSetupAction
         }
     }
 
+    protected void transaction(F stateMachine, T container) {
+        boolean isPotentiallyDestructiveSync = false;
+        Set<String> targets = new HashSet<>();
+        for (Flow flow : collectAffectedFlows(container)) {
+            dashboardLogger.onFlowSync(flow.getFlowId());
+            stateMachine.saveNewEventToHistory(
+                    "Started flow paths sync", FlowEventData.Event.SYNC, FlowEventData.Initiator.NB,
+                    "Performing flow paths sync operation on NB request");
 
-    private void transaction(FlowSyncFsm stateMachine) {
-        Flow flow = getFlow(stateMachine.getFlowId());
+            ensureNoCollision(flow);
 
-        dashboardLogger.onFlowSync(stateMachine.getFlowId());
-        stateMachine.saveNewEventToHistory(
-                "Started flow paths sync", FlowEventData.Event.SYNC, FlowEventData.Initiator.NB,
-                "Performing flow paths sync operation on NB request");
+            targets.add(flow.getFlowId());
+            flow.setStatus(FlowStatus.IN_PROGRESS);
+            isPotentiallyDestructiveSync = isPotentiallyDestructiveSync || applyFlowPostponedChanges(flow);
+        }
 
-        ensureNoCollision(flow);
-
-        flow.setStatus(FlowStatus.IN_PROGRESS);
-        stateMachine.setDangerousSync(applyFlowPostponedChanges(flow));
+        stateMachine.getTargets().addAll(targets);
+        stateMachine.setDangerousSync(isPotentiallyDestructiveSync);
     }
+
+    protected abstract T loadContainer(F stateMachine);
+
+    protected abstract List<Flow> collectAffectedFlows(T container);
 
     private void ensureNoCollision(Flow flow) {
         if (flow.getStatus() == FlowStatus.IN_PROGRESS) {

@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.sync.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.sync;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -24,10 +24,6 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncContext;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncFsm.State;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathChunk;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathOperationConfig;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathOperationDescriptor;
@@ -45,26 +41,28 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class CreateSyncHandlersAction
-        extends FlowProcessingWithHistorySupportAction<FlowSyncFsm, State, Event, FlowSyncContext> {
-    private final FlowSyncCarrier carrier;
+public class CreateSyncHandlersAction<F extends SyncFsmBase<F, S, E>, S, E>
+        extends FlowProcessingWithHistorySupportAction<F, S, E, FlowSyncContext> {
     private final FlowCommandBuilderFactory commandBuilderFactory;
     private final FlowPathOperationConfig flowPathOperationConfig;
 
     public CreateSyncHandlersAction(
-            @NonNull FlowSyncCarrier carrier, @NonNull PersistenceManager persistenceManager,
-            @NonNull FlowResourcesManager resourcesManager,
+            @NonNull PersistenceManager persistenceManager, @NonNull FlowResourcesManager resourcesManager,
             @NonNull FlowPathOperationConfig flowPathOperationConfig) {
         super(persistenceManager);
 
-        this.carrier = carrier;
         this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
         this.flowPathOperationConfig = flowPathOperationConfig;
     }
 
     @Override
-    protected void perform(State from, State to, Event event, FlowSyncContext context, FlowSyncFsm stateMachine) {
-        Flow flow = getFlow(stateMachine.getFlowId());
+    protected void perform(S from, S to, E event, FlowSyncContext context, F stateMachine) {
+        for (String flowId : stateMachine.getTargets()) {
+            proceedFlow(stateMachine, getFlow(flowId));
+        }
+    }
+
+    private void proceedFlow(F stateMachine, Flow flow) {
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
 
         proceedPathPair(stateMachine, commandBuilder, flow, flow.getForwardPath(), flow.getReversePath());
@@ -75,8 +73,7 @@ public class CreateSyncHandlersAction
     }
 
     private void proceedPathPair(
-            FlowSyncFsm stateMachine, FlowCommandBuilder commandBuilder, Flow flow, FlowPath path,
-            FlowPath oppositePath) {
+            F stateMachine, FlowCommandBuilder commandBuilder, Flow flow, FlowPath path, FlowPath oppositePath) {
         SpeakerRequestBuildContext speakerContext = buildBaseSpeakerContextForInstall(
                 path.getSrcSwitchId(), path.getDestSwitchId());
 
@@ -91,7 +88,7 @@ public class CreateSyncHandlersAction
     }
 
     private void proceedPath(
-            FlowSyncFsm stateMachine, String flowId, FlowPath path,
+            F stateMachine, String flowId, FlowPath path,
             FlowSegmentRequestFactoriesSequence notIngressSequence,
             FlowSegmentRequestFactoriesSequence ingressSequence) {
         List<FlowPathChunk> chunks = Arrays.asList(
@@ -102,7 +99,7 @@ public class CreateSyncHandlersAction
     }
 
     private void proceedPathPairSkippingIngressChunk(
-            FlowSyncFsm stateMachine, FlowCommandBuilder commandBuilder, Flow flow, FlowPath path,
+            F stateMachine, FlowCommandBuilder commandBuilder, Flow flow, FlowPath path,
             FlowPath oppositePath) {
         Pair<FlowSegmentRequestFactoriesSequence, FlowSegmentRequestFactoriesSequence> sequences =
                 commandBuilder.buildAllExceptIngressSeverally(
@@ -112,18 +109,18 @@ public class CreateSyncHandlersAction
     }
 
     private void proceedPathSkippingIngressChunk(
-            FlowSyncFsm stateMachine, String flowId, FlowPath path, FlowSegmentRequestFactoriesSequence sequence) {
+            F stateMachine, String flowId, FlowPath path, FlowSegmentRequestFactoriesSequence sequence) {
         List<FlowPathChunk> chunks = Collections.singletonList(
                 new FlowPathChunk(PathChunkType.NOT_INGRESS, sequence));
         FlowPathRequest request = new FlowPathRequest(flowId, path.getPathId(), chunks, false);
         launchPathInstall(stateMachine, path, request);
     }
 
-    private void launchPathInstall(
-            FlowSyncFsm stateMachine, FlowPath path, FlowPathRequest request) {
-        FlowPathOperationDescriptor descriptor = new FlowPathOperationDescriptor(request, path.getStatus());
+    private void launchPathInstall(F stateMachine, FlowPath path, FlowPathRequest request) {
+        final FlowPathStatus initialStatus = path.getStatus();
         path.setStatus(FlowPathStatus.IN_PROGRESS);
 
+        final FlowSyncCarrier carrier = stateMachine.getCarrier();
         try {
             carrier.launchFlowPathInstallation(request, flowPathOperationConfig, stateMachine.getCommandContext());
         } catch (DuplicateKeyException e) {
@@ -133,6 +130,6 @@ public class CreateSyncHandlersAction
                             e.getMessage()), e);
         }
 
-        stateMachine.addPendingPathOperation(descriptor);
+        stateMachine.addPendingPathOperation(new FlowPathOperationDescriptor(request, initialStatus));
     }
 }

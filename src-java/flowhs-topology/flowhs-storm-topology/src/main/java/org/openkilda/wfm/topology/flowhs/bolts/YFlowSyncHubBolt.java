@@ -15,43 +15,64 @@
 
 package org.openkilda.wfm.topology.flowhs.bolts;
 
-import org.openkilda.messaging.command.flow.FlowSyncRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
+import org.openkilda.messaging.command.yflow.YFlowSyncRequest;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.ComponentId;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathOperationConfig;
-import org.openkilda.wfm.topology.flowhs.service.FlowSyncService;
+import org.openkilda.wfm.topology.flowhs.service.YFlowSyncService;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
 import lombok.NonNull;
 import org.apache.storm.tuple.Tuple;
 
-public class FlowSyncHubBolt extends SyncHubBoltBase<FlowSyncService> {
-    public static final String BOLT_ID = ComponentId.FLOW_SYNC_HUB.name();
+public class YFlowSyncHubBolt extends SyncHubBoltBase<YFlowSyncService> {
+    public static final String BOLT_ID = ComponentId.YFLOW_SYNC_HUB.name();
 
-    public FlowSyncHubBolt(
+    private final RuleManagerConfig ruleManagerConfig;
+
+    public YFlowSyncHubBolt(
             @NonNull SyncHubConfig config, @NonNull PersistenceManager persistenceManager,
-            @NonNull FlowResourcesConfig flowResourcesConfig) {
+            @NonNull FlowResourcesConfig flowResourcesConfig, @NonNull RuleManagerConfig ruleManagerConfig) {
         super(config, persistenceManager, flowResourcesConfig);
+        this.ruleManagerConfig = ruleManagerConfig;
     }
 
     @Override
-    protected void onRequest(Tuple input) throws PipelineException {
-        FlowSyncRequest request = pullValue(input, KafkaRecordTranslator.FIELD_ID_PAYLOAD, FlowSyncRequest.class);
+    protected void onRequest(Tuple input) throws Exception {
+        YFlowSyncRequest request = pullValue(input, KafkaRecordTranslator.FIELD_ID_PAYLOAD, YFlowSyncRequest.class);
         carrierContext.apply(pullKey(input), key -> handleRequest(key, request));
     }
 
-    private void handleRequest(String serviceKey, FlowSyncRequest request) {
+    private void handleRequest(String serviceKey, YFlowSyncRequest request) {
         syncService.handleRequest(serviceKey, request, getCommandContext());
     }
 
     @Override
-    protected FlowSyncService newSyncService() {
+    protected void dispatchWorkerResponse(String workerKey, SpeakerResponse response) {
+        boolean handled = false;
+        if (response instanceof SpeakerCommandResponse) {
+            handled = syncService.handleSpeakerResponse((SpeakerCommandResponse) response);
+        }
+        if (! handled) {
+            super.dispatchWorkerResponse(workerKey, response);
+        }
+    }
+
+    // -- storm API --
+
+    @Override
+    protected YFlowSyncService newSyncService() {
         final FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         final FlowPathOperationConfig pathOperationConfig = new FlowPathOperationConfig(
                 config.getSpeakerCommandRetriesLimit());
-        return new FlowSyncService(this, persistenceManager, resourcesManager, pathOperationConfig);
+        RuleManager ruleManager = new RuleManagerImpl(ruleManagerConfig);
+        return new YFlowSyncService(this, persistenceManager, resourcesManager, ruleManager, pathOperationConfig);
     }
 }
