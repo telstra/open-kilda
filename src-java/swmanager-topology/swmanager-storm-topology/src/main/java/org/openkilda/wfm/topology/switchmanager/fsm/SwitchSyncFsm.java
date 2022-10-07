@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.switchmanager.fsm;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
+import static java.util.Optional.ofNullable;
 import static org.apache.storm.shade.org.apache.commons.collections.ListUtils.union;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.COMMANDS_PROCESSED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.ERROR;
@@ -129,7 +130,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         this.key = key;
         this.commandBuilder = commandBuilder;
         this.request = request;
-        this.validationResult = validationResult;
+        this.validationResult = fillValidationResult(validationResult);
         this.switchId = request.getSwitchId();
         this.syncConfig = syncConfig;
     }
@@ -245,6 +246,24 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     public String getKey() {
         return key;
+    }
+
+    private static ValidationResult fillValidationResult(ValidationResult result) {
+        return new ValidationResult(
+                ofNullable(result.getFlowEntries()).orElse(emptyList()),
+                result.isProcessMeters(),
+                ofNullable(result.getExpectedEntries()).orElse(emptyList()),
+                ofNullable(result.getActualFlows()).orElse(emptyList()),
+                ofNullable(result.getActualMeters()).orElse(emptyList()),
+                ofNullable(result.getActualGroups()).orElse(emptyList()),
+                ofNullable(result.getValidateRulesResult())
+                        .orElse(new ValidateRulesResult(emptySet(), emptySet(), emptySet(), emptySet())),
+                ofNullable(result.getValidateMetersResult())
+                        .orElse(new ValidateMetersResult(emptyList(), emptyList(), emptyList(), emptyList())),
+                ofNullable(result.getValidateGroupsResult())
+                        .orElse(new ValidateGroupsResult(emptyList(), emptyList(), emptyList(), emptyList())),
+                ofNullable(result.getValidateLogicalPortsResult()).orElse(
+                        new ValidateLogicalPortsResult(emptyList(), emptyList(), emptyList(), emptyList(), null)));
     }
 
     protected void initialized(SwitchSyncState from, SwitchSyncState to,
@@ -655,12 +674,10 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     protected void finished(SwitchSyncState from, SwitchSyncState to,
                             SwitchSyncEvent event, Object context) {
-        ValidateRulesResult validateRulesResult = Optional.ofNullable(validationResult.getValidateRulesResult())
-                .orElse(new ValidateRulesResult(emptySet(), emptySet(), emptySet(), emptySet()));
+        ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
         ValidateMetersResult validateMetersResult = validationResult.getValidateMetersResult();
         ValidateGroupsResult validateGroupsResult = validationResult.getValidateGroupsResult();
-        ValidateLogicalPortsResult validateLogicalPortsResult = Optional.ofNullable(
-                validationResult.getValidateLogicalPortsResult()).orElse(ValidateLogicalPortsResult.newEmpty());
+        ValidateLogicalPortsResult validateLogicalPortsResult =  validationResult.getValidateLogicalPortsResult();
 
         RulesSyncEntry rulesEntry = new RulesSyncEntry(
                 new ArrayList<>(validateRulesResult.getMissingRules()),
