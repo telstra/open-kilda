@@ -495,4 +495,21 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResultV2.class, switchId).getBody());
         return new SwitchValidationV2ExtendedResult(switchId, result);
     }
+
+    @Override
+    public SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId, String exclude, String include) {
+        log.debug("Switch validating '{}'", switchId);
+
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v2/switches/{switch_id}/validate");
+        if (exclude != null) {
+            uriBuilder.queryParam("exclude", exclude);
+        };
+        if (include != null) {
+            uriBuilder.queryParam("include", include);
+        };
+        SwitchValidationResultV2 result = Objects.requireNonNull(restTemplate.exchange(
+                uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResultV2.class, switchId).getBody());
+        return new SwitchValidationV2ExtendedResult(switchId, result);
+    }
 }

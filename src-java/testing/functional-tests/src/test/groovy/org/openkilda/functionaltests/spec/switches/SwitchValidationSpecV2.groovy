@@ -67,7 +67,7 @@ class SwitchValidationSpecV2 extends HealthCheckSpecification {
     Properties producerProps
 
     @Tidy
-    def "Able to validate and sync a terminating switch with proper rules and meters"() {
+    def  "Able to validate and sync a terminating switch with proper rules and meters"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(srcSwitch, dstSwitch))
@@ -1040,6 +1040,134 @@ misconfigured"
                             new Cookie(it.cookie).getType() == CookieType.ARP_INPUT_CUSTOMER_TYPE }
                 ]
         ]
+    }
+
+    def "Able to filter results using request query"() {
+        when: "Create a flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
+        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(srcSwitch, dstSwitch))
+        def srcSwitchCreatedMeterIds = getCreatedMeterIds(srcSwitch.dpId)
+        def dstSwitchCreatedMeterIds = getCreatedMeterIds(dstSwitch.dpId)
+
+        and: "Change bandwidth for the created flow directly in DB so that system thinks the installed meter is \
+misconfigured"
+        def newBandwidth = flow.maximumBandwidth + 100
+        /** at this point meter is set for given flow. Now update flow bandwidth directly via DB,
+         it is done just for moving meter from the 'proper' section into the 'misconfigured'*/
+        database.updateFlowBandwidth(flow.flowId, newBandwidth)
+        //at this point existing meters do not correspond with the flow
+
+        and: "Validate src and dst switches"
+        def srcSwitchValidateInfo = northboundV2.validateSwitch(srcSwitch.dpId)
+        def dstSwitchValidateInfo = northboundV2.validateSwitch(dstSwitch.dpId)
+
+        then: "Meters info is moved into the 'misconfigured' section"
+        def srcSwitchCreatedCookies = getCookiesWithMeter(srcSwitch.dpId)
+        def dstSwitchCreatedCookies = getCookiesWithMeter(dstSwitch.dpId)
+
+        srcSwitchValidateInfo.meters.misconfigured*.expected.meterId.containsAll(srcSwitchCreatedMeterIds)
+        dstSwitchValidateInfo.meters.misconfigured*.expected.meterId.containsAll(dstSwitchCreatedMeterIds)
+
+        srcSwitchValidateInfo.meters.misconfigured*.expected.cookie.containsAll(srcSwitchCreatedCookies)
+        dstSwitchValidateInfo.meters.misconfigured*.expected.cookie.containsAll(dstSwitchCreatedCookies)
+
+        [[srcSwitch, srcSwitchValidateInfo], [dstSwitch, dstSwitchValidateInfo]].each { sw, validation ->
+            assert validation.meters.misconfigured.id.size() == 1
+            validation.meters.misconfigured.each {
+                SwitchHelper.verifyRateSizeIsCorrect(sw, flow.maximumBandwidth, it.discrepancies.rate)
+                assert it.expected.flowId == flow.flowId
+                assert ["KBPS", "BURST", "STATS"].containsAll(it.expected.flags)
+            }
+        }
+
+        Long srcSwitchBurstSize = switchHelper.getExpectedBurst(srcSwitch.dpId, flow.maximumBandwidth)
+        Long dstSwitchBurstSize = switchHelper.getExpectedBurst(dstSwitch.dpId, flow.maximumBandwidth)
+        switchHelper.verifyBurstSizeIsCorrect(srcSwitch, srcSwitchBurstSize,
+                srcSwitchValidateInfo.meters.misconfigured*.discrepancies.burstSize[0])
+        switchHelper.verifyBurstSizeIsCorrect(dstSwitch, dstSwitchBurstSize,
+                dstSwitchValidateInfo.meters.misconfigured*.discrepancies.burstSize[0])
+
+        and: "Reason is specified why meter is misconfigured"
+        [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
+            it.meters.misconfigured.each {
+                assert it.discrepancies.rate == flow.maximumBandwidth
+                assert it.expected.rate == newBandwidth
+            }
+        }
+
+        and: "The rest fields of 'meter' section are empty"
+        srcSwitchValidateInfo.verifyMeterSectionsAreEmpty(["proper", "missing", "excess"])
+        dstSwitchValidateInfo.verifyMeterSectionsAreEmpty(["proper", "missing", "excess"])
+
+        and: "Created rules are still stored in the 'proper' section"
+        def createdCookies = srcSwitchCreatedCookies + dstSwitchCreatedCookies
+        [[srcSwitch.dpId, srcSwitchValidateInfo], [dstSwitch.dpId, dstSwitchValidateInfo]].each { swId, info ->
+            assert info.rules.proper*.cookie.containsAll(createdCookies), swId
+            info.verifyRuleSectionsAreEmpty(["missing", "excess"])
+        }
+
+        and: "Flow validation shows discrepancies"
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
+        def totalSwitchRules = 0
+        def totalSwitchMeters = 0
+        involvedSwitches.each { swId ->
+            totalSwitchRules += northbound.getSwitchRules(swId).flowEntries.size()
+            totalSwitchMeters += northbound.getAllMeters(swId).meterEntries.size()
+        }
+        def flowValidateResponse = northbound.validateFlow(flow.flowId)
+        flowValidateResponse.eachWithIndex { direction, i ->
+            assert direction.discrepancies.size() == 2
+
+            def rate = direction.discrepancies[0]
+            assert rate.field == "meterRate"
+            assert rate.expectedValue == newBandwidth.toString()
+            assert rate.actualValue == flow.maximumBandwidth.toString()
+
+            def burst = direction.discrepancies[1]
+            assert burst.field == "meterBurstSize"
+            // src/dst switches can be different
+            // then as a result burstSize in forward/reverse directions can be different
+            // that's why we use eachWithIndex and why we calculate burstSize for src/dst switches
+            def sw = (i == 0) ? srcSwitch : dstSwitch
+            def switchBurstSize = (i == 0) ? srcSwitchBurstSize : dstSwitchBurstSize
+            Long newBurstSize = switchHelper.getExpectedBurst(sw.dpId, newBandwidth)
+            switchHelper.verifyBurstSizeIsCorrect(sw, newBurstSize, burst.expectedValue.toLong())
+            switchHelper.verifyBurstSizeIsCorrect(sw, switchBurstSize, burst.actualValue.toLong())
+
+            assert direction.flowRulesTotal == 2
+            assert direction.switchRulesTotal == totalSwitchRules
+            assert direction.flowMetersTotal == 1
+            assert direction.switchMetersTotal == totalSwitchMeters
+        }
+
+        when: "Restore correct bandwidth via DB"
+        database.updateFlowBandwidth(flow.flowId, flow.maximumBandwidth)
+
+        then: "Misconfigured meters are moved into the 'proper' section"
+        def srcSwitchValidateInfoRestored = northboundV2.validateSwitch(srcSwitch.dpId)
+        def dstSwitchValidateInfoRestored = northboundV2.validateSwitch(dstSwitch.dpId)
+
+        srcSwitchValidateInfoRestored.meters.proper*.meterId.containsAll(srcSwitchCreatedMeterIds)
+        dstSwitchValidateInfoRestored.meters.proper*.meterId.containsAll(dstSwitchCreatedMeterIds)
+        srcSwitchValidateInfoRestored.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
+        dstSwitchValidateInfoRestored.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
+
+        and: "Flow validation shows no discrepancies"
+        northbound.validateFlow(flow.flowId).each { direction ->
+            assert direction.discrepancies.empty
+            assert direction.asExpected
+        }
+
+        when: "Delete the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
+
+        then: "Check that the switch validate request returns empty sections"
+        Wrappers.wait(WAIT_OFFSET) {
+            def srcSwitchValidateInfoAfterDelete = northboundV2.validateSwitch(srcSwitch.dpId)
+            def dstSwitchValidateInfoAfterDelete = northboundV2.validateSwitch(dstSwitch.dpId)
+            srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
+            dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
+        }
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {
