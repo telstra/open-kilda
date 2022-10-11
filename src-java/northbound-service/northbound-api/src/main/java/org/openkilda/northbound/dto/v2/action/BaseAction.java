@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.dto.v2.action;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.NonNull;
@@ -26,6 +28,19 @@ import lombok.experimental.SuperBuilder;
 @NonFinal
 @JsonNaming(SnakeCaseStrategy.class)
 @SuperBuilder
+@JsonSubTypes(
+        {
+                @Type(value = CopyFieldActionDto.class, name = "CopyFieldActionDto"),
+                @Type(value = GroupActionDto.class, name = "GroupActionDto"),
+                @Type(value = MeterActionDto.class, name = "MeterActionDto"),
+                @Type(value = PopVlanActionDto.class, name = "PopVlanActionDto"),
+                @Type(value = PopVxlanActionDto.class, name = "PopVxlanActionDto"),
+                @Type(value = PortOutActionDto.class, name = "PortOutActionDto"),
+                @Type(value = PushVlanActionDto.class, name = "PushVlanActionDto"),
+                @Type(value = PushVxlanActionDto.class, name = "PushVxlanActionDto"),
+                @Type(value = SetFieldActionDto.class, name = "SetFieldActionDto"),
+                @Type(value = SwapFieldActionDto.class, name = "SwapFieldActionDto")
+        })
 public class BaseAction {
     @NonNull
     protected String actionType;

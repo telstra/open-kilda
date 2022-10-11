@@ -169,5 +169,6 @@ public interface NorthboundServiceV2 {
     YFlow swapYFlowPaths(String yFlowId);
 
     SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId);
+
     SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId, String include, String exclude);
 }
