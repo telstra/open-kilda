@@ -650,7 +650,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         createSwitch(TEST_SWITCH_ID);
 
         LagLogicalPort lagLogicalPort = new LagLogicalPort(TEST_SWITCH_ID, LAG_LOGICAL_PORT,
-                Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2));
+                Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2), true);
         lagLogicalPortRepository.add(lagLogicalPort);
 
         Collection<LagLogicalPort> ports = switchOperationsService.getSwitchLagPorts(TEST_SWITCH_ID);
@@ -659,6 +659,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         assertEquals(LAG_LOGICAL_PORT, ports.iterator().next().getLogicalPortNumber());
         assertEquals(PHYSICAL_PORT_1, ports.iterator().next().getPhysicalPorts().get(0).getPortNumber());
         assertEquals(PHYSICAL_PORT_2, ports.iterator().next().getPhysicalPorts().get(1).getPortNumber());
+        assertTrue(ports.iterator().next().isLacpReply());
     }
 
     @Test(expected = SwitchNotFoundException.class)

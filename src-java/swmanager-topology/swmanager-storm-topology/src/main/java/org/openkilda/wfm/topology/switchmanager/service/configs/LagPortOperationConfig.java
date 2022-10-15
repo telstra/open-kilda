@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.configs;
 
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.utils.PoolManager;
@@ -26,6 +27,9 @@ import lombok.Value;
 
 @Value
 public class LagPortOperationConfig {
+    @NonNull
+    PersistenceManager persistenceManager;
+
     @NonNull
     RepositoryFactory repositoryFactory;
 
@@ -41,11 +45,11 @@ public class LagPortOperationConfig {
 
     @Builder
     public LagPortOperationConfig(
-            @NonNull RepositoryFactory repositoryFactory, @NonNull TransactionManager transactionManager,
-            int bfdPortOffset, int bfdPortMaxNumber,
+            @NonNull PersistenceManager persistenceManager, int bfdPortOffset, int bfdPortMaxNumber,
             int portNumberFirst, int portNumberLast, int poolChunksCount, int poolCacheSize) {
-        this.repositoryFactory = repositoryFactory;
-        this.transactionManager = transactionManager;
+        this.persistenceManager = persistenceManager;
+        this.repositoryFactory = persistenceManager.getRepositoryFactory();
+        this.transactionManager = persistenceManager.getTransactionManager();
 
         Preconditions.checkArgument(0 < bfdPortOffset, String.format(
                 "BFD logical port offset bfdPortOffset==%d must be greater than 0", bfdPortOffset));

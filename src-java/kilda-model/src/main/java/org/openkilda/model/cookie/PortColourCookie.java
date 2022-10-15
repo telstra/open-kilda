@@ -32,7 +32,8 @@ public class PortColourCookie extends CookieBase implements Comparable<PortColou
             CookieType.MULTI_TABLE_INGRESS_RULES,
             CookieType.ARP_INPUT_CUSTOMER_TYPE,
             CookieType.SERVER_42_FLOW_RTT_INPUT,
-            CookieType.SERVER_42_ISL_RTT_INPUT
+            CookieType.SERVER_42_ISL_RTT_INPUT,
+            CookieType.LACP_REPLY_INPUT
     );
 
     // update ALL_FIELDS if modify fields list

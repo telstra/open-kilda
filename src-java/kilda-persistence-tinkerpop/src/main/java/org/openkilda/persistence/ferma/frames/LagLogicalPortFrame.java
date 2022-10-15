@@ -41,6 +41,7 @@ public abstract class LagLogicalPortFrame extends KildaBaseVertexFrame implement
     public static final String COMPRISES_PHYSICAL_PORT_EDGE = "comprises";
     public static final String SWITCH_ID_PROPERTY = "switch_id";
     public static final String LOGICAL_PORT_NUMBER_PROPERTY = "logical_port_number";
+    public static final String LACP_REPLY_PROPERTY = "lacp_reply";
 
     private List<PhysicalPort> physicalPorts;
 
@@ -53,6 +54,14 @@ public abstract class LagLogicalPortFrame extends KildaBaseVertexFrame implement
     @Property(SWITCH_ID_PROPERTY)
     @Convert(SwitchIdConverter.class)
     public abstract void setSwitchId(@NonNull SwitchId switchId);
+
+    @Override
+    @Property(LACP_REPLY_PROPERTY)
+    public abstract boolean isLacpReply();
+
+    @Override
+    @Property(LACP_REPLY_PROPERTY)
+    public abstract void setLacpReply(boolean lacpReply);
 
     @Override
     @Property(LOGICAL_PORT_NUMBER_PROPERTY)

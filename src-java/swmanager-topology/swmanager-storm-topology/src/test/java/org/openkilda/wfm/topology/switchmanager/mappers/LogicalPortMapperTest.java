@@ -37,7 +37,7 @@ public class LogicalPortMapperTest {
     @Test
     public void mapLagLogicalPortTest() {
         LagLogicalPort lagLogicalPort = new LagLogicalPort(SWITCH_ID, LAG_PORT,
-                Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2));
+                Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2), false);
 
         LogicalPortInfoEntry port = INSTANCE.map(lagLogicalPort);
         assertEquals(LAG_PORT, port.getLogicalPortNumber().intValue());

@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.ServiceCookie;
 import org.openkilda.wfm.share.utils.MetricFormatter;
@@ -100,8 +101,12 @@ public final class MeterStatsHandler extends BaseStatsEntryHandler {
 
     @Override
     public void handleStatsEntry(DummyMeterDescriptor descriptor) {
+        //TODO(snikitin) Need to find some way find cookie by meterId
         TagsFormatter tags = initTags();
-        if (isMeterIdOfDefaultRule(statsEntry.getMeterId())) {
+        if (statsEntry.getMeterId() == MeterId.LACP_REPLY_METER_ID.getValue()) {
+            tags.addCookieHexTag(getCookieTagForPortColorCookie(CookieType.LACP_REPLY_INPUT));
+            emitServiceMeterPoints(tags);
+        } else if (isMeterIdOfDefaultRule(statsEntry.getMeterId())) {
             tags.addCookieHexTag(new ServiceCookie(new MeterId(statsEntry.getMeterId())));
             emitServiceMeterPoints(tags);
         } else {
@@ -156,5 +161,9 @@ public final class MeterStatsHandler extends BaseStatsEntryHandler {
         tags.addSwitchIdTag(switchId);
         tags.addMeterIdTag(statsEntry.getMeterId());
         return tags;
+    }
+
+    static String getCookieTagForPortColorCookie(CookieType cookieType) {
+        return String.format("0x8%02X00000XXXXXXXX", cookieType.getValue());
     }
 }

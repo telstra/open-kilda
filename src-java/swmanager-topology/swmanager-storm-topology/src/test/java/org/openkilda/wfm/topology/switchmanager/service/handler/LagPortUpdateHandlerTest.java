@@ -27,6 +27,7 @@ import org.openkilda.messaging.swmanager.response.LagPortResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchManagerException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
+import org.openkilda.wfm.topology.switchmanager.model.LagRollbackData;
 import org.openkilda.wfm.topology.switchmanager.service.LagPortOperationService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 
@@ -41,7 +42,6 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.HashSet;
-import java.util.Set;
 
 @RunWith(MockitoJUnitRunner.class)
 public class LagPortUpdateHandlerTest {
@@ -76,7 +76,8 @@ public class LagPortUpdateHandlerTest {
         Mockito.verifyNoMoreInteractions(operationService);
         Mockito.verify(carrier).response(
                 Mockito.eq(requestKey),
-                Mockito.eq(new LagPortResponse(request.getLogicalPortNumber(), request.getTargetPorts())));
+                Mockito.eq(new LagPortResponse(request.getLogicalPortNumber(), request.getTargetPorts(),
+                        request.isLacpReply())));
         Mockito.verifyNoMoreInteractions(carrier);
 
         Assert.assertTrue(subject.isCompleted());
@@ -93,10 +94,11 @@ public class LagPortUpdateHandlerTest {
 
         // GRPC error response
         ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Dummy error message", "Dummy error description");
-        subject.dispatchGrpcResponse(error, grpcRequestCookie);
+        subject.dispatchErrorResponse(error, grpcRequestCookie);
         Mockito.verify(operationService).updateLagPort(
                 Mockito.eq(request.getSwitchId()), Mockito.eq(request.getLogicalPortNumber()),
-                Mockito.eq(subject.rollbackTargets));
+                Mockito.eq(subject.rollbackData.getPhysicalPorts()),
+                Mockito.eq(subject.rollbackData.isLacpReply()));
         Mockito.verifyNoMoreInteractions(operationService);
         Mockito.verify(carrier).errorResponse(
                 Mockito.eq(requestKey), Mockito.eq(error.getErrorType()), Mockito.anyString(), Mockito.anyString());
@@ -118,7 +120,8 @@ public class LagPortUpdateHandlerTest {
         subject.timeout();
         Mockito.verify(operationService).updateLagPort(
                 Mockito.eq(request.getSwitchId()), Mockito.eq(request.getLogicalPortNumber()),
-                Mockito.eq(subject.rollbackTargets));
+                Mockito.eq(subject.rollbackData.getPhysicalPorts()),
+                Mockito.eq(subject.rollbackData.isLacpReply()));
         Mockito.verifyNoMoreInteractions(operationService);
         Mockito.verify(carrier).errorResponse(
                 Mockito.eq(requestKey), Mockito.eq(ErrorType.OPERATION_TIMED_OUT),
@@ -142,10 +145,12 @@ public class LagPortUpdateHandlerTest {
 
     private MessageCookie verifyStartHandler(
             LagPortUpdateHandler subject, UpdateLagPortRequest request, String swAddress) {
-        Set<Integer> existingTargets = ImmutableSet.of(3, 4, 5);
+        LagRollbackData existingTargets = LagRollbackData.builder()
+                .physicalPorts(ImmutableSet.of(3, 4, 5)).lacpReply(true).build();
         Mockito.when(operationService.getSwitchIpAddress(request.getSwitchId())).thenReturn(swAddress);
         Mockito.when(operationService.updateLagPort(
-                        Mockito.eq(request.getSwitchId()), Mockito.eq(request.getLogicalPortNumber()), Mockito.any()))
+                        Mockito.eq(request.getSwitchId()), Mockito.eq(request.getLogicalPortNumber()), Mockito.any(),
+                        Mockito.eq(request.isLacpReply())))
                 .thenReturn(existingTargets);
 
         Mockito.verifyNoInteractions(carrier);
@@ -154,12 +159,13 @@ public class LagPortUpdateHandlerTest {
         // DB update and GRPC request
         subject.start();
         Assert.assertFalse(subject.isCompleted());
-        Assert.assertEquals(existingTargets, subject.rollbackTargets);
+        Assert.assertEquals(existingTargets, subject.rollbackData);
 
         Mockito.verify(operationService).getSwitchIpAddress(Mockito.eq(request.getSwitchId()));
         Mockito.verify(operationService).updateLagPort(
                 Mockito.eq(request.getSwitchId()), Mockito.eq(request.getLogicalPortNumber()),
-                Mockito.eq(new HashSet<>(request.getTargetPorts())));
+                Mockito.eq(new HashSet<>(request.getTargetPorts())),
+                Mockito.eq(request.isLacpReply()));
         Mockito.verifyNoMoreInteractions(operationService);
 
         ArgumentCaptor<MessageCookie> grpcRequestCookie = ArgumentCaptor.forClass(MessageCookie.class);
@@ -173,6 +179,6 @@ public class LagPortUpdateHandlerTest {
     }
 
     private UpdateLagPortRequest newRequest() {
-        return new UpdateLagPortRequest(new SwitchId(1), 2001, Sets.newHashSet(1, 2, 3));
+        return new UpdateLagPortRequest(new SwitchId(1), 2001, Sets.newHashSet(1, 2, 3), true);
     }
 }

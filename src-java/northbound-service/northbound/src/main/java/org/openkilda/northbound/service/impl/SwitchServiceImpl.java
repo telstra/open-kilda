@@ -587,9 +587,11 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<LagPortResponse> createLag(SwitchId switchId, LagPortRequest lagPortDto) {
-        logger.info("Create Link aggregation group on switch {}, ports {}", switchId, lagPortDto.getPortNumbers());
+        logger.info("Create Link aggregation group on switch {}, ports {}, LACP reply {}",
+                switchId, lagPortDto.getPortNumbers(), lagPortDto.getLacpReply());
 
-        CreateLagPortRequest data = new CreateLagPortRequest(switchId, lagPortDto.getPortNumbers());
+        CreateLagPortRequest data = new CreateLagPortRequest(switchId, lagPortDto.getPortNumbers(),
+                lagPortDto.getLacpReply());
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
 
         return messagingChannel.sendAndGet(switchManagerTopic, request)
@@ -617,7 +619,8 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
             SwitchId switchId, int logicalPortNumber, LagPortRequest payload) {
         logger.info("Updating LAG logical port {} on {} with {}", logicalPortNumber, switchId, payload);
 
-        UpdateLagPortRequest request = new UpdateLagPortRequest(switchId, logicalPortNumber, payload.getPortNumbers());
+        UpdateLagPortRequest request = new UpdateLagPortRequest(switchId, logicalPortNumber, payload.getPortNumbers(),
+                payload.getLacpReply());
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(switchManagerTopic, message)
                 .thenApply(org.openkilda.messaging.swmanager.response.LagPortResponse.class::cast)

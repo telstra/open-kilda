@@ -120,7 +120,7 @@ public class FermaPhysicalPortTest extends InMemoryGraphBasedTest {
     }
 
     private LagLogicalPort createLogicalPort(SwitchId switchId, int logicalPortNumber) {
-        LagLogicalPort port = new LagLogicalPort(switchId, logicalPortNumber, new ArrayList<Integer>());
+        LagLogicalPort port = new LagLogicalPort(switchId, logicalPortNumber, new ArrayList<Integer>(), true);
         lagLogicalPortRepository.add(port);
         return port;
     }

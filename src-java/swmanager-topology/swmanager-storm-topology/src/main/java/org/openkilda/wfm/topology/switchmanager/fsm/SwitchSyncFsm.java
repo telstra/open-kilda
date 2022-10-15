@@ -40,9 +40,6 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchS
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.SEND_MODIFY_COMMANDS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.SEND_REMOVE_COMMANDS;
 
-import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
-import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
-import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.messaging.command.grpc.CreateOrUpdateLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DeleteLogicalPortRequest;
@@ -616,24 +613,13 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                 batches.add(currentBatch);
                 currentBatch = new ArrayList<>();
             }
-            currentBatch.addAll(group.stream().map(this::toCommand).collect(Collectors.toList()));
+            currentBatch.addAll(OfCommand.toOfCommands(group));
         }
         if (!currentBatch.isEmpty()) {
             batches.add(currentBatch);
         }
 
         return batches;
-    }
-
-    private OfCommand toCommand(SpeakerData speakerData) {
-        if (speakerData instanceof FlowSpeakerData) {
-            return new FlowCommand((FlowSpeakerData) speakerData);
-        } else if (speakerData instanceof MeterSpeakerData) {
-            return new MeterCommand((MeterSpeakerData) speakerData);
-        } else if (speakerData instanceof GroupSpeakerData) {
-            return new GroupCommand((GroupSpeakerData) speakerData);
-        }
-        throw new IllegalStateException(format("Unknown speaker data type %s", speakerData));
     }
 
     private void continueIfLogicalPortsSynchronized() {

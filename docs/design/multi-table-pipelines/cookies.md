@@ -153,6 +153,7 @@ Constraints:
 |`0x8000_0000_0000_001C`|`SERVER_42_ISL_RTT_OUTPUT_COOKIE`|Sends ISL RTT packet back to server42|
 |`0x8000_0000_0000_001D`|`SERVER_42_ISL_RTT_TURNING_COOKIE`|Sends ISL RTT packet back to IN_PORT|
 |`0x8000_0000_0000_001E`|`SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE`|Catches flow RTT packet for VXLAN Flows, swaps ETH src and dst and sends back to IN_PORT|
+|`0x8000_0000_0000_001F`|`DROP_SLOW_PROTOCOLS_LOOP_COOKIE`| Catches and drops LACP reply packet if ETH_SRC of this packet is equal to switch ID (packet returned to switch which sent it. It means we have a loop)|
 |`0x8010_0000_XXXX_XXXX`|`LLDP_INPUT_CUSTOMER`|Marks LLDP packets from port XXX by metadata|
 |`0x8020_0000_XXXX_XXXX`|`MULTI_TABLE_ISL_VLAN_EGRESS`|Moves Vlan packets received from ISL port XXX from input table to egress table|
 |`0x8030_0000_XXXX_XXXX`|`MULTI_TABLE_ISL_VXLAN_EGRESS`|Moves VXLAN packets received from ISL port XXX from input table to egress table|
@@ -164,6 +165,7 @@ Constraints:
 |`0x8090_0000_XXXX_XXXX`|`SERVER_42_FLOW_RTT_INPUT`|Receives server42 flow RTT packet from port XXX, puts timestamp into packet (if switch has such support) and move packet to pre-ingress table|
 |`0x80A0_0000_0000_0000`|`APPLICATION_MIRROR_FLOW`|Flow mirror traffic for application purposes.|
 |`0x80D0_0000_XXXX_XXXX`|`SERVER_42_ISL_RTT_INPUT`|Forwards server42 ISL RTT packet to ISL port XXX|
+|`0x80E0_0000_XXXX_XXXX`|`LACP_REPLY_INPUT`|Catches LACP request packet from port XXX, sends it to Floodlight for modiffication and sending back to port|
 |`0x4000_0000_000X_XXXX`|`INGRESS_FORWARD`|Receives Customer packets, push transit encapsulation if needed and sends to port. Path direction - forward, XXX - path unmasked cookie|
 |`0x2000_0000_000X_XXXX`|`INGRESS_REVERSE`|Receives Customer packets, push transit encapsulation if needed and sends to port. Path direction - reverse, XXX - path unmasked cookie|
 |`0x4008_0000_000X_XXXX`|`FLOW_LOOP_FORWARD`|Makes flow loop for forward direction (sends all customer traffic back to IN_PORT). XXX - path unmasked cookie|

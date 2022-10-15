@@ -51,6 +51,9 @@ kilda_floodlight_flow_ping_magic_src_mac_address: "00:26:E1:FF:FF:FE"
 kilda_floodlight_server42_flow_rtt_udp_port_offset: 5000
 kilda_floodlight_server42_isl_rtt_udp_port_offset: 10000
 kilda_floodlight_server42_isl_rtt_magic_mac_address: "00:26:E1:FF:FF:FD"
+kilda_floodlight_lacp_system_id: "00:00:00:00:00:01"
+kilda_floodlight_lacp_system_priority: 1
+kilda_floodlight_lacp_port_priority: 1
 
 kilda_floodlight_ovs_meters_enabled: true
 
