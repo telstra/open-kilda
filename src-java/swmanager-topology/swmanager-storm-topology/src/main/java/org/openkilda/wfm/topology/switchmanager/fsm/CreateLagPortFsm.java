@@ -169,7 +169,8 @@ public class CreateLagPortFsm extends AbstractStateMachine<
 
     void speakerCommandsInstalled(
             CreateLagState from, CreateLagState to, CreateLagEvent event, CreateLagContext context) {
-        log.info("LAG {} successfully installed on switch {}. Key={}", context.createdLogicalPort, switchId, key);
+        log.info("Rules for LAG {} successfully installed on switch {}. Key={}",
+                context.createdLogicalPort, switchId, key);
     }
 
     void finishedEnter(CreateLagState from, CreateLagState to, CreateLagEvent event, CreateLagContext context) {

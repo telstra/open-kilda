@@ -47,6 +47,8 @@ import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.model.cookie.PortColourCookie
+import org.openkilda.model.cookie.ServiceCookie
+import org.openkilda.model.cookie.ServiceCookie.ServiceCookieTag
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
@@ -164,6 +166,7 @@ class SwitchHelper {
         def devicesRules = []
         def server42Rules = []
         def vxlanRules = []
+        def lacpRules = []
         def toggles = northbound.get().getFeatureToggles()
         if (swProps.multiTable) {
             multiTableRules = [MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
@@ -235,21 +238,30 @@ class SwitchHelper {
         if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
             vxlanRules << VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
         }
+        def lacpPorts = northboundV2.get().getLagLogicalPort(sw.dpId).findAll {
+            it.lacpReply
+        }
+        if (!lacpPorts.isEmpty()) {
+            lacpRules << new ServiceCookie(ServiceCookieTag.DROP_SLOW_PROTOCOLS_LOOP_COOKIE).getValue()
+            lacpPorts.each {
+                lacpRules << new PortColourCookie(CookieType.LACP_REPLY_INPUT, it.logicalPortNumber).getValue()
+            }
+        }
         if (sw.noviflow && !sw.wb5164) {
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                      VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE,
                      CATCH_BFD_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_COOKIE]
-                     + vxlanRules + multiTableRules + devicesRules + server42Rules)
+                     + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
         } else if ((sw.noviflow || sw.nbFormat().manufacturer == "E") && sw.wb5164) {
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                      VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE]
-                     + vxlanRules + multiTableRules + devicesRules + server42Rules)
+                     + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
         } else if (sw.ofVersion == "OF_12") {
             return [VERIFICATION_BROADCAST_RULE_COOKIE]
         } else {
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                      VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE]
-                    + vxlanRules + multiTableRules + devicesRules + server42Rules)
+                    + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
         }
     }
 
@@ -284,6 +296,13 @@ class SwitchHelper {
             result << MeterId.createMeterIdForDefaultRule(ARP_TRANSIT_COOKIE) //20
             result << MeterId.createMeterIdForDefaultRule(ARP_INGRESS_COOKIE) //21
         }
+        def lacpPorts = northboundV2.get().getLagLogicalPort(sw.dpId).findAll {
+            it.lacpReply
+        }
+        if (!lacpPorts.isEmpty()) {
+            result << MeterId.LACP_REPLY_METER_ID //31
+        }
+
         return result*.getValue().sort()
     }
 
@@ -469,6 +488,18 @@ class SwitchHelper {
         } else {
             assert Math.abs(expected - actual) <= 1
         }
+    }
+
+    /**
+     * Verifies that specified logical port sections in the validation response are empty.
+     */
+    static void verifyLogicalPortsSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
+                                                   List<String> sections = ["missing", "excess", "misconfigured"]) {
+        def assertions = new SoftAssertions()
+        sections.each { String section ->
+            assertions.checkSucceeds { assert switchValidateInfo.logicalPorts."$section".empty }
+        }
+        assertions.verify()
     }
 
     static SwitchProperties getDummyServer42Props() {
