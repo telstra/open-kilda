@@ -537,6 +537,47 @@ public class SwitchMapperTest {
                 actual.getRules().getMisconfigured().get(0));
     }
 
+    @Test
+    public void testSwitchValidationResponseV2ToSwitchValidationResultV1Empty() {
+        SwitchValidationResponseV2 expected = SwitchValidationResponseV2.builder()
+                .logicalPorts(null)
+                .meters(null)
+                .groups(null)
+                .rules(null)
+                .asExpected(false)
+                .build();
+
+        SwitchValidationResult actual = switchMapper.toSwitchValidationResultV1(expected);
+        assertNotNull(actual.getRules());
+        assertNotNull(actual.getRules().getExcess());
+        assertNotNull(actual.getRules().getMissing());
+        assertNotNull(actual.getRules().getProper());
+        assertNotNull(actual.getRules().getMisconfigured());
+        assertNotNull(actual.getRules().getExcessHex());
+        assertNotNull(actual.getRules().getMissingHex());
+        assertNotNull(actual.getRules().getProperHex());
+        assertNotNull(actual.getRules().getMisconfiguredHex());
+
+        assertNotNull(actual.getMeters());
+        assertNotNull(actual.getMeters().getExcess());
+        assertNotNull(actual.getMeters().getMissing());
+        assertNotNull(actual.getMeters().getProper());
+        assertNotNull(actual.getMeters().getMisconfigured());
+
+        assertNotNull(actual.getGroups());
+        assertNotNull(actual.getGroups().getExcess());
+        assertNotNull(actual.getGroups().getMissing());
+        assertNotNull(actual.getGroups().getProper());
+        assertNotNull(actual.getGroups().getMisconfigured());
+
+        assertNotNull(actual.getLogicalPorts());
+        assertNotNull(actual.getLogicalPorts().getExcess());
+        assertNotNull(actual.getLogicalPorts().getMissing());
+        assertNotNull(actual.getLogicalPorts().getProper());
+        assertNotNull(actual.getLogicalPorts().getMisconfigured());
+        assertNotNull(actual.getLogicalPorts().getError());
+    }
+
     // Asserts
     private void assertRules(RuleInfoEntryV2 ruleInfo, RuleInfoDtoV2 ruleDto) {
         assertEquals(ruleInfo.getCookie(), ruleDto.getCookie());

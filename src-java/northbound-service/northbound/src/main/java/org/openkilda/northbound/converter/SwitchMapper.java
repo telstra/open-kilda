@@ -111,10 +111,8 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring", uses = {
@@ -276,6 +274,10 @@ public abstract class SwitchMapper {
     }
 
     //from v2 to v1 api
+    @Mapping(source = "groups", target = "groups", defaultExpression = "java(GroupsValidationDto.empty())")
+    @Mapping(source = "meters", target = "meters", defaultExpression = "java(MetersValidationDto.empty())")
+    @Mapping(source = "logicalPorts", target = "logicalPorts",
+            defaultExpression = "java(LogicalPortsValidationDto.empty())")
     public abstract SwitchValidationResult toSwitchValidationResultV1(SwitchValidationResponseV2 response);
 
     public abstract BucketDto toBucketDtoV1(GroupInfoEntryV2.BucketEntry data);
@@ -298,9 +300,9 @@ public abstract class SwitchMapper {
         for (GroupInfoEntryV2.BucketEntry bucketEntry : data.getDiscrepancies().getBuckets()) {
             if (data.getExpected().getBuckets().contains(bucketEntry)) {
                 missingBuckets.add(toBucketDtoV1(bucketEntry));
-                continue;
+            } else {
+                excessBuckets.add(toBucketDtoV1(bucketEntry));
             }
-            excessBuckets.add(toBucketDtoV1(bucketEntry));
         }
         groupInfoDto.setExcessGroupBuckets(excessBuckets);
         groupInfoDto.setMissingGroupBuckets(missingBuckets);
@@ -382,8 +384,7 @@ public abstract class SwitchMapper {
                 expected.setRate(expectedEntity.getRate());
             }
         }
-        meterInfoDto.setCookie(Optional.ofNullable(expectedEntity.getCookie())
-                .orElse(null));
+        meterInfoDto.setCookie(expectedEntity.getCookie());
         meterInfoDto.setBurstSize(Optional.ofNullable(actualEntity)
                 .map(MeterInfoEntryV2::getBurstSize)
                 .orElse(data.getExpected().getBurstSize()));
@@ -407,7 +408,7 @@ public abstract class SwitchMapper {
      */
     public RulesValidationDto toRulesValidationDtoV1(RulesValidationEntryV2 data) {
         if (data == null) {
-            return null;
+            return RulesValidationDto.empty();
         }
         RulesValidationDto rulesValidationDto = new RulesValidationDto();
         rulesValidationDto.setExcess(data.getExcess().stream()
@@ -439,33 +440,8 @@ public abstract class SwitchMapper {
 
     public abstract GroupInfoDtoV2 toGroupInfoDtoV2(GroupInfoEntryV2 data);
 
-    private ValidationFilter toValidationFilter(String value) {
-        switch (value.toLowerCase()) {
-            case ("meters"):
-                return ValidationFilter.METERS;
-            case ("groups"):
-                return ValidationFilter.GROUPS;
-            case ("logical_ports"):
-                return ValidationFilter.LOGICAL_PORTS;
-            case ("rules"):
-                return ValidationFilter.RULES;
-            case("flow_info"):
-                return ValidationFilter.FLOW_INFO;
-            default:
-                StringBuilder builder = new StringBuilder();
-                builder.append(String.format("Unexpected filter \"%s\", possible values are: ", value));
-                builder.append(Arrays.stream(ValidationFilter.values())
-                        .map(filter -> String.format("\"%s\"", filter))
-                        .collect(Collectors.joining(",")));
-                throw new IllegalArgumentException(builder.toString());
-        }
-    }
-
-    /**
-     * Convert list of {@link String} into list of {@link ValidationFilter}.
-     */
-    public Set<ValidationFilter> toValidationFilters(List<String> value) {
-        return value.stream().map(this::toValidationFilter).collect(Collectors.toSet());
+    public ValidationFilter toValidationFilter(String value) {
+        return ValidationFilter.valueOf(value.toUpperCase());
     }
 
     public abstract MeterInfoDtoV2 toMeterInfoDtoV2(MeterInfoEntryV2 data);

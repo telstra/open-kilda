@@ -21,6 +21,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -32,4 +33,8 @@ public class GroupsValidationDto {
     private List<GroupInfoDto> misconfigured;
     private List<GroupInfoDto> proper;
     private List<GroupInfoDto> excess;
+
+    public static GroupsValidationDto empty() {
+        return new GroupsValidationDto(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+    }
 }

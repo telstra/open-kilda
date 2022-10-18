@@ -17,6 +17,10 @@ package org.openkilda.northbound.service.impl;
 
 import static com.google.common.collect.Sets.newHashSet;
 import static java.lang.String.format;
+import static org.openkilda.messaging.model.ValidationFilter.FLOW_INFO;
+import static org.openkilda.messaging.model.ValidationFilter.GROUPS;
+import static org.openkilda.messaging.model.ValidationFilter.LOGICAL_PORTS;
+import static org.openkilda.messaging.model.ValidationFilter.METERS;
 import static org.openkilda.messaging.model.ValidationFilter.RULES;
 
 import org.openkilda.messaging.Destination;
@@ -118,7 +122,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -128,6 +131,11 @@ import java.util.stream.Collectors;
 @Service
 public class SwitchServiceImpl extends BaseService implements SwitchService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchServiceImpl.class);
+    public static final String SWITCH_VALIDATION_FILTERS_SPLITTER = "\\|";
+    public static final Set<ValidationFilter> VALID_INCLUDE_FILTERS = Sets.newHashSet(
+            RULES, METERS, GROUPS, LOGICAL_PORTS);
+    public static final Set<ValidationFilter> VALID_EXCLUDE_FILTERS = Sets.newHashSet(FLOW_INFO);
+
 
     @Autowired
     private MessagingChannel messagingChannel;
@@ -285,19 +293,19 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     }
 
     @Override
-    public CompletableFuture<SwitchValidationResultV2> validateSwitch(SwitchId switchId,
-                                                                      String includeString,
-                                                                      String excludeString) {
+    public CompletableFuture<SwitchValidationResultV2> validateSwitch(
+            SwitchId switchId, String includeString, String excludeString) {
         logger.info("Validate api V2 request for switch {}", switchId);
 
-        Set<ValidationFilter> includeFilters = parseV2ValidationFilters(includeString);
+        Set<ValidationFilter> includeFilters = parseSwitchValidationIncludeFilters(includeString);
         if (includeFilters.isEmpty()) {
-            includeFilters.addAll(ValidationFilter.ALL);
+            includeFilters.addAll(VALID_INCLUDE_FILTERS);
         }
 
-        Set<ValidationFilter> excludeFilters = parseV2ValidationFilters(excludeString);
+        Set<ValidationFilter> excludeFilters = parseSwitchValidationExcludeFilters(excludeString);
 
         Set<ValidationFilter> filters = new HashSet<>(includeFilters);
+        filters.add(FLOW_INFO);
         filters.removeAll(excludeFilters);
 
         return performValidateV2(
@@ -335,7 +343,6 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
         return performSync(
                 SwitchValidateRequest.builder().switchId(switchId)
-                        .processMeters(true)
                         .performSync(true)
                         .removeExcess(removeExcess)
                         .validationFilters(ValidationFilter.ALL_WITH_METER_FLOW_INFO)
@@ -700,16 +707,42 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         return adminDownState;
     }
 
-    private Set<ValidationFilter> parseV2ValidationFilters(String query) {
+
+    private Set<ValidationFilter> parseSwitchValidationIncludeFilters(String query) {
+        try {
+            return parseAndValidateFilters(query, VALID_INCLUDE_FILTERS);
+        } catch (IllegalArgumentException e) {
+            throw new MessageException(ErrorType.REQUEST_INVALID, e.getMessage(), String.format(
+                    "Value of include filter is invalid. Valid values are: %s", VALID_INCLUDE_FILTERS));
+        }
+    }
+
+    private Set<ValidationFilter> parseSwitchValidationExcludeFilters(String query) {
+        try {
+            return parseAndValidateFilters(query, VALID_EXCLUDE_FILTERS);
+        } catch (IllegalArgumentException e) {
+            throw new MessageException(ErrorType.REQUEST_INVALID, e.getMessage(), String.format(
+                    "Value of exclude filter is invalid. Valid values are: %s", VALID_EXCLUDE_FILTERS));
+        }
+    }
+
+    private Set<ValidationFilter> parseAndValidateFilters(String query, Set<ValidationFilter> validFilters) {
         Set<ValidationFilter> filters = new HashSet<>();
-        if (query != null) {
+        if (query == null) {
+            return filters;
+        }
+
+        for (String stringFilter : query.split(SWITCH_VALIDATION_FILTERS_SPLITTER)) {
+            ValidationFilter filter;
             try {
-                filters = switchMapper.toValidationFilters(Arrays.stream(query.split("\\|"))
-                                .collect(Collectors.toList()));
-            } catch (IllegalArgumentException exception) {
-                throw new MessageException(ErrorType.REQUEST_INVALID, exception.getMessage(),
-                        "Error while parsing include parameters");
+                filter = switchMapper.toValidationFilter(stringFilter);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(String.format("Filter has invalid value '%s'", stringFilter));
             }
+            if (!validFilters.contains(filter)) {
+                throw new IllegalArgumentException(String.format("Filter has invalid value '%s'", stringFilter));
+            }
+            filters.add(filter);
         }
         return filters;
     }

@@ -340,7 +340,6 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
         SwitchValidateRequest data = SwitchValidateRequest.builder()
                 .switchId(switchId)
                 .performSync(true)
-                .processMeters(true)
                 .removeExcess(true)
                 .validationFilters(ValidationFilter.ALL_WITHOUT_FLOW_INFO)
                 .build();

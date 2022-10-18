@@ -121,7 +121,6 @@ public class SwitchManagerWorker extends WorkerBolt {
         return SwitchValidateRequest.builder()
                 .switchId(switchId)
                 .performSync(true)
-                .processMeters(true)
                 .removeExcess(options.isRemoveExcessWhenSwitchSync())
                 .validationFilters(ValidationFilter.ALL_WITHOUT_FLOW_INFO)
                 .build();
