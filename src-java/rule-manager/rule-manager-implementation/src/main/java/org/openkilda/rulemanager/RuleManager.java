@@ -57,4 +57,6 @@ public interface RuleManager {
      * Build all required service rules for ISL on specified port.
      */
     List<SpeakerData> buildIslServiceRules(SwitchId switchId, int port, DataAdapter adapter);
+
+    List<SpeakerData> buildLacpRules(SwitchId switchId, int logicalPort, DataAdapter adapter);
 }

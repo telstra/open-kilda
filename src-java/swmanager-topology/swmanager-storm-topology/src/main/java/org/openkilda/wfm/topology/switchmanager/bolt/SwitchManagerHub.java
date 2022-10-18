@@ -140,8 +140,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         super.init();
 
         LagPortOperationConfig config = new LagPortOperationConfig(
-                persistenceManager.getRepositoryFactory(), persistenceManager.getTransactionManager(),
-                topologyConfig.getBfdPortOffset(), topologyConfig.getBfdPortMaxNumber(),
+                persistenceManager, topologyConfig.getBfdPortOffset(),
+                topologyConfig.getBfdPortMaxNumber(),
                 topologyConfig.getLagPortOffset(), topologyConfig.getLagPortMaxNumber(),
                 topologyConfig.getLagPortPoolChunksCount(), topologyConfig.getLagPortPoolCacheSize());
         log.info("LAG logical ports service config: {}", config);
@@ -166,11 +166,14 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                 serviceRegistry, "switch-rules", this,
                 carrier -> new SwitchRuleService(carrier, persistenceManager, ruleManager));
         createLagPortService = registerService(
-                serviceRegistry, "lag-create", this, carrier -> new CreateLagPortService(carrier, config));
+                serviceRegistry, "lag-create", this, carrier -> new CreateLagPortService(
+                        carrier, config, ruleManager));
         updateLagPortService = registerService(
-                serviceRegistry, "lag-update", this, carrier -> new UpdateLagPortService(carrier, config));
+                serviceRegistry, "lag-update", this, carrier -> new UpdateLagPortService(
+                        carrier, config, ruleManager));
         deleteLagPortService = registerService(
-                serviceRegistry, "lag-delete", this, carrier -> new DeleteLagPortService(carrier, config));
+                serviceRegistry, "lag-delete", this, carrier -> new DeleteLagPortService(
+                        carrier, config, ruleManager));
     }
 
     @Override

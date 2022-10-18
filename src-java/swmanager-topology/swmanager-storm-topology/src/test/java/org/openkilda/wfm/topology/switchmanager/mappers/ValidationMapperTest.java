@@ -204,7 +204,7 @@ public class ValidationMapperTest {
 
     private static LagLogicalPort initializeLogicalPortData(SwitchId uniqueSwitchIdField) {
         return new LagLogicalPort(uniqueSwitchIdField, LAG_PORT,
-                Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2));
+                Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2), true);
     }
 
     private static List<GroupInfoEntry> missingGroups = new LinkedList<>();

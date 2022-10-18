@@ -20,18 +20,23 @@ import static org.openkilda.messaging.model.grpc.LogicalPortType.LAG;
 import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagEvent.ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagEvent.LAG_INSTALLED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagEvent.NEXT;
+import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagEvent.SKIP_SPEAKER_COMMANDS_INSTALLATION;
+import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagEvent.SPEAKER_ENTITIES_INSTALLED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState.CREATE_LAG_IN_DB;
 import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState.FINISHED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState.FINISHED_WITH_ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState.GRPC_COMMAND_SEND;
+import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState.SPEAKER_COMMAND_SEND;
 import static org.openkilda.wfm.topology.switchmanager.fsm.CreateLagPortFsm.CreateLagState.START;
 
+import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.messaging.command.grpc.CreateOrUpdateLogicalPortRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
 import org.openkilda.messaging.swmanager.response.LagPortResponse;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.topology.switchmanager.bolt.SwitchManagerHub.OfCommandAction;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.InvalidDataException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchManagerException;
@@ -52,6 +57,7 @@ import org.squirrelframework.foundation.fsm.StateMachineStatus;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.util.HashSet;
+import java.util.List;
 
 @Slf4j
 public class CreateLagPortFsm extends AbstractStateMachine<
@@ -97,8 +103,15 @@ public class CreateLagPortFsm extends AbstractStateMachine<
         builder.transition().from(CREATE_LAG_IN_DB).to(GRPC_COMMAND_SEND).on(NEXT).callMethod("sendGrpcRequest");
         builder.transition().from(CREATE_LAG_IN_DB).to(FINISHED_WITH_ERROR).on(ERROR);
 
-        builder.transition().from(GRPC_COMMAND_SEND).to(FINISHED).on(LAG_INSTALLED).callMethod("lagInstalled");
+        builder.transition().from(GRPC_COMMAND_SEND).to(SPEAKER_COMMAND_SEND).on(LAG_INSTALLED)
+                .callMethod("lagInstalled");
         builder.transition().from(GRPC_COMMAND_SEND).to(FINISHED_WITH_ERROR).on(ERROR);
+
+        builder.onEntry(SPEAKER_COMMAND_SEND).callMethod("sendSpeakerCommands");
+        builder.transition().from(SPEAKER_COMMAND_SEND).to(FINISHED).on(SKIP_SPEAKER_COMMANDS_INSTALLATION);
+        builder.transition().from(SPEAKER_COMMAND_SEND).to(FINISHED).on(SPEAKER_ENTITIES_INSTALLED)
+                .callMethod("speakerCommandsInstalled");
+        builder.transition().from(SPEAKER_COMMAND_SEND).to(FINISHED_WITH_ERROR).on(ERROR);
 
         builder.onEntry(FINISHED).callMethod("finishedEnter");
         builder.defineFinalState(FINISHED);
@@ -117,7 +130,7 @@ public class CreateLagPortFsm extends AbstractStateMachine<
         log.info("Creating LAG {} on switch {}. Key={}", request, switchId, key);
         try {
             HashSet<Integer> targetPorts = new HashSet<>(request.getPortNumbers());
-            lagLogicalPortNumber = lagPortOperationService.createLagPort(switchId, targetPorts);
+            lagLogicalPortNumber = lagPortOperationService.createLagPort(switchId, targetPorts, request.isLacpReply());
 
             String ipAddress = lagPortOperationService.getSwitchIpAddress(switchId);
             grpcRequest = new CreateOrUpdateLogicalPortRequest(
@@ -133,13 +146,35 @@ public class CreateLagPortFsm extends AbstractStateMachine<
         carrier.sendCommandToSpeaker(key, grpcRequest);
     }
 
+    void sendSpeakerCommands(CreateLagState from, CreateLagState to, CreateLagEvent event, CreateLagContext context) {
+        if (!request.isLacpReply()) {
+            log.info("Skip sending OF commands to switch {} because LAG port {} doesn't require LACP. Key={}",
+                    switchId, lagLogicalPortNumber, key);
+            fire(CreateLagEvent.SKIP_SPEAKER_COMMANDS_INSTALLATION);
+            return;
+        }
+
+        log.info("Creating LACP commands for switch {} LAG port {}. Key={}", switchId, lagLogicalPortNumber, key);
+        List<OfCommand> commands = lagPortOperationService
+                .buildLacpSpeakerCommands(switchId, lagLogicalPortNumber);
+
+        log.info("Sending LACP commands {} to switch {} LAG port {}. Key={}",
+                commands, switchId, lagLogicalPortNumber, key);
+        carrier.sendOfCommandsToSpeaker(key, commands, OfCommandAction.INSTALL, switchId);
+    }
+
     void lagInstalled(CreateLagState from, CreateLagState to, CreateLagEvent event, CreateLagContext context) {
+        log.info("LAG {} successfully installed on switch {}. Key={}", context.createdLogicalPort, switchId, key);
+    }
+
+    void speakerCommandsInstalled(
+            CreateLagState from, CreateLagState to, CreateLagEvent event, CreateLagContext context) {
         log.info("LAG {} successfully installed on switch {}. Key={}", context.createdLogicalPort, switchId, key);
     }
 
     void finishedEnter(CreateLagState from, CreateLagState to, CreateLagEvent event, CreateLagContext context) {
         LagPortResponse response = new LagPortResponse(
-                grpcRequest.getLogicalPortNumber(), grpcRequest.getPortNumbers());
+                grpcRequest.getLogicalPortNumber(), grpcRequest.getPortNumbers(), request.isLacpReply());
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
         carrier.response(key, message);
     }
@@ -191,6 +226,7 @@ public class CreateLagPortFsm extends AbstractStateMachine<
         START,
         CREATE_LAG_IN_DB,
         GRPC_COMMAND_SEND,
+        SPEAKER_COMMAND_SEND,
         FINISHED_WITH_ERROR,
         FINISHED
     }
@@ -198,6 +234,8 @@ public class CreateLagPortFsm extends AbstractStateMachine<
     public enum CreateLagEvent {
         NEXT,
         LAG_INSTALLED,
+        SKIP_SPEAKER_COMMANDS_INSTALLATION,
+        SPEAKER_ENTITIES_INSTALLED,
         ERROR
     }
 
