@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.125.0 (19/10/2022)
+
+### Features:
+-  [#4958](https://github.com/telstra/open-kilda/pull/4958) Added LACP replies for LAG ports [**floodlight**][**northbound**][**storm-topologies**]
+-  [#4959](https://github.com/telstra/open-kilda/pull/4959) Added functional tests for LACP feature (Issues: [#2882](https://github.com/telstra/open-kilda/issues/2882) [#3439](https://github.com/telstra/open-kilda/issues/3439)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.124.0...v1.125.0).
+
+### Affected Components:
+nb, swmanager, fl
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.124.0 (07/09/2022)
 
 ### Features:
