@@ -20,6 +20,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.KildaFeatureToggles;
+import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
@@ -32,6 +33,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
+import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -43,6 +45,7 @@ import lombok.Builder;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -60,6 +63,7 @@ public class PersistenceDataAdapter implements DataAdapter {
     private final TransitVlanRepository transitVlanRepository;
     private final VxlanRepository vxlanRepository;
     private final IslRepository islRepository;
+    private final LagLogicalPortRepository lagLogicalPortRepository;
     private final KildaFeatureTogglesRepository featureTogglesRepository;
 
     private final Set<PathId> pathIds;
@@ -71,6 +75,7 @@ public class PersistenceDataAdapter implements DataAdapter {
     private Map<SwitchId, Switch> switchCache;
     private Map<SwitchId, SwitchProperties> switchPropertiesCache;
     private Map<SwitchId, Set<Integer>> switchIslPortsCache;
+    private Map<SwitchId, List<LagLogicalPort>> switchLagPortsCache;
     private KildaFeatureToggles featureToggles;
     private Map<PathId, YFlow> yFlowCache;
 
@@ -88,6 +93,7 @@ public class PersistenceDataAdapter implements DataAdapter {
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
         vxlanRepository = repositoryFactory.createVxlanRepository();
         islRepository = repositoryFactory.createIslRepository();
+        lagLogicalPortRepository = repositoryFactory.createLagLogicalPortRepository();
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
 
         this.pathIds = pathIds;
@@ -176,6 +182,14 @@ public class PersistenceDataAdapter implements DataAdapter {
             switchIslPortsCache = islRepository.findIslPortsBySwitchIds(switchIds);
         }
         return switchIslPortsCache.getOrDefault(switchId, Collections.emptySet());
+    }
+
+    @Override
+    public List<LagLogicalPort> getLagLogicalPorts(SwitchId switchId) {
+        if (switchLagPortsCache == null) {
+            switchLagPortsCache = lagLogicalPortRepository.findBySwitchIds(switchIds);
+        }
+        return switchLagPortsCache.getOrDefault(switchId, Collections.emptyList());
     }
 
     @Override

@@ -35,6 +35,7 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.KildaFeatureToggles;
+import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
@@ -52,6 +53,7 @@ import org.openkilda.rulemanager.factory.generator.flow.JointRuleGenerator.Joint
 import org.openkilda.rulemanager.utils.Utils;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -198,6 +200,22 @@ public class RuleManagerImpl implements RuleManager {
             Set<Integer> islPorts = adapter.getSwitchIslPorts(switchId);
 
             islPorts.forEach(islPort -> generators.addAll(getIslServiceRuleGenerators(islPort)));
+        }
+
+        List<LagLogicalPort> lacpPorts = adapter.getLagLogicalPorts(switchId)
+                .stream().filter(LagLogicalPort::isLacpReply).collect(toList());
+
+        if (!lacpPorts.isEmpty()) {
+            generators.add(serviceRulesFactory.getDropSlowProtocolsLoopRuleGenerator());
+
+            // we need to create only one meter for all Lacp reply rules. So first generator will receive parameter
+            // switchHasOtherLacpPackets = false
+            generators.add(serviceRulesFactory.getLacpReplyRuleGenerator(
+                    lacpPorts.get(0).getLogicalPortNumber(), false));
+            for (int i = 1; i < lacpPorts.size(); i++) {
+                generators.add(serviceRulesFactory.getLacpReplyRuleGenerator(
+                        lacpPorts.get(i).getLogicalPortNumber(), true));
+            }
         }
 
         Integer server42Port = switchProperties.getServer42Port();
@@ -436,9 +454,23 @@ public class RuleManagerImpl implements RuleManager {
             generators.add(serviceRulesFactory
                     .getServer42IslRttInputRuleGenerator(switchProperties.getServer42Port(), port));
         }
-        return generators.stream()
-                .flatMap(g -> g.generateCommands(sw).stream())
-                .collect(toList());
+        return generateRules(sw, generators);
+    }
+
+    @Override
+    public List<SpeakerData> buildLacpRules(SwitchId switchId, int logicalPort, DataAdapter adapter) {
+        boolean switchHasOtherLacpPorts = adapter.getLagLogicalPorts(switchId).stream()
+                .filter(LagLogicalPort::isLacpReply)
+                .anyMatch(port -> port.getLogicalPortNumber() != logicalPort);
+
+        List<RuleGenerator> generators = Lists.newArrayList(
+                serviceRulesFactory.getLacpReplyRuleGenerator(logicalPort, switchHasOtherLacpPorts));
+        if (!switchHasOtherLacpPorts) {
+            generators.add(serviceRulesFactory.getDropSlowProtocolsLoopRuleGenerator());
+        }
+
+        Switch sw = adapter.getSwitch(switchId);
+        return postProcessCommands(generateRules(sw, generators));
     }
 
     private List<SpeakerData> buildSharedEndpointYFlowCommands(List<FlowPath> flowPaths, DataAdapter adapter) {

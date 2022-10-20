@@ -389,11 +389,11 @@ public class ValidationServiceImplTest {
             when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
 
             LagLogicalPort lagLogicalPortA = new LagLogicalPort(SWITCH_ID_A, LOGICAL_PORT_NUMBER_1,
-                    Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2));
+                    Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2), true);
             LagLogicalPort lagLogicalPortB = new LagLogicalPort(SWITCH_ID_A, LOGICAL_PORT_NUMBER_2,
-                    Lists.newArrayList(PHYSICAL_PORT_3, PHYSICAL_PORT_4));
+                    Lists.newArrayList(PHYSICAL_PORT_3, PHYSICAL_PORT_4), false);
             LagLogicalPort lagLogicalPortC = new LagLogicalPort(SWITCH_ID_A, LOGICAL_PORT_NUMBER_3,
-                    Lists.newArrayList(PHYSICAL_PORT_5, PHYSICAL_PORT_6));
+                    Lists.newArrayList(PHYSICAL_PORT_5, PHYSICAL_PORT_6), true);
 
             when(lagLogicalPortRepository.findBySwitchId(SWITCH_ID_A)).thenReturn(Lists.newArrayList(
                     lagLogicalPortA, lagLogicalPortB, lagLogicalPortC));

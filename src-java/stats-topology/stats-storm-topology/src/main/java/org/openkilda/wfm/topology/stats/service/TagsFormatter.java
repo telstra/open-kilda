@@ -64,8 +64,12 @@ public class TagsFormatter {
         tags.put("cookie", cookie != null ? String.valueOf(cookie) : UNKNOWN_COOKIE_TAG_VALUE);
     }
 
+    public void addCookieHexTag(String cookieTag) {
+        tags.put("cookieHex", cookieTag);
+    }
+
     public void addCookieHexTag(CookieBase cookie) {
-        tags.put("cookieHex", cookie != null ? String.valueOf(cookie) : UNKNOWN_COOKIE_TAG_VALUE);
+        addCookieHexTag(cookie != null ? String.valueOf(cookie) : UNKNOWN_COOKIE_TAG_VALUE);
     }
 
     public void addCookieTypeTag(CookieType type) {

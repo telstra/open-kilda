@@ -15,12 +15,15 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.swmanager.request.DeleteLagPortRequest;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.error.MessageDispatchException;
 import org.openkilda.wfm.error.UnexpectedInputException;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -53,8 +56,8 @@ public class DeleteLagPortService implements SwitchManagerHubService {
 
     private boolean active = true;
 
-    public DeleteLagPortService(SwitchManagerCarrier carrier, LagPortOperationConfig config) {
-        this.lagOperationService = new LagPortOperationService(config);
+    public DeleteLagPortService(SwitchManagerCarrier carrier, LagPortOperationConfig config, RuleManager ruleManager) {
+        this.lagOperationService = new LagPortOperationService(config, ruleManager);
         this.builder = DeleteLagPortFsm.builder();
         this.fsmExecutor = new FsmExecutor<>(DeleteLagEvent.NEXT);
         this.carrier = carrier;
@@ -83,6 +86,24 @@ public class DeleteLagPortService implements SwitchManagerHubService {
             throws UnexpectedInputException, MessageDispatchException {
         if (payload instanceof DeleteLogicalPortResponse) {
             handleDeleteResponse((DeleteLogicalPortResponse) payload, cookie);
+        } else {
+            throw new UnexpectedInputException(payload);
+        }
+    }
+
+    @Override
+    public void dispatchWorkerMessage(SpeakerResponse payload, MessageCookie cookie)
+            throws UnexpectedInputException, MessageDispatchException {
+        if (payload instanceof SpeakerCommandResponse) {
+            SpeakerCommandResponse response = (SpeakerCommandResponse) payload;
+            if (response.isSuccess()) {
+                fireFsmEvent(cookie, DeleteLagEvent.SPEAKER_ENTITIES_REMOVED, DeleteLagContext.builder().build());
+            } else {
+                ErrorData errorData = new ErrorData(ErrorType.INTERNAL_ERROR, "OpenFlow commands failed",
+                        response.getFailedCommandIds().values().toString());
+                fireFsmEvent(cookie, DeleteLagEvent.ERROR,
+                        DeleteLagContext.builder().error(new SpeakerFailureException(errorData)).build());
+            }
         } else {
             throw new UnexpectedInputException(payload);
         }
