@@ -59,7 +59,7 @@ import java.util.Collections;
 import java.util.List;
 
 @RunWith(Parameterized.class)
-public class DeversityPathFinderTest {
+public class DiversityPathFinderTest {
     public static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     public static final SwitchId SWITCH_ID_2 = new SwitchId(2);
     public static final SwitchId SWITCH_ID_3 = new SwitchId(3);
