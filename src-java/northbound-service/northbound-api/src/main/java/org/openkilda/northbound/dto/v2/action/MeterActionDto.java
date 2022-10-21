@@ -17,9 +17,12 @@ package org.openkilda.northbound.dto.v2.action;
 
 import org.openkilda.model.MeterId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
@@ -30,4 +33,11 @@ import lombok.experimental.SuperBuilder;
 public class MeterActionDto extends BaseAction {
 
     MeterId meterId;
+
+    @JsonCreator
+    public MeterActionDto(@JsonProperty("action_type") @NonNull String actionType,
+                          @JsonProperty("meter_id") MeterId meterId) {
+        super(actionType);
+        this.meterId = meterId;
+    }
 }

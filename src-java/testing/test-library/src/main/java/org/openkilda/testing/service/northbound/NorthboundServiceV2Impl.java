@@ -497,7 +497,7 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     }
 
     @Override
-    public SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId, String exclude, String include) {
+    public SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId, String include, String exclude) {
         log.debug("Switch validating '{}'", switchId);
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v2/switches/{switch_id}/validate");
         if (exclude != null) {

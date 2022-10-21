@@ -15,9 +15,12 @@
 
 package org.openkilda.northbound.dto.v2.action;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
@@ -32,4 +35,19 @@ public class CopyFieldActionDto extends BaseAction {
     int dstOffset;
     String srcHeader;
     String dstHeader;
+
+    @JsonCreator
+    public CopyFieldActionDto(@JsonProperty("action_type") @NonNull String actionType,
+                              @JsonProperty("number_of_bits") int numberOfBits,
+                              @JsonProperty("src_offset") int srcOffset,
+                              @JsonProperty("dst_offset") int dstOffset,
+                              @JsonProperty("src_header") String srcHeader,
+                              @JsonProperty("dst_header") String dstHeader) {
+        super(actionType);
+        this.numberOfBits = numberOfBits;
+        this.srcOffset = srcOffset;
+        this.dstOffset = dstOffset;
+        this.srcHeader = srcHeader;
+        this.dstHeader = dstHeader;
+    }
 }
