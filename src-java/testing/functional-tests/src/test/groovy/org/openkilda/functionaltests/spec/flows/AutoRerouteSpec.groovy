@@ -624,7 +624,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignore("System speed affect test results")
     def "System properly handles multiple flow reroutes if ISL on new path breaks while first reroute is in progress"() {
         given: "Switch pair that have at least 3 paths and 2 paths that have at least 1 common isl"
         List<PathNode> mainPath, backupPath, thirdPath
