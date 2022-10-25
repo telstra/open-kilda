@@ -22,9 +22,11 @@ import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.connecteddevices.bolts.PacketBolt;
+import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.tuple.Fields;
 
 public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesTopologyConfig> {
     public static final String CONNECTED_DEVICES_SPOUT_ID = "connected-devices-spout";
@@ -60,7 +62,7 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
     private void createPacketBolt(TopologyBuilder builder, PersistenceManager persistenceManager) {
         PacketBolt routerBolt = new PacketBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID);
         declareBolt(builder, routerBolt, PACKET_BOLT_ID)
-                .shuffleGrouping(CONNECTED_DEVICES_SPOUT_ID)
+                .fieldsGrouping(CONNECTED_DEVICES_SPOUT_ID, new Fields(KafkaRecordTranslator.FIELD_ID_KEY))
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
