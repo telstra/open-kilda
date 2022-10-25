@@ -27,6 +27,7 @@ import org.openkilda.pce.model.FindOneDirectionPathResult;
 import org.openkilda.pce.model.FindPathResult;
 import org.openkilda.pce.model.Node;
 import org.openkilda.pce.model.PathWeight;
+import org.openkilda.pce.model.PathWeight.Penalty;
 import org.openkilda.pce.model.WeightFunction;
 
 import com.google.common.collect.Lists;
@@ -457,6 +458,11 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                 if (current.parentWeight.getBaseWeight() < maxWeight) {
                     // We found a best path. If we don't get here, then the entire graph will be
                     // searched until we run out of nodes or the depth is reached.
+                    if (isContainHardDiversityPenalties(current.parentWeight)) {
+                        // Have not to use path with hard diversity penalties
+                        continue;
+                    }
+
                     if (desiredPath == null) {
                         desiredPath = current;
                         continue;
@@ -658,5 +664,11 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         return pathWeight.getPenaltyValue(PathWeight.Penalty.DIVERSITY_ISL_LATENCY)
                 + pathWeight.getPenaltyValue(PathWeight.Penalty.DIVERSITY_SWITCH_LATENCY)
                 + pathWeight.getPenaltyValue(PathWeight.Penalty.DIVERSITY_POP_ISL_COST);
+    }
+
+    private boolean isContainHardDiversityPenalties(PathWeight pathWeight) {
+        long penaltiesSum = pathWeight.getPenaltyValue(Penalty.HARD_DIVERSITY_ISL_LATENCY)
+                + pathWeight.getPenaltyValue(Penalty.HARD_DIVERSITY_SWITCH_LATENCY);
+        return penaltiesSum > 0;
     }
 }

@@ -117,6 +117,8 @@ public class PathWeight implements Comparable<PathWeight> {
         AFFINITY_ISL_LATENCY,
         DIVERSITY_ISL_LATENCY,
         DIVERSITY_SWITCH_LATENCY,
-        DIVERSITY_POP_ISL_COST
+        DIVERSITY_POP_ISL_COST,
+        HARD_DIVERSITY_ISL_LATENCY,
+        HARD_DIVERSITY_SWITCH_LATENCY
     }
 }

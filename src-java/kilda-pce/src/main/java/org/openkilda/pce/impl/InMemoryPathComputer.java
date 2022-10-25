@@ -23,6 +23,8 @@ import static org.openkilda.pce.model.PathWeight.Penalty.AFFINITY_ISL_LATENCY;
 import static org.openkilda.pce.model.PathWeight.Penalty.DIVERSITY_ISL_LATENCY;
 import static org.openkilda.pce.model.PathWeight.Penalty.DIVERSITY_POP_ISL_COST;
 import static org.openkilda.pce.model.PathWeight.Penalty.DIVERSITY_SWITCH_LATENCY;
+import static org.openkilda.pce.model.PathWeight.Penalty.HARD_DIVERSITY_ISL_LATENCY;
+import static org.openkilda.pce.model.PathWeight.Penalty.HARD_DIVERSITY_SWITCH_LATENCY;
 import static org.openkilda.pce.model.PathWeight.Penalty.UNDER_MAINTENANCE;
 import static org.openkilda.pce.model.PathWeight.Penalty.UNSTABLE;
 
@@ -107,7 +109,7 @@ public class InMemoryPathComputer implements PathComputer {
                     .build();
         }
 
-        WeightFunction weightFunction = getWeightFunctionByStrategy(strategy);
+        WeightFunction weightFunction = getWeightFunctionByStrategy(strategy, flow);
         FindPathResult findPathResult;
         try {
             findPathResult = findPathInNetwork(flow, network, weightFunction, strategy);
@@ -191,11 +193,11 @@ public class InMemoryPathComputer implements PathComputer {
             case LATENCY:
             case COST_AND_AVAILABLE_BANDWIDTH:
                 paths = pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count,
-                        getWeightFunctionByStrategy(pathComputationStrategy));
+                        getWeightFunctionByStrategy(pathComputationStrategy, flow));
                 break;
             case MAX_LATENCY:
                 paths = pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count,
-                        getWeightFunctionByStrategy(pathComputationStrategy), maxLatencyNs, maxLatencyTier2Ns);
+                        getWeightFunctionByStrategy(pathComputationStrategy, flow), maxLatencyNs, maxLatencyTier2Ns);
                 break;
             default:
                 throw new UnsupportedOperationException(String.format(
@@ -217,13 +219,18 @@ public class InMemoryPathComputer implements PathComputer {
                 .collect(Collectors.toList());
     }
 
-    private WeightFunction getWeightFunctionByStrategy(PathComputationStrategy strategy) {
+    private WeightFunction getWeightFunctionByStrategy(PathComputationStrategy strategy, Flow flow) {
         switch (strategy) {
             case COST:
                 return this::weightByCost;
             case LATENCY:
             case MAX_LATENCY:
-                return this::weightByLatency;
+                if (flow.isAllocateProtectedPath()
+                        && flow.getForwardPath() != null && flow.getReversePath() != null) {
+                    return this::weightByLatencyForProtectedPath;
+                } else {
+                    return this::weightByLatency;
+                }
             case COST_AND_AVAILABLE_BANDWIDTH:
                 return this::weightByCostAndAvailableBandwidth;
             default:
@@ -264,6 +271,41 @@ public class InMemoryPathComputer implements PathComputer {
 
         long cost = edge.getCost() == 0 ? config.getDefaultIslCost() : edge.getCost();
         return new PathWeight(cost, penalties);
+    }
+
+    private PathWeight weightByLatencyForProtectedPath(Edge edge) {
+        Map<Penalty, Long> penalties = new EnumMap<>(Penalty.class);
+
+        if (edge.isUnderMaintenance()) {
+            penalties.put(UNDER_MAINTENANCE, config.getUnderMaintenanceLatencyRaise());
+        }
+
+        if (edge.isUnstable()) {
+            penalties.put(UNSTABLE, config.getUnstableLatencyRaise());
+        }
+
+        if (edge.getDiversityGroupUseCounter() > 0) {
+            long value = edge.getDiversityGroupUseCounter() * config.getDiversityIslLatency();
+            penalties.put(HARD_DIVERSITY_ISL_LATENCY, value);
+        }
+
+        if (edge.getDiversityGroupPerPopUseCounter() > 0) {
+            int value = edge.getDiversityGroupPerPopUseCounter() * config.getDiversityPopIslCost();
+            penalties.put(DIVERSITY_POP_ISL_COST, (long) value);
+        }
+
+        if (edge.getDestSwitch().getDiversityGroupUseCounter() > 0) {
+            long value = edge.getDestSwitch().getDiversityGroupUseCounter() * config.getDiversitySwitchLatency();
+            penalties.put(HARD_DIVERSITY_SWITCH_LATENCY, value);
+        }
+
+        if (edge.getAffinityGroupUseCounter() > 0) {
+            long value = edge.getAffinityGroupUseCounter() * config.getAffinityIslLatency();
+            penalties.put(AFFINITY_ISL_LATENCY, value);
+        }
+
+        long edgeLatency = edge.getLatency() <= 0 ? config.getDefaultIslLatency() : edge.getLatency();
+        return new PathWeight(edgeLatency, penalties);
     }
 
     private PathWeight weightByLatency(Edge edge) {
