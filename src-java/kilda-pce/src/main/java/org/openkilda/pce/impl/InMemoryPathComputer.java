@@ -225,16 +225,24 @@ public class InMemoryPathComputer implements PathComputer {
                 return this::weightByCost;
             case LATENCY:
             case MAX_LATENCY:
-                if (flow.isAllocateProtectedPath()
-                        && flow.getForwardPath() != null && flow.getReversePath() != null) {
-                    return this::weightByLatencyForProtectedPath;
-                } else {
-                    return this::weightByLatency;
-                }
+                return getMaxLatencyWeightFunction(flow);
             case COST_AND_AVAILABLE_BANDWIDTH:
                 return this::weightByCostAndAvailableBandwidth;
             default:
                 throw new UnsupportedOperationException(String.format("Unsupported strategy type %s", strategy));
+        }
+    }
+
+    /**
+     * Check if this function will be used for finding protected
+     * path and return appropriate WeightFunction.
+     */
+    private WeightFunction getMaxLatencyWeightFunction(Flow flow) {
+        if (flow.isAllocateProtectedPath()
+                && flow.getForwardPath() != null && flow.getReversePath() != null) {
+            return this::weightByLatencyForProtectedPath;
+        } else {
+            return this::weightByLatency;
         }
     }
 

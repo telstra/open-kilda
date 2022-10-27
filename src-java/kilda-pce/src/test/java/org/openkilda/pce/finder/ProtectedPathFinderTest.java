@@ -48,10 +48,6 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -59,21 +55,21 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-@RunWith(Parameterized.class)
 public class ProtectedPathFinderTest {
-    public static final SwitchId SWITCH_ID_1 = new SwitchId(1);
-    public static final SwitchId SWITCH_ID_2 = new SwitchId(2);
-    public static final SwitchId SWITCH_ID_3 = new SwitchId(3);
-    public static final SwitchId SWITCH_ID_4 = new SwitchId(4);
-    public static final SwitchId SWITCH_ID_5 = new SwitchId(5);
-    public static final Switch switchA = Switch.builder().switchId(SWITCH_ID_1).build();
-    public static final Switch switchB = Switch.builder().switchId(SWITCH_ID_2).build();
-    public static final Switch switchC = Switch.builder().switchId(SWITCH_ID_3).build();
-    public static final Switch switchD = Switch.builder().switchId(SWITCH_ID_4).build();
-    public static final Switch switchE = Switch.builder().switchId(SWITCH_ID_5).build();
-    public static final PathId FORWARD_PATH_ID = new PathId("forward_path_1");
-    public static final PathId REVERSE_PATH_ID = new PathId("reverse_path_1");
-    public static final String DIVERSE_GROUP_ID = "group_id_1";
+    private static final SwitchId SWITCH_ID_1 = new SwitchId(1);
+    private static final SwitchId SWITCH_ID_2 = new SwitchId(2);
+    private static final SwitchId SWITCH_ID_3 = new SwitchId(3);
+    private static final SwitchId SWITCH_ID_4 = new SwitchId(4);
+    private static final SwitchId SWITCH_ID_5 = new SwitchId(5);
+    private static final Switch switchA = Switch.builder().switchId(SWITCH_ID_1).build();
+    private static final Switch switchB = Switch.builder().switchId(SWITCH_ID_2).build();
+    private static final Switch switchC = Switch.builder().switchId(SWITCH_ID_3).build();
+    private static final Switch switchD = Switch.builder().switchId(SWITCH_ID_4).build();
+    private static final Switch switchE = Switch.builder().switchId(SWITCH_ID_5).build();
+    private static final PathId FORWARD_PATH_ID = new PathId("forward_path_1");
+    private static final PathId REVERSE_PATH_ID = new PathId("reverse_path_1");
+    private static final String DIVERSE_GROUP_ID = "group_id_1";
+    private static final PathComputationStrategy PATH_COMPUTATION_STRATEGY = PathComputationStrategy.MAX_LATENCY;
 
     @Mock
     private PathComputerConfig config;
@@ -85,9 +81,6 @@ public class ProtectedPathFinderTest {
     private FlowPathRepository flowPathRepository;
 
     private AvailableNetworkFactory availableNetworkFactory;
-
-    @Parameter
-    public PathComputationStrategy pathComputationStrategy;
 
     @Before
     public void setup() {
@@ -106,7 +99,7 @@ public class ProtectedPathFinderTest {
     }
 
     @Test
-    public void shouldNotChooseSamePath() throws RecoverableException, UnroutableFlowException {
+    public void shouldNotFindProtectedPath() throws RecoverableException, UnroutableFlowException {
         // Topology:
         // A----B----C     Already created flow: A-B-C
         //                 No protected path here for this flow
@@ -144,16 +137,7 @@ public class ProtectedPathFinderTest {
                 .build();
         when(flowPathRepository.findById(REVERSE_PATH_ID)).thenReturn(java.util.Optional.of(reversePath));
 
-        Flow flow = getFlow();
-        flow.setSrcSwitch(switchA);
-        flow.setDestSwitch(switchC);
-        flow.setDiverseGroupId(DIVERSE_GROUP_ID);
-        flow.setForwardPathId(new PathId("forward_path_id"));
-        flow.setReversePathId(new PathId("reverse_path_id"));
-        flow.setMaxLatency(Long.MAX_VALUE);
-        flow.setPathComputationStrategy(pathComputationStrategy);
-
-        flow.setAllocateProtectedPath(true);
+        Flow flow = getFlow(switchA, switchC);
         flow.setForwardPath(forwardPath);
         flow.setReversePath(reversePath);
 
@@ -219,15 +203,7 @@ public class ProtectedPathFinderTest {
                 .build();
         when(flowPathRepository.findById(REVERSE_PATH_ID)).thenReturn(java.util.Optional.of(reversePath));
 
-        Flow flow = getFlow();
-        flow.setSrcSwitch(switchA);
-        flow.setDestSwitch(switchC);
-        flow.setDiverseGroupId(DIVERSE_GROUP_ID);
-        flow.setForwardPathId(new PathId("forward_path_id"));
-        flow.setReversePathId(new PathId("reverse_path_id"));
-        flow.setMaxLatency(Long.MAX_VALUE);
-        flow.setPathComputationStrategy(pathComputationStrategy);
-        flow.setAllocateProtectedPath(true);
+        Flow flow = getFlow(switchA, switchC);
         flow.setForwardPath(forwardPath);
         flow.setReversePath(reversePath);
 
@@ -250,7 +226,7 @@ public class ProtectedPathFinderTest {
     }
 
     @Test
-    public void shouldCreateProtectedPath() throws RecoverableException, UnroutableFlowException {
+    public void shouldFindProtectedPath() throws RecoverableException, UnroutableFlowException {
         // Topology:
         //     D-----E
         //   /       |
@@ -293,15 +269,7 @@ public class ProtectedPathFinderTest {
                 .build();
         when(flowPathRepository.findById(REVERSE_PATH_ID)).thenReturn(java.util.Optional.of(reversePath));
 
-        Flow flow = getFlow();
-        flow.setSrcSwitch(switchA);
-        flow.setDestSwitch(switchC);
-        flow.setDiverseGroupId(DIVERSE_GROUP_ID);
-        flow.setForwardPathId(new PathId("forward_path_id"));
-        flow.setReversePathId(new PathId("reverse_path_id"));
-        flow.setMaxLatency(Long.MAX_VALUE);
-        flow.setPathComputationStrategy(pathComputationStrategy);
-        flow.setAllocateProtectedPath(true);
+        Flow flow = getFlow(switchA, switchC);
         flow.setForwardPath(forwardPath);
         flow.setReversePath(reversePath);
 
@@ -350,27 +318,21 @@ public class ProtectedPathFinderTest {
         return isl;
     }
 
-    private static Flow getFlow() {
-        return Flow.builder()
+    private static Flow getFlow(Switch from, Switch to) {
+        Flow flow = Flow.builder()
                 .flowId("test-id")
-                .srcSwitch(Switch.builder().switchId(new SwitchId("1")).build())
-                .destSwitch(Switch.builder().switchId(new SwitchId("2")).build())
+                .srcSwitch(from)
+                .destSwitch(to)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .bandwidth(100)
                 .ignoreBandwidth(false)
+                .diverseGroupId(DIVERSE_GROUP_ID)
+                .maxLatency(Long.MAX_VALUE)
+                .pathComputationStrategy(PATH_COMPUTATION_STRATEGY)
+                .allocateProtectedPath(true)
                 .build();
-    }
-
-    /**
-     * PathComputationStrategies.
-     */
-    @Parameters(name = "PathComputationStrategy = {0}")
-    public static Object[][] data() {
-        return new Object[][] {
-                {PathComputationStrategy.MAX_LATENCY}
-//                {PathComputationStrategy.LATENCY},
-//                {PathComputationStrategy.COST},
-//                {PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH}
-        };
+        flow.setForwardPathId(new PathId("forward_path_id"));
+        flow.setReversePathId(new PathId("reverse_path_id"));
+        return flow;
     }
 }
