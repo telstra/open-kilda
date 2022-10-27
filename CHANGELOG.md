@@ -1,6 +1,22 @@
 # Changelog
 
-## v1.125.0 (19/10/2022)
+## v1.125.1 (27/10/2022)
+
+### Bug Fixes:
+-  [#4953](https://github.com/telstra/open-kilda/pull/4953) Added tuple grouping into Connected Devices Topology (Issue: [#4952](https://github.com/telstra/open-kilda/issues/4952))
+-  [#4957](https://github.com/telstra/open-kilda/pull/4957) Fixed max_latency unit for Y-flows (Issue: [#4956](https://github.com/telstra/open-kilda/issues/4956)) [**northbound**]
+
+### Improvements:
+-  [#4968](https://github.com/telstra/open-kilda/pull/4968) Added parallelism options into flow hs for not loaded bolts
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.125.0...v1.125.1).
+
+### Affected Components:
+flow-hs, nb, connected
+
+---
+
+## v1.125.0 (20/10/2022)
 
 ### Features:
 -  [#4958](https://github.com/telstra/open-kilda/pull/4958) Added LACP replies for LAG ports [**floodlight**][**northbound**][**storm-topologies**]
