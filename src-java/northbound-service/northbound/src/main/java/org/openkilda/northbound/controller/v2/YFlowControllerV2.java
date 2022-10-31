@@ -15,16 +15,22 @@
 
 package org.openkilda.northbound.controller.v2;
 
-import org.openkilda.northbound.controller.BaseController;
+import org.openkilda.northbound.controller.FlowControllerBase;
+import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint;
+import org.openkilda.northbound.dto.v2.yflows.SubFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.yflows.SubFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.SubFlowsDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlow;
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowCreateUpdatePayloadBase;
 import org.openkilda.northbound.dto.v2.yflows.YFlowDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPatchSharedEndpointEncapsulation;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPingPayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPingResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpointEncapsulation;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
@@ -45,21 +51,25 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 import javax.validation.Valid;
 
 @Api
 @RestController
 @RequestMapping("/v2/y-flows")
-public class YFlowControllerV2 extends BaseController {
+public class YFlowControllerV2 extends FlowControllerBase {
     @Autowired
     private YFlowService flowService;
 
     @ApiOperation(value = "Creates a new Y-flow", response = YFlow.class)
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CompletableFuture<YFlow> createYFlow(@Valid @RequestBody YFlowCreatePayload flow) {
-        return flowService.createYFlow(flow);
+    public CompletableFuture<YFlow> createYFlow(@Valid @RequestBody YFlowCreatePayload payload) {
+        verifyRequest(payload);
+        return flowService.createYFlow(payload);
     }
 
     @ApiOperation(value = "Dump all Y-flows", response = YFlowDump.class)
@@ -87,16 +97,18 @@ public class YFlowControllerV2 extends BaseController {
     @PutMapping(value = "/{y_flow_id:.+}")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<YFlow> updateYFlow(@PathVariable(name = "y_flow_id") String yFlowId,
-                                                @Valid @RequestBody YFlowUpdatePayload flow) {
-        return flowService.updateYFlow(yFlowId, flow);
+                                                @Valid @RequestBody YFlowUpdatePayload payload) {
+        verifyRequest(payload);
+        return flowService.updateYFlow(yFlowId, payload);
     }
 
     @ApiOperation(value = "Updates Y-flow partially", response = YFlow.class)
     @PatchMapping(value = "/{y_flow_id:.+}")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<YFlow> patchYFlow(@PathVariable(name = "y_flow_id") String yFlowId,
-                                               @Valid @RequestBody YFlowPatchPayload flowPatch) {
-        return flowService.patchYFlow(yFlowId, flowPatch);
+                                               @Valid @RequestBody YFlowPatchPayload payload) {
+        verifyRequest(payload);
+        return flowService.patchYFlow(yFlowId, payload);
     }
 
     @ApiOperation(value = "Deletes Y-flow", response = YFlow.class)
@@ -150,5 +162,84 @@ public class YFlowControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<YFlow> swapYFlowPaths(@PathVariable("y_flow_id") String yFlowId) {
         return flowService.swapYFlowPaths(yFlowId);
+    }
+
+    private void verifyRequest(YFlowCreateUpdatePayloadBase request) {
+        exposeBodyValidationResults(verifyUpdateFlowVlanIds(request.getSubFlows()));
+    }
+
+    private void verifyRequest(YFlowPatchPayload request) {
+        exposeBodyValidationResults(verifyPatchSubFlowVlanIds(request.getSubFlows()));
+    }
+
+    private Stream<Optional<String>> verifyUpdateFlowVlanIds(List<SubFlowUpdatePayload> subFlows) {
+        Stream<Optional<String>> checks = Stream.empty();
+        int idx = 0;
+        for (SubFlowUpdatePayload entry : subFlows) {
+            checks = Stream.concat(checks, verifySubFlowVlanIds(idx++, entry));
+        }
+        return checks;
+    }
+
+    private Stream<Optional<String>> verifyPatchSubFlowVlanIds(List<SubFlowPatchPayload> subFlows) {
+        Stream<Optional<String>> checks = Stream.empty();
+        if (subFlows == null) {
+            return checks;
+        }
+
+        int idx = 0;
+        for (SubFlowPatchPayload entry : subFlows) {
+            checks = Stream.concat(checks, verifySubFlowVlanIds(idx++, entry));
+        }
+        return checks;
+    }
+
+    private Stream<Optional<String>> verifySubFlowVlanIds(int idx, SubFlowUpdatePayload subFlow) {
+        String subId = formatSubFlowId(idx, subFlow.getFlowId());
+        YFlowSharedEndpointEncapsulation sharedEndpoint = subFlow.getSharedEndpoint();
+        String sharedEndpointReference = subId + "shared";
+        return Stream.concat(
+                verifyFlowEndpoint(
+                        subFlow.getEndpoint(), subId + "sub-endpoint"),
+                Stream.of(
+                        verifyEndpointVlanId(
+                                sharedEndpointReference, "vlanId", sharedEndpoint.getVlanId()),
+                        verifyEndpointVlanId(
+                                sharedEndpointReference, "innerVlanId", sharedEndpoint.getInnerVlanId())));
+    }
+
+    private Stream<Optional<String>> verifySubFlowVlanIds(int idx, SubFlowPatchPayload subFlow) {
+        String subId = formatSubFlowId(idx, subFlow.getFlowId());
+
+        Stream<Optional<String>> endpointChecks = Stream.empty();
+        FlowPatchEndpoint endpoint = subFlow.getEndpoint();
+        if (endpoint != null) {
+            String endpointReference = subId + "sub-endpoint";
+            endpointChecks = Stream.of(
+                    verifyOptionalEndpointVlanId(endpointReference, "vlanId", endpoint.getVlanId()),
+                    verifyOptionalEndpointVlanId(endpointReference, "innerVlanId", endpoint.getInnerVlanId()));
+        }
+
+        Stream<Optional<String>> sharedChecks = Stream.empty();
+        YFlowPatchSharedEndpointEncapsulation sharedEndpoint = subFlow.getSharedEndpoint();
+        if (sharedEndpoint != null) {
+            String endpointReference = subId + "shared";
+            sharedChecks = Stream.of(
+                    verifyOptionalEndpointVlanId(endpointReference, "vlanId", sharedEndpoint.getVlanId()),
+                    verifyOptionalEndpointVlanId(endpointReference, "innerVlanId", sharedEndpoint.getInnerVlanId()));
+        }
+
+        return Stream.concat(endpointChecks, sharedChecks);
+    }
+
+    private Optional<String> verifyOptionalEndpointVlanId(String endpoint, String field, Integer value) {
+        if (value != null) {
+            return verifyEndpointVlanId(endpoint, field, value);
+        }
+        return Optional.empty();
+    }
+
+    private String formatSubFlowId(int idx, String flowId) {
+        return String.format("%d:%s:", idx, flowId);
     }
 }

@@ -17,10 +17,8 @@ package org.openkilda.northbound.controller.v2;
 
 import static java.lang.String.format;
 
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
-import org.openkilda.northbound.controller.BaseController;
-import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.controller.FlowControllerBase;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
@@ -56,11 +54,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/v2/flows")
-public class FlowControllerV2 extends BaseController {
+public class FlowControllerV2 extends FlowControllerBase {
     private static final int DEFAULT_MAX_HISTORY_RECORD_COUNT = 100;
 
     @Autowired
@@ -257,25 +254,6 @@ public class FlowControllerV2 extends BaseController {
                     }
                     return new ResponseEntity<>(statuses, headers, HttpStatus.OK);
                 });
-    }
-
-    private void verifyRequest(FlowRequestV2 request) {
-        exposeBodyValidationResults(Stream.concat(
-                verifyFlowEndpoint(request.getSource(), "source"),
-                verifyFlowEndpoint(request.getDestination(), "destination")));
-    }
-
-    private Stream<Optional<String>> verifyFlowEndpoint(FlowEndpointV2 endpoint, String name) {
-        return Stream.of(
-                verifyEndpointVlanId(name, "vlanId", endpoint.getVlanId()),
-                verifyEndpointVlanId(name, "innerVlanId", endpoint.getInnerVlanId()));
-    }
-
-    private Optional<String> verifyEndpointVlanId(String endpoint, String field, int value) {
-        if (! Utils.validateVlanRange(value)) {
-            return Optional.of(String.format("Invalid %s value %d into %s endpoint", field, value, endpoint));
-        }
-        return Optional.empty();
     }
 
     @ApiOperation(value = "Creates a new flow mirror point", response = FlowMirrorPointResponseV2.class)

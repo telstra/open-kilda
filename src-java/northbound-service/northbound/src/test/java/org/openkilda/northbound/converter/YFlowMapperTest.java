@@ -126,10 +126,22 @@ public class YFlowMapperTest {
 
     @Test
     public void updateRequestTest() {
-        YFlowUpdatePayload request = new YFlowUpdatePayload(new YFlowSharedEndpoint(SWITCH_ID_3, PORT_3),
-                BANDWIDTH, PathComputationStrategy.COST.name(), FlowEncapsulationType.VXLAN.name(), MAX_LATENCY,
-                MAX_LATENCY_TIER_2, true, false, true, PRIORITY, false, DESC_1, true, FLOW_3,
-                Lists.newArrayList(SUB_FLOW_1, SUB_FLOW_2));
+        YFlowUpdatePayload request = YFlowUpdatePayload.builder()
+                .sharedEndpoint(new YFlowSharedEndpoint(SWITCH_ID_3, PORT_3))
+                .maximumBandwidth(BANDWIDTH)
+                .pathComputationStrategy(PathComputationStrategy.COST.name())
+                .encapsulationType(FlowEncapsulationType.VXLAN.name())
+                .maxLatency(MAX_LATENCY)
+                .maxLatencyTier2(MAX_LATENCY_TIER_2)
+                .ignoreBandwidth(true)
+                .periodicPings(false).pinned(true)
+                .priority(PRIORITY)
+                .strictBandwidth(false)
+                .description(DESC_1)
+                .allocateProtectedPath(true)
+                .diverseFlowId(FLOW_3)
+                .subFlows(Lists.newArrayList(SUB_FLOW_1, SUB_FLOW_2))
+                .build();
 
         YFlowRequest result = mapper.toYFlowUpdateRequest(Y_FLOW_ID, request);
         assertEquals(Y_FLOW_ID, result.getYFlowId());

@@ -250,13 +250,15 @@ class YFlowHelper {
     YFlowUpdatePayload convertToUpdate(YFlow yFlow) {
         def yFlowCopy = yFlow.jacksonCopy()
         def builder = YFlowUpdatePayload.builder()
-        YFlowUpdatePayload.class.getDeclaredFields()*.name.each {
-            //todo (andriidovhan) rework 'diverseFlowId'. (diverseFlowId - string, diverseWith - set)
-            builder.diverseFlowId = yFlowCopy.diverseWithYFlows ? yFlowCopy.diverseWithYFlows[0] : yFlowCopy.diverseWithFlows[0]
-            if (yFlowCopy.class.declaredFields*.name.contains(it)) {
-                builder."$it" = yFlowCopy."$it"
+        yFlowCopy.class.getDeclaredFields()*.name.each {
+            try {
+                builder."$it"(yFlowCopy."$it")
+            } catch (MissingMethodException e) {
+                // ignore extra fields
             }
         }
+        //todo (andriidovhan) rework 'diverseFlowId'. (diverseFlowId - string, diverseWith - set)
+        builder.diverseFlowId(yFlowCopy.diverseWithYFlows ? yFlowCopy.diverseWithYFlows[0] : yFlowCopy.diverseWithFlows[0])
         return builder.build()
     }
 

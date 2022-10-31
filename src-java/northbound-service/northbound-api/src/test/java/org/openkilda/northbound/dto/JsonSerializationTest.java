@@ -20,6 +20,8 @@ import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.info.event.SwitchChangeType;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto;
@@ -46,6 +48,12 @@ import org.openkilda.northbound.dto.v1.switches.SwitchLocationDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.yflows.SubFlowUpdatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpoint;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpointEncapsulation;
+import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
@@ -185,5 +193,90 @@ public class JsonSerializationTest {
     public void batchResultsTest() throws IOException {
         BatchResults dto = new BatchResults(1, 0, singletonList("qwerty"));
         assertEquals(dto, pass(dto, BatchResults.class));
+    }
+
+    @Test
+    public void yFlowCreatePayloadTest() throws IOException {
+        YFlowCreatePayload origin = YFlowCreatePayload.builder()
+                .yFlowId("dummy-flowId")
+                .sharedEndpoint(YFlowSharedEndpoint.builder()
+                        .switchId(new SwitchId(1)).portNumber(2)
+                        .build())
+                .maximumBandwidth(3000)
+                .pathComputationStrategy(PathComputationStrategy.COST.name())
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN.name())
+                .maxLatency(1000L)
+                .maxLatencyTier2(2000L)
+                .ignoreBandwidth(false).periodicPings(false).pinned(false)
+                .priority(5).strictBandwidth(true).description("y-flow dummy description")
+                .allocateProtectedPath(false).diverseFlowId("diverse-with")
+                .subFlow(SubFlowUpdatePayload.builder()
+                        .flowId("sub-flow-alpha")
+                        .endpoint(FlowEndpointV2.builder()
+                                .switchId(new SwitchId(2))
+                                .portNumber(5)
+                                .vlanId(20).innerVlanId(30)
+                                .build())
+                        .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder()
+                                .vlanId(100).innerVlanId(200)
+                                .build())
+                        .description("sub-alpha-description")
+                        .build())
+                .subFlow(SubFlowUpdatePayload.builder()
+                        .flowId("sub-flow-beta")
+                        .endpoint(FlowEndpointV2.builder()
+                                .switchId(new SwitchId(3))
+                                .portNumber(6)
+                                .vlanId(21).innerVlanId(31)
+                                .build())
+                        .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder()
+                                .vlanId(101).innerVlanId(201)
+                                .build())
+                        .description("sub-beta-description")
+                        .build())
+                .build();
+        assertEquals(origin, pass(origin, YFlowCreatePayload.class));
+    }
+
+    @Test
+    public void yFlowUpdatePayloadTest() throws IOException {
+        YFlowUpdatePayload origin = YFlowUpdatePayload.builder()
+                .sharedEndpoint(YFlowSharedEndpoint.builder()
+                        .switchId(new SwitchId(1)).portNumber(2)
+                        .build())
+                .maximumBandwidth(3000)
+                .pathComputationStrategy(PathComputationStrategy.COST.name())
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN.name())
+                .maxLatency(1000L)
+                .maxLatencyTier2(2000L)
+                .ignoreBandwidth(false).periodicPings(false).pinned(false)
+                .priority(5).strictBandwidth(true).description("y-flow dummy description")
+                .allocateProtectedPath(false).diverseFlowId("diverse-with")
+                .subFlow(SubFlowUpdatePayload.builder()
+                        .flowId("sub-flow-alpha")
+                        .endpoint(FlowEndpointV2.builder()
+                                .switchId(new SwitchId(2))
+                                .portNumber(5)
+                                .vlanId(20).innerVlanId(30)
+                                .build())
+                        .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder()
+                                .vlanId(100).innerVlanId(200)
+                                .build())
+                        .description("sub-alpha-description")
+                        .build())
+                .subFlow(SubFlowUpdatePayload.builder()
+                        .flowId("sub-flow-beta")
+                        .endpoint(FlowEndpointV2.builder()
+                                .switchId(new SwitchId(3))
+                                .portNumber(6)
+                                .vlanId(21).innerVlanId(31)
+                                .build())
+                        .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder()
+                                .vlanId(101).innerVlanId(201)
+                                .build())
+                        .description("sub-beta-description")
+                        .build())
+                .build();
+        assertEquals(origin, pass(origin, YFlowUpdatePayload.class));
     }
 }

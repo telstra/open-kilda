@@ -15,29 +15,47 @@
 
 package org.openkilda.northbound.controller.v2;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.PathComputationStrategy;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.TestConfig;
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint;
+import org.openkilda.northbound.dto.v2.yflows.SubFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.yflows.SubFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPatchSharedEndpointEncapsulation;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpointEncapsulation;
+import org.openkilda.northbound.service.YFlowService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+
+import java.util.Collections;
 
 @RunWith(SpringRunner.class)
 @WebMvcTest(controllers = YFlowControllerV2.class)
 @WebAppConfiguration
-@ContextConfiguration(classes = TestConfig.class)
+@ContextConfiguration(classes = {TestConfig.class})
 @TestPropertySource("classpath:northbound.properties")
 public class YFlowControllerV2Test {
     @Autowired
@@ -45,6 +63,9 @@ public class YFlowControllerV2Test {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+    private YFlowService service;
 
     @Test
     @WithMockUser(username = TestConfig.USERNAME, password = TestConfig.PASSWORD, roles = TestConfig.ROLE)
@@ -95,9 +116,92 @@ public class YFlowControllerV2Test {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    @WithMockUser(username = TestConfig.USERNAME, password = TestConfig.PASSWORD, roles = TestConfig.ROLE)
+    public void shouldReturnStatus400WhenSubFlowVlanIdIsInvalid() throws Exception {
+        verifyCreateRequestFailsOnBadVlanId(4096, 0, 0, 0);
+        verifyCreateRequestFailsOnBadVlanId(10, 4096, 0, 0);
+        verifyCreateRequestFailsOnBadVlanId(10, 0, 4096, 0);
+        verifyCreateRequestFailsOnBadVlanId(10, 0, 20, 4096);
+        verifyCreateRequestFailsOnBadVlanId(4096, 4096, 4096, 4096);
+
+        verifyCreateRequestFailsOnBadVlanId(-1, 0, 0, 0);
+        verifyCreateRequestFailsOnBadVlanId(10, -1, 0, 0);
+        verifyCreateRequestFailsOnBadVlanId(10, 0, -1, 0);
+        verifyCreateRequestFailsOnBadVlanId(10, 0, 20, -1);
+        verifyCreateRequestFailsOnBadVlanId(-1, -1, -1, -1);
+
+        verifyPatchRequestFailsOnBadVlanId(
+                FlowPatchEndpoint.builder()
+                        .vlanId(4096).build(), null);
+        verifyPatchRequestFailsOnBadVlanId(
+                FlowPatchEndpoint.builder()
+                        .vlanId(10).innerVlanId(4096).build(), null);
+        verifyPatchRequestFailsOnBadVlanId(
+                null, YFlowPatchSharedEndpointEncapsulation.builder()
+                        .vlanId(4096).build());
+        verifyPatchRequestFailsOnBadVlanId(
+                null, YFlowPatchSharedEndpointEncapsulation.builder()
+                        .vlanId(10).innerVlanId(4096).build());
+        verifyPatchRequestFailsOnBadVlanId(
+                FlowPatchEndpoint.builder()
+                        .vlanId(4096).innerVlanId(4096).build(),
+                YFlowPatchSharedEndpointEncapsulation.builder()
+                        .vlanId(4096).innerVlanId(4096).build());
+    }
+
+    private void verifyCreateRequestFailsOnBadVlanId(
+            int endpointVlanId, int endpointInnerVlanId, int sharedVlanId, int sharedInnerVlanId)
+            throws Exception {
+        YFlowCreatePayload payload = buildTestYFlowCreatePayload()
+                .subFlow(SubFlowUpdatePayload.builder()
+                        .flowId("sub-alpha")
+                        .endpoint(FlowEndpointV2.builder()
+                                .switchId(new SwitchId(1))
+                                .portNumber(2)
+                                .vlanId(endpointVlanId)
+                                .innerVlanId(endpointInnerVlanId)
+                                .build())
+                        .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder()
+                                .vlanId(sharedVlanId)
+                                .innerVlanId(sharedInnerVlanId)
+                                .build())
+                        .build())
+                .build();
+
+        verifyRequestFailsOnBadVlanId(post("/v2/y-flows")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .header("correlation_id", "test")
+                .content(objectMapper.writeValueAsString(payload)));
+    }
+
+    private void verifyPatchRequestFailsOnBadVlanId(
+            FlowPatchEndpoint subEndpoint, YFlowPatchSharedEndpointEncapsulation sharedEndpoint)
+            throws Exception {
+        YFlowPatchPayload payload = YFlowPatchPayload.builder()
+                .subFlows(Collections.singletonList(
+                        SubFlowPatchPayload.builder()
+                                .endpoint(subEndpoint)
+                                .sharedEndpoint(sharedEndpoint)
+                                .build()
+                ))
+                .build();
+        verifyRequestFailsOnBadVlanId(patch("/v2/y-flows/dummy-y-flow-id")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .header("correlation_id", "test")
+                .content(objectMapper.writeValueAsString(payload)));
+    }
+
+    private void verifyRequestFailsOnBadVlanId(MockHttpServletRequestBuilder requestBuilder) throws Exception {
+        mvc.perform(requestBuilder)
+                .andExpect(status().isBadRequest());
+        Mockito.verifyNoInteractions(service);
+    }
+
     private YFlowCreatePayload.YFlowCreatePayloadBuilder buildTestYFlowCreatePayload() {
         return YFlowCreatePayload.builder()
-                .encapsulationType("vlan")
-                .pathComputationStrategy("cost");
+                .yFlowId("y-flow-id")
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN.name())
+                .pathComputationStrategy(PathComputationStrategy.COST.name());
     }
 }

@@ -35,7 +35,7 @@ import java.util.stream.Stream;
         @ApiResponse(code = 404, response = MessageError.class, message = "Not found"),
         @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
         @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
-public class BaseController {
+public abstract class BaseController {
     protected void exposeBodyValidationResults(Stream<Optional<String>> defectStream) {
         String[] defects = defectStream
                 .filter(Optional::isPresent)
