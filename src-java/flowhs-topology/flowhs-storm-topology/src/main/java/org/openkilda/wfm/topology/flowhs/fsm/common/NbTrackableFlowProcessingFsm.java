@@ -26,11 +26,11 @@ import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
-import org.squirrelframework.foundation.fsm.StateMachine;
+import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.util.Collection;
 
-public abstract class NbTrackableFlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, E, C,
+public abstract class NbTrackableFlowProcessingFsm<T extends AbstractStateMachine<T, S, E, C>, S, E, C,
         R extends NorthboundResponseCarrier, L extends ProcessingEventListener>
         extends FlowProcessingFsm<T, S, E, C, L> {
     @Getter

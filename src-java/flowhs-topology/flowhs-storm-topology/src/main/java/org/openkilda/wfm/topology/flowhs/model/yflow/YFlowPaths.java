@@ -13,24 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.sync;
+package org.openkilda.wfm.topology.flowhs.model.yflow;
 
-import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
-import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.model.PathId;
-import org.openkilda.wfm.topology.flowhs.model.path.FlowPathResultCode;
+import org.openkilda.messaging.command.yflow.SubFlowPathDto;
+import org.openkilda.messaging.info.event.PathInfoData;
 
 import lombok.Builder;
+import lombok.NonNull;
+import lombok.Singular;
 import lombok.Value;
+
+import java.util.List;
 
 @Value
 @Builder
-public class FlowSyncContext {
-    ErrorType errorType;
-    String errorDetails;
+public class YFlowPaths {
+    @NonNull
+    PathInfoData sharedPath;
 
-    PathId pathId;
-    FlowPathResultCode pathResultCode;
-
-    SpeakerCommandResponse speakerRuleResponse;
+    @NonNull @Singular
+    List<SubFlowPathDto> subFlowPaths;
 }
