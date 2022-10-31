@@ -1,5 +1,5 @@
 # 'make' will build docker images and try to run it.
-default: update-props build-stable up-test-mode
+default: update-props build-stable up-stable
 
 .PHONY: update-props update-props-blue update-props-green update-props-dryrun build-confd
 

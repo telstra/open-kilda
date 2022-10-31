@@ -95,7 +95,7 @@ containers to already exist.
 From the base directory run the following command:
 
 ```
-make up-test-mode
+make up-stable
 ```
 
 ### How to create a virtual topology for test
@@ -315,7 +315,7 @@ git checkout mvp1rc
 make build-base
 docker-compose build
 make unit
-make up-test-mode
+make up-stable
 ```
 
 ### How to use confd for config/properties templating

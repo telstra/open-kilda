@@ -23,7 +23,7 @@ This module holds functional tests designed to be run against staging(hardware) 
 # How to run
 ### Virtual (local Kilda)
 - Build Kilda `make build-stable`
-- Deploy Kilda locally `make up-test-mode`
+- Deploy Kilda locally `make up-stable`
 - Run all tests `make func-tests` or just create a test topology to play with `make test-topology`
 > Note that the above command will overwrite any existing kilda.properties and topology.yaml
 files with default ones

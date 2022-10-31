@@ -42,17 +42,6 @@ build-stable: build-base compile-blue
 run-dev:
 	docker-compose up
 
-up-test-mode:
-	@echo ~~
-	@echo ~~ Starting KILDA, and will print the status of Storm Topology deployments
-	@echo ~~ Once the topology deployments are done, it should be safe to test
-	@echo ~~
-	@echo
-	cp -n .env.example .env
-	TAG=$(STABLE_TAG) docker-compose up -d --scale northbound-blue-green=0 {{if not (exists "/no_grpc_speaker")}}--scale grpc-speaker-blue-green=0{{end}}
-	docker-compose logs -f wfm
-	$(MAKE) -C tools/elk-dashboards
-
 up-stable:
 	cp -n .env.example .env
 	docker-compose stop northbound-blue-green
@@ -74,7 +63,7 @@ up-blue:
 	docker-compose logs -f wfm
 	$(MAKE) -C tools/elk-dashboards
 
-up-log-mode: up-test-mode
+up-log-mode: up-stable
 	docker-compose logs -f
 
 # keeping run-test for backwards compatibility (documentation) .. should deprecate
