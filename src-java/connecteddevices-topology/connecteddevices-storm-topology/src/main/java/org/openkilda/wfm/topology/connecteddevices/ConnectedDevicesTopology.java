@@ -22,6 +22,7 @@ import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.connecteddevices.bolts.PacketBolt;
+import org.openkilda.wfm.topology.connecteddevices.bolts.RouterBolt;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
 import org.apache.storm.generated.StormTopology;
@@ -30,6 +31,7 @@ import org.apache.storm.tuple.Fields;
 
 public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesTopologyConfig> {
     public static final String CONNECTED_DEVICES_SPOUT_ID = "connected-devices-spout";
+    public static final String ROUTER_BOLT_ID = "router-bolt";
     public static final String PACKET_BOLT_ID = "packet-bolt";
 
     public ConnectedDevicesTopology(LaunchEnvironment env) {
@@ -46,6 +48,7 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
         createZkSpout(builder);
 
         createSpout(builder);
+        createRouterBolt(builder, persistenceManager);
         createPacketBolt(builder, persistenceManager);
 
         createZkBolt(builder);
@@ -59,11 +62,18 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
         declareSpout(builder, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
     }
 
-    private void createPacketBolt(TopologyBuilder builder, PersistenceManager persistenceManager) {
-        PacketBolt routerBolt = new PacketBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID);
-        declareBolt(builder, routerBolt, PACKET_BOLT_ID)
-                .fieldsGrouping(CONNECTED_DEVICES_SPOUT_ID, new Fields(KafkaRecordTranslator.FIELD_ID_KEY))
+    private void createRouterBolt(TopologyBuilder builder, PersistenceManager persistenceManager) {
+        RouterBolt routerBolt = new RouterBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID);
+        declareBolt(builder, routerBolt, ROUTER_BOLT_ID)
+                .shuffleGrouping(CONNECTED_DEVICES_SPOUT_ID)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
+    }
+
+    private void createPacketBolt(TopologyBuilder builder, PersistenceManager persistenceManager) {
+        PacketBolt packetBolt = new PacketBolt(persistenceManager);
+        declareBolt(builder, packetBolt, PACKET_BOLT_ID)
+                .fieldsGrouping(ROUTER_BOLT_ID, RouterBolt.PACKET_STREAM_ID,
+                        new Fields(KafkaRecordTranslator.FIELD_ID_KEY));
     }
 
     private void createSpout(TopologyBuilder builder) {
@@ -72,9 +82,9 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
 
     private void createZkBolt(TopologyBuilder builder) {
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig(), getBoltInstancesCount(PACKET_BOLT_ID));
+                getZookeeperConfig(), getBoltInstancesCount(ROUTER_BOLT_ID));
         declareBolt(builder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
-                .allGrouping(PACKET_BOLT_ID, ZkStreams.ZK.toString());
+                .allGrouping(ROUTER_BOLT_ID, ZkStreams.ZK.toString());
     }
 
     @Override
