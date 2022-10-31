@@ -269,9 +269,9 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         def involvedIsls = pathHelper.getInvolvedIsls(flowPath)
         def broughtDownIsls = []
         altPaths.collectMany { pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) } }
-            .unique { a, b -> (a == b || a == b.reversed) ? 0 : 1 }.each {
-                antiflap.portDown(it.srcSwitch.dpId, it.srcPort)
-                broughtDownIsls << it
+                .unique { a, b -> (a == b || a == b.reversed) ? 0 : 1 }.each {
+            antiflap.portDown(it.srcSwitch.dpId, it.srcPort)
+            broughtDownIsls << it
         }
         wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -599,7 +599,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
                 def newHistorySize = northbound.getFlowHistory(flow.flowId).size()
                 assert newHistorySize == prevHistorySize
                 assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            sleep(500)
+                sleep(500)
             }
         }
         def expectedZeroReroutesTimestamp = System.currentTimeSeconds()
@@ -624,7 +624,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignore("System speed affect test results")
     def "System properly handles multiple flow reroutes if ISL on new path breaks while first reroute is in progress"() {
         given: "Switch pair that have at least 3 paths and 2 paths that have at least 1 common isl"
         List<PathNode> mainPath, backupPath, thirdPath
@@ -687,10 +686,11 @@ triggering one more reroute of the current path"
             assert northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }.size() == 1
         }
         antiflap.portDown(commonIsl.srcSwitch.dpId, commonIsl.srcPort)
-        TimeUnit.SECONDS.sleep(rerouteDelay)
         //first reroute should not be finished at this point, otherwise increase the latency to switches
-        assert ![REROUTE_SUCCESS, REROUTE_FAIL].contains(
-            northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }.payload.last().action)
+        wait(rerouteDelay) {
+            assert ![REROUTE_SUCCESS, REROUTE_FAIL].contains(
+                    northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }.payload.last().action)
+        }
 
         then: "System reroutes the flow twice and flow ends up in UP state"
         wait(PATH_INSTALLATION_TIME * 2) {
