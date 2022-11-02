@@ -15,11 +15,9 @@
 
 package org.openkilda.northbound.dto.v2.switches;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
-import lombok.Builder.Default;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -27,11 +25,23 @@ import java.util.Set;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
-@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
-@Builder
 public class LagPortRequest {
+    @JsonProperty("port_numbers")
     private Set<Integer> portNumbers;
-    @Default
-    private Boolean lacpReply = true;
+
+    @JsonProperty("lacp_reply")
+    private Boolean lacpReply;
+
+    @Builder
+    @JsonCreator
+    public LagPortRequest(
+            @JsonProperty("port_numbers") Set<Integer> portNumbers,
+            @JsonProperty("lacp_reply") Boolean lacpReply) {
+        this.portNumbers = portNumbers;
+        setLacpReply(lacpReply);
+    }
+
+    public void setLacpReply(Boolean lacpReply) {
+        this.lacpReply = lacpReply == null ? true : lacpReply;
+    }
 }
