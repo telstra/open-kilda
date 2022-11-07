@@ -66,7 +66,8 @@ public class ValidateFlowAction extends
         dashboardLogger.onFlowUpdate(flowId,
                 targetFlow.getSrcSwitch(), targetFlow.getSrcPort(), targetFlow.getSrcVlan(),
                 targetFlow.getDestSwitch(), targetFlow.getDestPort(), targetFlow.getDestVlan(),
-                diverseFlowId, targetFlow.getBandwidth());
+                diverseFlowId, targetFlow.getBandwidth(), targetFlow.getPathComputationStrategy(),
+                targetFlow.getMaxLatency(), targetFlow.getMaxLatencyTier2());
 
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getUpdateFlowEnabled();
         if (!isOperationAllowed) {

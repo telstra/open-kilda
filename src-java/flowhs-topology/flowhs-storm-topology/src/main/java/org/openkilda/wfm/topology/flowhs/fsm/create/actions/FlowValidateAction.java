@@ -65,7 +65,8 @@ public class FlowValidateAction extends
         dashboardLogger.onFlowCreate(request.getFlowId(),
                 request.getSrcSwitch(), request.getSrcPort(), request.getSrcVlan(),
                 request.getDestSwitch(), request.getDestPort(), request.getDestVlan(),
-                request.getDiverseFlowId(), request.getBandwidth());
+                request.getDiverseFlowId(), request.getBandwidth(), request.getPathComputationStrategy(),
+                request.getMaxLatency(), request.getMaxLatencyTier2());
 
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getCreateFlowEnabled();
         if (!isOperationAllowed) {

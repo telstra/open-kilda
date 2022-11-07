@@ -136,7 +136,8 @@ public class ValidateYFlowAction extends
                 .map(SubFlowDto::getEndpoint)
                 .collect(Collectors.toList());
         dashboardLogger.onYFlowUpdate(yFlowId, targetFlow.getSharedEndpoint(), subFlowEndpoints,
-                targetFlow.getMaximumBandwidth());
+                targetFlow.getMaximumBandwidth(), targetFlow.getPathComputationStrategy(), targetFlow.getMaxLatency(),
+                targetFlow.getMaxLatencyTier2());
 
         stateMachine.setTargetFlow(targetFlow);
 
