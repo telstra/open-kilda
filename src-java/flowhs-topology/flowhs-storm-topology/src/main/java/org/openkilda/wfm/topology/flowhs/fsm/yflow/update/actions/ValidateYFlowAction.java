@@ -127,10 +127,7 @@ public class ValidateYFlowAction extends
                     format("Unable to map provided sub-flows set onto existing y-flow %s", yFlowId));
         }
 
-        YSubFlow subFlow = yFlow.getSubFlows().stream().findAny()
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.DATA_INVALID,
-                        format("No sub-flows of the y-flow %s were found", yFlowId)));
-        stateMachine.setMainAffinityFlowId(subFlow.getFlow().getAffinityGroupId());
+        stateMachine.setMainAffinityFlowId(getMainAffinityFlowId(yFlow));
 
         List<FlowEndpoint> subFlowEndpoints = targetFlow.getSubFlows().stream()
                 .map(SubFlowDto::getEndpoint)
@@ -144,6 +141,24 @@ public class ValidateYFlowAction extends
         stateMachine.saveNewEventToHistory("Y-flow was validated successfully", FlowEventData.Event.UPDATE);
 
         return Optional.empty();
+    }
+
+    private String getMainAffinityFlowId(YFlow yFlow) {
+        // TODO: maybe we should add filtering of one switch sub flows into method getSubFlows()
+        YSubFlow multiSwitchFlows = yFlow.getSubFlows().stream()
+                .filter(sub -> !sub.isOneSwitchYFlow(yFlow.getSharedEndpoint().getSwitchId()))
+                .findAny()
+                .orElse(null);
+        if (multiSwitchFlows != null) {
+            return multiSwitchFlows.getFlow().getAffinityGroupId();
+        } else {
+            // if there is no multi switch flows we have to use one switch flow
+            YSubFlow oneSwitchSubFlow = yFlow.getSubFlows().stream()
+                    .findAny()
+                    .orElseThrow(() -> new FlowProcessingException(ErrorType.DATA_INVALID,
+                            format("No sub-flows of the y-flow %s were found", yFlow.getYFlowId())));
+            return oneSwitchSubFlow.getSubFlowId();
+        }
     }
 
     @Override
