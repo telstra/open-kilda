@@ -99,8 +99,8 @@ tasks.withType(Test) {
         }
     }
     retry { //test-retry plugin config
-        maxRetries = 1
-        maxFailures = 5
+        maxRetries = 3
+        maxFailures = 0
         failOnPassedAfterRetry = false
     }
 }
