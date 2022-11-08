@@ -312,4 +312,9 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
     public void affinityPathShouldPreferIslsUsedByMainPath() throws Exception {
         affinityPathShouldPreferIslsUsedByMainPath(PathComputationStrategy.COST);
     }
+
+    @Test
+    public void affinityOvercomeDiversity() throws Exception {
+        affinityOvercomeDiversity(PathComputationStrategy.COST);
+    }
 }

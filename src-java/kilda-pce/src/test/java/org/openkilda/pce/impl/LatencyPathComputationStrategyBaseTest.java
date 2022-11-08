@@ -319,6 +319,11 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
     }
 
     @Test
+    public void affinityOvercomeDiversity() throws Exception {
+        affinityOvercomeDiversity(PathComputationStrategy.LATENCY);
+    }
+
+    @Test
     public void shouldSetBackUpFlagWhenPathHasLatencyGreaterThanMaxLatency()
             throws RecoverableException, UnroutableFlowException {
         createTriangleTopo(IslStatus.ACTIVE, 100, 100, "00:", 1);
