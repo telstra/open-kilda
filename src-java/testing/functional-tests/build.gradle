@@ -94,7 +94,7 @@ tasks.withType(Test) {
         it.write 'false'
     }
     afterTest { desc, result ->
-        if ('FAILURE' == result.resultType as String) {
+        if (result.resultType as String == 'FAILURE' ) {
             unstableLog.write 'true'
         }
     }
