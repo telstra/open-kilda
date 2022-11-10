@@ -16,6 +16,7 @@ dependencies {
     implementation project(':floodlight-api')
     implementation project(':grpc-api')
     implementation project(':blue-green')
+    implementation project(':rule-manager-implementation')
     runtimeOnly project(':kilda-persistence-orientdb')
     runtimeOnly project(':kilda-persistence-hibernate')
     aspect project(':kilda-persistence-api')

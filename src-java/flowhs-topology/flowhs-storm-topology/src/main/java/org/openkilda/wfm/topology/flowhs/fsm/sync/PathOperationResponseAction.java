@@ -13,59 +13,56 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.sync.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.sync;
 
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncContext;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.sync.FlowSyncFsm.State;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathOperationDescriptor;
+import org.openkilda.wfm.topology.flowhs.model.path.FlowPathReference;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathResultCode;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class PathOperationResponseAction
-        extends FlowProcessingWithHistorySupportAction<FlowSyncFsm, State, Event, FlowSyncContext> {
+public class PathOperationResponseAction<F extends SyncFsmBase<F, S, E>, S, E>
+        extends FlowProcessingWithHistorySupportAction<F, S, E, FlowSyncContext> {
     public PathOperationResponseAction(@NonNull PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
 
     @Override
-    protected void perform(State from, State to, Event event, FlowSyncContext context, FlowSyncFsm stateMachine) {
+    protected void perform(S from, S to, E event, FlowSyncContext context, F stateMachine) {
         FlowPathResultCode resultCode = context.getPathResultCode();
         PathId pathId = context.getPathId();
         if (resultCode == FlowPathResultCode.SUCCESS) {
             handleSuccess(
-                    stateMachine, stateMachine.addSuccessPathOperation(pathId)
+                    stateMachine.addSuccessPathOperation(pathId)
                             .orElseThrow(() -> newMissingPendingOperationError(pathId, resultCode)));
         } else {
             FlowPathOperationDescriptor descriptor = stateMachine.addFailedPathOperation(pathId)
                     .orElseThrow(() -> newMissingPendingOperationError(pathId, resultCode));
-            handleFailure(stateMachine, descriptor);
-            stateMachine.fire(Event.SYNC_FAIL, context);
+            handleFailure(descriptor);
+            stateMachine.handlePathSyncFailure(context);
         }
 
-        if (! stateMachine.isPendingPathOperationsExists()) {
-            stateMachine.fire(Event.GUARD_PASSED, context);
-        }
+        stateMachine.continueIfNoPendingPathOperations(context);
     }
 
-    private void handleSuccess(FlowSyncFsm stateMachine, FlowPathOperationDescriptor descriptor) {
-        log.info("Flow path {} have been synced (flowId={})", descriptor.getPathId(), stateMachine.getFlowId());
-        flowPathRepository.updateStatus(descriptor.getPathId(), FlowPathStatus.ACTIVE);
+    private void handleSuccess(FlowPathOperationDescriptor descriptor) {
+        FlowPathReference reference = descriptor.getRequest().getReference();
+        log.info("Flow path {} have been synced (flowId={})", reference.getPathId(), reference.getFlowId());
+        flowPathRepository.updateStatus(reference.getPathId(), FlowPathStatus.ACTIVE);
     }
 
-    private void handleFailure(FlowSyncFsm stateMachine, FlowPathOperationDescriptor descriptor) {
+    private void handleFailure(FlowPathOperationDescriptor descriptor) {
+        FlowPathReference reference = descriptor.getRequest().getReference();
         log.error(
                 "Failed to sync flow path {}, restore it's status to initial value {} (flowId={})",
-                descriptor.getPathId(), descriptor.getInitialStatus(), stateMachine.getFlowId());
-        flowPathRepository.updateStatus(descriptor.getPathId(), descriptor.getInitialStatus());
+                reference.getPathId(), descriptor.getInitialStatus(), reference.getFlowId());
+        flowPathRepository.updateStatus(reference.getPathId(), descriptor.getInitialStatus());
     }
 
     private IllegalStateException newMissingPendingOperationError(PathId pathId, FlowPathResultCode resultCode) {

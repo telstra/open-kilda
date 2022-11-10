@@ -32,7 +32,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.StateMachine;
+import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -42,7 +42,7 @@ import java.util.UUID;
 
 @Slf4j
 @Getter
-public abstract class YFlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, E, C,
+public abstract class YFlowProcessingFsm<T extends AbstractStateMachine<T, S, E, C>, S, E, C,
         R extends FlowGenericCarrier, L extends ProcessingEventListener>
         extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
     private final String yFlowId;

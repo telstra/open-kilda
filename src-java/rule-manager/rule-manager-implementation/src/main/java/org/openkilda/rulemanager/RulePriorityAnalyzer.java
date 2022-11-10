@@ -13,24 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.sync;
+package org.openkilda.rulemanager;
 
-import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
-import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.model.PathId;
-import org.openkilda.wfm.topology.flowhs.model.path.FlowPathResultCode;
+import org.openkilda.rulemanager.Constants.Priority;
 
-import lombok.Builder;
-import lombok.Value;
+public final class RulePriorityAnalyzer {
+    /**
+     * Check is the priority value match the priority of generic flow endpoint rules.
+     */
+    public static boolean isGenericFlowEndpoint(int priority) {
+        return priority == Priority.FLOW_PRIORITY
+                || priority == Priority.DEFAULT_FLOW_PRIORITY
+                || priority == Priority.DOUBLE_VLAN_FLOW_PRIORITY;
+    }
 
-@Value
-@Builder
-public class FlowSyncContext {
-    ErrorType errorType;
-    String errorDetails;
-
-    PathId pathId;
-    FlowPathResultCode pathResultCode;
-
-    SpeakerCommandResponse speakerRuleResponse;
+    private RulePriorityAnalyzer() {
+        // deny object creation
+    }
 }
