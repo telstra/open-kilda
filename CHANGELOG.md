@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.125.2 (09/11/2022)
+
+### Bug Fixes:
+-  [#4977](https://github.com/telstra/open-kilda/pull/4977) Set lacp_reply to true if value is not specified (Issue: [#4976](https://github.com/telstra/open-kilda/issues/4976)) [**northbound**]
+-  [#4981](https://github.com/telstra/open-kilda/pull/4981) Fixed updating of one switch Y flow (Issue: [#4972](https://github.com/telstra/open-kilda/issues/4972))
+-  [#4951](https://github.com/telstra/open-kilda/pull/4951) Fix stats for y flow ingress endpoint (Issue: [#4926](https://github.com/telstra/open-kilda/issues/4926)) [**floodlight**][**storm-topologies**]
+
+### Improvements:
+-  [#4962](https://github.com/telstra/open-kilda/pull/4962) Implement true Y-flow sync
+-  [#4973](https://github.com/telstra/open-kilda/pull/4973) Added balanced grouping into connected devices topology
+-  [#4978](https://github.com/telstra/open-kilda/pull/4978) Added info about latency into create/update logs
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.125.1...v1.125.2).
+
+### Affected Components:
+stats, flow-hs, fl, connected, nb
+
+---
+
 ## v1.125.1 (27/10/2022)
 
 ### Bug Fixes:
