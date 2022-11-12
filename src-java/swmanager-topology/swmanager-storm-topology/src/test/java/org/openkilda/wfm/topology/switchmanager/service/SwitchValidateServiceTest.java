@@ -241,9 +241,8 @@ public class SwitchValidateServiceTest {
         verify(carrier, times(1))
                 .runHeavyOperation(eq(SWITCH_ID), any(MessageCookie.class));
 
-        service.dispatchWorkerMessage(
-                new FlowDumpResponse(singletonList(flowSpeakerData)), new MessageCookie(KEY));
-        service.dispatchWorkerMessage(new GroupDumpResponse(SWITCH_ID, emptyList()), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new FlowDumpResponse(singletonList(flowSpeakerData)), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new GroupDumpResponse(emptyList()), new MessageCookie(KEY));
         service.dispatchWorkerMessage(new SwitchEntities(new ArrayList<>()), new MessageCookie(KEY));
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any(), anyBoolean());
         verify(validationService).validateGroups(eq(SWITCH_ID), any(), any(), anyBoolean());
@@ -266,7 +265,7 @@ public class SwitchValidateServiceTest {
         service.dispatchWorkerMessage(
                 new FlowDumpResponse(singletonList(flowSpeakerData)), new MessageCookie(KEY));
         service.dispatchWorkerMessage(new SwitchMeterUnsupported(SWITCH_ID), new MessageCookie(KEY));
-        service.dispatchWorkerMessage(new GroupDumpResponse(SWITCH_ID, emptyList()), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new GroupDumpResponse(emptyList()), new MessageCookie(KEY));
         service.dispatchWorkerMessage(new SwitchEntities(new ArrayList<>()), new MessageCookie(KEY));
 
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any(), anyBoolean());
@@ -304,9 +303,9 @@ public class SwitchValidateServiceTest {
 
         service.dispatchWorkerMessage(
                 new FlowDumpResponse(singletonList(flowSpeakerData)), new MessageCookie(KEY));
-        service.dispatchWorkerMessage(new GroupDumpResponse(LAG_SWITCH_ID, emptyList()), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new GroupDumpResponse(emptyList()), new MessageCookie(KEY));
         service.dispatchWorkerMessage(new SwitchEntities(new ArrayList<>()), new MessageCookie(KEY));
-        service.dispatchWorkerMessage(new MeterDumpResponse(LAG_SWITCH_ID, emptyList()), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new MeterDumpResponse(emptyList()), new MessageCookie(KEY));
         service.dispatchErrorMessage(getErrorMessage().getData(), cookieCaptor.getValue());
 
         verify(validationService).validateRules(eq(LAG_SWITCH_ID), any(), any(), anyBoolean());
@@ -396,11 +395,9 @@ public class SwitchValidateServiceTest {
     }
 
     private void handleDataReceiveAndValidate() throws UnexpectedInputException, MessageDispatchException {
-        service.dispatchWorkerMessage(
-                new FlowDumpResponse(singletonList(flowSpeakerData)), new MessageCookie(KEY));
-        service.dispatchWorkerMessage(
-                new MeterDumpResponse(SWITCH_ID, singletonList(meterSpeakerData)), new MessageCookie(KEY));
-        service.dispatchWorkerMessage(new GroupDumpResponse(SWITCH_ID, emptyList()), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new FlowDumpResponse(singletonList(flowSpeakerData)), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new MeterDumpResponse(singletonList(meterSpeakerData)), new MessageCookie(KEY));
+        service.dispatchWorkerMessage(new GroupDumpResponse(emptyList()), new MessageCookie(KEY));
         service.dispatchWorkerMessage(new SwitchEntities(new ArrayList<>()), new MessageCookie(KEY));
 
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any(), anyBoolean());
