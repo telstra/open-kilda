@@ -20,6 +20,14 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 /**
  * Utils for flow commands.
  */
@@ -172,6 +180,72 @@ public final class Utils {
     public static boolean validateSwitchId(SwitchId switchId) {
         // TODO: check valid switch id
         return switchId != null;
+    }
+
+    /**
+     * Joins two lists into one.
+     */
+    public static <T> List<T> joinLists(List<T> list1, List<T> list2) {
+        if (list1 == null && list2 == null) {
+            return null;
+        }
+        List<T> result = new ArrayList<>();
+        if (list1 != null) {
+            result.addAll(list1);
+        }
+        if (list2 != null) {
+            result.addAll(list2);
+        }
+        return result;
+    }
+
+    /**
+     * Joins several lists into one.
+     */
+    public static <T> List<T> joinLists(Stream<List<T>> listsStream) {
+        List<List<T>> nonNullLists = listsStream.filter(Objects::nonNull).collect(Collectors.toList());
+        if (nonNullLists.isEmpty()) {
+            return null;
+        }
+        return nonNullLists.stream().flatMap(Collection::stream).collect(Collectors.toList());
+    }
+
+    /**
+     * Joins several booleans.
+     */
+    public static boolean joinBooleans(Collection<Boolean> booleans) {
+        Set<Boolean> set = booleans.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (set.size() > 1) {
+            throw new IllegalArgumentException(String.format("Stream %s contains true and false booleans. "
+                    + "It must contain only one value of boolean or null values.", booleans));
+        }
+        if (set.isEmpty()) {
+            throw new IllegalArgumentException(String.format("Stream %s has no non-null values.", booleans));
+        }
+        return set.iterator().next();
+    }
+
+    public static int getSize(Collection<?> collection) {
+        return collection == null ? 0 : collection.size();
+    }
+
+    /**
+     * Splits lists on chunks.
+     */
+    public static <E> List<List<E>> split(List<E> list, int chunkSize) {
+        return split(list, chunkSize, chunkSize);
+    }
+
+    /**
+     * Splits lists on chunks.
+     */
+    public static <E> List<List<E>> split(List<E> list, int firstChunkSize, int chunkSize) {
+        List<List<E>> result = new ArrayList<>();
+        result.add(list.subList(0, Math.min(firstChunkSize, list.size())));
+        for (int i = firstChunkSize; i < list.size(); i += chunkSize) {
+            result.add(list.subList(i, Math.min(i + chunkSize, list.size())));
+        }
+        return result;
     }
 }
 

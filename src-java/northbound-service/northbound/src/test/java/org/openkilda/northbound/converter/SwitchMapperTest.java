@@ -16,7 +16,6 @@
 package org.openkilda.northbound.converter;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -366,10 +365,10 @@ public class SwitchMapperTest {
     public void testToRulesValidationDtoV1() {
         RulesValidationEntryV2 expected = RulesValidationEntryV2.builder()
                 .asExpected(false)
-                .excess(newHashSet(buildRuleInfoEntryV2(EXCESS_BASE)))
-                .missing(newHashSet(buildRuleInfoEntryV2(MISSING_BASE)))
-                .proper(newHashSet(buildRuleInfoEntryV2(PROPER_BASE)))
-                .misconfigured(newHashSet(MisconfiguredInfo.<RuleInfoEntryV2>builder()
+                .excess(newArrayList(buildRuleInfoEntryV2(EXCESS_BASE)))
+                .missing(newArrayList(buildRuleInfoEntryV2(MISSING_BASE)))
+                .proper(newArrayList(buildRuleInfoEntryV2(PROPER_BASE)))
+                .misconfigured(newArrayList(MisconfiguredInfo.<RuleInfoEntryV2>builder()
                         .id(String.valueOf(MISCONFIG_BASE))
                         .expected(buildRuleInfoEntryV2(MISCONFIG_BASE + 1))
                         .discrepancies(buildRuleInfoEntryV2(MISCONFIG_BASE + 2))
@@ -832,10 +831,10 @@ public class SwitchMapperTest {
     private RulesValidationEntryV2 buildRulesValidationEntryV2() {
         return RulesValidationEntryV2.builder()
                 .asExpected(false)
-                .excess(newHashSet(buildRuleInfoEntryV2(EXCESS_BASE)))
-                .missing(newHashSet(buildRuleInfoEntryV2(MISSING_BASE)))
-                .proper(newHashSet(buildRuleInfoEntryV2(PROPER_BASE)))
-                .misconfigured(newHashSet(MisconfiguredInfo.<RuleInfoEntryV2>builder()
+                .excess(newArrayList(buildRuleInfoEntryV2(EXCESS_BASE)))
+                .missing(newArrayList(buildRuleInfoEntryV2(MISSING_BASE)))
+                .proper(newArrayList(buildRuleInfoEntryV2(PROPER_BASE)))
+                .misconfigured(newArrayList(MisconfiguredInfo.<RuleInfoEntryV2>builder()
                         .expected(buildRuleInfoEntryV2(MISCONFIG_BASE))
                         .discrepancies(buildRuleInfoEntryV2(MISCONFIG_BASE))
                         .id(String.valueOf(MISCONFIG_BASE))

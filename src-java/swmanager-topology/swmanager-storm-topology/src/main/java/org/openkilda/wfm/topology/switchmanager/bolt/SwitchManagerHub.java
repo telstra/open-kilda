@@ -25,6 +25,7 @@ import org.openkilda.floodlight.api.request.rulemanager.ModifySpeakerCommandsReq
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.AbstractMessage;
+import org.openkilda.messaging.Chunkable;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.MessageCookie;
@@ -36,6 +37,7 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
@@ -452,6 +454,15 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public void response(String key, InfoData payload) {
         InfoMessage message = new InfoMessage(payload, System.currentTimeMillis(), key);
         response(key, message);
+    }
+
+    @Override
+    public void responseChunks(String key, Chunkable<? extends InfoData> payload) {
+        List<ChunkedInfoMessage> chunkedList = ChunkedInfoMessage.createChunkedList(
+                payload.split(topologyConfig.getChunkedMessagesChunkSize()), key);
+        for (ChunkedInfoMessage message : chunkedList) {
+            response(key, message);
+        }
     }
 
     @Override

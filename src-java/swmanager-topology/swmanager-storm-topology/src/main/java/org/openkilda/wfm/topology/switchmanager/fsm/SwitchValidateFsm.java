@@ -39,7 +39,6 @@ import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerReques
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
 import org.openkilda.messaging.model.ValidationFilter;
@@ -376,10 +375,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
             carrier.runSwitchSync(key, request, validationResult);
         } else {
             SwitchValidationResponseV2 response = ValidationMapper.INSTANCE.toSwitchResponse(validationContext);
-            InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
-
             carrier.cancelTimeoutCallback(key);
-            carrier.response(key, message);
+            carrier.responseChunks(key, response);
         }
     }
 

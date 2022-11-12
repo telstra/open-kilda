@@ -251,5 +251,6 @@ kilda_flow_latency_sla_timeout_seconds: 30
 kilda_flow_latency_sla_threshold_percent: 0.05
 
 kilda_swmanager_of_commands_batch_size: 500
+kilda_swmanager_kafka_chunked_messages_size: 500
 
 #ovs_vxlan: true

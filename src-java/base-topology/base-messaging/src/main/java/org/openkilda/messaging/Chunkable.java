@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,20 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.model.v2;
+package org.openkilda.messaging;
 
-import org.openkilda.messaging.info.switches.v2.MisconfiguredInfo;
-import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
-
-import lombok.Value;
+import org.openkilda.messaging.info.InfoData;
 
 import java.util.List;
 
-@Value
-public class ValidateRulesResultV2 {
-    boolean asExpected;
-    List<RuleInfoEntryV2> missingRules;
-    List<RuleInfoEntryV2> properRules;
-    List<RuleInfoEntryV2> excessRules;
-    List<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules;
+public interface Chunkable<E extends InfoData> {
+    List<E> split(int chunkSize);
 }

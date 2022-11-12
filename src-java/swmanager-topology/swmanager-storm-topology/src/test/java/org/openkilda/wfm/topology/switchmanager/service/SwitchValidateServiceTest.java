@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
@@ -30,6 +31,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.LAG;
 
+import org.openkilda.messaging.Chunkable;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.grpc.DumpLogicalPortsRequest;
@@ -37,7 +39,6 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowDumpResponse;
 import org.openkilda.messaging.info.group.GroupDumpResponse;
 import org.openkilda.messaging.info.meter.MeterDumpResponse;
@@ -71,7 +72,6 @@ import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceIm
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import org.apache.storm.shade.com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -151,8 +151,8 @@ public class SwitchValidateServiceTest {
                 .build();
 
         when(validationService.validateRules(any(), any(), any(), anyBoolean()))
-                .thenReturn(new ValidateRulesResultV2(false, Sets.newHashSet(ruleEntry), emptySet(),
-                        emptySet(), emptySet()));
+                .thenReturn(new ValidateRulesResultV2(false, newArrayList(ruleEntry), emptyList(),
+                        emptyList(), emptyList()));
         when(validationService.validateMeters(any(), any(), any(), anyBoolean(), anyBoolean()))
                 .thenReturn(new ValidateMetersResultV2(false, emptyList(), emptyList(), emptyList(),
                         emptyList()));
@@ -219,11 +219,11 @@ public class SwitchValidateServiceTest {
         handleDataReceiveAndValidate();
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
-        ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
-        verify(carrier).response(eq(KEY), responseCaptor.capture());
-        SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue().getData();
+        ArgumentCaptor<Chunkable<?>> responseCaptor = ArgumentCaptor.forClass(Chunkable.class);
+        verify(carrier).responseChunks(eq(KEY), responseCaptor.capture());
+        SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue();
         assertEquals(flowSpeakerData.getCookie().getValue(),
-                Lists.newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
+                newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
@@ -247,12 +247,12 @@ public class SwitchValidateServiceTest {
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any(), anyBoolean());
         verify(validationService).validateGroups(eq(SWITCH_ID), any(), any(), anyBoolean());
         verify(carrier).cancelTimeoutCallback(eq(KEY));
-        ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
-        verify(carrier).response(eq(KEY), responseCaptor.capture());
+        ArgumentCaptor<Chunkable<?>> responseCaptor = ArgumentCaptor.forClass(Chunkable.class);
+        verify(carrier).responseChunks(eq(KEY), responseCaptor.capture());
 
-        SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue().getData();
+        SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue();
         assertEquals(flowSpeakerData.getCookie().getValue(),
-                Lists.newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
+                newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
         assertNull(response.getMeters());
 
         verifyNoMoreInteractions(carrier);
@@ -271,12 +271,12 @@ public class SwitchValidateServiceTest {
         verify(validationService).validateRules(eq(SWITCH_ID), any(), any(), anyBoolean());
         verify(validationService).validateGroups(eq(SWITCH_ID), any(), any(), anyBoolean());
         verify(carrier).cancelTimeoutCallback(eq(KEY));
-        ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
-        verify(carrier).response(eq(KEY), responseCaptor.capture());
+        ArgumentCaptor<Chunkable<?>> responseCaptor = ArgumentCaptor.forClass(Chunkable.class);
+        verify(carrier).responseChunks(eq(KEY), responseCaptor.capture());
 
-        SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue().getData();
+        SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue();
         assertEquals(flowSpeakerData.getCookie().getValue(),
-                Lists.newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
+                newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
         assertNull(response.getMeters());
 
         verifyNoMoreInteractions(carrier);
@@ -314,12 +314,12 @@ public class SwitchValidateServiceTest {
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
 
-        ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
-        verify(carrier).response(eq(KEY), responseCaptor.capture());
-        SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue().getData();
+        ArgumentCaptor<Chunkable<?>> responseCaptor = ArgumentCaptor.forClass(Chunkable.class);
+        verify(carrier).responseChunks(eq(KEY), responseCaptor.capture());
+        SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue();
 
         assertEquals(flowSpeakerData.getCookie().getValue(),
-                Lists.newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
+                newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
         assertEquals(SpeakerFailureException.makeMessage(getErrorMessage().getData()),
                 response.getLogicalPorts().getError());
 

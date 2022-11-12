@@ -214,10 +214,10 @@ public class ValidationMapperTest {
     private static List<GroupInfoEntryV2> excessGroups = new LinkedList<>();
     private static List<MisconfiguredInfo<GroupInfoEntryV2>> misconfiguredGroups = new LinkedList<>();
 
-    private static Set<RuleInfoEntryV2> missingRules = new HashSet<>();
-    private static Set<RuleInfoEntryV2> properRules = new HashSet<>();
-    private static Set<RuleInfoEntryV2> excessRules = new HashSet<>();
-    private static Set<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules = new HashSet<>();
+    private static List<RuleInfoEntryV2> missingRules = new LinkedList<>();
+    private static List<RuleInfoEntryV2> properRules = new LinkedList<>();
+    private static List<RuleInfoEntryV2> excessRules = new LinkedList<>();
+    private static List<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules = new LinkedList<>();
 
     private static List<MeterInfoEntryV2> missingMeters = new LinkedList<>();
     private static List<MeterInfoEntryV2> properMeters = new LinkedList<>();
