@@ -19,8 +19,6 @@ import static org.openkilda.messaging.Utils.getSize;
 import static org.openkilda.messaging.Utils.joinBooleans;
 import static org.openkilda.messaging.Utils.joinLists;
 
-import org.openkilda.messaging.Utils;
-
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
@@ -65,71 +63,16 @@ public class RulesValidationEntryV2 implements Serializable {
 
     List<RulesValidationEntryV2> split(int firstChunkSize, int chunkSize) {
         List<RulesValidationEntryV2> result = new ArrayList<>();
-        RulesValidationEntryV2Builder current = RulesValidationEntryV2.builder().asExpected(asExpected);
-        int currentSize = firstChunkSize;
-        boolean addCurrent = true;
-
-        if (excess != null) {
-            for (List<RuleInfoEntryV2> entry : Utils.split(excess, currentSize, chunkSize)) {
-                current.excess(entry);
-                currentSize -= entry.size();
-                addCurrent = true;
-                if (currentSize == 0) {
-                    result.add(current.build());
-                    current = RulesValidationEntryV2.builder().asExpected(asExpected);
-                    currentSize = chunkSize;
-                    addCurrent = false;
-                }
-            }
+        for (ValidationEntry<RuleInfoEntryV2> entry : ValidationEntry.split(
+                firstChunkSize, chunkSize, missing, excess, proper, misconfigured)) {
+            result.add(RulesValidationEntryV2.builder()
+                    .asExpected(asExpected)
+                    .missing(entry.getMissing())
+                    .excess(entry.getExcess())
+                    .proper(entry.getProper())
+                    .misconfigured(entry.getMisconfigured())
+                    .build());
         }
-
-        if (proper != null) {
-            for (List<RuleInfoEntryV2> entry : Utils.split(proper, currentSize, chunkSize)) {
-                current.proper(entry);
-                currentSize -= entry.size();
-                addCurrent = true;
-                if (currentSize == 0) {
-                    result.add(current.build());
-                    current = RulesValidationEntryV2.builder().asExpected(asExpected);
-                    currentSize = chunkSize;
-                    addCurrent = false;
-                }
-            }
-        }
-
-        if (missing != null) {
-            for (List<RuleInfoEntryV2> entry : Utils.split(missing, currentSize, chunkSize)) {
-                current.missing(entry);
-                currentSize -= entry.size();
-                addCurrent = true;
-                if (currentSize == 0) {
-                    result.add(current.build());
-                    current = RulesValidationEntryV2.builder().asExpected(asExpected);
-                    currentSize = chunkSize;
-                    addCurrent = false;
-                }
-            }
-        }
-
-        if (misconfigured != null) {
-            for (List<MisconfiguredInfo<RuleInfoEntryV2>> entry : Utils.split(
-                    misconfigured, currentSize, chunkSize)) {
-                current.misconfigured(entry);
-                currentSize -= entry.size();
-                addCurrent = true;
-                if (currentSize == 0) {
-                    result.add(current.build());
-                    current = RulesValidationEntryV2.builder().asExpected(asExpected);
-                    currentSize = chunkSize;
-                    addCurrent = false;
-                }
-            }
-        }
-
-        if (addCurrent) {
-            result.add(current.build());
-        }
-
         return result;
     }
 
