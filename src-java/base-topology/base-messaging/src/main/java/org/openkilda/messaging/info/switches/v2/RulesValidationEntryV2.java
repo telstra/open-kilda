@@ -42,10 +42,7 @@ public class RulesValidationEntryV2 implements Serializable {
     private List<RuleInfoEntryV2> missing;
     private List<MisconfiguredInfo<RuleInfoEntryV2>> misconfigured;
 
-    /**
-     * Unites several entries into one.
-     */
-    public static RulesValidationEntryV2 unite(List<RulesValidationEntryV2> entryList) {
+    static RulesValidationEntryV2 unite(List<RulesValidationEntryV2> entryList) {
         if (entryList == null) {
             return null;
         }
@@ -66,22 +63,22 @@ public class RulesValidationEntryV2 implements Serializable {
         return builder.build();
     }
 
-    /**
-     * Splits entry.
-     */
-    public List<RulesValidationEntryV2> split(int firstChunkSize, int chunkSize) {
+    List<RulesValidationEntryV2> split(int firstChunkSize, int chunkSize) {
         List<RulesValidationEntryV2> result = new ArrayList<>();
         RulesValidationEntryV2Builder current = RulesValidationEntryV2.builder().asExpected(asExpected);
         int currentSize = firstChunkSize;
+        boolean addCurrent = true;
 
         if (excess != null) {
             for (List<RuleInfoEntryV2> entry : Utils.split(excess, currentSize, chunkSize)) {
                 current.excess(entry);
                 currentSize -= entry.size();
+                addCurrent = true;
                 if (currentSize == 0) {
                     result.add(current.build());
                     current = RulesValidationEntryV2.builder().asExpected(asExpected);
                     currentSize = chunkSize;
+                    addCurrent = false;
                 }
             }
         }
@@ -90,10 +87,12 @@ public class RulesValidationEntryV2 implements Serializable {
             for (List<RuleInfoEntryV2> entry : Utils.split(proper, currentSize, chunkSize)) {
                 current.proper(entry);
                 currentSize -= entry.size();
+                addCurrent = true;
                 if (currentSize == 0) {
                     result.add(current.build());
                     current = RulesValidationEntryV2.builder().asExpected(asExpected);
                     currentSize = chunkSize;
+                    addCurrent = false;
                 }
             }
         }
@@ -102,10 +101,12 @@ public class RulesValidationEntryV2 implements Serializable {
             for (List<RuleInfoEntryV2> entry : Utils.split(missing, currentSize, chunkSize)) {
                 current.missing(entry);
                 currentSize -= entry.size();
+                addCurrent = true;
                 if (currentSize == 0) {
                     result.add(current.build());
                     current = RulesValidationEntryV2.builder().asExpected(asExpected);
                     currentSize = chunkSize;
+                    addCurrent = false;
                 }
             }
         }
@@ -115,22 +116,24 @@ public class RulesValidationEntryV2 implements Serializable {
                     misconfigured, currentSize, chunkSize)) {
                 current.misconfigured(entry);
                 currentSize -= entry.size();
+                addCurrent = true;
                 if (currentSize == 0) {
                     result.add(current.build());
                     current = RulesValidationEntryV2.builder().asExpected(asExpected);
                     currentSize = chunkSize;
+                    addCurrent = false;
                 }
             }
         }
 
-        if (result.isEmpty() || currentSize < chunkSize) {
+        if (addCurrent) {
             result.add(current.build());
         }
 
         return result;
     }
 
-    public int size() {
+    int size() {
         return getSize(excess) + getSize(proper) + getSize(missing) + getSize(misconfigured);
     }
 }

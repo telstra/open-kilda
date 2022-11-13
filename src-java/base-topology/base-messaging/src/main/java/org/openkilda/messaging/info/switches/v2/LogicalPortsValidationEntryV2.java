@@ -43,10 +43,7 @@ public class LogicalPortsValidationEntryV2 implements Serializable {
     private List<LogicalPortInfoEntryV2> missing;
     private List<MisconfiguredInfo<LogicalPortInfoEntryV2>> misconfigured;
 
-    /**
-     * Unites several entries into one.
-     */
-    public static LogicalPortsValidationEntryV2 unite(List<LogicalPortsValidationEntryV2> entryList) {
+    static LogicalPortsValidationEntryV2 unite(List<LogicalPortsValidationEntryV2> entryList) {
         if (entryList == null) {
             return null;
         }
@@ -67,22 +64,22 @@ public class LogicalPortsValidationEntryV2 implements Serializable {
         return builder.build();
     }
 
-    /**
-     * Splits entry.
-     */
-    public List<LogicalPortsValidationEntryV2> split(int firstChunkSize, int chunkSize) {
+    List<LogicalPortsValidationEntryV2> split(int firstChunkSize, int chunkSize) {
         List<LogicalPortsValidationEntryV2> result = new ArrayList<>();
         LogicalPortsValidationEntryV2Builder current = LogicalPortsValidationEntryV2.builder().asExpected(asExpected);
         int currentSize = firstChunkSize;
+        boolean addCurrent = true;
 
         if (excess != null) {
             for (List<LogicalPortInfoEntryV2> entry : Utils.split(excess, currentSize, chunkSize)) {
                 current.excess(entry);
                 currentSize -= entry.size();
+                addCurrent = true;
                 if (currentSize == 0) {
                     result.add(current.build());
                     current = LogicalPortsValidationEntryV2.builder().asExpected(asExpected);
                     currentSize = chunkSize;
+                    addCurrent = false;
                 }
             }
         }
@@ -91,10 +88,12 @@ public class LogicalPortsValidationEntryV2 implements Serializable {
             for (List<LogicalPortInfoEntryV2> entry : Utils.split(proper, currentSize, chunkSize)) {
                 current.proper(entry);
                 currentSize -= entry.size();
+                addCurrent = true;
                 if (currentSize == 0) {
                     result.add(current.build());
                     current = LogicalPortsValidationEntryV2.builder().asExpected(asExpected);
                     currentSize = chunkSize;
+                    addCurrent = false;
                 }
             }
         }
@@ -103,10 +102,12 @@ public class LogicalPortsValidationEntryV2 implements Serializable {
             for (List<LogicalPortInfoEntryV2> entry : Utils.split(missing, currentSize, chunkSize)) {
                 current.missing(entry);
                 currentSize -= entry.size();
+                addCurrent = true;
                 if (currentSize == 0) {
                     result.add(current.build());
                     current = LogicalPortsValidationEntryV2.builder().asExpected(asExpected);
                     currentSize = chunkSize;
+                    addCurrent = false;
                 }
             }
         }
@@ -116,22 +117,24 @@ public class LogicalPortsValidationEntryV2 implements Serializable {
                     misconfigured, currentSize, chunkSize)) {
                 current.misconfigured(entry);
                 currentSize -= entry.size();
+                addCurrent = true;
                 if (currentSize == 0) {
                     result.add(current.build());
                     current = LogicalPortsValidationEntryV2.builder().asExpected(asExpected);
                     currentSize = chunkSize;
+                    addCurrent = false;
                 }
             }
         }
 
-        if (result.isEmpty() || currentSize < chunkSize) {
+        if (addCurrent) {
             result.add(current.build());
         }
 
         return result;
     }
 
-    public int size() {
+    int size() {
         return getSize(excess) + getSize(proper) + getSize(missing) + getSize(misconfigured);
     }
 }

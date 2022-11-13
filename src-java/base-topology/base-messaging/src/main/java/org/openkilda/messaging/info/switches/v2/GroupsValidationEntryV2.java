@@ -44,10 +44,7 @@ public class GroupsValidationEntryV2 implements Serializable {
     private List<GroupInfoEntryV2> missing;
     private List<MisconfiguredInfo<GroupInfoEntryV2>> misconfigured;
 
-    /**
-     * Unites several entries into one.
-     */
-    public static GroupsValidationEntryV2 unite(List<GroupsValidationEntryV2> entryList) {
+    static GroupsValidationEntryV2 unite(List<GroupsValidationEntryV2> entryList) {
         if (entryList == null) {
             return null;
         }
@@ -69,22 +66,22 @@ public class GroupsValidationEntryV2 implements Serializable {
         return builder.build();
     }
 
-    /**
-     * Splits entry.
-     */
-    public List<GroupsValidationEntryV2> split(int firstChunkSize, int chunkSize) {
+    List<GroupsValidationEntryV2> split(int firstChunkSize, int chunkSize) {
         List<GroupsValidationEntryV2> result = new ArrayList<>();
         GroupsValidationEntryV2Builder current = GroupsValidationEntryV2.builder().asExpected(asExpected);
         int currentSize = firstChunkSize;
+        boolean addCurrent = true;
 
         if (excess != null) {
             for (List<GroupInfoEntryV2> entry : Utils.split(excess, currentSize, chunkSize)) {
                 current.excess(entry);
                 currentSize -= entry.size();
+                addCurrent = true;
                 if (currentSize == 0) {
                     result.add(current.build());
                     current = GroupsValidationEntryV2.builder().asExpected(asExpected);
                     currentSize = chunkSize;
+                    addCurrent = false;
                 }
             }
         }
@@ -93,10 +90,12 @@ public class GroupsValidationEntryV2 implements Serializable {
             for (List<GroupInfoEntryV2> entry : Utils.split(proper, currentSize, chunkSize)) {
                 current.proper(entry);
                 currentSize -= entry.size();
+                addCurrent = true;
                 if (currentSize == 0) {
                     result.add(current.build());
                     current = GroupsValidationEntryV2.builder().asExpected(asExpected);
                     currentSize = chunkSize;
+                    addCurrent = false;
                 }
             }
         }
@@ -105,10 +104,12 @@ public class GroupsValidationEntryV2 implements Serializable {
             for (List<GroupInfoEntryV2> entry : Utils.split(missing, currentSize, chunkSize)) {
                 current.missing(entry);
                 currentSize -= entry.size();
+                addCurrent = true;
                 if (currentSize == 0) {
                     result.add(current.build());
                     current = GroupsValidationEntryV2.builder().asExpected(asExpected);
                     currentSize = chunkSize;
+                    addCurrent = false;
                 }
             }
         }
@@ -117,22 +118,24 @@ public class GroupsValidationEntryV2 implements Serializable {
             for (List<MisconfiguredInfo<GroupInfoEntryV2>> entry : Utils.split(misconfigured, currentSize, chunkSize)) {
                 current.misconfigured(entry);
                 currentSize -= entry.size();
+                addCurrent = true;
                 if (currentSize == 0) {
                     result.add(current.build());
                     current = GroupsValidationEntryV2.builder().asExpected(asExpected);
                     currentSize = chunkSize;
+                    addCurrent = false;
                 }
             }
         }
 
-        if (result.isEmpty() || currentSize < chunkSize) {
+        if (addCurrent) {
             result.add(current.build());
         }
 
         return result;
     }
 
-    public int size() {
+    int size() {
         return getSize(excess) + getSize(proper) + getSize(missing) + getSize(misconfigured);
     }
 }
