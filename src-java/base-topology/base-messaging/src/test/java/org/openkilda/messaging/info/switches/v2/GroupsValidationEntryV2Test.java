@@ -38,7 +38,7 @@ public class GroupsValidationEntryV2Test {
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(4, 4);
         assertEquals(1, list.size());
-        GroupsValidationEntryV2 united = GroupsValidationEntryV2.unite(list);
+        GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -53,7 +53,7 @@ public class GroupsValidationEntryV2Test {
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(4, 4);
         assertEquals(1, list.size());
-        GroupsValidationEntryV2 united = GroupsValidationEntryV2.unite(list);
+        GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -68,7 +68,7 @@ public class GroupsValidationEntryV2Test {
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(4, 4);
         assertEquals(1, list.size());
-        GroupsValidationEntryV2 united = GroupsValidationEntryV2.unite(list);
+        GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -83,7 +83,7 @@ public class GroupsValidationEntryV2Test {
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(1, 1);
         assertEquals(4, list.size());
-        GroupsValidationEntryV2 united = GroupsValidationEntryV2.unite(list);
+        GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -98,7 +98,7 @@ public class GroupsValidationEntryV2Test {
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(2, 2);
         assertEquals(3, list.size());
-        GroupsValidationEntryV2 united = GroupsValidationEntryV2.unite(list);
+        GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -113,7 +113,7 @@ public class GroupsValidationEntryV2Test {
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(2, 3);
         assertEquals(4, list.size());
-        GroupsValidationEntryV2 united = GroupsValidationEntryV2.unite(list);
+        GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -128,7 +128,7 @@ public class GroupsValidationEntryV2Test {
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(100, 200);
         assertEquals(1, list.size());
-        GroupsValidationEntryV2 united = GroupsValidationEntryV2.unite(list);
+        GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -143,7 +143,7 @@ public class GroupsValidationEntryV2Test {
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(100, 200);
         assertEquals(14, list.size());
-        GroupsValidationEntryV2 united = GroupsValidationEntryV2.unite(list);
+        GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -158,7 +158,7 @@ public class GroupsValidationEntryV2Test {
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(1, 1);
         assertEquals(2600, list.size());
-        GroupsValidationEntryV2 united = GroupsValidationEntryV2.unite(list);
+        GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 

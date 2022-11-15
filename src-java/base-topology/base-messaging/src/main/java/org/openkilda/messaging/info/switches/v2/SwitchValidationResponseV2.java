@@ -127,16 +127,16 @@ public class SwitchValidationResponseV2 extends InfoData implements Chunkable<Sw
         SwitchValidationResponseV2Builder result = SwitchValidationResponseV2.builder();
         result.asExpected(Utils.joinBooleans(nonNullData.stream().map(SwitchValidationResponseV2::isAsExpected)
                 .collect(Collectors.toList())));
-        result.groups(GroupsValidationEntryV2.unite(nonNullData.stream()
+        result.groups(GroupsValidationEntryV2.join(nonNullData.stream()
                 .map(SwitchValidationResponseV2::getGroups)
                 .collect(Collectors.toList())));
-        result.rules(RulesValidationEntryV2.unite(nonNullData.stream()
+        result.rules(RulesValidationEntryV2.join(nonNullData.stream()
                 .map(SwitchValidationResponseV2::getRules)
                 .collect(Collectors.toList())));
-        result.meters(MetersValidationEntryV2.unite(nonNullData.stream()
+        result.meters(MetersValidationEntryV2.join(nonNullData.stream()
                 .map(SwitchValidationResponseV2::getMeters)
                 .collect(Collectors.toList())));
-        result.logicalPorts(LogicalPortsValidationEntryV2.unite(nonNullData.stream()
+        result.logicalPorts(LogicalPortsValidationEntryV2.join(nonNullData.stream()
                 .map(SwitchValidationResponseV2::getLogicalPorts)
                 .collect(Collectors.toList())));
         return result.build();

@@ -40,7 +40,7 @@ public class MetersValidationEntryV2 implements Serializable {
     private List<MeterInfoEntryV2> missing;
     private List<MisconfiguredInfo<MeterInfoEntryV2>> misconfigured;
 
-    static MetersValidationEntryV2 unite(List<MetersValidationEntryV2> entryList) {
+    static MetersValidationEntryV2 join(List<MetersValidationEntryV2> entryList) {
         if (entryList == null) {
             return null;
         }

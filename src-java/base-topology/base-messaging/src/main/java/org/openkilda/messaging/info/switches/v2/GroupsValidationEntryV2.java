@@ -42,7 +42,7 @@ public class GroupsValidationEntryV2 implements Serializable {
     private List<GroupInfoEntryV2> missing;
     private List<MisconfiguredInfo<GroupInfoEntryV2>> misconfigured;
 
-    static GroupsValidationEntryV2 unite(List<GroupsValidationEntryV2> entryList) {
+    static GroupsValidationEntryV2 join(List<GroupsValidationEntryV2> entryList) {
         if (entryList == null) {
             return null;
         }

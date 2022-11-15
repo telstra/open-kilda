@@ -40,7 +40,7 @@ public class RulesValidationEntryV2 implements Serializable {
     private List<RuleInfoEntryV2> missing;
     private List<MisconfiguredInfo<RuleInfoEntryV2>> misconfigured;
 
-    static RulesValidationEntryV2 unite(List<RulesValidationEntryV2> entryList) {
+    static RulesValidationEntryV2 join(List<RulesValidationEntryV2> entryList) {
         if (entryList == null) {
             return null;
         }

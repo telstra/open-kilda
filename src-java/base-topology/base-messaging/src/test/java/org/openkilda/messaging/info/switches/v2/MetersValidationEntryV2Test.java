@@ -36,7 +36,7 @@ public class MetersValidationEntryV2Test {
                 .build();
         List<MetersValidationEntryV2> list = entry.split(4, 4);
         assertEquals(1, list.size());
-        MetersValidationEntryV2 united = MetersValidationEntryV2.unite(list);
+        MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -51,7 +51,7 @@ public class MetersValidationEntryV2Test {
                 .build();
         List<MetersValidationEntryV2> list = entry.split(4, 4);
         assertEquals(1, list.size());
-        MetersValidationEntryV2 united = MetersValidationEntryV2.unite(list);
+        MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -66,7 +66,7 @@ public class MetersValidationEntryV2Test {
                 .build();
         List<MetersValidationEntryV2> list = entry.split(4, 4);
         assertEquals(1, list.size());
-        MetersValidationEntryV2 united = MetersValidationEntryV2.unite(list);
+        MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -81,7 +81,7 @@ public class MetersValidationEntryV2Test {
                 .build();
         List<MetersValidationEntryV2> list = entry.split(2, 2);
         assertEquals(3, list.size());
-        MetersValidationEntryV2 united = MetersValidationEntryV2.unite(list);
+        MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -96,7 +96,7 @@ public class MetersValidationEntryV2Test {
                 .build();
         List<MetersValidationEntryV2> list = entry.split(1, 1);
         assertEquals(4, list.size());
-        MetersValidationEntryV2 united = MetersValidationEntryV2.unite(list);
+        MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -111,7 +111,7 @@ public class MetersValidationEntryV2Test {
                 .build();
         List<MetersValidationEntryV2> list = entry.split(2, 3);
         assertEquals(4, list.size());
-        MetersValidationEntryV2 united = MetersValidationEntryV2.unite(list);
+        MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -126,7 +126,7 @@ public class MetersValidationEntryV2Test {
                 .build();
         List<MetersValidationEntryV2> list = entry.split(100, 200);
         assertEquals(1, list.size());
-        MetersValidationEntryV2 united = MetersValidationEntryV2.unite(list);
+        MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -141,7 +141,7 @@ public class MetersValidationEntryV2Test {
                 .build();
         List<MetersValidationEntryV2> list = entry.split(100, 200);
         assertEquals(14, list.size());
-        MetersValidationEntryV2 united = MetersValidationEntryV2.unite(list);
+        MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -156,7 +156,7 @@ public class MetersValidationEntryV2Test {
                 .build();
         List<MetersValidationEntryV2> list = entry.split(1, 1);
         assertEquals(2600, list.size());
-        MetersValidationEntryV2 united = MetersValidationEntryV2.unite(list);
+        MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 

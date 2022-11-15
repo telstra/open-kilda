@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -211,10 +212,12 @@ public final class Utils {
     }
 
     /**
-     * Joins several booleans.
+     * Joins collection of booleans.
      */
     public static boolean joinBooleans(Collection<Boolean> booleans) {
-        Set<Boolean> set = booleans.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Boolean> set = new HashSet<>(booleans);
+        set.remove(null);
+
         if (set.size() > 1) {
             throw new IllegalArgumentException(String.format("Stream %s contains true and false booleans. "
                     + "It must contain only one value of boolean or null values.", booleans));
@@ -231,13 +234,22 @@ public final class Utils {
 
     /**
      * Splits lists on chunks.
+     *
+     * @param list list to be split
+     * @param chunkSize size of chunks
+     * @return list of chunks
      */
     public static <E> List<List<E>> split(List<E> list, int chunkSize) {
         return split(list, chunkSize, chunkSize);
     }
 
     /**
-     * Splits lists on chunks.
+     * Splits lists on chunks with first chunk size different to the rest.
+     *
+     * @param list list to be split
+     * @param firstChunkSize size of first chunk
+     * @param chunkSize size of rest chunks
+     * @return list of chunks
      */
     public static <E> List<List<E>> split(List<E> list, int firstChunkSize, int chunkSize) {
         List<List<E>> result = new ArrayList<>();

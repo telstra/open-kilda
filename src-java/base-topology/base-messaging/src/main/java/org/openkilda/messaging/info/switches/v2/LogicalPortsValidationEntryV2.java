@@ -41,7 +41,7 @@ public class LogicalPortsValidationEntryV2 implements Serializable {
     private List<LogicalPortInfoEntryV2> missing;
     private List<MisconfiguredInfo<LogicalPortInfoEntryV2>> misconfigured;
 
-    static LogicalPortsValidationEntryV2 unite(List<LogicalPortsValidationEntryV2> entryList) {
+    static LogicalPortsValidationEntryV2 join(List<LogicalPortsValidationEntryV2> entryList) {
         if (entryList == null) {
             return null;
         }

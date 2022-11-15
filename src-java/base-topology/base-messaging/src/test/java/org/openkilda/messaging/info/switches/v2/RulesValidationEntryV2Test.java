@@ -44,7 +44,7 @@ public class RulesValidationEntryV2Test {
                 .build();
         List<RulesValidationEntryV2> list = entry.split(4, 4);
         assertEquals(1, list.size());
-        RulesValidationEntryV2 united = RulesValidationEntryV2.unite(list);
+        RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -59,7 +59,7 @@ public class RulesValidationEntryV2Test {
                 .build();
         List<RulesValidationEntryV2> list = entry.split(4, 4);
         assertEquals(1, list.size());
-        RulesValidationEntryV2 united = RulesValidationEntryV2.unite(list);
+        RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -74,7 +74,7 @@ public class RulesValidationEntryV2Test {
                 .build();
         List<RulesValidationEntryV2> list = entry.split(4, 4);
         assertEquals(1, list.size());
-        RulesValidationEntryV2 united = RulesValidationEntryV2.unite(list);
+        RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -89,7 +89,7 @@ public class RulesValidationEntryV2Test {
                 .build();
         List<RulesValidationEntryV2> list = entry.split(1, 1);
         assertEquals(4, list.size());
-        RulesValidationEntryV2 united = RulesValidationEntryV2.unite(list);
+        RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -104,7 +104,7 @@ public class RulesValidationEntryV2Test {
                 .build();
         List<RulesValidationEntryV2> list = entry.split(2, 3);
         assertEquals(4, list.size());
-        RulesValidationEntryV2 united = RulesValidationEntryV2.unite(list);
+        RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -119,7 +119,7 @@ public class RulesValidationEntryV2Test {
                 .build();
         List<RulesValidationEntryV2> list = entry.split(100, 200);
         assertEquals(1, list.size());
-        RulesValidationEntryV2 united = RulesValidationEntryV2.unite(list);
+        RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -134,7 +134,7 @@ public class RulesValidationEntryV2Test {
                 .build();
         List<RulesValidationEntryV2> list = entry.split(2, 2);
         assertEquals(3, list.size());
-        RulesValidationEntryV2 united = RulesValidationEntryV2.unite(list);
+        RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -149,7 +149,7 @@ public class RulesValidationEntryV2Test {
                 .build();
         List<RulesValidationEntryV2> list = entry.split(100, 200);
         assertEquals(14, list.size());
-        RulesValidationEntryV2 united = RulesValidationEntryV2.unite(list);
+        RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
@@ -164,7 +164,7 @@ public class RulesValidationEntryV2Test {
                 .build();
         List<RulesValidationEntryV2> list = entry.split(1, 1);
         assertEquals(2600, list.size());
-        RulesValidationEntryV2 united = RulesValidationEntryV2.unite(list);
+        RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
         assertEquals(entry, united);
     }
 
