@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.PathComputationStrategy
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat
 import static spock.util.matcher.HamcrestSupport.expect
@@ -106,6 +109,92 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                         additionalIgnores: []
                 ]
         ]
+    }
+
+    @Tidy
+    def "User can update y-flow where one of subflows has both ends on shared switch"() {
+        given: "Existing y-flow where one of subflows has both ends on shared switch"
+        def switchTriplet = topologyHelper.getSwitchTriplets().first()
+        switchTriplet.setEp1(switchTriplet.getShared())
+        def yFlowRequest = yFlowHelper.randomYFlow(switchTriplet, false)
+        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
+        def oldSharedSwitch = yFlow.sharedEndpoint.switchId
+        yFlow.setDescription("new description")
+        def endPoint = yFlow.getSubFlows().get(0).getEndpoint()
+        endPoint.setPortNumber(topology.getAllowedPortsForSwitch(topology.find(endPoint.getSwitchId())).first())
+        List<Switch> involvedSwitches = pathHelper.getInvolvedYSwitches(yFlow.YFlowId)
+        def update = yFlowHelper.convertToUpdate(yFlow)
+
+        when: "Update the y-flow"
+        def updateResponse = yFlowHelper.updateYFlow(yFlow.YFlowId, update)
+        //update involved switches after update
+        involvedSwitches.addAll(pathHelper.getInvolvedYSwitches(yFlow.YFlowId))
+        involvedSwitches.unique { it.dpId }
+        def ignores = ["subFlows.timeUpdate", "subFlows.status", "timeUpdate", "status",
+                       "subFlows.description" /* https://github.com/telstra/open-kilda/issues/4984 */]
+
+        then: "Requested updates are reflected in the response and in 'get' API"
+        expect updateResponse, sameBeanAs(yFlow, ignores)
+        expect northboundV2.getYFlow(yFlow.YFlowId), sameBeanAs(yFlow, ignores)
+
+        and: "All related switches have no discrepancies"
+        involvedSwitches.each { sw ->
+            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        }
+
+        cleanup:
+        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+    }
+
+    @Tidy
+    def "User can partially update fields of one-switch y-flow"() {
+        given: "Existing one-switch y-flow"
+        def singleSwitch = topologyHelper.getRandomSwitch()
+        def switchId = singleSwitch.dpId
+        def yFlowRequest = yFlowHelper.singleSwitchYFlow(singleSwitch, false)
+        yFlowRequest.setMaxLatency(50)
+        yFlowRequest.setMaxLatencyTier2(100)
+        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
+        def patch = YFlowPatchPayload.builder()
+                .maximumBandwidth(yFlow.maximumBandwidth * 2)
+        .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY.toString().toLowerCase())
+        .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase())
+        .maxLatency(yFlow.maxLatency * 2)
+        .maxLatencyTier2(yFlow.maxLatencyTier2 * 2)
+        .ignoreBandwidth(true)
+        .pinned(true)
+        .priority(10)
+        .strictBandwidth(false)
+        .description("updated description")
+        .build()
+        yFlow.setMaximumBandwidth(patch.getMaximumBandwidth())
+        yFlow.setPathComputationStrategy(patch.getPathComputationStrategy())
+        yFlow.setEncapsulationType(patch.getEncapsulationType())
+        yFlow.setMaxLatency(patch.getMaxLatency())
+        yFlow.setMaxLatencyTier2(patch.getMaxLatencyTier2())
+        yFlow.setIgnoreBandwidth(patch.getIgnoreBandwidth())
+        yFlow.setPinned(patch.getPinned())
+        yFlow.setPriority(patch.getPriority())
+        yFlow.setStrictBandwidth(patch.getStrictBandwidth())
+        yFlow.setDescription(patch.getDescription())
+
+
+        when: "Partial update the y-flow"
+        def updateResponse = yFlowHelper.partialUpdateYFlow(yFlow.YFlowId, patch)
+        def ignores = ["subFlows", "timeUpdate", "status"]
+
+        then: "Requested updates are reflected in the response and in 'get' API"
+        expect updateResponse, sameBeanAs(yFlow, ignores)
+        expect northboundV2.getYFlow(yFlow.YFlowId), sameBeanAs(yFlow, ignores)
+
+        and: "All related switches have no discrepancies"
+        northbound.validateSwitch(switchId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        northbound.validateSwitch(switchId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+
+
+        cleanup:
+        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
     @Tidy
