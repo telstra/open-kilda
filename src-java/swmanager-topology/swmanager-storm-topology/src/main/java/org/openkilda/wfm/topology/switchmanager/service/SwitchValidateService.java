@@ -36,6 +36,7 @@ import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchVali
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
 import org.openkilda.wfm.topology.switchmanager.model.SwitchEntities;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
 import lombok.Getter;
@@ -124,7 +125,8 @@ public class SwitchValidateService implements SwitchManagerHubService {
         SwitchManagerCarrierCookieDecorator fsmCarrier = new SwitchManagerCarrierCookieDecorator(carrier, key);
         SwitchValidateFsm fsm =
                 builder.newStateMachine(
-                        SwitchValidateState.START, fsmCarrier, key, request, validationService, persistenceManager);
+                        SwitchValidateState.START, fsmCarrier, key, request, validationService, persistenceManager,
+                        request.getValidationFilters());
         MeterRegistryHolder.getRegistry().ifPresent(registry -> {
             Sample sample = LongTaskTimer.builder("fsm.active_execution")
                     .register(registry)
@@ -142,9 +144,7 @@ public class SwitchValidateService implements SwitchManagerHubService {
         });
         handlers.put(key, fsm);
 
-        SwitchValidateContext initialContext = SwitchValidateContext.builder()
-                .validationFilters(request.getValidationFilters())
-                .build();
+        SwitchValidateContext initialContext = SwitchValidateContext.builder().build();
 
         fsm.start();
 
@@ -198,7 +198,8 @@ public class SwitchValidateService implements SwitchManagerHubService {
         handle(handler, event, context);
     }
 
-    private void handle(SwitchValidateFsm fsm, SwitchValidateEvent event, SwitchValidateContext context) {
+    @VisibleForTesting
+    void handle(SwitchValidateFsm fsm, SwitchValidateEvent event, SwitchValidateContext context) {
         fsmExecutor.fire(fsm, event, context);
         removeIfCompleted(fsm);
     }

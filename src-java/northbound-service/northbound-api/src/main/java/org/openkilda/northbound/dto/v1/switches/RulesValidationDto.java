@@ -23,6 +23,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -62,4 +63,7 @@ public class RulesValidationDto implements HexView {
         return toHex(excess);
     }
 
+    public static RulesValidationDto empty() {
+        return new RulesValidationDto(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+    }
 }

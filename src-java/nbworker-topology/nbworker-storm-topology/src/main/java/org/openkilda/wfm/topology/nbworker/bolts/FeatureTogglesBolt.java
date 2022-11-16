@@ -94,7 +94,6 @@ public class FeatureTogglesBolt extends PersistenceOperationsBolt implements IFe
         SwitchValidateRequest data = SwitchValidateRequest.builder()
                 .switchId(switchId)
                 .performSync(true)
-                .processMeters(true)
                 .removeExcess(true)
                 .validationFilters(ValidationFilter.ALL_WITHOUT_FLOW_INFO)
                 .build();

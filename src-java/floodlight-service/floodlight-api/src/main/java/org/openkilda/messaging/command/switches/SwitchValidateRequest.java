@@ -35,10 +35,6 @@ public class SwitchValidateRequest extends CommandData {
     @JsonProperty("switch_id")
     SwitchId switchId;
 
-    @Deprecated
-    @JsonProperty("process_meters")
-    boolean processMeters;
-
     @JsonProperty("perform_sync")
     boolean performSync;
 
@@ -52,12 +48,10 @@ public class SwitchValidateRequest extends CommandData {
     @Builder(toBuilder = true)
     @JsonCreator
     public SwitchValidateRequest(@NonNull @JsonProperty("switch_id") SwitchId switchId,
-                                 @JsonProperty("process_meters") boolean processMeters,
                                  @JsonProperty("perform_sync") boolean performSync,
                                  @JsonProperty("remove_excess") boolean removeExcess,
                                  @JsonProperty("validation_filters") Set<ValidationFilter> validationFilters) {
         this.switchId = switchId;
-        this.processMeters = processMeters;
         this.performSync = performSync;
         this.removeExcess = removeExcess;
         this.validationFilters = validationFilters;

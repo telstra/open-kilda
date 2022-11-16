@@ -109,7 +109,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
 
     public SwitchValidateFsm(
             SwitchManagerCarrier carrier, String key, SwitchValidateRequest request,
-            ValidationService validationService, PersistenceManager persistenceManager) {
+            ValidationService validationService, PersistenceManager persistenceManager,
+            Set<ValidationFilter> validationFilters) {
         this.carrier = carrier;
         this.key = key;
         this.request = request;
@@ -120,6 +121,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
 
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
+        this.validationFilters = validationFilters;
     }
 
     /**
@@ -137,7 +139,8 @@ public class SwitchValidateFsm extends AbstractStateMachine<
                 String.class,
                 SwitchValidateRequest.class,
                 ValidationService.class,
-                PersistenceManager.class);
+                PersistenceManager.class,
+                Set.class);
 
         // START
         builder.transition().from(SwitchValidateState.START).to(SwitchValidateState.COLLECT_DATA).on(NEXT);
@@ -197,8 +200,6 @@ public class SwitchValidateFsm extends AbstractStateMachine<
             if (!sw.isPresent()) {
                 throw new SwitchNotFoundException(switchId);
             }
-
-            this.validationFilters = context.getValidationFilters();
 
             requestSwitchExpectedEntities();
 
@@ -570,10 +571,9 @@ public class SwitchValidateFsm extends AbstractStateMachine<
     }
 
     @Data
-    @Builder
+    @Builder(toBuilder = true)
     public static class SwitchValidateContext {
 
-        Set<ValidationFilter> validationFilters;
         List<FlowSpeakerData> flowEntries;
         List<MeterSpeakerData> meterEntries;
         List<GroupSpeakerData> groupEntries;

@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NonNull;
 
 import java.io.Serializable;
 
@@ -28,5 +29,6 @@ import java.io.Serializable;
 public class MisconfiguredInfo<T> implements Serializable {
     private String id;
     private T discrepancies;
+    @NonNull
     private T expected;
 }

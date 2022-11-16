@@ -21,6 +21,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -33,4 +34,9 @@ public class LogicalPortsValidationDto {
     private List<LogicalPortInfoDto> proper;
     private List<LogicalPortInfoDto> excess;
     private String error;
+
+    public static LogicalPortsValidationDto empty() {
+        return new LogicalPortsValidationDto(
+                new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), "");
+    }
 }
