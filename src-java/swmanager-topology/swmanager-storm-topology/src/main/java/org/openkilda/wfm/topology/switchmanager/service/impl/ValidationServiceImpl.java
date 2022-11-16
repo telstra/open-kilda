@@ -71,7 +71,6 @@ import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -166,10 +165,10 @@ public class ValidationServiceImpl implements ValidationService {
 
         return new ValidateRulesResultV2(
                 missingRules.isEmpty() && misconfiguredRules.isEmpty() && excessRules.isEmpty(),
-                ImmutableSet.copyOf(missingRules),
-                ImmutableSet.copyOf(properRules),
-                ImmutableSet.copyOf(excessRules),
-                ImmutableSet.copyOf(misconfiguredRules));
+                ImmutableList.copyOf(missingRules),
+                ImmutableList.copyOf(properRules),
+                ImmutableList.copyOf(excessRules),
+                ImmutableList.copyOf(misconfiguredRules));
     }
 
     @Override

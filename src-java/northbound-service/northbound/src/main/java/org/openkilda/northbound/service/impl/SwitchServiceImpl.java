@@ -320,8 +320,11 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
                 request,
                 System.currentTimeMillis(), RequestCorrelationId.getId());
 
-        return messagingChannel.sendAndGet(switchManagerTopic, validateCommandMessage)
-                .thenApply(SwitchValidationResponseV2.class::cast);
+        return messagingChannel.sendAndGetChunked(switchManagerTopic, validateCommandMessage)
+                .thenApply(response -> SwitchValidationResponseV2.unite(
+                        response.stream()
+                                .map(SwitchValidationResponseV2.class::cast)
+                                .collect(Collectors.toList())));
     }
 
     @Override

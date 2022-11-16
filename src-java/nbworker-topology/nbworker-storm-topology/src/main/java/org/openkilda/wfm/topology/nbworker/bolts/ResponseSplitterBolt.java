@@ -18,19 +18,16 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 import static org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper.BOLT_KEY;
 import static org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE;
 
-import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class ResponseSplitterBolt extends AbstractBolt {
@@ -46,22 +43,8 @@ public class ResponseSplitterBolt extends AbstractBolt {
     }
 
     private void sendChunkedResponse(List<InfoData> responses, Tuple input, String requestId) {
-        List<Message> messages = new ArrayList<>(responses.size());
-        if (CollectionUtils.isEmpty(responses)) {
-            log.debug("No records found in the database");
-            Message message = new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId, requestId,
-                    responses.size());
-            messages.add(message);
-        } else {
-            int i = 0;
-            for (InfoData data : responses) {
-                Message message = new ChunkedInfoMessage(data, System.currentTimeMillis(), requestId, i++,
-                        responses.size());
-                messages.add(message);
-            }
-
-            log.debug("Response is divided into {} messages", messages.size());
-        }
+        List<ChunkedInfoMessage> messages = ChunkedInfoMessage.createChunkedList(responses, requestId);
+        log.debug("Response is divided into {} messages", messages.size());
 
         // emit all found messages
         messages.forEach(message ->

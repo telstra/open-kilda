@@ -13,27 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.flow;
+package org.openkilda.messaging;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.rulemanager.FlowSpeakerData;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
+import java.util.List;
 
-@Value
-@EqualsAndHashCode(callSuper = false)
-public class SingleFlowDumpResponse extends InfoData {
-
-    @JsonProperty("flow_speaker_data")
-    FlowSpeakerData flowSpeakerData;
-
-    @JsonCreator
-    @Builder
-    public SingleFlowDumpResponse(@JsonProperty("flow_speaker_data") FlowSpeakerData flowSpeakerData) {
-        this.flowSpeakerData = flowSpeakerData;
-    }
+public interface Chunkable<E extends InfoData> {
+    List<E> split(int chunkSize);
 }

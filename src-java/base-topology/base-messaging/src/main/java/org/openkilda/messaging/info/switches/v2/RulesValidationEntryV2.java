@@ -15,21 +15,68 @@
 
 package org.openkilda.messaging.info.switches.v2;
 
+import static org.openkilda.messaging.Utils.getSize;
+import static org.openkilda.messaging.Utils.joinBooleans;
+import static org.openkilda.messaging.Utils.joinLists;
+
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Data
 @Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class RulesValidationEntryV2 implements Serializable {
     private boolean asExpected;
-    private Set<RuleInfoEntryV2> excess;
-    private Set<RuleInfoEntryV2> proper;
-    private Set<RuleInfoEntryV2> missing;
-    private Set<MisconfiguredInfo<RuleInfoEntryV2>> misconfigured;
+    private List<RuleInfoEntryV2> excess;
+    private List<RuleInfoEntryV2> proper;
+    private List<RuleInfoEntryV2> missing;
+    private List<MisconfiguredInfo<RuleInfoEntryV2>> misconfigured;
+
+    static RulesValidationEntryV2 join(List<RulesValidationEntryV2> entryList) {
+        if (entryList == null) {
+            return null;
+        }
+
+        List<RulesValidationEntryV2> nonNullEntries = entryList.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        if (nonNullEntries.isEmpty()) {
+            return null;
+        }
+        RulesValidationEntryV2Builder builder = RulesValidationEntryV2.builder();
+        builder.asExpected(joinBooleans(nonNullEntries.stream().map(RulesValidationEntryV2::isAsExpected)
+                .collect(Collectors.toList())));
+        builder.excess(joinLists(nonNullEntries.stream().map(RulesValidationEntryV2::getExcess)));
+        builder.proper(joinLists(nonNullEntries.stream().map(RulesValidationEntryV2::getProper)));
+        builder.missing(joinLists(nonNullEntries.stream().map(RulesValidationEntryV2::getMissing)));
+        builder.misconfigured(joinLists(nonNullEntries.stream().map(RulesValidationEntryV2::getMisconfigured)));
+        return builder.build();
+    }
+
+    List<RulesValidationEntryV2> split(int firstChunkSize, int chunkSize) {
+        List<RulesValidationEntryV2> result = new ArrayList<>();
+        for (ValidationEntry<RuleInfoEntryV2> entry : ValidationEntry.split(
+                firstChunkSize, chunkSize, missing, excess, proper, misconfigured)) {
+            result.add(RulesValidationEntryV2.builder()
+                    .asExpected(asExpected)
+                    .missing(entry.getMissing())
+                    .excess(entry.getExcess())
+                    .proper(entry.getProper())
+                    .misconfigured(entry.getMisconfigured())
+                    .build());
+        }
+        return result;
+    }
+
+    int size() {
+        return getSize(excess) + getSize(proper) + getSize(missing) + getSize(misconfigured);
+    }
 }

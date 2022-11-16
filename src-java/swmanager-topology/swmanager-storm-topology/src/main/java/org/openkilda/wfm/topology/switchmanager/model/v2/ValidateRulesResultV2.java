@@ -20,13 +20,13 @@ import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
 
 import lombok.Value;
 
-import java.util.Set;
+import java.util.List;
 
 @Value
 public class ValidateRulesResultV2 {
     boolean asExpected;
-    Set<RuleInfoEntryV2> missingRules;
-    Set<RuleInfoEntryV2> properRules;
-    Set<RuleInfoEntryV2> excessRules;
-    Set<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules;
+    List<RuleInfoEntryV2> missingRules;
+    List<RuleInfoEntryV2> properRules;
+    List<RuleInfoEntryV2> excessRules;
+    List<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules;
 }
