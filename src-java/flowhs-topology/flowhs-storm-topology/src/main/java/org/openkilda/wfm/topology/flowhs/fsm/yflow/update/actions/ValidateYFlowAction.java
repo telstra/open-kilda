@@ -145,12 +145,20 @@ public class ValidateYFlowAction extends
 
     private String getMainAffinityFlowId(YFlow yFlow) {
         // TODO: maybe we should add filtering of one switch sub flows into method getSubFlows()
-        YSubFlow multiSwitchFlows = yFlow.getSubFlows().stream()
+        YSubFlow flowInAffinityGroup = yFlow.getSubFlows().stream()
+                .filter(sub -> sub.getFlow().getAffinityGroupId() != null)
+                .findAny()
+                .orElse(null);
+        if (flowInAffinityGroup != null) {
+            return flowInAffinityGroup.getFlow().getAffinityGroupId();
+        }
+
+        YSubFlow multiSwitchFlow = yFlow.getSubFlows().stream()
                 .filter(sub -> !sub.isOneSwitchYFlow(yFlow.getSharedEndpoint().getSwitchId()))
                 .findAny()
                 .orElse(null);
-        if (multiSwitchFlows != null) {
-            return multiSwitchFlows.getFlow().getAffinityGroupId();
+        if (multiSwitchFlow != null) {
+            return multiSwitchFlow.getSubFlowId();
         } else {
             // if there is no multi switch flows we have to use one switch flow
             YSubFlow oneSwitchSubFlow = yFlow.getSubFlows().stream()
