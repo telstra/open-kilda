@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.switches;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -25,32 +26,41 @@ import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.Value;
 
+import java.util.Set;
+
 @Value
 @EqualsAndHashCode(callSuper = false)
 public class SwitchValidateRequest extends CommandData {
 
     @JsonProperty("switch_id")
-    private SwitchId switchId;
+    SwitchId switchId;
 
+    @Deprecated
     @JsonProperty("process_meters")
-    private boolean processMeters;
+    boolean processMeters;
 
     @JsonProperty("perform_sync")
-    private boolean performSync;
+    boolean performSync;
 
+    @Deprecated
     @JsonProperty("remove_excess")
-    private boolean removeExcess;
+    boolean removeExcess;
 
-    @Builder
+    @JsonProperty("validation_filters")
+    Set<ValidationFilter> validationFilters;
+
+    @Builder(toBuilder = true)
     @JsonCreator
     public SwitchValidateRequest(@NonNull @JsonProperty("switch_id") SwitchId switchId,
                                  @JsonProperty("process_meters") boolean processMeters,
                                  @JsonProperty("perform_sync") boolean performSync,
-                                 @JsonProperty("remove_excess") boolean removeExcess) {
+                                 @JsonProperty("remove_excess") boolean removeExcess,
+                                 @JsonProperty("validation_filters") Set<ValidationFilter> validationFilters) {
         this.switchId = switchId;
         this.processMeters = processMeters;
         this.performSync = performSync;
         this.removeExcess = removeExcess;
+        this.validationFilters = validationFilters;
     }
 }
 

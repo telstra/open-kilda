@@ -26,6 +26,7 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
+import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
@@ -341,6 +342,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
                 .performSync(true)
                 .processMeters(true)
                 .removeExcess(true)
+                .validationFilters(ValidationFilter.ALL_WITHOUT_FLOW_INFO)
                 .build();
         getOutput().emit(StreamType.TO_SWITCH_MANAGER.toString(), getCurrentTuple(),
                 new Values(data, KeyProvider.generateChainedKey(getCorrelationId())));

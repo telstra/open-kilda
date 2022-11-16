@@ -142,8 +142,13 @@ public class SwitchValidateService implements SwitchManagerHubService {
         });
         handlers.put(key, fsm);
 
+        SwitchValidateContext initialContext = SwitchValidateContext.builder()
+                .validationFilters(request.getValidationFilters())
+                .build();
+
         fsm.start();
-        handle(fsm, SwitchValidateEvent.NEXT, SwitchValidateContext.builder().build());
+
+        handle(fsm, SwitchValidateEvent.NEXT, initialContext);
     }
 
     private void handleFlowEntriesResponse(FlowDumpResponse data, MessageCookie cookie)
