@@ -42,6 +42,8 @@ public class FindPathWithLatencyLimitsTest {
     private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");
     private static final SwitchId SWITCH_ID_3 = new SwitchId("00:00:00:00:00:00:00:03");
     private static final SwitchId SWITCH_ID_4 = new SwitchId("00:00:00:00:00:00:00:04");
+    private static final SwitchId SWITCH_ID_5 = new SwitchId("00:00:00:00:00:00:00:05");
+    private static final SwitchId SWITCH_ID_6 = new SwitchId("00:00:00:00:00:00:00:06");
     private final AvailableNetwork network = new AvailableNetwork();
     private final BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(ALLOWED_DEPTH);
 
@@ -147,6 +149,113 @@ public class FindPathWithLatencyLimitsTest {
         assertAll(
                 () -> assertThat(forwardPath.size(), is(3)),
                 () -> assertThat(forwardPath.get(2).getSrcSwitch().getSwitchId(), is(SWITCH_ID_4)),
+                () -> assertThat(reversePath.get(0).getDestSwitch().getSwitchId(), is(SWITCH_ID_4))
+        );
+    }
+
+    @Test
+    public void shouldChoosePathCloseToMaxWeight2() throws UnroutableFlowException {
+        /*
+         *   Topology:
+         *
+         *        SW1--m--SW2--m---SW3
+         *           \            |
+         *            m           m
+         *             \_  SW4  _|
+         *
+         */
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 2, true, 5);
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 5, 6, true, 5);
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_4, 7, 8, true, 25);
+        addBidirectionalLink(network, SWITCH_ID_4, SWITCH_ID_3, 9, 10, true, 25);
+
+        WeightFunction weightFunction = pathComputer
+                .getWeightFunctionByStrategy(PathComputationStrategy.MAX_LATENCY, false);
+
+        FindPathResult path = pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_1, SWITCH_ID_3,
+                weightFunction, 100, 100);
+
+        assertThat(path, is(notNullValue()));
+        List<Edge> forwardPath = path.getFoundPath().getLeft();
+        List<Edge> reversePath = path.getFoundPath().getRight();
+
+        assertAll(
+                () -> assertThat(forwardPath.size(), is(2)),
+                () -> assertThat(reversePath.size(), is(2)),
+                () -> assertThat(forwardPath.get(0).getDestSwitch().getSwitchId(), is(SWITCH_ID_4)),
+                () -> assertThat(reversePath.get(0).getDestSwitch().getSwitchId(), is(SWITCH_ID_4))
+        );
+    }
+
+    @Test
+    public void shouldChoosePathCloseToMaxWeight3() throws UnroutableFlowException {
+        /*
+         *   Topology:
+         *
+         *        SW1--m--SW2---m--SW3
+         *             m  SW4
+         *             m  SW5   m
+         *             m  SW6   m
+         *
+         */
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 2, true, 5);
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_4, 3, 4, true, 5);
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_5, 5, 6, true, 5);
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_6, 7, 8, true, 5);
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 9, 10, true, 5);
+        addBidirectionalLink(network, SWITCH_ID_4, SWITCH_ID_3, 11, 12, false, 1);
+        addBidirectionalLink(network, SWITCH_ID_5, SWITCH_ID_3, 13, 14, true, 5);
+        addBidirectionalLink(network, SWITCH_ID_6, SWITCH_ID_3, 15, 16, true, 5);
+
+
+        WeightFunction weightFunction = pathComputer
+                .getWeightFunctionByStrategy(PathComputationStrategy.MAX_LATENCY, false);
+
+        FindPathResult path = pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_1, SWITCH_ID_3,
+                weightFunction, 100, 100);
+
+        assertThat(path, is(notNullValue()));
+        List<Edge> forwardPath = path.getFoundPath().getLeft();
+        List<Edge> reversePath = path.getFoundPath().getRight();
+
+        assertAll(
+                () -> assertThat(forwardPath.size(), is(2)),
+                () -> assertThat(reversePath.size(), is(2)),
+                () -> assertThat(forwardPath.get(0).getDestSwitch().getSwitchId(), is(SWITCH_ID_4)),
+                () -> assertThat(reversePath.get(0).getDestSwitch().getSwitchId(), is(SWITCH_ID_4))
+        );
+    }
+
+    @Test
+    public void shouldChoosePathCloseToMaxWeight4() throws UnroutableFlowException {
+        /*
+         *   Topology:
+         *
+         *        SW1--m--SW2--m--SW3
+         *           \             |
+         *            m           |
+         *             \_  SW4  _|
+         *
+         */
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 2, true, 5);
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 5, 6, true, 5);
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_4, 7, 8, true, 25);
+        addBidirectionalLink(network, SWITCH_ID_4, SWITCH_ID_3, 9, 10, false, 25);
+
+        WeightFunction weightFunction = pathComputer
+                .getWeightFunctionByStrategy(PathComputationStrategy.MAX_LATENCY, false);
+
+        FindPathResult path = pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_1, SWITCH_ID_3,
+                weightFunction, 100, 100);
+
+        assertThat(path, is(notNullValue()));
+        List<Edge> forwardPath = path.getFoundPath().getLeft();
+        List<Edge> reversePath = path.getFoundPath().getRight();
+
+        assertAll(
+                () -> assertThat(forwardPath.size(), is(2)),
+                () -> assertThat(reversePath.size(), is(2)),
+                () -> assertThat(forwardPath.get(0).getDestSwitch().getSwitchId(), is(SWITCH_ID_4)),
                 () -> assertThat(reversePath.get(0).getDestSwitch().getSwitchId(), is(SWITCH_ID_4))
         );
     }

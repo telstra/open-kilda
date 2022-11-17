@@ -473,42 +473,15 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                         continue;
                     }
 
-                    long currentDiversitySum = getPathWeightDiversityPenaltiesValue(currentPathWeight);
-                    long desiredDiversitySum = getPathWeightDiversityPenaltiesValue(desiredPath.parentWeight);
-
-                    if (currentDiversitySum > desiredDiversitySum) {
-                        // We found path but it diversity-penalties are worse than existed path
-                        continue;
-                    }
-
-                    if (current.parentWeight.getTotalWeight() < maxWeight
-                            && desiredPath.parentWeight.getTotalWeight() >= maxWeight) {
-                        // New path is suitable by totalWeight, but old is not
+                    if (currentPathWeight.getPenaltiesWeight() < desiredPath.parentWeight.getPenaltiesWeight()) {
                         desiredPath = current;
                         continue;
                     }
 
-                    if (desiredPath.parentWeight.getTotalWeight() >= maxWeight
-                            && currentPathWeight.getTotalWeight() >= maxWeight) {
-                        // Both paths are NOT suitable by totalWeight, choose the nearest to maxWeight
-                        if (currentPathWeight.getTotalWeight() < desiredPath.parentWeight.getTotalWeight()) {
-                            desiredPath = current;
-                            continue;
-                        }
-                    }
-
-                    if (desiredPath.parentWeight.getTotalWeight() < maxWeight
-                            && currentPathWeight.getTotalWeight() < maxWeight) {
-                        // Both paths are suitable by totalWeight, but new path is better by diversity
-                        if (currentDiversitySum > 0) {
-                            desiredPath = current;
-                            continue;
-                        }
-                        // Both paths are suitable by totalWeight, choose the nearest to maxWeight
-                        if (currentPathWeight.getTotalWeight() > desiredPath.parentWeight.getTotalWeight()) {
-                            desiredPath = current;
-                            continue;
-                        }
+                    if (currentPathWeight.getPenaltiesWeight() == desiredPath.parentWeight.getPenaltiesWeight()
+                            && currentPathWeight.getBaseWeight() > desiredPath.parentWeight.getBaseWeight()) {
+                        desiredPath = current;
+                        continue;
                     }
                 }
 

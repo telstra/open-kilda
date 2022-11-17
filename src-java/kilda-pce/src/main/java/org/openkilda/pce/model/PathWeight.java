@@ -73,8 +73,11 @@ public class PathWeight implements Comparable<PathWeight> {
      * Simple scalar representation of weight.
      */
     public long getTotalWeight() {
-        Long totalPenalties = penalties.values().stream().reduce(0L, Long::sum);
-        return baseWeight + totalPenalties;
+        return baseWeight + getPenaltiesWeight();
+    }
+
+    public long getPenaltiesWeight() {
+        return penalties.values().stream().reduce(0L, Long::sum);
     }
 
     /**
