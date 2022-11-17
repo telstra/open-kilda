@@ -15,9 +15,12 @@
 
 package org.openkilda.northbound.dto.v2.action;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
@@ -29,4 +32,13 @@ public class PortOutActionDto extends BaseAction {
 
     Integer portNumber;
     String portType;
+
+    @JsonCreator
+    public PortOutActionDto(@JsonProperty("action_type") @NonNull String actionType,
+                            @JsonProperty("port_number") Integer portNumber,
+                            @JsonProperty("port_type") String portType) {
+        super(actionType);
+        this.portNumber = portNumber;
+        this.portType = portType;
+    }
 }

@@ -16,7 +16,6 @@
 package org.openkilda.messaging.info.switches.v2.action;
 
 public enum ActionType {
-
     GROUP,
     PORT_OUT,
     POP_VLAN,

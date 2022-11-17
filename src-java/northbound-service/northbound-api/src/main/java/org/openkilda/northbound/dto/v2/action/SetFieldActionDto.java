@@ -15,9 +15,12 @@
 
 package org.openkilda.northbound.dto.v2.action;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
@@ -29,4 +32,13 @@ public class SetFieldActionDto extends BaseAction {
 
     long value;
     String field;
+
+    @JsonCreator
+    public SetFieldActionDto(@JsonProperty("action_type") @NonNull String actionType,
+                             @JsonProperty("value") long value,
+                             @JsonProperty("field") String field) {
+        super(actionType);
+        this.value = value;
+        this.field = field;
+    }
 }

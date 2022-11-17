@@ -77,6 +77,7 @@ public class RuleInfoDtoV2 implements HexView {
 
     @Data
     @AllArgsConstructor
+    @NoArgsConstructor
     @JsonNaming(value = SnakeCaseStrategy.class)
     @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)

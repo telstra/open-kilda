@@ -13,24 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.action;
+package org.openkilda.testing.service.northbound.payloads;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
+
 import lombok.EqualsAndHashCode;
-import lombok.NonNull;
-import lombok.Value;
-import lombok.experimental.SuperBuilder;
+import lombok.ToString;
 
-@Value
-@JsonNaming(SnakeCaseStrategy.class)
 @EqualsAndHashCode(callSuper = true)
-@SuperBuilder
-public class PushVlanActionDto extends BaseAction {
-    @JsonCreator
-    public PushVlanActionDto(@JsonProperty("action_type") @NonNull String actionType) {
-        super(actionType);
+@ToString(callSuper = true)
+public class SwitchValidationV2ExtendedResult extends SwitchValidationResultV2 {
+    SwitchId switchId;
+
+    public SwitchValidationV2ExtendedResult(SwitchId swId, SwitchValidationResultV2 validationResult) {
+        super(
+                validationResult.isAsExpected(), validationResult.getRules(), validationResult.getMeters(),
+                validationResult.getGroups(), validationResult.getLogicalPorts());
+        this.switchId = swId;
     }
 }

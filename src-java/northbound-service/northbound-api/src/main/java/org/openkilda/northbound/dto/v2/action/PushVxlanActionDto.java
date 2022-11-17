@@ -15,9 +15,12 @@
 
 package org.openkilda.northbound.dto.v2.action;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
@@ -33,4 +36,21 @@ public class PushVxlanActionDto extends BaseAction {
     String dstIpv4Address;
     int udpSrc;
     int vni;
+
+    @JsonCreator
+    public PushVxlanActionDto(@JsonProperty("action_type") @NonNull String actionType,
+                              @JsonProperty("src_mac_address") String srcMacAddress,
+                              @JsonProperty("dst_mac_address") String dstMacAddress,
+                              @JsonProperty("src_ipv4_address") String srcIpv4Address,
+                              @JsonProperty("dst_ipv4_address") String dstIpv4Address,
+                              @JsonProperty("upd_src") int udpSrc,
+                              @JsonProperty("vni") int vni) {
+        super(actionType);
+        this.srcMacAddress = srcMacAddress;
+        this.dstMacAddress = dstMacAddress;
+        this.srcIpv4Address = srcIpv4Address;
+        this.dstIpv4Address = dstIpv4Address;
+        this.udpSrc = udpSrc;
+        this.vni = vni;
+    }
 }

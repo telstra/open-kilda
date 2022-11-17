@@ -40,6 +40,7 @@ import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
+import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
 import org.openkilda.northbound.dto.v2.yflows.SubFlow;
 import org.openkilda.northbound.dto.v2.yflows.YFlow;
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
@@ -53,6 +54,7 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,6 +74,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -482,5 +485,30 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
 
     private List<YFlow> sorted(List<YFlow> yFlows) {
         return yFlows.stream().map(this::sorted).collect(Collectors.toList());
+    }
+
+    @Override
+    public SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId) {
+        log.debug("Switch validating '{}'", switchId);
+        SwitchValidationResultV2 result = Objects.requireNonNull(restTemplate.exchange(
+                "/api/v2/switches/{switch_id}/validate", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResultV2.class, switchId).getBody());
+        return new SwitchValidationV2ExtendedResult(switchId, result);
+    }
+
+    @Override
+    public SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId, String include, String exclude) {
+        log.debug("Switch validating '{}'", switchId);
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v2/switches/{switch_id}/validate");
+        if (exclude != null) {
+            uriBuilder.queryParam("exclude", exclude);
+        }
+        if (include != null) {
+            uriBuilder.queryParam("include", include);
+        }
+        SwitchValidationResultV2 result = Objects.requireNonNull(restTemplate.exchange(
+                uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResultV2.class, switchId).getBody());
+        return new SwitchValidationV2ExtendedResult(switchId, result);
     }
 }

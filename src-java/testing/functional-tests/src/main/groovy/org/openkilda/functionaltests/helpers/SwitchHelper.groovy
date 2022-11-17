@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.helpers
 import static groovyx.gpars.GParsPool.withPool
 import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.hasItem
+import static org.hamcrest.Matchers.notNullValue
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN
 import static org.openkilda.model.cookie.Cookie.ARP_INGRESS_COOKIE
@@ -52,6 +53,7 @@ import org.openkilda.model.cookie.ServiceCookie.ServiceCookieTag
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -66,6 +68,7 @@ import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult
+import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult
 import org.openkilda.testing.tools.IslUtils
 import org.openkilda.testing.tools.SoftAssertions
 
@@ -345,7 +348,7 @@ class SwitchHelper {
             for (long cookie : sw.defaultCookies) {
                 expectedHexCookie.add(new Cookie(cookie).toString())
             }
-             expectedHexCookie.forEach { item ->
+            expectedHexCookie.forEach { item ->
                 assertThat sw.toString(), actualHexCookie, hasItem(item)
             }
 
@@ -413,6 +416,24 @@ class SwitchHelper {
         assertions.verify()
     }
 
+    static void verifyMeterSectionsAreEmpty(SwitchValidationV2ExtendedResult switchValidateInfo,
+                                            List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
+        def assertions = new SoftAssertions()
+        if (switchValidateInfo.meters) {
+            sections.each { section ->
+                if (section == "proper") {
+                    assertions.checkSucceeds {
+                        assert switchValidateInfo.meters.proper.findAll { !it.defaultMeter }.empty
+                    }
+                } else {
+                    assertions.checkSucceeds { assert switchValidateInfo.meters."$section".empty }
+                }
+            }
+        }
+        assertions.verify()
+    }
+
+
     /**
      * Verifies that specified rule sections in the validation response are empty.
      * NOTE: will filter out default rules, except default flow rules(multiTable flow)
@@ -427,6 +448,24 @@ class SwitchHelper {
                 assertions.checkSucceeds {
                     assert switchValidateInfo.rules.proper.findAll {
                         def cookie = new Cookie(it)
+                        !cookie.serviceFlag && cookie.type != CookieType.SHARED_OF_FLOW
+                    }.empty
+                }
+            } else {
+                assertions.checkSucceeds { assert switchValidateInfo.rules."$section".empty }
+            }
+        }
+        assertions.verify()
+    }
+
+    static void verifyRuleSectionsAreEmpty(SwitchValidationV2ExtendedResult switchValidateInfo,
+                                           List<String> sections = ["missing", "proper", "excess", "misconfigured"]) {
+        def assertions = new SoftAssertions()
+        sections.each { String section ->
+            if (section == "proper") {
+                assertions.checkSucceeds {
+                    assert switchValidateInfo.rules.proper.findAll {
+                        def cookie = new Cookie(it.cookie)
                         !cookie.serviceFlag && cookie.type != CookieType.SHARED_OF_FLOW
                     }.empty
                 }
@@ -468,6 +507,10 @@ class SwitchHelper {
     }
 
     static boolean isDefaultMeter(MeterInfoDto dto) {
+        return MeterId.isMeterIdOfDefaultRule(dto.getMeterId())
+    }
+
+    static boolean isDefaultMeter(MeterInfoDtoV2 dto) {
         return MeterId.isMeterIdOfDefaultRule(dto.getMeterId())
     }
 
@@ -589,6 +632,25 @@ class SwitchHelper {
 
     void reviveSwitch(Switch sw, List<FloodlightResourceAddress> flResourceAddress) {
         reviveSwitch(sw, flResourceAddress, false)
+    }
+
+    static void verifySectionInSwitchValidationInfo(SwitchValidationV2ExtendedResult switchValidateInfo,
+                                                    List<String> sections = ["groups", "meters", "logical_ports", "rules"]) {
+        sections.each { String section ->
+            assertThat(switchValidateInfo."$section", notNullValue())
+        }
+
+    }
+
+    static void verifySectionsAsExpectedFields(SwitchValidationV2ExtendedResult switchValidateInfo,
+                                               List<String> sections = ["groups", "meters", "logical_ports", "rules"]) {
+        boolean result = true;
+        sections.each { String section ->
+            if (!switchValidateInfo."$section".asExpected) {
+                result = false
+            }
+        }
+        assert result == switchValidateInfo.asExpected
     }
 
     @Memoized

@@ -15,9 +15,12 @@
 
 package org.openkilda.northbound.dto.v2.action;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
@@ -26,4 +29,8 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
 public class PopVxlanActionDto extends BaseAction {
+    @JsonCreator
+    public PopVxlanActionDto(@JsonProperty("action_type") @NonNull String actionType) {
+        super(actionType);
+    }
 }

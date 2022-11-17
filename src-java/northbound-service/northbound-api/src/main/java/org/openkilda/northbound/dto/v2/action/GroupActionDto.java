@@ -15,9 +15,12 @@
 
 package org.openkilda.northbound.dto.v2.action;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 
@@ -28,4 +31,11 @@ import lombok.experimental.SuperBuilder;
 public class GroupActionDto extends BaseAction {
 
     Long groupId;
+
+    @JsonCreator
+    public GroupActionDto(@JsonProperty("action_type") @NonNull String actionType,
+                          @JsonProperty("group_id") Long groupId) {
+        super(actionType);
+        this.groupId = groupId;
+    }
 }
