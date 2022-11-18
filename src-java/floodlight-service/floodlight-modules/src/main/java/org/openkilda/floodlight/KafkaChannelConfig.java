@@ -96,8 +96,8 @@ public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
 
         properties.put("acks", "all");
         properties.put("retries", 0);
-        properties.put("batch.size", 4);
-        properties.put("buffer.memory", 33554432);
+        properties.put("batch.size", 0);
+        properties.put("buffer.memory", 0);
         properties.put("linger.ms", 10);
 
         properties.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
