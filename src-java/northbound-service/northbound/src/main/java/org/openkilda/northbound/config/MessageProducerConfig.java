@@ -81,7 +81,7 @@ public class MessageProducerConfig {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts);
         props.put(ProducerConfig.RETRIES_CONFIG, 0);
-        props.put(ProducerConfig.BATCH_SIZE_CONFIG, 0);
+        props.put(ProducerConfig.BATCH_SIZE_CONFIG, 32000);
         props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 0);
         props.put(ProducerConfig.LINGER_MS_CONFIG, 10);
         props.put(ProducerConfig.ACKS_CONFIG, "all");
