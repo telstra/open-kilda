@@ -80,7 +80,7 @@ public class MessageProducerConfig {
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        props.put(ProducerConfig.RETRIES_CONFIG, 32000);
+        props.put(ProducerConfig.RETRIES_CONFIG, 0);
         props.put(ProducerConfig.ACKS_CONFIG, "all");
         props.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningProducerInterceptor.class.getName());
         props.put(PRODUCER_COMPONENT_NAME_PROPERTY, GRPC_COMPONENT_NAME);
