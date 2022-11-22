@@ -26,6 +26,7 @@ and we will work with it like the paths in one switch flow.
       "flow_id": string,
       "mirror_direction": string [FORWARD|REVERSE],
       "mirror_point_switch_id": string,
+      "join_traffic_from_sink": boolean,
       "sink_endpoint": {
          "switch_id": string,
          "port_number": int,
@@ -53,6 +54,7 @@ and we will work with it like the paths in one switch flow.
               "mirror_point_id": string,
               "mirror_direction": string [FORWARD|REVERSE],
               "mirror_point_switch_id": string,
+              "join_traffic_from_sink": boolean,
               "sink_endpoint": {
                   "switch_id": string,
                   "port_number": int,
@@ -70,6 +72,11 @@ and we will work with it like the paths in one switch flow.
 * API that needs to be updated: 
   - Need to add information about the state of the mirror paths in the flow payload.
   - It is necessary to add information about built mirror paths to API `GET /flows/{flow_id}/path`
+
+## Joining traffic
+It is possible to make mirror bidirectional. With special flag `join_traffic_from_sink=true` 
+user can join traffic from sink to flow traffic in opposite direction.
+See examples in section [Traffic examples](#Traffic examples)
 
 ## Workflow
 
@@ -105,6 +112,11 @@ will be replaced with a "goto group" action instead of an "output port" action.
 The group will have 2 or more buckets: one will represent output to the flow or ISL port, 
 the rest will represent mirror actions set (i.e. routing to the mirror paths).
 
+## Need to decide
+1. What status flow should have if mirror path is down
+2. What path computation strategy mirror path should use (guess flow strategy)
+3. Should we use ingress meter for egress sink traffic 
+
 ## FSM diagrams
 
 ### FlowMirrorPointCreateFsm
@@ -112,3 +124,19 @@ the rest will represent mirror actions set (i.e. routing to the mirror paths).
 
 ### FlowMirrorPointDeleteFsm
 ![FlowMirrorPointDeleteFsm](./flow-delete-mirror-point-fsm.png "FlowMirrorPointDeleteFsm")
+
+## Traffic examples
+NOTE: in all examples `join_traffic_from_sink` is `true`. With `join_traffic_from_sink=false`
+there would no traffic from mirror (green arrow).
+
+### Forward ingress mirror
+![ForwardIngress](./forward_ingress_mirror.png "ForwardIngress")
+
+### Forward egress mirror
+![ForwardEgress](./forward_egress_mirror.png "ForwardEgress")
+
+### Reverse ingress mirror
+![ReverseIngress](./reverse_ingress_mirror.png "ReverseIngress")
+
+### Reverse egress mirror
+![ReverseEgress](./reverse_egress_mirror.png "ReverseEgress")
