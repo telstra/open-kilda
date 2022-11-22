@@ -54,6 +54,7 @@ kilda_floodlight_server42_isl_rtt_magic_mac_address: "00:26:E1:FF:FF:FD"
 kilda_floodlight_lacp_system_id: "00:00:00:00:00:01"
 kilda_floodlight_lacp_system_priority: 1
 kilda_floodlight_lacp_port_priority: 1
+kilda_floodlight_kafka_messages_chunk_size: 500
 
 kilda_floodlight_ovs_meters_enabled: true
 
@@ -250,5 +251,6 @@ kilda_flow_latency_sla_timeout_seconds: 30
 kilda_flow_latency_sla_threshold_percent: 0.05
 
 kilda_swmanager_of_commands_batch_size: 500
+kilda_swmanager_kafka_chunked_messages_size: 500
 
 #ovs_vxlan: true

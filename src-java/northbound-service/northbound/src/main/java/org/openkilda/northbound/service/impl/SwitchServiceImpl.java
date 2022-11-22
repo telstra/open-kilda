@@ -15,7 +15,13 @@
 
 package org.openkilda.northbound.service.impl;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static java.lang.String.format;
+import static org.openkilda.messaging.model.ValidationFilter.FLOW_INFO;
+import static org.openkilda.messaging.model.ValidationFilter.GROUPS;
+import static org.openkilda.messaging.model.ValidationFilter.LOGICAL_PORTS;
+import static org.openkilda.messaging.model.ValidationFilter.METERS;
+import static org.openkilda.messaging.model.ValidationFilter.RULES;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
@@ -46,7 +52,8 @@ import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
-import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
+import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
@@ -101,10 +108,12 @@ import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
+import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
+import com.google.common.collect.Sets;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,13 +122,20 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
 public class SwitchServiceImpl extends BaseService implements SwitchService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchServiceImpl.class);
+    public static final String SWITCH_VALIDATION_FILTERS_SPLITTER = "\\|";
+    public static final Set<ValidationFilter> VALID_INCLUDE_FILTERS = Sets.newHashSet(
+            RULES, METERS, GROUPS, LOGICAL_PORTS);
+    public static final Set<ValidationFilter> VALID_EXCLUDE_FILTERS = Sets.newHashSet(FLOW_INFO);
+
 
     @Autowired
     private MessagingChannel messagingChannel;
@@ -257,8 +273,10 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     public CompletableFuture<RulesValidationResult> validateRules(SwitchId switchId) {
         logger.info("Validate rules request for switch {}", switchId);
 
-        return performValidate(
-                SwitchValidateRequest.builder().switchId(switchId).build())
+        return performValidateV2(
+                SwitchValidateRequest.builder()
+                        .validationFilters(newHashSet(RULES))
+                        .switchId(switchId).build())
                 .thenApply(switchMapper::toRulesValidationResult);
     }
 
@@ -266,18 +284,47 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     public CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId) {
         logger.info("Validate request for switch {}", switchId);
 
-        return performValidate(
-                SwitchValidateRequest.builder().switchId(switchId).processMeters(true).build())
-                .thenApply(switchMapper::toSwitchValidationResult);
+        return performValidateV2(
+                SwitchValidateRequest.builder()
+                        .switchId(switchId)
+                        .validationFilters(ValidationFilter.ALL_WITH_METER_FLOW_INFO)
+                        .build())
+                .thenApply(switchMapper::toSwitchValidationResultV1);
     }
 
-    private CompletableFuture<SwitchValidationResponse> performValidate(SwitchValidateRequest request) {
+    @Override
+    public CompletableFuture<SwitchValidationResultV2> validateSwitch(
+            SwitchId switchId, String includeString, String excludeString) {
+        logger.info("Validate api V2 request for switch {}", switchId);
+
+        Set<ValidationFilter> includeFilters = parseSwitchValidationIncludeFilters(includeString);
+        if (includeFilters.isEmpty()) {
+            includeFilters.addAll(VALID_INCLUDE_FILTERS);
+        }
+
+        Set<ValidationFilter> excludeFilters = parseSwitchValidationExcludeFilters(excludeString);
+
+        Set<ValidationFilter> filters = new HashSet<>(includeFilters);
+        filters.add(FLOW_INFO);
+        filters.removeAll(excludeFilters);
+
+        return performValidateV2(
+                SwitchValidateRequest.builder().switchId(switchId)
+                        .validationFilters(filters)
+                        .build())
+                .thenApply(switchMapper::toSwitchValidationResultV2);
+    }
+
+    private CompletableFuture<SwitchValidationResponseV2> performValidateV2(SwitchValidateRequest request) {
         CommandMessage validateCommandMessage = new CommandMessage(
                 request,
                 System.currentTimeMillis(), RequestCorrelationId.getId());
 
-        return messagingChannel.sendAndGet(switchManagerTopic, validateCommandMessage)
-                .thenApply(SwitchValidationResponse.class::cast);
+        return messagingChannel.sendAndGetChunked(switchManagerTopic, validateCommandMessage)
+                .thenApply(response -> SwitchValidationResponseV2.unite(
+                        response.stream()
+                                .map(SwitchValidationResponseV2.class::cast)
+                                .collect(Collectors.toList())));
     }
 
     @Override
@@ -285,7 +332,11 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         logger.info("Sync rules request for switch {}", switchId);
 
         return performSync(
-                SwitchValidateRequest.builder().switchId(switchId).performSync(true).build())
+                SwitchValidateRequest.builder()
+                        .switchId(switchId)
+                        .validationFilters(Sets.newHashSet(RULES))
+                        .performSync(true)
+                        .build())
                 .thenApply(switchMapper::toRulesSyncResult);
     }
 
@@ -294,8 +345,11 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         logger.info("Sync request for switch {}. Remove excess {}", switchId, removeExcess);
 
         return performSync(
-                SwitchValidateRequest.builder().switchId(switchId).processMeters(true).performSync(true)
-                        .removeExcess(removeExcess).build())
+                SwitchValidateRequest.builder().switchId(switchId)
+                        .performSync(true)
+                        .removeExcess(removeExcess)
+                        .validationFilters(ValidationFilter.ALL_WITH_METER_FLOW_INFO)
+                        .build())
                 .thenApply(switchMapper::toSwitchSyncResult);
     }
 
@@ -657,5 +711,45 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
                         "Unsupported enum %s value: %s", PortStatus.class.getName(), status));
         }
         return adminDownState;
+    }
+
+
+    private Set<ValidationFilter> parseSwitchValidationIncludeFilters(String query) {
+        try {
+            return parseAndValidateFilters(query, VALID_INCLUDE_FILTERS);
+        } catch (IllegalArgumentException e) {
+            throw new MessageException(ErrorType.REQUEST_INVALID, e.getMessage(), String.format(
+                    "Value of include filter is invalid. Valid values are: %s", VALID_INCLUDE_FILTERS));
+        }
+    }
+
+    private Set<ValidationFilter> parseSwitchValidationExcludeFilters(String query) {
+        try {
+            return parseAndValidateFilters(query, VALID_EXCLUDE_FILTERS);
+        } catch (IllegalArgumentException e) {
+            throw new MessageException(ErrorType.REQUEST_INVALID, e.getMessage(), String.format(
+                    "Value of exclude filter is invalid. Valid values are: %s", VALID_EXCLUDE_FILTERS));
+        }
+    }
+
+    private Set<ValidationFilter> parseAndValidateFilters(String query, Set<ValidationFilter> validFilters) {
+        Set<ValidationFilter> filters = new HashSet<>();
+        if (query == null) {
+            return filters;
+        }
+
+        for (String stringFilter : query.split(SWITCH_VALIDATION_FILTERS_SPLITTER)) {
+            ValidationFilter filter;
+            try {
+                filter = switchMapper.toValidationFilter(stringFilter);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(String.format("Filter has invalid value '%s'", stringFilter));
+            }
+            if (!validFilters.contains(filter)) {
+                throw new IllegalArgumentException(String.format("Filter has invalid value '%s'", stringFilter));
+            }
+            filters.add(filter);
+        }
+        return filters;
     }
 }

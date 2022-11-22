@@ -1,4 +1,4 @@
-/* Copyright 2022 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,27 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.flow;
-
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.rulemanager.FlowSpeakerData;
+package org.openkilda.northbound.dto.v2.action;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 import lombok.Value;
+import lombok.experimental.SuperBuilder;
 
 @Value
-@EqualsAndHashCode(callSuper = false)
-public class SingleFlowDumpResponse extends InfoData {
-
-    @JsonProperty("flow_speaker_data")
-    FlowSpeakerData flowSpeakerData;
-
+@JsonNaming(SnakeCaseStrategy.class)
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
+public class PushVlanActionDto extends BaseAction {
     @JsonCreator
-    @Builder
-    public SingleFlowDumpResponse(@JsonProperty("flow_speaker_data") FlowSpeakerData flowSpeakerData) {
-        this.flowSpeakerData = flowSpeakerData;
+    public PushVlanActionDto(@JsonProperty("action_type") @NonNull String actionType) {
+        super(actionType);
     }
 }

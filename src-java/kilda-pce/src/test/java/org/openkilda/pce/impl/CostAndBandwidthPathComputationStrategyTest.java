@@ -270,7 +270,7 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
 
         flowRepository.add(flow);
 
-        GetPathsResult path2 = pathComputer.getPath(flow, flow.getPathIds());
+        GetPathsResult path2 = pathComputer.getPath(flow, flow.getPathIds(), false);
         assertEquals(diversePath, path2);
     }
 

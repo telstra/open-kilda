@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.126.0 (21/11/2022)
+
+### Features:
+-  [#4906](https://github.com/telstra/open-kilda/pull/4906) Add api v2 switch validation (Issues: [#4834](https://github.com/telstra/open-kilda/issues/4834) [#4950](https://github.com/telstra/open-kilda/issues/4950)) [**northbound**][**storm-topologies**]
+-  [#4946](https://github.com/telstra/open-kilda/pull/4946) Added tests and removed dead code (Issue: [#4916](https://github.com/telstra/open-kilda/issues/4916)) [**northbound**][**storm-topologies**]
+-  [#4948](https://github.com/telstra/open-kilda/pull/4948) Moved V1/V2 validation parameters handling to NB [**northbound**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#4992](https://github.com/telstra/open-kilda/pull/4992) Increased timeout in unit-tests [**tests**]
+-  [#4942](https://github.com/telstra/open-kilda/pull/4942) Fixed path search with max latency over under-maintenance isls (Issues: [#4927](https://github.com/telstra/open-kilda/issues/4927) [#4986](https://github.com/telstra/open-kilda/issues/4986))
+-  [#4989](https://github.com/telstra/open-kilda/pull/4989) Fixed updating of Y flow while one subflow is one switch (Issue: [#4988](https://github.com/telstra/open-kilda/issues/4988))
+
+### Improvements:
+-  [#4979](https://github.com/telstra/open-kilda/pull/4979) Raised memory limits in docker-compose
+-  [#4954](https://github.com/telstra/open-kilda/pull/4954) test/sw_validation _2 [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.125.2...v1.126.0).
+
+### Affected Components:
+swmanager, nb, flow-hs
+
+---
+
 ## v1.125.2 (09/11/2022)
 
 ### Bug Fixes:

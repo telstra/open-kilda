@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,20 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v1.switches;
+package org.openkilda.messaging.info.switches.v2.action;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Builder;
+import lombok.Value;
 
-public interface HexView {
+@Value
+@Builder
+@JsonNaming(SnakeCaseStrategy.class)
+public class PushVlanActionEntry implements BaseAction {
 
-    /**
-     * Converts list of longs to hex.
-     */
-    default List<String> toHex(List<Long> input) {
-        if (input == null) {
-            return null;
-        }
-        return input.stream().map(Long::toHexString).collect(Collectors.toList());
+    @Override
+    @JsonIgnore
+    public String getActionType() {
+        return ActionType.PUSH_VLAN.name();
     }
 }

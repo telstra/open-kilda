@@ -24,6 +24,10 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 @Getter
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
@@ -45,10 +49,28 @@ public class ChunkedInfoMessage extends InfoMessage {
         this.totalMessages = totalMessages;
     }
 
-    public ChunkedInfoMessage(InfoData data, long timestamp, String correlationId,
+    ChunkedInfoMessage(InfoData data, long timestamp, String correlationId,
                               int messageIndex, int totalMessages) {
         super(data, timestamp, correlationId);
         this.messageId = String.join(" : ", String.valueOf(messageIndex), correlationId);
         this.totalMessages = totalMessages;
+    }
+
+    /**
+     * Creates list of ChunkedInfoMessages from list of InfoData.
+     */
+    public static List<ChunkedInfoMessage> createChunkedList(
+            Collection<? extends InfoData> dataCollection, String messageId) {
+        List<ChunkedInfoMessage> result = new ArrayList<>();
+        if (dataCollection == null || dataCollection.isEmpty()) {
+            result.add(new ChunkedInfoMessage(null, System.currentTimeMillis(), messageId, messageId, 0));
+        } else {
+            int i = 0;
+            for (InfoData infoData : dataCollection) {
+                result.add(new ChunkedInfoMessage(
+                        infoData, System.currentTimeMillis(), messageId, i++, dataCollection.size()));
+            }
+        }
+        return result;
     }
 }
