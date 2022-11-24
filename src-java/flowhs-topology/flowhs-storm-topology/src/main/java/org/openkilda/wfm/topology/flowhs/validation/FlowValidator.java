@@ -108,6 +108,7 @@ public class FlowValidator {
 
         checkFlags(flow);
         checkBandwidth(flow);
+        checkMaxLatency(flow);
         checkSwitchesSupportLldpAndArpIfNeeded(flow);
 
         if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
@@ -242,6 +243,11 @@ public class FlowValidator {
                             flow.getBandwidth()),
                     ErrorType.DATA_INVALID);
         }
+    }
+
+    @VisibleForTesting
+    void checkMaxLatency(RequestedFlow flow) throws InvalidFlowException {
+        ValidatorUtils.maxLatencyValidator(flow.getMaxLatency(), flow.getMaxLatencyTier2());
     }
 
     private void checkFlowForIslConflicts(EndpointDescriptor descriptor) throws InvalidFlowException {

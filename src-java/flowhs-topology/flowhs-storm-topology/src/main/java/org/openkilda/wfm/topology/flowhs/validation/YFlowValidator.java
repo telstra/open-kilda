@@ -61,6 +61,7 @@ public class YFlowValidator {
         checkSubFlows(request);
         checkSubFlowsHaveNoConflict(request.getSubFlows());
         checkBandwidth(request);
+        checkMaxLatency(request);
 
         validateSubFlows(YFlowRequestMapper.INSTANCE.toRequestedFlows(request));
     }
@@ -153,6 +154,10 @@ public class YFlowValidator {
         }
     }
 
+    private void checkMaxLatency(YFlowRequest yFlowRequest) throws InvalidFlowException {
+        ValidatorUtils.maxLatencyValidator(yFlowRequest.getMaxLatency(), yFlowRequest.getMaxLatencyTier2());
+    }
+    
     private void validateSubFlows(Collection<RequestedFlow> flows)
             throws InvalidFlowException, UnavailableFlowEndpointException {
         for (RequestedFlow flow : flows) {

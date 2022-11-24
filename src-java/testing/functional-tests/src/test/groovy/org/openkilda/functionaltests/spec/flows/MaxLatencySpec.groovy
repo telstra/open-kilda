@@ -77,11 +77,11 @@ class MaxLatencySpec extends HealthCheckSpecification {
         given: "2 non-overlapping paths with 10 and 15 latency"
         setLatencyForPaths(10, 15)
 
-        when: "Create a flow with protected path, max_latency 16 and max_latency_tier_2 11"
+        when: "Create a flow with protected path, max_latency 16 and max_latency_tier_2 18"
         def flow = flowHelperV2.randomFlow(switchPair).tap {
             allocateProtectedPath = true
             maxLatency = 16
-            maxLatencyTier2 = 11
+            maxLatencyTier2 = 18
             pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
         }
         flowHelperV2.addFlow(flow)
