@@ -49,8 +49,6 @@ import org.openkilda.northbound.utils.RequestCorrelationId;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -78,8 +76,6 @@ import java.util.concurrent.CompletableFuture;
 @RequestMapping("/v1/switches")
 @PropertySource("classpath:northbound.properties")
 public class SwitchController extends BaseController {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchController.class);
 
     @Autowired
     private SwitchService switchService;
@@ -351,7 +347,6 @@ public class SwitchController extends BaseController {
             @PathVariable(name = "switch_id") SwitchId switchId,
             @PathVariable(name = "port_no") int portNo,
             @RequestBody PortConfigurationPayload portConfig) {
-        LOGGER.info("Port Configuration '{}' request for port {} of switch {}", portConfig, portNo, switchId);
         return switchService.configurePort(switchId, portNo, portConfig);
     }
 

@@ -24,18 +24,16 @@ import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.KildaConfigurationService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CompletableFuture;
 
+@Slf4j
 @Service
 public class KildaConfigurationServiceImpl implements KildaConfigurationService {
-
-    private final Logger logger = LoggerFactory.getLogger(KildaConfigurationServiceImpl.class);
 
     /**
      * The kafka topic for the nb topology.
@@ -48,6 +46,7 @@ public class KildaConfigurationServiceImpl implements KildaConfigurationService 
 
     @Override
     public CompletableFuture<KildaConfigurationDto> getKildaConfiguration() {
+        log.info("API request: Get Kilda configuration");
         String correlationId = RequestCorrelationId.getId();
         KildaConfigurationGetRequest request = new KildaConfigurationGetRequest();
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
@@ -58,8 +57,8 @@ public class KildaConfigurationServiceImpl implements KildaConfigurationService 
 
     @Override
     public CompletableFuture<KildaConfigurationDto> updateKildaConfiguration(KildaConfigurationDto dto) {
+        log.info("API request: Update Kilda configuration. New properties: {}", dto);
         String correlationId = RequestCorrelationId.getId();
-        logger.debug("Processing request to update kilda config, new properties: {}", dto);
         KildaConfigurationUpdateRequest request = new KildaConfigurationUpdateRequest(dto);
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
 
