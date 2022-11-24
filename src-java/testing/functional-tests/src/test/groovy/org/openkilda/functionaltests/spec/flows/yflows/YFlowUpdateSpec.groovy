@@ -60,8 +60,8 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
         and: "All related switches have no discrepancies"
         involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northboundV2.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northboundV2.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
 
         cleanup:
@@ -139,8 +139,8 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
         and: "All related switches have no discrepancies"
         involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northboundV2.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northboundV2.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
 
         cleanup:
@@ -189,8 +189,8 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         expect northboundV2.getYFlow(yFlow.YFlowId), sameBeanAs(yFlow, ignores)
 
         and: "All related switches have no discrepancies"
-        northbound.validateSwitch(switchId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        northbound.validateSwitch(switchId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        northboundV2.validateSwitch(switchId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        northboundV2.validateSwitch(switchId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
 
 
         cleanup:
@@ -223,8 +223,8 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
         and: "All related switches have no discrepancies"
         involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northboundV2.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            northboundV2.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
 
         cleanup:
