@@ -38,9 +38,9 @@ public final class ValidatorUtils {
                     "maxLatencyTier2 property cannot be used without maxLatency",
                     ErrorType.DATA_INVALID);
         }
-        if (maxLatency >= maxLatencyTier2) {
+        if (maxLatency > maxLatencyTier2) {
             throw new InvalidFlowException(
-                    format("The maxLatency %d is higher or equal to maxLatencyTier2 %d",
+                    format("The maxLatency %d is higher than maxLatencyTier2 %d",
                             maxLatency,
                             maxLatencyTier2),
                     ErrorType.DATA_INVALID);

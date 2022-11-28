@@ -290,4 +290,10 @@ public class FlowValidatorTest {
         RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, null);
         flowValidator.checkMaxLatency(flow);
     }
+
+    @Test
+    public void shouldNotFailIfMaxLatencyTier2andMaxLatencyAreEqual() throws InvalidFlowException {
+        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(500L, 500L);
+        flowValidator.checkMaxLatency(flow);
+    }
 }

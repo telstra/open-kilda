@@ -271,6 +271,13 @@ public class YFlowValidatorTest {
         yFlowValidator.validate(request);
     }
 
+    @Test
+    public void passIfMaxLatencyTier2EqualToMaxLatency()
+            throws InvalidFlowException, UnavailableFlowEndpointException {
+        YFlowRequest request = getTestRequestWithMaxLatencyAndMaxLatencyTier2(500L, 500L);
+        yFlowValidator.validate(request);
+    }
+
     @Test(expected = InvalidFlowException.class)
     public void failIfNoSharedEndpointProvided()
             throws InvalidFlowException, UnavailableFlowEndpointException {
