@@ -114,8 +114,8 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
     @Tidy
     def "User can update y-flow where one of subflows has both ends on shared switch"() {
         given: "Existing y-flow where one of subflows has both ends on shared switch"
-        def switchTriplet = topologyHelper.getSwitchTriplets().first()
-        switchTriplet.setEp1(switchTriplet.getShared())
+        def switchTriplet = topologyHelper.getSwitchTriplets(true, true)
+                .find{it.ep1 == it.shared && it.ep2 != it.shared}
         def yFlowRequest = yFlowHelper.randomYFlow(switchTriplet, false)
         def yFlow = yFlowHelper.addYFlow(yFlowRequest)
         def oldSharedSwitch = yFlow.sharedEndpoint.switchId
