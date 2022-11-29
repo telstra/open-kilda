@@ -66,8 +66,7 @@ import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import com.google.common.collect.ImmutableMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.TaskScheduler;
@@ -83,10 +82,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class LinkServiceImpl extends BaseService implements LinkService {
-
-    private static final Logger logger = LoggerFactory.getLogger(LinkServiceImpl.class);
 
     @Autowired
     private Clock clock;
@@ -128,14 +126,14 @@ public class LinkServiceImpl extends BaseService implements LinkService {
     @Override
     public CompletableFuture<List<LinkDto>> getLinks(SwitchId srcSwitch, Integer srcPort,
                                                      SwitchId dstSwitch, Integer dstPort) {
+        log.info("API request: Get links: src {}_{}, dst {}_{}", srcSwitch, srcPort, dstSwitch, dstPort);
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Get links request received");
         GetLinksRequest request = null;
         try {
             request = new GetLinksRequest(new NetworkEndpointMask(srcSwitch, srcPort),
                     new NetworkEndpointMask(dstSwitch, dstPort));
         } catch (IllegalArgumentException e) {
-            logger.error("Can not parse arguments: {}", e.getMessage());
+            log.error("Can not parse arguments: {}", e.getMessage());
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments when create 'get links' request");
         }
@@ -151,8 +149,9 @@ public class LinkServiceImpl extends BaseService implements LinkService {
     @Override
     public CompletableFuture<List<LinkPropsDto>> getLinkProps(SwitchId srcSwitch, Integer srcPort,
                                                               SwitchId dstSwitch, Integer dstPort) {
+        log.info("API request: Get link properties: src {}_{}, dst {}_{}", srcSwitch, srcPort, dstSwitch, dstPort);
+
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Get link properties request received");
         LinkPropsGet request = new LinkPropsGet(new NetworkEndpointMask(srcSwitch, srcPort),
                 new NetworkEndpointMask(dstSwitch, dstPort));
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
@@ -166,7 +165,7 @@ public class LinkServiceImpl extends BaseService implements LinkService {
 
     @Override
     public CompletableFuture<BatchResults> setLinkProps(List<LinkPropsDto> linkPropsList) {
-        logger.debug("Link props \"SET\" request received (consists of {} records)", linkPropsList.size());
+        log.info("API request: Set link properties {}", linkPropsList);
 
         List<String> errors = new ArrayList<>();
         List<CompletableFuture<?>> pendingRequest = new ArrayList<>(linkPropsList.size());
@@ -197,6 +196,9 @@ public class LinkServiceImpl extends BaseService implements LinkService {
     public CompletableFuture<LinkMaxBandwidthDto> updateLinkBandwidth(SwitchId srcSwitch, Integer srcPort,
                                                                       SwitchId dstSwitch, Integer dstPort,
                                                                       LinkMaxBandwidthRequest input) {
+        log.info("API request: Update link bandwidth to {}: src {}_{}, dst {}_{}",
+                input, srcSwitch, srcPort, dstSwitch, dstPort);
+
         if (input.getMaxBandwidth() == null || input.getMaxBandwidth() < 0) {
             throw new MessageException(ErrorType.PARAMETERS_INVALID, "Invalid value of max_bandwidth",
                     "Maximum bandwidth must not be null");
@@ -227,6 +229,8 @@ public class LinkServiceImpl extends BaseService implements LinkService {
 
     @Override
     public CompletableFuture<BatchResults> delLinkProps(List<LinkPropsDto> linkPropsList) {
+        log.info("API request: Delete link properties {}", linkPropsList);
+
         List<CompletableFuture<List<InfoData>>> pendingRequest = new ArrayList<>(linkPropsList.size());
 
         for (LinkPropsDto requestItem : linkPropsList) {
@@ -258,13 +262,14 @@ public class LinkServiceImpl extends BaseService implements LinkService {
     public CompletableFuture<List<FlowResponsePayload>> getFlowsForLink(SwitchId srcSwitch, Integer srcPort,
                                                                         SwitchId dstSwitch, Integer dstPort) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Get all flows for a particular link request processing");
+        log.info("API request: Get all flows for link: src {}_{}, dst {}_{}", srcSwitch, srcPort, dstSwitch, dstPort);
+
         GetFlowsForIslRequest data = null;
         try {
             data = new GetFlowsForIslRequest(new NetworkEndpoint(srcSwitch, srcPort),
                     new NetworkEndpoint(dstSwitch, dstPort), correlationId);
         } catch (IllegalArgumentException e) {
-            logger.error("Can not parse arguments: {}", e.getMessage());
+            log.error("Can not parse arguments: {}", e.getMessage());
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments when create \"get flows for link\" request");
         }
@@ -282,13 +287,15 @@ public class LinkServiceImpl extends BaseService implements LinkService {
     public CompletableFuture<List<String>> rerouteFlowsForLink(SwitchId srcSwitch, Integer srcPort,
                                                                SwitchId dstSwitch, Integer dstPort) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Reroute all flows for a particular link request processing");
+        log.info("API request: Reroute all flows for link: src {}_{}, dst {}_{}",
+                srcSwitch, srcPort, dstSwitch, dstPort);
+
         RerouteFlowsForIslRequest data = null;
         try {
             data = new RerouteFlowsForIslRequest(new NetworkEndpoint(srcSwitch, srcPort),
                     new NetworkEndpoint(dstSwitch, dstPort), correlationId);
         } catch (IllegalArgumentException e) {
-            logger.error("Can not parse arguments: {}", e.getMessage());
+            log.error("Can not parse arguments: {}", e.getMessage());
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments when create \"reroute flows for link\" request");
         }
@@ -305,14 +312,14 @@ public class LinkServiceImpl extends BaseService implements LinkService {
     @Override
     public CompletableFuture<List<LinkDto>> deleteLink(LinkParametersDto linkParameters, boolean force) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.info("Delete link request received: {}, force={}", linkParameters, force);
+        log.info("API request: Delete link: {}, force={}", linkParameters, force);
 
         DeleteLinkRequest request;
         try {
             request = new DeleteLinkRequest(new SwitchId(linkParameters.getSrcSwitch()), linkParameters.getSrcPort(),
                     new SwitchId(linkParameters.getDstSwitch()), linkParameters.getDstPort(), force);
         } catch (IllegalArgumentException e) {
-            logger.error("Could not parse delete link request arguments: {}", e.getMessage());
+            log.error("Could not parse delete link request arguments: {}", e.getMessage());
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments when create 'delete link' request");
         }
@@ -329,7 +336,7 @@ public class LinkServiceImpl extends BaseService implements LinkService {
     public CompletableFuture<List<LinkDto>> updateLinkUnderMaintenance(LinkUnderMaintenanceDto link) {
 
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Update under maintenance link request processing");
+        log.info("API request: Update link under maintenance {}", link);
         UpdateLinkUnderMaintenanceRequest data = null;
         try {
             data = new UpdateLinkUnderMaintenanceRequest(
@@ -337,7 +344,7 @@ public class LinkServiceImpl extends BaseService implements LinkService {
                     new NetworkEndpoint(new SwitchId(link.getDstSwitch()), link.getDstPort()),
                     link.isUnderMaintenance(), link.isEvacuate());
         } catch (IllegalArgumentException e) {
-            logger.error("Can not parse arguments: {}", e.getMessage());
+            log.error("Can not parse arguments: {}", e.getMessage());
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments when create 'update ISL Under maintenance' request");
         }
@@ -353,6 +360,8 @@ public class LinkServiceImpl extends BaseService implements LinkService {
     @Override
     public CompletableFuture<List<LinkDto>> writeBfdProperties(
             NetworkEndpoint source, NetworkEndpoint dest, boolean isEnabled) {
+        log.info("API request: Write BFD properties. src {}, dst {}, enabled {}", source, dest, isEnabled);
+
         BfdProperties properties;
         if (isEnabled) {
             properties = bfdPropertiesDefault;
@@ -369,6 +378,8 @@ public class LinkServiceImpl extends BaseService implements LinkService {
     @Override
     public CompletableFuture<BfdPropertiesPayload> writeBfdProperties(
             NetworkEndpoint source, NetworkEndpoint dest, BfdProperties properties) {
+        log.info("API request: Write BFD properties. src {}, dst {}, properties {}", source, dest, properties);
+
         properties = injectBfdPropertiesDefaults(properties);
         return actualWriteBfdProperties(source, dest, properties)
                 .thenApply(linkMapper::mapResponse);
@@ -376,13 +387,15 @@ public class LinkServiceImpl extends BaseService implements LinkService {
 
     @Override
     public CompletableFuture<BfdPropertiesPayload> readBfdProperties(NetworkEndpoint source, NetworkEndpoint dest) {
-        logger.debug("Handling link {} ==> {} BFD properties read request", source, dest);
+        log.info("API request: Read BFD properties. src {}, dst {}", source, dest);
         return readBfdProperties(source, dest, RequestCorrelationId.getId()).thenApply(linkMapper::mapResponse);
     }
 
     @Override
     public CompletableFuture<BfdPropertiesResponse> readBfdProperties(
             NetworkEndpoint source, NetworkEndpoint dest, String correlationId) {
+        log.info("API request: Read BFD properties. src {}, dst {}", source, dest);
+
         BfdPropertiesReadRequest request = linkMapper.mapBfdRequest(source, dest);
         return messagingChannel.sendAndGetChunked(nbworkerTopic, makeMessage(request, correlationId))
                 .thenApply(response -> unpackBfdPropertiesResponse(response, request, RequestCorrelationId.getId()));
@@ -390,13 +403,13 @@ public class LinkServiceImpl extends BaseService implements LinkService {
 
     @Override
     public CompletableFuture<BfdPropertiesPayload> deleteBfdProperties(NetworkEndpoint source, NetworkEndpoint dest) {
-        logger.debug("Handling link {} ==> {} BFD properties delete request (write wrapper)", source, dest);
+        log.info("API request: Delete BFD properties. src {}, dst {}", source, dest);
         return writeBfdProperties(source, dest, BfdProperties.DISABLED);
     }
 
     private CompletableFuture<BfdPropertiesResponse> actualWriteBfdProperties(
             NetworkEndpoint source, NetworkEndpoint dest, BfdProperties properties) {
-        logger.debug("Handling link {} ==> {} BFD properties write request with payload {}", source, dest, properties);
+        log.debug("Handling link {} ==> {} BFD properties write request with payload {}", source, dest, properties);
 
         BfdPropertiesWriteRequest request = linkMapper.mapBfdRequest(source, dest, properties);
         CommandMessage message = makeMessage(request);
