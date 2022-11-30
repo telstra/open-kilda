@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component
 
 @Component
 class StatsHelper {
-    private static int STATS_INTERVAL = 65
+    private static int STATS_INTERVAL = 10
 
     @Autowired
     OtsdbQueryService otsdb
