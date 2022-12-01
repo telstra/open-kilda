@@ -19,9 +19,12 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.GroupSpeakerData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
+
+import java.util.UUID;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
@@ -32,6 +35,12 @@ public class GroupCommand extends OfCommand {
     @JsonCreator
     public GroupCommand(@JsonProperty("data") GroupSpeakerData data) {
         this.data = data;
+    }
+
+    @JsonIgnore
+    @Override
+    public UUID getUuid() {
+        return data.getUuid();
     }
 
     @Override

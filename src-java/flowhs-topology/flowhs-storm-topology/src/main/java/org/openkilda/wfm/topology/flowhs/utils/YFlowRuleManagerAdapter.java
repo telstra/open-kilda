@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.flowhs.utils;
 
-import static java.util.stream.Collectors.toList;
-
 import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.model.FlowPath;
@@ -37,10 +35,8 @@ import com.google.common.collect.Sets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -54,16 +50,16 @@ public class YFlowRuleManagerAdapter {
     }
 
     public Collection<InstallSpeakerCommandsRequest> buildInstallRequests(YFlow yFlow, CommandContext context) {
-        Map<SwitchId, List<SpeakerData>> speakerData = buildSpeakerData(yFlow);
+        List<SpeakerData> speakerData = buildSpeakerData(yFlow);
         return FlowRulesConverter.INSTANCE.buildFlowInstallCommands(speakerData, context);
     }
 
     public Collection<DeleteSpeakerCommandsRequest> buildDeleteRequests(YFlow yFlow, CommandContext context) {
-        Map<SwitchId, List<SpeakerData>> speakerData = buildSpeakerData(yFlow);
+        List<SpeakerData> speakerData = buildSpeakerData(yFlow);
         return FlowRulesConverter.INSTANCE.buildFlowDeleteCommands(speakerData, context);
     }
 
-    private Map<SwitchId, List<SpeakerData>> buildSpeakerData(YFlow yFlow) {
+    private List<SpeakerData> buildSpeakerData(YFlow yFlow) {
         Set<PathId> pathIds = yFlow.getSubFlows().stream()
                 .map(YSubFlow::getFlow)
                 .flatMap(flow -> Stream.of(flow.getForwardPathId(), flow.getReversePathId(),
@@ -80,8 +76,6 @@ public class YFlowRuleManagerAdapter {
                 .build();
         List<FlowPath> flowPaths = new ArrayList<>(dataAdapter.getFlowPaths().values());
 
-        return ruleManager.buildRulesForYFlow(flowPaths, dataAdapter).stream()
-                .collect(Collectors.groupingBy(SpeakerData::getSwitchId,
-                        Collectors.mapping(Function.identity(), toList())));
+        return ruleManager.buildRulesForYFlow(flowPaths, dataAdapter);
     }
 }

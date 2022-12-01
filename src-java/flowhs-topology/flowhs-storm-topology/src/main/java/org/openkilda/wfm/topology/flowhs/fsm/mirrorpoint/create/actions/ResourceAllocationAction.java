@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMirrorPath;
@@ -38,9 +39,8 @@ import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
-import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseResourceAllocationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.Event;
@@ -53,33 +53,53 @@ import java.util.Optional;
 
 @Slf4j
 public class ResourceAllocationAction
-        extends BaseResourceAllocationAction<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> {
+        extends NbTrackableWithHistorySupportAction<FlowMirrorPointCreateFsm, State, Event,
+        FlowMirrorPointCreateContext> {
 
+    private final int pathAllocationRetriesLimit; // Will be used in long mirrors
+    private final int pathAllocationRetryDelay; // Will be used in long mirrors
+    private final int resourceAllocationRetriesLimit; // Will be used in long mirrors
     private final FlowMirrorPointsRepository flowMirrorPointsRepository;
     private final FlowMirrorPathRepository flowMirrorPathRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
+    private final FlowResourcesManager resourcesManager;
+    private final PathComputer pathComputer; // Will be used in long mirrors
+
 
     public ResourceAllocationAction(PersistenceManager persistenceManager,
                                     int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                                     int resourceAllocationRetriesLimit,
-                                    PathComputer pathComputer, FlowResourcesManager resourcesManager,
-                                    FlowOperationsDashboardLogger dashboardLogger) {
-        super(persistenceManager, pathAllocationRetriesLimit, pathAllocationRetryDelay, resourceAllocationRetriesLimit,
-                pathComputer, resourcesManager, dashboardLogger);
+                                    PathComputer pathComputer, FlowResourcesManager resourcesManager) {
+        super(persistenceManager);
 
+        this.pathAllocationRetriesLimit = pathAllocationRetriesLimit;
+        this.pathAllocationRetryDelay = pathAllocationRetryDelay;
+        this.resourceAllocationRetriesLimit = resourceAllocationRetriesLimit;
         this.flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
         this.flowMirrorPathRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPathRepository();
         this.kildaConfigurationRepository
                 = persistenceManager.getRepositoryFactory().createKildaConfigurationRepository();
+        this.resourcesManager = resourcesManager;
+        this.pathComputer = pathComputer;
     }
 
     @Override
-    protected boolean isAllocationRequired(FlowMirrorPointCreateFsm stateMachine) {
-        return true;
+    protected Optional<Message> performWithResponse(
+            State from, State to, Event event, FlowMirrorPointCreateContext context,
+            FlowMirrorPointCreateFsm stateMachine) {
+        try {
+            allocate(stateMachine);
+            return Optional.empty();
+        } catch (UnroutableFlowException | RecoverableException e) {
+            throw new FlowProcessingException(ErrorType.NOT_FOUND,
+                    "Not enough bandwidth or no path found. " + e.getMessage(), e);
+        } catch (ResourceAllocationException e) {
+            throw new FlowProcessingException(ErrorType.INTERNAL_ERROR,
+                    "Failed to allocate flow mirror resources. " + e.getMessage(), e);
+        }
     }
 
-    @Override
-    protected void allocate(FlowMirrorPointCreateFsm stateMachine)
+    private void allocate(FlowMirrorPointCreateFsm stateMachine)
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         RequestedFlowMirrorPoint mirrorPoint = stateMachine.getRequestedFlowMirrorPoint();
 
@@ -95,6 +115,7 @@ public class ResourceAllocationAction
 
             if (foundFlowMirrorPoints.isPresent()) {
                 flowMirrorPoints = foundFlowMirrorPoints.get();
+                stateMachine.setAddNewGroup(false);
             } else {
                 flowMirrorPoints = createFlowMirrorPoints(mirrorPoint, flowPath);
                 stateMachine.setAddNewGroup(true);
@@ -170,11 +191,6 @@ public class ResourceAllocationAction
         flowPath.addFlowMirrorPoints(flowMirrorPoints);
 
         return flowMirrorPoints;
-    }
-
-    @Override
-    protected void onFailure(FlowMirrorPointCreateFsm stateMachine) {
-        // TODO: make reaction on the path allocation failure
     }
 
     @Override

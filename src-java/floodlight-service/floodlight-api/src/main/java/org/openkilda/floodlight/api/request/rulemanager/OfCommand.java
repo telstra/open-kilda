@@ -30,6 +30,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @JsonTypeInfo(use = Id.NAME, property = "clazz")
@@ -49,6 +50,7 @@ public abstract class OfCommand {
 
     public abstract void buildDelete(OfEntityBatch builder, SwitchId switchId);
 
+    public abstract UUID getUuid();
 
     /**
      * Converts SpeakerData to OfCommand.

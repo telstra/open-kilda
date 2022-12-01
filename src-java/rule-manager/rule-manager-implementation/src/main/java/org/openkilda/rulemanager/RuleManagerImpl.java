@@ -32,6 +32,7 @@ import static org.openkilda.rulemanager.utils.RuleManagerHelper.postProcessComma
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.KildaFeatureToggles;
@@ -471,6 +472,25 @@ public class RuleManagerImpl implements RuleManager {
 
         Switch sw = adapter.getSwitch(switchId);
         return postProcessCommands(generateRules(sw, generators));
+    }
+
+    @Override
+    public List<SpeakerData> buildMirrorPointRules(FlowMirrorPoints mirrorPoints, DataAdapter adapter) {
+        FlowPath flowPath = adapter.getFlowPaths().get(mirrorPoints.getFlowPathId());
+        Flow flow = adapter.getFlow(flowPath.getPathId());
+        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(
+                flowPath.getPathId(), flow.getOppositePathId(flowPath.getPathId()).orElse(null));
+        List<SpeakerData> result = new ArrayList<>();
+
+        if (mirrorPoints.getMirrorSwitchId().equals(flowPath.getSrcSwitchId())) {
+            result.addAll(flowRulesFactory.getIngressMirrorRuleGenerator(flowPath, flow, encapsulation, null)
+                    .generateCommands(adapter.getSwitch(mirrorPoints.getMirrorSwitchId())));
+        } else if (mirrorPoints.getMirrorSwitchId().equals(flowPath.getDestSwitchId())) {
+            result.addAll(flowRulesFactory.getEgressMirrorRuleGenerator(flowPath, flow, encapsulation)
+                    .generateCommands(adapter.getSwitch(mirrorPoints.getMirrorSwitchId())));
+
+        }
+        return result;
     }
 
     private List<SpeakerData> buildSharedEndpointYFlowCommands(List<FlowPath> flowPaths, DataAdapter adapter) {
