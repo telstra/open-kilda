@@ -72,6 +72,7 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.collect.Lists;
 import org.hamcrest.Matchers;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -698,6 +699,47 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
 
         assertEquals(new SwitchId("00:0B"), segments.get(0).getDestSwitchId());
         assertEquals(new SwitchId("00:0C"), segments.get(1).getDestSwitchId());
+        assertEquals(new SwitchId("00:03"), segments.get(2).getDestSwitchId());
+    }
+
+    void affinityOvercomeDiversity(PathComputationStrategy pathComputationStrategy)
+            throws Exception {
+        createTestTopologyForAffinityTesting();  // contains flow (A)-(B)-(C)-(D)
+
+        String diversityGroup = "some-other-flow-id";
+        Flow flowA = flowRepository.findById(TEST_FLOW_ID)
+                .orElseThrow(() -> new AssertionError(String.format(
+                        "Pre creation of flow \"%s\" expectation don't met", TEST_FLOW_ID)));
+        flowA.setDiverseGroupId(diversityGroup);
+
+        Flow flowB = Flow.builder()
+                .flowId("subject")
+                .affinityGroupId(TEST_FLOW_ID)
+                .diverseGroupId(diversityGroup)
+                .bandwidth(10)
+                .srcSwitch(getSwitchById("00:0A"))
+                .destSwitch(getSwitchById("00:03"))
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(pathComputationStrategy)
+                .build();
+        Assert.assertNotEquals(flowA.getFlowId(), flowB.getFlowId());
+        Assert.assertEquals(flowA.getAffinityGroupId(), flowB.getAffinityGroupId());
+
+        flowRepository.findById(TEST_FLOW_ID)
+                .ifPresent(entry -> Assert.assertEquals(diversityGroup, entry.getDiverseGroupId()));
+
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        GetPathsResult affinityPath = pathComputer.getPath(flowB);
+
+        List<Segment> segments = affinityPath.getForward().getSegments();
+        assertEquals(3, segments.size());
+        assertEquals(new SwitchId("00:0A"), segments.get(0).getSrcSwitchId());
+        assertEquals(new SwitchId("00:0B"), segments.get(0).getDestSwitchId());
+
+        assertEquals(new SwitchId("00:0B"), segments.get(1).getSrcSwitchId());
+        assertEquals(new SwitchId("00:0C"), segments.get(1).getDestSwitchId());
+
+        assertEquals(new SwitchId("00:0C"), segments.get(2).getSrcSwitchId());
         assertEquals(new SwitchId("00:03"), segments.get(2).getDestSwitchId());
     }
 
