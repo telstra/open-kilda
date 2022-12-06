@@ -1,6 +1,12 @@
 package org.openkilda.functionaltests.helpers
 
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
+import org.openkilda.messaging.command.CommandMessage
+import org.openkilda.messaging.command.stats.StatsRequest
+
 import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.yflows.YFlow
@@ -16,7 +22,6 @@ import org.springframework.stereotype.Component
 
 @Component
 class StatsHelper {
-    private static int STATS_INTERVAL = 10
 
     @Autowired
     OtsdbQueryService otsdb
@@ -24,9 +29,12 @@ class StatsHelper {
     Database database
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
+    @Autowired @Qualifier("kafkaProducerProperties")
+    Properties producerProps
 
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
+    final String KAFKA_STORM_SPEAKER_TOPIC = "kilda.speaker.storm"
 
     void verifyFlowsWriteStats(List<String> flowIds) {
         def soft = new SoftAssertions()
@@ -46,7 +54,8 @@ class StatsHelper {
     }
 
     void verifyFlowWritesStats(String flowId, Date from, boolean expectTraffic) {
-        Wrappers.wait(STATS_INTERVAL) {
+        "force kilda to collect stats"(flowId)
+        Wrappers.wait(STATS_LOGGING_TIMEOUT) {
             def dps = otsdb.query(from, metricPrefix + "flow.raw.bytes", [flowid: flowId]).dps
             if(expectTraffic) {
                 assert dps.values().any { it > 0 }, flowId
@@ -57,7 +66,8 @@ class StatsHelper {
     }
 
     void verifyYFlowWritesMeterStats(YFlow yFlow, Date from, boolean expectTraffic) {
-        Wrappers.wait(STATS_INTERVAL) {
+        "force kilda to collect stats"(yFlow.getYFlowId())
+        Wrappers.wait(STATS_LOGGING_TIMEOUT) {
             def yFlowId = yFlow.YFlowId
             def dpsShared = otsdb.query(from, metricPrefix + "yFlow.meter.shared.bytes", ["y_flow_id": yFlowId]).dps
             def dpsYPoint = otsdb.query(from, metricPrefix + "yFlow.meter.yPoint.bytes", ["y_flow_id": yFlowId]).dps
@@ -69,5 +79,14 @@ class StatsHelper {
                 assert dpsYPoint.size() > 0, yFlowId
             }
         }
+    }
+
+    private void "force kilda to collect stats"(String flowId) {
+        KafkaProducer kafkaProducer = new KafkaProducer(producerProps)
+        kafkaProducer.send(new ProducerRecord(KAFKA_STORM_SPEAKER_TOPIC,
+                new CommandMessage(
+                        new StatsRequest(),
+                        System.currentTimeMillis(),
+                "artificial autotest stats collection enforcement for flow ${flowId}").toJson()))
     }
 }
