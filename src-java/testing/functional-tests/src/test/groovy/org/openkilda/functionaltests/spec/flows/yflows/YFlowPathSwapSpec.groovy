@@ -16,15 +16,12 @@ import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.ExamReport
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
-import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
@@ -128,10 +125,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
         statsHelper.verifyYFlowWritesMeterStats(yFlow, beforeTraffic, true)
-        yFlow.subFlows.each {
-            statsHelper.verifyFlowWritesStats(it.flowId, beforeTraffic, true)
-        }
-
+        statsHelper.verifyFlowsWriteStats(yFlow.subFlows*.flowId)
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
