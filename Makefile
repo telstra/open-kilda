@@ -3,7 +3,7 @@ default: update-props build-stable up-test-mode
 
 .PHONY: update-props update-props-blue update-props-green update-props-dryrun build-confd
 
-CONFD_DOCKER_COMMAND := docker run --rm -v $(shell pwd):$(shell pwd) -w $(shell pwd) -u $(shell id -u):$(shell id -g) kilda/confd
+CONFD_DOCKER_COMMAND := docker run --rm -v $(shell pwd):$(shell pwd) -w $(shell pwd) -u $(shell id -u):$(shell id -g) -e HOSTNAME=$HOSTNAME kilda/confd
 
 UPDATE_PROPS := $(CONFD_DOCKER_COMMAND) confd -onetime -confdir ./confd/ -backend file -file ./confd/vars/main.yaml -file ./confd/vars/docker-compose.yaml -file ./confd/vars/test-vars.yaml -sync-only
 
