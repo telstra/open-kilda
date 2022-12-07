@@ -25,8 +25,6 @@ class StatsHelper {
 
     @Autowired
     OtsdbQueryService otsdb
-    @Autowired
-    Database database
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
     @Autowired @Qualifier("kafkaProducerProperties")
@@ -87,6 +85,6 @@ class StatsHelper {
                 new CommandMessage(
                         new StatsRequest(),
                         System.currentTimeMillis(),
-                "artificial autotest stats collection enforcement for flow ${flowId}").toJson()))
+                "artificial autotest stats collection enforcement for flow ${flowId}").toJson())).get()
     }
 }
