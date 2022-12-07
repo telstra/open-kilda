@@ -15,23 +15,20 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create;
 
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlowMirrorPoint;
 
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 @Data
-@EqualsAndHashCode(callSuper = true)
-public class FlowMirrorPointCreateContext extends FlowContext {
+public class FlowMirrorPointCreateContext {
+    SpeakerCommandResponse speakerResponse;
     private RequestedFlowMirrorPoint mirrorPoint;
 
     @Builder
-    public FlowMirrorPointCreateContext(SpeakerFlowSegmentResponse speakerFlowResponse,
-                                        RequestedFlowMirrorPoint mirrorPoint) {
-        super(speakerFlowResponse);
+    public FlowMirrorPointCreateContext(SpeakerCommandResponse speakerResponse, RequestedFlowMirrorPoint mirrorPoint) {
+        this.speakerResponse = speakerResponse;
         this.mirrorPoint = mirrorPoint;
     }
 }

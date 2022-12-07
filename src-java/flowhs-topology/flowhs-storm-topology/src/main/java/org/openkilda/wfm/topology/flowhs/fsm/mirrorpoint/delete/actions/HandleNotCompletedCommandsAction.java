@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm;
@@ -35,12 +35,11 @@ public class HandleNotCompletedCommandsAction
     public void perform(State from, State to, Event event, FlowMirrorPointDeleteContext context,
                         FlowMirrorPointDeleteFsm stateMachine) {
         for (UUID commandId : stateMachine.getPendingCommands().keySet()) {
-            FlowSegmentRequestFactory command = stateMachine.getCommands().get(commandId);
+            BaseSpeakerCommandsRequest command = stateMachine.getSpeakerCommands().get(commandId);
             if (command != null) {
                 stateMachine.saveErrorToHistory("Command is not finished yet",
                         format("Completing the removal operation although the command may not be "
-                                        + "finished yet: commandId %s, switch %s, cookie %s", commandId,
-                                command.getSwitchId(), command.getCookie()));
+                                        + "finished yet: commandId %s, switch %s", commandId, command.getSwitchId()));
             }
         }
 

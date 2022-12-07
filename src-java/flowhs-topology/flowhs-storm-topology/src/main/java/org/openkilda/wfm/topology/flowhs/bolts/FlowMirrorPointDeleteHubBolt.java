@@ -23,12 +23,15 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PA
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.floodlight.api.request.SpeakerRequest;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.flow.FlowMirrorPointDeleteRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -53,26 +56,28 @@ import org.apache.storm.tuple.Values;
 public class FlowMirrorPointDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
     private final FlowMirrorPointDeleteConfig config;
     private final FlowResourcesConfig flowResourcesConfig;
+    private final RuleManagerConfig ruleManagerConfig;
 
     private transient FlowMirrorPointDeleteService service;
     private String currentKey;
 
     private LifecycleEvent deferredShutdownEvent;
 
-    public FlowMirrorPointDeleteHubBolt(FlowMirrorPointDeleteConfig config,
-                                        PersistenceManager persistenceManager,
-                                        FlowResourcesConfig flowResourcesConfig) {
+    public FlowMirrorPointDeleteHubBolt(
+            FlowMirrorPointDeleteConfig config, PersistenceManager persistenceManager,
+            FlowResourcesConfig flowResourcesConfig, RuleManagerConfig ruleManagerConfig) {
         super(persistenceManager, config);
 
         this.config = config;
         this.flowResourcesConfig = flowResourcesConfig;
+        this.ruleManagerConfig = ruleManagerConfig;
     }
 
     @Override
     protected void init() {
         FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         service = new FlowMirrorPointDeleteService(this, persistenceManager, resourcesManager,
-                config.getSpeakerCommandRetriesLimit());
+                new RuleManagerImpl(ruleManagerConfig), config.getSpeakerCommandRetriesLimit());
     }
 
     @Override
@@ -100,8 +105,12 @@ public class FlowMirrorPointDeleteHubBolt extends HubBolt implements FlowGeneric
     protected void onWorkerResponse(Tuple input) throws PipelineException {
         String operationKey = pullKey(input);
         currentKey = KeyProvider.getParentKey(operationKey);
-        SpeakerFlowSegmentResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerFlowSegmentResponse.class);
-        service.handleAsyncResponse(currentKey, flowResponse);
+        SpeakerResponse speakerResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerResponse.class);
+        if (speakerResponse instanceof SpeakerCommandResponse) {
+            service.handleAsyncResponse(currentKey, (SpeakerCommandResponse) speakerResponse);
+        } else {
+            unhandledInput(input);
+        }
     }
 
     @Override
