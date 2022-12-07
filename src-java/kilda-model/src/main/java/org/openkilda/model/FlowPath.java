@@ -294,12 +294,16 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
 
         void setApplications(Set<FlowApplication> applications);
 
+        @Deprecated
         boolean isSrcWithMultiTable();
 
+        @Deprecated
         void setSrcWithMultiTable(boolean srcWithMultiTable);
 
+        @Deprecated
         boolean isDestWithMultiTable();
 
+        @Deprecated
         void setDestWithMultiTable(boolean destWithMultiTable);
 
         Set<FlowMirrorPoints> getFlowMirrorPointsSet();
@@ -365,7 +369,9 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         @EqualsAndHashCode.Exclude
         FlowPath flowPath;
 
+        @Deprecated
         boolean srcWithMultiTable;
+        @Deprecated
         boolean destWithMultiTable;
         String sharedBandwidthGroupId;
 
