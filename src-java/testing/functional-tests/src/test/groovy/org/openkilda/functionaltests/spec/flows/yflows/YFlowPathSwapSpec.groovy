@@ -125,7 +125,6 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
         statsHelper.verifyYFlowWritesMeterStats(yFlow, beforeTraffic, true)
-        statsHelper.verifyFlowsWriteStats(yFlow.subFlows*.flowId)
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }

@@ -18,20 +18,17 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload
 import org.openkilda.northbound.dto.v2.yflows.YFlowPingPayload
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.ExamReport
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.openkilda.testing.tools.SoftAssertions
 
-import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -160,7 +157,6 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
         statsHelper.verifyYFlowWritesMeterStats(yFlow, beforeTraffic, trafficApplicable)
-        statsHelper.verifyFlowsWriteStats(yFlow.subFlows*.flowId)
 
         when: "Delete the y-flow"
         northboundV2.deleteYFlow(yFlow.YFlowId)
