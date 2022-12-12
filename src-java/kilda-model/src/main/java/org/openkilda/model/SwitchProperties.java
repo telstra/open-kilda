@@ -209,6 +209,7 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
 
         Set<FlowEncapsulationType> getSupportedTransitEncapsulation();
 
+        @Deprecated
         boolean isMultiTable();
 
         boolean isSwitchLldp();
@@ -278,6 +279,7 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
         @EqualsAndHashCode.Exclude
         Switch switchObj;
         Set<FlowEncapsulationType> supportedTransitEncapsulation;
+        @Deprecated
         boolean multiTable;
         boolean switchLldp;
         boolean switchArp;

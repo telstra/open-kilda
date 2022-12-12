@@ -154,12 +154,16 @@ public class PathSegment implements CompositeDataEntity<PathSegment.PathSegmentD
 
         void setDestPort(int destPort);
 
+        @Deprecated
         boolean isSrcWithMultiTable();
 
+        @Deprecated
         void setSrcWithMultiTable(boolean srcWithMultiTable);
 
+        @Deprecated
         boolean isDestWithMultiTable();
 
+        @Deprecated
         void setDestWithMultiTable(boolean destWithMultiTable);
 
         int getSeqId();
@@ -216,7 +220,9 @@ public class PathSegment implements CompositeDataEntity<PathSegment.PathSegmentD
         @NonNull Switch destSwitch;
         int srcPort;
         int destPort;
+        @Deprecated
         boolean srcWithMultiTable;
+        @Deprecated
         boolean destWithMultiTable;
         int seqId;
         Long latency;
