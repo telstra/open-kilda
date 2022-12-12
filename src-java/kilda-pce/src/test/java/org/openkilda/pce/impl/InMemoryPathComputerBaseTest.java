@@ -956,4 +956,29 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
                 .segments(segments)
                 .build();
     }
+
+    protected void addLink(
+            AvailableNetwork network, SwitchId srcSwitchId, SwitchId dstSwitchId, int srcPort, int dstPort,
+            long latency, int affinityCounter) {
+        Edge edge = Edge.builder()
+                .srcSwitch(network.getOrAddNode(srcSwitchId, null))
+                .srcPort(srcPort)
+                .destSwitch(network.getOrAddNode(dstSwitchId, null))
+                .destPort(dstPort)
+                .latency(latency)
+                .cost(1)
+                .availableBandwidth(500000)
+                .underMaintenance(false)
+                .unstable(false)
+                .affinityGroupUseCounter(affinityCounter)
+                .build();
+        network.addEdge(edge);
+    }
+
+    protected void addBidirectionalLink(
+            AvailableNetwork network, SwitchId firstSwitch, SwitchId secondSwitch, int srcPort, int dstPort,
+            long latency, int affinityCounter) {
+        addLink(network, firstSwitch, secondSwitch, srcPort, dstPort, latency, affinityCounter);
+        addLink(network, secondSwitch, firstSwitch, dstPort, srcPort, latency, affinityCounter);
+    }
 }
