@@ -25,7 +25,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -76,7 +75,7 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         and: "Involved switches pass switch validation"
-        "validate switches"(involvedSwitches)
+        'every switch has only expected rules?'(involvedSwitches)
 
         and: "The flow is pingable and allows traffic"
         assert "is flow pingable?"(flow), FLOW_ISNT_PINGABLE_ASSERTION_MESSAGE
@@ -117,7 +116,7 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         and: "Involved switches pass switch validation"
-        "validate switches"(involvedSwitches)
+        'every switch has only expected rules?'(involvedSwitches)
 
         and: "Flow is pingable"
         assert "is flow pingable?"(flow), FLOW_ISNT_PINGABLE_ASSERTION_MESSAGE
@@ -135,7 +134,7 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
 
         then: "Flow remains valid and pingable, switch validation passes"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-        "validate switches"(involvedSwitches)
+        'every switch has only expected rules?'(involvedSwitches)
         assert "is flow pingable?"(flow), FLOW_ISNT_PINGABLE_ASSERTION_MESSAGE
 
         and: "Flow allows traffic"
@@ -208,7 +207,7 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
         assert "flow rules are in tables"(swPair.getSrc(), flow2) == [INGRESS_RULE_MULTI_TABLE_ID, EGRESS_RULE_MULTI_TABLE_ID]
 
         and: "Involved switches pass switch validation"
-        "validate switches"(involvedSwitches)
+        'every switch has only expected rules?'(involvedSwitches)
 
         and: "Both flows are pingable and allow traffic"
         // This hangs (probably, blocks each other) if run in parallel mode
@@ -268,6 +267,11 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
         wait(RULES_INSTALLATION_TIME) {
             "flow rules are in tables"(sw, flow) == [INGRESS_RULE_MULTI_TABLE_ID]
         }
+
+        and: "Flow is valid and UP"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        wait(WAIT_OFFSET / 2) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
         initSwProps && revertSwitchToInitState(sw, initSwProps)
@@ -312,9 +316,14 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
         with(northboundV2.rerouteFlow(flow.flowId)) { !it.rerouted }
 
         then: "Flow rules stay in single table mode"
-        wait(RULES_INSTALLATION_TIME/5) {
+        wait(RULES_INSTALLATION_TIME) {
             "flow rules are in tables"(sw, flow) == [SINGLE_TABLE_ID]
         }
+
+        and: "Flow is valid and UP"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        wait(WAIT_OFFSET / 2) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
         initSwProps && revertSwitchToInitState(sw, initSwProps)
@@ -1485,15 +1494,6 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
     }
 
     def "get triplet of traffgen switches in single table mode with flow path"() {
-        /*
-                def switchPair = topologyHelper.allNotNeighboringSwitchPairs.collectMany { [it, it.reversed] }.find { pair ->
-            desiredPath = pair.paths.find { path ->
-                involvedSwitches = pathHelper.getInvolvedSwitches(path)
-                involvedSwitches.size() == 3 &&
-                        involvedSwitches.every { it.features.contains(SwitchFeature.MULTI_TABLE) }
-            }
-        }
-         */
         List<PathNode> desiredPath = null
         List<Switch> involvedSwitches = null
         def swPair = topologyHelper.allNotNeighboringSwitchPairs
@@ -1521,24 +1521,21 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
         return [involvedSwitches, swPair, desiredPath, initSwProps]
 
     }
-    //TODO: move to wrapper class SwitchList.getGarbageRules()
-    def "validate switches"(List<Switch> switchesToValidate) {
-        switchesToValidate.each {sw ->
-            with(northboundV2.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+    //TODO: move to wrapper class SwitchList.getGarbageRules() (from test package, not product itself)
+    Boolean 'every switch has only expected rules?'(List<Switch> switchesToValidate) {
+        return withPool {
+            switchesToValidate.collectParallel {Switch sw -> northboundV2.validateSwitch(sw.dpId).asExpected}.collect()
+        }.every()
 
     }
 
-    //TODO: move to Flow.isPingable()
+    //TODO: move to Flow.isPingable() (from test package, not product itself)
     def "is flow pingable?"(FlowRequestV2 flow) {
         def pingResponse = northbound.pingFlow(flow.flowId, new PingInput(null))
         return pingResponse.forward.pingSuccess && pingResponse.reverse.pingSuccess
     }
 
-    //TODO: move to Flow.isTrafficPass()
+    //TODO: move to Flow.isTrafficPass() (from test package, not product itself)
     def "does flow pass traffic?"(FlowRequestV2 flow) {
         def traffExam = traffExamProvider.get()
         def flowExam = new FlowTrafficExamBuilder(topology, traffExam)
@@ -1553,7 +1550,7 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
         return result.every() //is true
     }
 
-    //TODO: move to Flow.getCookies()
+    //TODO: move to Flow.getCookies() (from test package, not product itself)
     def getFlowCookies(SwitchPair switches, FlowRequestV2 flow) {
         def flow1InfoFromDb = database.getFlow(flow.flowId)
         def flowsCookies = [flow1InfoFromDb.forwardPath.cookie.value, flow1InfoFromDb.reversePath.cookie.value]
