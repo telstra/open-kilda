@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.126.1 (12/12/2022)
+
+### Bug Fixes:
+-  [#5011](https://github.com/telstra/open-kilda/pull/5011) Improved PCE performance (Issue: [#5010](https://github.com/telstra/open-kilda/issues/5010))
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.126.0...v1.126.1).
+
+### Affected Components:
+flow-hs
+
+---
+
 ## v1.126.0 (21/11/2022)
 
 ### Features:

@@ -368,8 +368,10 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
         while (!toVisit.isEmpty()) {
             SearchNode current = toVisit.pop();
-            log.trace("Going to visit node {} with weight {}.",
-                    current.dstSw, current.getParentWeight().getTotalWeight());
+            if (log.isTraceEnabled()) {
+                log.trace("Going to visit node {} with weight {}.",
+                        current.dstSw, current.getParentWeight().getTotalWeight());
+            }
 
             if (isContainHardDiversityPenalties(current.parentWeight)) {
                 // Have not to use path with hard diversity penalties
@@ -386,7 +388,9 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                     bestPath = current;
                 }
                 // We found dest, no need to keep processing
-                log.trace("Found destination using {} with path {}", current.dstSw, current.parentPath);
+                if (log.isTraceEnabled()) {
+                    log.trace("Found destination using {} with path {}", current.dstSw, current.parentPath);
+                }
                 continue;
             }
 
@@ -398,14 +402,18 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
             // Stop processing entirely if we've gone too far, or over bestWeight
             if (current.allowedDepth <= 0 || current.parentWeight.compareTo(bestWeight) > 0) {
-                log.trace("Skip node {} processing", current.dstSw);
+                if (log.isTraceEnabled()) {
+                    log.trace("Skip node {} processing", current.dstSw);
+                }
                 continue;
             }
 
             // Either this is the first time, or this one has less weight .. either way, this node should
             // be the one in the visited list
             visited.put(current.dstSw, current);
-            log.trace("Save new path to node {} and process it's outgoing links", current.dstSw);
+            if (log.isTraceEnabled()) {
+                log.trace("Save new path to node {} and process it's outgoing links", current.dstSw);
+            }
 
             // At this stage .. haven't found END, haven't gone too deep, and we are not over weight.
             // So, add the outbound isls.
@@ -446,11 +454,14 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         while (!toVisit.isEmpty()) {
             SearchNode current = toVisit.pop();
             PathWeight currentPathWeight = current.getParentWeight();
-            log.trace("Going to visit node {} with weight {}.", current.dstSw, currentPathWeight);
-
+            if (log.isTraceEnabled()) {
+                log.trace("Going to visit node {} with weight {}.", current.dstSw, currentPathWeight);
+            }
             // Leave if the path contains this node
             if (current.containsSwitch(current.dstSw.getSwitchId())) {
-                log.trace("Skip node {} already in the path", current.dstSw);
+                if (log.isTraceEnabled()) {
+                    log.trace("Skip node {} already in the path", current.dstSw);
+                }
                 continue;
             }
 
@@ -470,23 +481,39 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
                     if (desiredPath == null) {
                         desiredPath = current;
+                        log.trace("Found first path to node {} with base weight {} and penalties {}",
+                                current.dstSw, current.parentWeight.getBaseWeight(),
+                                current.parentWeight.getPenaltiesWeight());
                         continue;
                     }
 
                     if (currentPathWeight.getPenaltiesWeight() < desiredPath.parentWeight.getPenaltiesWeight()) {
+                        if (log.isTraceEnabled()) {
+                            log.trace("Found path with best penalties {} instead of {} penalties. Base weight is {}",
+                                    currentPathWeight.getPenaltiesWeight(),
+                                    desiredPath.parentWeight.getPenaltiesWeight(),
+                                    current.parentWeight.getBaseWeight());
+                        }
                         desiredPath = current;
                         continue;
                     }
 
                     if (currentPathWeight.getPenaltiesWeight() == desiredPath.parentWeight.getPenaltiesWeight()
                             && currentPathWeight.getBaseWeight() > desiredPath.parentWeight.getBaseWeight()) {
+                        if (log.isTraceEnabled()) {
+                            log.trace("Found path with same penalties {}, but different weight {} instead of {}",
+                                    currentPathWeight.getPenaltiesWeight(), currentPathWeight.getBaseWeight(),
+                                    desiredPath.parentWeight.getBaseWeight());
+                        }
                         desiredPath = current;
                         continue;
                     }
                 }
 
                 // We found dest, no need to keep processing
-                log.trace("Found destination using {} with path {}", current.dstSw, current.parentPath);
+                if (log.isTraceEnabled()) {
+                    log.trace("Found destination using {} with path {}", current.dstSw, current.parentPath);
+                }
                 continue;
             }
 
@@ -502,7 +529,9 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
                 // Should check with penalties too
                 if (currentPathWeight.getTotalWeight() > prior.getParentWeight().getTotalWeight()) {
-                    log.trace("Skip node {} processing", current.dstSw);
+                    if (log.isTraceEnabled()) {
+                        log.trace("Skip node {} processing", current.dstSw);
+                    }
                     continue;
                 }
             }
@@ -510,11 +539,16 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
             // Either this is the first time, or this one has less weight .. either way, this node should
             // be the one in the visited list
             visited.put(current.dstSw, current);
-            log.trace("Save new path to node {} and process it's outgoing links", current.dstSw);
+            if (log.isTraceEnabled()) {
+                log.trace("Save new path to node {} and process it's outgoing links", current.dstSw);
+            }
 
             // At this stage .. haven't found END, haven't gone too deep, and we are not over weight.
             // So, add the outbound isls.
+            PathWeight desiredWeight = desiredPath == null ? null : desiredPath.getParentWeight();
             current.dstSw.getOutgoingLinks().stream()
+                    // We can skip path if its penalties are higher than bestPath penalties
+                    .filter(edge -> filterEdgeByPenalties(edge, current.parentWeight, desiredWeight, weightFunction))
                     // should firstly process edges with big weights to guarantee they will not be skipped.
                     // See unit test shouldUseSlowLinkInsidePath.
                     .sorted(Comparator.comparing(weightFunction).reversed()
@@ -523,6 +557,15 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         }
 
         return desiredPath;
+    }
+
+    private static boolean filterEdgeByPenalties(
+            Edge edge, PathWeight currentWeight, PathWeight desiredWeight, WeightFunction weightFunction) {
+        if (desiredWeight == null) {
+            return true;
+        }
+        PathWeight nextPathWeight = currentWeight.add(weightFunction.apply(edge));
+        return nextPathWeight.getPenaltiesWeight() <= desiredWeight.getPenaltiesWeight();
     }
 
     /**
