@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.126.2 (14/12/2022)
+
+### Bug Fixes:
+-  [#4999](https://github.com/telstra/open-kilda/pull/4999) Add maxLatency validation
+-  [#5005](https://github.com/telstra/open-kilda/pull/5005) Add ability to have equal max_latency and max_latency_tier2
+-  [#4990](https://github.com/telstra/open-kilda/pull/4990) Add affinity vs diversity path computation tests (Issue: [#4961](https://github.com/telstra/open-kilda/issues/4961))
+
+### Improvements:
+-  [#4995](https://github.com/telstra/open-kilda/pull/4995) #4988: Add tests on patch and update of one-switch and two-switch y-flow (Issue: [#4988](https://github.com/telstra/open-kilda/issues/4988)) [**tests**]
+-  [#5001](https://github.com/telstra/open-kilda/pull/5001) Revert #4875 "Add static code analysis for Groovy" (Issues: [#4875](https://github.com/telstra/open-kilda/issues/4875) [#4875](https://github.com/telstra/open-kilda/issues/4875)) [**tests**]
+-  [#5003](https://github.com/telstra/open-kilda/pull/5003) Add logging of all API request bodies on info level
+-  [#5008](https://github.com/telstra/open-kilda/pull/5008) Use RuleManager for creating/deleting of mirrors [**floodlight**]
+-  [#5009](https://github.com/telstra/open-kilda/pull/5009) Deprecate single table switch mode [**docs**]
+-  [#4987](https://github.com/telstra/open-kilda/pull/4987) Update test retry options [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.126.1...v1.126.2).
+
+### Deprecation
+
+Starting from release 1.126.2 single table mode for switches becomes deprecated. New features will be designed
+only for multi table mode. Current features will support single table mode till July 1, 2023. After that single table
+mode support can be removed from any feature.
+
+### Affected Components:
+flow-hs, fl
+
+---
+
 ## v1.126.1 (12/12/2022)
 
 ### Bug Fixes:
