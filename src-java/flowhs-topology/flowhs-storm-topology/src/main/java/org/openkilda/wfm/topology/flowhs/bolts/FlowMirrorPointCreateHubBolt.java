@@ -23,7 +23,8 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PA
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.floodlight.api.request.SpeakerRequest;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
 import org.openkilda.messaging.info.InfoMessage;
@@ -33,6 +34,9 @@ import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -58,6 +62,7 @@ public class FlowMirrorPointCreateHubBolt extends HubBolt implements FlowGeneric
     private final FlowMirrorPointCreateConfig config;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
+    private final RuleManagerConfig ruleManagerConfig;
 
     private transient FlowMirrorPointCreateService service;
     private String currentKey;
@@ -67,12 +72,14 @@ public class FlowMirrorPointCreateHubBolt extends HubBolt implements FlowGeneric
     public FlowMirrorPointCreateHubBolt(FlowMirrorPointCreateConfig config,
                                         PersistenceManager persistenceManager,
                                         PathComputerConfig pathComputerConfig,
-                                        FlowResourcesConfig flowResourcesConfig) {
+                                        FlowResourcesConfig flowResourcesConfig,
+                                        RuleManagerConfig ruleManagerConfig) {
         super(persistenceManager, config);
 
         this.config = config;
         this.pathComputerConfig = pathComputerConfig;
         this.flowResourcesConfig = flowResourcesConfig;
+        this.ruleManagerConfig = ruleManagerConfig;
     }
 
     @Override
@@ -81,10 +88,10 @@ public class FlowMirrorPointCreateHubBolt extends HubBolt implements FlowGeneric
                 new AvailableNetworkFactory(pathComputerConfig, persistenceManager.getRepositoryFactory());
         PathComputer pathComputer =
                 new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
-
+        RuleManager ruleManager = new RuleManagerImpl(ruleManagerConfig);
         FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         service = new FlowMirrorPointCreateService(this, persistenceManager, pathComputer, resourcesManager,
-                config.getPathAllocationRetriesLimit(), config.getPathAllocationRetryDelay(),
+                ruleManager, config.getPathAllocationRetriesLimit(), config.getPathAllocationRetryDelay(),
                 config.getResourceAllocationRetriesLimit(), config.getSpeakerCommandRetriesLimit());
     }
 
@@ -113,8 +120,12 @@ public class FlowMirrorPointCreateHubBolt extends HubBolt implements FlowGeneric
     protected void onWorkerResponse(Tuple input) throws PipelineException {
         String operationKey = pullKey(input);
         currentKey = KeyProvider.getParentKey(operationKey);
-        SpeakerFlowSegmentResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerFlowSegmentResponse.class);
-        service.handleAsyncResponse(currentKey, flowResponse);
+        SpeakerResponse speakerResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerResponse.class);
+        if (speakerResponse instanceof SpeakerCommandResponse) {
+            service.handleAsyncResponse(currentKey, (SpeakerCommandResponse) speakerResponse);
+        } else {
+            unhandledInput(input);
+        }
     }
 
     @Override

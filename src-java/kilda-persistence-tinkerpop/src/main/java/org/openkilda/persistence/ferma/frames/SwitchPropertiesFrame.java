@@ -114,6 +114,7 @@ public abstract class SwitchPropertiesFrame extends KildaBaseVertexFrame impleme
 
     @Override
     @Property("multi_table")
+    @Deprecated
     public abstract boolean isMultiTable();
 
     @Override

@@ -1,7 +1,20 @@
 ---
 KILDA CONTROLLER
 ---
-[![Build Status](https://github.com/telstra/open-kilda/actions/workflows/unittest.yml/badge.svg)](https://github.com/telstra/open-kilda/actions/workflows/unittest.yml)[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=org.openkilda%3Akilda-parent&metric=alert_status)](https://sonarcloud.io/dashboard?id=org.openkilda%3Akilda-parent)[![Mega-Linter](https://github.com/telstra/open-kilda/actions/workflows/MegaLinter/badge.svg?branch=main)](https://github.com/telstra/open-kilda/actions?query=workflow%3AMegaLinter+branch%3Amain)
+[![Build Status](https://github.com/telstra/open-kilda/actions/workflows/unittest.yml/badge.svg)](https://github.com/telstra/open-kilda/actions/workflows/unittest.yml)[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=org.openkilda%3Akilda-parent&metric=alert_status)](https://sonarcloud.io/dashboard?id=org.openkilda%3Akilda-parent)
+
+## Description
+
+Kilda Controller is Software Defined Network Controller. It was created to manage a set of switches, create connections
+between them (flows) and react to network equipment failures by evacuating flows from damaged points..
+
+## Important notes
+
+### Deprecation
+
+* Release 1.126.2 (December 2022) - Single table mode for switches becomes deprecated. New features will be designed
+only for multi table mode. Current features will support single table mode till July 1, 2023. After that single table
+mode support can be removed from any feature.
 
 ## Introduction
 

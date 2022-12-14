@@ -222,6 +222,62 @@ public class YFlowValidatorTest {
         yFlowValidator.validate(request);
     }
 
+    private YFlowRequest getTestRequestWithMaxLatencyAndMaxLatencyTier2(Long maxLatency, Long maxLatencyTier2) {
+        return YFlowRequest.builder()
+                .yFlowId("test")
+                .maxLatency(maxLatency)
+                .maxLatencyTier2(maxLatencyTier2)
+                .sharedEndpoint(FlowEndpoint.builder()
+                        .switchId(SWITCH_ID_1)
+                        .portNumber(PORT_1)
+                        .build())
+                .subFlows(Arrays.asList(SubFlowDto.builder()
+                                .flowId("test_1")
+                                .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(1, 0))
+                                .endpoint(FlowEndpoint.builder()
+                                        .switchId(SWITCH_ID_2)
+                                        .portNumber(PORT_2)
+                                        .build())
+                                .build(),
+                        SubFlowDto.builder()
+                                .flowId("test_2")
+                                .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(2, 0))
+                                .endpoint(FlowEndpoint.builder()
+                                        .switchId(SWITCH_ID_3)
+                                        .portNumber(PORT_3)
+                                        .build())
+                                .build()))
+                .build();
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void failIfMaxLatencyTier2HigherThanMaxLatency()
+            throws InvalidFlowException, UnavailableFlowEndpointException {
+        YFlowRequest request = getTestRequestWithMaxLatencyAndMaxLatencyTier2((long) 1000, (long) 500);
+        yFlowValidator.validate(request);
+    }
+
+    @Test (expected = InvalidFlowException.class)
+    public void failIfMaxLatencyTier2butMaxLatencyIsNull()
+            throws InvalidFlowException, UnavailableFlowEndpointException {
+        YFlowRequest request = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, (long) 500);
+        yFlowValidator.validate(request);
+    }
+
+    @Test
+    public void passIfMaxLatencyTier2butMaxLatencyIsNull()
+            throws InvalidFlowException, UnavailableFlowEndpointException {
+        YFlowRequest request = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, null);
+        yFlowValidator.validate(request);
+    }
+
+    @Test
+    public void passIfMaxLatencyTier2EqualToMaxLatency()
+            throws InvalidFlowException, UnavailableFlowEndpointException {
+        YFlowRequest request = getTestRequestWithMaxLatencyAndMaxLatencyTier2(500L, 500L);
+        yFlowValidator.validate(request);
+    }
+
     @Test(expected = InvalidFlowException.class)
     public void failIfNoSharedEndpointProvided()
             throws InvalidFlowException, UnavailableFlowEndpointException {

@@ -256,4 +256,44 @@ public class FlowValidatorTest {
                 .build();
         flowValidator.checkForEncapsulationTypeRequirement(SRC_ENDPOINT, properties, TRANSIT_VLAN);
     }
+
+    private RequestedFlow getTestRequestWithMaxLatencyAndMaxLatencyTier2(Long maxLatency, Long maxLatencyTier2) {
+        return RequestedFlow.builder()
+                .flowId("firstFlow")
+                .maxLatency(maxLatency)
+                .maxLatencyTier2(maxLatencyTier2)
+                .srcSwitch(SWITCH_ID_1)
+                .srcPort(10)
+                .srcVlan(11)
+                .destSwitch(SWITCH_ID_2)
+                .destPort(12)
+                .destVlan(13)
+                .destVlan(13)
+                .detectConnectedDevices(new DetectConnectedDevices())
+                .build();
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void shouldFailIfMaxLatencyTier2HigherThanMaxLatency() throws InvalidFlowException {
+        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2((long) 1000, (long) 500);
+        flowValidator.checkMaxLatency(flow);
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void shouldFailIfMaxLatencyTier2butMaxLatencyIsNull() throws InvalidFlowException {
+        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, (long) 500);
+        flowValidator.checkMaxLatency(flow);
+    }
+
+    @Test
+    public void shouldNotFailIfMaxLatencyTier2andMaxLatencyAreNull() throws InvalidFlowException {
+        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, null);
+        flowValidator.checkMaxLatency(flow);
+    }
+
+    @Test
+    public void shouldNotFailIfMaxLatencyTier2andMaxLatencyAreEqual() throws InvalidFlowException {
+        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(500L, 500L);
+        flowValidator.checkMaxLatency(flow);
+    }
 }

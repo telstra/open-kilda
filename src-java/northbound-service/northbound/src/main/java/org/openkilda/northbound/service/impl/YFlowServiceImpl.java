@@ -84,7 +84,7 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Override
     public CompletableFuture<YFlow> createYFlow(YFlowCreatePayload createPayload) {
-        log.debug("Processing y-flow creation: {}", createPayload);
+        log.info("API request: create y-flow: {}", createPayload);
         String correlationId = RequestCorrelationId.getId();
 
         YFlowRequest flowRequest;
@@ -104,7 +104,7 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Override
     public CompletableFuture<YFlowDump> dumpYFlows() {
-        log.debug("Processing getting all y-flows");
+        log.info("API request: Dump all y-flows");
         YFlowsDumpRequest dumpRequest = new YFlowsDumpRequest();
         CommandMessage request = new CommandMessage(dumpRequest, System.currentTimeMillis(),
                 RequestCorrelationId.getId());
@@ -119,7 +119,7 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Override
     public CompletableFuture<YFlow> getYFlow(String yFlowId) {
-        log.debug("Processing getting of y-flow: {}", yFlowId);
+        log.info("API request: Get y-flow: {}", yFlowId);
         YFlowReadRequest readRequest = new YFlowReadRequest(yFlowId);
         CommandMessage request = new CommandMessage(readRequest, System.currentTimeMillis(),
                 RequestCorrelationId.getId());
@@ -131,7 +131,7 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Override
     public CompletableFuture<YFlowPaths> getYFlowPaths(String yFlowId) {
-        log.debug("Processing getting of y-flow paths: {}", yFlowId);
+        log.info("API request: Get y-flow paths: {}", yFlowId);
         YFlowPathsReadRequest readPathsRequest = new YFlowPathsReadRequest(yFlowId);
         CommandMessage request = new CommandMessage(readPathsRequest, System.currentTimeMillis(),
                 RequestCorrelationId.getId());
@@ -142,7 +142,7 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Override
     public CompletableFuture<YFlow> updateYFlow(String yFlowId, YFlowUpdatePayload updatePayload) {
-        log.debug("Processing y-flow update: {}", updatePayload);
+        log.info("API request: Update y-flow {}. New properties {}", yFlowId, updatePayload);
         String correlationId = RequestCorrelationId.getId();
 
         YFlowRequest flowRequest;
@@ -162,7 +162,7 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Override
     public CompletableFuture<YFlow> patchYFlow(String yFlowId, YFlowPatchPayload patchPayload) {
-        log.debug("Processing y-flow patch: {}", yFlowId);
+        log.info("API request: Patch y-flow {}. New properties {}", yFlowId, patchPayload);
         String correlationId = RequestCorrelationId.getId();
 
         YFlowPartialUpdateRequest yFlowPartialUpdateRequest;
@@ -183,7 +183,7 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Override
     public CompletableFuture<YFlow> deleteYFlow(String yFlowId) {
-        log.debug("Processing y-flow delete: {}", yFlowId);
+        log.info("API request: Delete y-flow: {}", yFlowId);
         CommandMessage command = new CommandMessage(new YFlowDeleteRequest(yFlowId), System.currentTimeMillis(),
                 RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(flowHsTopic, command)
@@ -194,7 +194,7 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Override
     public CompletableFuture<SubFlowsDump> getSubFlows(String yFlowId) {
-        log.debug("Processing getting of y-flow sub-flows: {}", yFlowId);
+        log.info("API request: Get y-flow sub-flows: {}", yFlowId);
         CommandMessage request = new CommandMessage(new SubFlowsReadRequest(yFlowId), System.currentTimeMillis(),
                 RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(flowHsTopic, request)
@@ -204,7 +204,7 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Override
     public CompletableFuture<YFlowRerouteResult> rerouteYFlow(String yFlowId) {
-        log.debug("Processing y-flow reroute: {}", yFlowId);
+        log.info("API request: Reroute y-flow: {}", yFlowId);
         YFlowRerouteRequest flowRerouteRequest = new YFlowRerouteRequest(yFlowId, "initiated via Northbound");
         CommandMessage command = new CommandMessage(flowRerouteRequest, System.currentTimeMillis(),
                 RequestCorrelationId.getId());
@@ -215,7 +215,7 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Override
     public CompletableFuture<YFlowValidationResult> validateYFlow(String yFlowId) {
-        log.debug("Processing y-flow validation: {}", yFlowId);
+        log.info("API request: Validate y-flow: {}", yFlowId);
         CommandMessage command = new CommandMessage(new YFlowValidationRequest(yFlowId), System.currentTimeMillis(),
                 RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(flowHsTopic, command)
@@ -225,7 +225,7 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Override
     public CompletableFuture<YFlowSyncResult> synchronizeYFlow(String yFlowId) {
-        log.debug("Processing y-flow synchronization: {}", yFlowId);
+        log.info("API request: Synchronize y-flow: {}", yFlowId);
         CommandMessage command = new CommandMessage(new YFlowSyncRequest(yFlowId), System.currentTimeMillis(),
                 RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(flowHsTopic, command)
@@ -235,7 +235,7 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Override
     public CompletableFuture<YFlowPingResult> pingYFlow(String yFlowId, YFlowPingPayload payload) {
-        log.debug("Processing y-flow ping: {} {}", yFlowId, payload);
+        log.info("API request: Ping y-flow {}, payload {}", yFlowId, payload);
         CommandMessage command = new CommandMessage(new YFlowPingRequest(yFlowId, payload.getTimeoutMillis()),
                 System.currentTimeMillis(), RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(pingTopic, command)
@@ -245,7 +245,7 @@ public class YFlowServiceImpl implements YFlowService {
 
     @Override
     public CompletableFuture<YFlow> swapYFlowPaths(String yFlowId) {
-        log.debug("Processing y-flow path swap: {}", yFlowId);
+        log.info("API request: Swap y-flow paths: {}", yFlowId);
 
         CommandMessage request = new CommandMessage(new YFlowPathSwapRequest(yFlowId),
                 System.currentTimeMillis(), RequestCorrelationId.getId());

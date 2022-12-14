@@ -30,6 +30,7 @@ import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.NetworkService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class NetworkServiceImpl implements NetworkService {
 
@@ -59,6 +61,11 @@ public class NetworkServiceImpl implements NetworkService {
             SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType encapsulationType,
             PathComputationStrategy pathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2,
             Integer maxPathCount) {
+        log.info("API request: Get Paths: srcSwitch {}, dstSwitch {}, encapsulationType {}, "
+                + "pathComputationStrategy {}, maxLatency {}, maxLatencyTier2 {}, maxPathCount {}",
+                srcSwitch, dstSwitch, encapsulationType, pathComputationStrategy,
+                maxLatency, maxLatencyTier2, maxPathCount);
+
         String correlationId = RequestCorrelationId.getId();
 
         if (maxPathCount != null && maxPathCount <= 0) {

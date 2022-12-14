@@ -15,17 +15,17 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete;
 
-import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithSpeakerCommandsFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions.DeallocateFlowMirrorPathResourcesAction;
@@ -48,17 +48,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
 @Slf4j
-public final class FlowMirrorPointDeleteFsm extends FlowProcessingWithHistorySupportFsm<FlowMirrorPointDeleteFsm,
+public final class FlowMirrorPointDeleteFsm extends FlowProcessingWithSpeakerCommandsFsm<FlowMirrorPointDeleteFsm,
         State, Event, FlowMirrorPointDeleteContext, FlowGenericCarrier, FlowProcessingEventListener> {
-
-    private final String flowId;
 
     private FlowStatus flowStatus;
     private PathId mirrorPathId;
@@ -67,17 +64,13 @@ public final class FlowMirrorPointDeleteFsm extends FlowProcessingWithHistorySup
     private PathId flowPathId;
     private SwitchId mirrorSwitchId;
 
-    private final Map<UUID, SwitchId> pendingCommands = new HashMap<>();
-    private final Map<UUID, Integer> retriedCommands = new HashMap<>();
-    private final Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
-    private final Map<UUID, FlowSegmentRequestFactory> commands = new HashMap<>();
+    private final List<SpeakerData> mirrorPointSpeakerData = new ArrayList<>();
 
     private boolean mirrorPathResourcesDeallocated = false;
 
     public FlowMirrorPointDeleteFsm(@NonNull CommandContext commandContext,
                                     @NonNull FlowGenericCarrier carrier, @NonNull String flowId) {
-        super(Event.NEXT, Event.ERROR, commandContext, carrier);
-        this.flowId = flowId;
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, flowId);
     }
 
     @Override
@@ -90,7 +83,8 @@ public final class FlowMirrorPointDeleteFsm extends FlowProcessingWithHistorySup
         private final FlowGenericCarrier carrier;
 
         public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
-                       @NonNull FlowResourcesManager resourcesManager, int speakerCommandRetriesLimit) {
+                       @NonNull FlowResourcesManager resourcesManager, @NonNull RuleManager ruleManager,
+                       int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(FlowMirrorPointDeleteFsm.class, State.class, Event.class,
@@ -110,7 +104,8 @@ public final class FlowMirrorPointDeleteFsm extends FlowProcessingWithHistorySup
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.onEntry(State.DEALLOCATING_FLOW_MIRROR_PATH_RESOURCES)
-                    .perform(new DeallocateFlowMirrorPathResourcesAction(persistenceManager, resourcesManager));
+                    .perform(new DeallocateFlowMirrorPathResourcesAction(
+                            persistenceManager, resourcesManager, ruleManager));
             builder.transitions().from(State.DEALLOCATING_FLOW_MIRROR_PATH_RESOURCES)
                     .toAmong(State.FLOW_MIRROR_PATH_RESOURCES_DEALLOCATED, State.FLOW_MIRROR_PATH_RESOURCES_DEALLOCATED)
                     .onEach(Event.NEXT, Event.ERROR);
@@ -121,10 +116,8 @@ public final class FlowMirrorPointDeleteFsm extends FlowProcessingWithHistorySup
                     .perform(new HandleNotDeallocatedFlowMirrorPathResourceAction());
 
             builder.onEntry(State.REMOVING_GROUP)
-                    .perform(new EmitCommandRequestsAction(persistenceManager, resourcesManager));
+                    .perform(new EmitCommandRequestsAction(persistenceManager, ruleManager));
             builder.internalTransition().within(State.REMOVING_GROUP).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedCommandResponseAction(speakerCommandRetriesLimit));
-            builder.internalTransition().within(State.REMOVING_GROUP).on(Event.ERROR_RECEIVED)
                     .perform(new OnReceivedCommandResponseAction(speakerCommandRetriesLimit));
             builder.transition().from(State.REMOVING_GROUP).to(State.GROUP_REMOVED)
                     .on(Event.GROUP_REMOVED);
@@ -182,8 +175,6 @@ public final class FlowMirrorPointDeleteFsm extends FlowProcessingWithHistorySup
         NEXT,
 
         RESPONSE_RECEIVED,
-        ERROR_RECEIVED,
-
         GROUP_REMOVED,
 
         TIMEOUT,

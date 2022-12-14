@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,21 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete;
+package org.openkilda.wfm.topology.flowhs.validation;
 
-import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
+import org.junit.Test;
 
-import lombok.Builder;
-import lombok.Data;
-
-@Data
-public class FlowMirrorPointDeleteContext {
-    SpeakerCommandResponse speakerResponse;
-    private String flowMirrorPointId;
-
-    @Builder
-    public FlowMirrorPointDeleteContext(SpeakerCommandResponse speakerResponse, String flowMirrorPointId) {
-        this.speakerResponse = speakerResponse;
-        this.flowMirrorPointId = flowMirrorPointId;
+public class ValidatorUtilsTest {
+    @Test
+    public void maxLatencyValidatorMustAcceptEqualMaxLatencyAndMaxLatencyTier2() throws InvalidFlowException {
+        // should not raise exception
+        ValidatorUtils.maxLatencyValidator(500L, 500L);
     }
 }

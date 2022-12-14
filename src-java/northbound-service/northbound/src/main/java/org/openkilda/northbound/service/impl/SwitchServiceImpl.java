@@ -114,9 +114,8 @@ import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import com.google.common.collect.Sets;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -128,9 +127,9 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class SwitchServiceImpl extends BaseService implements SwitchService {
-    private static final Logger logger = LoggerFactory.getLogger(SwitchServiceImpl.class);
     public static final String SWITCH_VALIDATION_FILTERS_SPLITTER = "\\|";
     public static final Set<ValidationFilter> VALID_INCLUDE_FILTERS = Sets.newHashSet(
             RULES, METERS, GROUPS, LOGICAL_PORTS);
@@ -179,7 +178,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     @Override
     public CompletableFuture<List<SwitchDto>> getSwitches() {
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Get switch request received");
+        log.info("API request: Get switch request received");
         CommandMessage request = new CommandMessage(new GetSwitchesRequest(), System.currentTimeMillis(),
                 correlationId);
 
@@ -196,7 +195,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
      */
     @Override
     public CompletableFuture<SwitchDto> getSwitch(SwitchId switchId) {
-        logger.debug("Get one switch request");
+        log.info("API request: Get one switch request {}", switchId);
         CommandMessage request = new CommandMessage(new GetSwitchRequest(switchId), System.currentTimeMillis(),
                 RequestCorrelationId.getId());
 
@@ -224,13 +223,15 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<SwitchFlowEntries> getRules(SwitchId switchId, Long cookie) {
+        log.info("API request: Get rules: switch={}, cookie={}", switchId, cookie);
         return getRules(switchId, cookie, RequestCorrelationId.getId());
     }
 
     @Override
     public CompletableFuture<List<Long>> deleteRules(SwitchId switchId, DeleteRulesAction deleteAction) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.info("Delete switch rules request received: switch={}, deleteAction={}", switchId, deleteAction);
+        log.info("API request: Delete switch rules request received: switch={}, deleteAction={}",
+                switchId, deleteAction);
 
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, deleteAction, null);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
@@ -243,7 +244,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     @Override
     public CompletableFuture<List<Long>> deleteRules(SwitchId switchId, DeleteRulesCriteria criteria) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.info("Delete switch rules request received: switch={}, criteria={}", switchId, criteria);
+        log.info("API request: Delete switch rules request received: switch={}, criteria={}", switchId, criteria);
 
         SwitchRulesDeleteRequest data = new SwitchRulesDeleteRequest(switchId, null, criteria);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
@@ -259,7 +260,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     @Override
     public CompletableFuture<List<Long>> installRules(SwitchId switchId, InstallRulesAction installAction) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.info("Install switch rules request received: switch={}, action={}", switchId, installAction);
+        log.info("API request: Install switch rules request received: switch={}, action={}", switchId, installAction);
 
         SwitchRulesInstallRequest data = new SwitchRulesInstallRequest(switchId, installAction);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
@@ -271,7 +272,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<RulesValidationResult> validateRules(SwitchId switchId) {
-        logger.info("Validate rules request for switch {}", switchId);
+        log.info("API request: Validate rules request for switch {}", switchId);
 
         return performValidateV2(
                 SwitchValidateRequest.builder()
@@ -282,7 +283,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId) {
-        logger.info("Validate request for switch {}", switchId);
+        log.info("API request: Validate request for switch {}", switchId);
 
         return performValidateV2(
                 SwitchValidateRequest.builder()
@@ -295,7 +296,8 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     @Override
     public CompletableFuture<SwitchValidationResultV2> validateSwitch(
             SwitchId switchId, String includeString, String excludeString) {
-        logger.info("Validate api V2 request for switch {}", switchId);
+        log.info("API request: Validate api V2 request for switch {}. includeString={}, excludeString={}",
+                switchId, includeString, excludeString);
 
         Set<ValidationFilter> includeFilters = parseSwitchValidationIncludeFilters(includeString);
         if (includeFilters.isEmpty()) {
@@ -329,7 +331,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId) {
-        logger.info("Sync rules request for switch {}", switchId);
+        log.info("API request: Sync rules request for switch {}", switchId);
 
         return performSync(
                 SwitchValidateRequest.builder()
@@ -342,7 +344,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<SwitchSyncResult> syncSwitch(SwitchId switchId, boolean removeExcess) {
-        logger.info("Sync request for switch {}. Remove excess {}", switchId, removeExcess);
+        log.info("API request: Sync request for switch {}. Remove excess {}", switchId, removeExcess);
 
         return performSync(
                 SwitchValidateRequest.builder().switchId(switchId)
@@ -364,6 +366,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<SwitchMeterEntries> getMeters(SwitchId switchId) {
+        log.info("API request: Get meters: switch={}", switchId);
         String requestId = RequestCorrelationId.getId();
         CommandMessage dumpCommand = new CommandMessage(
                 new DumpMetersRequest(switchId), System.currentTimeMillis(), requestId);
@@ -382,6 +385,8 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<DeleteMeterResult> deleteMeter(SwitchId switchId, long meterId) {
+        log.info("API request: Delete meter: switch={}, meterId={}", switchId, meterId);
+
         String requestId = RequestCorrelationId.getId();
         CommandMessage deleteCommand = new CommandMessage(
                 new DeleteMeterRequest(switchId, meterId), System.currentTimeMillis(), requestId);
@@ -396,6 +401,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
      */
     @Override
     public CompletableFuture<PortDto> configurePort(SwitchId switchId, int port, PortConfigurationPayload config) {
+        log.info("API request: Configure port {}_{}, config={}", switchId, port, config);
         String correlationId = RequestCorrelationId.getId();
 
         PortConfigurationRequest request = new PortConfigurationRequest(switchId,
@@ -414,6 +420,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
      */
     @Override
     public CompletableFuture<SwitchPortsDescription> getSwitchPortsDescription(SwitchId switchId) {
+        log.info("API request: Get switch description {}", switchId);
         String correlationId = RequestCorrelationId.getId();
         DumpSwitchPortsDescriptionRequest request = new DumpSwitchPortsDescriptionRequest(switchId);
         CommandMessage commandMessage = new CommandMessage(request, System.currentTimeMillis(),
@@ -428,6 +435,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
      */
     @Override
     public CompletableFuture<PortDescription> getPortDescription(SwitchId switchId, int port) {
+        log.info("API request: Get port description {}_{}", switchId, port);
         String correlationId = RequestCorrelationId.getId();
         DumpPortDescriptionRequest request = new DumpPortDescriptionRequest(switchId, port);
         CommandMessage commandMessage = new CommandMessage(request, System.currentTimeMillis(),
@@ -440,6 +448,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     @Override
     public CompletableFuture<List<PortHistoryResponse>> getPortHistory(SwitchId switchId, int port,
                                                                        Instant from, Instant to) {
+        log.info("API request: Get port history {}_{} from {} to {} ", switchId, port, from, to);
         PortHistoryRequest request = new PortHistoryRequest(switchId, port, from, to);
         Message message = new CommandMessage(request, System.currentTimeMillis(), RequestCorrelationId.getId());
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
@@ -455,9 +464,9 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     @Override
     public CompletableFuture<SwitchDto> updateSwitchUnderMaintenance(SwitchId switchId,
                                                                      UnderMaintenanceDto underMaintenanceDto) {
+        log.info("API request: Update switch under maintenance. switch={}, flag={}", switchId, underMaintenanceDto);
 
         String correlationId = RequestCorrelationId.getId();
-        logger.debug("Update under maintenance flag for switch request processing");
         UpdateSwitchUnderMaintenanceRequest data =
                 new UpdateSwitchUnderMaintenanceRequest(switchId, underMaintenanceDto.isUnderMaintenance(),
                         underMaintenanceDto.isEvacuate());
@@ -484,6 +493,8 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
      */
     @Override
     public CompletableFuture<DeleteSwitchResult> deleteSwitch(SwitchId switchId, boolean force) {
+        log.info("API request: Delete switch {}, force={}", switchId, force);
+
         String correlationId = RequestCorrelationId.getId();
         CommandMessage deleteCommand = new CommandMessage(
                 new DeleteSwitchRequest(switchId, force), System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -494,8 +505,8 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<List<FlowPayload>> getFlowsForSwitch(SwitchId switchId, Integer port) {
+        log.info("API request: Get all flows for the switch: {}_{}", switchId, port);
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Get all flows for the switch: {}", switchId);
         GetFlowsForSwitchRequest data = new GetFlowsForSwitchRequest(switchId, port);
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
@@ -509,8 +520,8 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<SwitchPropertiesDto> getSwitchProperties(SwitchId switchId) {
+        log.info("API request: Get switch properties for the switch: {}", switchId);
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Get switch properties for the switch: {}", switchId);
         GetSwitchPropertiesRequest data = new GetSwitchPropertiesRequest(switchId);
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
@@ -521,8 +532,8 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<SwitchPropertiesDump> dumpSwitchProperties() {
+        log.info("API request: Dump switch properties");
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Dump switch properties for the switch: {}");
         CommandMessage request = new CommandMessage(new GetAllSwitchPropertiesRequest(), System.currentTimeMillis(),
                 correlationId);
 
@@ -539,7 +550,8 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
                                                                          SwitchPropertiesDto switchPropertiesDto) {
 
         String correlationId = RequestCorrelationId.getId();
-        logger.info("Update switch properties for the switch: {}, New properties: {}", switchId, switchPropertiesDto);
+        log.info("API request: Update switch properties for the switch: {}, New properties: {}",
+                switchId, switchPropertiesDto);
 
         if (switchPropertiesDto.getServer42Port() != null && switchPropertiesDto.getServer42Port() <= 0) {
             throw new MessageException(ErrorType.REQUEST_INVALID, format(
@@ -576,7 +588,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     @Override
     public CompletableFuture<PortPropertiesResponse> getPortProperties(SwitchId switchId, int port) {
         String correlationId = RequestCorrelationId.getId();
-        logger.debug("Get port properties for the switch {} and port {}", switchId, port);
+        log.info("API request: Get port properties for the switch {} and port {}", switchId, port);
         GetPortPropertiesRequest data = new GetPortPropertiesRequest(switchId, port);
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
@@ -589,7 +601,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     public CompletableFuture<PortPropertiesResponse> updatePortProperties(SwitchId switchId, int port,
                                                                           PortPropertiesDto portPropertiesDto) {
         String correlationId = RequestCorrelationId.getId();
-        logger.info("Update port properties for the switch {} and port {}. New properties {}",
+        log.info("API request: Update port properties for the switch {} and port {}. New properties {}",
                 switchId, port, portPropertiesDto);
         UpdatePortPropertiesRequest data = new UpdatePortPropertiesRequest(switchId, port,
                 portPropertiesDto.isDiscoveryEnabled());
@@ -602,7 +614,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     @Override
     public CompletableFuture<SwitchConnectedDevicesResponse> getSwitchConnectedDevices(
             SwitchId switchId, Instant since) {
-        logger.info("Get connected devices for switch {} since {}", switchId, since);
+        log.info("API request: Get connected devices for switch {} since {}", switchId, since);
 
         GetSwitchConnectedDevicesRequest request = new GetSwitchConnectedDevicesRequest(switchId, since);
 
@@ -619,7 +631,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
      */
     @Override
     public CompletableFuture<SwitchDtoV2> patchSwitch(SwitchId switchId, SwitchPatchDto dto) {
-        logger.info("Patch switch request for switch {}", switchId);
+        log.info("API request: Patch switch request for switch {}. New properties {}", switchId, dto);
 
         CommandMessage request = new CommandMessage(new SwitchPatchRequest(switchId, switchMapper.map(dto)),
                 System.currentTimeMillis(), RequestCorrelationId.getId());
@@ -632,7 +644,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<SwitchConnectionsResponse> getSwitchConnections(SwitchId switchId) {
-        logger.info("Get connections between switch {} and OF speakers", switchId);
+        log.info("API request: Get connections between switch {} and OF speakers", switchId);
 
         return sendRequest(nbworkerTopic, new SwitchConnectionsRequest(switchId))
                 .thenApply(org.openkilda.messaging.nbtopology.response.SwitchConnectionsResponse.class::cast)
@@ -641,7 +653,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<LagPortResponse> createLag(SwitchId switchId, LagPortRequest lagPortDto) {
-        logger.info("Create Link aggregation group on switch {}, ports {}, LACP reply {}",
+        log.info("API request: Create Link aggregation group on switch {}, ports {}, LACP reply {}",
                 switchId, lagPortDto.getPortNumbers(), lagPortDto.getLacpReply());
 
         CreateLagPortRequest data = new CreateLagPortRequest(switchId, lagPortDto.getPortNumbers(),
@@ -655,7 +667,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<List<LagPortResponse>> getLagPorts(SwitchId switchId) {
-        logger.info("Getting Link aggregation groups on switch {}", switchId);
+        log.info("API request: Getting Link aggregation groups on switch {}", switchId);
 
         GetSwitchLagPortsRequest data = new GetSwitchLagPortsRequest(switchId);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
@@ -671,7 +683,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     @Override
     public CompletableFuture<LagPortResponse> updateLagPort(
             SwitchId switchId, int logicalPortNumber, LagPortRequest payload) {
-        logger.info("Updating LAG logical port {} on {} with {}", logicalPortNumber, switchId, payload);
+        log.info("API request: Updating LAG logical port {} on {} with {}", logicalPortNumber, switchId, payload);
 
         UpdateLagPortRequest request = new UpdateLagPortRequest(switchId, logicalPortNumber, payload.getPortNumbers(),
                 payload.getLacpReply());
@@ -683,7 +695,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Override
     public CompletableFuture<LagPortResponse> deleteLagPort(SwitchId switchId, int logicalPortNumber) {
-        logger.info("Removing Link aggregation group {} on switch {}", logicalPortNumber, switchId);
+        log.info("API request: Removing Link aggregation group {} on switch {}", logicalPortNumber, switchId);
 
         DeleteLagPortRequest data = new DeleteLagPortRequest(switchId, logicalPortNumber);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());

@@ -341,6 +341,11 @@ public class MaxLatencyPathComputationStrategyBaseTest extends InMemoryPathCompu
         paths.forEach(path -> assertThat(path.getLatency(), not(greaterThan(maxLatencyNs))));
     }
 
+    @Test
+    public void affinityOvercomeDiversity() throws Exception {
+        affinityOvercomeDiversity(PathComputationStrategy.MAX_LATENCY);
+    }
+
     private void createThreeWaysTopo() {
         //   / - B - \
         //  A  - C - E

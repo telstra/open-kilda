@@ -17,11 +17,11 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.command.flow.FlowMirrorPointDeleteRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -39,11 +39,12 @@ public class FlowMirrorPointDeleteService extends FlowProcessingService<FlowMirr
         FlowProcessingFsmRegister<FlowMirrorPointDeleteFsm>, FlowProcessingEventListener> {
     private final FlowMirrorPointDeleteFsm.Factory fsmFactory;
 
-    public FlowMirrorPointDeleteService(FlowGenericCarrier carrier, PersistenceManager persistenceManager,
-                                        FlowResourcesManager flowResourcesManager, int speakerCommandRetriesLimit) {
+    public FlowMirrorPointDeleteService(
+            FlowGenericCarrier carrier, PersistenceManager persistenceManager,
+            FlowResourcesManager flowResourcesManager, RuleManager ruleManager, int speakerCommandRetriesLimit) {
         super(new FlowProcessingFsmRegister<>(), new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
         fsmFactory = new FlowMirrorPointDeleteFsm.Factory(carrier, persistenceManager, flowResourcesManager,
-                speakerCommandRetriesLimit);
+                ruleManager, speakerCommandRetriesLimit);
     }
 
     /**
@@ -69,8 +70,8 @@ public class FlowMirrorPointDeleteService extends FlowProcessingService<FlowMirr
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
-        log.debug("Received flow command response {}", flowResponse);
+    public void handleAsyncResponse(String key, SpeakerCommandResponse commandResponse) {
+        log.debug("Received speaker command response {}", commandResponse);
         FlowMirrorPointDeleteFsm fsm = fsmRegister.getFsmByKey(key).orElse(null);
         if (fsm == null) {
             log.warn("Failed to find a FSM: received response with key {} for non pending FSM", key);
@@ -78,14 +79,10 @@ public class FlowMirrorPointDeleteService extends FlowProcessingService<FlowMirr
         }
 
         FlowMirrorPointDeleteContext context = FlowMirrorPointDeleteContext.builder()
-                .speakerFlowResponse(flowResponse)
+                .speakerResponse(commandResponse)
                 .build();
 
-        if (flowResponse instanceof FlowErrorResponse) {
-            fsmExecutor.fire(fsm, Event.ERROR_RECEIVED, context);
-        } else {
-            fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
-        }
+        fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
 
         removeIfFinished(fsm, key);
     }

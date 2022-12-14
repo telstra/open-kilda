@@ -290,6 +290,11 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
     }
 
     @Test
+    public void affinityOvercomeDiversity() throws Exception {
+        affinityOvercomeDiversity(PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH);
+    }
+
+    @Test
     public void shouldFindPathWithSameCostAndMinAvailableBandwidth()
             throws RecoverableException, UnroutableFlowException {
         createDiamondWithDifferentAvailableBandwidth();
