@@ -31,6 +31,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.Vxlan;
+import org.openkilda.model.YFlow;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
@@ -57,6 +58,7 @@ public class TestFlowBuilder {
 
     private String flowId = UUID.randomUUID().toString();
     private String yFlowId = null;
+    private YFlow yFlow = null;
     @Setter(AccessLevel.NONE)
     private final Endpoint source = new Endpoint();
     private int srcVlan;
@@ -157,6 +159,7 @@ public class TestFlowBuilder {
         Flow flow = Flow.builder()
                 .flowId(flowId)
                 .yFlowId(yFlowId)
+                .yFlow(yFlow)
                 .srcSwitch(srcSwitch)
                 .srcPort(source.port)
                 .srcVlan(srcVlan)
