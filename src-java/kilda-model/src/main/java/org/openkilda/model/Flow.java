@@ -399,14 +399,11 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
      * Returns Y point switch id.
      */
     public SwitchId getYPointSwitchId() {
-        if (getYFlow() == null) {
-            if (getYFlowId() != null) {
-                throw new IllegalStateException(format("Flow %s has yFlowId %s but yFlow object is null",
-                        getFlowId(), getYFlowId()));
-            }
+        YFlow yFlow = getYFlow();
+        if (yFlow == null) {
             return null;
         }
-        return getYFlow().getYPoint();
+        return yFlow.getYPoint();
     }
 
     @Override

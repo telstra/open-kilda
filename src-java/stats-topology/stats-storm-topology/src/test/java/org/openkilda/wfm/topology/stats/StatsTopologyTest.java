@@ -596,7 +596,11 @@ public class StatsTopologyTest extends AbstractStormTest {
 
         FlowStatsEntry flowReverseIngress = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 9, 10, 11, 12);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(flowReverseIngress)));
-        validateFlowStats(flowReverseIngress, MAIN_REVERSE_COOKIE, SWITCH_ID_3, true, false, true);
+        validateFlowStats(flowReverseIngress, MAIN_REVERSE_COOKIE, SWITCH_ID_3, false, false, true);
+
+        FlowStatsEntry yReverseIngress = new FlowStatsEntry(1, Y_MAIN_REVERSE_COOKIE.getValue(), 13, 14, 15, 16);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(yReverseIngress)));
+        validateFlowStats(yReverseIngress, Y_MAIN_REVERSE_COOKIE, SWITCH_ID_3, true, false, true);
     }
 
     @Test
@@ -1245,7 +1249,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     private void sendRemoveFlowPathInfo(FlowPath flowPath, Set<Integer> vlanStatistics) {
-        sendRemoveFlowPathInfo(flowPath, vlanStatistics, hasIngressMirror(flowPath), hasEgressMirror(flowPath));
+        sendRemoveFlowPathInfo(flowPath, vlanStatistics, flowPath.hasIngressMirror(), flowPath.hasEgressMirror());
     }
 
     private void sendRemoveFlowPathInfo(
@@ -1259,7 +1263,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
 
     private void sendUpdateFlowPathInfo(FlowPath flowPath, Set<Integer> vlanStatistics) {
-        sendUpdateFlowPathInfo(flowPath, vlanStatistics, hasIngressMirror(flowPath), hasEgressMirror(flowPath));
+        sendUpdateFlowPathInfo(flowPath, vlanStatistics, flowPath.hasIngressMirror(), flowPath.hasEgressMirror());
     }
 
     private void sendUpdateFlowPathInfo(
@@ -1349,15 +1353,5 @@ public class StatsTopologyTest extends AbstractStormTest {
         return datapoints
                 .stream()
                 .collect(Collectors.toMap(Datapoint::getMetric, Function.identity()));
-    }
-
-    protected boolean hasIngressMirror(FlowPath flowPath) {
-        return flowPath.getFlowMirrorPointsSet().stream()
-                .anyMatch(point -> point.getMirrorSwitchId().equals(flowPath.getSrcSwitchId()));
-    }
-
-    protected boolean hasEgressMirror(FlowPath flowPath) {
-        return flowPath.getFlowMirrorPointsSet().stream()
-                .anyMatch(point -> point.getMirrorSwitchId().equals(flowPath.getDestSwitchId()));
     }
 }

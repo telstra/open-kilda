@@ -17,6 +17,8 @@ package org.openkilda.wfm.topology.stats.service;
 
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT;
 import static org.openkilda.wfm.topology.stats.model.MeasurePoint.EGRESS;
+import static org.openkilda.wfm.topology.stats.model.MeasurePoint.INGRESS;
+import static org.openkilda.wfm.topology.stats.model.MeasurePoint.ONE_SWITCH;
 
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.FlowPathDirection;
@@ -43,7 +45,9 @@ import java.util.Set;
 @Slf4j
 public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandler {
     private static final Set<MeasurePoint> INGRESS_SUBFLOW_MEASURE_POINTS_TO_IGNORE = Sets.newHashSet(
-            MeasurePoint.INGRESS, MeasurePoint.ONE_SWITCH);
+            INGRESS, ONE_SWITCH);
+    private static final Set<MeasurePoint> REVERSE_SUBFLOW_PATH_MEASURE_POINTS_TO_IGNORE = Sets.newHashSet(
+            INGRESS, ONE_SWITCH, EGRESS);
 
     /**
      * Handle stats entry.
@@ -206,7 +210,8 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
     }
 
     private boolean isEgressEndsInYPoint(YFlowSubDescriptor descriptor, FlowSegmentCookie cookie) {
-        return FlowPathDirection.REVERSE.equals(cookie.getDirection()) && descriptor.getMeasurePoint() == EGRESS
+        return FlowPathDirection.REVERSE.equals(cookie.getDirection())
+                && REVERSE_SUBFLOW_PATH_MEASURE_POINTS_TO_IGNORE.contains(descriptor.getMeasurePoint())
                 && switchId.equals(descriptor.getYPointSwitchId());
     }
 }

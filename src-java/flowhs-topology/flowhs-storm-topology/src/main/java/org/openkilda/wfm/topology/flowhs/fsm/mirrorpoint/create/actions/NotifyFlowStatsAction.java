@@ -40,7 +40,7 @@ public class NotifyFlowStatsAction extends FlowProcessingWithHistorySupportActio
             UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
                     flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), flowPath.getCookie(),
                     flowPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath),
-                    flow.getVlanStatistics(), hasIngressMirror(flowPath), hasEgressMirror(flowPath));
+                    flow.getVlanStatistics(), flowPath.hasIngressMirror(), flowPath.hasEgressMirror());
             stateMachine.getCarrier().sendNotifyFlowStats(pathInfo);
         });
     }

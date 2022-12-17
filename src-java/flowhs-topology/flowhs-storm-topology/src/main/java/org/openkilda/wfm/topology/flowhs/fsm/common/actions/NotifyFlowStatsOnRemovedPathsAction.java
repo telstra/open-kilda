@@ -49,7 +49,7 @@ public class NotifyFlowStatsOnRemovedPathsAction<T extends FlowPathSwappingFsm<T
                     RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
                             flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), flowPath.getCookie(),
                             flowPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(originalFlow, flowPath),
-                            flow.getVlanStatistics(), hasIngressMirror(flowPath), hasEgressMirror(flowPath));
+                            flow.getVlanStatistics(), flowPath.hasIngressMirror(), flowPath.hasEgressMirror());
                     carrier.sendNotifyFlowStats(pathInfo);
                 });
     }
