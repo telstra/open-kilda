@@ -395,6 +395,17 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
         return getLoopSwitchId() != null;
     }
 
+    /**
+     * Returns Y point switch id.
+     */
+    public SwitchId getYPointSwitchId() {
+        YFlow yFlow = getYFlow();
+        if (yFlow == null) {
+            return null;
+        }
+        return yFlow.getYPoint();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

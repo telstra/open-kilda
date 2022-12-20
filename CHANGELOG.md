@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.126.3 (20/12/2022)
+
+### Bug Fixes:
+-  [#5018](https://github.com/telstra/open-kilda/pull/5018) Do not ignore sub flow stats if no Y flow rules on a switch (Issue: [#5017](https://github.com/telstra/open-kilda/issues/5017)) [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.126.2...v1.126.3).
+
+### Affected Components:
+stats, flow-hs
+
+---
+
 ## v1.126.2 (14/12/2022)
 
 ### Bug Fixes:

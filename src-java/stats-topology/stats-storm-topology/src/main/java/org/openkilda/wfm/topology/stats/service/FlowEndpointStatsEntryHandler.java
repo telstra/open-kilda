@@ -15,12 +15,16 @@
 
 package org.openkilda.wfm.topology.stats.service;
 
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT;
+import static org.openkilda.wfm.topology.stats.model.MeasurePoint.EGRESS;
+import static org.openkilda.wfm.topology.stats.model.MeasurePoint.INGRESS;
+import static org.openkilda.wfm.topology.stats.model.MeasurePoint.ONE_SWITCH;
+
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
-import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.rulemanager.RulePriorityAnalyzer;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.stats.bolts.metrics.FlowDirectionHelper.Direction;
 import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
@@ -34,9 +38,17 @@ import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowSubDescriptor;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.storm.shade.org.apache.curator.shaded.com.google.common.collect.Sets;
+
+import java.util.Set;
 
 @Slf4j
 public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandler {
+    private static final Set<MeasurePoint> INGRESS_SUBFLOW_MEASURE_POINTS_TO_IGNORE = Sets.newHashSet(
+            INGRESS, ONE_SWITCH);
+    private static final Set<MeasurePoint> REVERSE_SUBFLOW_PATH_MEASURE_POINTS_TO_IGNORE = Sets.newHashSet(
+            INGRESS, ONE_SWITCH, EGRESS);
+
     /**
      * Handle stats entry.
      */
@@ -84,8 +96,8 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
 
     @Override
     public void handleStatsEntry(YFlowSubDescriptor descriptor) {
-        if (RulePriorityAnalyzer.isGenericFlowEndpoint(statsEntry.getPriority())) {
-            return; // we must ignore stats from sub flow endpoints rule
+        if (shouldSkipStats(descriptor)) {
+            return; // we must ignore sub flow stats if there are y flow rules on same switch
         }
         TagsFormatter tags = initTags(true);
         tags.addFlowIdTag(descriptor.getSubFlowId());
@@ -96,7 +108,7 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
     @Override
     public void handleStatsEntry(DummyFlowDescriptor descriptor) {
         Cookie cookie = new Cookie(statsEntry.getCookie());
-        if (cookie.getType() == CookieType.SERVICE_OR_FLOW_SEGMENT) {
+        if (cookie.getType() == SERVICE_OR_FLOW_SEGMENT) {
             log.warn(
                     "Missed cache entry for stats record from switch {} from table {} with cookie {}",
                     switchId, statsEntry.getTableId(), cookie);
@@ -128,7 +140,7 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
 
     private void emitMeterPoints(TagsFormatter tags, MeasurePoint measurePoint, boolean hasMirror) {
         FlowSegmentCookie cookie = decodeFlowSegmentCookie(statsEntry.getCookie());
-        if (cookie != null && cookie.getType() == CookieType.SERVICE_OR_FLOW_SEGMENT
+        if (cookie != null && cookie.getType() == SERVICE_OR_FLOW_SEGMENT
                 && cookie.isMirror() == hasMirror) {
             directionFromCookieIntoTags(cookie, tags);
             switch (measurePoint) {
@@ -184,5 +196,22 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
         tags.addDirectionTag(Direction.UNKNOWN);
         tags.addIsYFlowSubFlowTag(isYSubFlow);
         return tags;
+    }
+
+    private boolean shouldSkipStats(YFlowSubDescriptor descriptor) {
+        FlowSegmentCookie cookie = new FlowSegmentCookie(statsEntry.getCookie());
+        return cookie.getType() == SERVICE_OR_FLOW_SEGMENT && !cookie.isYFlow()
+                && (isIngressStartsInSharedPoint(descriptor, cookie) || isEgressEndsInYPoint(descriptor, cookie));
+    }
+
+    private static boolean isIngressStartsInSharedPoint(YFlowSubDescriptor descriptor, FlowSegmentCookie cookie) {
+        return FlowPathDirection.FORWARD.equals(cookie.getDirection())
+                && INGRESS_SUBFLOW_MEASURE_POINTS_TO_IGNORE.contains(descriptor.getMeasurePoint());
+    }
+
+    private boolean isEgressEndsInYPoint(YFlowSubDescriptor descriptor, FlowSegmentCookie cookie) {
+        return FlowPathDirection.REVERSE.equals(cookie.getDirection())
+                && REVERSE_SUBFLOW_PATH_MEASURE_POINTS_TO_IGNORE.contains(descriptor.getMeasurePoint())
+                && switchId.equals(descriptor.getYPointSwitchId());
     }
 }
