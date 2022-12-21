@@ -36,8 +36,6 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
 import org.openkilda.wfm.share.flow.resources.vxlan.VxlanEncapsulation;
-import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
-import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation.FlowPathsWithEncapsulationBuilder;
 
 import com.google.common.collect.Lists;
 import lombok.AccessLevel;
@@ -235,32 +233,6 @@ public class TestFlowBuilder {
                 .ignoreBandwidth(flow.isIgnoreBandwidth())
                 .segments(pathSegments)
                 .build();
-    }
-
-    /**
-     * Build a UnidirectionalFlow with set properties.
-     */
-    public FlowPathsWithEncapsulation buildFlowPathsWithEncapsulation() {
-        Flow flow = build();
-        FlowPathsWithEncapsulationBuilder encapsulationBuilder = FlowPathsWithEncapsulation.builder()
-                .flow(flow)
-                .forwardPath(flow.getForwardPath())
-                .forwardEncapsulation(
-                        buildEncapsulationResources(flow.getForwardPathId(), forwardTransitEncapsulationId))
-                .reversePath(flow.getReversePath())
-                .reverseEncapsulation(
-                        buildEncapsulationResources(flow.getReversePathId(), reverseTransitEncapsulationId));
-        if (flow.getProtectedForwardPathId() != null) {
-            encapsulationBuilder.protectedForwardEncapsulation(
-                    buildEncapsulationResources(flow.getProtectedForwardPathId(),
-                            protectedForwardTransitEncapsulationId));
-        }
-        if (flow.getProtectedReversePathId() != null) {
-            encapsulationBuilder.protectedReverseEncapsulation(
-                    buildEncapsulationResources(flow.getProtectedReversePathId(),
-                            protectedReverseTransitEncapsulationId));
-        }
-        return encapsulationBuilder.build();
     }
 
     private EncapsulationResources buildEncapsulationResources(PathId pathId, int encapsulationId) {
