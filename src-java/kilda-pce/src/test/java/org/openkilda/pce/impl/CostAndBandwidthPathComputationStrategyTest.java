@@ -16,6 +16,7 @@
 package org.openkilda.pce.impl;
 
 import static java.lang.String.format;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
@@ -33,9 +34,12 @@ import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.pce.finder.FailReasonType;
 
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -202,9 +206,11 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
                 .ignoreBandwidth(false)
                 .build();
 
-        thrown.expect(UnroutableFlowException.class);
+        Exception exception = Assertions.assertThrows(UnroutableFlowException.class, () -> {
+            pathComputer.getPath(f2);
+        });
+        MatcherAssert.assertThat(exception.getMessage(), containsString(FailReasonType.NO_CONNECTION.toString()));
 
-        pathComputer.getPath(f2);
     }
 
     @Test
