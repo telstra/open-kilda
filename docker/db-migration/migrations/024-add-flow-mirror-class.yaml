@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: snikitin
+      changes:
+        - tagDatabase:
+            tag: 024-add-flow-mirror-class
+
+  - changeSet:
+      id: add_flow_mirror_class
+      author: snikitin
+      changes:
+        - sql: "CREATE CLASS flow_mirror IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY flow_mirror.flow_mirror_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_mirror.forward_path_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_mirror.mirror_switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_mirror.egress_switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_mirror.status IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_mirror.egress_port IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_mirror.egress_outer_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY flow_mirror.egress_inner_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE INDEX flow_mirror.flow_mirror_id IF NOT EXISTS UNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror.mirror_switch_id IF NOT EXISTS NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror.egress_switch_id IF NOT EXISTS NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror.egress_port IF NOT EXISTS NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror.egress_outer_vlan IF NOT EXISTS NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror.egress_inner_vlan IF NOT EXISTS NOTUNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DELETE VERTEX flow_mirror"
+        - sql: "DROP CLASS flow_mirror IF EXISTS"

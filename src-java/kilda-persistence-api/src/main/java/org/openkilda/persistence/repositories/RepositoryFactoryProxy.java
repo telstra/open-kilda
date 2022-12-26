@@ -166,6 +166,11 @@ public class RepositoryFactoryProxy implements RepositoryFactory {
     }
 
     @Override
+    public FlowMirrorRepository createFlowMirrorRepository() {
+        return resolve(FlowMirrorRepository.class).createFlowMirrorRepository();
+    }
+
+    @Override
     public FlowMirrorPathRepository createFlowMirrorPathRepository() {
         return resolve(FlowMirrorPathRepository.class).createFlowMirrorPathRepository();
     }

@@ -26,6 +26,7 @@ import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowStatsRepository;
@@ -192,6 +193,11 @@ public class HibernateRepositoryFactory implements RepositoryFactory {
 
     @Override
     public FlowMirrorPointsRepository createFlowMirrorPointsRepository() {
+        throw new IllegalStateException("Repository not implemented on hibernate layer");
+    }
+
+    @Override
+    public FlowMirrorRepository createFlowMirrorRepository() {
         throw new IllegalStateException("Repository not implemented on hibernate layer");
     }
 

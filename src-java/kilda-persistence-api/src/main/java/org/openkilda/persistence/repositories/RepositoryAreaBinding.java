@@ -38,6 +38,7 @@ public final class RepositoryAreaBinding {
         binding.put(FlowCookieRepository.class, PersistenceArea.COMMON);
         binding.put(FlowMeterRepository.class, PersistenceArea.COMMON);
         binding.put(FlowMirrorPathRepository.class, PersistenceArea.COMMON);
+        binding.put(FlowMirrorRepository.class, PersistenceArea.COMMON);
         binding.put(FlowMirrorPointsRepository.class, PersistenceArea.COMMON);
         binding.put(FlowPathRepository.class, PersistenceArea.COMMON);
         binding.put(FlowRepository.class, PersistenceArea.COMMON);

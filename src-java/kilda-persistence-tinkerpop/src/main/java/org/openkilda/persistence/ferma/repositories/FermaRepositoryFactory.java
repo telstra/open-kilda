@@ -25,6 +25,7 @@ import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -204,6 +205,11 @@ public class FermaRepositoryFactory implements RepositoryFactory {
     public FlowMirrorPointsRepository createFlowMirrorPointsRepository() {
         return new FermaFlowMirrorPointsRepository(
                 implementation, createFlowMirrorPathRepository());
+    }
+
+    @Override
+    public FlowMirrorRepository createFlowMirrorRepository() {
+        return new FermaFlowMirrorRepository(implementation, createFlowMirrorPathRepository());
     }
 
     @Override
