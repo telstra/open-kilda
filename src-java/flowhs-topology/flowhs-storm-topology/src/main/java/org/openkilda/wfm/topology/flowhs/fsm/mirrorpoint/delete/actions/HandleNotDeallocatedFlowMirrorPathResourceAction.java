@@ -33,7 +33,7 @@ public class HandleNotDeallocatedFlowMirrorPathResourceAction
                         FlowMirrorPointDeleteFsm stateMachine) {
         if (!stateMachine.isMirrorPathResourcesDeallocated()) {
             stateMachine.saveErrorToHistory("Failed to revert flow mirror path allocation",
-                    format("Failed to revert resource allocation for mirror path: %s", stateMachine.getMirrorPathId()));
+                    format("Failed to revert resource allocation for mirror path: %s", stateMachine.getFlowMirrorId()));
         }
     }
 }

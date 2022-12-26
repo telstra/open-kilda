@@ -18,9 +18,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions;
 import static java.lang.String.format;
 
 import org.openkilda.model.FlowPathStatus;
-import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm;
@@ -33,23 +32,24 @@ import lombok.extern.slf4j.Slf4j;
 public class RevertFlowMirrorPathStatusAction extends
         FlowProcessingWithHistorySupportAction<FlowMirrorPointDeleteFsm, State, Event, FlowMirrorPointDeleteContext> {
 
-    private final FlowMirrorPathRepository flowMirrorPathRepository;
+    //TODO use it
+    private final FlowMirrorRepository flowMirrorRepository;
 
     public RevertFlowMirrorPathStatusAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        flowMirrorPathRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPathRepository();
+        flowMirrorRepository = persistenceManager.getRepositoryFactory().createFlowMirrorRepository();
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowMirrorPointDeleteContext context,
                            FlowMirrorPointDeleteFsm stateMachine) {
-        PathId mirrorPathId = stateMachine.getMirrorPathId();
-        FlowPathStatus originalStatus = stateMachine.getOriginalFlowMirrorPathStatus();
+        String mirrorMirrorId = stateMachine.getFlowMirrorId();
+        FlowPathStatus originalStatus = stateMachine.getOriginalFlowMirrorStatus();
 
         if (originalStatus != null) {
-            log.debug("Reverting the flow mirror path status of {} to {}", mirrorPathId, originalStatus);
+            log.debug("Reverting the flow mirror path status of {} to {}", mirrorMirrorId, originalStatus);
 
-            flowMirrorPathRepository.updateStatus(mirrorPathId, FlowPathStatus.ACTIVE);
+            flowMirrorRepository.updateStatus(mirrorMirrorId, FlowPathStatus.ACTIVE);
 
             stateMachine.saveActionToHistory(format("The flow mirror path status was reverted to %s", originalStatus));
         }

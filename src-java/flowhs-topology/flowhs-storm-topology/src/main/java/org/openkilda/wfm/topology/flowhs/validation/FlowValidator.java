@@ -23,7 +23,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.PhysicalPort;
 import org.openkilda.model.Switch;
@@ -32,8 +32,8 @@ import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.YFlow;
 import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
@@ -71,7 +71,7 @@ public class FlowValidator {
     private final IslRepository islRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final FlowMirrorPointsRepository flowMirrorPointsRepository;
-    private final FlowMirrorPathRepository flowMirrorPathRepository;
+    private final FlowMirrorRepository flowMirrorRepository;
     private final PhysicalPortRepository physicalPortRepository;
 
     public FlowValidator(PersistenceManager persistenceManager) {
@@ -81,7 +81,7 @@ public class FlowValidator {
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
         this.flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
-        this.flowMirrorPathRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPathRepository();
+        this.flowMirrorRepository = persistenceManager.getRepositoryFactory().createFlowMirrorRepository();
         this.physicalPortRepository = persistenceManager.getRepositoryFactory().createPhysicalPortRepository();
     }
 
@@ -263,13 +263,12 @@ public class FlowValidator {
     private void checkFlowForSinkEndpointConflicts(EndpointDescriptor descriptor)
             throws InvalidFlowException {
         FlowEndpoint endpoint = descriptor.getEndpoint();
-        Optional<FlowMirrorPath> foundFlowMirrorPath = flowMirrorPathRepository.findByEgressEndpoint(
+        Optional<FlowMirror> foundFlowMirrorPath = flowMirrorRepository.findByEgressEndpoint(
                 endpoint.getSwitchId(), endpoint.getPortNumber(), endpoint.getOuterVlanId(), endpoint.getInnerVlanId());
         if (foundFlowMirrorPath.isPresent()) {
-            FlowMirrorPath flowMirrorPath = foundFlowMirrorPath.get();
-            String errorMessage = format("Requested endpoint '%s' conflicts "
-                            + "with existing flow mirror point '%s'.",
-                    descriptor.getEndpoint(), flowMirrorPath.getPathId());
+            FlowMirror flowMirrorPath = foundFlowMirrorPath.get();
+            String errorMessage = format("Requested endpoint '%s' conflicts with existing flow mirror point '%s'.",
+                    descriptor.getEndpoint(), flowMirrorPath.getFlowMirrorId());
             throw new InvalidFlowException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
     }

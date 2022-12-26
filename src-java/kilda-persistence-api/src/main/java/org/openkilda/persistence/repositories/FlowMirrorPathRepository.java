@@ -18,7 +18,6 @@ package org.openkilda.persistence.repositories;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
-import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -29,10 +28,6 @@ public interface FlowMirrorPathRepository extends Repository<FlowMirrorPath> {
     Collection<FlowMirrorPath> findAll();
 
     Optional<FlowMirrorPath> findById(PathId pathId);
-
-    Optional<FlowMirrorPath> findByEgressEndpoint(SwitchId switchId, int port, int outerVlan, int innerVlan);
-
-    Collection<FlowMirrorPath> findByEgressSwitchIdAndPort(SwitchId switchId, int port);
 
     void updateStatus(PathId pathId, FlowPathStatus pathStatus);
 

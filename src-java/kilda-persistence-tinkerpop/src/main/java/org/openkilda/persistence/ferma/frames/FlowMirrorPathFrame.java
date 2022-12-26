@@ -15,8 +15,8 @@
 
 package org.openkilda.persistence.ferma.frames;
 
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPath.FlowMirrorPathData;
-import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -44,30 +44,34 @@ public abstract class FlowMirrorPathFrame extends KildaBaseVertexFrame implement
     public static final String FRAME_LABEL = "flow_mirror_path";
     public static final String OWNS_SEGMENTS_EDGE = "owns";
     public static final String PATH_ID_PROPERTY = "path_id";
+    public static final String FLOW_MIRROR_ID_PROPERTY = "flow_mirror_id";
     public static final String MIRROR_SWITCH_ID_PROPERTY = "mirror_switch_id";
     public static final String EGRESS_SWITCH_ID_PROPERTY = "egress_switch_id";
-    public static final String EGRESS_PORT_PROPERTY = "egress_port";
-    public static final String EGRESS_OUTER_VLAN_PROPERTY = "egress_outer_vlan";
-    public static final String EGRESS_INNER_VLAN_PROPERTY = "egress_inner_vlan";
     public static final String COOKIE_PROPERTY = "cookie";
     public static final String IGNORE_BANDWIDTH_PROPERTY = "ignore_bandwidth";
+    public static final String STATUS_PROPERTY = "status";
     public static final String BANDWIDTH_PROPERTY = "bandwidth";
     public static final String EGRESS_MULTI_TABLE_PROPERTY = "egress_with_multi_table";
+    public static final String DUMMY_PROPERTY = "dummy";
 
     private Switch srcSwitch;
     private Switch destSwitch;
-    private FlowMirrorPoints flowMirrorPoints;
+    private FlowMirror flowMirror;
     private List<PathSegment> segments;
 
     @Override
     @Property(PATH_ID_PROPERTY)
     @Convert(PathIdConverter.class)
-    public abstract PathId getPathId();
+    public abstract PathId getMirrorPathId();
 
     @Override
     @Property(PATH_ID_PROPERTY)
     @Convert(PathIdConverter.class)
-    public abstract void setPathId(@NonNull PathId pathId);
+    public abstract void setMirrorPathId(@NonNull PathId pathId);
+
+    @Override
+    @Property(PATH_ID_PROPERTY)
+    public abstract String getFlowMirrorId();
 
     @Override
     @Property(MIRROR_SWITCH_ID_PROPERTY)
@@ -78,30 +82,6 @@ public abstract class FlowMirrorPathFrame extends KildaBaseVertexFrame implement
     @Property(EGRESS_SWITCH_ID_PROPERTY)
     @Convert(SwitchIdConverter.class)
     public abstract SwitchId getEgressSwitchId();
-
-    @Override
-    @Property(EGRESS_PORT_PROPERTY)
-    public abstract int getEgressPort();
-
-    @Override
-    @Property(EGRESS_PORT_PROPERTY)
-    public abstract void setEgressPort(int egressPort);
-
-    @Override
-    @Property(EGRESS_OUTER_VLAN_PROPERTY)
-    public abstract int getEgressOuterVlan();
-
-    @Override
-    @Property(EGRESS_OUTER_VLAN_PROPERTY)
-    public abstract void setEgressOuterVlan(int egressOuterVlan);
-
-    @Override
-    @Property(EGRESS_INNER_VLAN_PROPERTY)
-    public abstract int getEgressInnerVlan();
-
-    @Override
-    @Property(EGRESS_INNER_VLAN_PROPERTY)
-    public abstract void setEgressInnerVlan(int egressInnerVlan);
 
     @Override
     @Property(COOKIE_PROPERTY)
@@ -130,12 +110,12 @@ public abstract class FlowMirrorPathFrame extends KildaBaseVertexFrame implement
     public abstract void setIgnoreBandwidth(boolean ignoreBandwidth);
 
     @Override
-    @Property("status")
+    @Property(STATUS_PROPERTY)
     @Convert(FlowPathStatusConverter.class)
     public abstract FlowPathStatus getStatus();
 
     @Override
-    @Property("status")
+    @Property(STATUS_PROPERTY)
     @Convert(FlowPathStatusConverter.class)
     public abstract void setStatus(FlowPathStatus status);
 
@@ -146,6 +126,14 @@ public abstract class FlowMirrorPathFrame extends KildaBaseVertexFrame implement
     @Override
     @Property(EGRESS_MULTI_TABLE_PROPERTY)
     public abstract void setEgressWithMultiTable(boolean egressWithMultiTable);
+
+    @Override
+    @Property(DUMMY_PROPERTY)
+    public abstract boolean isDummy();
+
+    @Override
+    @Property(DUMMY_PROPERTY)
+    public abstract void setDummy(boolean dummy);
 
     @Override
     public Switch getMirrorSwitch() {
@@ -200,7 +188,7 @@ public abstract class FlowMirrorPathFrame extends KildaBaseVertexFrame implement
                     edge.remove();
                 });
 
-        PathId pathId = getPathId();
+        PathId pathId = getMirrorPathId();
         for (int idx = 0; idx < segments.size(); idx++) {
             PathSegment segment = segments.get(idx);
             PathSegment.PathSegmentData data = segment.getData();
@@ -224,15 +212,14 @@ public abstract class FlowMirrorPathFrame extends KildaBaseVertexFrame implement
     }
 
     @Override
-    public FlowMirrorPoints getFlowMirrorPoints() {
-        if (flowMirrorPoints == null) {
-            List<? extends FlowMirrorPointsFrame> flowMirrorPointsFrames =
-                    traverse(v -> v.in(FlowMirrorPointsFrame.OWNS_MIRROR_PATHS_EDGE)
-                            .hasLabel(FlowMirrorPointsFrame.FRAME_LABEL))
-                            .toListExplicit(FlowMirrorPointsFrame.class);
-            flowMirrorPoints = !flowMirrorPointsFrames.isEmpty()
-                    ? new FlowMirrorPoints(flowMirrorPointsFrames.get(0)) : null;
+    public FlowMirror getFlowMirror() {
+        if (flowMirror == null) {
+            List<? extends FlowMirrorFrame> flowMirrorFrames =
+                    traverse(v -> v.in(FlowMirrorFrame.OWNS_PATH_EDGE)
+                            .hasLabel(FlowMirrorFrame.FRAME_LABEL))
+                            .toListExplicit(FlowMirrorFrame.class);
+            flowMirror = !flowMirrorFrames.isEmpty() ? new FlowMirror(flowMirrorFrames.get(0)) : null;
         }
-        return flowMirrorPoints;
+        return flowMirror;
     }
 }

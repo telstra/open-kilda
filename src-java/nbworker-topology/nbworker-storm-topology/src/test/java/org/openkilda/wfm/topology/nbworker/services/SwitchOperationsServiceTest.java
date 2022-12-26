@@ -27,7 +27,7 @@ import org.openkilda.messaging.model.SwitchPropertiesDto.RttState;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.LagLogicalPort;
@@ -43,8 +43,8 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
-import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
@@ -69,6 +69,7 @@ import java.util.Set;
 public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     public static final Set<org.openkilda.messaging.payload.flow.FlowEncapsulationType> SUPPORTED_TRANSIT_ENCAPSULATION
             = Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN);
+    public static final String TEST_MIRROR_ID = "test_mirror_id";
     private static SwitchRepository switchRepository;
     private static SwitchPropertiesRepository switchPropertiesRepository;
     private static PortPropertiesRepository portPropertiesRepository;
@@ -76,7 +77,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     private static SwitchOperationsService switchOperationsService;
     private static MirrorGroupRepository mirrorGroupRepository;
     private static FlowMirrorPointsRepository flowMirrorPointsRepository;
-    private static FlowMirrorPathRepository flowMirrorPathRepository;
+    private static FlowMirrorRepository flowMirrorRepository;
     private static LagLogicalPortRepository lagLogicalPortRepository;
 
     private static final String TEST_FLOW_ID_1 = "test_flow_1";
@@ -102,7 +103,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         flowRepository = repositoryFactory.createFlowRepository();
         mirrorGroupRepository = repositoryFactory.createMirrorGroupRepository();
         flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
-        flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
+        flowMirrorRepository = repositoryFactory.createFlowMirrorRepository();
         lagLogicalPortRepository = repositoryFactory.createLagLogicalPortRepository();
 
         SwitchOperationsServiceCarrier carrier = new SwitchOperationsServiceCarrier() {
@@ -503,13 +504,13 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
         Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
 
-        FlowMirrorPath flowMirrorPath = FlowMirrorPath.builder()
-                .pathId(new PathId("test_path_id"))
+        FlowMirror flowMirrorPath = FlowMirror.builder()
+                .flowMirrorId(TEST_MIRROR_ID)
                 .mirrorSwitch(secondSwitch)
                 .egressSwitch(firstSwitch)
                 .egressPort(TEST_FLOW_SRC_PORT)
                 .build();
-        flowMirrorPathRepository.add(flowMirrorPath);
+        flowMirrorRepository.add(flowMirrorPath);
 
         createSwitchProperties(firstSwitch,
                 Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);

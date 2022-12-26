@@ -43,7 +43,7 @@ public class OnFinishedWithErrorAction extends
             flowRepository.updateStatus(stateMachine.getFlowId(), stateMachine.getFlowStatus());
         }
 
-        dashboardLogger.onFailedFlowMirrorPointDelete(stateMachine.getFlowId(), stateMachine.getMirrorPathId().getId(),
+        dashboardLogger.onFailedFlowMirrorPointDelete(stateMachine.getFlowId(), stateMachine.getFlowMirrorId(),
                 stateMachine.getErrorReason());
         stateMachine.saveActionToHistory("Failed to delete the flow mirror point", stateMachine.getErrorReason());
     }

@@ -17,11 +17,13 @@ package org.openkilda.persistence.ferma.repositories;
 
 import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirror.FlowMirrorData;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowMirrorFrame;
+import org.openkilda.persistence.ferma.frames.FlowMirrorPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
@@ -140,16 +142,28 @@ public class FermaFlowMirrorRepository extends FermaGenericRepository<FlowMirror
         FlowMirrorFrame frame = KildaBaseVertexFrame.addNewFramedVertex(framedGraph(),
                 FlowMirrorFrame.FRAME_LABEL, FlowMirrorFrame.class);
         FlowMirror.FlowMirrorCloner.INSTANCE.copyWithoutPaths(data, frame);
+        frame.addMirrorPaths(data.getMirrorPaths().stream()
+                .peek(path -> {
+                    if (!(path.getData() instanceof FlowMirrorPathFrame)) {
+                        flowMirrorPathRepository.add(path);
+                    }
+                })
+                .toArray(FlowMirrorPath[]::new));
         return frame;
     }
 
     @Override
     protected void doRemove(FlowMirrorFrame frame) {
+        frame.getMirrorPaths().forEach(path -> {
+            if (path.getData() instanceof FlowMirrorPathFrame) {
+                flowMirrorPathRepository.remove(path);
+            }
+        });
         frame.remove();
     }
 
     @Override
     protected FlowMirrorData doDetach(FlowMirror entity, FlowMirrorFrame frame) {
-        return FlowMirror.FlowMirrorCloner.INSTANCE.deepCopy(frame, entity);
+        return FlowMirror.FlowMirrorCloner.INSTANCE.deepCopy(frame, entity.getFlowMirrorPoints(), entity);
     }
 }

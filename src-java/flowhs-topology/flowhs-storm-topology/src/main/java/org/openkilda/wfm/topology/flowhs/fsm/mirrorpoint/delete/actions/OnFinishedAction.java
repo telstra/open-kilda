@@ -43,7 +43,7 @@ public class OnFinishedAction extends
         }
 
         dashboardLogger.onSuccessfulFlowMirrorPointDelete(stateMachine.getFlowId(),
-                stateMachine.getMirrorPathId().getId());
+                stateMachine.getFlowMirrorId());
         stateMachine.saveActionToHistory("Flow mirror point was deleted successfully");
     }
 }

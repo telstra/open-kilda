@@ -16,10 +16,12 @@
 package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.wfm.share.flow.resources.FlowMirrorPathResources;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
@@ -40,11 +42,13 @@ import java.util.stream.Stream;
 public class CompleteFlowPathRemovalAction extends
         BaseFlowPathRemovalAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     private final FlowMirrorPathRepository flowMirrorPathRepository;
+    private final FlowMirrorRepository flowMirrorRepository;
     private final FlowMirrorPointsRepository flowMirrorPointsRepository;
 
     public CompleteFlowPathRemovalAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
         flowMirrorPathRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPathRepository();
+        flowMirrorRepository = persistenceManager.getRepositoryFactory().createFlowMirrorRepository();
         flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
     }
 
@@ -57,9 +61,12 @@ public class CompleteFlowPathRemovalAction extends
                     .flatMap(Collection::stream)
                     .forEach(mirrorPoints -> {
                         Set<Long> cookies = new HashSet<>();
-                        mirrorPoints.getMirrorPaths().forEach(mirrorPath -> {
-                            cookies.add(mirrorPath.getCookie().getFlowEffectiveId());
-                            flowMirrorPathRepository.remove(mirrorPath);
+                        mirrorPoints.getFlowMirrors().forEach(mirror -> {
+                            for (FlowMirrorPath mirrorPath : mirror.getMirrorPaths()) {
+                                cookies.add(mirrorPath.getCookie().getFlowEffectiveId());
+                                flowMirrorPathRepository.remove(mirrorPath);
+                            }
+                            flowMirrorRepository.remove(mirror);
                         });
                         stateMachine.getFlowMirrorPathResources().add(FlowMirrorPathResources.builder()
                                 .flowPathId(mirrorPoints.getFlowPathId())

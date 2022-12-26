@@ -55,7 +55,7 @@ public class PostFlowMirrorPathDeallocationAction extends
             FlowMirrorPoints flowMirrorPoints = flowMirrorPointsRepository
                     .findByPathIdAndSwitchId(flowPathId, mirrorSwitchId)
                     .orElse(null);
-            if (flowMirrorPoints != null && flowMirrorPoints.getMirrorPaths().isEmpty()) {
+            if (flowMirrorPoints != null && flowMirrorPoints.getFlowMirrors().isEmpty()) {
                 flowMirrorPointsRepository.remove(flowMirrorPoints);
                 resourcesManager.deallocateMirrorGroup(flowPathId, mirrorSwitchId);
                 return true;

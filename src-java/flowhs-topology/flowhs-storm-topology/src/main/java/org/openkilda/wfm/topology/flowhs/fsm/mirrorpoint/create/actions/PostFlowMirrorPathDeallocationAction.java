@@ -23,6 +23,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateContext;
@@ -38,12 +39,14 @@ public class PostFlowMirrorPathDeallocationAction extends
         FlowProcessingWithHistorySupportAction<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> {
     private final FlowResourcesManager resourcesManager;
     private final FlowMirrorPointsRepository flowMirrorPointsRepository;
+    private final FlowMirrorRepository flowMirrorRepository;
 
     public PostFlowMirrorPathDeallocationAction(PersistenceManager persistenceManager,
                                                 FlowResourcesManager resourcesManager) {
         super(persistenceManager);
         this.resourcesManager = resourcesManager;
         this.flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
+        this.flowMirrorRepository = persistenceManager.getRepositoryFactory().createFlowMirrorRepository();
     }
 
     @Override
@@ -54,10 +57,12 @@ public class PostFlowMirrorPathDeallocationAction extends
             Flow flow = getFlow(mirrorPoint.getFlowId());
             FlowPath flowPath = getFlowPath(mirrorPoint, flow);
 
+            flowMirrorRepository.findById(stateMachine.getFlowMirrorId()).ifPresent(flowMirrorRepository::remove);
+
             FlowMirrorPoints flowMirrorPoints = flowMirrorPointsRepository
                     .findByPathIdAndSwitchId(flowPath.getPathId(), mirrorPoint.getMirrorPointSwitchId())
                     .orElse(null);
-            if (flowMirrorPoints != null && flowMirrorPoints.getMirrorPaths().isEmpty()) {
+            if (flowMirrorPoints != null && flowMirrorPoints.getFlowMirrors().isEmpty()) {
                 flowMirrorPointsRepository.remove(flowMirrorPoints);
                 resourcesManager.deallocateMirrorGroup(flowPath.getPathId(), mirrorPoint.getMirrorPointSwitchId());
                 return flowPath.getPathId();

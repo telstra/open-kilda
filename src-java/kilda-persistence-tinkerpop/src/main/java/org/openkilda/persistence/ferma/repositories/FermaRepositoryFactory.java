@@ -204,7 +204,7 @@ public class FermaRepositoryFactory implements RepositoryFactory {
     @Override
     public FlowMirrorPointsRepository createFlowMirrorPointsRepository() {
         return new FermaFlowMirrorPointsRepository(
-                implementation, createFlowMirrorPathRepository());
+                implementation, createFlowMirrorRepository());
     }
 
     @Override

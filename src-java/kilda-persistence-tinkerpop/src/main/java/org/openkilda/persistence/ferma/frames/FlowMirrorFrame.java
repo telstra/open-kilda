@@ -15,6 +15,8 @@
 
 package org.openkilda.persistence.ferma.frames;
 
+import static java.lang.String.format;
+
 import org.openkilda.model.FlowMirror.FlowMirrorData;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
@@ -30,9 +32,13 @@ import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import com.syncleus.ferma.annotations.Property;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tinkerpop.gremlin.structure.Direction;
+import org.apache.tinkerpop.gremlin.structure.Edge;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -155,8 +161,60 @@ public abstract class FlowMirrorFrame extends KildaBaseVertexFrame implements Fl
                     .hasLabel(FlowMirrorPathFrame.FRAME_LABEL))
                     .toListExplicit(FlowMirrorPathFrame.class).stream()
                     .map(FlowMirrorPath::new)
-                    .collect(Collectors.toMap(FlowMirrorPath::getPathId, v -> v));
+                    .collect(Collectors.toMap(FlowMirrorPath::getMirrorPathId, v -> v));
         }
         return new HashSet<>(mirrorPaths.values());
+    }
+
+    @Override
+    public Optional<FlowMirrorPath> getPath(PathId flowMirrorPathId) {
+        if (mirrorPaths == null) {
+            // init the cache map with paths.
+            getMirrorPaths();
+        }
+        return Optional.ofNullable(mirrorPaths.get(flowMirrorPathId));
+    }
+
+    @Override
+    public void addMirrorPaths(FlowMirrorPath... paths) {
+        for (FlowMirrorPath path : paths) {
+            FlowMirrorPath.FlowMirrorPathData data = path.getData();
+            FlowMirrorPathFrame frame;
+            if (data instanceof FlowMirrorPathFrame) {
+                frame = (FlowMirrorPathFrame) data;
+                // Unlink the path from the previous owner.
+                frame.getElement().edges(Direction.IN, FlowMirrorFrame.OWNS_PATH_EDGE)
+                        .forEachRemaining(Edge::remove);
+            } else {
+                // We intentionally don't allow to add transient entities.
+                // A path must be added via corresponding repository first.
+                throw new IllegalArgumentException(format("Unable to link to transient flow mirror path %s", path));
+            }
+            frame.setProperty(FlowMirrorPathFrame.FLOW_MIRROR_ID_PROPERTY, getFlowMirrorId());
+            linkOut(frame, FlowMirrorFrame.OWNS_PATH_EDGE);
+            if (this.mirrorPaths != null) {
+                this.mirrorPaths.put(path.getMirrorPathId(), path);
+            }
+            //TODO force reload?
+        }
+    }
+
+    @Override
+    public boolean hasPath(FlowMirrorPath path) {
+        getMirrorPaths();
+        return mirrorPaths.containsKey(path.getMirrorPathId());
+    }
+
+    @Override
+    public FlowMirrorPoints getFlowMirrorPoints() {
+        if (flowMirrorPoints == null) {
+            List<? extends FlowMirrorPointsFrame> flowMirrorPointsFrames =
+                    traverse(v -> v.in(FlowMirrorPointsFrame.OWNS_FLOW_MIRROR_EDGE)
+                            .hasLabel(FlowMirrorPointsFrame.FRAME_LABEL))
+                            .toListExplicit(FlowMirrorPointsFrame.class);
+            flowMirrorPoints = !flowMirrorPointsFrames.isEmpty()
+                    ? new FlowMirrorPoints(flowMirrorPointsFrames.get(0)) : null;
+        }
+        return flowMirrorPoints;
     }
 }

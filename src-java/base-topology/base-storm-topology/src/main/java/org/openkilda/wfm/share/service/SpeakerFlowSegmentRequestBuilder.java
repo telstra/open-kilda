@@ -661,9 +661,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 .findFirst().orElse(null);
 
         if (flowMirrorPoints != null) {
-            Set<MirrorConfigData> mirrorConfigDataSet = flowMirrorPoints.getMirrorPaths().stream()
-                    .map(mirrorPath -> new MirrorConfigData(mirrorPath.getEgressPort(),
-                            mirrorPath.getEgressOuterVlan()))
+            Set<MirrorConfigData> mirrorConfigDataSet = flowMirrorPoints.getFlowMirrors().stream()
+                    .map(mirror -> new MirrorConfigData(mirror.getEgressPort(), mirror.getEgressOuterVlan()))
                     .collect(Collectors.toSet());
 
             if (!mirrorConfigDataSet.isEmpty()) {

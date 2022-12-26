@@ -84,3 +84,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 024-add-flow-mirror-class.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 025-move-data-from-flow-path-to-flow-mirror.yaml

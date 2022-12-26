@@ -30,7 +30,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
@@ -64,7 +64,7 @@ public class YFlowValidatorTest {
         when(repositoryFactory.createIslRepository()).thenReturn(mock(IslRepository.class));
         SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
         when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
-        when(repositoryFactory.createFlowMirrorPathRepository()).thenReturn(mock(FlowMirrorPathRepository.class));
+        when(repositoryFactory.createFlowMirrorRepository()).thenReturn(mock(FlowMirrorRepository.class));
         when(repositoryFactory.createYFlowRepository()).thenReturn(mock(YFlowRepository.class));
         PhysicalPortRepository physicalPortRepository = mock(PhysicalPortRepository.class);
         when(repositoryFactory.createPhysicalPortRepository()).thenReturn(physicalPortRepository);

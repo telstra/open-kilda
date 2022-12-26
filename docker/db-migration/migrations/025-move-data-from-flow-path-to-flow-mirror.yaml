@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: snikitin
+      changes:
+        - tagDatabase:
+            tag: 025-move-data-from-flow-path-to flow-mirror
+
+  - changeSet:
+      id: add_new_mirror_path_properties
+      author: snikitin
+      changes:
+        - sql: "CREATE PROPERTY flow_mirror_path.flow_mirror_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_mirror_path.dummy IF NOT EXISTS BOOLEAN"
+      rollback:
+        - sql: "DROP PROPERTY flow_mirror_path.flow_mirror_id IF EXISTS"
+        - sql: "DROP PROPERTY flow_mirror_path.dummy IF EXISTS"
+  - changeSet:
+      id: move_data_from_mirror_path_to_mirror_flow
+      author: snikitin
+      changes:
+        - sql: >
+           INSERT INTO flow_mirror FROM SELECT path_id AS flow_mirror_id,
+           path_id AS forward_path_id, mirror_switch_id, egress_switch_id,
+           status, egress_port, egress_outer_vlan, egress_inner_vlan FROM flow_mirror_path
+        - sql: "UPDATE flow_mirror_path SET dummy=false"
+        - sql: "DROP INDEX flow_mirror_path.egress_port"
+        - sql: "DROP INDEX flow_mirror_path.egress_outer_vlan"
+        - sql: "DROP INDEX flow_mirror_path.egress_inner_vlan"
+        - sql: "DROP PROPERTY flow_mirror_path.egress_port IF EXISTS"
+        - sql: "DROP PROPERTY flow_mirror_path.egress_outer_vlan IF EXISTS"
+        - sql: "DROP PROPERTY flow_mirror_path.egress_inner_vlan IF EXISTS"
+      rollback:
+        - sql: "CREATE PROPERTY flow_mirror_path.egress_port IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_mirror_path.egress_outer_vlan IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_mirror_path.egress_inner_vlan IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE INDEX flow_mirror_path.egress_port NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror_path.egress_outer_vlan NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_mirror_path.egress_inner_vlan NOTUNIQUE_HASH_INDEX"

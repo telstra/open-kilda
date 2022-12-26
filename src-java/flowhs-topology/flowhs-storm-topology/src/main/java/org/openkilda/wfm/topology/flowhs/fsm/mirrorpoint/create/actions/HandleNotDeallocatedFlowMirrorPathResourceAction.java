@@ -31,9 +31,9 @@ public class HandleNotDeallocatedFlowMirrorPathResourceAction
     @Override
     public void perform(State from, State to, Event event, FlowMirrorPointCreateContext context,
                         FlowMirrorPointCreateFsm stateMachine) {
-        if (stateMachine.getMirrorPathId() != null) {
+        if (stateMachine.getFlowMirrorId() != null) {
             stateMachine.saveErrorToHistory("Failed to revert flow mirror path allocation",
-                    format("Failed to revert resource allocation for mirror path: %s", stateMachine.getMirrorPathId()));
+                    format("Failed to revert resource allocation for mirror path: %s", stateMachine.getFlowMirrorId()));
         }
 
         if (!stateMachine.isRulesInstalled()) {

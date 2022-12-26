@@ -23,7 +23,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowStatusDetails;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStats;
@@ -84,29 +84,29 @@ public abstract class FlowMapper {
      * Convert {@link Flow} to {@link FlowDto} with diverse flow ids and mirror paths.
      */
     public FlowDto map(Flow flow, Set<String> diverseWith, Set<String> diverseWithYFlows,
-                       List<FlowMirrorPath> flowMirrorPaths) {
-        return map(flow, diverseWith, diverseWithYFlows, flowMirrorPaths, FlowStats.EMPTY);
+                       List<FlowMirror> flowMirrors) {
+        return map(flow, diverseWith, diverseWithYFlows, flowMirrors, FlowStats.EMPTY);
     }
 
     /**
      * Convert {@link Flow} to {@link FlowDto} with diverse flow ids, mirror paths and flow properties.
      */
     public FlowDto map(Flow flow, Set<String> diverseWith, Set<String> diverseWithYFlows,
-                       List<FlowMirrorPath> flowMirrorPaths, FlowStats flowStats) {
+                       List<FlowMirror> flowMirrors, FlowStats flowStats) {
         FlowDto flowDto = map(flow);
         flowDto.setDiverseWith(diverseWith);
         flowDto.setDiverseWithYFlows(diverseWithYFlows);
-        flowDto.setMirrorPointStatuses(map(flowMirrorPaths));
+        flowDto.setMirrorPointStatuses(map(flowMirrors));
         flowDto.setForwardLatency(flowStats.getForwardLatency());
         flowDto.setReverseLatency(flowStats.getReverseLatency());
         flowDto.setLatencyLastModifiedTime(flowStats.getTimeModify());
         return flowDto;
     }
 
-    public abstract List<MirrorPointStatusDto> map(List<FlowMirrorPath> flowMirrorPaths);
+    public abstract List<MirrorPointStatusDto> map(List<FlowMirror> flowMirrors);
 
-    @Mapping(source = "pathId", target = "mirrorPointId")
-    public abstract MirrorPointStatusDto map(FlowMirrorPath flowMirrorPath);
+    @Mapping(source = "flowMirrorId", target = "mirrorPointId")
+    public abstract MirrorPointStatusDto map(FlowMirror flowMirror);
 
     /**
      * Convert {@link FlowPathStatus} to {@link String}.

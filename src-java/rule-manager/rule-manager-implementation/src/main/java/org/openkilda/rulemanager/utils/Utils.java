@@ -177,9 +177,9 @@ public final class Utils {
      */
     public static List<Bucket> buildMirrorBuckets(FlowMirrorPoints flowMirrorPoints) {
         List<Bucket> buckets = new ArrayList<>();
-        Set<MirrorConfigData> mirrorConfigDataSet = flowMirrorPoints.getMirrorPaths().stream()
-                .map(mirrorPath -> new MirrorConfigData(mirrorPath.getEgressPort(),
-                        mirrorPath.getEgressOuterVlan()))
+        Set<MirrorConfigData> mirrorConfigDataSet = flowMirrorPoints.getFlowMirrors().stream()
+                .map(flowMirror -> new MirrorConfigData(flowMirror.getEgressPort(),
+                        flowMirror.getEgressOuterVlan()))
                 .collect(Collectors.toSet());
 
         for (MirrorConfigData mirrorConfig : mirrorConfigDataSet) {

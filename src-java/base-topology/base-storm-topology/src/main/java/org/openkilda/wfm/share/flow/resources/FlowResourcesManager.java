@@ -160,6 +160,10 @@ public class FlowResourcesManager {
         return new PathId(format("%s_%s", flowId, UUID.randomUUID()));
     }
 
+    public PathId generateMirrorPathId(String flowId, String mirrorPointId) {
+        return new PathId(format("%s_%s_%s_mirror", flowId, mirrorPointId, UUID.randomUUID()));
+    }
+
     /**
      * Deallocate the flow path resources.
      * <p/>

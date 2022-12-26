@@ -26,7 +26,7 @@ import static org.openkilda.rulemanager.Utils.getCommand;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
@@ -100,6 +100,7 @@ public class EgressMirrorRuleGeneratorTest {
     public static final FlowSegmentCookie COOKIE = new FlowSegmentCookie(FlowPathDirection.FORWARD, 123);
     public static final FlowSegmentCookie MIRROR_COOKIE = COOKIE.toBuilder().mirror(true).build();
     private static final FlowMirrorPoints MIRROR_POINTS = buildMirrorPoints(SWITCH_2);
+    public static final String FLOW_MIRROR_ID = "mirror_1";
 
     @Test
     public void buildVlanMultiTableDoubleVlanEgressMirrorRuleTest() {
@@ -521,10 +522,10 @@ public class EgressMirrorRuleGeneratorTest {
                         .mirrorGroupType(MirrorGroupType.TRAFFIC_INTEGRITY)
                         .build())
                 .build();
-        mirrorPoints.addPaths(FlowMirrorPath.builder()
+        mirrorPoints.addFlowMirrors(FlowMirror.builder()
                         .mirrorSwitch(SWITCH_2)
                         .egressSwitch(SWITCH_2)
-                        .pathId(PATH_ID)
+                        .flowMirrorId(FLOW_MIRROR_ID)
                         .egressPort(MIRROR_PORT)
                         .egressOuterVlan(MIRROR_VLAN)
                 .build());

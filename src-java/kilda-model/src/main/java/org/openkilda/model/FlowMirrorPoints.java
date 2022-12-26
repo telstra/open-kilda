@@ -15,8 +15,8 @@
 
 package org.openkilda.model;
 
-import org.openkilda.model.FlowMirrorPath.FlowMirrorPathData;
-import org.openkilda.model.FlowMirrorPath.FlowMirrorPathDataImpl;
+import org.openkilda.model.FlowMirror.FlowMirrorData;
+import org.openkilda.model.FlowMirror.FlowMirrorDataImpl;
 import org.openkilda.model.FlowMirrorPoints.FlowMirrorPointsData;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
@@ -107,13 +107,13 @@ public class FlowMirrorPoints implements CompositeDataEntity<FlowMirrorPointsDat
                 .append(getMirrorSwitchId(), that.getMirrorSwitchId())
                 .append(getMirrorGroupId(), that.getMirrorGroupId())
                 .append(getFlowPathId(), that.getFlowPathId())
-                .append(new HashSet<>(getMirrorPaths()), new HashSet<>(that.getMirrorPaths()))
+                .append(new HashSet<>(getFlowMirrors()), new HashSet<>(that.getFlowMirrors()))
                 .isEquals();
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getMirrorSwitchId(), getMirrorGroupId(), getFlowPathId(), getMirrorPaths());
+        return Objects.hash(getMirrorSwitchId(), getMirrorGroupId(), getFlowPathId(), getFlowMirrors());
     }
 
     /**
@@ -137,15 +137,13 @@ public class FlowMirrorPoints implements CompositeDataEntity<FlowMirrorPointsDat
 
         FlowPath getFlowPath();
 
-        Collection<FlowMirrorPath> getMirrorPaths();
+        Collection<FlowMirror> getFlowMirrors();
 
-        Set<PathId> getPathIds();
+        Set<String> getFlowMirrorIds();
 
-        Optional<FlowMirrorPath> getPath(PathId pathId);
+        Optional<FlowMirror> getFlowMirror(String flowMirror);
 
-        boolean hasPath(FlowMirrorPath path);
-
-        void addPaths(FlowMirrorPath... paths);
+        void addFlowMirrors(FlowMirror... flowMirrors);
     }
 
     /**
@@ -162,7 +160,7 @@ public class FlowMirrorPoints implements CompositeDataEntity<FlowMirrorPointsDat
 
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
-        final Set<FlowMirrorPath> mirrorPaths = new HashSet<>();
+        final Set<FlowMirror> flowMirrors = new HashSet<>();
 
         @Setter(AccessLevel.NONE)
         @ToString.Exclude
@@ -188,8 +186,8 @@ public class FlowMirrorPoints implements CompositeDataEntity<FlowMirrorPointsDat
         }
 
         @Override
-        public Set<PathId> getPathIds() {
-            return mirrorPaths.stream().map(FlowMirrorPath::getPathId).collect(Collectors.toSet());
+        public Set<String> getFlowMirrorIds() {
+            return flowMirrors.stream().map(FlowMirror::getFlowMirrorId).collect(Collectors.toSet());
         }
 
         @Override
@@ -197,48 +195,43 @@ public class FlowMirrorPoints implements CompositeDataEntity<FlowMirrorPointsDat
             return flowPath != null ? flowPath.getPathId() : null;
         }
 
-        @Override
-        public boolean hasPath(FlowMirrorPath path) {
-            return mirrorPaths.contains(path);
-        }
-
         /**
          * Add and associate flow path(s) with the flow.
          */
         @Override
-        public final void addPaths(FlowMirrorPath... paths) {
-            for (FlowMirrorPath pathToAdd : paths) {
+        public void addFlowMirrors(FlowMirror... flowMirrors) {
+            for (FlowMirror mirrorToAdd : flowMirrors) {
                 boolean toBeAdded = true;
-                Iterator<FlowMirrorPath> it = this.mirrorPaths.iterator();
+                Iterator<FlowMirror> it = this.flowMirrors.iterator();
                 while (it.hasNext()) {
-                    FlowMirrorPath each = it.next();
-                    if (pathToAdd == each) {
+                    FlowMirror each = it.next();
+                    if (mirrorToAdd == each) {
                         toBeAdded = false;
                         break;
                     }
-                    if (pathToAdd.getPathId().equals(each.getPathId())) {
+                    if (mirrorToAdd.getFlowMirrorId().equals(each.getFlowMirrorId())) {
                         it.remove();
                         // Quit as no duplicates expected.
                         break;
                     }
                 }
                 if (toBeAdded) {
-                    this.mirrorPaths.add(pathToAdd);
-                    FlowMirrorPathData data = pathToAdd.getData();
-                    if (data instanceof FlowMirrorPathDataImpl) {
-                        ((FlowMirrorPathDataImpl) data).flowMirrorPoints = flowMirrorPoints;
+                    this.flowMirrors.add(mirrorToAdd);
+                    FlowMirrorData data = mirrorToAdd.getData();
+                    if (data instanceof FlowMirrorDataImpl) {
+                        ((FlowMirrorDataImpl) data).flowMirrorPoints = flowMirrorPoints;
                     }
                 }
             }
         }
 
         /**
-         * Get an associated path by id.
+         * Get an associated flow mirror by id.
          */
         @Override
-        public Optional<FlowMirrorPath> getPath(PathId pathId) {
-            return mirrorPaths.stream()
-                    .filter(path -> path.getPathId().equals(pathId))
+        public Optional<FlowMirror> getFlowMirror(String flowMirrorId) {
+            return flowMirrors.stream()
+                    .filter(mirror -> mirror.getFlowMirrorId().equals(flowMirrorId))
                     .findAny();
         }
     }
@@ -250,14 +243,14 @@ public class FlowMirrorPoints implements CompositeDataEntity<FlowMirrorPointsDat
     public interface FlowMirrorPointsCloner {
         FlowMirrorPointsCloner INSTANCE = Mappers.getMapper(FlowMirrorPointsCloner.class);
 
-        @Mapping(target = "mirrorPaths", ignore = true)
-        @Mapping(target = "pathIds", ignore = true)
-        void copyWithoutPaths(FlowMirrorPointsData source, @MappingTarget FlowMirrorPointsData target);
+        @Mapping(target = "flowMirrors", ignore = true)
+        @Mapping(target = "flowMirrorIds", ignore = true)
+        void copyWithoutMirrors(FlowMirrorPointsData source, @MappingTarget FlowMirrorPointsData target);
 
         @Mapping(target = "mirrorSwitch", ignore = true)
-        @Mapping(target = "mirrorPaths", ignore = true)
-        @Mapping(target = "pathIds", ignore = true)
-        void copyWithoutSwitchesAndSegments(FlowMirrorPointsData source, @MappingTarget FlowMirrorPointsData target);
+        @Mapping(target = "flowMirrors", ignore = true)
+        @Mapping(target = "flowMirrorIds", ignore = true)
+        void copyWithoutSwitchesAndMirrors(FlowMirrorPointsData source, @MappingTarget FlowMirrorPointsData target);
 
         /**
          * Performs deep copy of entity data.
@@ -269,11 +262,11 @@ public class FlowMirrorPoints implements CompositeDataEntity<FlowMirrorPointsDat
             FlowMirrorPointsDataImpl result = new FlowMirrorPointsDataImpl();
             result.flowPath = flowPath;
             result.flowMirrorPoints = targetFlowMirrorPoints;
-            copyWithoutSwitchesAndSegments(source, result);
+            copyWithoutSwitchesAndMirrors(source, result);
             result.setMirrorSwitch(new Switch(source.getMirrorSwitch()));
-            result.addPaths(source.getMirrorPaths().stream()
-                    .map(path -> new FlowMirrorPath(path, targetFlowMirrorPoints))
-                    .toArray(FlowMirrorPath[]::new));
+            result.addFlowMirrors(source.getFlowMirrors().stream()
+                    .map(mirror -> new FlowMirror(mirror, targetFlowMirrorPoints))
+                    .toArray(FlowMirror[]::new));
             return result;
         }
     }

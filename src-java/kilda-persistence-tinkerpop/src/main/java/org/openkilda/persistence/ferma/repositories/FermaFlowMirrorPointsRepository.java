@@ -15,7 +15,7 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowMirrorPoints.FlowMirrorPointsData;
 import org.openkilda.model.GroupId;
@@ -23,14 +23,14 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
+import org.openkilda.persistence.ferma.frames.FlowMirrorFrame;
 import org.openkilda.persistence.ferma.frames.FlowMirrorPointsFrame;
-import org.openkilda.persistence.ferma.frames.FlowPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.converters.GroupIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
-import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
@@ -47,12 +47,12 @@ import java.util.stream.Collectors;
 public class FermaFlowMirrorPointsRepository
         extends FermaGenericRepository<FlowMirrorPoints, FlowMirrorPointsData, FlowMirrorPointsFrame>
         implements FlowMirrorPointsRepository {
-    protected final FlowMirrorPathRepository flowMirrorPathRepository;
+    protected final FlowMirrorRepository flowMirrorRepository;
 
     public FermaFlowMirrorPointsRepository(
-            FermaPersistentImplementation implementation, FlowMirrorPathRepository flowMirrorPathRepository) {
+            FermaPersistentImplementation implementation, FlowMirrorRepository flowMirrorRepository) {
         super(implementation);
-        this.flowMirrorPathRepository = flowMirrorPathRepository;
+        this.flowMirrorRepository = flowMirrorRepository;
     }
 
     @Override
@@ -120,22 +120,22 @@ public class FermaFlowMirrorPointsRepository
     protected FlowMirrorPointsFrame doAdd(FlowMirrorPointsData data) {
         FlowMirrorPointsFrame frame = KildaBaseVertexFrame.addNewFramedVertex(framedGraph(),
                 FlowMirrorPointsFrame.FRAME_LABEL, FlowMirrorPointsFrame.class);
-        FlowMirrorPoints.FlowMirrorPointsCloner.INSTANCE.copyWithoutPaths(data, frame);
-        frame.addPaths(data.getMirrorPaths().stream()
-                .peek(path -> {
-                    if (!(path.getData() instanceof FlowPathFrame)) {
-                        flowMirrorPathRepository.add(path);
+        FlowMirrorPoints.FlowMirrorPointsCloner.INSTANCE.copyWithoutMirrors(data, frame);
+        frame.addFlowMirrors(data.getFlowMirrors().stream()
+                .peek(mirror -> {
+                    if (!(mirror.getData() instanceof FlowMirrorFrame)) {
+                        flowMirrorRepository.add(mirror);
                     }
                 })
-                .toArray(FlowMirrorPath[]::new));
+                .toArray(FlowMirror[]::new));
         return frame;
     }
 
     @Override
     protected void doRemove(FlowMirrorPointsFrame frame) {
-        frame.getMirrorPaths().forEach(path -> {
-            if (path.getData() instanceof FlowPathFrame) {
-                flowMirrorPathRepository.remove(path);
+        frame.getFlowMirrors().forEach(flowMirror -> {
+            if (flowMirror.getData() instanceof FlowMirrorFrame) {
+                flowMirrorRepository.remove(flowMirror);
             }
         });
         frame.remove();

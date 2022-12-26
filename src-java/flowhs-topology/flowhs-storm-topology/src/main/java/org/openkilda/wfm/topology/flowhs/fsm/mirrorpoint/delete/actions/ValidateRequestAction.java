@@ -23,12 +23,11 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowMirrorPointResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.history.model.FlowEventData;
@@ -48,13 +47,13 @@ import java.util.Optional;
 public class ValidateRequestAction extends
         NbTrackableWithHistorySupportAction<FlowMirrorPointDeleteFsm, State, Event, FlowMirrorPointDeleteContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
-    private final FlowMirrorPathRepository flowMirrorPathRepository;
+    private final FlowMirrorRepository flowMirrorRepository;
 
     public ValidateRequestAction(PersistenceManager persistenceManager,
                                  FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
+        flowMirrorRepository = repositoryFactory.createFlowMirrorRepository();
         this.dashboardLogger = dashboardLogger;
     }
 
@@ -63,8 +62,8 @@ public class ValidateRequestAction extends
                                                     FlowMirrorPointDeleteContext context,
                                                     FlowMirrorPointDeleteFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
-        PathId mirrorPathId = new PathId(context.getFlowMirrorPointId());
-        stateMachine.setMirrorPathId(mirrorPathId);
+        String flowMirrorId = context.getFlowMirrorPointId();
+        stateMachine.setFlowMirrorId(flowMirrorId);
 
         dashboardLogger.onFlowMirrorPointDelete(flowId, context.getFlowMirrorPointId());
 
@@ -77,28 +76,28 @@ public class ValidateRequestAction extends
             stateMachine.setFlowStatus(foundFlow.getStatus());
             flowRepository.updateStatus(flowId, FlowStatus.IN_PROGRESS);
 
-            FlowMirrorPath flowMirrorPath = flowMirrorPathRepository.findById(mirrorPathId)
+            FlowMirror flowMirror = flowMirrorRepository.findById(flowMirrorId)
                     .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                            format("Flow mirror point %s not found", mirrorPathId)));
-            if (flowMirrorPath.getStatus() == FlowPathStatus.IN_PROGRESS) {
+                            format("Flow mirror point %s not found", flowMirrorId)));
+            if (flowMirror.getStatus() == FlowPathStatus.IN_PROGRESS) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
-                        format("Flow mirror point %s is in progress now", mirrorPathId));
+                        format("Flow mirror point %s is in progress now", flowMirrorId));
             }
 
-            stateMachine.setOriginalFlowMirrorPathStatus(flowMirrorPath.getStatus());
-            flowMirrorPathRepository.updateStatus(mirrorPathId, FlowPathStatus.IN_PROGRESS);
+            stateMachine.setOriginalFlowMirrorStatus(flowMirror.getStatus());
+            flowMirrorRepository.updateStatus(flowMirrorId, FlowPathStatus.IN_PROGRESS);
 
-            String direction = flowMirrorPath.getFlowMirrorPoints().getFlowPath().isForward() ? "forward" : "reverse";
+            String direction = flowMirror.getFlowMirrorPoints().getFlowPath().isForward() ? "forward" : "reverse";
             return FlowMirrorPointResponse.builder()
                     .flowId(foundFlow.getFlowId())
-                    .mirrorPointId(flowMirrorPath.getPathId().getId())
+                    .mirrorPointId(flowMirror.getFlowMirrorId())
                     .mirrorPointDirection(direction)
-                    .mirrorPointSwitchId(flowMirrorPath.getMirrorSwitchId())
+                    .mirrorPointSwitchId(flowMirror.getMirrorSwitchId())
                     .sinkEndpoint(FlowEndpoint.builder()
-                            .switchId(flowMirrorPath.getEgressSwitchId())
-                            .portNumber(flowMirrorPath.getEgressPort())
-                            .innerVlanId(flowMirrorPath.getEgressInnerVlan())
-                            .outerVlanId(flowMirrorPath.getEgressOuterVlan())
+                            .switchId(flowMirror.getEgressSwitchId())
+                            .portNumber(flowMirror.getEgressPort())
+                            .innerVlanId(flowMirror.getEgressInnerVlan())
+                            .outerVlanId(flowMirror.getEgressOuterVlan())
                             .build())
                     .build();
         });

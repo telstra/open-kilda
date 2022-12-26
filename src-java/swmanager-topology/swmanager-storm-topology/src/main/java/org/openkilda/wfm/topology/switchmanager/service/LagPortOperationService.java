@@ -20,11 +20,10 @@ import static org.openkilda.model.SwitchFeature.BFD;
 
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Isl;
 import org.openkilda.model.LagLogicalPort;
-import org.openkilda.model.PathId;
 import org.openkilda.model.PhysicalPort;
 import org.openkilda.model.Port;
 import org.openkilda.model.Switch;
@@ -32,7 +31,7 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
-import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
@@ -82,7 +81,7 @@ public class LagPortOperationService {
     private final PhysicalPortRepository physicalPortRepository;
     private final IslRepository islRepository;
     private final FlowRepository flowRepository;
-    private final FlowMirrorPathRepository flowMirrorPathRepository;
+    private final FlowMirrorRepository flowMirrorRepository;
     private final PortRepository portRepository;
     private final RuleManager ruleManager;
 
@@ -103,7 +102,7 @@ public class LagPortOperationService {
         this.physicalPortRepository = repositoryFactory.createPhysicalPortRepository();
         this.islRepository = repositoryFactory.createIslRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
-        this.flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
+        this.flowMirrorRepository = repositoryFactory.createFlowMirrorRepository();
         this.portRepository = repositoryFactory.createPortRepository();
 
         this.config = config;
@@ -211,17 +210,17 @@ public class LagPortOperationService {
                     + "remove these flows to be able to use the port in LAG.", portNumber, flowIds));
         }
 
-        Collection<FlowMirrorPath> mirrorPaths = flowMirrorPathRepository
+        Collection<FlowMirror> mirrorPaths = flowMirrorRepository
                 .findByEgressSwitchIdAndPort(switchId, portNumber);
         if (!mirrorPaths.isEmpty()) {
-            Map<String, List<PathId>> mirrorPathByFLowIdMap = new HashMap<>();
-            for (FlowMirrorPath path : mirrorPaths) {
-                String flowId = path.getFlowMirrorPoints().getFlowPath().getFlowId();
-                mirrorPathByFLowIdMap.computeIfAbsent(flowId, ignore -> new ArrayList<>());
-                mirrorPathByFLowIdMap.get(flowId).add(path.getPathId());
+            Map<String, List<String>> mirrorByFlowIdMap = new HashMap<>();
+            for (FlowMirror flowMirror : mirrorPaths) {
+                String flowId = flowMirror.getFlowMirrorPoints().getFlowPath().getFlowId();
+                mirrorByFlowIdMap.computeIfAbsent(flowId, ignore -> new ArrayList<>());
+                mirrorByFlowIdMap.get(flowId).add(flowMirror.getFlowMirrorId());
             }
 
-            String message = mirrorPathByFLowIdMap.entrySet().stream()
+            String message = mirrorByFlowIdMap.entrySet().stream()
                     .map(entry -> format("flow '%s': %s", entry.getKey(), entry.getValue()))
                     .collect(Collectors.joining(", "));
             throw new InvalidDataException(format("Physical port %d already used as sink by following mirror points %s",

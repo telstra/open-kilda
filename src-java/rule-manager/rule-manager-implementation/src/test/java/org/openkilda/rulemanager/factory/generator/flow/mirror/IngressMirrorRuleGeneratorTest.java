@@ -34,7 +34,7 @@ import org.openkilda.adapter.FlowSourceAdapter;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
@@ -122,6 +122,7 @@ public class IngressMirrorRuleGeneratorTest {
 
     public static final double BURST_COEFFICIENT = 1.05;
     public static final FlowSegmentCookie MIRROR_COOKIE = COOKIE.toBuilder().mirror(true).build();
+    public static final String FLOW_MIRROR_ID = "mirror_1";
 
 
     RuleManagerConfig config;
@@ -633,10 +634,10 @@ public class IngressMirrorRuleGeneratorTest {
                         .mirrorGroupType(MirrorGroupType.TRAFFIC_INTEGRITY)
                         .build())
                 .build();
-        mirrorPoints.addPaths(FlowMirrorPath.builder()
+        mirrorPoints.addFlowMirrors(FlowMirror.builder()
                 .mirrorSwitch(SWITCH_1)
                 .egressSwitch(SWITCH_1)
-                .pathId(PATH_ID)
+                .flowMirrorId(FLOW_MIRROR_ID)
                 .egressPort(MIRROR_PORT)
                 .egressOuterVlan(MIRROR_VLAN)
                 .build());

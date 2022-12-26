@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
@@ -27,6 +28,7 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MirrorDirection;
 import org.openkilda.model.MirrorGroup;
 import org.openkilda.model.MirrorGroupType;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.FlowSegmentCookie;
@@ -36,6 +38,7 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
@@ -60,6 +63,7 @@ public class ResourceAllocationAction
     private final int pathAllocationRetryDelay; // Will be used in long mirrors
     private final int resourceAllocationRetriesLimit; // Will be used in long mirrors
     private final FlowMirrorPointsRepository flowMirrorPointsRepository;
+    private final FlowMirrorRepository flowMirrorRepository;
     private final FlowMirrorPathRepository flowMirrorPathRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
     private final FlowResourcesManager resourcesManager;
@@ -76,6 +80,7 @@ public class ResourceAllocationAction
         this.pathAllocationRetryDelay = pathAllocationRetryDelay;
         this.resourceAllocationRetriesLimit = resourceAllocationRetriesLimit;
         this.flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
+        this.flowMirrorRepository = persistenceManager.getRepositoryFactory().createFlowMirrorRepository();
         this.flowMirrorPathRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPathRepository();
         this.kildaConfigurationRepository
                 = persistenceManager.getRepositoryFactory().createKildaConfigurationRepository();
@@ -130,32 +135,60 @@ public class ResourceAllocationAction
             FlowSegmentCookie cookie = FlowSegmentCookie.builder()
                     .flowEffectiveId(stateMachine.getUnmaskedCookie()).mirror(true).build();
 
-            SwitchProperties switchProperties = getSwitchProperties(sinkSwitch.getSwitchId());
-            boolean dstWithMultiTable = switchProperties != null
-                    ? switchProperties.isMultiTable() : kildaConfigurationRepository.getOrDefault().getUseMultiTable();
-            FlowMirrorPath flowMirrorPath = FlowMirrorPath.builder()
-                    .pathId(stateMachine.getMirrorPathId())
-                    .mirrorSwitch(flowMirrorPoints.getMirrorSwitch())
-                    .egressSwitch(sinkSwitch)
-                    .egressPort(mirrorPoint.getSinkEndpoint().getPortNumber())
-                    .egressOuterVlan(mirrorPoint.getSinkEndpoint().getOuterVlanId())
-                    .egressInnerVlan(mirrorPoint.getSinkEndpoint().getInnerVlanId())
-                    .cookie(cookie)
-                    .bandwidth(flow.getBandwidth())
-                    .ignoreBandwidth(flow.isIgnoreBandwidth())
-                    .status(FlowPathStatus.IN_PROGRESS)
-                    .egressWithMultiTable(dstWithMultiTable)
-                    .build();
+            FlowMirror flowMirror = createFlowMirror(stateMachine, mirrorPoint, flowMirrorPoints, sinkSwitch);
+            FlowMirrorPath forwardPath = createFlowMirrorPath(stateMachine, flow, flowMirrorPoints, sinkSwitch, cookie);
+            stateMachine.setForwardMirrorPathId(forwardPath.getMirrorPathId());
 
-            flowMirrorPathRepository.add(flowMirrorPath);
-            flowMirrorPoints.addPaths(flowMirrorPath);
+            flowMirror.setForwardPath(forwardPath);
+            flowMirrorPoints.addFlowMirrors(flowMirror);
 
             //TODO: add path allocation in case when src switch is not equal to dst switch
         });
 
         stateMachine.saveActionToHistory("New mirror path was created",
                 format("The flow mirror path %s was created (with allocated resources)",
-                        stateMachine.getMirrorPathId()));
+                        stateMachine.getFlowMirrorId()));
+    }
+
+    private FlowMirrorPath createFlowMirrorPath(
+            FlowMirrorPointCreateFsm stateMachine, Flow flow, FlowMirrorPoints flowMirrorPoints,
+            Switch sinkSwitch, FlowSegmentCookie cookie) {
+        SwitchProperties switchProperties = getSwitchProperties(sinkSwitch.getSwitchId());
+        boolean dstWithMultiTable = switchProperties != null
+                ? switchProperties.isMultiTable() : kildaConfigurationRepository.getOrDefault().getUseMultiTable();
+
+        PathId forwardPathId = resourcesManager.generateMirrorPathId(
+                flow.getFlowId(), stateMachine.getFlowMirrorId());
+        FlowMirrorPath flowMirrorPath = FlowMirrorPath.builder()
+                .mirrorPathId(forwardPathId)
+                .mirrorSwitch(flowMirrorPoints.getMirrorSwitch())
+                .egressSwitch(sinkSwitch)
+                .cookie(cookie)
+                .bandwidth(flow.getBandwidth())
+                .ignoreBandwidth(flow.isIgnoreBandwidth())
+                .status(FlowPathStatus.IN_PROGRESS)
+                .egressWithMultiTable(dstWithMultiTable)
+                .dummy(false)
+                .build();
+
+        flowMirrorPathRepository.add(flowMirrorPath);
+        return flowMirrorPath;
+    }
+
+    private FlowMirror createFlowMirror(
+            FlowMirrorPointCreateFsm stateMachine, RequestedFlowMirrorPoint mirrorPoint,
+            FlowMirrorPoints flowMirrorPoints, Switch sinkSwitch) {
+        FlowMirror flowMirror = FlowMirror.builder()
+                .flowMirrorId(stateMachine.getFlowMirrorId())
+                .mirrorSwitch(flowMirrorPoints.getMirrorSwitch())
+                .egressSwitch(sinkSwitch)
+                .egressPort(mirrorPoint.getSinkEndpoint().getPortNumber())
+                .egressOuterVlan(mirrorPoint.getSinkEndpoint().getOuterVlanId())
+                .egressInnerVlan(mirrorPoint.getSinkEndpoint().getInnerVlanId())
+                .status(FlowPathStatus.IN_PROGRESS)
+                .build();
+        flowMirrorRepository.add(flowMirror);
+        return flowMirror;
     }
 
     private FlowPath getFlowPath(RequestedFlowMirrorPoint mirrorPoint, Flow flow) {

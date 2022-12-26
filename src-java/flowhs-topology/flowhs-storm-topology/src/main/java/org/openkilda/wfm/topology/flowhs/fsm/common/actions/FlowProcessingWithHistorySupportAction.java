@@ -27,7 +27,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
@@ -227,17 +227,16 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         InfoData flowData =
-                new FlowResponse(FlowMapper.INSTANCE.map(flow, diverseFlows, diverseYFlows,
-                        getFlowMirrorPaths(flow)));
+                new FlowResponse(FlowMapper.INSTANCE.map(flow, diverseFlows, diverseYFlows, getFlowMirrors(flow)));
         return new InfoMessage(flowData, commandContext.getCreateTime(),
                 commandContext.getCorrelationId());
     }
 
-    protected List<FlowMirrorPath> getFlowMirrorPaths(Flow flow) {
+    protected List<FlowMirror> getFlowMirrors(Flow flow) {
         return flow.getPaths().stream()
                 .map(FlowPath::getFlowMirrorPointsSet)
                 .flatMap(Collection::stream)
-                .map(FlowMirrorPoints::getMirrorPaths)
+                .map(FlowMirrorPoints::getFlowMirrors)
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
     }

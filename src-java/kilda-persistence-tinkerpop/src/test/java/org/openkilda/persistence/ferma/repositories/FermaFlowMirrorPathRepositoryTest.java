@@ -19,8 +19,9 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPath;
-import org.openkilda.model.FlowMirrorPoints;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.MirrorDirection;
@@ -32,42 +33,42 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
-import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 
 public class FermaFlowMirrorPathRepositoryTest extends InMemoryGraphBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
-    static final PathId TEST_PATH_ID = new PathId("test_path_id");
+    static final String TEST_FLOW_MIRROR_ID = "test_mirror_id";
+    static final PathId TEST_FLOW_PATH_ID = new PathId("test_flow_path_id");
     static final PathId TEST_MIRROR_PATH_ID_1 = new PathId("mirror_path_1");
     static final PathId TEST_MIRROR_PATH_ID_2 = new PathId("mirror_path_2");
-    static final PathId TEST_MIRROR_PATH_ID_3 = new PathId("mirror_path_3");
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
     static final SwitchId TEST_SWITCH_C_ID = new SwitchId(3);
     static final GroupId TEST_GROUP_ID = new GroupId(10);
+    static final FlowSegmentCookie FORWARD_COOKIE = FlowSegmentCookie.builder()
+            .flowEffectiveId(1).direction(FlowPathDirection.FORWARD).mirror(true).build();
 
     FlowMirrorPathRepository flowMirrorPathRepository;
-    FlowMirrorPointsRepository flowMirrorPointsRepository;
+    FlowMirrorRepository flowMirrorRepository;
     MirrorGroupRepository mirrorGroupRepository;
     SwitchRepository switchRepository;
 
     Switch switchA;
     Switch switchB;
     Switch switchC;
-    FlowMirrorPoints flowMirrorPoints;
+    FlowMirror flowMirror;
     MirrorGroup mirrorGroup;
 
     @Before
     public void setUp() {
-        flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
+        flowMirrorRepository = repositoryFactory.createFlowMirrorRepository();
         flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
         mirrorGroupRepository = repositoryFactory.createMirrorGroupRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
@@ -81,18 +82,19 @@ public class FermaFlowMirrorPathRepositoryTest extends InMemoryGraphBasedTest {
         mirrorGroup = MirrorGroup.builder()
                 .groupId(TEST_GROUP_ID)
                 .flowId(TEST_FLOW_ID)
-                .pathId(TEST_PATH_ID)
+                .pathId(TEST_FLOW_PATH_ID)
                 .switchId(switchA.getSwitchId())
                 .mirrorDirection(MirrorDirection.INGRESS)
                 .mirrorGroupType(MirrorGroupType.TRAFFIC_INTEGRITY)
                 .build();
         mirrorGroupRepository.add(mirrorGroup);
 
-        flowMirrorPoints = FlowMirrorPoints.builder()
-                .mirrorGroup(mirrorGroup)
+        flowMirror = FlowMirror.builder()
+                .flowMirrorId(TEST_FLOW_MIRROR_ID)
                 .mirrorSwitch(switchA)
+                .egressSwitch(switchB)
                 .build();
-        flowMirrorPointsRepository.add(flowMirrorPoints);
+        flowMirrorRepository.add(flowMirror);
     }
 
     @Test
@@ -106,38 +108,13 @@ public class FermaFlowMirrorPathRepositoryTest extends InMemoryGraphBasedTest {
         assertEquals(switchA.getSwitchId(), foundPath.getMirrorSwitchId());
         assertEquals(switchB.getSwitchId(), foundPath.getEgressSwitchId());
 
-        FlowMirrorPoints flowMirrorPoints = flowMirrorPointsRepository.findByGroupId(TEST_GROUP_ID).get();
-        assertThat(flowMirrorPoints.getMirrorPaths(), hasSize(2));
-    }
-
-    @Test
-    public void shouldFindByDestEndpoint() {
-        createTestFlowPaths();
-
-        FlowMirrorPath foundPath = flowMirrorPathRepository.findByEgressEndpoint(switchC.getSwitchId(), 3, 4, 5).get();
-        assertEquals(switchA.getSwitchId(), foundPath.getMirrorSwitchId());
-        assertEquals(switchC.getSwitchId(), foundPath.getEgressSwitchId());
-    }
-
-    @Test
-    public void shouldFindByEgressSwitchIdAndPort() {
-        FlowMirrorPath pathA = createFlowPath(TEST_MIRROR_PATH_ID_1, 1, switchA, switchB, 2, 3, 4);
-        FlowMirrorPath pathB = createFlowPath(TEST_MIRROR_PATH_ID_2, 2, switchA, switchC, 3, 4, 5);
-        FlowMirrorPath pathC = createFlowPath(TEST_MIRROR_PATH_ID_3, 3, switchB, switchC, 3, 5, 6);
-        flowMirrorPoints.addPaths(pathA, pathB, pathC);
-
-        List<FlowMirrorPath> foundPaths =
-                new ArrayList<>(flowMirrorPathRepository.findByEgressSwitchIdAndPort(switchC.getSwitchId(), 3));
-        assertEquals(2, foundPaths.size());
-        assertEquals(switchA.getSwitchId(), foundPaths.get(1).getMirrorSwitchId());
-        assertEquals(switchC.getSwitchId(), foundPaths.get(1).getEgressSwitchId());
-        assertEquals(switchB.getSwitchId(), foundPaths.get(0).getMirrorSwitchId());
-        assertEquals(switchC.getSwitchId(), foundPaths.get(0).getEgressSwitchId());
+        FlowMirror flowMirror = flowMirrorRepository.findById(TEST_FLOW_MIRROR_ID).get();
+        assertThat(flowMirror.getMirrorPaths(), hasSize(2));
     }
 
     @Test
     public void shouldDeleteFlowMirrorPath() {
-        FlowMirrorPath path = createFlowPath(TEST_MIRROR_PATH_ID_1, 1, switchA, switchB, 2, 3, 4);
+        FlowMirrorPath path = createFlowPath(TEST_MIRROR_PATH_ID_1, FORWARD_COOKIE, switchA, switchB);
 
         transactionManager.doInTransaction(() ->
                 flowMirrorPathRepository.remove(path));
@@ -157,25 +134,25 @@ public class FermaFlowMirrorPathRepositoryTest extends InMemoryGraphBasedTest {
     }
 
     private void createTestFlowPaths() {
-        FlowMirrorPath pathA = createFlowPath(TEST_MIRROR_PATH_ID_1, 1, switchA, switchB, 2, 3, 4);
-        FlowMirrorPath pathB = createFlowPath(TEST_MIRROR_PATH_ID_2, 2, switchA, switchC, 3, 4, 5);
-        flowMirrorPoints.addPaths(pathA, pathB);
+        FlowMirrorPath pathA = createFlowPath(TEST_MIRROR_PATH_ID_1, FORWARD_COOKIE, switchA, switchB);
+        FlowMirrorPath pathB = createFlowPath(TEST_MIRROR_PATH_ID_2, FORWARD_COOKIE, switchA, switchC);
+        flowMirror.addMirrorPaths(pathA, pathB);
     }
 
-    private FlowMirrorPath createFlowPath(PathId pathId, long cookie, Switch srcSwitch,
-                                          Switch dstSwitch, int dstPort, int dstOuterVlan, int dstInnerVlan) {
+    private FlowMirrorPath createFlowPath(PathId pathId, FlowSegmentCookie cookie, Switch srcSwitch, Switch dstSwitch) {
 
-        FlowMirrorPath flowMirrorPath = FlowMirrorPath.builder()
-                .pathId(pathId)
-                .cookie(new FlowSegmentCookie(cookie).toBuilder().mirror(true).build())
-                .mirrorSwitch(srcSwitch)
-                .egressSwitch(dstSwitch)
-                .egressPort(dstPort)
-                .egressOuterVlan(dstOuterVlan)
-                .egressInnerVlan(dstInnerVlan)
-                .status(FlowPathStatus.ACTIVE)
-                .build();
+        FlowMirrorPath flowMirrorPath = buildMirrorPath(pathId, cookie, srcSwitch, dstSwitch);
         flowMirrorPathRepository.add(flowMirrorPath);
         return flowMirrorPath;
+    }
+
+    static FlowMirrorPath buildMirrorPath(PathId pathId, FlowSegmentCookie cookie, Switch srcSwitch, Switch dstSwitch) {
+        return FlowMirrorPath.builder()
+                .mirrorPathId(pathId)
+                .cookie(cookie)
+                .mirrorSwitch(srcSwitch)
+                .egressSwitch(dstSwitch)
+                .status(FlowPathStatus.ACTIVE)
+                .build();
     }
 }

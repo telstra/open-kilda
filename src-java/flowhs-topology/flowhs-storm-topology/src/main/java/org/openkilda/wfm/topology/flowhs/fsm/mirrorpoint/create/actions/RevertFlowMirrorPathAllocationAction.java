@@ -75,11 +75,12 @@ public class RevertFlowMirrorPathAllocationAction
         }
 
         resourcesManager.deallocateCookie(stateMachine.getUnmaskedCookie());
-        flowMirrorPathRepository.remove(stateMachine.getMirrorPathId());
+        flowMirrorPathRepository.remove(stateMachine.getForwardMirrorPathId());
 
         stateMachine.saveActionToHistory("Flow mirror path resources were deallocated",
-                format("The flow resources for mirror path %s were deallocated", stateMachine.getMirrorPathId()));
-        stateMachine.setMirrorPathId(null);
+                format("The flow resources for mirror path %s were deallocated",
+                        stateMachine.getForwardMirrorPathId()));
+        stateMachine.setForwardMirrorPathId(null);
 
         if (!stateMachine.isRulesInstalled()) {
             log.debug("No need to re-install rules");

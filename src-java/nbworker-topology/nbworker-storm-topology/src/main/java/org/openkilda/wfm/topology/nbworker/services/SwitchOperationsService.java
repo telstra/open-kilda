@@ -26,7 +26,7 @@ import org.openkilda.messaging.nbtopology.response.SwitchConnectionsResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.model.DetectConnectedDevices.DetectConnectedDevicesBuilder;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
@@ -42,8 +42,8 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchProperties.RttState;
 import org.openkilda.model.SwitchStatus;
-import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -79,22 +79,22 @@ import java.util.stream.Stream;
 @Slf4j
 public class SwitchOperationsService {
 
-    private SwitchOperationsServiceCarrier carrier;
-    private SwitchRepository switchRepository;
-    private SwitchPropertiesRepository switchPropertiesRepository;
-    private SwitchConnectRepository switchConnectRepository;
-    private PortPropertiesRepository portPropertiesRepository;
-    private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
-    private LagLogicalPortRepository lagLogicalPortRepository;
-    private FlowMirrorPointsRepository flowMirrorPointsRepository;
-    private FlowMirrorPathRepository flowMirrorPathRepository;
-    private TransactionManager transactionManager;
-    private LinkOperationsService linkOperationsService;
-    private IslRepository islRepository;
-    private FlowRepository flowRepository;
-    private FlowPathRepository flowPathRepository;
-    private PhysicalPortRepository physicalPortRepository;
-    private PortRepository portRepository;
+    private final SwitchOperationsServiceCarrier carrier;
+    private final SwitchRepository switchRepository;
+    private final SwitchPropertiesRepository switchPropertiesRepository;
+    private final SwitchConnectRepository switchConnectRepository;
+    private final PortPropertiesRepository portPropertiesRepository;
+    private final SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
+    private final LagLogicalPortRepository lagLogicalPortRepository;
+    private final FlowMirrorPointsRepository flowMirrorPointsRepository;
+    private final FlowMirrorRepository flowMirrorRepository;
+    private final TransactionManager transactionManager;
+    private final LinkOperationsService linkOperationsService;
+    private final IslRepository islRepository;
+    private final FlowRepository flowRepository;
+    private final FlowPathRepository flowPathRepository;
+    private final PhysicalPortRepository physicalPortRepository;
+    private final PortRepository portRepository;
 
     public SwitchOperationsService(
             RepositoryFactory repositoryFactory, TransactionManager transactionManager,
@@ -112,7 +112,7 @@ public class SwitchOperationsService {
         this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         this.lagLogicalPortRepository = repositoryFactory.createLagLogicalPortRepository();
         this.flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
-        this.flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
+        this.flowMirrorRepository = repositoryFactory.createFlowMirrorRepository();
         this.physicalPortRepository = repositoryFactory.createPhysicalPortRepository();
         this.portRepository = repositoryFactory.createPortRepository();
         this.carrier = carrier;
@@ -521,11 +521,11 @@ public class SwitchOperationsService {
                         format(errorMessage, switchId, server42port, "flow", server42port));
             }
 
-            Collection<FlowMirrorPath> flowMirrorPaths = flowMirrorPathRepository.findByEgressSwitchIdAndPort(switchId,
+            Collection<FlowMirror> flowMirrors = flowMirrorRepository.findByEgressSwitchIdAndPort(switchId,
                     server42port);
-            if (!flowMirrorPaths.isEmpty()) {
+            if (!flowMirrors.isEmpty()) {
                 throw new IllegalSwitchPropertiesException(
-                        format(errorMessage, switchId, server42port, "flow mirror path", server42port));
+                        format(errorMessage, switchId, server42port, "flow mirror point", server42port));
             }
         }
     }

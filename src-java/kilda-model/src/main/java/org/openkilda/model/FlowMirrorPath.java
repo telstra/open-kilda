@@ -71,19 +71,18 @@ public class FlowMirrorPath implements CompositeDataEntity<FlowMirrorPathData> {
      *
      * @param entityToClone the path entity to copy data from.
      */
-    public FlowMirrorPath(@NonNull FlowMirrorPath entityToClone, FlowMirrorPoints flowMirrorPoints) {
-        data = FlowMirrorPathCloner.INSTANCE.deepCopy(entityToClone.getData(), flowMirrorPoints);
+    public FlowMirrorPath(@NonNull FlowMirrorPath entityToClone, FlowMirror flowMirror) {
+        data = FlowMirrorPathCloner.INSTANCE.deepCopy(entityToClone.getData(), flowMirror);
     }
 
     @Builder
-    public FlowMirrorPath(@NonNull PathId pathId, @NonNull Switch mirrorSwitch, @NonNull Switch egressSwitch,
-                          int egressPort, int egressOuterVlan, int egressInnerVlan, FlowSegmentCookie cookie,
-                          long bandwidth, boolean ignoreBandwidth, FlowPathStatus status, List<PathSegment> segments,
-                          boolean egressWithMultiTable) {
+    public FlowMirrorPath(@NonNull PathId mirrorPathId, @NonNull Switch mirrorSwitch, @NonNull Switch egressSwitch,
+                          FlowSegmentCookie cookie, long bandwidth, boolean ignoreBandwidth, FlowPathStatus status,
+                          List<PathSegment> segments, boolean egressWithMultiTable, boolean dummy) {
         FlowMirrorPathDataImpl.FlowMirrorPathDataImplBuilder dataBuilder = FlowMirrorPathDataImpl.builder()
-                .pathId(pathId).mirrorSwitch(mirrorSwitch).egressSwitch(egressSwitch).egressPort(egressPort)
-                .egressOuterVlan(egressOuterVlan).egressInnerVlan(egressInnerVlan).cookie(cookie).bandwidth(bandwidth)
-                .ignoreBandwidth(ignoreBandwidth).status(status).egressWithMultiTable(egressWithMultiTable);
+                .mirrorPathId(mirrorPathId).mirrorSwitch(mirrorSwitch).egressSwitch(egressSwitch).cookie(cookie)
+                .bandwidth(bandwidth).ignoreBandwidth(ignoreBandwidth).status(status)
+                .egressWithMultiTable(egressWithMultiTable).dummy(dummy);
 
         if (segments != null && !segments.isEmpty()) {
             dataBuilder.segments(segments);
@@ -115,12 +114,10 @@ public class FlowMirrorPath implements CompositeDataEntity<FlowMirrorPathData> {
         }
         FlowMirrorPath that = (FlowMirrorPath) o;
         return new EqualsBuilder()
-                .append(getPathId(), that.getPathId())
+                .append(getMirrorPathId(), that.getMirrorPathId())
+                .append(getFlowMirrorId(), that.getFlowMirrorId())
                 .append(getMirrorSwitchId(), that.getMirrorSwitchId())
                 .append(getEgressSwitchId(), that.getEgressSwitchId())
-                .append(getEgressPort(), that.getEgressPort())
-                .append(getEgressOuterVlan(), that.getEgressOuterVlan())
-                .append(getEgressInnerVlan(), that.getEgressInnerVlan())
                 .append(getCookie(), that.getCookie())
                 .append(getBandwidth(), that.getBandwidth())
                 .append(isIgnoreBandwidth(), that.isIgnoreBandwidth())
@@ -129,23 +126,28 @@ public class FlowMirrorPath implements CompositeDataEntity<FlowMirrorPathData> {
                 .append(getStatus(), that.getStatus())
                 .append(getSegments(), that.getSegments())
                 .append(isEgressWithMultiTable(), that.isEgressWithMultiTable())
+                .append(isDummy(), that.isDummy())
                 .isEquals();
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getPathId(), getMirrorSwitchId(), getEgressSwitchId(), getEgressPort(),
-                getEgressOuterVlan(), getEgressInnerVlan(), getBandwidth(), isIgnoreBandwidth(), getTimeCreate(),
-                getTimeModify(), getStatus(), getSegments(), isEgressWithMultiTable());
+        return Objects.hash(getMirrorPathId(), getFlowMirrorId(), getMirrorSwitchId(), getEgressSwitchId(), getCookie(),
+                getBandwidth(), isIgnoreBandwidth(), getTimeCreate(),
+                getTimeModify(), getStatus(), getSegments(), isEgressWithMultiTable(), isDummy());
     }
 
     /**
      * Defines persistable data of the FlowMirrorPath.
      */
     public interface FlowMirrorPathData {
-        PathId getPathId();
+        String getFlowMirrorId();
 
-        void setPathId(PathId pathId);
+        FlowMirror getFlowMirror();
+
+        PathId getMirrorPathId();
+
+        void setMirrorPathId(PathId pathId);
 
         SwitchId getMirrorSwitchId();
 
@@ -158,18 +160,6 @@ public class FlowMirrorPath implements CompositeDataEntity<FlowMirrorPathData> {
         Switch getEgressSwitch();
 
         void setEgressSwitch(Switch egressSwitch);
-
-        int getEgressPort();
-
-        void setEgressPort(int egressPort);
-
-        int getEgressOuterVlan();
-
-        void setEgressOuterVlan(int egressOuterVlan);
-
-        int getEgressInnerVlan();
-
-        void setEgressInnerVlan(int egressInnerVlan);
 
         FlowSegmentCookie getCookie();
 
@@ -203,7 +193,9 @@ public class FlowMirrorPath implements CompositeDataEntity<FlowMirrorPathData> {
 
         void setEgressWithMultiTable(boolean destWithMultiTable);
 
-        FlowMirrorPoints getFlowMirrorPoints();
+        boolean isDummy();
+
+        void setDummy(boolean dummy);
     }
 
     /**
@@ -215,16 +207,13 @@ public class FlowMirrorPath implements CompositeDataEntity<FlowMirrorPathData> {
     @AllArgsConstructor
     static final class FlowMirrorPathDataImpl implements FlowMirrorPathData, Serializable {
         private static final long serialVersionUID = 1L;
-        @NonNull PathId pathId;
+        @NonNull PathId mirrorPathId;
         @NonNull Switch mirrorSwitch;
         @NonNull Switch egressSwitch;
-        int egressPort;
-        int egressOuterVlan;
-        int egressInnerVlan;
         @Setter(AccessLevel.NONE)
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
-        FlowMirrorPoints flowMirrorPoints;
+        FlowMirror flowMirror;
         FlowSegmentCookie cookie;
         long bandwidth;
         boolean ignoreBandwidth;
@@ -235,16 +224,21 @@ public class FlowMirrorPath implements CompositeDataEntity<FlowMirrorPathData> {
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
         @NonNull List<PathSegment> segments = new ArrayList<>();
+        boolean egressWithMultiTable;
+        boolean dummy;
 
-        public void setPathId(PathId pathId) {
-            this.pathId = pathId;
-
-            if (segments != null) {
-                segments.forEach(segment -> segment.getData().setPathId(pathId));
+        @Override
+        public String getFlowMirrorId() {
+            if (flowMirror == null) {
+                return null;
             }
+            return flowMirror.getFlowMirrorId();
         }
 
-        boolean egressWithMultiTable;
+        public void setMirrorPathId(PathId mirrorPathId) {
+            this.mirrorPathId = mirrorPathId;
+            segments.forEach(segment -> segment.getData().setPathId(mirrorPathId));
+        }
 
         @Override
         public SwitchId getMirrorSwitchId() {
@@ -258,18 +252,12 @@ public class FlowMirrorPath implements CompositeDataEntity<FlowMirrorPathData> {
 
         public void setBandwidth(long bandwidth) {
             this.bandwidth = bandwidth;
-
-            if (segments != null) {
-                segments.forEach(segment -> segment.getData().setBandwidth(bandwidth));
-            }
+            segments.forEach(segment -> segment.getData().setBandwidth(bandwidth));
         }
 
         public void setIgnoreBandwidth(boolean ignoreBandwidth) {
             this.ignoreBandwidth = ignoreBandwidth;
-
-            if (segments != null) {
-                segments.forEach(segment -> segment.getData().setIgnoreBandwidth(ignoreBandwidth));
-            }
+            segments.forEach(segment -> segment.getData().setIgnoreBandwidth(ignoreBandwidth));
         }
 
         @Override
@@ -286,7 +274,7 @@ public class FlowMirrorPath implements CompositeDataEntity<FlowMirrorPathData> {
                 PathSegment segment = segments.get(idx);
                 PathSegment.PathSegmentData data = segment.getData();
                 // The reference is used to link path segments back to the mirror path. See {@link #setSegments(List)}.
-                data.setPathId(pathId);
+                data.setPathId(mirrorPathId);
                 data.setSeqId(idx);
                 data.setIgnoreBandwidth(ignoreBandwidth);
                 data.setBandwidth(bandwidth);
@@ -307,18 +295,20 @@ public class FlowMirrorPath implements CompositeDataEntity<FlowMirrorPathData> {
 
         @Mapping(target = "mirrorSwitch", ignore = true)
         @Mapping(target = "egressSwitch", ignore = true)
+        @Mapping(target = "flowMirror", ignore = true)
         @Mapping(target = "segments", ignore = true)
-        void copyWithoutSwitchesAndSegments(FlowMirrorPathData source, @MappingTarget FlowMirrorPathData target);
+        void copyWithoutSwitchesFlowMirrorAndSegments(
+                FlowMirrorPathData source, @MappingTarget FlowMirrorPathData target);
 
         /**
          * Performs deep copy of entity data.
          *
          * @param source the path data to copy from.
          */
-        default FlowMirrorPathData deepCopy(FlowMirrorPathData source, FlowMirrorPoints flowMirrorPoints) {
+        default FlowMirrorPathData deepCopy(FlowMirrorPathData source, FlowMirror flowMirror) {
             FlowMirrorPathDataImpl result = new FlowMirrorPathDataImpl();
-            result.flowMirrorPoints = flowMirrorPoints;
-            copyWithoutSwitchesAndSegments(source, result);
+            result.flowMirror = flowMirror;
+            copyWithoutSwitchesFlowMirrorAndSegments(source, result);
             result.setMirrorSwitch(new Switch(source.getMirrorSwitch()));
             result.setEgressSwitch(new Switch(source.getEgressSwitch()));
             result.setSegments(source.getSegments().stream()

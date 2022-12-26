@@ -19,14 +19,12 @@ import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPath.FlowMirrorPathData;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
-import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowMirrorPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.PathSegmentFrame;
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
-import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 
@@ -79,32 +77,6 @@ public class FermaFlowMirrorPathRepository
     }
 
     @Override
-    public Optional<FlowMirrorPath> findByEgressEndpoint(SwitchId switchId, int port, int outerVlan, int innerVlan) {
-        List<? extends FlowMirrorPathFrame> flowMirrorPathFrames = framedGraph().traverse(g -> g.V()
-                .hasLabel(FlowMirrorPathFrame.FRAME_LABEL)
-                .has(FlowMirrorPathFrame.EGRESS_SWITCH_ID_PROPERTY,
-                        SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
-                .has(FlowMirrorPathFrame.EGRESS_PORT_PROPERTY, port)
-                .has(FlowMirrorPathFrame.EGRESS_OUTER_VLAN_PROPERTY, outerVlan)
-                .has(FlowMirrorPathFrame.EGRESS_INNER_VLAN_PROPERTY, innerVlan))
-                .toListExplicit(FlowMirrorPathFrame.class);
-        return flowMirrorPathFrames.isEmpty() ? Optional.empty()
-                : Optional.of(flowMirrorPathFrames.get(0)).map(FlowMirrorPath::new);
-    }
-
-    @Override
-    public Collection<FlowMirrorPath> findByEgressSwitchIdAndPort(SwitchId switchId, int port) {
-        return framedGraph().traverse(g -> g.V()
-                .hasLabel(FlowMirrorPathFrame.FRAME_LABEL)
-                .has(FlowMirrorPathFrame.EGRESS_SWITCH_ID_PROPERTY,
-                        SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
-                .has(FlowMirrorPathFrame.EGRESS_PORT_PROPERTY, port))
-                .toListExplicit(FlowMirrorPathFrame.class).stream()
-                .map(FlowMirrorPath::new)
-                .collect(Collectors.toList());
-    }
-
-    @Override
     public void updateStatus(PathId pathId, FlowPathStatus pathStatus) {
         getTransactionManager().doInTransaction(() ->
                 framedGraph().traverse(g -> g.V()
@@ -152,6 +124,6 @@ public class FermaFlowMirrorPathRepository
 
     @Override
     protected FlowMirrorPathData doDetach(FlowMirrorPath entity, FlowMirrorPathFrame frame) {
-        return FlowMirrorPath.FlowMirrorPathCloner.INSTANCE.deepCopy(frame, entity.getFlowMirrorPoints());
+        return FlowMirrorPath.FlowMirrorPathCloner.INSTANCE.deepCopy(frame, entity.getFlowMirror());
     }
 }

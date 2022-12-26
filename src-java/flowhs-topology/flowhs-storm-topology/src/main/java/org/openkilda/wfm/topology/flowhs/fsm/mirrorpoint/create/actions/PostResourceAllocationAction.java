@@ -23,10 +23,9 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowMirrorPointResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
-import org.openkilda.model.FlowMirrorPath;
-import org.openkilda.model.PathId;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -43,11 +42,11 @@ import java.util.Optional;
 public class PostResourceAllocationAction extends
         NbTrackableWithHistorySupportAction<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> {
 
-    private final FlowMirrorPathRepository flowMirrorPathRepository;
+    private final FlowMirrorRepository flowMirrorRepository;
 
     public PostResourceAllocationAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        flowMirrorPathRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPathRepository();
+        flowMirrorRepository = persistenceManager.getRepositoryFactory().createFlowMirrorRepository();
     }
 
     @Override
@@ -56,22 +55,22 @@ public class PostResourceAllocationAction extends
                                                     FlowMirrorPointCreateFsm stateMachine) {
         Flow flow = getFlow(stateMachine.getFlowId());
 
-        PathId flowMirrorPathId = stateMachine.getMirrorPathId();
-        FlowMirrorPath flowMirrorPath = flowMirrorPathRepository.findById(flowMirrorPathId)
+        String flowMirrorId = stateMachine.getFlowMirrorId();
+        FlowMirror flowMirror = flowMirrorRepository.findById(flowMirrorId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                        format("Flow mirror path %s not found",  flowMirrorPathId)));
+                        format("Flow mirror point %s not found", flowMirrorId)));
 
-        String direction = flowMirrorPath.getFlowMirrorPoints().getFlowPath().isForward() ? "forward" : "reverse";
+        String direction = flowMirror.getFlowMirrorPoints().getFlowPath().isForward() ? "forward" : "reverse";
         FlowMirrorPointResponse response = FlowMirrorPointResponse.builder()
                 .flowId(flow.getFlowId())
-                .mirrorPointId(flowMirrorPath.getPathId().getId())
+                .mirrorPointId(flowMirror.getFlowMirrorId())
                 .mirrorPointDirection(direction)
-                .mirrorPointSwitchId(flowMirrorPath.getMirrorSwitchId())
+                .mirrorPointSwitchId(flowMirror.getMirrorSwitchId())
                 .sinkEndpoint(FlowEndpoint.builder()
-                        .switchId(flowMirrorPath.getEgressSwitchId())
-                        .portNumber(flowMirrorPath.getEgressPort())
-                        .outerVlanId(flowMirrorPath.getEgressOuterVlan())
-                        .innerVlanId(flowMirrorPath.getEgressInnerVlan())
+                        .switchId(flowMirror.getEgressSwitchId())
+                        .portNumber(flowMirror.getEgressPort())
+                        .outerVlanId(flowMirror.getEgressOuterVlan())
+                        .innerVlanId(flowMirror.getEgressInnerVlan())
                         .build())
                 .build();
 

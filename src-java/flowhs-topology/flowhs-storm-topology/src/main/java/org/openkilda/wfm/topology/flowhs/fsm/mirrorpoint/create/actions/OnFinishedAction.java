@@ -15,7 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions;
 
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateContext;
@@ -30,15 +32,18 @@ import lombok.extern.slf4j.Slf4j;
 public class OnFinishedAction extends
         FlowProcessingWithHistorySupportAction<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
+    private final FlowMirrorRepository flowMirrorRepository;
 
     public OnFinishedAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
         this.dashboardLogger = dashboardLogger;
+        this.flowMirrorRepository = persistenceManager.getRepositoryFactory().createFlowMirrorRepository();
     }
 
     @Override
     public void perform(State from, State to, Event event, FlowMirrorPointCreateContext context,
                         FlowMirrorPointCreateFsm stateMachine) {
+        flowMirrorRepository.updateStatus(stateMachine.getFlowMirrorId(), FlowPathStatus.ACTIVE);
         if (stateMachine.getFlowStatus() != null) {
             flowRepository.updateStatus(stateMachine.getFlowId(), stateMachine.getFlowStatus());
         }

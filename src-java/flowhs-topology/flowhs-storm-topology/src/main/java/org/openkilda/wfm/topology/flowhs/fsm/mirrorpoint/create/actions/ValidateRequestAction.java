@@ -21,10 +21,9 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.model.PathId;
 import org.openkilda.model.PhysicalPort;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
@@ -48,7 +47,7 @@ public class ValidateRequestAction extends
         NbTrackableWithHistorySupportAction<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> {
     private final FlowValidator flowValidator;
     private final FlowOperationsDashboardLogger dashboardLogger;
-    private final FlowMirrorPathRepository flowMirrorPathRepository;
+    private final FlowMirrorRepository flowMirrorRepository;
     private final PhysicalPortRepository physicalPortRepository;
 
     public ValidateRequestAction(PersistenceManager persistenceManager,
@@ -56,7 +55,7 @@ public class ValidateRequestAction extends
         super(persistenceManager);
         this.flowValidator = new FlowValidator(persistenceManager);
         this.dashboardLogger = dashboardLogger;
-        this.flowMirrorPathRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPathRepository();
+        this.flowMirrorRepository = persistenceManager.getRepositoryFactory().createFlowMirrorRepository();
         this.physicalPortRepository = persistenceManager.getRepositoryFactory().createPhysicalPortRepository();
     }
 
@@ -66,8 +65,8 @@ public class ValidateRequestAction extends
                                                     FlowMirrorPointCreateFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
         RequestedFlowMirrorPoint mirrorPoint = context.getMirrorPoint();
-        PathId mirrorPathId = new PathId(mirrorPoint.getMirrorPointId());
-        stateMachine.setMirrorPathId(mirrorPathId);
+        String flowMirrorId = mirrorPoint.getMirrorPointId();
+        stateMachine.setFlowMirrorId(flowMirrorId);
         stateMachine.setMirrorSwitchId(mirrorPoint.getMirrorPointSwitchId());
 
         dashboardLogger.onFlowMirrorPointCreate(flowId, mirrorPoint.getMirrorPointSwitchId(),
@@ -99,9 +98,9 @@ public class ValidateRequestAction extends
                     format("Invalid mirror point switch id: %s", mirrorPoint.getMirrorPointSwitchId()));
         }
 
-        if (flowMirrorPathRepository.exists(mirrorPathId)) {
+        if (flowMirrorRepository.exists(flowMirrorId)) {
             throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,
-                    format("Flow mirror point %s already exists", mirrorPathId));
+                    format("Flow mirror point %s already exists", flowMirrorId));
         }
 
         Optional<PhysicalPort> physicalPort = physicalPortRepository.findBySwitchIdAndPortNumber(

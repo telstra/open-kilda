@@ -22,7 +22,7 @@ import org.openkilda.messaging.payload.history.FlowHistoryPayload;
 import org.openkilda.messaging.payload.history.FlowStatusTimestampsEntry;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
@@ -100,7 +100,7 @@ public abstract class HistoryMapper {
      */
     public FlowDumpData map(Flow flow, FlowPath forward, FlowPath reverse, DumpType dumpType) {
         FlowDumpData result = generatedMap(flow, forward, reverse, dumpType);
-        result.setMirrorPointStatuses(map(getFlowMirrorPaths(flow)));
+        result.setMirrorPointStatuses(map(getFlowMirrors(flow)));
 
         return result;
     }
@@ -112,7 +112,7 @@ public abstract class HistoryMapper {
     public FlowDumpData map(Flow flow, FlowResources resources, DumpType dumpType) {
         FlowDumpData result = generatedMap(flow, resources, dumpType);
 
-        result.setMirrorPointStatuses(map(getFlowMirrorPaths(flow)));
+        result.setMirrorPointStatuses(map(getFlowMirrors(flow)));
 
         FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
                 .flowEffectiveId(resources.getUnmaskedCookie());
@@ -152,10 +152,10 @@ public abstract class HistoryMapper {
     @Mapping(target = "timestamp", ignore = true)
     public abstract FlowStatusTimestampsEntry map(FlowStatusView flowStatusesImmutableView);
 
-    public abstract List<MirrorPointStatus> map(List<FlowMirrorPath> flowMirrorPaths);
+    public abstract List<MirrorPointStatus> map(List<FlowMirror> flowMirrorPaths);
 
-    @Mapping(source = "pathId", target = "mirrorPointId")
-    public abstract MirrorPointStatus map(FlowMirrorPath flowMirrorPath);
+    @Mapping(source = "flowMirrorId", target = "mirrorPointId")
+    public abstract MirrorPointStatus map(FlowMirror flowMirrorPath);
 
     /**
      * Convert {@link PathId} to {@link String}.
@@ -297,11 +297,11 @@ public abstract class HistoryMapper {
         return value;
     }
 
-    private static List<FlowMirrorPath> getFlowMirrorPaths(Flow flow) {
+    private static List<FlowMirror> getFlowMirrors(Flow flow) {
         return flow.getPaths().stream()
                 .map(FlowPath::getFlowMirrorPointsSet)
                 .flatMap(Collection::stream)
-                .map(FlowMirrorPoints::getMirrorPaths)
+                .map(FlowMirrorPoints::getFlowMirrors)
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
     }

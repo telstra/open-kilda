@@ -24,10 +24,11 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.messaging.model.MirrorPointStatusDto;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.model.DetectConnectedDevices;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
@@ -37,19 +38,22 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
+import com.google.common.base.Functions;
 import com.google.common.collect.Lists;
 import org.junit.Test;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class FlowMapperTest {
     private static final SwitchId SRC_SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId DST_SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:02");
-    private static final PathId MIRROR_PATH_ID_A = new PathId("mirror_path_id_a");
-    private static final PathId MIRROR_PATH_ID_B = new PathId("mirror_path_id_b");
-    private static final FlowPathStatus FLOW_PATH_STATUS_A = FlowPathStatus.ACTIVE;
-    private static final FlowPathStatus FLOW_PATH_STATUS_B = FlowPathStatus.INACTIVE;
+    private static final String MIRROR_ID_A = "mirror_id_a";
+    private static final String MIRROR_ID_B = "mirror_id_b";
+    private static final FlowPathStatus FLOW_MIRROR_STATUS_A = FlowPathStatus.ACTIVE;
+    private static final FlowPathStatus FLOW_MIRROR_STATUS_B = FlowPathStatus.ACTIVE;
 
     @Test
     public void testFlowPairToDto() {
@@ -136,18 +140,16 @@ public class FlowMapperTest {
     public void testMirrorPointStatusesMapping() {
         Flow flow = buildFlow();
 
-        FlowDto flowDto = FlowMapper.INSTANCE.map(flow, new HashSet<>(), new HashSet<>(), buildFlowMirrorPathList());
+        FlowDto flowDto = FlowMapper.INSTANCE.map(flow, new HashSet<>(), new HashSet<>(), buildFlowMirrorList());
 
         assertNotNull(flowDto.getMirrorPointStatuses());
         assertEquals(2, flowDto.getMirrorPointStatuses().size());
 
-        assertEquals(MIRROR_PATH_ID_A.getId(), flowDto.getMirrorPointStatuses().get(0).getMirrorPointId());
-        assertEquals(FLOW_PATH_STATUS_A.toString().toLowerCase(),
-                flowDto.getMirrorPointStatuses().get(0).getStatus());
+        Map<String, MirrorPointStatusDto> statusMap = flowDto.getMirrorPointStatuses().stream()
+                .collect(Collectors.toMap(MirrorPointStatusDto::getMirrorPointId, Functions.identity()));
 
-        assertEquals(MIRROR_PATH_ID_B.getId(), flowDto.getMirrorPointStatuses().get(1).getMirrorPointId());
-        assertEquals(FLOW_PATH_STATUS_B.toString().toLowerCase(),
-                flowDto.getMirrorPointStatuses().get(1).getStatus());
+        assertEquals(FLOW_MIRROR_STATUS_A.toString().toLowerCase(), statusMap.get(MIRROR_ID_A).getStatus());
+        assertEquals(FLOW_MIRROR_STATUS_B.toString().toLowerCase(), statusMap.get(MIRROR_ID_B).getStatus());
     }
 
     private Flow buildFlow() {
@@ -196,19 +198,19 @@ public class FlowMapperTest {
         return flow;
     }
 
-    private List<FlowMirrorPath> buildFlowMirrorPathList() {
-        FlowMirrorPath flowMirrorPathA = FlowMirrorPath.builder()
-                .pathId(MIRROR_PATH_ID_A)
+    private List<FlowMirror> buildFlowMirrorList() {
+        FlowMirror flowMirrorPathA = FlowMirror.builder()
+                .flowMirrorId(MIRROR_ID_A)
                 .mirrorSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
                 .egressSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
-                .status(FLOW_PATH_STATUS_A)
+                .status(FLOW_MIRROR_STATUS_A)
                 .build();
 
-        FlowMirrorPath flowMirrorPathB = FlowMirrorPath.builder()
-                .pathId(MIRROR_PATH_ID_B)
+        FlowMirror flowMirrorPathB = FlowMirror.builder()
+                .flowMirrorId(MIRROR_ID_B)
                 .mirrorSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
                 .egressSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
-                .status(FLOW_PATH_STATUS_B)
+                .status(FLOW_MIRROR_STATUS_B)
                 .build();
 
         return Lists.newArrayList(flowMirrorPathA, flowMirrorPathB);

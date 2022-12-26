@@ -15,7 +15,11 @@
 
 package org.openkilda.model;
 
+import static java.lang.String.format;
+
 import org.openkilda.model.FlowMirror.FlowMirrorData;
+import org.openkilda.model.FlowMirrorPath.FlowMirrorPathData;
+import org.openkilda.model.FlowMirrorPath.FlowMirrorPathDataImpl;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.BeanSerializer;
@@ -41,7 +45,9 @@ import org.mapstruct.factory.Mappers;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -68,15 +74,15 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
      *
      * @param entityToClone the path entity to copy data from.
      */
-    public FlowMirror(@NonNull FlowMirror entityToClone) {
+    public FlowMirror(@NonNull FlowMirror entityToClone, FlowMirrorPoints flowMirrorPoints) {
         this();
-        data = FlowMirrorCloner.INSTANCE.deepCopy(entityToClone.getData(), this);
+        data = FlowMirrorCloner.INSTANCE.deepCopy(entityToClone.getData(), flowMirrorPoints, this);
     }
 
     @Builder
     public FlowMirror(
             @NonNull String flowMirrorId, @NonNull Switch mirrorSwitch, @NonNull Switch egressSwitch, int egressPort,
-            int egressOuterVlan, int egressInnerVlan, FlowPathStatus status) {
+            int egressOuterVlan, int egressInnerVlan, FlowPathStatus status, PathId forwardPathId) {
         FlowMirrorDataImpl.FlowMirrorDataImplBuilder dataBuilder = FlowMirrorDataImpl.builder()
                 .flowMirrorId(flowMirrorId)
                 .mirrorSwitch(mirrorSwitch)
@@ -84,6 +90,7 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
                 .egressPort(egressPort)
                 .egressOuterVlan(egressOuterVlan)
                 .egressInnerVlan(egressInnerVlan)
+                .forwardPathId(forwardPathId)
                 .status(status);
 
         data = dataBuilder.build();
@@ -104,6 +111,53 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
      */
     public boolean isOneSwitchMirror() {
         return getMirrorSwitchId().equals(getEgressSwitchId());
+    }
+
+    /**
+     * Returns forward path.
+     */
+    public FlowMirrorPath getForwardPath() {
+        if (getForwardPathId() == null) {
+            return null;
+        }
+        return getPath(getForwardPathId()).orElse(null);
+    }
+
+    /**
+     * Add a path and set it as the forward path.
+     */
+    public void setForwardPath(FlowMirrorPath forwardPath) {
+        if (forwardPath != null) {
+            if (!hasPath(forwardPath)) {
+                validatePath(forwardPath, FlowPathDirection.FORWARD);
+                addMirrorPaths(forwardPath);
+            }
+            setForwardPathId(forwardPath.getMirrorPathId());
+        } else {
+            setForwardPathId(null);
+        }
+    }
+
+    private void validatePath(FlowMirrorPath path, FlowPathDirection direction) {
+        if (!Objects.equals(path.getMirrorSwitchId(), getMirrorSwitchId())) {
+            throw new IllegalArgumentException(format("Mirror path %s must have %s direction, but its mirror switch "
+                    + "id %s is not equal to flow mirror switch id %s", path.getMirrorPathId(), direction,
+                    path.getMirrorSwitchId(), getMirrorSwitchId()));
+        }
+        if (!Objects.equals(path.getEgressSwitchId(), getEgressSwitchId())) {
+            throw new IllegalArgumentException(format("Mirror path %s must have %s direction, but its egress switch "
+                    + "id %s is not equal to flow mirror egress switch id %s", path.getMirrorPathId(), direction,
+                    path.getEgressSwitchId(), getEgressSwitchId()));
+        }
+        if (path.getCookie() == null) {
+            throw new IllegalArgumentException(format("Mirror path %s must have %s direction, but its cookie is null "
+                            + "so it is not possible to get path direction", path.getMirrorPathId(), direction));
+        }
+
+        if (path.getCookie().getDirection() != direction) {
+            throw new IllegalArgumentException(format("Mirror path %s must have %s direction, but its direction is %s",
+                    path.getMirrorPathId(), direction, path.getCookie().getDirection()));
+        }
     }
 
     @Override
@@ -180,6 +234,14 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
 
         Set<FlowMirrorPath> getMirrorPaths();
 
+        Optional<FlowMirrorPath> getPath(PathId pathId);
+
+        void addMirrorPaths(FlowMirrorPath... mirrorPaths);
+
+        FlowMirrorPoints getFlowMirrorPoints();
+
+        boolean hasPath(FlowMirrorPath path);
+
         Instant getTimeCreate();
 
         void setTimeCreate(Instant timeCreate);
@@ -227,6 +289,7 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
 
         public void setForwardPathId(PathId forwardPathId) {
             this.forwardPathId = forwardPathId;
+            mirrorPaths.forEach(path -> path.getData().setMirrorPathId(forwardPathId));
         }
 
         @Override
@@ -243,6 +306,48 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
         public Set<FlowMirrorPath> getMirrorPaths() {
             return new HashSet<>(mirrorPaths);
         }
+
+        @Override
+        public Optional<FlowMirrorPath> getPath(PathId pathId) {
+            return mirrorPaths.stream()
+                    .filter(path -> path.getMirrorPathId().equals(pathId))
+                    .findAny();
+        }
+
+        /**
+         * Add and associate flow path(s) with the flow.
+         */
+        @Override
+        public void addMirrorPaths(FlowMirrorPath... mirrorPaths) {
+            for (FlowMirrorPath pathToAdd : mirrorPaths) {
+                boolean toBeAdded = true;
+                Iterator<FlowMirrorPath> it = this.mirrorPaths.iterator();
+                while (it.hasNext()) {
+                    FlowMirrorPath each = it.next();
+                    if (pathToAdd == each) {
+                        toBeAdded = false;
+                        break;
+                    }
+                    if (pathToAdd.getMirrorPathId().equals(each.getMirrorPathId())) {
+                        it.remove();
+                        // Quit as no duplicates expected.
+                        break;
+                    }
+                }
+                if (toBeAdded) {
+                    this.mirrorPaths.add(pathToAdd);
+                    FlowMirrorPathData data = pathToAdd.getData();
+                    if (data instanceof FlowMirrorPathDataImpl) {
+                        ((FlowMirrorPathDataImpl) data).flowMirror = flowMirror;
+                    }
+                }
+            }
+        }
+
+        @Override
+        public boolean hasPath(FlowMirrorPath path) {
+            return mirrorPaths.contains(path);
+        }
     }
 
     /**
@@ -257,6 +362,7 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
 
         @Mapping(target = "mirrorSwitch", ignore = true)
         @Mapping(target = "egressSwitch", ignore = true)
+        @Mapping(target = "flowMirrorPoints", ignore = true)
         @Mapping(target = "mirrorPaths", ignore = true)
         void copyWithoutSwitchesFlowMirrorAndPaths(FlowMirrorData source, @MappingTarget FlowMirrorData target);
 
@@ -265,12 +371,17 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
          *
          * @param source the path data to copy from.
          */
-        default FlowMirrorData deepCopy(FlowMirrorData source, FlowMirror targetFlowMirror) {
+        default FlowMirrorData deepCopy(
+                FlowMirrorData source, FlowMirrorPoints flowMirrorPoints, FlowMirror targetFlowMirror) {
             FlowMirrorDataImpl result = new FlowMirrorDataImpl();
+            result.flowMirrorPoints = flowMirrorPoints;
             result.flowMirror = targetFlowMirror;
             copyWithoutSwitchesFlowMirrorAndPaths(source, result);
             result.setMirrorSwitch(new Switch(source.getMirrorSwitch()));
             result.setEgressSwitch(new Switch(source.getEgressSwitch()));
+            for (FlowMirrorPath mirrorPath : source.getMirrorPaths()) {
+                result.addMirrorPaths(new FlowMirrorPath(mirrorPath, targetFlowMirror));
+            }
             return result;
         }
 

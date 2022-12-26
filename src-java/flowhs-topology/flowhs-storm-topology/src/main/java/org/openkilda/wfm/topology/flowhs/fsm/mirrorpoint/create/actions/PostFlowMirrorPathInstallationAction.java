@@ -43,9 +43,9 @@ public class PostFlowMirrorPathInstallationAction extends
     @Override
     protected void perform(State from, State to, Event event, FlowMirrorPointCreateContext context,
                            FlowMirrorPointCreateFsm stateMachine) {
-        PathId mirrorPath = stateMachine.getMirrorPathId();
+        PathId mirrorPath = stateMachine.getForwardMirrorPathId();
 
-        log.debug("Completing installation of the flow mirror path {}", mirrorPath);
+        log.debug("Completing installation of the flow mirror point {}", mirrorPath);
 
         flowMirrorPathRepository.updateStatus(mirrorPath, FlowPathStatus.ACTIVE);
 

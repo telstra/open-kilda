@@ -74,7 +74,7 @@ public class EmitCommandRequestsAction extends
         List<SpeakerData> modifySpeakerCommands = new ArrayList<>();
         List<SpeakerData> deleteSpeakerCommands = new ArrayList<>();
 
-        if (mirrorPoints.getMirrorPaths().isEmpty()) {
+        if (mirrorPoints.getFlowMirrors().isEmpty()) {
             deleteSpeakerCommands.addAll(stateMachine.getMirrorPointSpeakerData());
         } else {
             for (SpeakerData command : buildSpeakerCommands(stateMachine, mirrorPoints)) {
@@ -115,7 +115,7 @@ public class EmitCommandRequestsAction extends
         PathId flowPathId = stateMachine.getFlowPathId();
         FlowPath path = flow.getPath(flowPathId).orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                 format("Flow path %s not found", flowPathId)));
-        Set<PathId> involvedPaths = newHashSet(stateMachine.getMirrorPathId());
+        Set<PathId> involvedPaths = newHashSet(stateMachine.getFlowPathId());
         getFlow(stateMachine.getFlowId()).getOppositePathId(path.getPathId()).ifPresent(involvedPaths::add);
         DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths,
                 newHashSet(stateMachine.getMirrorSwitchId()), false);

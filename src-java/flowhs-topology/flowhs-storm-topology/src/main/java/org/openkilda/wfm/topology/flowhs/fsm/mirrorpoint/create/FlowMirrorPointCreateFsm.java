@@ -68,7 +68,8 @@ public final class FlowMirrorPointCreateFsm extends FlowProcessingWithSpeakerCom
     private FlowStatus flowStatus;
     private PathId flowPathId;
     private SwitchId mirrorSwitchId;
-    private PathId mirrorPathId;
+    private String flowMirrorId;
+    private PathId forwardMirrorPathId;
     private long unmaskedCookie;
 
     private boolean rulesInstalled = false;

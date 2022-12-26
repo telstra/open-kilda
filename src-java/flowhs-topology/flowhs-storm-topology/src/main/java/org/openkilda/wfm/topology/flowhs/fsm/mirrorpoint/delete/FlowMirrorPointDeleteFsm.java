@@ -58,8 +58,8 @@ public final class FlowMirrorPointDeleteFsm extends FlowProcessingWithSpeakerCom
         State, Event, FlowMirrorPointDeleteContext, FlowGenericCarrier, FlowProcessingEventListener> {
 
     private FlowStatus flowStatus;
-    private PathId mirrorPathId;
-    private FlowPathStatus originalFlowMirrorPathStatus;
+    private String flowMirrorId;
+    private FlowPathStatus originalFlowMirrorStatus;
 
     private PathId flowPathId;
     private SwitchId mirrorSwitchId;

@@ -69,7 +69,7 @@ public class EmitRemoveRulesRequestsAction extends
         List<SpeakerData> modifySpeakerCommands = new ArrayList<>();
         List<SpeakerData> deleteSpeakerCommands = new ArrayList<>();
 
-        if (!mirrorPoint.isPresent() || mirrorPoint.get().getMirrorPaths().isEmpty()) {
+        if (!mirrorPoint.isPresent() || mirrorPoint.get().getFlowMirrors().isEmpty()) {
             deleteSpeakerCommands.addAll(stateMachine.getRevertCommands());
         } else {
             for (SpeakerData command : buildSpeakerCommands(stateMachine, mirrorPoint.get())) {
@@ -105,7 +105,7 @@ public class EmitRemoveRulesRequestsAction extends
     private List<SpeakerData> buildSpeakerCommands(
             FlowMirrorPointCreateFsm stateMachine, FlowMirrorPoints mirrorPoints) {
         PathId flowPathId = stateMachine.getFlowPathId();
-        Set<PathId> involvedPaths = newHashSet(stateMachine.getMirrorPathId());
+        Set<PathId> involvedPaths = newHashSet(flowPathId);
         getFlow(stateMachine.getFlowId()).getOppositePathId(flowPathId).ifPresent(involvedPaths::add);
         DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths,
                 newHashSet(stateMachine.getMirrorSwitchId()), false);

@@ -37,7 +37,7 @@ import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowFilter;
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStats;
@@ -153,11 +153,11 @@ public class FlowOperationsService {
     /**
      * Return flow mirror paths by flow.
      */
-    public List<FlowMirrorPath> getFlowMirrorPaths(Flow flow) {
+    public List<FlowMirror> getFlowMirrorPaths(Flow flow) {
         return flow.getPaths().stream()
                 .map(FlowPath::getFlowMirrorPointsSet)
                 .flatMap(Collection::stream)
-                .map(FlowMirrorPoints::getMirrorPaths)
+                .map(FlowMirrorPoints::getFlowMirrors)
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
     }
@@ -660,16 +660,16 @@ public class FlowOperationsService {
             for (FlowPath flowPath : Lists.newArrayList(flow.getForwardPath(), flow.getReversePath())) {
                 String direction = flowPath.isForward() ? "forward" : "reverse";
                 for (FlowMirrorPoints mirrorPoints : flowPath.getFlowMirrorPointsSet()) {
-                    for (FlowMirrorPath mirrorPath : mirrorPoints.getMirrorPaths()) {
+                    for (FlowMirror flowMirror : mirrorPoints.getFlowMirrors()) {
                         points.add(FlowMirrorPoint.builder()
-                                .mirrorPointId(mirrorPath.getPathId().toString())
+                                .mirrorPointId(flowMirror.getFlowMirrorId())
                                 .mirrorPointSwitchId(mirrorPoints.getMirrorSwitchId())
                                 .mirrorPointDirection(direction)
                                 .sinkEndpoint(FlowEndpoint.builder()
-                                        .switchId(mirrorPath.getEgressSwitchId())
-                                        .portNumber(mirrorPath.getEgressPort())
-                                        .outerVlanId(mirrorPath.getEgressOuterVlan())
-                                        .innerVlanId(mirrorPath.getEgressInnerVlan())
+                                        .switchId(flowMirror.getEgressSwitchId())
+                                        .portNumber(flowMirror.getEgressPort())
+                                        .outerVlanId(flowMirror.getEgressOuterVlan())
+                                        .innerVlanId(flowMirror.getEgressInnerVlan())
                                         .build())
                                 .build());
                     }

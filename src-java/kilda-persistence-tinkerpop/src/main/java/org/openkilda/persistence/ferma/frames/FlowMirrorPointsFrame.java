@@ -17,7 +17,7 @@ package org.openkilda.persistence.ferma.frames;
 
 import static java.lang.String.format;
 
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPoints.FlowMirrorPointsData;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.GroupId;
@@ -49,7 +49,7 @@ import java.util.stream.Collectors;
 public abstract class FlowMirrorPointsFrame extends KildaBaseVertexFrame implements FlowMirrorPointsData {
     public static final String FRAME_LABEL = "flow_mirror_points";
     public static final String SOURCE_EDGE = "source";
-    public static final String OWNS_MIRROR_PATHS_EDGE = "owns";
+    public static final String OWNS_FLOW_MIRROR_EDGE = "owns";
     public static final String HAS_MIRROR_GROUP_EDGE = "has";
     public static final String MIRROR_SWITCH_ID_PROPERTY = "mirror_switch_id";
     public static final String MIRROR_GROUP_ID_PROPERTY = "mirror_group_id";
@@ -58,9 +58,8 @@ public abstract class FlowMirrorPointsFrame extends KildaBaseVertexFrame impleme
     private FlowPath flowPath;
     private Switch mirrorSwitch;
     private MirrorGroup mirrorGroup;
-    private Set<PathId> pathIds;
-    private Map<PathId, FlowMirrorPath> paths;
-
+    private Set<String> flowMirrorIds;
+    private Map<String, FlowMirror> flowMirrors;
 
     @Override
     @Property(MIRROR_SWITCH_ID_PROPERTY)
@@ -165,69 +164,62 @@ public abstract class FlowMirrorPointsFrame extends KildaBaseVertexFrame impleme
     }
 
     @Override
-    public Collection<FlowMirrorPath> getMirrorPaths() {
-        if (paths == null) {
-            paths = traverse(v -> v.out(OWNS_MIRROR_PATHS_EDGE)
-                    .hasLabel(FlowMirrorPathFrame.FRAME_LABEL))
-                    .toListExplicit(FlowMirrorPathFrame.class).stream()
-                    .map(FlowMirrorPath::new)
-                    .collect(Collectors.toMap(FlowMirrorPath::getPathId, v -> v));
-            pathIds = Collections.unmodifiableSet(paths.keySet());
+    public Collection<FlowMirror> getFlowMirrors() {
+        if (flowMirrors == null) {
+            flowMirrors = traverse(v -> v.out(OWNS_FLOW_MIRROR_EDGE)
+                    .hasLabel(FlowMirrorFrame.FRAME_LABEL))
+                    .toListExplicit(FlowMirrorFrame.class).stream()
+                    .map(FlowMirror::new)
+                    .collect(Collectors.toMap(FlowMirror::getFlowMirrorId, v -> v));
+            flowMirrorIds = Collections.unmodifiableSet(flowMirrors.keySet());
         }
-        return Collections.unmodifiableCollection(paths.values());
+        return Collections.unmodifiableCollection(flowMirrors.values());
     }
 
-    @Override
-    public Set<PathId> getPathIds() {
-        if (pathIds == null) {
-            pathIds = traverse(v -> v.out(OWNS_MIRROR_PATHS_EDGE)
-                    .hasLabel(FlowMirrorPathFrame.FRAME_LABEL)
-                    .values(FlowMirrorPathFrame.PATH_ID_PROPERTY))
+    public Set<String> getFlowMirrorIds() {
+        if (flowMirrorIds == null) {
+            flowMirrorIds = traverse(v -> v.out(OWNS_FLOW_MIRROR_EDGE)
+                    .hasLabel(FlowMirrorFrame.FRAME_LABEL)
+                    .values(FlowMirrorFrame.FLOW_MIRROR_ID_PROPERTY))
                     .getRawTraversal().toStream()
                     .map(s -> (String) s)
-                    .map(PathIdConverter.INSTANCE::toEntityAttribute)
                     .collect(Collectors.toSet());
         }
-        return pathIds;
+        return flowMirrorIds;
     }
 
     @Override
-    public Optional<FlowMirrorPath> getPath(PathId pathId) {
-        if (paths == null) {
-            // init the cache map with paths.
-            getMirrorPaths();
+    public Optional<FlowMirror> getFlowMirror(String flowMirrorId) {
+        if (flowMirrors == null) {
+            // init the cache map with flow mirrors.
+            getFlowMirrors();
         }
-        return Optional.ofNullable(paths.get(pathId));
+        return Optional.ofNullable(flowMirrors.get(flowMirrorId));
     }
 
     @Override
-    public boolean hasPath(FlowMirrorPath path) {
-        return getPathIds().contains(path.getPathId());
-    }
-
-    @Override
-    public void addPaths(FlowMirrorPath... paths) {
-        for (FlowMirrorPath path : paths) {
-            FlowMirrorPath.FlowMirrorPathData data = path.getData();
-            FlowMirrorPathFrame frame;
-            if (data instanceof FlowMirrorPathFrame) {
-                frame = (FlowMirrorPathFrame) data;
-                // Unlink the path from the previous owner.
-                frame.getElement().edges(Direction.IN, FlowMirrorPointsFrame.OWNS_MIRROR_PATHS_EDGE)
+    public void addFlowMirrors(FlowMirror... flowMirrors) {
+        for (FlowMirror flowMirror : flowMirrors) {
+            FlowMirror.FlowMirrorData data = flowMirror.getData();
+            FlowMirrorFrame frame;
+            if (data instanceof FlowMirrorFrame) {
+                frame = (FlowMirrorFrame) data;
+                // Unlink the flow mirror from the previous owner.
+                frame.getElement().edges(Direction.IN, FlowMirrorPointsFrame.OWNS_FLOW_MIRROR_EDGE)
                         .forEachRemaining(Edge::remove);
             } else {
                 // We intentionally don't allow to add transient entities.
-                // A path must be added via corresponding repository first.
-                throw new IllegalArgumentException("Unable to link to transient flow mirror path " + path);
+                // A flow mirror must be added via corresponding repository first.
+                throw new IllegalArgumentException("Unable to link to transient flow mirror " + flowMirror);
             }
-            linkOut(frame, OWNS_MIRROR_PATHS_EDGE);
-            if (this.paths != null) {
-                this.paths.put(path.getPathId(), path);
+            linkOut(frame, OWNS_FLOW_MIRROR_EDGE);
+            if (this.flowMirrors != null) {
+                this.flowMirrors.put(flowMirror.getFlowMirrorId(), flowMirror);
             }
         }
-        if (this.paths != null) {
+        if (this.flowMirrors != null) {
             // force to reload
-            this.pathIds = Collections.unmodifiableSet(this.paths.keySet());
+            this.flowMirrorIds = Collections.unmodifiableSet(this.flowMirrors.keySet());
         }
     }
 

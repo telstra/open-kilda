@@ -34,7 +34,7 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
@@ -103,6 +103,7 @@ public class SimpleSwitchRuleConverterTest {
 
     private static final long MIN_BURST_SIZE_IN_KBITS = 1024;
     private static final double BURST_COEFFICIENT = 1.05;
+    public static final String FLOW_MIRROR_ID = "mirror_1";
 
     private SimpleSwitchRuleConverter simpleSwitchRuleConverter = new SimpleSwitchRuleConverter();
 
@@ -479,14 +480,14 @@ public class SimpleSwitchRuleConverterTest {
                             .build())
                     .build();
 
-            FlowMirrorPath flowMirrorPath = FlowMirrorPath.builder()
-                    .pathId(new PathId("mirror_path"))
+            FlowMirror flowMirror = FlowMirror.builder()
+                    .flowMirrorId(FLOW_MIRROR_ID)
                     .mirrorSwitch(switchA)
                     .egressSwitch(switchA)
                     .egressPort(FLOW_GROUP_ID_A_OUT_PORT)
                     .egressOuterVlan(FLOW_GROUP_ID_A_OUT_VLAN)
                     .build();
-            flowMirrorPoints.addPaths(flowMirrorPath);
+            flowMirrorPoints.addFlowMirrors(flowMirror);
 
             forwardFlowPath.addFlowMirrorPoints(flowMirrorPoints);
         }
