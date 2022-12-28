@@ -87,4 +87,6 @@ public interface RepositoryFactory {
     YFlowRepository createYFlowRepository();
 
     PortRepository createPortRepository();
+
+    LacpPartnerRepository createLacpPartnerRepository();
 }

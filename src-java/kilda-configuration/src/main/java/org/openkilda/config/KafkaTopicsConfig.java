@@ -263,4 +263,12 @@ public interface KafkaTopicsConfig {
     @Key("stats.notify.priv")
     @Default("kilda.stats.notify.priv")
     String getFlowStatsNotifyTopic();
+
+    @Key("topo.lacp.storm")
+    @Default("kilda.lacp.storm.priv")
+    String getLacpTopic();
+
+    @Key("topo.floodlight.lacp.region")
+    @Default("kilda.floodlight.lacp.priv")
+    String getLacpRegionTopic();
 }

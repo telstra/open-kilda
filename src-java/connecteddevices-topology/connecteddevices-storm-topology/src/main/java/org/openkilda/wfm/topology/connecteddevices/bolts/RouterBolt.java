@@ -22,6 +22,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.ArpInfoData;
+import org.openkilda.messaging.info.event.LacpInfoData;
 import org.openkilda.messaging.info.event.LldpInfoData;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
@@ -57,8 +58,8 @@ public class RouterBolt extends AbstractBolt {
                     emitWithContext(PACKET_STREAM_ID, input, new Values(createMessageKey((LldpInfoData) data), data));
                 } else if (data instanceof ArpInfoData) {
                     emitWithContext(PACKET_STREAM_ID, input, new Values(createMessageKey((ArpInfoData) data), data));
-                } else {
-                    unhandledInput(input);
+                } else  if (data instanceof LacpInfoData) {
+                    emitWithContext(PACKET_STREAM_ID, input, new Values(createMessageKey((LacpInfoData) data), data));
                 }
             } else {
                 unhandledInput(input);

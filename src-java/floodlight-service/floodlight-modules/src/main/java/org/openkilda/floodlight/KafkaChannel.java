@@ -144,6 +144,10 @@ public class KafkaChannel implements IFloodlightModule {
         return formatTopicWithRegion(topics.getNetworkControlResponseRegionTopic());
     }
 
+    public String getLacpTopic() {
+        return formatTopicWithRegion(topics.getLacpTopic());
+    }
+
     private String formatTopicWithRegion(String topic) {
         String region =  config.getFloodlightRegion();
         if (region == null || region.isEmpty()) {

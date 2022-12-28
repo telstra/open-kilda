@@ -31,6 +31,7 @@ import org.apache.storm.tuple.Fields;
 
 public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesTopologyConfig> {
     public static final String CONNECTED_DEVICES_SPOUT_ID = "connected-devices-spout";
+    public static final String LACP_SPOUT_ID = "lacp-spout";
     public static final String ROUTER_BOLT_ID = "router-bolt";
     public static final String PACKET_BOLT_ID = "packet-bolt";
 
@@ -39,15 +40,29 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
     }
 
     /**
+     * Main method to run topology.
+     */
+    public static void main(String[] args) {
+        try {
+            LaunchEnvironment env = new LaunchEnvironment(args);
+            (new ConnectedDevicesTopology(env)).setup();
+        } catch (Exception e) {
+            System.exit(handleLaunchException(e));
+        }
+    }
+
+    /**
      * Creating topology.
      */
     public StormTopology createTopology() {
         TopologyBuilder builder = new TopologyBuilder();
-        PersistenceManager persistenceManager = new PersistenceManager(configurationProvider);
 
         createZkSpout(builder);
 
         createSpout(builder);
+        createLacpSpout(builder);
+
+        PersistenceManager persistenceManager = new PersistenceManager(configurationProvider);
         createRouterBolt(builder, persistenceManager);
         createPacketBolt(builder, persistenceManager);
 
@@ -80,6 +95,10 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
         declareKafkaSpout(builder, topologyConfig.getKafkaTopoConnectedDevicesTopic(), CONNECTED_DEVICES_SPOUT_ID);
     }
 
+    private void createLacpSpout(TopologyBuilder builder) {
+        declareKafkaSpout(builder, topologyConfig.getKafkaLacpTopic(), LACP_SPOUT_ID);
+    }
+
     private void createZkBolt(TopologyBuilder builder) {
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
                 getZookeeperConfig(), getBoltInstancesCount(ROUTER_BOLT_ID));
@@ -90,17 +109,5 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
     @Override
     protected String getZkTopoName() {
         return "connecteddevices";
-    }
-
-    /**
-     * Main method to run topology.
-     */
-    public static void main(String[] args) {
-        try {
-            LaunchEnvironment env = new LaunchEnvironment(args);
-            (new ConnectedDevicesTopology(env)).setup();
-        } catch (Exception e) {
-            System.exit(handleLaunchException(e));
-        }
     }
 }

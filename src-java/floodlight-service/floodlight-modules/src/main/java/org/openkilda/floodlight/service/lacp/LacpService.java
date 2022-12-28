@@ -22,12 +22,18 @@ import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.service.IService;
+import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.of.IInputTranslator;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.shared.packet.Lacp;
 import org.openkilda.floodlight.shared.packet.Lacp.ActorPartnerInfo;
 import org.openkilda.floodlight.shared.packet.SlowProtocols;
+import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.LacpInfoData;
+import org.openkilda.messaging.info.event.LacpPartner;
+import org.openkilda.messaging.info.event.LacpState;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.CookieBase.CookieType;
@@ -57,17 +63,34 @@ import org.slf4j.LoggerFactory;
 public class LacpService implements IService, IInputTranslator {
     private static final Logger logger = LoggerFactory.getLogger(LacpService.class);
 
-    private IOFSwitchService switchService;
-    private MacAddress systemId;
-    private int systemPriority;
-    private int portPriority;
-
     static {
         try {
             logger.info("Force loading of {}", Class.forName(SlowProtocols.class.getName()));
         } catch (ClassNotFoundException e) {
             logger.error(String.format("Couldn't load class SlowProtocols %s", e.getMessage()), e);
         }
+    }
+
+    private IOFSwitchService switchService;
+    private MacAddress systemId;
+    private int systemPriority;
+    private int portPriority;
+    private IKafkaProducerService producerService;
+    private String topic;
+    private String region;
+
+    private static OFPort getInPort(OFPacketIn packetIn) {
+        if (packetIn.getVersion().compareTo(OFVersion.OF_12) < 0) {
+            return packetIn.getInPort();
+        }
+
+        if (packetIn.getMatch().supports(MatchField.IN_PHY_PORT)) {
+            OFPort inPort = packetIn.getMatch().get(MatchField.IN_PHY_PORT);
+            if (inPort != null) {
+                return inPort;
+            }
+        }
+        return packetIn.getMatch().get(MatchField.IN_PORT);
     }
 
     @Override
@@ -92,8 +115,8 @@ public class LacpService implements IService, IInputTranslator {
                     return (Lacp) slowProtocol.getPayload();
                 } else {
                     if (logger.isTraceEnabled()) {
-                        logger.trace("Got unknown slow protocol packet {} on switch {}",
-                                slowProtocol.getSubtype(), switchId);
+                        logger.trace("Got unknown slow protocol packet {} on switch {}", slowProtocol.getSubtype(),
+                                switchId);
                     }
                     return null;
                 }
@@ -119,8 +142,8 @@ public class LacpService implements IService, IInputTranslator {
 
         if (cookie.getType() == CookieType.LACP_REPLY_INPUT) {
             if (logger.isDebugEnabled()) {
-                logger.debug("Receive LACP packet from {} OF-xid:{}, cookie: {}",
-                        input.getDpId(), input.getMessage().getXid(), cookie);
+                logger.debug("Receive LACP packet from {} OF-xid:{}, cookie: {}", input.getDpId(),
+                        input.getMessage().getXid(), cookie);
             }
             handleLacp(input, switchId, cookie.getValue(), getInPort((OFPacketIn) input.getMessage()));
         }
@@ -137,6 +160,33 @@ public class LacpService implements IService, IInputTranslator {
         }
         Lacp lacpReply = modifyLacpRequest(lacpRequest);
         sendLacpReply(DatapathId.of(switchId.getId()), inPort, lacpReply);
+
+        LacpInfoData lacpInfoData = getLacpInfoData(lacpRequest, switchId, inPort.getPortNumber());
+
+        InfoMessage message = new InfoMessage(lacpInfoData, System.currentTimeMillis(), CorrelationContext.getId(),
+                region);
+
+        producerService.sendMessageAndTrackWithZk(topic, switchId.toString(), message);
+    }
+
+    private LacpInfoData getLacpInfoData(final Lacp lacpRequest, final SwitchId switchId, final int logicalPortNumber) {
+
+        ActorPartnerInfo actor = lacpRequest.getActor();
+        Lacp.State state = actor.getState();
+
+        LacpState actorState = LacpState.builder()
+                .active(state.isActive()).shortTimeout(state.isShortTimeout()).aggregatable(state.isAggregatable())
+                .synchronised(state.isSynchronised()).collecting(state.isCollecting())
+                .distributing(state.isDistributing()).defaulted(state.isDefaulted()).expired(state.isExpired()).build();
+
+        org.openkilda.model.MacAddress macAddressActor =
+                new org.openkilda.model.MacAddress(actor.getSystemId().toString());
+
+        LacpPartner lacpActor = LacpPartner.builder().systemPriority(actor.getSystemPriority())
+                .systemId(macAddressActor).key(actor.getKey()).portPriority(actor.getPortPriority())
+                .portNumber(actor.getPortNumber()).state(actorState).build();
+
+        return LacpInfoData.builder().switchId(switchId).logicalPortNumber(logicalPortNumber).actor(lacpActor).build();
     }
 
     @VisibleForTesting
@@ -160,18 +210,15 @@ public class LacpService implements IService, IInputTranslator {
             slowProtocols.setSubtype(SlowProtocols.LACP_SUBTYPE);
             slowProtocols.setPayload(lacp);
 
-            Ethernet l2 = new Ethernet().setSourceMACAddress(new SwitchId(sw.getId().getLong()).toMacAddress())
-                    .setDestinationMACAddress(org.openkilda.model.MacAddress.SLOW_PROTOCOLS.getAddress())
-                    .setEtherType(EthType.SLOW_PROTOCOLS);
+            Ethernet l2 = new Ethernet().setSourceMACAddress(
+                    new SwitchId(sw.getId().getLong()).toMacAddress()).setDestinationMACAddress(
+                    org.openkilda.model.MacAddress.SLOW_PROTOCOLS.getAddress()).setEtherType(EthType.SLOW_PROTOCOLS);
             l2.setPayload(slowProtocols);
 
             byte[] data = l2.serialize();
-            OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut()
-                    .setBufferId(OFBufferId.NO_BUFFER)
-                    .setActions(
-                            Lists.newArrayList(
-                                    sw.getOFFactory().actions().buildOutput().setPort(outPort).build()))
-                    .setData(data);
+            OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut().setBufferId(OFBufferId.NO_BUFFER).setActions(
+                    Lists.newArrayList(sw.getOFFactory().actions().buildOutput().setPort(outPort).build())).setData(
+                    data);
             OFMessageUtils.setInPort(pob, OFPort.CONTROLLER);
 
             return pob.build();
@@ -198,8 +245,8 @@ public class LacpService implements IService, IInputTranslator {
                 }
 
                 if (!result) {
-                    logger.error("Failed to send PACKET_OUT(LACP reply packet) via {}-{}. Packet {}",
-                            sw.getId(), port.getPortNumber(), lacpReply);
+                    logger.error("Failed to send PACKET_OUT(LACP reply packet) via {}-{}. Packet {}", sw.getId(),
+                            port.getPortNumber(), lacpReply);
                 }
             } else {
                 logger.error("Couldn't find switch {} to send LACP reply", switchId);
@@ -207,20 +254,6 @@ public class LacpService implements IService, IInputTranslator {
         } catch (Exception exception) {
             logger.error(String.format("Unhandled exception in %s", getClass().getName()), exception);
         }
-    }
-
-    private static OFPort getInPort(OFPacketIn packetIn) {
-        if (packetIn.getVersion().compareTo(OFVersion.OF_12) < 0) {
-            return packetIn.getInPort();
-        }
-
-        if (packetIn.getMatch().supports(MatchField.IN_PHY_PORT)) {
-            OFPort inPort = packetIn.getMatch().get(MatchField.IN_PHY_PORT);
-            if (inPort != null) {
-                return inPort;
-            }
-        }
-        return packetIn.getMatch().get(MatchField.IN_PORT);
     }
 
     @Override
@@ -238,5 +271,10 @@ public class LacpService implements IService, IInputTranslator {
 
         InputService inputService = context.getServiceImpl(InputService.class);
         inputService.addTranslator(OFType.PACKET_IN, this);
+
+
+        region = kafkaChannel.getRegion();
+        producerService = context.getServiceImpl(IKafkaProducerService.class);
+        topic = kafkaChannel.getLacpTopic();
     }
 }

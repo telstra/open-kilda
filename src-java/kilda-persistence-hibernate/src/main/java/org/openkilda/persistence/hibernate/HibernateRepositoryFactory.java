@@ -32,6 +32,7 @@ import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
+import org.openkilda.persistence.repositories.LacpPartnerRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
@@ -207,6 +208,11 @@ public class HibernateRepositoryFactory implements RepositoryFactory {
 
     @Override
     public PortRepository createPortRepository() {
+        throw new IllegalStateException("Repository not implemented on hibernate layer");
+    }
+
+    @Override
+    public LacpPartnerRepository createLacpPartnerRepository() {
         throw new IllegalStateException("Repository not implemented on hibernate layer");
     }
 

@@ -190,6 +190,11 @@ public class RepositoryFactoryProxy implements RepositoryFactory {
         return resolve(PortRepository.class).createPortRepository();
     }
 
+    @Override
+    public LacpPartnerRepository createLacpPartnerRepository() {
+        return resolve(LacpPartnerRepository.class).createLacpPartnerRepository();
+    }
+
     private RepositoryFactory resolve(Class<?> repositoryClass) {
         PersistenceArea area = RepositoryAreaBinding.INSTANCE.lookup(repositoryClass);
         PersistenceImplementation implementation = manager.getImplementation(area);

@@ -23,8 +23,12 @@ import static org.openkilda.model.cookie.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
 
 import org.openkilda.messaging.info.event.ArpInfoData;
+import org.openkilda.messaging.info.event.LacpInfoData;
+import org.openkilda.messaging.info.event.LacpPartner;
+import org.openkilda.messaging.info.event.LacpState;
 import org.openkilda.messaging.info.event.LldpInfoData;
 import org.openkilda.model.Flow;
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnectedDevice;
@@ -32,6 +36,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.LacpPartnerRepository;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
@@ -82,10 +87,13 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
     public static final int TTL_1 = 120;
     public static final int TTL_2 = 240;
 
+    public static final int LOGICAL_PORT_NUMBER_123 = 123;
+    public static final int LOGICAL_PORT_NUMBER_456 = 456;
     private static SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
     private static SwitchRepository switchRepository;
     private static FlowRepository flowRepository;
     private static TransitVlanRepository transitVlanRepository;
+    private static LacpPartnerRepository lacpPartnerRepository;
     private static PacketService packetService;
 
     @BeforeClass
@@ -95,6 +103,7 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         transitVlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
+        lacpPartnerRepository = persistenceManager.getRepositoryFactory().createLacpPartnerRepository();
         packetService = new PacketService(persistenceManager);
     }
 
@@ -119,6 +128,23 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         Collection<SwitchConnectedDevice> devices = switchConnectedDeviceRepository.findAll();
         assertEquals(1, devices.size());
         assertEquals(devices.iterator().next().getTimeFirstSeen(), devices.iterator().next().getTimeLastSeen());
+    }
+
+    @Test
+    public void testLacpPartnerCreate() {
+        packetService.handleLacpData(createLacpInfoData());
+        Collection<org.openkilda.model.LacpPartner> devices = lacpPartnerRepository.findAll();
+        assertEquals(1, devices.size());
+    }
+
+    @Test
+    public void testLacpPartnerUpdateAndCreate() {
+        packetService.handleLacpData(createLacpInfoData());
+        LacpInfoData lacpInfoData  = createLacpInfoData();
+        lacpInfoData.setLogicalPortNumber(LOGICAL_PORT_NUMBER_456);
+        packetService.handleLacpData(lacpInfoData);
+        Collection<org.openkilda.model.LacpPartner> devices = lacpPartnerRepository.findAll();
+        assertEquals(2, devices.size());
     }
 
     @Test
@@ -285,7 +311,7 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
     }
 
     private Object[][] getOneSwitchOnePortFlowParameters() {
-        return new Object[][] {
+        return new Object[][]{
                 // inVlan, srcVlan, dstVlan, vlansInPacket, sourceSwitch
                 {VLAN_0, VLAN_0, VLAN_2, newArrayList(VLAN_2), true},
                 {VLAN_1, VLAN_0, VLAN_2, newArrayList(VLAN_2, VLAN_1), true},
@@ -309,7 +335,7 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
     }
 
     private Object[][] getOneSwitchFlowParameters() {
-        return new Object[][] {
+        return new Object[][]{
                 // inVlan, srcVlan, dstVlan, vlansInPacket, sourceSwitch
                 {VLAN_0, VLAN_0, VLAN_0, newArrayList(), true},
                 {VLAN_1, VLAN_0, VLAN_0, newArrayList(VLAN_1), true},
@@ -338,7 +364,7 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
     }
 
     private Object[][] getVlanFlowParameters() {
-        return new Object[][] {
+        return new Object[][]{
                 // inVlan, srcVlan, dstVlan, transitVlan, vlansInPacket, sourceSwitch
                 {VLAN_0, VLAN_0, VLAN_3, VLAN_2, newArrayList(VLAN_2), true},
                 {VLAN_1, VLAN_0, VLAN_3, VLAN_2, newArrayList(VLAN_2, VLAN_1), true},
@@ -363,7 +389,7 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
     }
 
     private Object[][] getInOutVlanCombinationForVxlanParameters() {
-        return new Object[][] {
+        return new Object[][]{
                 // inVlan, srcVlan, dstVlan, vlansInPacket, sourceSwitch
                 {VLAN_0, VLAN_0, VLAN_0, newArrayList(), true},
                 {VLAN_0, VLAN_0, VLAN_2, newArrayList(), true},
@@ -509,5 +535,17 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
     private ArpInfoData createArpInfoData() {
         return new ArpInfoData(SWITCH_ID_1, PORT_NUMBER_1, newArrayList(VLAN_1), ARP_INPUT_PRE_DROP_COOKIE,
                 MAC_ADDRESS_1, IP_ADDRESS_1);
+    }
+
+    private LacpInfoData createLacpInfoData() {
+        LacpState state = LacpState.builder()
+                .active(Boolean.TRUE).shortTimeout(Boolean.TRUE).aggregatable(Boolean.TRUE)
+                .synchronised(Boolean.TRUE).collecting(Boolean.TRUE).distributing(Boolean.TRUE)
+                .defaulted(Boolean.TRUE).expired(Boolean.FALSE).build();
+        LacpPartner partner = LacpPartner.builder().systemPriority(1).systemId(new MacAddress("00:00:00:00:00:01"))
+                .key(1).portPriority(1).portNumber(11).state(state).build();
+        LacpInfoData lacpInfoData = LacpInfoData.builder().switchId(SWITCH_ID_1)
+                .logicalPortNumber(LOGICAL_PORT_NUMBER_123).actor(partner).build();
+        return lacpInfoData;
     }
 }
