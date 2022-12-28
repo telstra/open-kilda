@@ -85,9 +85,9 @@ import java.util.function.Supplier;
 @Slf4j
 public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C> extends
         NbTrackableWithHistorySupportAction<T, S, E, C> {
-    private final int pathAllocationRetriesLimit;
-    private final int pathAllocationRetryDelay;
-    private final int resourceAllocationRetriesLimit;
+    protected final int pathAllocationRetriesLimit;
+    protected final int pathAllocationRetryDelay;
+    protected final int resourceAllocationRetriesLimit;
     protected final SwitchRepository switchRepository;
     protected final IslRepository islRepository;
     protected final PathSegmentRepository pathSegmentRepository;

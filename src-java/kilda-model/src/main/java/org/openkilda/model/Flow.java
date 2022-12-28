@@ -25,6 +25,7 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.BeanSerializer;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.collect.Lists;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -47,6 +48,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -290,21 +292,49 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
      * Return main flow prioritized paths status.
      */
     public FlowPathStatus getMainFlowPrioritizedPathsStatus() {
-        return getFlowPrioritizedPathStatus(getForwardPath(), getReversePath());
+        return getPrioritizedPathStatus(getForwardPath(), getReversePath());
     }
 
     /**
      * Return protected flow prioritized paths status.
      */
     public FlowPathStatus getProtectedFlowPrioritizedPathsStatus() {
-        FlowPathStatus pathStatus = getFlowPrioritizedPathStatus(getProtectedForwardPath(), getProtectedReversePath());
+        FlowPathStatus pathStatus = getPrioritizedPathStatus(getProtectedForwardPath(), getProtectedReversePath());
         return isAllocateProtectedPath() && pathStatus == null ? FlowPathStatus.INACTIVE : pathStatus;
     }
 
-    private FlowPathStatus getFlowPrioritizedPathStatus(FlowPath... flowPaths) {
-        return Stream.of(flowPaths)
+    /**
+     * Return flow mirror prioritized paths status.
+     */
+    public FlowPathStatus getFlowMirrorPrioritizedPathsStatus() {
+        List<FlowPath> paths = Lists.newArrayList(getForwardPath(), getReversePath());
+        if (isAllocateProtectedPath()) {
+            paths.add(getProtectedForwardPath());
+            paths.add(getProtectedReversePath());
+        }
+        Set<FlowPathStatus> mirrorStatuses = paths.stream()
+                .map(FlowPath::getFlowMirrorPointsSet)
                 .filter(Objects::nonNull)
-                .map(FlowPath::getStatus)
+                .flatMap(Collection::stream)
+                .map(FlowMirrorPoints::getFlowMirrors)
+                .filter(Objects::nonNull)
+                .flatMap(Collection::stream)
+                .map(FlowMirror::getStatus)
+                .collect(Collectors.toSet());
+        return getPrioritizedPathStatus(mirrorStatuses);
+    }
+
+    private FlowPathStatus getPrioritizedPathStatus(FlowPath... flowPaths) {
+        return getPrioritizedPathStatus(
+                Stream.of(flowPaths)
+                        .filter(Objects::nonNull)
+                        .map(FlowPath::getStatus)
+                        .collect(Collectors.toSet()));
+    }
+
+    private FlowPathStatus getPrioritizedPathStatus(Set<FlowPathStatus> statuses) {
+        return statuses.stream()
+                .filter(Objects::nonNull)
                 .max(FlowPathStatus::compareTo)
                 .orElse(null);
     }
@@ -350,12 +380,9 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
      */
     public FlowStatus computeFlowStatus() {
         FlowPathStatus mainFlowPrioritizedPathsStatus = getMainFlowPrioritizedPathsStatus();
-        FlowPathStatus protectedFlowPrioritizedPathsStatus = getProtectedFlowPrioritizedPathsStatus();
 
         // Calculate the combined flow status.
-        if (protectedFlowPrioritizedPathsStatus != null
-                && protectedFlowPrioritizedPathsStatus != FlowPathStatus.ACTIVE
-                && mainFlowPrioritizedPathsStatus == FlowPathStatus.ACTIVE) {
+        if (isProtectedPathDegraded(mainFlowPrioritizedPathsStatus) || isMirrorPathDegraded()) {
             return FlowStatus.DEGRADED;
         } else {
             if (mainFlowPrioritizedPathsStatus == null) {
@@ -379,6 +406,18 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
         }
     }
 
+    private boolean isProtectedPathDegraded(FlowPathStatus mainFlowPrioritizedPathsStatus) {
+        FlowPathStatus protectedFlowPrioritizedPathsStatus = getProtectedFlowPrioritizedPathsStatus();
+        return protectedFlowPrioritizedPathsStatus != null
+                && protectedFlowPrioritizedPathsStatus != FlowPathStatus.ACTIVE
+                && mainFlowPrioritizedPathsStatus == FlowPathStatus.ACTIVE;
+    }
+
+    private boolean isMirrorPathDegraded() {
+        FlowPathStatus mirrorsStatus = getFlowMirrorPrioritizedPathsStatus();
+        return mirrorsStatus != null && mirrorsStatus != FlowPathStatus.ACTIVE;
+    }
+
     /**
      * Checks if pathId belongs to the current flow.
      */
@@ -389,6 +428,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
 
     /**
      * Checks if flow looped.
+     *
      * @return true if flow is looped.
      */
     public boolean isLooped() {

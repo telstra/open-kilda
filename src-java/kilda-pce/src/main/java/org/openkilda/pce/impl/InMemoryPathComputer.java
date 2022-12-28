@@ -30,6 +30,7 @@ import static org.openkilda.pce.model.PathWeight.Penalty.UNSTABLE;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
@@ -98,6 +99,13 @@ public class InMemoryPathComputer implements PathComputer {
         AvailableNetwork network = availableNetworkFactory.getAvailableNetwork(flow, reusePathsResources);
 
         return getPath(network, new RequestedPath(flow), isProtected);
+    }
+
+    @Override
+    public GetPathsResult getPath(Flow flow, FlowMirror flowMirror)
+            throws UnroutableFlowException, RecoverableException {
+        AvailableNetwork network = availableNetworkFactory.getAvailableNetwork(flow, new ArrayList<>());
+        return getPath(network, new RequestedPath(flow, flowMirror), false);
     }
 
     private GetPathsResult getPath(AvailableNetwork network, RequestedPath requestedPath, boolean isProtected)
@@ -496,6 +504,13 @@ public class InMemoryPathComputer implements PathComputer {
             this(flow.getSrcSwitchId(), flow.getDestSwitchId(), flow.getBandwidth(), flow.isIgnoreBandwidth(),
                     flow.getPathComputationStrategy(), flow.getMaxLatency(), flow.getMaxLatencyTier2(),
                     flow.getFlowId());
+        }
+
+        public RequestedPath(Flow flow, FlowMirror flowMirror) {
+            this(flowMirror.getMirrorSwitchId(), flowMirror.getEgressSwitchId(), flow.getBandwidth(),
+                    flow.isIgnoreBandwidth(), flow.getPathComputationStrategy(), flow.getMaxLatency(),
+                    flow.getMaxLatencyTier2(), String.format("mirror point %s of flow %s",
+                            flowMirror.getFlowMirrorId(), flow.getFlowId()));
         }
 
         public boolean isOneSwitch() {

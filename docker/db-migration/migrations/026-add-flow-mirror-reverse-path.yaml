@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: snikitin
+      changes:
+        - tagDatabase:
+            tag: 026-add-flow-mirror-reverse-path
+
+  - changeSet:
+      id: add_flow_mirror_reverse_property
+      author: snikitin
+      changes:
+        - sql: "CREATE PROPERTY flow_mirror.reverse_path_id IF NOT EXISTS STRING"
+      rollback:
+        - sql: "DROP PROPERTY flow_mirror.reverse_path_id IF EXISTS"

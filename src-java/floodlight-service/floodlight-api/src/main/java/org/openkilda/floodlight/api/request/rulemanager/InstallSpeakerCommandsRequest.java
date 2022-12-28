@@ -24,10 +24,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.ToString;
 
 import java.util.Collection;
 import java.util.UUID;
 
+@ToString(callSuper = true)
 public class InstallSpeakerCommandsRequest extends BaseSpeakerCommandsRequest {
 
     @JsonProperty("fail_if_exists")

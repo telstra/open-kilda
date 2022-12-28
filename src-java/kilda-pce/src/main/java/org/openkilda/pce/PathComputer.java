@@ -17,6 +17,7 @@ package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
@@ -55,6 +56,8 @@ public interface PathComputer {
      */
     GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources, boolean isProtected)
             throws UnroutableFlowException, RecoverableException;
+
+    GetPathsResult getPath(Flow flow, FlowMirror flowMirror) throws UnroutableFlowException, RecoverableException;
 
     /**
      * Gets N best paths.

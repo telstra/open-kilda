@@ -17,15 +17,15 @@ package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
 
+import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
-import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -48,12 +48,12 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
         stateMachine.fireError(errorMessage);
     }
 
-    protected Set<SwitchId> getInvolvedSwitches(List<PathSegment> segments) {
-        Set<SwitchId> result = new HashSet<>();
-        if (!segments.isEmpty()) {
-            result.add(segments.get(0).getSrcSwitchId());
+    protected Set<SwitchId> getInvolvedSwitches(FlowMirrorPath mirrorPath) {
+        Set<SwitchId> result = Sets.newHashSet(mirrorPath.getMirrorSwitchId(), mirrorPath.getEgressSwitchId());
+        if (!mirrorPath.getSegments().isEmpty()) {
+            result.add(mirrorPath.getSegments().get(0).getSrcSwitchId());
         }
-        for (PathSegment segment : segments) {
+        for (PathSegment segment : mirrorPath.getSegments()) {
             result.add(segment.getDestSwitchId());
         }
         return result;

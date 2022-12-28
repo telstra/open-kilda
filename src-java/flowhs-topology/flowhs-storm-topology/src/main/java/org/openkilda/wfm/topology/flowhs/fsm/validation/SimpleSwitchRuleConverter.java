@@ -38,10 +38,12 @@ import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.SimpleSwitchRule.SimpleGroupBucket;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.SimpleSwitchRule.SimpleSwitchRuleBuilder;
 
@@ -69,17 +71,18 @@ public class SimpleSwitchRuleConverter {
     /**
      * Convert {@link FlowPath} to list of {@link SimpleSwitchRule}.
      */
-    public List<SimpleSwitchRule> convertFlowPathToSimpleSwitchRules(Flow flow, FlowPath flowPath,
-                                                                     EncapsulationId encapsulationId,
-                                                                     long flowMeterMinBurstSizeInKbits,
-                                                                     double flowMeterBurstCoefficient) {
+    public List<SimpleSwitchRule> convertFlowPathToSimpleSwitchRules(
+            Flow flow, FlowPath flowPath, EncapsulationId encapsulationId,
+            Map<PathId, EncapsulationResources> mirrorEncapsulationMap,
+            long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
         List<SimpleSwitchRule> rules = new ArrayList<>();
         if (!flowPath.isProtected()) {
-            rules.addAll(buildIngressSimpleSwitchRules(flow, flowPath, encapsulationId, flowMeterMinBurstSizeInKbits,
-                    flowMeterBurstCoefficient));
+            rules.addAll(buildIngressSimpleSwitchRules(flow, flowPath, encapsulationId, mirrorEncapsulationMap,
+                    flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient));
         }
         if (!flow.isOneSwitchFlow()) {
-            rules.addAll(buildTransitAndEgressSimpleSwitchRules(flow, flowPath, encapsulationId));
+            rules.addAll(buildTransitAndEgressSimpleSwitchRules(flow, flowPath, encapsulationId,
+                    mirrorEncapsulationMap));
         }
         return rules;
     }
@@ -87,10 +90,10 @@ public class SimpleSwitchRuleConverter {
     /**
      * Build ingress rules ({@link SimpleSwitchRule}) for provided {@link FlowPath}.
      */
-    public List<SimpleSwitchRule> buildIngressSimpleSwitchRules(Flow flow, FlowPath flowPath,
-                                                                EncapsulationId encapsulationId,
-                                                                long flowMeterMinBurstSizeInKbits,
-                                                                double flowMeterBurstCoefficient) {
+    public List<SimpleSwitchRule> buildIngressSimpleSwitchRules(
+            Flow flow, FlowPath flowPath, EncapsulationId encapsulationId,
+            Map<PathId, EncapsulationResources> mirrorEncapsulationMap, long flowMeterMinBurstSizeInKbits,
+            double flowMeterBurstCoefficient) {
         boolean forward = flow.isForward(flowPath);
         int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
         int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
@@ -159,7 +162,8 @@ public class SimpleSwitchRuleConverter {
                     .tunnelId(0)
                     .cookie(flowPath.getCookie().toBuilder().mirror(true).build().getValue())
                     .groupId(flowMirrorPoints.getMirrorGroupId().intValue())
-                    .groupBuckets(mapGroupBuckets(flowMirrorPoints.getFlowMirrors(), outPort, transitVlan, vni))
+                    .groupBuckets(mapGroupBuckets(flowMirrorPoints.getFlowMirrors(), outPort, transitVlan, vni,
+                            flow.getEncapsulationType(), mirrorEncapsulationMap))
                     .build();
             if (!flow.isOneSwitchFlow()) {
                 mirrorRule.setOutVlan(Collections.emptyList());
@@ -184,8 +188,9 @@ public class SimpleSwitchRuleConverter {
         return builder.build();
     }
 
-    private List<SimpleSwitchRule> buildTransitAndEgressSimpleSwitchRules(Flow flow, FlowPath flowPath,
-                                                                          EncapsulationId encapsulationId) {
+    private List<SimpleSwitchRule> buildTransitAndEgressSimpleSwitchRules(
+            Flow flow, FlowPath flowPath, EncapsulationId encapsulationId,
+            Map<PathId, EncapsulationResources> mirrorEncapsulationMap) {
         List<PathSegment> orderedSegments = flowPath.getSegments().stream()
                 .sorted(Comparator.comparingInt(PathSegment::getSeqId))
                 .collect(Collectors.toList());
@@ -203,7 +208,8 @@ public class SimpleSwitchRuleConverter {
             throw new IllegalStateException(
                     format("PathSegment was not found for egress flow rule, flowId: %s", flow.getFlowId()));
         }
-        rules.addAll(buildEgressSimpleSwitchRules(flow, flowPath, egressSegment, encapsulationId));
+        rules.addAll(buildEgressSimpleSwitchRules(flow, flowPath, egressSegment, encapsulationId,
+                mirrorEncapsulationMap));
 
         return rules;
     }
@@ -274,9 +280,9 @@ public class SimpleSwitchRuleConverter {
                 .collect(Collectors.toList());
     }
 
-    private List<SimpleSwitchRule> buildEgressSimpleSwitchRules(Flow flow, FlowPath flowPath,
-                                                                PathSegment egressSegment,
-                                                                EncapsulationId encapsulationId) {
+    private List<SimpleSwitchRule> buildEgressSimpleSwitchRules(
+            Flow flow, FlowPath flowPath, PathSegment egressSegment, EncapsulationId encapsulationId,
+            Map<PathId, EncapsulationResources> mirrorEncapsulationMap) {
         List<SimpleSwitchRule> rules = new ArrayList<>();
 
         FlowSideAdapter egressAdapter = FlowSideAdapter.makeEgressAdapter(flow, flowPath);
@@ -312,7 +318,8 @@ public class SimpleSwitchRuleConverter {
                     .outPort(0)
                     .cookie(flowPath.getCookie().toBuilder().mirror(true).build().getValue())
                     .groupId(flowMirrorPoints.getMirrorGroupId().intValue())
-                    .groupBuckets(mapGroupBuckets(flowMirrorPoints.getFlowMirrors(), endpoint.getPortNumber(), 0, 0))
+                    .groupBuckets(mapGroupBuckets(flowMirrorPoints.getFlowMirrors(), endpoint.getPortNumber(),
+                            0, 0, flow.getEncapsulationType(), mirrorEncapsulationMap))
                     .build());
         }
 
@@ -454,14 +461,37 @@ public class SimpleSwitchRuleConverter {
         return simpleGroupBuckets;
     }
 
-    private List<SimpleGroupBucket> mapGroupBuckets(Collection<FlowMirror> flowMirrors, int mainMirrorPort,
-                                                    int mainMirrorVlan, int mainMirrorVni) {
+    private List<SimpleGroupBucket> mapGroupBuckets(
+            Collection<FlowMirror> flowMirrors, int mainMirrorPort, int mainMirrorVlan, int mainMirrorVni,
+            FlowEncapsulationType encapsulationType, Map<PathId, EncapsulationResources> mirrorEncapsulationMap) {
         List<SimpleGroupBucket> buckets = Lists.newArrayList(
                 new SimpleGroupBucket(mainMirrorPort, mainMirrorVlan, mainMirrorVni));
-        flowMirrors.forEach(flowMirror ->
-                buckets.add(new SimpleGroupBucket(flowMirror.getEgressPort(), flowMirror.getEgressOuterVlan(), 0)));
+        for (FlowMirror flowMirror : flowMirrors) {
+            if (flowMirror.isOneSwitchMirror()) {
+                buckets.add(new SimpleGroupBucket(flowMirror.getEgressPort(), flowMirror.getEgressOuterVlan(), 0));
+            } else {
+                buckets.add(buildMirrorBucket(flowMirror, mirrorEncapsulationMap, encapsulationType));
+            }
+        }
         buckets.sort(this::compareSimpleGroupBucket);
         return buckets;
+    }
+
+    private static SimpleGroupBucket buildMirrorBucket(
+            FlowMirror flowMirror, Map<PathId, EncapsulationResources> mirrorEncapsulationMap,
+            FlowEncapsulationType encapsulationType) {
+        int egressPort = flowMirror.getForwardPath().getSegments().get(0).getSrcPort();
+        int encapsulation = mirrorEncapsulationMap.get(flowMirror.getForwardPathId())
+                .getEncapsulation().getEncapsulationId();
+        switch (encapsulationType) {
+            case TRANSIT_VLAN:
+                return new SimpleGroupBucket(egressPort, encapsulation, 0);
+            case VXLAN:
+                return new SimpleGroupBucket(egressPort, 0, encapsulation);
+            default:
+                throw new IllegalArgumentException(format("Unknown encapsulation type %s for flow mirror path %s",
+                        encapsulationType, flowMirror.getForwardPathId()));
+        }
     }
 
     @VisibleForTesting

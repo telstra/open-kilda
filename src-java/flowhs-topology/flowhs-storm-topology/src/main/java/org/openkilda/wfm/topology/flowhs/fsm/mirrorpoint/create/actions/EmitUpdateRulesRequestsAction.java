@@ -21,11 +21,10 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowMirrorPoints;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.rulemanager.DataAdapter;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.RuleManager;
@@ -49,13 +48,11 @@ import java.util.Set;
 @Slf4j
 public class EmitUpdateRulesRequestsAction extends
         FlowProcessingWithHistorySupportAction<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> {
-    private final FlowMirrorPointsRepository flowMirrorPointsRepository;
     private final RuleManager ruleManager;
 
     public EmitUpdateRulesRequestsAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
         super(persistenceManager);
         this.ruleManager = ruleManager;
-        flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
     }
 
     @Override
@@ -105,16 +102,13 @@ public class EmitUpdateRulesRequestsAction extends
         PathId oppositePathId = flow.getOppositePathId(flowPathId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Opposite flow path id for path %s not found", flowPathId)));
-        FlowMirrorPoints mirrorPoint = flowMirrorPointsRepository.findByPathIdAndSwitchId(
-                flowPathId, stateMachine.getMirrorSwitchId()).orElseThrow(
-                        () -> new FlowProcessingException(ErrorType.NOT_FOUND, format(
-                                "Flow mirror point for flow path %s and mirror switchId %s not found",
-                                flowPathId, stateMachine.getMirrorSwitchId())));
 
+        FlowMirrorPath forwardMirrorPath = getFlowMirrorPath(stateMachine.getForwardMirrorPathId());
         Set<PathId> involvedPaths = newHashSet(path.getPathId(), oppositePathId);
-        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, newHashSet(),
-                newHashSet(stateMachine.getMirrorSwitchId()), false);
+        Set<PathId> involvedMirrorPaths = newHashSet(stateMachine.getForwardMirrorPathId());
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, involvedMirrorPaths,
+                getInvolvedSwitches(forwardMirrorPath), false);
 
-        return ruleManager.buildMirrorPointRules(mirrorPoint, dataAdapter);
+        return ruleManager.buildMirrorPointRules(forwardMirrorPath, dataAdapter);
     }
 }

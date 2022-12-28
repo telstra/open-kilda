@@ -23,6 +23,7 @@ import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.rulemanager.Constants.VXLAN_DST_IPV4_ADDRESS;
 import static org.openkilda.rulemanager.Constants.VXLAN_SRC_IPV4_ADDRESS;
+import static org.openkilda.rulemanager.Constants.VXLAN_UDP_SRC;
 
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
@@ -31,8 +32,9 @@ import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MacAddress;
-import org.openkilda.model.MirrorConfig.MirrorConfigData;
+import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.Field;
@@ -57,9 +59,9 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class Utils {
 
@@ -178,24 +180,68 @@ public final class Utils {
     /**
      * Builds group buckets for flow mirror points (only for sink endpoints. Flow bucket must be build separately).
      */
-    public static List<Bucket> buildMirrorBuckets(FlowMirrorPoints flowMirrorPoints) {
+    public static List<Bucket> buildMirrorBuckets(
+            FlowMirrorPoints flowMirrorPoints, Map<PathId, FlowTransitEncapsulation> encapsulationMap,
+            Set<SwitchFeature> features) {
         List<Bucket> buckets = new ArrayList<>();
-        Set<MirrorConfigData> mirrorConfigDataSet = flowMirrorPoints.getFlowMirrors().stream()
-                .map(flowMirror -> new MirrorConfigData(flowMirror.getEgressPort(),
-                        flowMirror.getEgressOuterVlan()))
-                .collect(Collectors.toSet());
 
-        for (MirrorConfigData mirrorConfig : mirrorConfigDataSet) {
-            Set<Action> actions = new HashSet<>(makeVlanReplaceActions(
-                    new ArrayList<>(), makeVlanStack(mirrorConfig.getMirrorVlan())));
-            actions.add(new PortOutAction(new PortNumber(mirrorConfig.getMirrorPort())));
-            buckets.add(Bucket.builder()
-                    .writeActions(actions)
-                    .watchGroup(WatchGroup.ANY)
-                    .watchPort(WatchPort.ANY)
-                    .build());
+        for (FlowMirror flowMirror : flowMirrorPoints.getFlowMirrors()) {
+            for (FlowMirrorPath mirrorPath : flowMirror.getMirrorPaths()) {
+                if (!mirrorPath.isForward()) {
+                    continue;
+                }
+
+                Set<Action> actions = buildMirrorBucketActions(encapsulationMap, features, flowMirror, mirrorPath);
+                buckets.add(Bucket.builder()
+                        .writeActions(actions)
+                        .watchGroup(WatchGroup.ANY)
+                        .watchPort(WatchPort.ANY)
+                        .build());
+            }
         }
         return buckets;
+    }
+
+    private static Set<Action> buildMirrorBucketActions(
+            Map<PathId, FlowTransitEncapsulation> encapsulationMap, Set<SwitchFeature> features,
+            FlowMirror flowMirror, FlowMirrorPath mirrorPath) {
+        Set<Action> actions = new HashSet<>();
+
+        if (mirrorPath.isSingleSwitchPath()) {
+            actions.addAll(makeVlanReplaceActions(new ArrayList<>(), makeVlanStack(flowMirror.getEgressOuterVlan())));
+        } else {
+            FlowTransitEncapsulation encapsulation = encapsulationMap.get(mirrorPath.getMirrorPathId());
+            if (encapsulation == null) {
+                throw new IllegalArgumentException(format("Mirror path %s has no encapsulation", mirrorPath));
+            }
+            switch (encapsulation.getType()) {
+                case TRANSIT_VLAN:
+                    actions.addAll(makeVlanReplaceActions(new ArrayList<>(), makeVlanStack(encapsulation.getId())));
+                    break;
+                case VXLAN:
+                    actions.add(buildPushVxlan(encapsulation.getId(), mirrorPath.getMirrorSwitchId(),
+                            mirrorPath.getEgressSwitchId(), VXLAN_UDP_SRC, features));
+                    break;
+                default:
+                    throw new IllegalArgumentException(format("Unknown encapsulation type %s for mirror path %s",
+                            encapsulation.getType(), mirrorPath.getMirrorPathId()));
+            }
+        }
+
+        actions.add(new PortOutAction(new PortNumber(getMirrorPathOutPort(flowMirror, mirrorPath))));
+        return actions;
+    }
+
+    private static int getMirrorPathOutPort(FlowMirror flowMirror, FlowMirrorPath mirrorPath) {
+        if (mirrorPath.isSingleSwitchPath()) {
+            return flowMirror.getEgressPort();
+        } else {
+            if (isEmpty(mirrorPath.getSegments())) {
+                throw new IllegalStateException(format("Mirror path %s is multi switch path, but it has no "
+                        + "segments", mirrorPath.getMirrorPathId()));
+            }
+            return mirrorPath.getSegments().get(0).getSrcPort();
+        }
     }
 
     /**

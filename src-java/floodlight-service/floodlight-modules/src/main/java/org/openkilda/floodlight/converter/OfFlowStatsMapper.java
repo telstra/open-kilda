@@ -326,12 +326,12 @@ public abstract class OfFlowStatsMapper {
 
     private void fillFlowAction(
             FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionNoviflowPushVxlanTunnel action) {
-        flowActions.pushVxlan(String.valueOf(action.getVni()));
+        flowActions.pushVxlan(String.format("%s,%s", action.getVni(), action.getEthDst()));
     }
 
     private void fillFlowAction(
             FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionKildaPushVxlanField action) {
-        flowActions.pushVxlan(String.valueOf(action.getVni()));
+        flowActions.pushVxlan(String.format("%s,%s", action.getVni(), action.getEthDst()));
     }
 
     private void fillFlowAction(FlowApplyActions.FlowApplyActionsBuilder flowActions, OFActionGroup action) {

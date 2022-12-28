@@ -48,6 +48,7 @@ public abstract class FlowMirrorFrame extends KildaBaseVertexFrame implements Fl
     public static final String OWNS_PATH_EDGE = "owns";
     public static final String FLOW_MIRROR_ID_PROPERTY = "flow_mirror_id";
     public static final String FORWARD_PATH_ID_PROPERTY = "forward_path_id";
+    public static final String REVERSE_PATH_ID_PROPERTY = "reverse_path_id";
     public static final String MIRROR_SWITCH_ID_PROPERTY = "mirror_switch_id";
     public static final String EGRESS_SWITCH_ID_PROPERTY = "egress_switch_id";
     public static final String EGRESS_PORT_PROPERTY = "egress_port";
@@ -77,6 +78,16 @@ public abstract class FlowMirrorFrame extends KildaBaseVertexFrame implements Fl
     @Property(FORWARD_PATH_ID_PROPERTY)
     @Convert(PathIdConverter.class)
     public abstract void setForwardPathId(@NonNull PathId forwardPathId);
+
+    @Override
+    @Property(REVERSE_PATH_ID_PROPERTY)
+    @Convert(PathIdConverter.class)
+    public abstract PathId getReversePathId();
+
+    @Override
+    @Property(REVERSE_PATH_ID_PROPERTY)
+    @Convert(PathIdConverter.class)
+    public abstract void setReversePathId(@NonNull PathId reversePathId);
 
     @Override
     @Property(MIRROR_SWITCH_ID_PROPERTY)

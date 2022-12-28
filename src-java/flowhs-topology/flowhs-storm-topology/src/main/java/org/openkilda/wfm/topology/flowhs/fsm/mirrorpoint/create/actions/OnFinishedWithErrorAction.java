@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions;
 
+import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
@@ -40,9 +41,10 @@ public class OnFinishedWithErrorAction extends
     @Override
     public void perform(State from, State to, Event event, FlowMirrorPointCreateContext context,
                         FlowMirrorPointCreateFsm stateMachine) {
-        if (stateMachine.getFlowStatus() != null) {
-            flowRepository.updateStatus(stateMachine.getFlowId(), stateMachine.getFlowStatus());
-        }
+        transactionManager.doInTransaction(() -> {
+            Flow flow = getFlow(stateMachine.getFlowId());
+            flow.setStatus(flow.computeFlowStatus());
+        });
 
         RequestedFlowMirrorPoint mirrorPoint = stateMachine.getRequestedFlowMirrorPoint();
         dashboardLogger.onFailedFlowMirrorPointCreate(stateMachine.getFlowId(),

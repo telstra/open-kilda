@@ -33,14 +33,18 @@ import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowMirror;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.MirrorConfig.MirrorConfigData;
+import org.openkilda.model.MirrorConfig.PushVxlan;
 import org.openkilda.model.NetworkEndpoint;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -57,6 +61,7 @@ import org.openkilda.wfm.topology.flowhs.service.FlowSegmentRequestFactoriesSequ
 
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
+import com.google.common.collect.Lists;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -65,10 +70,10 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
@@ -402,7 +407,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     .build());
         }
 
-        Optional<MirrorConfig> mirrorConfig = makeMirrorConfig(path, segmentSide.getEndpoint(), mirrorContext);
+        Optional<MirrorConfig> mirrorConfig = makeMirrorConfig(path, segmentSide.getEndpoint(), mirrorContext,
+                encapsulation.getType());
         if (mirrorConfig.isPresent() || mirrorContext.isRemoveFlowOperation()) {
             FlowSegmentCookie mirrorCookie = path.getCookie().toBuilder().mirror(true).build();
             ingressFactories.add(IngressMirrorFlowSegmentRequestFactory.builder()
@@ -535,7 +541,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     .build());
         }
 
-        Optional<MirrorConfig> mirrorConfig = makeMirrorConfig(path, flowSide.getEndpoint(), mirrorContext);
+        Optional<MirrorConfig> mirrorConfig = makeMirrorConfig(path, flowSide.getEndpoint(), mirrorContext,
+                encapsulation.getType());
         if (mirrorConfig.isPresent() || mirrorContext.isRemoveFlowOperation()) {
             FlowSegmentCookie mirrorCookie = path.getCookie().toBuilder().mirror(true).build();
             egressFactories.add(EgressMirrorFlowSegmentRequestFactory.builder()
@@ -580,7 +587,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     .build());
         }
 
-        Optional<MirrorConfig> mirrorConfig = makeMirrorConfig(path, egressSide.getEndpoint(), mirrorContext);
+        Optional<MirrorConfig> mirrorConfig = makeMirrorConfig(path, egressSide.getEndpoint(), mirrorContext,
+                flow.getEncapsulationType());
         if (mirrorConfig.isPresent() || mirrorContext.isRemoveFlowOperation()) {
             FlowSegmentCookie mirrorCookie = path.getCookie().toBuilder().mirror(true).build();
             oneSwitchFactories.add(OneSwitchMirrorFlowRequestFactory.builder()
@@ -650,8 +658,9 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         return new FlowTransitEncapsulation(resources.getTransitEncapsulationId(), resources.getEncapsulationType());
     }
 
-    private Optional<MirrorConfig> makeMirrorConfig(@NonNull FlowPath flowPath, @NonNull NetworkEndpoint endpoint,
-                                                    MirrorContext mirrorContext) {
+    private Optional<MirrorConfig> makeMirrorConfig(
+            @NonNull FlowPath flowPath, @NonNull NetworkEndpoint endpoint, MirrorContext mirrorContext,
+            FlowEncapsulationType flowEncapsulationType) {
         if (!mirrorContext.isRemoveGroup()) {
             return Optional.empty();
         }
@@ -661,9 +670,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 .findFirst().orElse(null);
 
         if (flowMirrorPoints != null) {
-            Set<MirrorConfigData> mirrorConfigDataSet = flowMirrorPoints.getFlowMirrors().stream()
-                    .map(mirror -> new MirrorConfigData(mirror.getEgressPort(), mirror.getEgressOuterVlan()))
-                    .collect(Collectors.toSet());
+            Set<MirrorConfigData> mirrorConfigDataSet = getMirrorConfigData(flowMirrorPoints, flowEncapsulationType);
 
             if (!mirrorConfigDataSet.isEmpty()) {
                 return Optional.of(MirrorConfig.builder()
@@ -681,6 +688,52 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         }
 
         return Optional.empty();
+    }
+
+    private Set<MirrorConfigData> getMirrorConfigData(
+            FlowMirrorPoints flowMirrorPoints, FlowEncapsulationType flowEncapsulationType) {
+        Map<PathId, EncapsulationResources> encapsulationMap = resourcesManager.getMirrorEncapsulationMap(
+                Lists.newArrayList(flowMirrorPoints), flowEncapsulationType);
+        Set<MirrorConfigData> result = new HashSet<>();
+        for (FlowMirror flowMirror : flowMirrorPoints.getFlowMirrors()) {
+            for (FlowMirrorPath mirrorPath : flowMirror.getMirrorPaths()) {
+                if (mirrorPath.isForward() && !mirrorPath.isDummy()) {
+                    if (mirrorPath.isSingleSwitchPath()) {
+                        result.add(new MirrorConfigData(
+                                flowMirror.getEgressPort(), flowMirror.getEgressOuterVlan(), null));    
+                    } else {
+                        buildMultiSwitchMirrorConfig(mirrorPath, flowEncapsulationType, encapsulationMap)
+                                .ifPresent(result::add);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+    
+    private static Optional<MirrorConfigData> buildMultiSwitchMirrorConfig(
+            FlowMirrorPath mirrorPath, FlowEncapsulationType flowEncapsulationType,
+            Map<PathId, EncapsulationResources> mirrorEncapsulationMap) {
+        if (mirrorPath.getSegments() == null || mirrorPath.getSegments().isEmpty()) {
+            log.error(format("Multi-switch flow mirror path %s has no segments",
+                    mirrorPath.getMirrorPathId()));
+            return Optional.empty();
+        }
+        
+        int outPort = mirrorPath.getSegments().get(0).getSrcPort();
+        int encapsulationId = mirrorEncapsulationMap.get(mirrorPath.getMirrorPathId()).getTransitEncapsulationId();
+        switch (flowEncapsulationType) {
+            case TRANSIT_VLAN:
+                return Optional.of(new MirrorConfigData(outPort, encapsulationId, null));
+            case VXLAN:
+                PushVxlan vxlan = new PushVxlan(encapsulationId, new MacAddress(
+                        mirrorPath.getEgressSwitchId().toMacAddress()));
+                return Optional.of(new MirrorConfigData(outPort, null, vxlan));
+            default:
+                log.error(format("Unknown encapsulation type %s for flow mirror path %s",
+                        flowEncapsulationType, mirrorPath.getMirrorPathId()));
+                return Optional.empty();
+        }
     }
 
     private static List<FlowSegmentRequestFactory> mergePair(

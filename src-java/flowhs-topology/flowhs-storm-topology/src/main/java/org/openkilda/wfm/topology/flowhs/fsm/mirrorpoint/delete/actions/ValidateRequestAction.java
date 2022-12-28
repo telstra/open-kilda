@@ -73,7 +73,6 @@ public class ValidateRequestAction extends
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
                         format("Flow %s is in progress now", flowId));
             }
-            stateMachine.setFlowStatus(foundFlow.getStatus());
             flowRepository.updateStatus(flowId, FlowStatus.IN_PROGRESS);
 
             FlowMirror flowMirror = flowMirrorRepository.findById(flowMirrorId)
@@ -84,7 +83,6 @@ public class ValidateRequestAction extends
                         format("Flow mirror point %s is in progress now", flowMirrorId));
             }
 
-            stateMachine.setOriginalFlowMirrorStatus(flowMirror.getStatus());
             flowMirrorRepository.updateStatus(flowMirrorId, FlowPathStatus.IN_PROGRESS);
 
             String direction = flowMirror.getFlowMirrorPoints().getFlowPath().isForward() ? "forward" : "reverse";

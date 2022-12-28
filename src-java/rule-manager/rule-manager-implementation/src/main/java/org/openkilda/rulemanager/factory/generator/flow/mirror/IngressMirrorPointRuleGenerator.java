@@ -30,7 +30,9 @@ import static org.openkilda.rulemanager.utils.Utils.makeVlanReplaceActions;
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirrorPoints;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.GroupId;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants.Priority;
@@ -59,6 +61,7 @@ import lombok.experimental.SuperBuilder;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -66,6 +69,7 @@ import java.util.UUID;
 public class IngressMirrorPointRuleGenerator extends IngressRuleGenerator {
     private boolean multiTable;
     private UUID sharedMeterCommandUuid;
+    private Map<PathId, FlowTransitEncapsulation> mirrorPathEncapsulationMap;
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
@@ -178,7 +182,7 @@ public class IngressMirrorPointRuleGenerator extends IngressRuleGenerator {
 
     private GroupSpeakerData buildGroup(Switch sw, FlowMirrorPoints flowMirrorPoints) {
         List<Bucket> buckets = newArrayList(buildFlowBucket(sw.getFeatures()));
-        buckets.addAll(buildMirrorBuckets(flowMirrorPoints));
+        buckets.addAll(buildMirrorBuckets(flowMirrorPoints, mirrorPathEncapsulationMap, sw.getFeatures()));
         return GroupSpeakerData.builder()
                 .groupId(flowMirrorPoints.getMirrorGroupId())
                 .buckets(buckets)

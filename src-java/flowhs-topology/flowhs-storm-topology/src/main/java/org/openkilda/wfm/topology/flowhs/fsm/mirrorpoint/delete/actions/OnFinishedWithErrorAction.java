@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions;
 
+import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
@@ -39,9 +40,10 @@ public class OnFinishedWithErrorAction extends
     @Override
     public void perform(State from, State to, Event event, FlowMirrorPointDeleteContext context,
                         FlowMirrorPointDeleteFsm stateMachine) {
-        if (stateMachine.getFlowStatus() != null) {
-            flowRepository.updateStatus(stateMachine.getFlowId(), stateMachine.getFlowStatus());
-        }
+        transactionManager.doInTransaction(() -> {
+            Flow flow = getFlow(stateMachine.getFlowId());
+            flow.setStatus(flow.computeFlowStatus());
+        });
 
         dashboardLogger.onFailedFlowMirrorPointDelete(stateMachine.getFlowId(), stateMachine.getFlowMirrorId(),
                 stateMachine.getErrorReason());

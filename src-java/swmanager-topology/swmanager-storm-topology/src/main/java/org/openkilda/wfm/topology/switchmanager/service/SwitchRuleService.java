@@ -34,11 +34,13 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.CookieBase;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -75,6 +77,7 @@ public class SwitchRuleService implements SwitchManagerHubService {
     private SwitchManagerCarrier carrier;
 
     private FlowPathRepository flowPathRepository;
+    private FlowMirrorPathRepository flowMirrorPathRepository;
     private SwitchRepository switchRepository;
     private RuleManager ruleManager;
     private PersistenceManager persistenceManager;
@@ -89,6 +92,7 @@ public class SwitchRuleService implements SwitchManagerHubService {
                              RuleManager ruleManager) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
+        flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
         this.persistenceManager = persistenceManager;
         this.ruleManager = ruleManager;
@@ -215,9 +219,14 @@ public class SwitchRuleService implements SwitchManagerHubService {
                         flowPathRepository.findBySegmentSwitch(switchId).stream())
                 .map(FlowPath::getPathId)
                 .collect(Collectors.toSet());
+        Set<PathId> mirrorPathIds = Stream.concat(flowMirrorPathRepository.findByEndpointSwitch(switchId).stream(),
+                        flowMirrorPathRepository.findBySegmentSwitch(switchId).stream())
+                .map(FlowMirrorPath::getMirrorPathId)
+                .collect(Collectors.toSet());
         DataAdapter dataAdapter = PersistenceDataAdapter.builder()
                 .switchIds(Collections.singleton(switchId))
                 .pathIds(pathIds)
+                .mirrorPathIds(mirrorPathIds)
                 .persistenceManager(persistenceManager)
                 .build();
         return ruleManager.buildRulesForSwitch(switchId, dataAdapter);

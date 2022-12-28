@@ -27,6 +27,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointC
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.State;
 
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -43,13 +44,16 @@ public class PostFlowMirrorPathInstallationAction extends
     @Override
     protected void perform(State from, State to, Event event, FlowMirrorPointCreateContext context,
                            FlowMirrorPointCreateFsm stateMachine) {
-        PathId mirrorPath = stateMachine.getForwardMirrorPathId();
+        log.debug("Completing installation of the flow mirror point {}", stateMachine.getFlowMirrorId());
 
-        log.debug("Completing installation of the flow mirror point {}", mirrorPath);
+        FlowPathStatus status = stateMachine.isBackUpPathComputationWayUsed()
+                ? FlowPathStatus.DEGRADED : FlowPathStatus.ACTIVE;
 
-        flowMirrorPathRepository.updateStatus(mirrorPath, FlowPathStatus.ACTIVE);
-
-        stateMachine.saveActionToHistory("Flow mirror path was installed",
-                format("The flow path %s was installed", mirrorPath));
+        for (PathId pathId : Lists.newArrayList(
+                stateMachine.getForwardMirrorPathId(), stateMachine.getReverseMirrorPathId())) {
+            flowMirrorPathRepository.updateStatus(pathId, status);
+            stateMachine.saveActionToHistory("Flow mirror path was installed",
+                    format("The flow path %s was installed", pathId));
+        }
     }
 }

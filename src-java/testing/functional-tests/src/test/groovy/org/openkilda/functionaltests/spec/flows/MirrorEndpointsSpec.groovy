@@ -720,22 +720,10 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                         errorDesc         : { List<Switch> involved -> "Invalid mirror point switch id: ${involved[1].dpId}" }
                 ],
                 [
-                        testDescr         : "sinkEndpoint",
-                        mirrorPointSwitch : { List<Switch> involved -> involved[0] },
-                        sinkEndpointSwitch: { List<Switch> involved -> involved[1] },
-                        errorDesc         : { List<Switch> involved ->
-                            "Invalid sink endpoint switch id: ${involved[1].dpId}. In the current " +
-                                    "implementation, the sink switch id cannot differ from the mirror point switch id."
-                        }
-                ],
-                [
                         testDescr         : "mirrorEndpoint",
                         mirrorPointSwitch : { List<Switch> involved -> involved[1] },
                         sinkEndpointSwitch: { List<Switch> involved -> involved[0] },
-                        errorDesc         : { List<Switch> involved ->
-                            "Invalid sink endpoint switch id: ${involved[0].dpId}. In the current " +
-                                    "implementation, the sink switch id cannot differ from the mirror point switch id."
-                        }
+                        errorDesc         : { List<Switch> involved -> "Invalid mirror point switch id: ${involved[1].dpId}" }
                 ]
         ]
     }
@@ -778,22 +766,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                             .build()
                     it.errorCode = HttpStatus.CONFLICT
                     it.errorDescription = getEndpointConflictError(it.mirrorPoint, it.flow, "source")
-                }),
-                new MirrorErrorTestData("Unable to create a mirror endpoint on the src sw and sink back to dst sw", {
-                    def swPair = topologyHelper.switchPairs[0]
-                    it.flow = flowHelperV2.randomFlow(swPair)
-                    def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
-                    it.mirrorPoint = FlowMirrorPointPayload.builder()
-                            .mirrorPointId(flowHelperV2.generateFlowId())
-                            .mirrorPointDirection(FlowPathDirection.FORWARD.toString())
-                            .mirrorPointSwitchId(swPair.dst.dpId)
-                            .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.src.dpId).portNumber(freePort)
-                                    .vlanId(flowHelperV2.randomVlan())
-                                    .build())
-                            .build()
-                    it.errorCode = HttpStatus.BAD_REQUEST
-                    it.errorDescription = "Invalid sink endpoint switch id: $swPair.src.dpId. In the current " +
-                            "implementation, the sink switch id cannot differ from the mirror point switch id."
                 }),
                 new MirrorErrorTestData("Unable to create a mirror point with isl conflict", {
                     def swPair = topologyHelper.switchPairs[0]

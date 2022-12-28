@@ -77,6 +77,14 @@ public class IngressMirrorPointRuleGeneratorTest extends MirrorGeneratorBaseTest
     public static final FlowPath MULTI_TABLE_ONE_SWITCH_PATH = buildOneSwitchFlowPathWithMirror(true);
     public static final FlowPath SINGLE_TABLE_ONE_SWITCH_PATH = buildOneSwitchFlowPathWithMirror(false);
 
+    public static final Set<Action> MULTI_SWITCH_MIRROR_VLAN_ACTIONS = newHashSet(
+            new PushVlanAction(),
+            SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID_2).build(),
+            new PortOutAction(new PortNumber(PORT_NUMBER_1)));
+    public static final Set<Action> MULTI_SWITCH_MIRROR_VXLAN_ACTIONS = newHashSet(
+            buildPushVxlan(SWITCH_ID_1, SWITCH_ID_3, VXLAN_VNI_2),
+            new PortOutAction(new PortNumber(PORT_NUMBER_1)));
+
     RuleManagerConfig config;
 
     @Before
@@ -367,7 +375,7 @@ public class IngressMirrorPointRuleGeneratorTest extends MirrorGeneratorBaseTest
                 expectedIngressMatch, expectedIngressActions, null, groupCommand.getUuid());
 
         Set<Action> expectedFlowBucketActions = newHashSet(new PortOutAction(new PortNumber(PORT_NUMBER_2)));
-        assertGroupCommand(groupCommand, expectedFlowBucketActions);
+        assertGroupCommand(groupCommand, expectedFlowBucketActions, MULTI_SWITCH_MIRROR_VLAN_ACTIONS);
     }
 
     @Test
@@ -394,7 +402,7 @@ public class IngressMirrorPointRuleGeneratorTest extends MirrorGeneratorBaseTest
         Set<Action> expectedFlowBucketActions = newHashSet(
                 buildPushVxlan(SWITCH_ID_1, SWITCH_ID_2, VXLAN_VNI_1),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2)));
-        assertGroupCommand(groupCommand, expectedFlowBucketActions);
+        assertGroupCommand(groupCommand, expectedFlowBucketActions, MULTI_SWITCH_MIRROR_VXLAN_ACTIONS);
     }
 
     @Test
@@ -418,7 +426,7 @@ public class IngressMirrorPointRuleGeneratorTest extends MirrorGeneratorBaseTest
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID_1).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2)));
-        assertGroupCommand(groupCommand, expectedFlowBucketActions);
+        assertGroupCommand(groupCommand, expectedFlowBucketActions, MULTI_SWITCH_MIRROR_VLAN_ACTIONS);
     }
 
     @Test
@@ -439,7 +447,7 @@ public class IngressMirrorPointRuleGeneratorTest extends MirrorGeneratorBaseTest
                 expectedIngressActions, null, groupCommand.getUuid());
 
         Set<Action> expectedFlowBucketActions = newHashSet(new PortOutAction(new PortNumber(PORT_NUMBER_2)));
-        assertGroupCommand(groupCommand, expectedFlowBucketActions);
+        assertGroupCommand(groupCommand, expectedFlowBucketActions, MULTI_SWITCH_MIRROR_VXLAN_ACTIONS);
     }
 
     @Test
@@ -459,23 +467,26 @@ public class IngressMirrorPointRuleGeneratorTest extends MirrorGeneratorBaseTest
         assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }
 
-    private void assertGroupCommand(GroupSpeakerData command, Set<Action> flowActions) {
+    private void assertGroupCommand(
+            GroupSpeakerData command, Set<Action> flowActions, Set<Action> multiSwitchMirrorActions) {
         assertEquals(GROUP_ID, command.getGroupId());
         assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
         assertEquals(GroupType.ALL, command.getType());
         assertTrue(command.getDependsOn().isEmpty());
 
-        assertEquals(2, command.getBuckets().size());
+        assertEquals(3, command.getBuckets().size());
 
         Bucket expectedFlowBucket = baseBucket().writeActions(flowActions).build();
         Bucket expectedSingleSwitchMirror = baseBucket().writeActions(newHashSet(
                         new PushVlanAction(),
                         SetFieldAction.builder().field(Field.VLAN_VID).value(MIRROR_OUTER_VLAN_1).build(),
                         new PortOutAction(new PortNumber(MIRROR_PORT_1)))).build();
+        Bucket expectedMultiSwitchMirror = baseBucket().writeActions(multiSwitchMirrorActions).build();
 
         assertEquals(expectedFlowBucket, command.getBuckets().get(0));
         assertEquals(expectedSingleSwitchMirror, command.getBuckets().get(1));
+        assertEquals(expectedMultiSwitchMirror, command.getBuckets().get(2));
     }
 
     private void assertIngressCommand(
@@ -503,6 +514,7 @@ public class IngressMirrorPointRuleGeneratorTest extends MirrorGeneratorBaseTest
             FlowPath path, Flow flow, FlowTransitEncapsulation encapsulation) {
         return IngressMirrorPointRuleGenerator.builder()
                 .config(config)
+                .mirrorPathEncapsulationMap(buildEncapsulationMap(encapsulation.getType()))
                 .flowPath(path)
                 .flow(flow)
                 .encapsulation(encapsulation)

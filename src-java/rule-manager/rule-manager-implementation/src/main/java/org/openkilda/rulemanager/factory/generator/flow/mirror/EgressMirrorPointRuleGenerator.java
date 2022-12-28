@@ -21,7 +21,9 @@ import static org.openkilda.rulemanager.utils.Utils.checkAndBuildEgressEndpoint;
 
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirrorPoints;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.GroupId;
+import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.rulemanager.Constants.Priority;
@@ -47,9 +49,11 @@ import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @SuperBuilder
 public class EgressMirrorPointRuleGenerator extends EgressRuleGenerator {
+    private Map<PathId, FlowTransitEncapsulation> mirrorPathEncapsulationMap;
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
@@ -110,7 +114,7 @@ public class EgressMirrorPointRuleGenerator extends EgressRuleGenerator {
 
     private GroupSpeakerData buildGroup(Switch sw, FlowMirrorPoints flowMirrorPoints, int flowOutPort) {
         List<Bucket> buckets = newArrayList(buildFlowBucket(flowOutPort));
-        buckets.addAll(buildMirrorBuckets(flowMirrorPoints));
+        buckets.addAll(buildMirrorBuckets(flowMirrorPoints, mirrorPathEncapsulationMap, sw.getFeatures()));
 
         return GroupSpeakerData.builder()
                 .groupId(flowMirrorPoints.getMirrorGroupId())

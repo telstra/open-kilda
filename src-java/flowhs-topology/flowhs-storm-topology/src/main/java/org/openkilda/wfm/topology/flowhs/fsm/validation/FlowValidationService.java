@@ -24,8 +24,12 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowMirror;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
@@ -47,6 +51,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -216,8 +221,29 @@ public class FlowValidationService {
                         format("Encapsulation id was not found, pathId: %s", flowPath.getPathId()));
             }
         }
+        Map<PathId, EncapsulationResources> mirrorEncapsulationMap = flowResourcesManager.getMirrorEncapsulationMap(
+                flowPath.getFlowMirrorPointsSet(), flow.getEncapsulationType());
 
         return simpleSwitchRuleConverter.convertFlowPathToSimpleSwitchRules(flow, flowPath, encapsulationId,
-                flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
+                mirrorEncapsulationMap, flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
+    }
+
+    private Map<PathId, EncapsulationId> getMirrorEncapsulationMap(
+            Set<FlowMirrorPoints> mirrorPoints, FlowEncapsulationType encapsulationType) {
+        Map<PathId, EncapsulationId> result = new HashMap<>();
+        for (FlowMirrorPoints mirrorPoint : mirrorPoints) {
+            for (FlowMirror flowMirror : mirrorPoint.getFlowMirrors()) {
+                if (flowMirror.isOneSwitchMirror()) {
+                    continue;
+                }
+                EncapsulationResources mirrorEncapsulation = flowResourcesManager.getEncapsulationResources(
+                                flowMirror.getForwardPathId(), flowMirror.getReversePathId(), encapsulationType)
+                        .orElseThrow(() -> new IllegalStateException(
+                        format("Encapsulation was not found, mirror pathId: %s", flowMirror.getForwardPathId())));
+                result.put(flowMirror.getForwardPathId(), mirrorEncapsulation.getEncapsulation());
+            }
+        }
+
+        return result;
     }
 }

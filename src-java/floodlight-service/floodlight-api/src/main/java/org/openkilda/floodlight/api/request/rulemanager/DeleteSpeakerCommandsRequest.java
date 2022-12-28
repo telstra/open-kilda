@@ -23,10 +23,12 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.NonNull;
+import lombok.ToString;
 
 import java.util.Collection;
 import java.util.UUID;
 
+@ToString(callSuper = true)
 public class DeleteSpeakerCommandsRequest extends BaseSpeakerCommandsRequest {
 
     @Builder(toBuilder = true)

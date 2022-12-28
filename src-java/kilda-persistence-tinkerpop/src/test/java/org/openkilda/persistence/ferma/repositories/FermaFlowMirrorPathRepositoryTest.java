@@ -55,6 +55,7 @@ public class FermaFlowMirrorPathRepositoryTest extends InMemoryGraphBasedTest {
     static final String TEST_FLOW_MIRROR_ID = "test_mirror_id";
     static final PathId TEST_FLOW_PATH_ID = new PathId("test_flow_path_id");
     static final PathId TEST_FORWARD_PATH_ID = new PathId("test_forward_path_id");
+    static final PathId TEST_REVERSE_PATH_ID = new PathId("test_reverse_path_id");
     static final PathId TEST_MIRROR_PATH_ID_1 = new PathId("mirror_path_1");
     static final PathId TEST_MIRROR_PATH_ID_2 = new PathId("mirror_path_2");
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
@@ -70,6 +71,8 @@ public class FermaFlowMirrorPathRepositoryTest extends InMemoryGraphBasedTest {
     static final Integer PORT_4 = 9;
     static final FlowSegmentCookie FORWARD_COOKIE = FlowSegmentCookie.builder()
             .flowEffectiveId(1).direction(FlowPathDirection.FORWARD).mirror(true).build();
+    static final FlowSegmentCookie REVERSE_COOKIE = FlowSegmentCookie.builder()
+            .flowEffectiveId(1).direction(FlowPathDirection.REVERSE).mirror(true).build();
 
     FlowMirrorPathRepository flowMirrorPathRepository;
     FlowMirrorRepository flowMirrorRepository;
@@ -113,6 +116,7 @@ public class FermaFlowMirrorPathRepositoryTest extends InMemoryGraphBasedTest {
         flowMirror = FlowMirror.builder()
                 .flowMirrorId(TEST_FLOW_MIRROR_ID)
                 .forwardPathId(TEST_FORWARD_PATH_ID)
+                .reversePathId(TEST_REVERSE_PATH_ID)
                 .mirrorSwitch(switchA)
                 .egressSwitch(switchB)
                 .status(FlowPathStatus.ACTIVE)
@@ -240,7 +244,7 @@ public class FermaFlowMirrorPathRepositoryTest extends InMemoryGraphBasedTest {
 
     private void createTestFlowPaths() {
         FlowMirrorPath pathA = createFlowPath(TEST_MIRROR_PATH_ID_1, FORWARD_COOKIE, switchA, switchB);
-        FlowMirrorPath pathB = createFlowPath(TEST_MIRROR_PATH_ID_2, FORWARD_COOKIE, switchA, switchC);
+        FlowMirrorPath pathB = createFlowPath(TEST_MIRROR_PATH_ID_2, REVERSE_COOKIE, switchA, switchC);
         pathB.setSegments(Lists.newArrayList(
                 PathSegment.builder()
                         .pathId(TEST_MIRROR_PATH_ID_2)

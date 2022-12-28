@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete;
 
 import org.openkilda.model.FlowPathStatus;
-import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -57,7 +56,6 @@ import java.util.List;
 public final class FlowMirrorPointDeleteFsm extends FlowProcessingWithSpeakerCommandsFsm<FlowMirrorPointDeleteFsm,
         State, Event, FlowMirrorPointDeleteContext, FlowGenericCarrier, FlowProcessingEventListener> {
 
-    private FlowStatus flowStatus;
     private String flowMirrorId;
     private FlowPathStatus originalFlowMirrorStatus;
 

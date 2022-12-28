@@ -28,8 +28,10 @@ import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.info.rule.GroupBucket;
 import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.model.GroupId;
+import org.openkilda.model.MacAddress;
 import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.MirrorConfig.MirrorConfigData;
+import org.openkilda.model.MirrorConfig.PushVxlan;
 import org.openkilda.model.SwitchId;
 
 import org.projectfloodlight.openflow.protocol.OFBucket;
@@ -124,13 +126,23 @@ public class GroupVerifyCommand extends AbstractGroupInstall<GroupVerifyReport> 
             GroupBucket mirrorBucket = groupEntry.getBuckets().get(i);
 
             int mirrorPort = Integer.parseInt(mirrorBucket.getApplyActions().getFlowOutput());
-            int mirrorVlan = mirrorBucket.getApplyActions().getSetFieldActions().stream().filter(
+            Integer mirrorVlan = mirrorBucket.getApplyActions().getSetFieldActions().stream().filter(
                     action -> (MatchField.VLAN_VID.getName().equals(action.getFieldName())))
-                    .map(action -> Integer.valueOf(action.getFieldValue())).findFirst().orElse(0);
-            mirrorConfigDataSet.add(new MirrorConfigData(mirrorPort, mirrorVlan));
+                    .map(action -> Integer.valueOf(action.getFieldValue())).findFirst().orElse(null);
+
+            PushVxlan pushVxlan = getPushVxlan(mirrorBucket.getApplyActions().getPushVxlan());
+            mirrorConfigDataSet.add(new MirrorConfigData(mirrorPort, mirrorVlan, pushVxlan));
         }
 
         return MirrorConfig.builder().groupId(groupId).flowPort(flowPort)
                 .mirrorConfigDataSet(mirrorConfigDataSet).build();
+    }
+
+    private PushVxlan getPushVxlan(String pushAsString) {
+        if (pushAsString == null || pushAsString.isEmpty()) {
+            return null;
+        }
+        String[] split = pushAsString.split(",");
+        return new PushVxlan(Integer.parseInt(split[0]), new MacAddress(split[1]));
     }
 }

@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorRepository;
@@ -43,10 +44,13 @@ public class OnFinishedAction extends
     @Override
     public void perform(State from, State to, Event event, FlowMirrorPointCreateContext context,
                         FlowMirrorPointCreateFsm stateMachine) {
-        flowMirrorRepository.updateStatus(stateMachine.getFlowMirrorId(), FlowPathStatus.ACTIVE);
-        if (stateMachine.getFlowStatus() != null) {
-            flowRepository.updateStatus(stateMachine.getFlowId(), stateMachine.getFlowStatus());
-        }
+        FlowPathStatus status = stateMachine.isBackUpPathComputationWayUsed()
+                ? FlowPathStatus.DEGRADED : FlowPathStatus.ACTIVE;
+        transactionManager.doInTransaction(() -> {
+            flowMirrorRepository.updateStatus(stateMachine.getFlowMirrorId(), status);
+            Flow flow = getFlow(stateMachine.getFlowId());
+            flow.setStatus(flow.computeFlowStatus());
+        });
 
         RequestedFlowMirrorPoint mirrorPoint = stateMachine.getRequestedFlowMirrorPoint();
         dashboardLogger.onSuccessfulFlowMirrorPointCreate(stateMachine.getFlowId(),

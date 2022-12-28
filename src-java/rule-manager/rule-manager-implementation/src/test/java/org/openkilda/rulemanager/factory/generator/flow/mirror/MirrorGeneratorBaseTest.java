@@ -15,6 +15,7 @@
 
 package org.openkilda.rulemanager.factory.generator.flow.mirror;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowPathDirection.FORWARD;
@@ -36,6 +37,7 @@ import org.openkilda.model.MirrorDirection;
 import org.openkilda.model.MirrorGroup;
 import org.openkilda.model.MirrorGroupType;
 import org.openkilda.model.PathId;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
@@ -47,6 +49,9 @@ import org.openkilda.rulemanager.group.Bucket;
 import org.openkilda.rulemanager.group.WatchGroup;
 import org.openkilda.rulemanager.group.WatchPort;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 public class MirrorGeneratorBaseTest {
@@ -76,15 +81,24 @@ public class MirrorGeneratorBaseTest {
     public static final int VXLAN_VNI_2 = 17;
     public static final int BANDWIDTH = 1000;
     public static final int MIRROR_PORT_1 = 18;
+    public static final int MIRROR_PORT_2 = 19;
     public static final short MIRROR_OUTER_VLAN_1 = 20;
+    public static final short MIRROR_OUTER_VLAN_2 = 21;
     public static final short MIRROR_INNER_VLAN_1 = 22;
+    public static final short MIRROR_INNER_VLAN_2 = 23;
     public static final FlowSegmentCookie COOKIE = new FlowSegmentCookie(FORWARD, 123);
     public static final int UNMASKED_COOKIE_1 = 9;
+    public static final int UNMASKED_COOKIE_2 = 11;
     public static final FlowSegmentCookie FORWARD_MIRROR_COOKIE_1 = new FlowSegmentCookie(FORWARD, UNMASKED_COOKIE_1);
     public static final FlowSegmentCookie REVERSE_MIRROR_COOKIE_1 = new FlowSegmentCookie(REVERSE, UNMASKED_COOKIE_1);
+    public static final FlowSegmentCookie FORWARD_MIRROR_COOKIE_2 = new FlowSegmentCookie(FORWARD, UNMASKED_COOKIE_2);
+    public static final FlowSegmentCookie REVERSE_MIRROR_COOKIE_2 = new FlowSegmentCookie(REVERSE, UNMASKED_COOKIE_2);
     public static final String FLOW_MIRROR_ID_1 = "mirror_1";
+    public static final String FLOW_MIRROR_ID_2 = "mirror_2";
     public static final PathId FORWARD_FLOW_MIRROR_PATH_ID_1 = new PathId("forward_1");
     public static final PathId REVERSE_FLOW_MIRROR_PATH_ID_1 = new PathId("reverse_1");
+    public static final PathId FORWARD_FLOW_MIRROR_PATH_ID_2 = new PathId("forward_2");
+    public static final PathId REVERSE_FLOW_MIRROR_PATH_ID_2 = new PathId("reverse_2");
     public static final FlowTransitEncapsulation VLAN_ENCAPSULATION = new FlowTransitEncapsulation(
             TRANSIT_VLAN_ID_1, TRANSIT_VLAN);
     public static final FlowTransitEncapsulation VXLAN_ENCAPSULATION = new FlowTransitEncapsulation(
@@ -95,6 +109,17 @@ public class MirrorGeneratorBaseTest {
 
     protected static Bucket.BucketBuilder baseBucket() {
         return Bucket.builder().watchPort(WatchPort.ANY).watchGroup(WatchGroup.ANY);
+    }
+
+    protected static ArrayList<PathSegment> buildSegments(
+            PathId pathId, Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort) {
+        return newArrayList(PathSegment.builder()
+                .pathId(pathId)
+                .srcSwitch(srcSwitch)
+                .srcPort(srcPort)
+                .destSwitch(dstSwitch)
+                .destPort(dstPort)
+                .build());
     }
 
     protected static FlowMirrorPoints buildMirrorPoints(
@@ -110,7 +135,8 @@ public class MirrorGeneratorBaseTest {
                         .mirrorGroupType(MirrorGroupType.TRAFFIC_INTEGRITY)
                         .build())
                 .build();
-        mirrorPoints.addFlowMirrors(buildSingleSwitchMirror(mirrorSwitch));
+        mirrorPoints.addFlowMirrors(buildSingleSwitchMirror(mirrorSwitch),
+                buildMultiSwitchMirror(mirrorSwitch, sinkSwitch));
         return mirrorPoints;
     }
 
@@ -143,6 +169,47 @@ public class MirrorGeneratorBaseTest {
                 .build();
         mirror.addMirrorPaths(forward, reverse);
         return mirror;
+    }
+
+    protected static FlowMirror buildMultiSwitchMirror(Switch mirrorSwitch, Switch sinkSwitch) {
+        FlowMirror mirror = FlowMirror.builder()
+                .mirrorSwitch(mirrorSwitch)
+                .egressSwitch(sinkSwitch)
+                .flowMirrorId(FLOW_MIRROR_ID_2)
+                .egressPort(MIRROR_PORT_2)
+                .egressOuterVlan(MIRROR_OUTER_VLAN_2)
+                .egressInnerVlan(MIRROR_INNER_VLAN_2)
+                .build();
+
+        FlowMirrorPath forward = FlowMirrorPath.builder()
+                .mirrorSwitch(mirrorSwitch)
+                .egressSwitch(sinkSwitch)
+                .cookie(FORWARD_MIRROR_COOKIE_2)
+                .mirrorPathId(FORWARD_FLOW_MIRROR_PATH_ID_2)
+                .segments(buildSegments(
+                        FORWARD_FLOW_MIRROR_PATH_ID_2, mirrorSwitch, PORT_NUMBER_1, sinkSwitch, PORT_NUMBER_2))
+                .dummy(false)
+                .build();
+
+        FlowMirrorPath reverse = FlowMirrorPath.builder()
+                .mirrorSwitch(mirrorSwitch)
+                .egressSwitch(sinkSwitch)
+                .mirrorPathId(REVERSE_FLOW_MIRROR_PATH_ID_1)
+                .cookie(REVERSE_MIRROR_COOKIE_2)
+                .segments(buildSegments(
+                        REVERSE_FLOW_MIRROR_PATH_ID_2, sinkSwitch, PORT_NUMBER_2, mirrorSwitch, PORT_NUMBER_1))
+                .dummy(true)
+                .build();
+        mirror.addMirrorPaths(forward, reverse);
+        return mirror;
+    }
+
+    protected static Map<PathId, FlowTransitEncapsulation> buildEncapsulationMap(FlowEncapsulationType type) {
+        Map<PathId, FlowTransitEncapsulation> map = new HashMap<>();
+        int id = TRANSIT_VLAN.equals(type) ? TRANSIT_VLAN_ID_2 : VXLAN_VNI_2;
+        map.put(FORWARD_FLOW_MIRROR_PATH_ID_2, new FlowTransitEncapsulation(id, type));
+        map.put(REVERSE_FLOW_MIRROR_PATH_ID_2, new FlowTransitEncapsulation(id, type));
+        return map;
     }
 
     protected static PushVxlanAction buildPushVxlan(SwitchId srcSwitchId, SwitchId dstSwitchId, int vni) {

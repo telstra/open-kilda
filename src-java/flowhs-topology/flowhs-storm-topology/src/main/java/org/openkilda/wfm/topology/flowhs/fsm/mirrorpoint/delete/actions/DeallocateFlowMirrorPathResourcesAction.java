@@ -30,6 +30,9 @@ import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.rulemanager.DataAdapter;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
+import org.openkilda.wfm.share.flow.resources.FlowResources;
+import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
@@ -40,7 +43,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointD
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
@@ -77,22 +79,55 @@ public class DeallocateFlowMirrorPathResourcesAction
         Flow flow = getFlow(stateMachine.getFlowId());
         PathId oppositePathId = flow.getOppositePathId(stateMachine.getFlowPathId()).orElse(null);
         Set<PathId> involvedPaths = newHashSet(stateMachine.getFlowPathId(), oppositePathId);
-        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, newHashSet(),
-                newHashSet(stateMachine.getMirrorSwitchId()), false);
-        stateMachine.getMirrorPointSpeakerData().addAll(ruleManager.buildMirrorPointRules(
-                flowMirrorPoints, dataAdapter));
+        Set<PathId> involvedMirrorPaths = newHashSet(flowMirror.getForwardPathId());
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, involvedMirrorPaths,
+                getInvolvedSwitches(flowMirror.getForwardPath()), false);
 
-        Optional<FlowMirrorPath> flowMirrorPath = flowMirror.getPath(flowMirror.getForwardPathId());
-        if (flowMirrorPath.isPresent()) {
-            resourcesManager.deallocateCookie(flowMirrorPath.get().getCookie().getFlowEffectiveId());
-            flowMirrorPathRepository.remove(flowMirrorPath.get());
-        } else {
-            log.warn("Flow forward mirror path {} not found.", flowMirror.getForwardPathId());
-        }
+        transactionManager.doInTransaction(() -> {
+            FlowMirrorPath forwardMirrorPath = getFlowMirrorPath(flowMirror.getForwardPathId());
+            stateMachine.getMirrorPointSpeakerData().addAll(ruleManager.buildMirrorPointRules(
+                    forwardMirrorPath, dataAdapter));
+            FlowMirrorPath reverseMirrorPath = getFlowMirrorPath(flowMirror.getReversePathId());
+
+            resourcesManager.deallocatePathResources(buildResources(
+                    flow, forwardMirrorPath, reverseMirrorPath));
+            flowMirrorPathRepository.remove(forwardMirrorPath);
+            flowMirrorPathRepository.remove(reverseMirrorPath);
+        });
         flowMirrorRepository.remove(stateMachine.getFlowMirrorId());
 
         stateMachine.saveActionToHistory("Flow mirror path resources were deallocated",
                 format("The flow resources for mirror path %s were deallocated", stateMachine.getFlowMirrorId()));
         stateMachine.setMirrorPathResourcesDeallocated(true);
+    }
+
+    private FlowResources buildResources(Flow flow, FlowMirrorPath forwardPath, FlowMirrorPath reversePath) {
+        EncapsulationResources forwardResources = getEncapsulationResources(flow, forwardPath, reversePath);
+        EncapsulationResources reverseResources = reversePath.isDummy()
+                ? null : getEncapsulationResources(flow, forwardPath, reversePath);
+
+        return FlowResources.builder()
+                .unmaskedCookie(forwardPath.getCookie().getFlowEffectiveId())
+                .forward(PathResources.builder()
+                        .pathId(forwardPath.getMirrorPathId())
+                        .meterId(null) //TODO set meter ID in patch with reverse mirror
+                        .encapsulationResources(forwardResources)
+                        .build())
+                .reverse(PathResources.builder()
+                        .pathId(reversePath.getMirrorPathId())
+                        .meterId(null) //TODO set meter ID in patch with reverse mirror
+                        .encapsulationResources(reverseResources)
+                        .build())
+                .build();
+    }
+
+    private EncapsulationResources getEncapsulationResources(
+            Flow flow, FlowMirrorPath path, FlowMirrorPath oppositePath) {
+        if (path.isSingleSwitchPath()) {
+            return null;
+        }
+        return resourcesManager.getEncapsulationResources(
+                        path.getMirrorPathId(), oppositePath.getMirrorPathId(), flow.getEncapsulationType())
+                .orElse(null);
     }
 }

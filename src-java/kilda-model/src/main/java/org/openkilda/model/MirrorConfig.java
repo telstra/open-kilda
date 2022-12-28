@@ -57,17 +57,37 @@ public class MirrorConfig implements Serializable {
 
     @Value
     public static class MirrorConfigData implements Serializable {
-        @JsonProperty("mirror_port")
-        int mirrorPort;
+        @JsonProperty("out_port")
+        int outPort;
 
-        @JsonProperty("mirror_vlan")
-        int mirrorVlan;
+        @JsonProperty("push_vlan")
+        Integer pushVlan;
+
+        @JsonProperty("push_vxlan")
+        PushVxlan pushVxlan;
 
         @JsonCreator
-        public MirrorConfigData(@JsonProperty("mirror_port") int mirrorPort,
-                                @JsonProperty("mirror_vlan") int mirrorVlan) {
-            this.mirrorPort = mirrorPort;
-            this.mirrorVlan = mirrorVlan;
+        public MirrorConfigData(@JsonProperty("out_port") int outPort,
+                                @JsonProperty("push_vlan") Integer pushVlan,
+                                @JsonProperty("push_vxlan") PushVxlan pushVxlan) {
+            this.outPort = outPort;
+            this.pushVlan = pushVlan;
+            this.pushVxlan = pushVxlan;
+        }
+    }
+
+    @Value
+    public static class PushVxlan implements Serializable {
+        @JsonProperty("vni")
+        int vni;
+        @JsonProperty("destination_mac")
+        MacAddress destinationMac;
+
+        @JsonCreator
+        public PushVxlan(@JsonProperty("vni") int vni,
+                         @JsonProperty("destination_mac") MacAddress destinationMac) {
+            this.vni = vni;
+            this.destinationMac = destinationMac;
         }
     }
 }

@@ -21,6 +21,7 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
@@ -77,7 +78,7 @@ public class EmitCommandRequestsAction extends
         if (mirrorPoints.getFlowMirrors().isEmpty()) {
             deleteSpeakerCommands.addAll(stateMachine.getMirrorPointSpeakerData());
         } else {
-            for (SpeakerData command : buildSpeakerCommands(stateMachine, mirrorPoints)) {
+            for (SpeakerData command : buildSpeakerCommands(stateMachine)) {
                 if (command instanceof GroupSpeakerData
                         && command.getSwitchId().equals(stateMachine.getMirrorSwitchId())) {
                     modifySpeakerCommands.add(command);
@@ -98,7 +99,6 @@ public class EmitCommandRequestsAction extends
 
         if (speakerCommands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to remove group");
-            return;
         } else {
             for (BaseSpeakerCommandsRequest command : speakerCommands) {
                 stateMachine.getCarrier().sendSpeakerRequest(command);
@@ -110,16 +110,18 @@ public class EmitCommandRequestsAction extends
     }
 
     private List<SpeakerData> buildSpeakerCommands(
-            FlowMirrorPointDeleteFsm stateMachine, FlowMirrorPoints mirrorPoints) {
+            FlowMirrorPointDeleteFsm stateMachine) {
         Flow flow = getFlow(stateMachine.getFlowId());
         PathId flowPathId = stateMachine.getFlowPathId();
         FlowPath path = flow.getPath(flowPathId).orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                 format("Flow path %s not found", flowPathId)));
         Set<PathId> involvedPaths = newHashSet(stateMachine.getFlowPathId());
         getFlow(stateMachine.getFlowId()).getOppositePathId(path.getPathId()).ifPresent(involvedPaths::add);
-        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, newHashSet(),
-                newHashSet(stateMachine.getMirrorSwitchId()), false);
+        FlowMirror flowMirror = getFlowMirror(stateMachine.getFlowMirrorId());
+        Set<PathId> involvedMirrorPaths = newHashSet(flowMirror.getForwardPathId());
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, involvedMirrorPaths,
+                getInvolvedSwitches(flowMirror.getForwardPath()), false);
 
-        return ruleManager.buildMirrorPointRules(mirrorPoints, dataAdapter);
+        return ruleManager.buildMirrorPointRules(flowMirror.getForwardPath(), dataAdapter);
     }
 }

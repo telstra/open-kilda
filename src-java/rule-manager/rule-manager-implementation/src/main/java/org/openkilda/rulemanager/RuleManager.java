@@ -15,7 +15,7 @@
 
 package org.openkilda.rulemanager;
 
-import org.openkilda.model.FlowMirrorPoints;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 
@@ -61,5 +61,5 @@ public interface RuleManager {
 
     List<SpeakerData> buildLacpRules(SwitchId switchId, int logicalPort, DataAdapter adapter);
 
-    List<SpeakerData> buildMirrorPointRules(FlowMirrorPoints mirrorPoints, DataAdapter adapter);
+    List<SpeakerData> buildMirrorPointRules(FlowMirrorPath mirrorPath, DataAdapter adapter);
 }

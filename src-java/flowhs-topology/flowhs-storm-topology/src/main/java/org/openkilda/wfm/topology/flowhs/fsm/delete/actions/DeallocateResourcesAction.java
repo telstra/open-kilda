@@ -48,6 +48,7 @@ public class DeallocateResourcesAction extends
             resourcesManager.deallocateMirrorGroup(mirrorPathResources.getFlowPathId(),
                     mirrorPathResources.getMirrorSwitchId());
         });
+        // TODO deallocate mirrors
 
         Collection<FlowResources> flowResources = stateMachine.getFlowResources();
         flowResources.forEach(resources -> {

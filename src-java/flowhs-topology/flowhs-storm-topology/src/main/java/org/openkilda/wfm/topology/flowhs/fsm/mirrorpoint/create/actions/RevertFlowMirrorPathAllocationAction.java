@@ -19,6 +19,7 @@ import static com.google.common.collect.Sets.newHashSet;
 import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
@@ -66,21 +67,24 @@ public class RevertFlowMirrorPathAllocationAction
             Flow flow = getFlow(stateMachine.getFlowId());
             PathId oppositePathId = flow.getOppositePathId(stateMachine.getFlowPathId()).orElse(null);
             Set<PathId> involvedPaths = newHashSet(stateMachine.getFlowPathId(), oppositePathId);
-            DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, newHashSet(),
+            Set<PathId> involvedMirrorPaths = newHashSet(stateMachine.getForwardMirrorPathId());
+            DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, involvedMirrorPaths,
                     newHashSet(stateMachine.getMirrorSwitchId()), false);
-            stateMachine.getRevertCommands().addAll(ruleManager.buildMirrorPointRules(mirrorPoints.get(), dataAdapter));
+            FlowMirrorPath forwardMirrorPath = getFlowMirrorPath(stateMachine.getForwardMirrorPathId());
+            stateMachine.getRevertCommands().addAll(ruleManager.buildMirrorPointRules(forwardMirrorPath, dataAdapter));
         } else {
             log.warn("Can't find mirror points for flow path {} and mirror switch {}. May cause excess rules.",
                     stateMachine.getFlowPathId(), stateMachine.getMirrorSwitchId());
         }
 
-        resourcesManager.deallocateCookie(stateMachine.getUnmaskedCookie());
+        resourcesManager.deallocatePathResources(stateMachine.getFlowResources());
         flowMirrorPathRepository.remove(stateMachine.getForwardMirrorPathId());
+        flowMirrorPathRepository.remove(stateMachine.getReverseMirrorPathId());
 
         stateMachine.saveActionToHistory("Flow mirror path resources were deallocated",
                 format("The flow resources for mirror path %s were deallocated",
                         stateMachine.getForwardMirrorPathId()));
-        stateMachine.setForwardMirrorPathId(null);
+        stateMachine.setFlowResources(null);
 
         if (!stateMachine.isRulesInstalled()) {
             log.debug("No need to re-install rules");

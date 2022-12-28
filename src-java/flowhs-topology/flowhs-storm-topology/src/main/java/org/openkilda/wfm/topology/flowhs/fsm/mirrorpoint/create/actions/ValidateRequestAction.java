@@ -80,17 +80,9 @@ public class ValidateRequestAction extends
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
                         format("Flow %s is in progress now", flowId));
             }
-            stateMachine.setFlowStatus(foundFlow.getStatus());
             flowRepository.updateStatus(flowId, FlowStatus.IN_PROGRESS);
             return foundFlow;
         });
-
-        if (!mirrorPoint.getMirrorPointSwitchId().equals(mirrorPoint.getSinkEndpoint().getSwitchId())) {
-            throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
-                    format("Invalid sink endpoint switch id: %s. In the current implementation, "
-                            + "the sink switch id cannot differ from the mirror point switch id.",
-                            mirrorPoint.getSinkEndpoint().getSwitchId()));
-        }
 
         if (!mirrorPoint.getMirrorPointSwitchId().equals(flow.getSrcSwitchId())
                 && !mirrorPoint.getMirrorPointSwitchId().equals(flow.getDestSwitchId())) {

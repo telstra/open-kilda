@@ -20,6 +20,8 @@ import static java.lang.String.format;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowMeter;
+import org.openkilda.model.FlowMirror;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.MirrorDirection;
@@ -42,6 +44,8 @@ import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.map.LRUMap;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -148,8 +152,48 @@ public class FlowResourcesManager {
                 .build();
     }
 
-    private EncapsulationResourcesProvider getEncapsulationResourcesProvider(FlowEncapsulationType type) {
-        EncapsulationResourcesProvider provider = encapsulationResourcesProviders.get(type);
+    /**
+     * Try to allocate resources for the flow paths. The method doesn't initialize a transaction.
+     * So it requires external transaction to cover allocation failures.
+     * <p/>
+     * Provided two flows are considered as paired (forward and reverse),
+     * so some resources can be shared among them.
+     */
+    public FlowResources allocateFlowMirrorResources(
+            Flow flow, String mirrorPointId, SwitchId srcSwitchId, SwitchId dstSwitchId, boolean bidirectional)
+            throws ResourceAllocationException {
+        log.debug("Allocate flow mirror resources for flow {} mirror point {}", flow, mirrorPointId);
+        PathId forwardPathId = generateMirrorPathId(flow.getFlowId(), mirrorPointId);
+        PathId reversePathId = generateMirrorPathId(flow.getFlowId(), mirrorPointId);
+
+        try {
+            PathResources.PathResourcesBuilder forward = PathResources.builder().pathId(forwardPathId);
+            PathResources.PathResourcesBuilder reverse = PathResources.builder().pathId(reversePathId);
+
+            EncapsulationResourcesProvider<?> encapsulationResourcesProvider =
+                    getEncapsulationResourcesProvider(flow.getEncapsulationType());
+
+            if (!srcSwitchId.equals(dstSwitchId)) {
+                forward.encapsulationResources(
+                        encapsulationResourcesProvider.allocate(flow, forwardPathId, reversePathId));
+                if (bidirectional) {
+                    reverse.encapsulationResources(
+                            encapsulationResourcesProvider.allocate(flow, reversePathId, forwardPathId));
+                }
+            }
+
+            return FlowResources.builder()
+                    .unmaskedCookie(allocateCookie(flow.getFlowId()))
+                    .forward(forward.build())
+                    .reverse(reverse.build())
+                    .build();
+        } catch (ConstraintViolationException | ResourceNotAvailableException ex) {
+            throw new ResourceAllocationException("Unable to allocate resources", ex);
+        }
+    }
+
+    private EncapsulationResourcesProvider<?> getEncapsulationResourcesProvider(FlowEncapsulationType type) {
+        EncapsulationResourcesProvider<?> provider = encapsulationResourcesProviders.get(type);
         if (provider == null) {
             throw new ResourceNotAvailableException(
                     format("Unsupported encapsulation type %s", type));
@@ -279,6 +323,28 @@ public class FlowResourcesManager {
                 () -> flowMeterRepository
                         .findById(switchId, meterId)
                         .ifPresent(this::deallocateFlowMeter));
+    }
+
+    /**
+     * Get encapsulation map for flow paths.
+     */
+    public Map<PathId, EncapsulationResources> getMirrorEncapsulationMap(
+            Collection<FlowMirrorPoints> mirrorPoints, FlowEncapsulationType flowEncapsulationType) {
+        Map<PathId, EncapsulationResources> result = new HashMap<>();
+        for (FlowMirrorPoints mirrorPoint : mirrorPoints) {
+            for (FlowMirror flowMirror : mirrorPoint.getFlowMirrors()) {
+                if (flowMirror.isOneSwitchMirror()) {
+                    continue;
+                }
+                EncapsulationResources mirrorEncapsulation = getEncapsulationResources(
+                                flowMirror.getForwardPathId(), flowMirror.getReversePathId(), flowEncapsulationType)
+                        .orElseThrow(() -> new IllegalStateException(
+                                format("Encapsulation was not found, mirror pathId: %s",
+                                        flowMirror.getForwardPathId())));
+                result.put(flowMirror.getForwardPathId(), mirrorEncapsulation);
+            }
+        }
+        return result;
     }
 
     private MeterId allocatePathMeter(SwitchId switchId, String flowId, PathId pathId) {

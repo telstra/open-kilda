@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.model.FlowMirror.FlowMirrorData;
 import org.openkilda.model.FlowMirrorPath.FlowMirrorPathData;
 import org.openkilda.model.FlowMirrorPath.FlowMirrorPathDataImpl;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.BeanSerializer;
@@ -82,7 +83,8 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
     @Builder
     public FlowMirror(
             @NonNull String flowMirrorId, @NonNull Switch mirrorSwitch, @NonNull Switch egressSwitch, int egressPort,
-            int egressOuterVlan, int egressInnerVlan, FlowPathStatus status, PathId forwardPathId) {
+            int egressOuterVlan, int egressInnerVlan, FlowPathStatus status, PathId forwardPathId,
+            PathId reversePathId) {
         FlowMirrorDataImpl.FlowMirrorDataImplBuilder dataBuilder = FlowMirrorDataImpl.builder()
                 .flowMirrorId(flowMirrorId)
                 .mirrorSwitch(mirrorSwitch)
@@ -91,6 +93,7 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
                 .egressOuterVlan(egressOuterVlan)
                 .egressInnerVlan(egressInnerVlan)
                 .forwardPathId(forwardPathId)
+                .reversePathId(reversePathId)
                 .status(status);
 
         data = dataBuilder.build();
@@ -111,6 +114,25 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
      */
     public boolean isOneSwitchMirror() {
         return getMirrorSwitchId().equals(getEgressSwitchId());
+    }
+
+    /**
+     * Return opposite pathId to passed pathId.
+     */
+    public Optional<PathId> getOppositePathId(PathId pathId) {
+        Optional<Long> requestedPathCookie = getPath(pathId)
+                .map(FlowMirrorPath::getCookie)
+                .map(FlowSegmentCookie::getFlowEffectiveId);
+        if (requestedPathCookie.isPresent()) {
+            return getMirrorPaths().stream()
+                    .filter(path -> !path.getMirrorPathId().equals(pathId))
+                    .filter(path -> path.getCookie().getFlowEffectiveId() == requestedPathCookie.get())
+                    .findAny()
+                    .map(FlowMirrorPath::getMirrorPathId);
+        } else {
+            throw new IllegalArgumentException(format("Flow mirror %s does not have mirror path %s",
+                    getFlowMirrorId(), pathId));
+        }
     }
 
     /**
@@ -135,6 +157,31 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
             setForwardPathId(forwardPath.getMirrorPathId());
         } else {
             setForwardPathId(null);
+        }
+    }
+
+    /**
+     * Get the reverse path.
+     */
+    public FlowMirrorPath getReversePath() {
+        if (getReversePathId() == null) {
+            return null;
+        }
+        return getPath(getReversePathId()).orElse(null);
+    }
+
+    /**
+     * Add a path and set it as the reverse path.
+     */
+    public void setReversePath(FlowMirrorPath reversePath) {
+        if (reversePath != null) {
+            if (!hasPath(reversePath)) {
+                validatePath(reversePath, FlowPathDirection.REVERSE);
+                addMirrorPaths(reversePath);
+            }
+            setReversePathId(reversePath.getMirrorPathId());
+        } else {
+            setReversePathId(null);
         }
     }
 
@@ -172,6 +219,7 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
         return new EqualsBuilder()
                 .append(getFlowMirrorId(), that.getFlowMirrorId())
                 .append(getForwardPathId(), that.getForwardPathId())
+                .append(getReversePathId(), that.getReversePathId())
                 .append(getMirrorSwitchId(), that.getMirrorSwitchId())
                 .append(getEgressSwitchId(), that.getEgressSwitchId())
                 .append(getEgressPort(), that.getEgressPort())
@@ -186,9 +234,9 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
 
     @Override
     public int hashCode() {
-        return Objects.hash(getFlowMirrorId(), getForwardPathId(), getMirrorSwitchId(), getEgressSwitchId(),
-                getEgressPort(), getEgressOuterVlan(), getEgressInnerVlan(), getTimeCreate(), getTimeModify(),
-                getStatus(), getMirrorPaths());
+        return Objects.hash(getFlowMirrorId(), getForwardPathId(), getReversePathId(), getMirrorSwitchId(),
+                getEgressSwitchId(), getEgressPort(), getEgressOuterVlan(), getEgressInnerVlan(), getTimeCreate(),
+                getTimeModify(), getStatus(), getMirrorPaths());
     }
 
     /**
@@ -203,6 +251,10 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
         PathId getForwardPathId();
 
         void setForwardPathId(PathId forwardPathId);
+
+        PathId getReversePathId();
+
+        void setReversePathId(PathId reversePathId);
 
         SwitchId getMirrorSwitchId();
 
@@ -262,6 +314,7 @@ public class FlowMirror implements CompositeDataEntity<FlowMirrorData> {
         private static final long serialVersionUID = 1L;
         @NonNull String flowMirrorId;
         PathId forwardPathId;
+        PathId reversePathId;
         @NonNull Switch mirrorSwitch;
         @NonNull Switch egressSwitch;
         int egressPort;

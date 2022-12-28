@@ -85,22 +85,39 @@ abstract class AbstractGroupInstall<T extends SpeakerCommandReport> extends Grou
 
         List<OFBucket> buckets = Lists.newArrayList(flowBucket);
 
-        for (MirrorConfigData mirrorConfigData : mirrorConfig.getMirrorConfigDataSet()) {
+        for (MirrorConfigData config : mirrorConfig.getMirrorConfigDataSet()) {
             List<OFAction> mirrorActions = new ArrayList<>();
 
-            int mirrorVlan = mirrorConfigData.getMirrorVlan();
-            if (mirrorVlan > 0) {
+            if (config.getPushVlan() != null && config.getPushVlan() > 0) {
                 mirrorActions.addAll(OfAdapter.INSTANCE.makeVlanReplaceActions(ofFactory, Collections.emptyList(),
-                        Lists.newArrayList(mirrorVlan)));
+                        Lists.newArrayList(config.getPushVlan())));
             }
-
-            mirrorActions.add(ofFactory.actions().buildOutput()
-                    .setPort(OFPort.of(mirrorConfigData.getMirrorPort())).build());
+            if (config.getPushVxlan() != null && config.getPushVxlan().getVni() > 0) {
+                mirrorActions.add(buildPushMirrorVxlan(ofFactory, config));
+            }
+            mirrorActions.add(ofFactory.actions().buildOutput().setPort(OFPort.of(config.getOutPort())).build());
 
             buckets.add(ofFactory.buildBucket().setActions(mirrorActions).setWatchGroup(OFGroup.ANY).build());
         }
 
         return buckets;
+    }
+
+    private OFAction buildPushMirrorVxlan(OFFactory ofFactory, MirrorConfigData config) {
+        if (getSwitchFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+            return OfAdapter.INSTANCE.makeNoviflowPushVxlanAction(
+                    ofFactory, config.getPushVxlan().getVni(), MacAddress.of(switchId.toLong()),
+                    MacAddress.of(config.getPushVxlan().getDestinationMac().toLong()), STUB_VXLAN_UDP_SRC);
+        } else if (getSwitchFeatures().contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+            return OfAdapter.INSTANCE.makeOvsPushVxlanAction(
+                    ofFactory, config.getPushVxlan().getVni(), MacAddress.of(switchId.toLong()),
+                    MacAddress.of(config.getPushVxlan().getDestinationMac().toLong()), STUB_VXLAN_UDP_SRC);
+        } else {
+            throw new IllegalArgumentException(String.format(
+                    "To push VXLAN switch %s must support one of the following features: [%s, %s]",
+                    switchId, NOVIFLOW_PUSH_POP_VXLAN, KILDA_OVS_PUSH_POP_MATCH_VXLAN));
+
+        }
     }
 
     private List<OFAction> buildFlowActions(OFFactory ofFactory) {

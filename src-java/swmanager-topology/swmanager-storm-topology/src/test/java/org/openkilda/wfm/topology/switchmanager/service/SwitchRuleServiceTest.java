@@ -34,6 +34,7 @@ import org.openkilda.model.bitops.BitField;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.CookieBase;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -87,6 +88,8 @@ public class SwitchRuleServiceTest {
     private RuleManager ruleManager;
     @Mock
     private FlowPathRepository flowPathRepository;
+    @Mock
+    private FlowMirrorPathRepository flowMirrorPathRepository;
 
     @Captor
     private ArgumentCaptor<SwitchManagerHub.OfCommandAction> commandsCaptor;
@@ -105,9 +108,12 @@ public class SwitchRuleServiceTest {
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(switchRepository.exists(any(SwitchId.class))).thenReturn(true);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
+        when(repositoryFactory.createFlowMirrorPathRepository()).thenReturn(flowMirrorPathRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
         when(flowPathRepository.findByEndpointSwitch(any(SwitchId.class))).thenReturn(Collections.emptyList());
         when(flowPathRepository.findBySegmentSwitch(any(SwitchId.class))).thenReturn(Collections.emptyList());
+        when(flowMirrorPathRepository.findByEndpointSwitch(any(SwitchId.class))).thenReturn(Collections.emptyList());
+        when(flowMirrorPathRepository.findBySegmentSwitch(any(SwitchId.class))).thenReturn(Collections.emptyList());
         when(ruleManager.buildRulesForSwitch(any(SwitchId.class), any(DataAdapter.class)))
                 .thenReturn(speakerDataList);
 

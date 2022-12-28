@@ -401,16 +401,18 @@ public class EgressMirrorRuleGeneratorTest extends MirrorGeneratorBaseTest {
         assertEquals(GroupType.ALL, command.getType());
         assertTrue(command.getDependsOn().isEmpty());
 
-        assertEquals(2, command.getBuckets().size());
+        assertEquals(3, command.getBuckets().size());
         Bucket expectedFlowBucket = baseBucket()
                 .writeActions(newHashSet(new PortOutAction(new PortNumber(PORT_NUMBER_4)))).build();
 
         Bucket expectedSingleSwitchMirror = baseBucket().writeActions(newHashSet(new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(MIRROR_OUTER_VLAN_1).build(),
                 new PortOutAction(new PortNumber(MIRROR_PORT_1)))).build();
+        Bucket expectedMultiSwitchMirror = baseBucket().writeActions(multiSwitchMirrorActions).build();
 
         assertEquals(expectedFlowBucket, command.getBuckets().get(0));
-        assertEquals(expectedSingleSwitchMirror, command.getBuckets().get(1));
+        assertEquals(expectedMultiSwitchMirror, command.getBuckets().get(1));
+        assertEquals(expectedSingleSwitchMirror, command.getBuckets().get(2));
     }
 
     private Set<FieldMatch> buildExpectedVlanMatch(int port, int vlanId) {
@@ -432,6 +434,7 @@ public class EgressMirrorRuleGeneratorTest extends MirrorGeneratorBaseTest {
             FlowPath path, Flow flow, FlowTransitEncapsulation encapsulation) {
         return EgressMirrorPointRuleGenerator.builder()
                 .flowPath(path)
+                .mirrorPathEncapsulationMap(buildEncapsulationMap(encapsulation.getType()))
                 .flow(flow)
                 .encapsulation(encapsulation)
                 .build();

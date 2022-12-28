@@ -2,6 +2,7 @@ description = 'Kilda Data Model'
 dependencies {
     implementation 'com.google.guava:guava'
     compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'org.apache.commons:commons-lang3'
     implementation 'com.esotericsoftware:kryo'
 

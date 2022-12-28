@@ -24,6 +24,7 @@ import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.rulemanager.RuleManagerConfig;
@@ -50,6 +51,7 @@ import org.openkilda.rulemanager.factory.generator.flow.mirror.TransitMirrorRule
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -177,13 +179,14 @@ public class FlowRulesGeneratorFactory {
      */
     public RuleGenerator getIngressMirrorRuleGenerator(
             FlowPath flowPath, Flow flow, FlowTransitEncapsulation flowEncapsulation,
-            UUID sharedMeterCommandUuid) {
+            Map<PathId, FlowTransitEncapsulation> mirrorEncapsulationMap, UUID sharedMeterCommandUuid) {
         return IngressMirrorPointRuleGenerator.builder()
                 .flowPath(flowPath)
                 .flow(flow)
                 .multiTable(isPathSrcMultiTable(flowPath, flow))
                 .config(config)
                 .encapsulation(flowEncapsulation)
+                .mirrorPathEncapsulationMap(mirrorEncapsulationMap)
                 .sharedMeterCommandUuid(sharedMeterCommandUuid)
                 .build();
     }
@@ -246,12 +249,14 @@ public class FlowRulesGeneratorFactory {
      * Get egress mirror point rule generator.
      */
     public RuleGenerator getEgressMirrorRuleGenerator(
-            FlowPath flowPath, Flow flow, FlowTransitEncapsulation flowEncapsulation) {
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation flowEncapsulation,
+            Map<PathId, FlowTransitEncapsulation> mirrorEncapsulationMap) {
         checkEgressRulePreRequirements(flowPath, flow, "egress mirror");
         return EgressMirrorPointRuleGenerator.builder()
                 .flowPath(flowPath)
                 .flow(flow)
                 .encapsulation(flowEncapsulation)
+                .mirrorPathEncapsulationMap(mirrorEncapsulationMap)
                 .build();
     }
 

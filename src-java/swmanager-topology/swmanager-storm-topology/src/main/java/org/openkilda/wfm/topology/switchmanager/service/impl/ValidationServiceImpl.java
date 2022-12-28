@@ -30,6 +30,7 @@ import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2.FieldMatch;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMeter;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
@@ -44,6 +45,7 @@ import org.openkilda.model.cookie.CookieBase;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
+import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
@@ -98,6 +100,7 @@ public class ValidationServiceImpl implements ValidationService {
     private final LagLogicalPortRepository lagLogicalPortRepository;
     private final FlowMeterRepository flowMeterRepository;
     private final FlowPathRepository flowPathRepository;
+    private final FlowMirrorPathRepository flowMirrorPathRepository;
     private final FlowRepository flowRepository;
     private final YFlowRepository yFlowRepository;
 
@@ -113,6 +116,7 @@ public class ValidationServiceImpl implements ValidationService {
         this.lagLogicalPortRepository = repositoryFactory.createLagLogicalPortRepository();
         this.flowMeterRepository = repositoryFactory.createFlowMeterRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
+        this.flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
         this.mirrorGroupRepository = repositoryFactory.createMirrorGroupRepository();
@@ -128,10 +132,18 @@ public class ValidationServiceImpl implements ValidationService {
                 .filter(fp -> fp.getStatus() != FlowPathStatus.IN_PROGRESS)
                 .map(FlowPath::getPathId)
                 .collect(Collectors.toSet()));
+        Set<PathId> mirrorPathIds = Stream.concat(flowMirrorPathRepository.findByEndpointSwitch(switchId).stream(),
+                flowMirrorPathRepository.findBySegmentSwitch(switchId).stream())
+                .filter(path -> !path.isDummy())
+                .filter(path -> path.getStatus() != FlowPathStatus.IN_PROGRESS)
+                .map(FlowMirrorPath::getMirrorPathId)
+                .collect(Collectors.toSet());
+
         PersistenceDataAdapter dataAdapter = PersistenceDataAdapter.builder()
                 .persistenceManager(persistenceManager)
                 .switchIds(Collections.singleton(switchId))
                 .pathIds(flowPathIds)
+                .mirrorPathIds(mirrorPathIds)
                 .keepMultitableForFlow(true)
                 .build();
         return ruleManager.buildRulesForSwitch(switchId, dataAdapter);

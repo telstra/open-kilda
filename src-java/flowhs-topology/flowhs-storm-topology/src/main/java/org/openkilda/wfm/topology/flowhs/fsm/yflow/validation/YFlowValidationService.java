@@ -147,9 +147,11 @@ public class YFlowValidationService {
 
         List<SimpleSwitchRule> result = new ArrayList<>();
         if (!forward.isProtected()) {
+            Map<PathId, EncapsulationResources> forwardMirrorEncapsulation = flowResourcesManager
+                    .getMirrorEncapsulationMap(forward.getFlowMirrorPointsSet(), subFlow.getEncapsulationType());
             List<SimpleSwitchRule> ingressRules =
                     simpleSwitchRuleConverter.buildIngressSimpleSwitchRules(subFlow, forward, forwardEncId,
-                            flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
+                            forwardMirrorEncapsulation, flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
             result.addAll(simpleSwitchRuleConverter.buildYFlowIngressSimpleSwitchRules(ingressRules,
                     sharedEndpoint, sharedEndpointMeterId));
         }
@@ -180,9 +182,11 @@ public class YFlowValidationService {
                 }
             }
         } else {
+            Map<PathId, EncapsulationResources> reverseMirrorEncapsulation = flowResourcesManager
+                    .getMirrorEncapsulationMap(reverse.getFlowMirrorPointsSet(), subFlow.getEncapsulationType());
             List<SimpleSwitchRule> reverseIngressRules =
                     simpleSwitchRuleConverter.buildIngressSimpleSwitchRules(subFlow, reverse, null,
-                            flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
+                            reverseMirrorEncapsulation, flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
             result.addAll(simpleSwitchRuleConverter.buildYFlowIngressSimpleSwitchRules(reverseIngressRules,
                     yPoint, yPointMeterId));
         }

@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions;
 import static com.google.common.collect.Sets.newHashSet;
 
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
@@ -72,7 +73,7 @@ public class EmitRemoveRulesRequestsAction extends
         if (!mirrorPoint.isPresent() || mirrorPoint.get().getFlowMirrors().isEmpty()) {
             deleteSpeakerCommands.addAll(stateMachine.getRevertCommands());
         } else {
-            for (SpeakerData command : buildSpeakerCommands(stateMachine, mirrorPoint.get())) {
+            for (SpeakerData command : buildSpeakerCommands(stateMachine)) {
                 if (command instanceof GroupSpeakerData
                         && command.getSwitchId().equals(stateMachine.getMirrorSwitchId())) {
                     modifySpeakerCommands.add(command);
@@ -102,14 +103,15 @@ public class EmitRemoveRulesRequestsAction extends
         }
     }
 
-    private List<SpeakerData> buildSpeakerCommands(
-            FlowMirrorPointCreateFsm stateMachine, FlowMirrorPoints mirrorPoints) {
+    private List<SpeakerData> buildSpeakerCommands(FlowMirrorPointCreateFsm stateMachine) {
         PathId flowPathId = stateMachine.getFlowPathId();
-        Set<PathId> involvedPaths = newHashSet(flowPathId);
-        getFlow(stateMachine.getFlowId()).getOppositePathId(flowPathId).ifPresent(involvedPaths::add);
-        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, newHashSet(),
-                newHashSet(stateMachine.getMirrorSwitchId()), false);
+        Set<PathId> involvedFlowPaths = newHashSet(flowPathId);
+        getFlow(stateMachine.getFlowId()).getOppositePathId(flowPathId).ifPresent(involvedFlowPaths::add);
+        Set<PathId> involvedMirrorPaths = newHashSet(stateMachine.getForwardMirrorPathId());
+        FlowMirrorPath forwardMirrorPath = getFlowMirrorPath(stateMachine.getForwardMirrorPathId());
 
-        return ruleManager.buildMirrorPointRules(mirrorPoints, dataAdapter);
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedFlowPaths, involvedMirrorPaths,
+                getInvolvedSwitches(forwardMirrorPath), false);
+        return ruleManager.buildMirrorPointRules(forwardMirrorPath, dataAdapter);
     }
 }

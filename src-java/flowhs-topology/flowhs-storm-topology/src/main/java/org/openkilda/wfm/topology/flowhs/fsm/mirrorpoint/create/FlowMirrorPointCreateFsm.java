@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create;
 
-import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputer;
@@ -23,6 +22,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithSpeakerCommandsFsm;
@@ -65,12 +65,13 @@ public final class FlowMirrorPointCreateFsm extends FlowProcessingWithSpeakerCom
 
     private RequestedFlowMirrorPoint requestedFlowMirrorPoint;
 
-    private FlowStatus flowStatus;
     private PathId flowPathId;
     private SwitchId mirrorSwitchId;
     private String flowMirrorId;
     private PathId forwardMirrorPathId;
-    private long unmaskedCookie;
+    private PathId reverseMirrorPathId;
+    private FlowResources flowResources;
+    private boolean backUpPathComputationWayUsed;
 
     private boolean rulesInstalled = false;
     private boolean addNewGroup = false;

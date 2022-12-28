@@ -65,6 +65,8 @@ public class FermaFlowMirrorRepositoryTest extends InMemoryGraphBasedTest {
     static final GroupId TEST_GROUP_ID = new GroupId(10);
     static final FlowSegmentCookie FORWARD_COOKIE = FlowSegmentCookie.builder()
             .flowEffectiveId(1).direction(FlowPathDirection.FORWARD).mirror(true).build();
+    static final FlowSegmentCookie REVERSE_COOKIE = FlowSegmentCookie.builder()
+            .flowEffectiveId(1).direction(FlowPathDirection.REVERSE).mirror(true).build();
 
     FlowMirrorPathRepository flowMirrorPathRepository;
     FlowMirrorRepository flowMirrorRepository;
@@ -203,7 +205,7 @@ public class FermaFlowMirrorRepositoryTest extends InMemoryGraphBasedTest {
     public void shouldAddFlowMirrorPaths() {
         createTestFlowMirrors();
         FlowMirrorPath path1 = buildMirrorPath(TEST_MIRROR_PATH_ID_1, FORWARD_COOKIE, switchA, switchB);
-        FlowMirrorPath path2 = buildMirrorPath(TEST_MIRROR_PATH_ID_2, FORWARD_COOKIE, switchB, switchA);
+        FlowMirrorPath path2 = buildMirrorPath(TEST_MIRROR_PATH_ID_2, REVERSE_COOKIE, switchB, switchA);
         flowMirrorPathRepository.add(path1);
         flowMirrorPathRepository.add(path2);
 
@@ -237,6 +239,24 @@ public class FermaFlowMirrorRepositoryTest extends InMemoryGraphBasedTest {
         assertEquals(TEST_MIRROR_PATH_ID_1, mirror2.get().getMirrorPaths().iterator().next().getMirrorPathId());
         assertEquals(TEST_MIRROR_PATH_ID_1, mirror2.get().getForwardPath().getMirrorPathId());
         assertEquals(TEST_MIRROR_PATH_ID_1, mirror2.get().getForwardPathId());
+    }
+
+    @Test
+    public void shouldSetReverseFlowMirrorPath() {
+        createTestFlowMirrors();
+        FlowMirrorPath path1 = buildMirrorPath(TEST_MIRROR_PATH_ID_1, REVERSE_COOKIE, switchA, switchB);
+        flowMirrorPathRepository.add(path1);
+
+        Optional<FlowMirror> mirror = flowMirrorRepository.findById(TEST_FLOW_MIRROR_ID_1);
+        assertTrue(mirror.isPresent());
+        mirror.get().setReversePath(path1);
+
+        Optional<FlowMirror> mirror2 = flowMirrorRepository.findById(TEST_FLOW_MIRROR_ID_1);
+        assertTrue(mirror2.isPresent());
+        assertEquals(1, mirror2.get().getMirrorPaths().size());
+        assertEquals(TEST_MIRROR_PATH_ID_1, mirror2.get().getMirrorPaths().iterator().next().getMirrorPathId());
+        assertEquals(TEST_MIRROR_PATH_ID_1, mirror2.get().getReversePath().getMirrorPathId());
+        assertEquals(TEST_MIRROR_PATH_ID_1, mirror2.get().getReversePathId());
     }
 
     private void createTestFlowMirrors() {
