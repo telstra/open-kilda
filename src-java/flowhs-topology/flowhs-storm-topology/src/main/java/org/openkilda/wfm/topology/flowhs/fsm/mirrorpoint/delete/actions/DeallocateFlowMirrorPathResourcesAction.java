@@ -77,7 +77,7 @@ public class DeallocateFlowMirrorPathResourcesAction
         Flow flow = getFlow(stateMachine.getFlowId());
         PathId oppositePathId = flow.getOppositePathId(stateMachine.getFlowPathId()).orElse(null);
         Set<PathId> involvedPaths = newHashSet(stateMachine.getFlowPathId(), oppositePathId);
-        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths,
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, newHashSet(),
                 newHashSet(stateMachine.getMirrorSwitchId()), false);
         stateMachine.getMirrorPointSpeakerData().addAll(ruleManager.buildMirrorPointRules(
                 flowMirrorPoints, dataAdapter));

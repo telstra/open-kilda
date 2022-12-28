@@ -15,24 +15,33 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPath.FlowMirrorPathData;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowMirrorPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.PathSegmentFrame;
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
+import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 
+import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -77,6 +86,43 @@ public class FermaFlowMirrorPathRepository
     }
 
     @Override
+    public Map<PathId, FlowMirrorPath> findByIds(Set<PathId> pathIds) {
+        Set<String> graphPathIds = getPathIds(pathIds);
+        List<? extends FlowMirrorPathFrame> pathFrames = framedGraph().traverse(g -> g.V()
+                        .hasLabel(FlowMirrorPathFrame.FRAME_LABEL)
+                        .has(FlowMirrorPathFrame.PATH_ID_PROPERTY, P.within(graphPathIds)))
+                .toListExplicit(FlowMirrorPathFrame.class);
+        return pathFrames.stream()
+                .map(FlowMirrorPath::new)
+                .collect(Collectors.toMap(FlowMirrorPath::getMirrorPathId, Function.identity()));
+    }
+
+    @Override
+    public Map<PathId, FlowMirror> findFlowsMirrorsByPathIds(Set<PathId> pathIds) {
+        Set<String> graphPathIds = getPathIds(pathIds);
+        List<? extends FlowMirrorPathFrame> flowPathFrames = framedGraph().traverse(g -> g.V()
+                        .hasLabel(FlowMirrorPathFrame.FRAME_LABEL)
+                        .has(FlowMirrorPathFrame.PATH_ID_PROPERTY, P.within(graphPathIds)))
+                .toListExplicit(FlowMirrorPathFrame.class);
+        return flowPathFrames.stream()
+                .map(FlowMirrorPath::new)
+                .collect(Collectors.toMap(FlowMirrorPath::getMirrorPathId, FlowMirrorPath::getFlowMirror));
+    }
+
+    @Override
+    public Map<PathId, FlowMirrorPoints> findFlowsMirrorPointsByPathIds(Set<PathId> pathIds) {
+        Set<String> graphPathIds = getPathIds(pathIds);
+        List<? extends FlowMirrorPathFrame> flowPathFrames = framedGraph().traverse(g -> g.V()
+                        .hasLabel(FlowMirrorPathFrame.FRAME_LABEL)
+                        .has(FlowMirrorPathFrame.PATH_ID_PROPERTY, P.within(graphPathIds)))
+                .toListExplicit(FlowMirrorPathFrame.class);
+        return flowPathFrames.stream()
+                .map(FlowMirrorPath::new)
+                .collect(Collectors.toMap(
+                        FlowMirrorPath::getMirrorPathId, path -> path.getFlowMirror().getFlowMirrorPoints()));
+    }
+
+    @Override
     public void updateStatus(PathId pathId, FlowPathStatus pathStatus) {
         getTransactionManager().doInTransaction(() ->
                 framedGraph().traverse(g -> g.V()
@@ -84,6 +130,45 @@ public class FermaFlowMirrorPathRepository
                         .has(FlowMirrorPathFrame.PATH_ID_PROPERTY, PathIdConverter.INSTANCE.toGraphProperty(pathId)))
                         .toListExplicit(FlowMirrorPathFrame.class)
                         .forEach(pathFrame -> pathFrame.setStatus(pathStatus)));
+    }
+
+    @Override
+    public Collection<FlowMirrorPath> findByEndpointSwitch(SwitchId switchId) {
+        Map<PathId, FlowMirrorPath> result = new HashMap<>();
+        String swId = SwitchIdConverter.INSTANCE.toGraphProperty(switchId);
+        framedGraph().traverse(g -> g.V()
+                        .hasLabel(FlowMirrorPathFrame.FRAME_LABEL)
+                        .has(FlowMirrorPathFrame.MIRROR_SWITCH_ID_PROPERTY, swId))
+                .frameExplicit(FlowMirrorPathFrame.class)
+                .forEachRemaining(frame -> result.put(frame.getMirrorPathId(), new FlowMirrorPath(frame)));
+        framedGraph().traverse(g -> g.V()
+                        .hasLabel(FlowMirrorPathFrame.FRAME_LABEL)
+                        .has(FlowMirrorPathFrame.EGRESS_SWITCH_ID_PROPERTY, swId))
+                .frameExplicit(FlowMirrorPathFrame.class)
+                .forEachRemaining(frame -> result.put(frame.getMirrorPathId(), new FlowMirrorPath(frame)));
+
+        return result.values();
+    }
+
+    @Override
+    public Collection<FlowMirrorPath> findBySegmentSwitch(SwitchId switchId) {
+        Map<PathId, FlowMirrorPath> result = new HashMap<>();
+        String swId = SwitchIdConverter.INSTANCE.toGraphProperty(switchId);
+        framedGraph().traverse(g -> g.V()
+                        .hasLabel(PathSegmentFrame.FRAME_LABEL)
+                        .has(PathSegmentFrame.SRC_SWITCH_ID_PROPERTY, swId)
+                        .in(FlowMirrorPathFrame.OWNS_SEGMENTS_EDGE)
+                        .hasLabel(FlowMirrorPathFrame.FRAME_LABEL))
+                .frameExplicit(FlowMirrorPathFrame.class)
+                .forEachRemaining(frame -> result.put(frame.getMirrorPathId(), new FlowMirrorPath(frame)));
+        framedGraph().traverse(g -> g.V()
+                        .hasLabel(PathSegmentFrame.FRAME_LABEL)
+                        .has(PathSegmentFrame.DST_SWITCH_ID_PROPERTY, swId)
+                        .in(FlowMirrorPathFrame.OWNS_SEGMENTS_EDGE)
+                        .hasLabel(FlowMirrorPathFrame.FRAME_LABEL))
+                .frameExplicit(FlowMirrorPathFrame.class)
+                .forEachRemaining(frame -> result.put(frame.getMirrorPathId(), new FlowMirrorPath(frame)));
+        return result.values();
     }
 
     @Override
@@ -125,5 +210,11 @@ public class FermaFlowMirrorPathRepository
     @Override
     protected FlowMirrorPathData doDetach(FlowMirrorPath entity, FlowMirrorPathFrame frame) {
         return FlowMirrorPath.FlowMirrorPathCloner.INSTANCE.deepCopy(frame, entity.getFlowMirror());
+    }
+
+    private static Set<String> getPathIds(Set<PathId> pathIds) {
+        return pathIds.stream()
+                .map(PathIdConverter.INSTANCE::toGraphProperty)
+                .collect(Collectors.toSet());
     }
 }

@@ -17,6 +17,9 @@ package org.openkilda.rulemanager.adapter;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowMirror;
+import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.KildaFeatureToggles;
@@ -29,6 +32,7 @@ import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -58,6 +62,7 @@ public class PersistenceDataAdapter implements DataAdapter {
 
     private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
+    private final FlowMirrorPathRepository flowMirrorPathRepository;
     private final SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final TransitVlanRepository transitVlanRepository;
@@ -67,10 +72,14 @@ public class PersistenceDataAdapter implements DataAdapter {
     private final KildaFeatureTogglesRepository featureTogglesRepository;
 
     private final Set<PathId> pathIds;
+    private final Set<PathId> mirrorPathIds;
     private final Set<SwitchId> switchIds;
 
     private Map<PathId, Flow> flowCache;
     private Map<PathId, FlowPath> flowPathCache;
+    private Map<PathId, FlowMirrorPath> flowMirrorPathCache;
+    private Map<PathId, FlowMirror> flowMirrorCache;
+    private Map<PathId, FlowMirrorPoints> flowMirrorPointsCache;
     private Map<PathId, FlowTransitEncapsulation> encapsulationCache;
     private Map<SwitchId, Switch> switchCache;
     private Map<SwitchId, SwitchProperties> switchPropertiesCache;
@@ -84,11 +93,13 @@ public class PersistenceDataAdapter implements DataAdapter {
     private boolean keepMultitableForFlow = false;
 
     @Builder
-    public PersistenceDataAdapter(PersistenceManager persistenceManager,
-                                  Set<PathId> pathIds, Set<SwitchId> switchIds, boolean keepMultitableForFlow) {
+    public PersistenceDataAdapter(
+            PersistenceManager persistenceManager, Set<PathId> pathIds, Set<PathId> mirrorPathIds,
+            Set<SwitchId> switchIds, boolean keepMultitableForFlow) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
+        flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
@@ -98,6 +109,7 @@ public class PersistenceDataAdapter implements DataAdapter {
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
 
         this.pathIds = pathIds;
+        this.mirrorPathIds = mirrorPathIds == null ? Collections.emptySet() : mirrorPathIds;
         this.switchIds = switchIds;
 
         encapsulationCache = new HashMap<>();
@@ -111,6 +123,30 @@ public class PersistenceDataAdapter implements DataAdapter {
             flowPathCache = flowPathRepository.findByIds(pathIds);
         }
         return flowPathCache;
+    }
+
+    @Override
+    public Map<PathId, FlowMirrorPath> getFlowMirrorPaths() {
+        if (flowMirrorPathCache == null) {
+            flowMirrorPathCache = flowMirrorPathRepository.findByIds(mirrorPathIds);
+        }
+        return flowMirrorPathCache;
+    }
+
+    @Override
+    public FlowMirror getFlowMirror(PathId pathId) {
+        if (flowMirrorCache == null) {
+            flowMirrorCache = flowMirrorPathRepository.findFlowsMirrorsByPathIds(mirrorPathIds);
+        }
+        return flowMirrorCache.get(pathId);
+    }
+
+    @Override
+    public FlowMirrorPoints getFlowMirrorPoints(PathId pathId) {
+        if (flowMirrorPointsCache == null) {
+            flowMirrorPointsCache = flowMirrorPathRepository.findFlowsMirrorPointsByPathIds(mirrorPathIds);
+        }
+        return flowMirrorPointsCache.get(pathId);
     }
 
     @Override

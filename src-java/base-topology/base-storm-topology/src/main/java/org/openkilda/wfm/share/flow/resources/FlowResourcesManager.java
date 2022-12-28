@@ -50,7 +50,6 @@ import java.util.stream.Stream;
 @Slf4j
 public class FlowResourcesManager {
     private static final int POOL_SIZE = 100;
-    private static final int MAX_ALLOCATION_ATTEMPTS = 5;
 
     private final TransactionManager transactionManager;
     private final FlowMeterRepository flowMeterRepository;
@@ -61,7 +60,8 @@ public class FlowResourcesManager {
     private final LRUMap<SwitchId, PoolManager<FlowMeter>> meterIdPools;
     private final PoolManager.PoolConfig meterIdPoolConfig;
 
-    private final Map<FlowEncapsulationType, EncapsulationResourcesProvider> encapsulationResourcesProviders;
+    private final Map<FlowEncapsulationType, EncapsulationResourcesProvider<? extends EncapsulationResources>>
+            encapsulationResourcesProviders;
 
     public FlowResourcesManager(PersistenceManager persistenceManager, FlowResourcesConfig config) {
         transactionManager = persistenceManager.getTransactionManager();
@@ -79,7 +79,8 @@ public class FlowResourcesManager {
         this.mirrorGroupIdPool = new MirrorGroupIdPool(persistenceManager,
                 new GroupId(config.getMinGroupId()), new GroupId(config.getMaxGroupId()), POOL_SIZE);
 
-        encapsulationResourcesProviders = ImmutableMap.<FlowEncapsulationType, EncapsulationResourcesProvider>builder()
+        encapsulationResourcesProviders = ImmutableMap.<FlowEncapsulationType,
+                        EncapsulationResourcesProvider<? extends EncapsulationResources>>builder()
                 .put(FlowEncapsulationType.TRANSIT_VLAN, new TransitVlanPool(persistenceManager,
                         config.getMinFlowTransitVlan(), config.getMaxFlowTransitVlan(), POOL_SIZE))
                 .put(FlowEncapsulationType.VXLAN, new VxlanPool(persistenceManager,
@@ -131,7 +132,7 @@ public class FlowResourcesManager {
         }
 
         if (!flow.isOneSwitchFlow()) {
-            EncapsulationResourcesProvider encapsulationResourcesProvider =
+            EncapsulationResourcesProvider<?> encapsulationResourcesProvider =
                     getEncapsulationResourcesProvider(flow.getEncapsulationType());
             forward.encapsulationResources(
                     encapsulationResourcesProvider.allocate(flow, forwardPathId, reversePathId));
@@ -176,7 +177,7 @@ public class FlowResourcesManager {
             cookiePool.deallocate(unmaskedCookie);
             deallocatePathMeter(pathId);
 
-            EncapsulationResourcesProvider encapsulationResourcesProvider =
+            EncapsulationResourcesProvider<? extends EncapsulationResources> encapsulationResourcesProvider =
                     getEncapsulationResourcesProvider(encapsulationType);
             encapsulationResourcesProvider.deallocate(pathId);
         });
@@ -208,9 +209,8 @@ public class FlowResourcesManager {
     /**
      * Get allocated encapsulation resources of the flow path.
      */
-    public Optional<EncapsulationResources> getEncapsulationResources(PathId pathId,
-                                                                      PathId oppositePathId,
-                                                                      FlowEncapsulationType encapsulationType) {
+    public Optional<? extends EncapsulationResources> getEncapsulationResources(
+            PathId pathId, PathId oppositePathId, FlowEncapsulationType encapsulationType) {
         return getEncapsulationResourcesProvider(encapsulationType).get(pathId, oppositePathId);
     }
 
@@ -240,7 +240,7 @@ public class FlowResourcesManager {
      * Try to allocate cookie for the flow path. The method doesn't initialize a transaction.
      * So it requires external transaction to cover allocation failures.
      */
-    public long getAllocatedCookie(String flowId) throws ResourceAllocationException {
+    public long allocateCookie(String flowId) throws ResourceAllocationException {
         try {
             return cookiePool.allocate(flowId);
         } catch (ResourceNotAvailableException ex) {

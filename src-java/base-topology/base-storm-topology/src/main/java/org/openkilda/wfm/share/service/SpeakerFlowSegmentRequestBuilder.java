@@ -381,7 +381,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
 
         FlowSegmentMetadata metadata = makeMetadata(path, ensureEqualMultiTableFlag(
                 path.isSrcWithMultiTable(), segmentSide.isMultiTable(),
-                String.format("First flow(id:%s, path:%s) segment and flow path level multi-table flag values "
+                format("First flow(id:%s, path:%s) segment and flow path level multi-table flag values "
                                 + "are incompatible to each other - flow path(%s) != segment(%s)",
                         path.getFlow().getFlowId(), path.getPathId(),
                         path.isSrcWithMultiTable(), segmentSide.isMultiTable())));
@@ -496,7 +496,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 .switchId(ingressEndpoint.getSwitchId())
                 .metadata(makeMetadata(path, ensureEqualMultiTableFlag(
                         inboundSide.isMultiTable(), outboundSide.isMultiTable(),
-                        String.format(
+                        format(
                                 "Flow(id:%s, path:%s) have incompatible multi-table flags between segments %s "
                                         + "and %s", path.getFlow().getFlowId(), path.getPathId(), ingress,
                                 egress))))
@@ -518,7 +518,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
 
         FlowSegmentMetadata metadata = makeMetadata(path, ensureEqualMultiTableFlag(
                 segmentSide.isMultiTable(), path.isDestWithMultiTable(),
-                String.format("Last flow(id:%s, path:%s) segment and flow path level multi-table flags value "
+                format("Last flow(id:%s, path:%s) segment and flow path level multi-table flags value "
                                 + "are incompatible to each other - segment(%s) != flow path(%s)",
                         flow.getFlowId(), path.getPathId(), segmentSide.isMultiTable(),
                         path.isDestWithMultiTable())));
@@ -563,7 +563,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
 
         FlowSegmentMetadata metadata = makeMetadata(path, ensureEqualMultiTableFlag(
                 path.isSrcWithMultiTable(), path.isDestWithMultiTable(),
-                String.format("Flow(id:%s) have incompatible for one-switch flow per-side multi-table flags - "
+                format("Flow(id:%s) have incompatible for one-switch flow per-side multi-table flags - "
                                 + "src(%s) != dst(%s)",
                         flow.getFlowId(), path.isSrcWithMultiTable(), path.isDestWithMultiTable())));
 

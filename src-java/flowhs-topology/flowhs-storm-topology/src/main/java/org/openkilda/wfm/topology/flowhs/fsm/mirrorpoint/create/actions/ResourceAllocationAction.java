@@ -126,11 +126,8 @@ public class ResourceAllocationAction
                 stateMachine.setAddNewGroup(true);
             }
 
-            Switch sinkSwitch = switchRepository.findById(mirrorPoint.getSinkEndpoint().getSwitchId())
-                    .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                            format("Switch %s not found", mirrorPoint.getSinkEndpoint().getSwitchId())));
-
-            stateMachine.setUnmaskedCookie(resourcesManager.getAllocatedCookie(flow.getFlowId()));
+            Switch sinkSwitch = getSwitch(mirrorPoint.getSinkEndpoint().getSwitchId());
+            stateMachine.setUnmaskedCookie(resourcesManager.allocateCookie(flow.getFlowId()));
 
             FlowSegmentCookie cookie = FlowSegmentCookie.builder()
                     .flowEffectiveId(stateMachine.getUnmaskedCookie()).mirror(true).build();

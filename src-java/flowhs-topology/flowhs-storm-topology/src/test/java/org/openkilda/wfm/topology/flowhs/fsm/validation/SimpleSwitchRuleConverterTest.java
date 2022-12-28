@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.validation;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -55,7 +56,6 @@ import org.openkilda.model.Vxlan;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.SimpleSwitchRule.SimpleGroupBucket;
 
-import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -103,9 +103,9 @@ public class SimpleSwitchRuleConverterTest {
 
     private static final long MIN_BURST_SIZE_IN_KBITS = 1024;
     private static final double BURST_COEFFICIENT = 1.05;
-    public static final String FLOW_MIRROR_ID = "mirror_1";
+    private static final String FLOW_MIRROR_ID_1 = "mirror_1";
 
-    private SimpleSwitchRuleConverter simpleSwitchRuleConverter = new SimpleSwitchRuleConverter();
+    private final SimpleSwitchRuleConverter simpleSwitchRuleConverter = new SimpleSwitchRuleConverter();
 
     @Test
     public void shouldConvertFlowPathWithTransitVlanEncapToSimpleSwitchRules() {
@@ -464,7 +464,7 @@ public class SimpleSwitchRuleConverterTest {
                 .destSwitch(switchC)
                 .destPort(FLOW_A_SEGMENT_B_DST_PORT)
                 .build();
-        forwardFlowPath.setSegments(Lists.newArrayList(forwardSegmentA, forwardSegmentB));
+        forwardFlowPath.setSegments(newArrayList(forwardSegmentA, forwardSegmentB));
 
         if (checkWithGroup) {
 
@@ -480,14 +480,14 @@ public class SimpleSwitchRuleConverterTest {
                             .build())
                     .build();
 
-            FlowMirror flowMirror = FlowMirror.builder()
-                    .flowMirrorId(FLOW_MIRROR_ID)
+            FlowMirror singleSwitchMirror = FlowMirror.builder()
+                    .flowMirrorId(FLOW_MIRROR_ID_1)
                     .mirrorSwitch(switchA)
                     .egressSwitch(switchA)
                     .egressPort(FLOW_GROUP_ID_A_OUT_PORT)
                     .egressOuterVlan(FLOW_GROUP_ID_A_OUT_VLAN)
                     .build();
-            flowMirrorPoints.addFlowMirrors(flowMirror);
+            flowMirrorPoints.addFlowMirrors(singleSwitchMirror);
 
             forwardFlowPath.addFlowMirrorPoints(flowMirrorPoints);
         }
@@ -614,15 +614,15 @@ public class SimpleSwitchRuleConverterTest {
     }
 
     private List<SwitchFlowEntries> getSwitchFlowEntriesOneSwitchFlow() {
-        return Lists.newArrayList(getSwitchFlowEntries(TEST_SWITCH_ID_D,
+        return newArrayList(getSwitchFlowEntries(TEST_SWITCH_ID_D,
                 getFlowEntry(FLOW_B_FORWARD_COOKIE_VALUE, FLOW_B_SRC_PORT, FLOW_B_SRC_VLAN, "in_port", 0,
                         getFlowSetFieldAction(FLOW_B_DST_VLAN), FLOW_B_FORWARD_METER_ID, false)));
     }
 
     private List<SwitchFlowEntries> getSwitchFlowEntriesOneSwitchFlowWithGroup() {
-        return Lists.newArrayList(getSwitchFlowEntries(TEST_SWITCH_ID_D,
-                getFlowEntry(FLOW_B_FORWARD_COOKIE_VALUE, FLOW_B_SRC_PORT, FLOW_B_SRC_VLAN, "in_port", 0,
-                        getFlowSetFieldAction(FLOW_B_DST_VLAN), FLOW_B_FORWARD_METER_ID, false)),
+        return newArrayList(getSwitchFlowEntries(TEST_SWITCH_ID_D,
+                        getFlowEntry(FLOW_B_FORWARD_COOKIE_VALUE, FLOW_B_SRC_PORT, FLOW_B_SRC_VLAN, "in_port", 0,
+                                getFlowSetFieldAction(FLOW_B_DST_VLAN), FLOW_B_FORWARD_METER_ID, false)),
 
                 getSwitchFlowEntries(TEST_SWITCH_ID_D,
                         getFlowEntry(FLOW_B_FORWARD_MIRROR_COOKIE_VALUE, FLOW_B_SRC_PORT, FLOW_B_SRC_VLAN, 0,
@@ -641,7 +641,7 @@ public class SimpleSwitchRuleConverterTest {
     }
 
     private SwitchFlowEntries getSwitchFlowEntries(SwitchId switchId, FlowEntry... flowEntries) {
-        return getSwitchFlowEntries(switchId, Lists.newArrayList(flowEntries));
+        return getSwitchFlowEntries(switchId, newArrayList(flowEntries));
     }
 
     private SwitchFlowEntries getSwitchFlowEntries(SwitchId switchId, List<FlowEntry> flowEntries) {
@@ -686,7 +686,7 @@ public class SimpleSwitchRuleConverterTest {
                         .applyActions(FlowApplyActions.builder()
                                 .flowOutput(dstPort)
                                 .setFieldActions(flowSetFieldAction == null
-                                        ? Lists.newArrayList() : Lists.newArrayList(flowSetFieldAction))
+                                        ? newArrayList() : newArrayList(flowSetFieldAction))
                                 .pushVxlan(tunnelIdIngressRule ? String.valueOf(tunnelId) : null)
                                 .build())
                         .goToMeter(meterId)
@@ -711,7 +711,7 @@ public class SimpleSwitchRuleConverterTest {
                         .applyActions(FlowApplyActions.builder()
                                 .group(group)
                                 .setFieldActions(flowSetFieldAction == null
-                                        ? Lists.newArrayList() : Lists.newArrayList(flowSetFieldAction))
+                                        ? newArrayList() : newArrayList(flowSetFieldAction))
                                 .pushVxlan(tunnelIdIngressRule ? String.valueOf(tunnelId) : null)
                                 .build())
                         .goToMeter(meterId)
@@ -753,8 +753,8 @@ public class SimpleSwitchRuleConverterTest {
                     .cookie(FLOW_A_FORWARD_MIRROR_COOKIE_VALUE)
                     .groupId(FLOW_GROUP_ID_A)
                     .groupBuckets(
-                            Lists.newArrayList(new SimpleGroupBucket(FLOW_A_SEGMENT_A_SRC_PORT, FLOW_A_ENCAP_ID, 0),
-                                    new SimpleGroupBucket(FLOW_GROUP_ID_A_OUT_PORT, FLOW_GROUP_ID_A_OUT_VLAN, 0)))
+                            sorted(newArrayList(new SimpleGroupBucket(FLOW_A_SEGMENT_A_SRC_PORT, FLOW_A_ENCAP_ID, 0),
+                                    new SimpleGroupBucket(FLOW_GROUP_ID_A_OUT_PORT, FLOW_GROUP_ID_A_OUT_VLAN, 0))))
                     .build());
         }
         simpleSwitchRules.add(SimpleSwitchRule.builder()
@@ -802,8 +802,8 @@ public class SimpleSwitchRuleConverterTest {
                     .cookie(FLOW_A_FORWARD_MIRROR_COOKIE_VALUE)
                     .groupId(FLOW_GROUP_ID_A)
                     .groupBuckets(
-                            Lists.newArrayList(new SimpleGroupBucket(FLOW_A_SEGMENT_A_SRC_PORT, 0, FLOW_A_ENCAP_ID),
-                                    new SimpleGroupBucket(FLOW_GROUP_ID_A_OUT_PORT, FLOW_GROUP_ID_A_OUT_VLAN, 0)))
+                            sorted(newArrayList(new SimpleGroupBucket(FLOW_A_SEGMENT_A_SRC_PORT, 0, FLOW_A_ENCAP_ID),
+                                    new SimpleGroupBucket(FLOW_GROUP_ID_A_OUT_PORT, FLOW_GROUP_ID_A_OUT_VLAN, 0))))
                     .build());
         }
         simpleSwitchRules.add(SimpleSwitchRule.builder()
@@ -850,19 +850,24 @@ public class SimpleSwitchRuleConverterTest {
                     .outPort(0)
                     .cookie(FLOW_B_FORWARD_MIRROR_COOKIE_VALUE)
                     .groupId(FLOW_GROUP_ID_A)
-                    .groupBuckets(
-                            Lists.newArrayList(new SimpleGroupBucket(FLOW_B_SRC_PORT, 0, 0),
-                                    new SimpleGroupBucket(FLOW_GROUP_ID_A_OUT_PORT, FLOW_GROUP_ID_A_OUT_VLAN, 0)))
+                    .groupBuckets(sorted(
+                            sorted(newArrayList(new SimpleGroupBucket(FLOW_B_SRC_PORT, 0, 0),
+                                    new SimpleGroupBucket(FLOW_GROUP_ID_A_OUT_PORT, FLOW_GROUP_ID_A_OUT_VLAN, 0)))))
                     .build());
         }
 
         return simpleSwitchRules;
     }
 
+    private List<SimpleGroupBucket> sorted(List<SimpleGroupBucket> buckets) {
+        buckets.sort(simpleSwitchRuleConverter::compareSimpleGroupBucket);
+        return buckets;
+    }
+
     private List<SwitchGroupEntries> getSwitchGroupEntriesTransitVlan(int mainPort, int transitVlan) {
         return Collections.singletonList(SwitchGroupEntries.builder()
                 .switchId(TEST_SWITCH_ID_A)
-                .groupEntries(Lists.newArrayList(getGroupEntry(
+                .groupEntries(newArrayList(getGroupEntry(
                         FLOW_GROUP_ID_A, mainPort, transitVlan, FLOW_GROUP_ID_A_OUT_PORT, FLOW_GROUP_ID_A_OUT_VLAN)))
                 .build());
     }
@@ -870,7 +875,7 @@ public class SimpleSwitchRuleConverterTest {
     private GroupEntry getGroupEntry(int groupId, int mainPort, int transitVlan, int groupOutPort, int groupOutVlan) {
         return GroupEntry.builder()
                 .groupId(groupId)
-                .buckets(Lists.newArrayList(new GroupBucket(0, FlowApplyActions.builder()
+                .buckets(newArrayList(new GroupBucket(0, FlowApplyActions.builder()
                                 .flowOutput(String.valueOf(groupOutPort))
                                 .setFieldActions(Collections.singletonList(FlowSetFieldAction.builder()
                                         .fieldName("vlan_vid")
@@ -890,9 +895,9 @@ public class SimpleSwitchRuleConverterTest {
     private List<SwitchGroupEntries> getSwitchGroupEntriesVxlan(int mainPort, int vni) {
         return Collections.singletonList(SwitchGroupEntries.builder()
                 .switchId(TEST_SWITCH_ID_A)
-                .groupEntries(Lists.newArrayList(GroupEntry.builder()
+                .groupEntries(newArrayList(GroupEntry.builder()
                         .groupId(FLOW_GROUP_ID_A)
-                        .buckets(Lists.newArrayList(new GroupBucket(0, FlowApplyActions.builder()
+                        .buckets(newArrayList(new GroupBucket(0, FlowApplyActions.builder()
                                         .flowOutput(String.valueOf(FLOW_GROUP_ID_A_OUT_PORT))
                                         .setFieldActions(Collections.singletonList(FlowSetFieldAction.builder()
                                                 .fieldName("vlan_vid")

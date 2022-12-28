@@ -66,7 +66,7 @@ public class RevertFlowMirrorPathAllocationAction
             Flow flow = getFlow(stateMachine.getFlowId());
             PathId oppositePathId = flow.getOppositePathId(stateMachine.getFlowPathId()).orElse(null);
             Set<PathId> involvedPaths = newHashSet(stateMachine.getFlowPathId(), oppositePathId);
-            DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths,
+            DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, newHashSet(),
                     newHashSet(stateMachine.getMirrorSwitchId()), false);
             stateMachine.getRevertCommands().addAll(ruleManager.buildMirrorPointRules(mirrorPoints.get(), dataAdapter));
         } else {

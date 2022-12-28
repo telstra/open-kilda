@@ -239,7 +239,6 @@ public class FermaFlowMirrorRepositoryTest extends InMemoryGraphBasedTest {
         assertEquals(TEST_MIRROR_PATH_ID_1, mirror2.get().getForwardPathId());
     }
 
-
     private void createTestFlowMirrors() {
         FlowMirror mirrorA = createFlowMirror(TEST_FLOW_MIRROR_ID_1, switchA, switchB, 2, 3, 4);
         FlowMirror mirrorB = createFlowMirror(TEST_FLOW_MIRROR_ID_2, switchA, switchC, 3, 4, 5);

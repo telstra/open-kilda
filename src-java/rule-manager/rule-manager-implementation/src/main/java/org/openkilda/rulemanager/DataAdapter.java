@@ -16,6 +16,9 @@
 package org.openkilda.rulemanager;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowMirror;
+import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.KildaFeatureToggles;
@@ -33,6 +36,12 @@ import java.util.Set;
 public interface DataAdapter {
 
     Map<PathId, FlowPath> getFlowPaths();
+
+    Map<PathId, FlowMirrorPath> getFlowMirrorPaths();
+
+    FlowMirror getFlowMirror(PathId pathId);
+
+    FlowMirrorPoints getFlowMirrorPoints(PathId pathId);
 
     Flow getFlow(PathId pathId);
 

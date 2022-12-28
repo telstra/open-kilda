@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.validation;
 
+import static java.lang.String.format;
+import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT;
 
 import org.openkilda.adapter.FlowSideAdapter;
@@ -43,6 +45,7 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.SimpleSwitchRule.SimpleGroupBucket;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.SimpleSwitchRule.SimpleSwitchRuleBuilder;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.math.NumberUtils;
 
@@ -127,12 +130,12 @@ public class SimpleSwitchRuleConverter {
                             .equals(flowPath.getSrcSwitchId()))
                     .findAny()
                     .orElseThrow(() -> new IllegalStateException(
-                            String.format("PathSegment was not found for ingress flow rule, flowId: %s",
+                            format("PathSegment was not found for ingress flow rule, flowId: %s",
                                     flow.getFlowId())));
 
             outPort = ingressSegment.getSrcPort();
             rule.setOutPort(outPort);
-            if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
+            if (flow.getEncapsulationType().equals(TRANSIT_VLAN)) {
                 transitVlan = encapsulationId.getEncapsulationId();
                 rule.setOutVlan(calcVlanSetSequence(ingress, flowPath, Collections.singletonList(transitVlan)));
             } else if (flow.getEncapsulationType().equals(FlowEncapsulationType.VXLAN)) {
@@ -198,7 +201,7 @@ public class SimpleSwitchRuleConverter {
         PathSegment egressSegment = orderedSegments.get(orderedSegments.size() - 1);
         if (!egressSegment.getDestSwitchId().equals(flowPath.getDestSwitchId())) {
             throw new IllegalStateException(
-                    String.format("PathSegment was not found for egress flow rule, flowId: %s", flow.getFlowId()));
+                    format("PathSegment was not found for egress flow rule, flowId: %s", flow.getFlowId()));
         }
         rules.addAll(buildEgressSimpleSwitchRules(flow, flowPath, egressSegment, encapsulationId));
 
@@ -238,7 +241,7 @@ public class SimpleSwitchRuleConverter {
                 .outPort(dstPathSegment.getSrcPort())
                 .cookie(flowPath.getCookie().getValue())
                 .build();
-        if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
+        if (flow.getEncapsulationType().equals(TRANSIT_VLAN)) {
             rule.setInVlan(encapsulationId.getEncapsulationId());
         } else if (flow.getEncapsulationType().equals(FlowEncapsulationType.VXLAN)) {
             rule.setTunnelId(encapsulationId.getEncapsulationId());
@@ -286,7 +289,7 @@ public class SimpleSwitchRuleConverter {
                 .egressRule(true)
                 .build();
 
-        if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
+        if (flow.getEncapsulationType().equals(TRANSIT_VLAN)) {
             rule.setInVlan(encapsulationId.getEncapsulationId());
             rule.setOutVlan(calcVlanSetSequence(
                     Collections.singletonList(encapsulationId.getEncapsulationId()),
@@ -461,7 +464,8 @@ public class SimpleSwitchRuleConverter {
         return buckets;
     }
 
-    private int compareSimpleGroupBucket(SimpleGroupBucket simpleGroupBucketA, SimpleGroupBucket simpleGroupBucketB) {
+    @VisibleForTesting
+    int compareSimpleGroupBucket(SimpleGroupBucket simpleGroupBucketA, SimpleGroupBucket simpleGroupBucketB) {
         if (simpleGroupBucketA.getOutPort() == simpleGroupBucketB.getOutPort()) {
             return Integer.compare(simpleGroupBucketA.getOutVlan(), simpleGroupBucketB.getOutVlan());
         }

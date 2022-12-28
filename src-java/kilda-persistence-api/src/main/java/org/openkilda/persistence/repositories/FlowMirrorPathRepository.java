@@ -15,12 +15,17 @@
 
 package org.openkilda.persistence.repositories;
 
+import org.openkilda.model.FlowMirror;
 import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
+import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public interface FlowMirrorPathRepository extends Repository<FlowMirrorPath> {
     boolean exists(PathId mirrorPathId);
@@ -28,6 +33,16 @@ public interface FlowMirrorPathRepository extends Repository<FlowMirrorPath> {
     Collection<FlowMirrorPath> findAll();
 
     Optional<FlowMirrorPath> findById(PathId pathId);
+
+    Map<PathId, FlowMirrorPath> findByIds(Set<PathId> pathIds);
+
+    Collection<FlowMirrorPath> findByEndpointSwitch(SwitchId switchId);
+
+    Collection<FlowMirrorPath> findBySegmentSwitch(SwitchId switchId);
+
+    Map<PathId, FlowMirror> findFlowsMirrorsByPathIds(Set<PathId> pathIds);
+
+    Map<PathId, FlowMirrorPoints> findFlowsMirrorPointsByPathIds(Set<PathId> pathIds);
 
     void updateStatus(PathId pathId, FlowPathStatus pathStatus);
 

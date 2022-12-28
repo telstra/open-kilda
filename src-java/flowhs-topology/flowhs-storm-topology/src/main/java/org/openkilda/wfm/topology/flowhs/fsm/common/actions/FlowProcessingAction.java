@@ -17,10 +17,16 @@ package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.PathSegment;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Slf4j
 public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, C, ?>, S, E, C>
@@ -40,5 +46,16 @@ public abstract class FlowProcessingAction<T extends FlowProcessingFsm<T, S, E, 
 
     protected void handleError(T stateMachine, String errorMessage, Exception ex) {
         stateMachine.fireError(errorMessage);
+    }
+
+    protected Set<SwitchId> getInvolvedSwitches(List<PathSegment> segments) {
+        Set<SwitchId> result = new HashSet<>();
+        if (!segments.isEmpty()) {
+            result.add(segments.get(0).getSrcSwitchId());
+        }
+        for (PathSegment segment : segments) {
+            result.add(segment.getDestSwitchId());
+        }
+        return result;
     }
 }

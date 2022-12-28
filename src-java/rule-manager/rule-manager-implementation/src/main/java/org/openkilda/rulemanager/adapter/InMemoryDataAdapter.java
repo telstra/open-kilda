@@ -18,6 +18,9 @@ package org.openkilda.rulemanager.adapter;
 import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowMirror;
+import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.KildaFeatureToggles;
@@ -43,6 +46,9 @@ public class InMemoryDataAdapter implements DataAdapter {
 
     Map<PathId, FlowPath> flowPaths;
     Map<PathId, Flow> flows;
+    Map<PathId, FlowMirrorPath> flowMirrorPaths;
+    Map<PathId, FlowMirror> flowMirrors;
+    Map<PathId, FlowMirrorPoints> flowMirrorPoints;
     Map<PathId, FlowTransitEncapsulation> transitEncapsulations;
     Map<SwitchId, Switch> switches;
     Map<SwitchId, SwitchProperties> switchProperties;
@@ -58,6 +64,24 @@ public class InMemoryDataAdapter implements DataAdapter {
             throw new IllegalStateException(format("Flow for pathId '%s' not found.", pathId));
         }
         return flow;
+    }
+
+    @Override
+    public FlowMirror getFlowMirror(PathId pathId) {
+        FlowMirror flowMirror = flowMirrors.get(pathId);
+        if (flowMirror == null) {
+            throw new IllegalStateException(format("Flow mirror for pathId '%s' not found.", pathId));
+        }
+        return flowMirror;
+    }
+
+    @Override
+    public FlowMirrorPoints getFlowMirrorPoints(PathId pathId) {
+        FlowMirrorPoints flowMirrorPoint = flowMirrorPoints.get(pathId);
+        if (flowMirrorPoint == null) {
+            throw new IllegalStateException(format("Flow mirror points for pathId '%s' not found.", pathId));
+        }
+        return flowMirrorPoint;
     }
 
     @Override

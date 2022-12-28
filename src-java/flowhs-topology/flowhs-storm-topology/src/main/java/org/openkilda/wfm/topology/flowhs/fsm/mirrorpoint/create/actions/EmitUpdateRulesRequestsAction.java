@@ -112,7 +112,7 @@ public class EmitUpdateRulesRequestsAction extends
                                 flowPathId, stateMachine.getMirrorSwitchId())));
 
         Set<PathId> involvedPaths = newHashSet(path.getPathId(), oppositePathId);
-        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths,
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, newHashSet(),
                 newHashSet(stateMachine.getMirrorSwitchId()), false);
 
         return ruleManager.buildMirrorPointRules(mirrorPoint, dataAdapter);

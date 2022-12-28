@@ -107,7 +107,7 @@ public class EmitRemoveRulesRequestsAction extends
         PathId flowPathId = stateMachine.getFlowPathId();
         Set<PathId> involvedPaths = newHashSet(flowPathId);
         getFlow(stateMachine.getFlowId()).getOppositePathId(flowPathId).ifPresent(involvedPaths::add);
-        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths,
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, newHashSet(),
                 newHashSet(stateMachine.getMirrorSwitchId()), false);
 
         return ruleManager.buildMirrorPointRules(mirrorPoints, dataAdapter);

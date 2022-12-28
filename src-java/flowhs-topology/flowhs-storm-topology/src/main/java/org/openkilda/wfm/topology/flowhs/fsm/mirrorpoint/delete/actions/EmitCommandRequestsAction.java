@@ -117,7 +117,7 @@ public class EmitCommandRequestsAction extends
                 format("Flow path %s not found", flowPathId)));
         Set<PathId> involvedPaths = newHashSet(stateMachine.getFlowPathId());
         getFlow(stateMachine.getFlowId()).getOppositePathId(path.getPathId()).ifPresent(involvedPaths::add);
-        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths,
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths, newHashSet(),
                 newHashSet(stateMachine.getMirrorSwitchId()), false);
 
         return ruleManager.buildMirrorPointRules(mirrorPoints, dataAdapter);

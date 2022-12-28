@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.validation;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.info.flow.FlowValidationResponse;
 import org.openkilda.messaging.info.flow.PathDiscrepancyEntity;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
@@ -204,14 +206,14 @@ public class FlowValidationService {
         EncapsulationId encapsulationId = null;
 
         if (!flow.isOneSwitchFlow()) {
-            Optional<EncapsulationResources> encapsulationResources =
+            Optional<? extends EncapsulationResources> encapsulationResources =
                     flowResourcesManager.getEncapsulationResources(flowPath.getPathId(), oppositePath.getPathId(),
                             flow.getEncapsulationType());
             if (encapsulationResources.isPresent()) {
                 encapsulationId = encapsulationResources.get().getEncapsulation();
             } else {
                 throw new IllegalStateException(
-                        String.format("Encapsulation id was not found, pathId: %s", flowPath.getPathId()));
+                        format("Encapsulation id was not found, pathId: %s", flowPath.getPathId()));
             }
         }
 

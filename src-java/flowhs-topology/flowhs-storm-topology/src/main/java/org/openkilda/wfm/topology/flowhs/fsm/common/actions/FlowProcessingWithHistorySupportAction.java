@@ -28,14 +28,21 @@ import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirror;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
+import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
+import org.openkilda.persistence.repositories.FlowMirrorRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -70,9 +77,14 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
     protected final TransactionManager transactionManager;
     protected final FlowRepository flowRepository;
     protected final FlowPathRepository flowPathRepository;
+    protected final FlowMirrorPathRepository flowMirrorPathRepository;
+    protected final FlowMirrorRepository flowMirrorRepository;
+    protected final FlowMirrorPointsRepository flowMirrorPointsRepository;
+    protected final IslRepository islRepository;
     protected final SwitchPropertiesRepository switchPropertiesRepository;
     protected final SwitchRepository switchRepository;
     protected final KildaFeatureTogglesRepository featureTogglesRepository;
+    protected final KildaConfigurationRepository kildaConfigurationRepository;
 
     protected FlowProcessingWithHistorySupportAction(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -80,9 +92,15 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
+        this.flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();
+        this.flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
+        this.flowMirrorRepository = repositoryFactory.createFlowMirrorRepository();
+        this.islRepository = repositoryFactory.createIslRepository();
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
+        this.kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
+                .createKildaConfigurationRepository();
     }
 
     protected Flow getFlow(String flowId) {
@@ -101,6 +119,18 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
         return flowPathRepository.findById(pathId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Flow path %s not found", pathId)));
+    }
+
+    protected FlowMirror getFlowMirror(String flowMirrorId) {
+        return flowMirrorRepository.findById(flowMirrorId)
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                        format("Flow mirror %s not found", flowMirrorId)));
+    }
+
+    protected FlowMirrorPath getFlowMirrorPath(PathId mirrorPathId) {
+        return flowMirrorPathRepository.findById(mirrorPathId)
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                        format("Flow mirror path %s not found", mirrorPathId)));
     }
 
     protected Set<String> findFlowsIdsByEndpointWithMultiTable(SwitchId switchId, int port) {
@@ -179,6 +209,12 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                         .filter(diverseFlow -> !flow.getFlowId().equals(diverseFlow.getFlowId())
                                 || (flow.getYFlowId() != null && !flow.getYFlowId().equals(diverseFlow.getYFlowId())))
                         .collect(Collectors.toSet());
+    }
+
+    protected Switch getSwitch(SwitchId switchId) {
+        return switchRepository.findById(switchId)
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                        format("Switch %s not found", switchId)));
     }
 
     protected SwitchProperties getSwitchProperties(SwitchId ingressSwitchId) {
