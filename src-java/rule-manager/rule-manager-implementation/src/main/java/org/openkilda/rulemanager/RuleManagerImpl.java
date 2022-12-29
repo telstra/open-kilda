@@ -92,9 +92,9 @@ public class RuleManagerImpl implements RuleManager {
             if (filterOutUsedSharedRules) {
                 overlappingAdapters = getOverlappingMultiTableIngressAdapters(flowPath, adapter);
             }
-            buildIngressCommands(adapter.getSwitch(flowPath.getSrcSwitchId()), flowPath, flow, encapsulation,
-                    overlappingAdapters, adapter.getSwitchProperties(flowPath.getSrcSwitchId()),
-                    adapter.getFeatureToggles());
+            result.addAll(buildIngressCommands(adapter.getSwitch(
+                            flowPath.getSrcSwitchId()), flowPath, flow, encapsulation, overlappingAdapters,
+                    adapter.getSwitchProperties(flowPath.getSrcSwitchId()), adapter.getFeatureToggles()));
         }
 
         if (flowPath.isOneSwitchFlow()) {
@@ -478,15 +478,15 @@ public class RuleManagerImpl implements RuleManager {
     public List<SpeakerData> buildMirrorPointRules(FlowMirrorPoints mirrorPoints, DataAdapter adapter) {
         FlowPath flowPath = adapter.getFlowPaths().get(mirrorPoints.getFlowPathId());
         Flow flow = adapter.getFlow(flowPath.getPathId());
-        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(
+        FlowTransitEncapsulation flowEncapsulation = adapter.getTransitEncapsulation(
                 flowPath.getPathId(), flow.getOppositePathId(flowPath.getPathId()).orElse(null));
         List<SpeakerData> result = new ArrayList<>();
 
         if (mirrorPoints.getMirrorSwitchId().equals(flowPath.getSrcSwitchId())) {
-            result.addAll(flowRulesFactory.getIngressMirrorRuleGenerator(flowPath, flow, encapsulation, null)
+            result.addAll(flowRulesFactory.getIngressMirrorRuleGenerator(flowPath, flow, flowEncapsulation, null)
                     .generateCommands(adapter.getSwitch(mirrorPoints.getMirrorSwitchId())));
         } else if (mirrorPoints.getMirrorSwitchId().equals(flowPath.getDestSwitchId())) {
-            result.addAll(flowRulesFactory.getEgressMirrorRuleGenerator(flowPath, flow, encapsulation)
+            result.addAll(flowRulesFactory.getEgressMirrorRuleGenerator(flowPath, flow, flowEncapsulation)
                     .generateCommands(adapter.getSwitch(mirrorPoints.getMirrorSwitchId())));
 
         }
@@ -687,13 +687,18 @@ public class RuleManagerImpl implements RuleManager {
         for (int i = 1; i < pathSegments.size(); i++) {
             PathSegment firstSegment = pathSegments.get(i - 1);
             PathSegment secondSegment = pathSegments.get(i);
-            if (switchId.equals(firstSegment.getDestSwitchId())
-                    && switchId.equals(secondSegment.getSrcSwitchId())) {
+            if (isSwitchBelongsToSegments(switchId, firstSegment, secondSegment)) {
                 result = new SwitchPathSegments(firstSegment, secondSegment);
                 break;
             }
         }
         return result;
+    }
+
+    private static boolean isSwitchBelongsToSegments(
+            SwitchId switchId, PathSegment firstSegment, PathSegment secondSegment) {
+        return switchId.equals(firstSegment.getDestSwitchId())
+                && switchId.equals(secondSegment.getSrcSwitchId());
     }
 
     private FlowTransitEncapsulation getFlowTransitEncapsulation(PathId pathId, Flow flow, DataAdapter adapter) {

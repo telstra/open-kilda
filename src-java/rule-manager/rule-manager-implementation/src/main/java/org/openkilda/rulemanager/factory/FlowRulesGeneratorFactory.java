@@ -19,6 +19,8 @@ import static java.lang.String.format;
 
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowMirror;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterId;
@@ -41,8 +43,10 @@ import org.openkilda.rulemanager.factory.generator.flow.TransitYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.VlanStatsRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopTransitRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.flow.mirror.EgressMirrorRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.flow.mirror.IngressMirrorRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.mirror.EgressMirrorPointRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.mirror.EgressSinkRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.mirror.IngressMirrorPointRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.mirror.TransitMirrorRuleGenerator;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -172,13 +176,14 @@ public class FlowRulesGeneratorFactory {
      * Get ingress mirror rule generator.
      */
     public RuleGenerator getIngressMirrorRuleGenerator(
-            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation, UUID sharedMeterCommandUuid) {
-        return IngressMirrorRuleGenerator.builder()
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation flowEncapsulation,
+            UUID sharedMeterCommandUuid) {
+        return IngressMirrorPointRuleGenerator.builder()
                 .flowPath(flowPath)
                 .flow(flow)
                 .multiTable(isPathSrcMultiTable(flowPath, flow))
                 .config(config)
-                .encapsulation(encapsulation)
+                .encapsulation(flowEncapsulation)
                 .sharedMeterCommandUuid(sharedMeterCommandUuid)
                 .build();
     }
@@ -238,15 +243,27 @@ public class FlowRulesGeneratorFactory {
     }
 
     /**
-     * Get egress mirror rule generator.
+     * Get egress mirror point rule generator.
      */
     public RuleGenerator getEgressMirrorRuleGenerator(
-            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation) {
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation flowEncapsulation) {
         checkEgressRulePreRequirements(flowPath, flow, "egress mirror");
-        return EgressMirrorRuleGenerator.builder()
+        return EgressMirrorPointRuleGenerator.builder()
                 .flowPath(flowPath)
                 .flow(flow)
-                .encapsulation(encapsulation)
+                .encapsulation(flowEncapsulation)
+                .build();
+    }
+
+    /**
+     * Get egress mirror sink rule generator.
+     */
+    public RuleGenerator getEgressMirrorSinkRuleGenerator(
+            FlowMirror flowMirror, FlowMirrorPath mirrorPath, FlowTransitEncapsulation mirrorEncapsulation) {
+        return EgressSinkRuleGenerator.builder()
+                .encapsulation(mirrorEncapsulation)
+                .flowMirror(flowMirror)
+                .mirrorPath(mirrorPath)
                 .build();
     }
 
@@ -319,6 +336,27 @@ public class FlowRulesGeneratorFactory {
                 .encapsulation(encapsulation)
                 .build();
     }
+
+    /**
+     * Get transit mirror rule generator.
+     */
+    public RuleGenerator getTransitMirrorRuleGenerator(
+            FlowMirrorPath mirrorPath, FlowTransitEncapsulation encapsulation,
+            PathSegment firstSegment, PathSegment secondSegment) {
+        if (!firstSegment.getDestSwitchId().equals(secondSegment.getSrcSwitchId())) {
+            throw new IllegalArgumentException(format(
+                    "Couldn't create transit rule for mirror path %s because segments switch ids are different: %s, %s",
+                    mirrorPath.getMirrorPathId(), firstSegment.getDestSwitchId(), secondSegment.getSrcSwitchId()));
+        }
+
+        return TransitMirrorRuleGenerator.builder()
+                .flowMirrorPath(mirrorPath)
+                .encapsulation(encapsulation)
+                .inPort(firstSegment.getDestPort())
+                .outPort(secondSegment.getSrcPort())
+                .build();
+    }
+
 
     private boolean isSegmentMultiTable(PathSegment first, PathSegment second) {
         if (first.isDestWithMultiTable() != second.isSrcWithMultiTable()) {

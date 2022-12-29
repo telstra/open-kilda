@@ -63,7 +63,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @SuperBuilder
-public class IngressMirrorRuleGenerator extends IngressRuleGenerator {
+public class IngressMirrorPointRuleGenerator extends IngressRuleGenerator {
     private boolean multiTable;
     private UUID sharedMeterCommandUuid;
 

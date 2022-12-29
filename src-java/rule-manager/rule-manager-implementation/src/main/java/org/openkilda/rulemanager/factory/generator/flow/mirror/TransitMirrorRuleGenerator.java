@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,61 +13,63 @@
  *   limitations under the License.
  */
 
-package org.openkilda.rulemanager.factory.generator.flow;
+package org.openkilda.rulemanager.factory.generator.flow.mirror;
 
-import static org.openkilda.rulemanager.utils.Utils.checkAndBuildEgressEndpoint;
-
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowEndpoint;
-import org.openkilda.model.FlowPath;
-import org.openkilda.model.PathSegment;
+import org.openkilda.model.FlowMirrorPath;
+import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
+import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
+import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.SpeakerData;
+import org.openkilda.rulemanager.action.PortOutAction;
+import org.openkilda.rulemanager.factory.generator.flow.NotIngressRuleGenerator;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import lombok.experimental.SuperBuilder;
-import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @SuperBuilder
-@Slf4j
-public class EgressRuleGenerator extends EgressBaseRuleGenerator {
+public class TransitMirrorRuleGenerator extends NotIngressRuleGenerator {
 
-    protected final FlowPath flowPath;
-    protected final Flow flow;
+    protected final FlowMirrorPath flowMirrorPath;
+    protected final int inPort;
+    protected final int outPort;
+    protected final FlowTransitEncapsulation encapsulation;
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
-        if (flowPath.isOneSwitchFlow() || flowPath.getSegments().isEmpty()) {
+        if (flowMirrorPath.isSingleSwitchPath() || flowMirrorPath.isDummy()) {
             return new ArrayList<>();
         }
 
-        PathSegment lastSegment = flowPath.getSegments().get(flowPath.getSegments().size() - 1);
-        FlowEndpoint endpoint = checkAndBuildEgressEndpoint(flow, flowPath, sw.getSwitchId());
-        return Lists.newArrayList(buildEgressCommand(sw, lastSegment.getDestPort(), endpoint));
+        return Lists.newArrayList(buildTransitCommand(sw, inPort, outPort));
     }
 
-    private SpeakerData buildEgressCommand(Switch sw, int inPort, FlowEndpoint egressEndpoint) {
+    private SpeakerData buildTransitCommand(Switch sw, int inPort, int outPort) {
         FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
-                .switchId(flowPath.getDestSwitchId())
+                .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
-                .cookie(flowPath.getCookie())
-                .table(flowPath.isDestWithMultiTable() ? OfTable.EGRESS : OfTable.INPUT)
-                .priority(Priority.FLOW_PRIORITY)
+                .cookie(flowMirrorPath.getCookie())
+                .table(OfTable.TRANSIT)
+                .priority(Priority.MIRROR_FLOW_PRIORITY)
                 .match(makeTransitMatch(sw, inPort, encapsulation))
                 .instructions(Instructions.builder()
-                        .applyActions(buildApplyActions(egressEndpoint, sw))
+                        .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(outPort))))
                         .build());
 
-        // todo add RESET COUNTERS flag
+        if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
+            builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
+        }
         return builder.build();
     }
 }

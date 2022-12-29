@@ -49,7 +49,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @SuperBuilder
-public class EgressMirrorRuleGenerator extends EgressRuleGenerator {
+public class EgressMirrorPointRuleGenerator extends EgressRuleGenerator {
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {

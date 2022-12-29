@@ -27,6 +27,8 @@ import static org.openkilda.rulemanager.Constants.VXLAN_SRC_IPV4_ADDRESS;
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowMirror;
+import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.MacAddress;
@@ -51,6 +53,7 @@ import org.openkilda.rulemanager.group.WatchPort;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -209,6 +212,26 @@ public final class Utils {
     }
 
     /**
+     * Builds egress endpoint from flowMirror and FlowMirrorPath and checks if target switchId equal to dst switchId.
+     */
+    public static FlowEndpoint checkAndBuildEgressEndpoint(
+            FlowMirror flowMirror, FlowMirrorPath mirrorPath, SwitchId switchId) {
+        if (!mirrorPath.getEgressSwitchId().equals(switchId)) {
+            throw new IllegalArgumentException(format("Mirror path %s has egress switchId %s. But switchId "
+                            + "must be equal to target switchId %s", mirrorPath.getMirrorPathId(),
+                    mirrorPath.getEgressSwitchId(), switchId));
+        }
+        if (!flowMirror.getEgressSwitchId().equals(switchId)) {
+            throw new IllegalArgumentException(format("Mirror point %s has egress switchId %s. But switchId "
+                            + "must be equal to target switchId %s", flowMirror.getFlowMirrorId(),
+                    flowMirror.getEgressSwitchId(), switchId));
+        }
+
+        return new FlowEndpoint(mirrorPath.getEgressSwitchId(), flowMirror.getEgressPort(),
+                flowMirror.getEgressOuterVlan(), flowMirror.getEgressInnerVlan());
+    }
+
+    /**
      * Builds match for ingress rule.
      */
     public static Set<FieldMatch> makeIngressMatch(
@@ -267,5 +290,9 @@ public final class Utils {
         return newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(endpoint.getPortNumber()).build(),
                 FieldMatch.builder().field(Field.VLAN_VID).value(endpoint.getOuterVlanId()).build());
+    }
+
+    private static boolean isEmpty(Collection<?> collection) {
+        return collection == null || collection.isEmpty();
     }
 }

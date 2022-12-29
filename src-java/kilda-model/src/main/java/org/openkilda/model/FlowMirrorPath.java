@@ -104,6 +104,10 @@ public class FlowMirrorPath implements CompositeDataEntity<FlowMirrorPathData> {
         return getMirrorSwitchId().equals(getEgressSwitchId());
     }
 
+    public boolean isForward() {
+        return FlowPathDirection.FORWARD.equals(getCookie().getDirection());
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
