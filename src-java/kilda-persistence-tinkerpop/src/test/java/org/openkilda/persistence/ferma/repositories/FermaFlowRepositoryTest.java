@@ -47,10 +47,12 @@ import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -93,6 +95,25 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         switchB = createTestSwitch(TEST_SWITCH_B_ID.getId());
 
         assertEquals(2, switchRepository.findAll().size());
+    }
+
+    @Test
+    public void findPortToFlowsMap() {
+        createTestFlow(TEST_FLOW_ID, switchA, switchB);
+        createTestFlow(TEST_FLOW_ID_2, switchA, switchB);
+        createTestFlow(TEST_FLOW_ID_3, switchA, switchB);
+
+        Map<Integer, List<Flow>> result = flowRepository.findSwitchFlowsByPort(switchA.getSwitchId(), null);
+
+        assertNotNull(result);
+        assertTrue("The map must contain a key for the port", result.containsKey(PORT_1));
+        assertNotNull("The map must contain a non-null value for the test port", result.get(PORT_1));
+        assertEquals("The map must contain exactly one key", 1, result.size());
+        assertEquals("The map must contain exactly 3 test flows", 3, result.get(PORT_1).size());
+        assertTrue("The map must contain all 3 flows",
+                result.get(PORT_1).stream().map(Flow::getFlowId).collect(Collectors.toList())
+                .containsAll(Arrays.asList(TEST_FLOW_ID, TEST_FLOW_ID_2, TEST_FLOW_ID_3)));
+
     }
 
     @Test

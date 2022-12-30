@@ -26,6 +26,7 @@ import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowFrame;
 import org.openkilda.persistence.ferma.frames.FlowPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
+import org.openkilda.persistence.ferma.frames.PathSegmentFrame;
 import org.openkilda.persistence.ferma.frames.converters.FlowStatusConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -39,9 +40,12 @@ import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -591,6 +595,57 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
                 .toListExplicit(FlowFrame.class).stream()
                 .map(Flow::new)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Map<Integer, List<Flow>> findSwitchFlowsByPort(SwitchId switchId, Collection<Integer> ports) {
+        final String pathSegmentAlias = "path_segment_alias";
+        final String flowsAlias = "flows_alias";
+
+        try {
+            @SuppressWarnings("unchecked")
+            Map<Integer, List<String>> portToFlowIdMap = framedGraph().traverse(g -> g.V()
+                    .hasLabel(PathSegmentFrame.FRAME_LABEL)
+                    .has(PathSegmentFrame.SRC_SWITCH_ID_PROPERTY, switchId.toString())
+                    .as(pathSegmentAlias)
+                    .in("owns")
+                    .in("owns")
+                    .hasLabel(FlowFrame.FRAME_LABEL)
+                    .as(flowsAlias)
+                    .select(pathSegmentAlias, flowsAlias)
+            ).getRawTraversal().fill(new ArrayList<>()).stream()
+                    .map(x -> (Map<String, Vertex>) x)
+                            .collect(Collectors.toMap(m -> Integer.valueOf(m.get(pathSegmentAlias)
+                                    .property(PathSegmentFrame.SRC_PORT_PROPERTY)
+                                    .value().toString()),
+                                m -> Collections.singletonList(m.get(flowsAlias)
+                                        .property(FlowFrame.FLOW_ID_PROPERTY)
+                                        .value().toString()),
+                                    (x, y) -> {
+                                        List<String> combined = new LinkedList<>();
+                                        combined.addAll(x);
+                                        combined.addAll(y);
+                                        return combined;
+                                    }
+                            ));
+
+            Map<String, Flow> flowIdToFlowMap = framedGraph().traverse(g -> g.V()
+                            .hasLabel(FlowFrame.FRAME_LABEL)
+                            .has(FlowFrame.FLOW_ID_PROPERTY, P.within(portToFlowIdMap.values().stream()
+                                    .flatMap(Collection::stream)
+                                    .distinct()
+                                    .collect(Collectors.toList()))))
+                    .toListExplicit(FlowFrame.class).stream()
+                    .map(Flow::new)
+                    .collect(Collectors.toMap(Flow::getFlowId, flow -> flow));
+
+            return portToFlowIdMap.entrySet().stream()
+                    .collect(Collectors.toMap(entry -> entry.getKey(),
+                            entry -> entry.getValue().stream().map(flowIdToFlowMap::get).collect(Collectors.toList())));
+        } catch (ClassCastException | NumberFormatException e) {
+            log.debug(getClass().getSimpleName() + ": an exception in findSwitchFlowsByPort: " + e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Override

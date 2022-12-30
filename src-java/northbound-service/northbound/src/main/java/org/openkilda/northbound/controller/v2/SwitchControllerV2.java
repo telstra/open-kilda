@@ -27,6 +27,7 @@ import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
 import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
@@ -54,6 +55,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -259,5 +261,24 @@ public class SwitchControllerV2 extends BaseController {
             @RequestParam(name = "include", required = false) String includeString,
             @RequestParam(name = "exclude", required = false) String excludeString) {
         return switchService.validateSwitch(switchId, includeString, excludeString);
+    }
+
+    /**
+     * Retrieves a map of all flows for each port for the given switch.
+     * When port is provided, returns flows only for the given port.
+     * Ports that don't have any associated flow are skipped, i.e. if no flows are going through this switch,
+     * returns an empty output.
+     * @param switchId a specific switch
+     * @param portId optional, Filters the output to display this port only
+     * @return mapping of port->[flows]
+     */
+    @ApiOperation(value = "Get all flows for each port for the given switch",
+            response = SwitchFlowsPerPortResponse.class)
+    @GetMapping("/{switch_id}/flows")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchFlowsPerPortResponse> getSwitchFlows(
+            @PathVariable("switch_id") SwitchId switchId,
+            @PathVariable(value = "logical_port", required = false) Integer portId) {
+        return switchService.getFlowsPerPortForSwitch(switchId, Collections.singleton(portId));
     }
 }

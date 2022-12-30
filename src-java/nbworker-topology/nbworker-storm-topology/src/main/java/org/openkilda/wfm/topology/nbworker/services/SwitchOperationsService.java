@@ -21,6 +21,7 @@ import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
+import org.openkilda.messaging.nbtopology.response.GetFlowsPerPortForSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchConnectionsResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
@@ -62,6 +63,7 @@ import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
+import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
 import org.openkilda.wfm.share.mappers.SwitchPropertiesMapper;
 
@@ -70,6 +72,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -616,6 +619,25 @@ public class SwitchOperationsService {
             payload.connection(SwitchMapper.INSTANCE.map(entry));
         }
         return new SwitchConnectionsResponse(sw.getSwitchId(), sw.getStatus(), payload.build());
+    }
+
+    /**
+     * Returns a mapping of all flows per each port for the given switch.
+     *
+     * @param switchId the target switch
+     * @param ports filters the output to contain these ports only
+     */
+    public GetFlowsPerPortForSwitchResponse getSwitchFlows(SwitchId switchId, Collection<Integer> ports)
+            throws SwitchNotFoundException {
+        if (!switchRepository.exists(switchId)) {
+            throw new SwitchNotFoundException(switchId);
+        }
+
+        return new GetFlowsPerPortForSwitchResponse(
+                flowRepository.findSwitchFlowsByPort(switchId, ports).entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream()
+                                .map(FlowMapper.INSTANCE::map).collect(Collectors.toList()))));
+
     }
 
     @Value
