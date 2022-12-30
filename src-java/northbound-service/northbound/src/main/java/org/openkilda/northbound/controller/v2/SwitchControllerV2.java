@@ -55,7 +55,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -269,7 +268,7 @@ public class SwitchControllerV2 extends BaseController {
      * Ports that don't have any associated flow are skipped, i.e. if no flows are going through this switch,
      * returns an empty output.
      * @param switchId a specific switch
-     * @param portId optional, Filters the output to display this port only
+     * @param portIds optional. Filters the output to display this port only
      * @return mapping of port->[flows]
      */
     @ApiOperation(value = "Get all flows for each port for the given switch",
@@ -278,7 +277,7 @@ public class SwitchControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<SwitchFlowsPerPortResponse> getSwitchFlows(
             @PathVariable("switch_id") SwitchId switchId,
-            @PathVariable(value = "logical_port", required = false) Integer portId) {
-        return switchService.getFlowsPerPortForSwitch(switchId, Collections.singleton(portId));
+            @RequestParam(value = "ports", required = false) List<Integer> portIds) {
+        return switchService.getFlowsPerPortForSwitch(switchId, portIds);
     }
 }

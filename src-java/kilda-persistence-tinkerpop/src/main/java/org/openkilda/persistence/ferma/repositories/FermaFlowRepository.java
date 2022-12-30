@@ -15,6 +15,8 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.has;
+
 import org.openkilda.model.Flow;
 import org.openkilda.model.Flow.FlowData;
 import org.openkilda.model.FlowFilter;
@@ -602,11 +604,15 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
         final String pathSegmentAlias = "path_segment_alias";
         final String flowsAlias = "flows_alias";
 
+        P<?> portsPredicate = (ports != null && ports.size() > 0) ? P.within(ports) : P.neq(null);
+
         try {
             @SuppressWarnings("unchecked")
             Map<Integer, List<String>> portToFlowIdMap = framedGraph().traverse(g -> g.V()
                     .hasLabel(PathSegmentFrame.FRAME_LABEL)
                     .has(PathSegmentFrame.SRC_SWITCH_ID_PROPERTY, switchId.toString())
+                    .or(has(PathSegmentFrame.SRC_PORT_PROPERTY, portsPredicate),
+                            has(PathSegmentFrame.DST_PORT_PROPERTY, portsPredicate))
                     .as(pathSegmentAlias)
                     .in("owns")
                     .in("owns")
