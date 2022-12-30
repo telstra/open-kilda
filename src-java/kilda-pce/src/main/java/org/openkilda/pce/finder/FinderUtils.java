@@ -13,21 +13,29 @@
  *   limitations under the License.
  */
 
-package org.openkilda.rulemanager;
+package org.openkilda.pce.finder;
 
-import org.openkilda.rulemanager.Constants.Priority;
+import static java.lang.String.format;
 
-public final class RulePriorityAnalyzer {
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.Map;
+
+public final class FinderUtils {
+
+    public static final String REASONS_KEYWORD = "Reasons";
+
+    private FinderUtils() {}
+
     /**
-     * Check is the priority value match the priority of generic flow endpoint rules.
+     * Returns a formatted string.
+     * @param reasons map of fail reasons
+     * @return formatted string
      */
-    public static boolean isGenericFlowEndpoint(int priority) {
-        return priority == Priority.FLOW_PRIORITY
-                || priority == Priority.DEFAULT_FLOW_PRIORITY
-                || priority == Priority.DOUBLE_VLAN_FLOW_PRIORITY;
-    }
-
-    private RulePriorityAnalyzer() {
-        // deny object creation
+    public static String reasonsToString(Map<FailReasonType, FailReason> reasons) {
+        if (reasons != null && !reasons.isEmpty()) {
+            return format("%s: %s", REASONS_KEYWORD, StringUtils.join(reasons.values(), ", "));
+        }
+        return "";
     }
 }

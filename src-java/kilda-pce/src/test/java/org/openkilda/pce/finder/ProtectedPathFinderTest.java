@@ -19,8 +19,8 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -49,8 +49,10 @@ import org.openkilda.persistence.repositories.IslRepository.IslImmutableView;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import com.google.common.collect.Lists;
+import org.hamcrest.MatcherAssert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -106,7 +108,7 @@ public class ProtectedPathFinderTest {
     }
 
     @Test
-    public void shouldNotFindProtectedPath() throws RecoverableException, UnroutableFlowException {
+    public void shouldNotFindProtectedPath() throws RecoverableException {
         // Topology:
         // A----B----C     Already created flow: A-B-C
         //                 No protected path here for this flow
@@ -163,7 +165,11 @@ public class ProtectedPathFinderTest {
         PathComputer pathComputer = new InMemoryPathComputer(
                 availableNetworkFactory, new BestWeightAndShortestPathFinder(200), config);
 
-        assertThrows(UnroutableFlowException.class, () -> pathComputer.getPath(flow, Collections.emptyList(), true));
+        Exception exception = Assertions.assertThrows(UnroutableFlowException.class, () -> {
+            pathComputer.getPath(flow, Collections.emptyList(), true);
+        });
+        MatcherAssert.assertThat(exception.getMessage(),
+                containsString(FailReasonType.HARD_DIVERSITY_PENALTIES.toString()));
     }
 
     @Test
@@ -229,8 +235,11 @@ public class ProtectedPathFinderTest {
         PathComputer pathComputer = new InMemoryPathComputer(
                 availableNetworkFactory, new BestWeightAndShortestPathFinder(200), config);
 
-        assertThrows(UnroutableFlowException.class, () -> pathComputer
-                .getPath(flow, Collections.emptyList(), true));
+        Exception exception = Assertions.assertThrows(UnroutableFlowException.class, () -> {
+            pathComputer.getPath(flow, Collections.emptyList(), true);
+        });
+        MatcherAssert.assertThat(exception.getMessage(),
+                containsString(FailReasonType.HARD_DIVERSITY_PENALTIES.toString()));
     }
 
     @Test
@@ -502,7 +511,12 @@ public class ProtectedPathFinderTest {
         PathComputer pathComputer = new InMemoryPathComputer(
                 availableNetworkFactory, new BestWeightAndShortestPathFinder(200), config);
 
-        assertThrows(UnroutableFlowException.class, () -> pathComputer.getPath(flow, Collections.emptyList(), true));
+        Exception exception = Assertions.assertThrows(UnroutableFlowException.class, () -> {
+            pathComputer.getPath(flow, Collections.emptyList(), true);
+        });
+        MatcherAssert.assertThat(exception.getMessage(),
+                containsString(FailReasonType.HARD_DIVERSITY_PENALTIES.toString()));
+
     }
 
     private static List<IslImmutableView> getBidirectionalIsls(Switch srcSwitch, int srcPort,

@@ -16,9 +16,11 @@
 package org.openkilda.pce.impl;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.model.PathComputationStrategy;
@@ -26,6 +28,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.BestWeightAndShortestPathFinder;
+import org.openkilda.pce.finder.FailReasonType;
 import org.openkilda.pce.model.Edge;
 import org.openkilda.pce.model.FindPathResult;
 import org.openkilda.pce.model.WeightFunction;
@@ -101,9 +104,9 @@ public class FindPathWithLatencyLimitsTest {
         );
     }
 
-    @Test(expected = UnroutableFlowException.class)
-    public void shouldNotFindPath() throws UnroutableFlowException {
-        /*
+    @Test
+    public void shouldNotFindPathBecauseMaxWeight() {
+        /*   they have connection, but latency of this connection is too slow
          *   Topology:
          *
          *   SW1--m--SW2--m---SW3
@@ -116,8 +119,37 @@ public class FindPathWithLatencyLimitsTest {
         WeightFunction weightFunction = pathComputer
                 .getWeightFunctionByStrategy(PathComputationStrategy.MAX_LATENCY, false);
 
-        pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_1, SWITCH_ID_3,
-                weightFunction, 100, 100);
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
+            pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_1, SWITCH_ID_3,
+                    weightFunction, 100, 100);
+        });
+
+        assertThat(exception.getMessage(), containsString(FailReasonType.MAX_WEIGHT_EXCEEDED.toString()));
+
+    }
+
+    @Test
+    public void shouldNotFindPathBecauseNoConnection() {
+        /*   switches SW1 and SW4 have no connection at all
+         *
+         *   Topology:
+         *
+         *   SW1--m--SW2   SW3----SW4
+         *
+         *   No link between SW2 and SW3
+         */
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 1, false, 55);
+        addBidirectionalLink(network, SWITCH_ID_3, SWITCH_ID_4, 1, 1, false, 55);
+
+        WeightFunction weightFunction = pathComputer
+                .getWeightFunctionByStrategy(PathComputationStrategy.MAX_LATENCY, false);
+
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
+            pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_1, SWITCH_ID_4,
+                    weightFunction, 100, 100);
+        });
+
+        assertThat(exception.getMessage(), containsString(FailReasonType.NO_CONNECTION.toString()));
     }
 
     @Test
