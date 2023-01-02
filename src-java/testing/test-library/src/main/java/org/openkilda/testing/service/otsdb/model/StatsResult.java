@@ -32,8 +32,8 @@ public class StatsResult {
     Map<String, Long> dps;
 
     /**
-     * Returns true if statistics only grow during the time
-     * @return boolean if statistics is growing on all data points (time -> value)
+     * Returns true if statistics only grow during the time.
+     * @return boolean is statistics growing on all data points (time -> value)
      */
     public boolean isGrowingMonotonically() {
         assertThat("We need at least 3 points to check if stats are growing monotonically",
