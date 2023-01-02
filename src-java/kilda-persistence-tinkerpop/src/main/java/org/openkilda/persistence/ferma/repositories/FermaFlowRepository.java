@@ -601,6 +601,8 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public Map<Integer, List<Flow>> findSwitchFlowsByPort(SwitchId switchId, Collection<Integer> ports) {
+        log.debug("{}: Starting findSwitchFlowsByPort for the switch {} for ports {}",
+                this.getClass().getSimpleName(), switchId.toString(), ports);
         final String pathSegmentAlias = "path_segment_alias";
         final String flowsAlias = "flows_alias";
 
@@ -635,14 +637,12 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
                                     }
                             ));
 
-            Map<String, Flow> flowIdToFlowMap = framedGraph().traverse(g -> g.V()
-                            .hasLabel(FlowFrame.FRAME_LABEL)
-                            .has(FlowFrame.FLOW_ID_PROPERTY, P.within(portToFlowIdMap.values().stream()
-                                    .flatMap(Collection::stream)
-                                    .distinct()
-                                    .collect(Collectors.toList()))))
-                    .toListExplicit(FlowFrame.class).stream()
-                    .map(Flow::new)
+            Map<String, Flow> flowIdToFlowMap = findFlowsByFlowIds(portToFlowIdMap.values()
+                    .stream()
+                    .flatMap(Collection::stream)
+                    .distinct()
+                    .collect(Collectors.toList()))
+                    .stream()
                     .collect(Collectors.toMap(Flow::getFlowId, flow -> flow));
 
             return portToFlowIdMap.entrySet().stream()
@@ -682,5 +682,24 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     @Override
     protected FlowData doDetach(Flow entity, FlowFrame frame) {
         return Flow.FlowCloner.INSTANCE.deepCopy(frame, entity);
+    }
+
+    /**
+     * Find all flows with filtering by flow IDs. This method does it as a single operation for better performance.
+     * @param flowIds Flow IDs for filtering.
+     * @return an empty collection if flowIds is empty,
+     *     otherwise returns a collection of Flows with the provided IDs if they exist.
+     */
+    private Collection<Flow> findFlowsByFlowIds(Collection<String> flowIds) {
+        if (flowIds == null || flowIds.size() == 0) {
+            return Collections.EMPTY_LIST;
+        }
+
+        return framedGraph().traverse(g -> g.V()
+                        .hasLabel(FlowFrame.FRAME_LABEL)
+                        .has(FlowFrame.FLOW_ID_PROPERTY, P.within(flowIds)))
+                .toListExplicit(FlowFrame.class).stream()
+                .map(Flow::new)
+                .collect(Collectors.toList());
     }
 }
