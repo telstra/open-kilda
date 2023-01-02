@@ -34,6 +34,30 @@ class Wrappers {
     }
 
     /**
+     * Safely (not throwing exceptions) executes N closure calls one by one with interval
+     *
+     * @param times number of executions
+     * @param interval pause between executions (in seconds)
+     * @param handler exception handler (receives exception on each failure)
+     * @param body operation to wrap around
+     * @return None
+     */
+    def static safeRunSeveralTimes(int times = 5,
+                                   double interval = 2,
+                                   Closure handler = { e -> log.debug("call failed", e) },
+                                   Closure body) {
+        (1..times).each {
+            try {
+                body.call()
+            } catch (Throwable t) {
+                handler.call(t)
+            }
+            sleep(interval * 1000 as long)
+        }
+
+    }
+
+    /**
      * Executes given closure in a loop for certain amount of time.
      * If time is less or equal to 0, the closure won't be executed even once.
      * Loop may take a bit longer than 'timeout' by maximum of closure execution time, since check is performed
@@ -43,7 +67,7 @@ class Wrappers {
      * @param closure code to repeat in a loop
      */
     static void timedLoop(double timeout, Closure closure) {
-        long endTime = System.currentTimeMillis() + (long)(timeout * 1000)
+        long endTime = System.currentTimeMillis() + (long) (timeout * 1000)
         while (System.currentTimeMillis() < endTime) {
             closure.call()
         }
@@ -116,7 +140,7 @@ class Wrappers {
     @InheritConstructors
     static class WaitTimeoutException extends RuntimeException {
         Throwable originalError
-        
+
         WaitTimeoutException(String message, Throwable error) {
             super(error ? message + "\nFailed with exception:\n\n$error" : message)
             originalError = error
