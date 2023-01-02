@@ -15,14 +15,14 @@
 
 package org.openkilda.testing.service.otsdb.model;
 
+import static java.util.stream.Collectors.toList;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+
 import lombok.Data;
 
 import java.util.List;
 import java.util.Map;
-
-import static java.util.stream.Collectors.toList;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 @Data
 public class StatsResult {
@@ -31,6 +31,10 @@ public class StatsResult {
     List<String> aggregateTags;
     Map<String, Long> dps;
 
+    /**
+     * Returns true if statistics only grow during the time
+     * @return boolean if statistics is growing on all data points (time -> value)
+     */
     public boolean isGrowingMonotonically() {
         assertThat("We need at least 3 points to check if stats are growing monotonically",
                 dps.values().size(), greaterThanOrEqualTo(3));
