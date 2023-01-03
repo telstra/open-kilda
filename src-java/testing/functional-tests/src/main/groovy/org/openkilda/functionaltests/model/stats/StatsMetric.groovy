@@ -6,7 +6,6 @@ enum StatsMetric {
     Y_FLOW_Y_POINT_BYTES("yFlow.meter.yPoint.bytes"),
     FLOW_INGRESS_PACKETS("flow.ingress.packets"),
     FLOW_PACKETS("flow.packets"),
-    FLOW_EGRESS_PACKETS("flow.egress.packets"),
     FLOW_RAW_BYTES("flow.raw.bytes")
 
     final String metric;

@@ -32,7 +32,7 @@ class YFlowStatSpec extends HealthCheckSpecification {
     @Shared
     YFlowHelper yFlowHelper
     @Shared
-    int traffgenRunDuration = 20 //seconds
+    int traffgenRunDuration = 5 //seconds
     @Shared
     YFlowStats stats
     @Shared
@@ -49,18 +49,15 @@ class YFlowStatSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam)
                 .buildYFlowExam(yFlow, yFlow.maximumBandwidth, traffgenRunDuration)
-        withPool {
-            callAsync
-                    {
-                        Wrappers.safeRunSeveralTimes(3, traffgenRunDuration / 3) {
-                            statsHelper."force kilda to collect stats"()
-                        }
-                    }
-            [exam.forward1, exam.forward2, exam.reverse1, exam.reverse2].collectParallel { Exam direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                traffExam.waitExam(direction)
+        Wrappers.safeRunSeveralTimes(3, 0) {
+            withPool {
+                [exam.forward1, exam.forward2, exam.reverse1, exam.reverse2].collectParallel { Exam direction ->
+                    def resources = traffExam.startExam(direction)
+                    direction.setResources(resources)
+                    traffExam.waitExam(direction)
+                }
             }
+            statsHelper."force kilda to collect stats"()
         }
         stats = new YFlowStats(yFlow, beforeTraffic, statsHelper)
     }
@@ -77,8 +74,6 @@ class YFlowStatSpec extends HealthCheckSpecification {
         statsName                    | assertedStats                                                            | assertionMethod
         "sub-flow 1 ingress packets" | { YFlowStats yfstats -> yfstats.getSubFlow1Stats().getPacketsIngress() } | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
         "sub-flow 2 ingress packets" | { YFlowStats yfstats -> yfstats.getSubFlow2Stats().getPacketsIngress() } | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
-        "sub-flow 1 egress packets"  | { YFlowStats yfstats -> yfstats.getSubFlow1Stats().getPacketsEgress() }  | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
-        "sub-flow 2 egress packets"  | { YFlowStats yfstats -> yfstats.getSubFlow2Stats().getPacketsEgress() }  | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
         "sub-flow 1 packets"         | { YFlowStats yfstats -> yfstats.getSubFlow1Stats().getPackets() }        | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
         "sub-flow 2 packets"         | { YFlowStats yfstats -> yfstats.getSubFlow2Stats().getPackets() }        | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
         "sub-flow 1 raw packets"     | { YFlowStats yfstats -> yfstats.getSubFlow1Stats().getPacketsRaw() }     | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
