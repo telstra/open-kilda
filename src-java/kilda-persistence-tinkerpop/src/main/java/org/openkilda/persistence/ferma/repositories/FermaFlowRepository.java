@@ -47,19 +47,24 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Ferma implementation of {@link FlowRepository}.
  */
 @Slf4j
 public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, FlowFrame> implements FlowRepository {
+    private static final String PATH_SEGMENT_ALIAS = "path_segment_alias";
+    private static final String FLOWS_ALIAS = "flows_alias";
+
     protected final FlowPathRepository flowPathRepository;
 
     public FermaFlowRepository(
@@ -603,51 +608,46 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     public Map<Integer, List<Flow>> findSwitchFlowsByPort(SwitchId switchId, Collection<Integer> ports) {
         log.debug("{}: Starting findSwitchFlowsByPort for the switch {} for ports {}",
                 this.getClass().getSimpleName(), switchId.toString(), ports);
-        final String pathSegmentAlias = "path_segment_alias";
-        final String flowsAlias = "flows_alias";
-
-        P<?> portsPredicate = (ports != null && ports.size() > 0) ? P.within(ports) : P.neq(null);
 
         try {
             @SuppressWarnings("unchecked")
-            Map<Integer, List<String>> portToFlowIdMap = framedGraph().traverse(g -> g.V()
-                    .hasLabel(PathSegmentFrame.FRAME_LABEL)
-                    .has(PathSegmentFrame.SRC_SWITCH_ID_PROPERTY, switchId.toString())
-                    .or(has(PathSegmentFrame.SRC_PORT_PROPERTY, portsPredicate),
-                            has(PathSegmentFrame.DST_PORT_PROPERTY, portsPredicate))
-                    .as(pathSegmentAlias)
-                    .in("owns")
-                    .in("owns")
-                    .hasLabel(FlowFrame.FRAME_LABEL)
-                    .as(flowsAlias)
-                    .select(pathSegmentAlias, flowsAlias)
-            ).getRawTraversal().fill(new ArrayList<>()).stream()
-                    .map(x -> (Map<String, Vertex>) x)
-                            .collect(Collectors.toMap(m -> Integer.valueOf(m.get(pathSegmentAlias)
-                                    .property(PathSegmentFrame.SRC_PORT_PROPERTY)
-                                    .value().toString()),
-                                m -> Collections.singletonList(m.get(flowsAlias)
-                                        .property(FlowFrame.FLOW_ID_PROPERTY)
-                                        .value().toString()),
-                                    (x, y) -> {
-                                        List<String> combined = new LinkedList<>();
-                                        combined.addAll(x);
-                                        combined.addAll(y);
-                                        return combined;
-                                    }
-                            ));
+            Map<Integer, List<String>> portToFlowIdMap = collectToPortToFlowMap(framedGraph().traverse(g -> g.V()
+                            .hasLabel(PathSegmentFrame.FRAME_LABEL)
+                            .or(
+                                    has(PathSegmentFrame.SRC_SWITCH_ID_PROPERTY, switchId.toString()),
+                                    has(PathSegmentFrame.DST_SWITCH_ID_PROPERTY, switchId.toString()))
+                            .as(PATH_SEGMENT_ALIAS)
+                            .in("owns")
+                            .in("owns")
+                            .hasLabel(FlowFrame.FRAME_LABEL)
+                            .as(FLOWS_ALIAS)
+                            .select(PATH_SEGMENT_ALIAS, FLOWS_ALIAS)
+                    ).getRawTraversal().fill(new ArrayList<>()).stream().map(x -> (Map<String, Vertex>) x),
+                    PathSegmentFrame.SRC_PORT_PROPERTY, PathSegmentFrame.DST_PORT_PROPERTY);
 
             Map<String, Flow> flowIdToFlowMap = findFlowsByFlowIds(portToFlowIdMap.values()
                     .stream()
                     .flatMap(Collection::stream)
-                    .distinct()
-                    .collect(Collectors.toList()))
+                    .collect(Collectors.toSet()))
                     .stream()
                     .collect(Collectors.toMap(Flow::getFlowId, flow -> flow));
 
+            Predicate<Map.Entry<Integer, List<String>>> portsPredicate =
+                    (ports != null && ports.size() > 0) ? e -> ports.contains(e.getKey()) : e -> true;
+
             return portToFlowIdMap.entrySet().stream()
-                    .collect(Collectors.toMap(entry -> entry.getKey(),
-                            entry -> entry.getValue().stream().map(flowIdToFlowMap::get).collect(Collectors.toList())));
+                    .filter(portsPredicate)
+                    .collect(Collectors.toMap(Map.Entry::getKey,
+                            entry -> entry.getValue().stream()
+                                    .distinct()
+                                    .map(flowIdToFlowMap::get)
+                                    .collect(Collectors.toList()),
+                            (l1, l2) ->
+                                    Stream.of(l1, l2).flatMap(Collection::stream)
+                                            .sorted()
+                                            .distinct()
+                                            .collect(Collectors.toList()),
+                                    TreeMap::new));
         } catch (ClassCastException | NumberFormatException e) {
             log.debug(getClass().getSimpleName() + ": an exception in findSwitchFlowsByPort: " + e.getMessage(), e);
             throw e;
@@ -701,5 +701,23 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
                 .toListExplicit(FlowFrame.class).stream()
                 .map(Flow::new)
                 .collect(Collectors.toList());
+    }
+
+    private Map<Integer, List<String>> collectToPortToFlowMap(Stream<Map<String, Vertex>> aliasToVertexMap,
+                                                              String... properties) {
+        final Map<Integer, List<String>> portToFlowIdMap = new HashMap<>();
+
+        aliasToVertexMap.forEach(e -> {
+            for (String property : properties) {
+                portToFlowIdMap.merge(Integer.valueOf(e.get(PATH_SEGMENT_ALIAS)
+                                .property(property).value().toString()),
+                        Collections.singletonList(e.get(FLOWS_ALIAS)
+                                .property(FlowFrame.FLOW_ID_PROPERTY)
+                                .value().toString()),
+                        (l1, l2) -> Stream.of(l1, l2).flatMap(Collection::stream).collect(Collectors.toList()));
+            }
+        });
+
+        return portToFlowIdMap;
     }
 }

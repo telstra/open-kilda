@@ -16,11 +16,11 @@
 package org.openkilda.persistence.ferma.repositories;
 
 import static com.google.common.collect.Sets.newHashSet;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.Flow;
@@ -78,12 +78,13 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     public static final int VLAN_3 = 5;
     public static final Set<Integer> STAT_VLANS = Sets.newHashSet(6, 7, 8);
 
-    FlowRepository flowRepository;
-    FlowPathRepository flowPathRepository;
-    SwitchRepository switchRepository;
+    private FlowRepository flowRepository;
+    private FlowPathRepository flowPathRepository;
+    private SwitchRepository switchRepository;
 
-    Switch switchA;
-    Switch switchB;
+    private Switch switchA;
+    private Switch switchB;
+    private Switch switchC;
 
     @Before
     public void setUp() {
@@ -93,8 +94,9 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
 
         switchA = createTestSwitch(TEST_SWITCH_A_ID.getId());
         switchB = createTestSwitch(TEST_SWITCH_B_ID.getId());
+        switchC = createTestSwitch(TEST_SWITCH_C_ID.getId());
 
-        assertEquals(2, switchRepository.findAll().size());
+        assertEquals(3, switchRepository.findAll().size());
     }
 
     @Test
@@ -102,18 +104,39 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         createTestFlow(TEST_FLOW_ID, switchA, switchB);
         createTestFlow(TEST_FLOW_ID_2, switchA, switchB);
         createTestFlow(TEST_FLOW_ID_3, switchA, switchB);
+        createTestFlow(TEST_FLOW_ID_4, switchC, switchB);
 
         Map<Integer, List<Flow>> result = flowRepository.findSwitchFlowsByPort(switchA.getSwitchId(), null);
 
         assertNotNull(result);
         assertTrue("The map must contain a key for the port", result.containsKey(PORT_1));
         assertNotNull("The map must contain a non-null value for the test port", result.get(PORT_1));
-        assertEquals("The map must contain exactly one key", 1, result.size());
-        assertEquals("The map must contain exactly 3 test flows", 3, result.get(PORT_1).size());
-        assertTrue("The map must contain all 3 flows",
+        assertEquals("The map must contain exactly two keys", 2, result.size());
+        assertEquals("The map must contain exactly 3 flows", 3, result.get(PORT_1).size());
+        assertTrue("The map must contain exactly 3 flows",
                 result.get(PORT_1).stream().map(Flow::getFlowId).collect(Collectors.toList())
                 .containsAll(Arrays.asList(TEST_FLOW_ID, TEST_FLOW_ID_2, TEST_FLOW_ID_3)));
+    }
 
+    @Test
+    public void findPortToFlowsMapWithFilter() {
+        createTestFlow(TEST_FLOW_ID, switchA, switchB);
+        createTestFlow(TEST_FLOW_ID_2, switchA, switchB);
+        createTestFlow(TEST_FLOW_ID_3, switchA, switchB);
+        createTestFlow(TEST_FLOW_ID_4, switchC, switchB);
+
+        Map<Integer, List<Flow>> result = flowRepository.findSwitchFlowsByPort(switchA.getSwitchId(),
+                Collections.singletonList(PORT_1));
+
+        assertNotNull(result);
+        assertTrue("The map must contain a key for the port", result.containsKey(PORT_1));
+        assertFalse("The map must not contain a key for the filtered out port", result.containsKey(PORT_2));
+        assertNotNull("The map must contain a non-null value for the test port", result.get(PORT_1));
+        assertEquals("The map must contain exactly one key", 1, result.size());
+        assertEquals("The map must contain exactly 3 test flows", 3, result.get(PORT_1).size());
+        assertTrue("The map must contain exactly 3 flows for switchA",
+                result.get(PORT_1).stream().map(Flow::getFlowId).collect(Collectors.toList())
+                        .containsAll(Arrays.asList(TEST_FLOW_ID, TEST_FLOW_ID_2, TEST_FLOW_ID_3)));
     }
 
     @Test
@@ -167,7 +190,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         transactionManager.doInTransaction(() ->
                 flowRepository.remove(flow));
 
-        assertEquals(2, switchRepository.findAll().size());
+        assertEquals(3, switchRepository.findAll().size());
     }
 
     @Test
@@ -176,6 +199,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         flow.setBandwidth(10000);
         flow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
 
+        assertTrue(flowRepository.findById(TEST_FLOW_ID).isPresent());
         flow = flowRepository.findById(TEST_FLOW_ID).get();
         flow.setBandwidth(100);
         flow.setDescription("test_description_updated");
@@ -195,6 +219,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         createTestFlow(TEST_FLOW_ID, switchA, switchB);
 
         transactionManager.doInTransaction(() -> {
+            assertTrue(flowRepository.findById(TEST_FLOW_ID).isPresent());
             Flow foundFlow = flowRepository.findById(TEST_FLOW_ID).get();
             flowRepository.remove(foundFlow);
         });
@@ -219,7 +244,6 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
 
     @Test
     public void shouldFind2SegmentFlowById() {
-        Switch switchC = createTestSwitch(TEST_SWITCH_C_ID.getId());
         createTestFlowWithIntermediate(TEST_FLOW_ID, switchA, switchC, 100, switchB);
 
         Optional<Flow> foundFlow = flowRepository.findById(TEST_FLOW_ID);
@@ -519,6 +543,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
 
         assertTrue(groupOptional.isPresent());
         assertNotNull(groupOptional.get());
+        assertTrue(flowRepository.findById(TEST_FLOW_ID).isPresent());
         assertEquals(groupOptional.get(),
                 flowRepository.findById(TEST_FLOW_ID).get().getDiverseGroupId());
     }
@@ -578,6 +603,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         String newStatusInfo = "updated_status_info";
         flowRepository.updateStatus(flow.getFlowId(), FlowStatus.DOWN, newStatusInfo);
 
+        assertTrue(flowRepository.findById(TEST_FLOW_ID).isPresent());
         Flow updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
         assertEquals(FlowStatus.DOWN, updatedFlow.getStatus());
         assertEquals(newStatusInfo, updatedFlow.getStatusInfo());
@@ -596,6 +622,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         String newStatusInfo = "updated_status_info";
         flowRepository.updateStatusInfo(TEST_FLOW_ID, newStatusInfo);
 
+        assertTrue(flowRepository.findById(TEST_FLOW_ID).isPresent());
         Flow updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
         assertEquals(newStatusInfo, updatedFlow.getStatusInfo());
 
@@ -615,12 +642,14 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
             String newStatusInfo = "updated_status_info";
             flowRepository.updateStatusSafe(flow, FlowStatus.DOWN, newStatusInfo);
 
+            assertTrue(flowRepository.findById(TEST_FLOW_ID).isPresent());
             Flow updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
             assertEquals(FlowStatus.DOWN, updatedFlow.getStatus());
             assertEquals(newStatusInfo, updatedFlow.getStatusInfo());
 
             flowRepository.updateStatusSafe(flow, FlowStatus.DOWN, null);
 
+            assertTrue(flowRepository.findById(TEST_FLOW_ID).isPresent());
             updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
             assertNull(updatedFlow.getStatusInfo());
         });
@@ -636,6 +665,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         transactionManager.doInTransaction(() ->
                 flowRepository.updateStatusSafe(flow, FlowStatus.DOWN, "updated_status_info"));
 
+        assertTrue(flowRepository.findById(TEST_FLOW_ID).isPresent());
         Flow updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
         assertEquals(FlowStatus.IN_PROGRESS, updatedFlow.getStatus());
         assertEquals(statusInfo, updatedFlow.getStatusInfo());
