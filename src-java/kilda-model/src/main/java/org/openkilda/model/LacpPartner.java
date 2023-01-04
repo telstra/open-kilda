@@ -55,7 +55,7 @@ public class LacpPartner implements CompositeDataEntity<LacpPartner.LacpPartnerD
     }
 
     @Builder
-    public LacpPartner(@NonNull SwitchId switchId, @NonNull int logicalPortNumber, int systemPriority,
+    public LacpPartner(@NonNull SwitchId switchId, int logicalPortNumber, int systemPriority,
                        MacAddress systemId, int key, int portPriority, int portNumber, boolean stateActive,
                        boolean stateShortTimeout, boolean stateAggregatable, boolean stateSynchronised,
                        boolean stateCollecting, boolean stateDistributing, boolean stateDefaulted,
@@ -237,7 +237,7 @@ public class LacpPartner implements CompositeDataEntity<LacpPartner.LacpPartnerD
         private static final long serialVersionUID = 1L;
         @NonNull SwitchId switchId;
 
-        @NonNull int logicalPortNumber;
+        int logicalPortNumber;
 
         int systemPriority;
         MacAddress systemId;

@@ -35,6 +35,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
+import org.openkilda.northbound.dto.v2.switches.LacpStatusResponse;
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
 import org.openkilda.northbound.dto.v2.switches.LagPortResponse;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
@@ -233,7 +234,7 @@ public interface SwitchService {
      *
      * @param switchId id of switch to delete
      * @param force True value means that all switch checks (switch is deactivated, there is no flow with this switch,
-     *              switch has no ISLs) will be ignored.
+     * switch has no ISLs) will be ignored.
      * @return result of the operation wrapped into {@link DeleteSwitchResult}. True means no errors is occurred.
      */
     CompletableFuture<DeleteSwitchResult> deleteSwitch(SwitchId switchId, boolean force);
@@ -312,6 +313,8 @@ public interface SwitchService {
     CompletableFuture<LagPortResponse> createLag(SwitchId switchId, LagPortRequest lagPortRequest);
 
     CompletableFuture<List<LagPortResponse>> getLagPorts(SwitchId switchId);
+
+    CompletableFuture<List<LacpStatusResponse>> getLacpStatus(SwitchId switchId);
 
     CompletableFuture<LagPortResponse> updateLagPort(
             SwitchId switchId, int logicalPortNumber, LagPortRequest payload);

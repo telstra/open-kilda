@@ -59,6 +59,7 @@ import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesRequest;
+import org.openkilda.messaging.nbtopology.request.GetSwitchLacpStatusRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchLagPortsRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
@@ -71,6 +72,7 @@ import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.SwitchLacpStatusResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchLagPortResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -85,6 +87,7 @@ import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
+import org.openkilda.northbound.converter.LacpStatusMapper;
 import org.openkilda.northbound.converter.LagPortMapper;
 import org.openkilda.northbound.converter.PortPropertiesMapper;
 import org.openkilda.northbound.converter.SwitchMapper;
@@ -98,6 +101,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
+import org.openkilda.northbound.dto.v2.switches.LacpStatusResponse;
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
 import org.openkilda.northbound.dto.v2.switches.LagPortResponse;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
@@ -144,6 +148,9 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Autowired
     private LagPortMapper lagPortMapper;
+
+    @Autowired
+    private LacpStatusMapper lacpStatusMapper;
 
     @Autowired
     private ConnectedDeviceMapper connectedDeviceMapper;
@@ -677,6 +684,21 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
                         .map(SwitchLagPortResponse.class::cast)
                         .map(SwitchLagPortResponse::getData)
                         .map(lagPortMapper::map)
+                        .collect(Collectors.toList()));
+    }
+
+    @Override
+    public CompletableFuture<List<LacpStatusResponse>> getLacpStatus(SwitchId switchId) {
+        log.info("API request: Getting LACP status on switch {}", switchId);
+
+        GetSwitchLacpStatusRequest data = new GetSwitchLacpStatusRequest(switchId);
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
+                .thenApply(result -> result.stream()
+                        .map(SwitchLacpStatusResponse.class::cast)
+                        .map(SwitchLacpStatusResponse::getData)
+                        .map(lacpStatusMapper::map)
                         .collect(Collectors.toList()));
     }
 
