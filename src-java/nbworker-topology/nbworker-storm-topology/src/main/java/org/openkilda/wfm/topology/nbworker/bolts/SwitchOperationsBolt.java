@@ -340,7 +340,6 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
     }
 
     private List<GetFlowsPerPortForSwitchResponse> getSwitchFlows(GetFlowsPerPortForSwitchRequest request) {
-        log.debug("getSwitchFlows, API call to getSwitchFlows");
         try {
             return Collections.singletonList(
                     switchOperationsService.getSwitchFlows(request.getSwitchId(), request.getPorts()));

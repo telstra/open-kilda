@@ -17,6 +17,7 @@ package org.openkilda.persistence.ferma.repositories;
 
 import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.has;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.openkilda.model.Flow;
 import org.openkilda.model.Flow.FlowData;
 import org.openkilda.model.FlowFilter;
@@ -606,9 +607,6 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public Map<Integer, List<Flow>> findSwitchFlowsByPort(SwitchId switchId, Collection<Integer> ports) {
-        log.debug("{}: Starting findSwitchFlowsByPort for the switch {} for ports {}",
-                this.getClass().getSimpleName(), switchId.toString(), ports);
-
         try {
             @SuppressWarnings("unchecked")
             Map<Integer, List<String>> portToFlowIdMap = collectToPortToFlowMap(framedGraph().traverse(g -> g.V()
@@ -649,7 +647,7 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
                                             .collect(Collectors.toList()),
                                     TreeMap::new));
         } catch (ClassCastException | NumberFormatException e) {
-            log.debug(getClass().getSimpleName() + ": an exception in findSwitchFlowsByPort: " + e.getMessage(), e);
+            log.debug("An exception in findSwitchFlowsByPort: {}", e.getMessage());
             throw e;
         }
     }
@@ -691,8 +689,8 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
      *     otherwise returns a collection of Flows with the provided IDs if they exist.
      */
     private Collection<Flow> findFlowsByFlowIds(Collection<String> flowIds) {
-        if (flowIds == null || flowIds.size() == 0) {
-            return Collections.EMPTY_LIST;
+        if (CollectionUtils.isEmpty(flowIds)) {
+            return Collections.emptyList();
         }
 
         return framedGraph().traverse(g -> g.V()

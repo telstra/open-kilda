@@ -112,8 +112,8 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         assertTrue("The map must contain a key for the port", result.containsKey(PORT_1));
         assertNotNull("The map must contain a non-null value for the test port", result.get(PORT_1));
         assertEquals("The map must contain exactly two keys", 2, result.size());
-        assertEquals("The map must contain exactly 3 flows", 3, result.get(PORT_1).size());
-        assertTrue("The map must contain exactly 3 flows",
+        assertEquals("There must be exactly 3 flows for PORT_1", 3, result.get(PORT_1).size());
+        assertTrue("There must be exactly 3 flows for PORT_1",
                 result.get(PORT_1).stream().map(Flow::getFlowId).collect(Collectors.toList())
                 .containsAll(Arrays.asList(TEST_FLOW_ID, TEST_FLOW_ID_2, TEST_FLOW_ID_3)));
     }
@@ -133,8 +133,8 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         assertFalse("The map must not contain a key for the filtered out port", result.containsKey(PORT_2));
         assertNotNull("The map must contain a non-null value for the test port", result.get(PORT_1));
         assertEquals("The map must contain exactly one key", 1, result.size());
-        assertEquals("The map must contain exactly 3 test flows", 3, result.get(PORT_1).size());
-        assertTrue("The map must contain exactly 3 flows for switchA",
+        assertEquals("There must be exactly 3 flows for PORT_1", 3, result.get(PORT_1).size());
+        assertTrue("There must be exactly 3 flows for PORT_1",
                 result.get(PORT_1).stream().map(Flow::getFlowId).collect(Collectors.toList())
                         .containsAll(Arrays.asList(TEST_FLOW_ID, TEST_FLOW_ID_2, TEST_FLOW_ID_3)));
     }
