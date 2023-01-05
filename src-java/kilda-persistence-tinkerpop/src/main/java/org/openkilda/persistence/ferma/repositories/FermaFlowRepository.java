@@ -17,7 +17,6 @@ package org.openkilda.persistence.ferma.repositories;
 
 import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.has;
 
-import org.apache.commons.collections.CollectionUtils;
 import org.openkilda.model.Flow;
 import org.openkilda.model.Flow.FlowData;
 import org.openkilda.model.FlowFilter;
@@ -39,6 +38,7 @@ import org.openkilda.persistence.tx.TransactionRequired;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
