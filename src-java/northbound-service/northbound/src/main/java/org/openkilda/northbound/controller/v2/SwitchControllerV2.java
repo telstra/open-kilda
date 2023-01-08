@@ -264,7 +264,7 @@ public class SwitchControllerV2 extends BaseController {
 
     /**
      * Retrieves a map of all flows for each port for the given switch.
-     * When port is provided, returns flows only for the given port.
+     * When a port ID is provided, returns flows only for the given port.
      * Ports that don't have any associated flow are skipped, i.e. if no flows are going through this switch,
      * returns an empty output.
      * @param switchId a specific switch
@@ -273,7 +273,7 @@ public class SwitchControllerV2 extends BaseController {
      */
     @ApiOperation(value = "Get all flows for each port for the given switch",
             response = SwitchFlowsPerPortResponse.class)
-    @GetMapping("/{switch_id}/flows")
+    @GetMapping("/{switch_id}/flows-by-port")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<SwitchFlowsPerPortResponse> getSwitchFlows(
             @PathVariable("switch_id") SwitchId switchId,
