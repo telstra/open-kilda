@@ -647,7 +647,7 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
                                             .collect(Collectors.toList()),
                                     TreeMap::new));
         } catch (ClassCastException | NumberFormatException e) {
-            log.debug("An exception in findSwitchFlowsByPort: {}", e.getMessage());
+            log.error("An exception in findSwitchFlowsByPort: {}", e.getMessage());
             throw e;
         }
     }
