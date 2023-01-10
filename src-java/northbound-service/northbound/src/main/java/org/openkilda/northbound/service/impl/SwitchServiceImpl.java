@@ -57,6 +57,7 @@ import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
+import org.openkilda.messaging.nbtopology.request.GetLacpStatusRequest;
 import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchLacpStatusRequest;
@@ -692,6 +693,21 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         log.info("API request: Getting LACP status on switch {}", switchId);
 
         GetSwitchLacpStatusRequest data = new GetSwitchLacpStatusRequest(switchId);
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
+                .thenApply(result -> result.stream()
+                        .map(SwitchLacpStatusResponse.class::cast)
+                        .map(SwitchLacpStatusResponse::getData)
+                        .map(lacpStatusMapper::map)
+                        .collect(Collectors.toList()));
+    }
+
+    @Override
+    public CompletableFuture<List<LacpStatusResponse>> getLacpStatus(SwitchId switchId, int logicalPortNumber) {
+        log.info("API request: Getting LACP status on switch {}", switchId);
+
+        GetLacpStatusRequest data = new GetLacpStatusRequest(switchId, logicalPortNumber);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, request)

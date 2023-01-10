@@ -149,7 +149,7 @@ public class SwitchOperationsService {
     /**
      * Update the "Under maintenance" flag for the switch.
      *
-     * @param switchId         switch id.
+     * @param switchId switch id.
      * @param underMaintenance "Under maintenance" flag.
      * @return updated switch.
      * @throws SwitchNotFoundException if there is no switch with this switch id.
@@ -194,8 +194,8 @@ public class SwitchOperationsService {
      * Delete switch.
      *
      * @param switchId ID of switch to be deleted
-     * @param force    if True all switch relationships will be deleted too.
-     *                 If False switch will be deleted only if it has no relations.
+     * @param force if True all switch relationships will be deleted too.
+     *              If False switch will be deleted only if it has no relations.
      * @return True if switch was deleted, False otherwise
      * @throws SwitchNotFoundException if switch is not found
      */
@@ -229,7 +229,7 @@ public class SwitchOperationsService {
     /**
      * Check that switch is not in 'Active' state.
      *
-     * @throws SwitchNotFoundException     if there is no such switch.
+     * @throws SwitchNotFoundException if there is no such switch.
      * @throws IllegalSwitchStateException if switch is in 'Active' state
      */
     public void checkSwitchIsDeactivated(SwitchId switchId)
@@ -330,9 +330,9 @@ public class SwitchOperationsService {
     /**
      * Update switch properties.
      *
-     * @param switchId            target switch id
+     * @param switchId target switch id
      * @param switchPropertiesDto switch properties
-     * @throws IllegalSwitchPropertiesException  if switch properties are incorrect
+     * @throws IllegalSwitchPropertiesException if switch properties are incorrect
      * @throws SwitchPropertiesNotFoundException if switch properties is not found by switch id
      */
     public SwitchPropertiesDto updateSwitchProperties(SwitchId switchId, SwitchPropertiesDto switchPropertiesDto) {
@@ -446,10 +446,10 @@ public class SwitchOperationsService {
             if (!flowsWitchEnabledLldp.isEmpty()) {
                 throw new IllegalSwitchPropertiesException(
                         format("Illegal switch properties combination for switch %s. "
-                                + "Detect Connected Devices feature is turn on for following flows [%s]. "
-                                + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
-                                + "Please disable detecting of connected devices via LLDP for each flow before set "
-                                + "'multiTable' property to 'false'",
+                         + "Detect Connected Devices feature is turn on for following flows [%s]. "
+                         + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
+                         + "Please disable detecting of connected devices via LLDP for each flow before set "
+                         + "'multiTable' property to 'false'",
                                 switchId, String.join(", ", flowsWitchEnabledLldp)));
             }
 
@@ -460,10 +460,10 @@ public class SwitchOperationsService {
             if (!flowsWithEnabledArp.isEmpty()) {
                 throw new IllegalSwitchPropertiesException(
                         format("Illegal switch properties combination for switch %s. "
-                                + "Detect Connected Devices feature via ARP is turn on for following flows [%s]. "
-                                + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
-                                + "Please disable detecting of connected devices via ARP for each flow before set "
-                                + "'multiTable' property to 'false'",
+                        + "Detect Connected Devices feature via ARP is turn on for following flows [%s]. "
+                        + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
+                        + "Please disable detecting of connected devices via ARP for each flow before set "
+                        + "'multiTable' property to 'false'",
                                 switchId, String.join(", ", flowsWithEnabledArp)));
             }
         }
@@ -538,7 +538,7 @@ public class SwitchOperationsService {
      * Get port properties.
      *
      * @param switchId target switch id
-     * @param port     port number
+     * @param port port number
      */
     public PortProperties getPortProperties(SwitchId switchId, int port) throws SwitchNotFoundException {
         return portPropertiesRepository.getBySwitchIdAndPort(switchId, port)
@@ -590,6 +590,22 @@ public class SwitchOperationsService {
                 throw new SwitchNotFoundException(switchId);
             }
             return lacpPartnerRepository.findBySwitchId(switchId);
+        });
+    }
+
+    /**
+     * Get LACP status.
+     *
+     * @param switchId target switch id
+     * @param logicalPortNumber target logical port number
+     */
+    public Optional<LacpPartner> getLacpStatus(SwitchId switchId, int logicalPortNumber)
+            throws SwitchNotFoundException {
+        return transactionManager.doInTransaction(() -> {
+            if (!switchRepository.exists(switchId)) {
+                throw new SwitchNotFoundException(switchId);
+            }
+            return lacpPartnerRepository.findBySwitchIdAndLogicalPortNumber(switchId, logicalPortNumber);
         });
     }
 

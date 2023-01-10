@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,18 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.messaging.nbtopology.request;
 
-import org.openkilda.model.LacpPartner;
 import org.openkilda.model.SwitchId;
 
-import java.util.Collection;
-import java.util.Optional;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
-public interface LacpPartnerRepository extends Repository<LacpPartner> {
-    Collection<LacpPartner> findAll();
-
-    Collection<LacpPartner> findBySwitchId(SwitchId switchId);
-
-    Optional<LacpPartner> findBySwitchIdAndLogicalPortNumber(SwitchId switchId, int logicalPortNumber);
+@Value
+@EqualsAndHashCode(callSuper = false)
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class GetLacpStatusRequest extends SwitchesBaseRequest {
+    SwitchId switchId;
+    int logicalPortNumber;
 }

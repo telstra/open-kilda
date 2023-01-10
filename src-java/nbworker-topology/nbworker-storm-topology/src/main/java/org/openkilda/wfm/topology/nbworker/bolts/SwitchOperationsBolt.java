@@ -30,6 +30,7 @@ import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
+import org.openkilda.messaging.nbtopology.request.GetLacpStatusRequest;
 import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchLacpStatusRequest;
@@ -95,6 +96,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -158,7 +160,9 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             result = getLagPorts((GetSwitchLagPortsRequest) request);
         } else if (request instanceof GetSwitchLacpStatusRequest) {
             result = getSwitchLacpStatus((GetSwitchLacpStatusRequest) request);
-        } else {
+        }  else if (request instanceof GetLacpStatusRequest) {
+            result = getLacpStatus((GetLacpStatusRequest) request);
+        }   else {
             unhandledInput(tuple);
         }
 
@@ -334,7 +338,23 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
                     .collect(Collectors.toList());
         } catch (SwitchNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(),
-                    "Could not get LAG ports for non existent switch");
+                    "Could not get LACP Status for non existent switch");
+        }
+    }
+
+    private List<SwitchLacpStatusResponse> getLacpStatus(GetLacpStatusRequest request) {
+        try {
+            Optional<SwitchLacpStatusResponse> switchLacpStatusResponseOptional = switchOperationsService
+                    .getLacpStatus(request.getSwitchId(), request.getLogicalPortNumber())
+                    .map(LacpStatusMapper.INSTANCE::map)
+                    .map(SwitchLacpStatusResponse::new);
+
+            return switchLacpStatusResponseOptional.isPresent()
+                    ? Collections.singletonList(switchLacpStatusResponseOptional.get())
+                    : Collections.EMPTY_LIST;
+        } catch (SwitchNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(),
+                    "Could not get LACP Status for non existent switch");
         }
     }
 

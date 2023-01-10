@@ -4,7 +4,7 @@ databaseChangeLog:
       author: dkakollu
       changes:
         - tagDatabase:
-            tag: 024-add-lacp-partner-class
+            tag: 025-add-lacp-partner-class
 
   - changeSet:
       id: add-lacp-partner-class
@@ -28,7 +28,7 @@ databaseChangeLog:
         - sql: "CREATE PROPERTY lacp_partner.state_expired IF NOT EXISTS BOOLEAN"
         - sql: "CREATE INDEX lacp_partner.switch_id IF NOT EXISTS NOTUNIQUE_HASH_INDEX"
         - sql: "CREATE INDEX lacp_partner.logical_port_number IF NOT EXISTS NOTUNIQUE_HASH_INDEX"
-     
+
       rollback:
         - sql: "DELETE VERTEX lacp_partner"
         - sql: "DROP CLASS lacp_partner IF EXISTS"
