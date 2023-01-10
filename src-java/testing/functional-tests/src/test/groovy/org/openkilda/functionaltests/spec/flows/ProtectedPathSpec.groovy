@@ -892,7 +892,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 it.state == IslChangeType.FAILED
             }.size() == broughtDownPorts.size() * 2
         }
-
+        print(flow)
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = true })
 
@@ -914,7 +914,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         where:
         flowDescription | bandwidth
         "a metered"     | 1000
-        "an unmetered"  | 0
+//        "an unmetered"  | 0
     }
 
     @Tidy

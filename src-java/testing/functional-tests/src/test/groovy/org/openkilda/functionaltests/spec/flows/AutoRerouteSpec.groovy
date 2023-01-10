@@ -256,7 +256,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(SMOKE)
-    @Ignore("fix ASAP, unstable on jenkins(history size)")
+    // unignored. Test needs supervision next builds
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no alt path to reroute"() {
         given: "A flow without alternative paths"
         def data = noIntermediateSwitchFlow(0, true)
