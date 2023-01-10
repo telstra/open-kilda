@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: fkantur
+      changes:
+        - tagDatabase:
+            tag: 025-move-data-from-flow-mirror-path-to-flow-mirror
+
+  - changeSet:
+      id: move_data_from_flow_mirror_path_to_flow_mirror
+      author: fkantur
+      changes:
+        - customChange:
+            class: "org.openkilda.FlowMirrorMigration"

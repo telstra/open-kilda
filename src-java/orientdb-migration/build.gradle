@@ -1,0 +1,20 @@
+description = 'Kilda OreintDB Migration Scripts'
+dependencies {
+    implementation 'org.liquibase:liquibase-core:3.5.5'
+    implementation 'com.orientechnologies:orientdb-core:3.0.34'
+}
+
+tasks.register('copyCompiledLibrary', Copy) {
+    dependsOn(jar)
+    from layout.buildDirectory.file("libs")
+    into rootProject.file('../docker/db-migration/scripts').getAbsolutePath()
+}
+
+tasks.register('currentDir') {
+    println rootProject.file('../docker/db-migration/scripts').getAbsolutePath()
+}
+
+tasks.build {
+    dependsOn(copyCompiledLibrary)
+}
+

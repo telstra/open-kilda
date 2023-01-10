@@ -19,7 +19,7 @@
 
 FROM openjdk:11-jre-slim-buster
 
-# Install GPG for package vefification
+# Install GPG for package verification
 RUN apt-get update \
     && apt-get -y install gnupg wget curl
 
@@ -49,7 +49,6 @@ RUN set -x \
 RUN GNUPGHOME="$(mktemp -d)"
 
 # Download JDBC libraries and plugins
-
 RUN set -x \
   && mkdir -p /liquibase/lib/ \
   && wget -O /liquibase/lib/orientdb-jdbc-3.0.34-all.jar \
@@ -87,6 +86,7 @@ USER root
 COPY migrate.sh migrate-develop.sh apply-prehistory-migrations.sh /kilda/
 RUN install install -g liquibase -o liquibase -d /kilda/flag
 COPY migrations /liquibase/migrations
+COPY scripts /liquibase/lib
 
 USER liquibase
 

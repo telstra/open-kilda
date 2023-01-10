@@ -24,6 +24,7 @@ echo "Apply main migrations set (root.yaml)"
 ./liquibase --username="${KILDA_ORIENTDB_USER:-kilda}" --password="${KILDA_ORIENTDB_PASSWORD:-kilda}" \
   --url=jdbc:orient:remote:"${DB_HOST}/${DB_NAME}" \
   --driver=com.orientechnologies.orient.jdbc.OrientJdbcDriver --changeLogFile=migrations/root.yaml \
+  --classpath="/liquibase/lib/" \
   "${action}" ${rollback_tag:+"$rollback_tag"}
 
 exit 0
