@@ -630,6 +630,8 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
                     .stream()
                     .collect(Collectors.toMap(Flow::getFlowId, flow -> flow));
 
+            addFlowEndPoints(switchId, flowIdToFlowMap, portToFlowIdMap);
+
             Predicate<Map.Entry<Integer, List<String>>> portsPredicate =
                     (ports != null && ports.size() > 0) ? e -> ports.contains(e.getKey()) : e -> true;
 
@@ -650,6 +652,19 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
             log.error("An exception in findSwitchFlowsByPort: {}", e.getMessage());
             throw e;
         }
+    }
+
+    private void addFlowEndPoints(final SwitchId switchId, final Map<String, Flow> source,
+                                  Map<Integer, List<String>> target) {
+        source.values().stream().filter(f -> switchId.equals(f.getSrcSwitchId())).forEach(f ->
+                target.merge(f.getSrcPort(),
+                        Collections.singletonList(f.getFlowId()),
+                    (l1, l2) -> Stream.of(l1, l2).flatMap(Collection::stream).collect(Collectors.toList())));
+
+        source.values().stream().filter(f -> switchId.equals(f.getDestSwitchId())).forEach(f ->
+                target.merge(f.getDestPort(),
+                        Collections.singletonList(f.getFlowId()),
+                    (l1, l2) -> Stream.of(l1, l2).flatMap(Collection::stream).collect(Collectors.toList())));
     }
 
     @Override
