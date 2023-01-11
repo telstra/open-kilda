@@ -74,12 +74,14 @@ public class YSubFlow implements CompositeDataEntity<YSubFlowData> {
 
     @Builder
     public YSubFlow(@NonNull YFlow yFlow, @NonNull Flow flow, int sharedEndpointVlan, int sharedEndpointInnerVlan,
-                    SwitchId endpointSwitchId, int endpointPort, int endpointVlan, int endpointInnerVlan) {
+                    SwitchId endpointSwitchId, int endpointPort, int endpointVlan, int endpointInnerVlan,
+                    String description) {
         YSubFlowDataImpl.YSubFlowDataImplBuilder builder = YSubFlowDataImpl.builder()
                 .yFlow(yFlow).flow(flow).sharedEndpointVlan(sharedEndpointVlan)
                 .sharedEndpointInnerVlan(sharedEndpointInnerVlan)
                 .endpointSwitchId(endpointSwitchId).endpointPort(endpointPort).endpointVlan(endpointVlan)
-                .endpointInnerVlan(endpointInnerVlan);
+                .endpointInnerVlan(endpointInnerVlan)
+                .description(description);
         this.data = builder.build();
     }
 
@@ -107,6 +109,7 @@ public class YSubFlow implements CompositeDataEntity<YSubFlowData> {
                 .append(getEndpointInnerVlan(), that.getEndpointInnerVlan())
                 .append(getTimeCreate(), that.getTimeCreate())
                 .append(getTimeModify(), that.getTimeModify())
+                .append(getDescription(), that.getDescription())
                 .isEquals();
     }
 
@@ -114,7 +117,7 @@ public class YSubFlow implements CompositeDataEntity<YSubFlowData> {
     public int hashCode() {
         return Objects.hash(getYFlowId(), getSubFlowId(), getSharedEndpointVlan(), getSharedEndpointInnerVlan(),
                 getEndpointSwitchId(), getEndpointPort(), getEndpointVlan(), getEndpointInnerVlan(),
-                getTimeCreate(), getTimeModify());
+                getTimeCreate(), getTimeModify(), getDescription());
     }
 
     /**
@@ -164,6 +167,10 @@ public class YSubFlow implements CompositeDataEntity<YSubFlowData> {
         Instant getTimeModify();
 
         void setTimeModify(Instant timeModify);
+
+        String getDescription();
+
+        void setDescription(String description);
     }
 
     /**
@@ -188,6 +195,8 @@ public class YSubFlow implements CompositeDataEntity<YSubFlowData> {
         Instant timeCreate;
         Instant timeModify;
 
+        String description;
+
         @Override
         public String getYFlowId() {
             return yFlow.getYFlowId();
@@ -196,6 +205,16 @@ public class YSubFlow implements CompositeDataEntity<YSubFlowData> {
         @Override
         public String getSubFlowId() {
             return flow.getFlowId();
+        }
+
+        @Override
+        public String getDescription() {
+            return description;
+        }
+
+        @Override
+        public void setDescription(String description) {
+            this.description = description;
         }
     }
 

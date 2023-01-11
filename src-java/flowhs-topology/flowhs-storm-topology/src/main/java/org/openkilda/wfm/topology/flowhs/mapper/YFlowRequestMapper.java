@@ -59,7 +59,6 @@ public abstract class YFlowRequestMapper {
     @Mapping(target = "endpoint", source = "ySubFlow")
     @Mapping(target = "sharedEndpoint", source = "ySubFlow")
     @Mapping(target = "status", ignore = true)
-    @Mapping(target = "description", ignore = true)
     @Mapping(target = "timeCreate", ignore = true)
     @Mapping(target = "timeUpdate", ignore = true)
     public abstract SubFlowDto toSubFlowDto(YSubFlow ySubFlow);
@@ -92,7 +91,7 @@ public abstract class YFlowRequestMapper {
                         .destVlan(subFlow.getEndpoint().getOuterVlanId())
                         .destInnerVlan(subFlow.getEndpoint().getInnerVlanId())
                         .detectConnectedDevices(new DetectConnectedDevices()) //TODO: map it?
-                        .description(request.getDescription())
+                        .description(subFlow.getDescription())
                         .flowEncapsulationType(request.getEncapsulationType())
                         .bandwidth(request.getMaximumBandwidth())
                         .ignoreBandwidth(request.isIgnoreBandwidth())

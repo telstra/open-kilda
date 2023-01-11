@@ -98,6 +98,14 @@ public abstract class YSubFlowFrame extends KildaBaseEdgeFrame implements YSubFl
     public abstract void setEndpointInnerVlan(int endpointInnerVlan);
 
     @Override
+    @Property("description")
+    public abstract String getDescription();
+
+    @Override
+    @Property("description")
+    public abstract void setDescription(String description);
+
+    @Override
     public YFlow getYFlow() {
         if (yFlow == null) {
             List<? extends YFlowFrame> yFlowFrames = traverse(e -> e.outV()
