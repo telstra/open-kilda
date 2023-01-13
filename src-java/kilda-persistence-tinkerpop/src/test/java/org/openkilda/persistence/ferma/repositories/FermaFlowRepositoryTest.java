@@ -106,7 +106,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         createTestFlow(TEST_FLOW_ID_3, switchA, switchB);
         createTestFlow(TEST_FLOW_ID_4, switchC, switchB);
 
-        Map<Integer, List<Flow>> result = flowRepository.findSwitchFlowsByPort(switchA.getSwitchId(), null);
+        Map<Integer, Collection<Flow>> result = flowRepository.findSwitchFlowsByPort(switchA.getSwitchId(), null);
 
         assertNotNull(result);
         assertTrue("The map must contain a key for the port", result.containsKey(PORT_1));
@@ -125,7 +125,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         createTestFlow(TEST_FLOW_ID_3, switchA, switchB);
         createTestFlow(TEST_FLOW_ID_4, switchC, switchB);
 
-        Map<Integer, List<Flow>> result = flowRepository.findSwitchFlowsByPort(switchA.getSwitchId(),
+        Map<Integer, Collection<Flow>> result = flowRepository.findSwitchFlowsByPort(switchA.getSwitchId(),
                 Collections.singletonList(PORT_1));
 
         assertNotNull(result);

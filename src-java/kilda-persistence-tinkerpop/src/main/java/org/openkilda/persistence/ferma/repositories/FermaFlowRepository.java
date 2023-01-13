@@ -38,7 +38,6 @@ import org.openkilda.persistence.tx.TransactionRequired;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
@@ -46,6 +45,7 @@ import org.apache.tinkerpop.gremlin.structure.Vertex;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -53,8 +53,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.UUID;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -606,65 +606,33 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     }
 
     @Override
-    public Map<Integer, List<Flow>> findSwitchFlowsByPort(SwitchId switchId, Collection<Integer> ports) {
+    public Map<Integer, Collection<Flow>> findSwitchFlowsByPort(SwitchId switchId, Collection<Integer> ports) {
         try {
             @SuppressWarnings("unchecked")
-            Map<Integer, List<String>> portToFlowIdMap = collectToPortToFlowMap(framedGraph().traverse(g -> g.V()
+            Map<Integer, Collection<Flow>> portToFlowMap = collectToPortToFlowTreeMap(
+                    framedGraph().traverse(g -> g.V()
                             .hasLabel(PathSegmentFrame.FRAME_LABEL)
                             .or(
                                     has(PathSegmentFrame.SRC_SWITCH_ID_PROPERTY, switchId.toString()),
                                     has(PathSegmentFrame.DST_SWITCH_ID_PROPERTY, switchId.toString()))
                             .as(PATH_SEGMENT_ALIAS)
-                            .in("owns")
-                            .in("owns")
+                            .in(FlowFrame.OWNS_PATHS_EDGE)
+                            .in(FlowFrame.OWNS_PATHS_EDGE)
                             .hasLabel(FlowFrame.FRAME_LABEL)
                             .as(FLOWS_ALIAS)
                             .select(PATH_SEGMENT_ALIAS, FLOWS_ALIAS)
-                    ).getRawTraversal().fill(new ArrayList<>()).stream().map(x -> (Map<String, Vertex>) x),
+                    ).getRawTraversal().toList().stream().map(Map.class::cast),
                     PathSegmentFrame.SRC_PORT_PROPERTY, PathSegmentFrame.DST_PORT_PROPERTY);
 
-            Map<String, Flow> flowIdToFlowMap = findFlowsByFlowIds(portToFlowIdMap.values()
-                    .stream()
-                    .flatMap(Collection::stream)
-                    .collect(Collectors.toSet()))
-                    .stream()
-                    .collect(Collectors.toMap(Flow::getFlowId, flow -> flow));
+            addFlowEndPoints(switchId, portToFlowMap);
 
-            addFlowEndPoints(switchId, flowIdToFlowMap, portToFlowIdMap);
+            portToFlowMap.entrySet().removeIf(e -> (ports != null && !ports.contains(e.getKey())));
 
-            Predicate<Map.Entry<Integer, List<String>>> portsPredicate =
-                    (ports != null && ports.size() > 0) ? e -> ports.contains(e.getKey()) : e -> true;
-
-            return portToFlowIdMap.entrySet().stream()
-                    .filter(portsPredicate)
-                    .collect(Collectors.toMap(Map.Entry::getKey,
-                            entry -> entry.getValue().stream()
-                                    .distinct()
-                                    .map(flowIdToFlowMap::get)
-                                    .collect(Collectors.toList()),
-                            (l1, l2) ->
-                                    Stream.of(l1, l2).flatMap(Collection::stream)
-                                            .sorted()
-                                            .distinct()
-                                            .collect(Collectors.toList()),
-                                    TreeMap::new));
+            return portToFlowMap;
         } catch (ClassCastException | NumberFormatException e) {
             log.error("An exception in findSwitchFlowsByPort: {}", e.getMessage());
             throw e;
         }
-    }
-
-    private void addFlowEndPoints(final SwitchId switchId, final Map<String, Flow> source,
-                                  Map<Integer, List<String>> target) {
-        source.values().stream().filter(f -> switchId.equals(f.getSrcSwitchId())).forEach(f ->
-                target.merge(f.getSrcPort(),
-                        Collections.singletonList(f.getFlowId()),
-                    (l1, l2) -> Stream.of(l1, l2).flatMap(Collection::stream).collect(Collectors.toList())));
-
-        source.values().stream().filter(f -> switchId.equals(f.getDestSwitchId())).forEach(f ->
-                target.merge(f.getDestPort(),
-                        Collections.singletonList(f.getFlowId()),
-                    (l1, l2) -> Stream.of(l1, l2).flatMap(Collection::stream).collect(Collectors.toList())));
     }
 
     @Override
@@ -697,37 +665,36 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
         return Flow.FlowCloner.INSTANCE.deepCopy(frame, entity);
     }
 
-    /**
-     * Find all flows with filtering by flow IDs. This method does it as a single operation for better performance.
-     * @param flowIds Flow IDs for filtering.
-     * @return an empty collection if flowIds is empty,
-     *     otherwise returns a collection of Flows with the provided IDs if they exist.
-     */
-    private Collection<Flow> findFlowsByFlowIds(Collection<String> flowIds) {
-        if (CollectionUtils.isEmpty(flowIds)) {
-            return Collections.emptyList();
-        }
+    private void addFlowEndPoints(final SwitchId switchId, Map<Integer, Collection<Flow>> target) {
+        Collection<Collection<Flow>> flows = new ArrayList<>(target.values());
 
-        return framedGraph().traverse(g -> g.V()
-                        .hasLabel(FlowFrame.FRAME_LABEL)
-                        .has(FlowFrame.FLOW_ID_PROPERTY, P.within(flowIds)))
-                .toListExplicit(FlowFrame.class).stream()
-                .map(Flow::new)
-                .collect(Collectors.toList());
+        flows.stream().flatMap(Collection::stream).filter(f -> switchId.equals(f.getSrcSwitchId()))
+                .forEach(f -> target.merge(f.getSrcPort(),
+                        Collections.singletonList(f),
+                        this::combineDistinctToOrderedCollection));
+
+        flows.stream().flatMap(Collection::stream).filter(f -> switchId.equals(f.getDestSwitchId()))
+                .forEach(f -> target.merge(f.getDestPort(),
+                        Collections.singletonList(f),
+                        this::combineDistinctToOrderedCollection));
     }
 
-    private Map<Integer, List<String>> collectToPortToFlowMap(Stream<Map<String, Vertex>> aliasToVertexMap,
-                                                              String... properties) {
-        final Map<Integer, List<String>> portToFlowIdMap = new HashMap<>();
+    private <T extends Flow> Collection<T> combineDistinctToOrderedCollection(Collection<T> c1, Collection<T> c2) {
+        return Stream.of(c1, c2).flatMap(Collection::stream)
+                .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Flow::getFlowId))));
+    }
+
+    private Map<Integer, Collection<Flow>> collectToPortToFlowTreeMap(Stream<Map<String, Vertex>> aliasToVertexMap,
+                                                               String... properties) {
+        final Map<Integer, Collection<Flow>> portToFlowIdMap = new TreeMap<>();
 
         aliasToVertexMap.forEach(e -> {
             for (String property : properties) {
                 portToFlowIdMap.merge(Integer.valueOf(e.get(PATH_SEGMENT_ALIAS)
                                 .property(property).value().toString()),
-                        Collections.singletonList(e.get(FLOWS_ALIAS)
-                                .property(FlowFrame.FLOW_ID_PROPERTY)
-                                .value().toString()),
-                        (l1, l2) -> Stream.of(l1, l2).flatMap(Collection::stream).collect(Collectors.toList()));
+                        Collections.singleton(new Flow(
+                                framedGraph().frameElement(e.get(FLOWS_ALIAS), FlowFrame.class))),
+                        this::combineDistinctToOrderedCollection);
             }
         });
 

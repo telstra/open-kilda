@@ -21,7 +21,6 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -117,5 +116,5 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findLoopedByLoopSwitchId(SwitchId switchId);
 
-    Map<Integer, List<Flow>> findSwitchFlowsByPort(SwitchId switchId, Collection<Integer> ports);
+    Map<Integer, Collection<Flow>> findSwitchFlowsByPort(SwitchId switchId, Collection<Integer> ports);
 }

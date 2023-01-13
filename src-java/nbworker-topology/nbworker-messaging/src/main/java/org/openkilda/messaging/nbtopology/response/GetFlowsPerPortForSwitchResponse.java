@@ -22,7 +22,7 @@ import org.openkilda.messaging.model.FlowDto;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 
 
@@ -32,5 +32,5 @@ import java.util.Map;
 @Value
 @EqualsAndHashCode(callSuper = false)
 public class GetFlowsPerPortForSwitchResponse extends InfoData {
-    Map<Integer, List<FlowDto>> flowsByPorts;
+    Map<Integer, Collection<FlowDto>> flowsByPorts;
 }
