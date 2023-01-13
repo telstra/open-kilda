@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.hasItem
@@ -359,6 +361,15 @@ class SwitchHelper {
             assert actualDefaultMetersIds.sort() == sw.defaultMeters.sort()
         }
         return response
+    }
+
+    static SwitchFlowsPerPortResponse getFlowsV2(Switch sw, List<Integer> portIds = []){
+        return northboundV2.get().getSwitchFlows(new SwitchId(sw.getDpId().getId()), portIds)
+    }
+
+
+    static List<Integer> "get used ports" (SwitchId switchId) {
+        return northboundV2.get().getSwitchFlows(switchId, []).flowsByPort.keySet().asList()
     }
 
     /**
