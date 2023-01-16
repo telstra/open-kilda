@@ -87,13 +87,6 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         }
     }
 
-    def cleanupSpec() {
-        Wrappers.silent {
-            flowHelperV2.deleteFlow(flowId)
-            yFlowHelper.deleteYFlow(yFlowId)
-        }
-    }
-
     @Tidy
     def "Empty list is returned if none of requested ports is busy with any flow"() {
         given: "Switch with flow on it and ports this flow uses"
@@ -103,5 +96,12 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         def unusedPortsList = new ArrayList<>(1..1000).asList() - usedPortsList
         then: "Response is empty, but without errors"
         switchHelper.getFlowsV2(switchUnderTest, unusedPortsList.subList(0, 3)).getFlowsByPort().isEmpty()
+    }
+
+    def cleanupSpec() {
+        Wrappers.silent {
+            flowHelperV2.deleteFlow(flowId)
+            yFlowHelper.deleteYFlow(yFlowId)
+        }
     }
 }

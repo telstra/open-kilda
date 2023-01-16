@@ -350,11 +350,13 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     @Override
     public SwitchFlowsPerPortResponse getSwitchFlows(SwitchId switchId, List<Integer> portIds) {
         log.debug("Get flows from switch {} on ports {}", switchId, portIds);
+        UriComponentsBuilder uriBuilder =
+                UriComponentsBuilder.fromUriString("/api/v2/switches/{switch_id}/flows-by-port");
+        if (!portIds.isEmpty()) {
+            uriBuilder.queryParam("ports", portIds);
+        }
         return restTemplate.exchange(
-                UriComponentsBuilder.fromUriString("/api/v2/switches/{switch_id}/flows-by-port")
-                        .queryParam("ports", portIds)
-                        .build()
-                        .toString(),
+                uriBuilder.build().toString(),
                 HttpMethod.GET,
                 new HttpEntity<>(buildHeadersWithCorrelationId()), SwitchFlowsPerPortResponse.class, switchId
                 ).getBody();
