@@ -42,7 +42,6 @@ import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -666,14 +665,22 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     }
 
     private void addFlowEndPoints(final SwitchId switchId, Map<Integer, Collection<Flow>> target) {
-        Collection<Collection<Flow>> flows = new ArrayList<>(target.values());
+        List<Flow> flowsOnSwitch = framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowFrame.FRAME_LABEL)
+                .or(
+                        has(FlowFrame.SRC_SWITCH_ID_PROPERTY, switchId.toString()),
+                        has(FlowFrame.DST_SWITCH_ID_PROPERTY, switchId.toString())))
+                .toListExplicit(FlowFrame.class)
+                .stream()
+                .map(Flow::new)
+                .collect(Collectors.toList());
 
-        flows.stream().flatMap(Collection::stream).filter(f -> switchId.equals(f.getSrcSwitchId()))
+        flowsOnSwitch.stream().filter(f -> switchId.equals(f.getSrcSwitchId()))
                 .forEach(f -> target.merge(f.getSrcPort(),
                         Collections.singletonList(f),
                         this::combineDistinctToOrderedCollection));
 
-        flows.stream().flatMap(Collection::stream).filter(f -> switchId.equals(f.getDestSwitchId()))
+        flowsOnSwitch.stream().filter(f -> switchId.equals(f.getDestSwitchId()))
                 .forEach(f -> target.merge(f.getDestPort(),
                         Collections.singletonList(f),
                         this::combineDistinctToOrderedCollection));

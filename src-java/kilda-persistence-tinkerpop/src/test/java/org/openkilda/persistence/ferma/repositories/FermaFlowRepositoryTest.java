@@ -105,6 +105,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         createTestFlow(TEST_FLOW_ID_2, switchA, switchB);
         createTestFlow(TEST_FLOW_ID_3, switchA, switchB);
         createTestFlow(TEST_FLOW_ID_4, switchC, switchB);
+        createTestFlow(TEST_FLOW_ID_5, switchA, switchA);
 
         Map<Integer, Collection<Flow>> result = flowRepository.findSwitchFlowsByPort(switchA.getSwitchId(), null);
 
@@ -112,10 +113,10 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         assertTrue("The map must contain a key for the port", result.containsKey(PORT_1));
         assertNotNull("The map must contain a non-null value for the test port", result.get(PORT_1));
         assertEquals("The map must contain exactly two keys", 2, result.size());
-        assertEquals("There must be exactly 3 flows for PORT_1", 3, result.get(PORT_1).size());
-        assertTrue("There must be exactly 3 flows for PORT_1",
+        assertEquals("There must be exactly 4 flows for PORT_1", 4, result.get(PORT_1).size());
+        assertTrue("There must be exactly 4 flows for PORT_1",
                 result.get(PORT_1).stream().map(Flow::getFlowId).collect(Collectors.toList())
-                .containsAll(Arrays.asList(TEST_FLOW_ID, TEST_FLOW_ID_2, TEST_FLOW_ID_3)));
+                .containsAll(Arrays.asList(TEST_FLOW_ID, TEST_FLOW_ID_2, TEST_FLOW_ID_3, TEST_FLOW_ID_5)));
     }
 
     @Test
