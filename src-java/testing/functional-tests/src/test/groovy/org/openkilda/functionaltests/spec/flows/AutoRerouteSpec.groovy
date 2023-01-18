@@ -134,8 +134,8 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             history = northbound.getFlowHistory(flow.flowId)
             verifyAll {
                 history.count { it.action == REROUTE_ACTION } == 4 //original + 3 retries
-                history.last().payload.last().details.startsWith("Not enough bandwidth or no path found. " +
-                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth:")
+                history.last().payload.last().details.endsWith(
+                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth")
                 history.last().payload.last().action == REROUTE_FAIL
             }
         }
@@ -160,8 +160,8 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             history = northbound.getFlowHistory(flow.flowId, manualRerouteTime, null)
             verifyAll {
                 history.count { it.action == REROUTE_ACTION } == 4 //manual original + 3 reties
-                history.last().payload.last().details.startsWith("Not enough bandwidth or no path found. " +
-                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth:")
+                history.last().payload.last().details.endsWith(
+                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth")
                 history.last().payload.last().action == REROUTE_FAIL
             }
         }
@@ -976,8 +976,8 @@ have links with enough bandwidth"
             history = northbound.getFlowHistory(flow.flowId)
             verifyAll {
                 history[-2].payload.last().action == REROUTE_FAIL
-                history[-2].payload.last().details.startsWith("Not enough bandwidth or no path found. " +
-                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth:")
+                history[-2].payload.last().details.endsWith(
+                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth")
                 history[-1].payload.last().action == REROUTE_COMPLETE
             }
         }
