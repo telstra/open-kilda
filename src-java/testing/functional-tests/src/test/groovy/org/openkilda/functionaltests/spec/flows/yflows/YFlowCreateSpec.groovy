@@ -442,10 +442,11 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
     def "System allows to create y-flow with bandwidth equal to link bandwidth between shared endpoint and y-point (#4965)"() {
-        /* Shared <----------------> Y-Point ---- Ep1
-                          |              \ _______ Ep2
-           flow bw == bw of this link   flow bw <= bw on these two links
-         */
+        /* Shared <----------------> Y-Point ----------- Ep1
+                         ⬆              \ ______________ Ep2
+          flow max_bandwidth == bw of this link         ↖
+                                                        flow max_bandwidth <= bw on these two links
+        */
 
         given: "three switches and potential y-flow point"
         def switchTripletsWithDirectLinkBetweenSharedAndYPoint = topologyHelper.getSwitchTriplets(true, false)
