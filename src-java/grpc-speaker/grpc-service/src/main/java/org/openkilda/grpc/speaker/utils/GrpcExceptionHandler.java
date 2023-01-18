@@ -36,7 +36,7 @@ public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
     /**
      * Exception handler.
      */
-    @ExceptionHandler
+    @ExceptionHandler(GrpcRequestFailureException.class)
     public ResponseEntity<Object> handleException(GrpcRequestFailureException ex, WebRequest request) {
         HttpStatus status;
 
@@ -58,7 +58,7 @@ public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
         return makeExceptionalResponse(ex, makeErrorPayload(ex.getCode(), ex.getMessage()), status, request);
     }
 
-    @ExceptionHandler
+    @ExceptionHandler(StatusRuntimeException.class)
     public ResponseEntity<Object> handleException(StatusRuntimeException ex, WebRequest request) {
         GrpcMessageError body = makeErrorPayload(-1, format("Communication failure - %s", ex.getMessage()));
         return makeExceptionalResponse(ex, body, HttpStatus.INTERNAL_SERVER_ERROR, request);
