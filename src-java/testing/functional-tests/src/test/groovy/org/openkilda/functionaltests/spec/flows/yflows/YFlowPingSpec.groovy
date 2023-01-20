@@ -97,7 +97,7 @@ class YFlowPingSpec extends HealthCheckSpecification {
         response == expectedResponse
 
         cleanup:
-        Wrappers.silent(yFlowHelper.deleteYFlow(yFlow.getYFlowId()))
+        Wrappers.silent{yFlowHelper.deleteYFlow(yFlow.getYFlowId())}
     }
 
     def getPacketCountOfVlanPingRule(SwitchId switchId) {
