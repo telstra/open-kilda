@@ -335,7 +335,6 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         if (pathResult.getFoundPath().isEmpty()) {
             pathResult = getPath(start, end, weightFunction, backUpMaxWeight);
             backUpPathComputationWayUsed = true;
-            reasons.putAll(pathResult.getPathNotFoundReasons());
         }
 
         return FindOneDirectionPathResult.builder()
@@ -457,20 +456,18 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
     private FindOneDirectionPathResult getPath(Node start, Node end, WeightFunction weightFunction, long maxWeight) {
         SearchNodeAndReasons desiredPath = getDesiredPath(start, end, weightFunction, maxWeight);
-        Map<FailReasonType, FailReason> reasons = desiredPath.reasons;
 
         List<Edge> foundPath = (desiredPath.searchNode != null)
                 ? desiredPath.searchNode.getParentPath() : new LinkedList<>();
 
         SearchNodeAndReasons desiredReversePath = getDesiredPath(end, start, weightFunction, maxWeight);
-        reasons.putAll(desiredReversePath.reasons);
 
         if (desiredReversePath.searchNode != null && (desiredPath.searchNode == null
                 || desiredReversePath.searchNode.parentWeight.compareTo(desiredPath.searchNode.parentWeight) > 0)) {
             foundPath = getReversePath(start, end, desiredReversePath.searchNode.getParentPath());
         }
 
-        return new FindOneDirectionPathResult(foundPath, reasons);
+        return new FindOneDirectionPathResult(foundPath, desiredPath.reasons);
     }
 
     /**
@@ -577,6 +574,9 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                 if (current.allowedDepth <= 0) {
                     reasons.put(FailReasonType.ALLOWED_DEPTH_EXCEEDED,
                             new FailReason(FailReasonType.ALLOWED_DEPTH_EXCEEDED));
+                } else if (!reasons.containsKey(FailReasonType.MAX_WEIGHT_EXCEEDED)) {
+                    reasons.put(FailReasonType.MAX_WEIGHT_EXCEEDED,
+                            new FailReason(FailReasonType.MAX_WEIGHT_EXCEEDED));
                 }
                 destinationFound = true;
                 continue;
