@@ -30,6 +30,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import java.io.IOException;
+import javax.servlet.http.HttpServletResponse;
+
 @ControllerAdvice
 public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
 
@@ -57,11 +60,10 @@ public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
 
         return makeExceptionalResponse(ex, makeErrorPayload(ex.getCode(), ex.getMessage()), status, request);
     }
-
+    
     @ExceptionHandler(StatusRuntimeException.class)
-    public ResponseEntity<Object> handleException(StatusRuntimeException ex, WebRequest request) {
-        GrpcMessageError body = makeErrorPayload(-1, format("Communication failure - %s", ex.getMessage()));
-        return makeExceptionalResponse(ex, body, HttpStatus.INTERNAL_SERVER_ERROR, request);
+    public void  handleException(StatusRuntimeException ex, HttpServletResponse response) throws IOException {
+        response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value());
     }
 
     @Override
@@ -72,6 +74,7 @@ public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
         return makeExceptionalResponse(exception, error, status, request);
     }
 
+ 
     private ResponseEntity<Object> makeExceptionalResponse(
             Exception ex, GrpcMessageError body, HttpStatus status, WebRequest request) {
         logger.error(format("Produce error response: %s", body));
