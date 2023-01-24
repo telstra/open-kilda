@@ -81,7 +81,7 @@ class YFlowPingSpec extends HealthCheckSpecification {
         def expectedResponse = YFlowPingResult.builder()
                 .yFlowId(yFlow.getYFlowId())
                 .pingSuccess(false)
-                .error("One sub_flow is one-switch flow")
+                .error("One sub flow is one-switch flow")
                 .subFlows([SubFlowPingPayload.builder()
                                    .flowId(multiSwitchSubFlowId)
                                    .forward(expectedResponseSubflowPart)
