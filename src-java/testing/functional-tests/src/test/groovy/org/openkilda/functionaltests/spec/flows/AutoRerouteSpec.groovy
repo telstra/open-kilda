@@ -889,9 +889,9 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
                 sleep(500)
             }
             assert northboundV2.getFlow(firstFlow.flowId).statusInfo =~ /ISL (.*) become INACTIVE(.*)/
-            assert northboundV2.getFlow(secondFlow.flowId).statusInfo == "No path found.\
- Failed to find path with requested bandwidth= ignored: Switch $secondFlow.source.switchId doesn't \
-have links with enough bandwidth"
+            assert northboundV2.getFlow(secondFlow.flowId).statusInfo == "No path found. \
+Switch $secondFlow.source.switchId doesn't have links with enough bandwidth, \
+Failed to find path with requested bandwidth= ignored"
         }
 
         when: "Connect the switch back to the controller"
