@@ -704,18 +704,16 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     }
 
     @Override
-    public CompletableFuture<List<LacpStatusResponse>> getLacpStatus(SwitchId switchId, int logicalPortNumber) {
-        log.info("API request: Getting LACP status on switch {}", switchId);
+    public CompletableFuture<LacpStatusResponse> getLacpStatus(SwitchId switchId, int logicalPortNumber) {
+        log.info("API request: Read LACP status on specific port {} of the switch {}", logicalPortNumber, switchId);
 
         GetLacpStatusRequest data = new GetLacpStatusRequest(switchId, logicalPortNumber);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
 
-        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
-                .thenApply(result -> result.stream()
-                        .map(SwitchLacpStatusResponse.class::cast)
-                        .map(SwitchLacpStatusResponse::getData)
-                        .map(lacpStatusMapper::map)
-                        .collect(Collectors.toList()));
+        return messagingChannel.sendAndGet(nbworkerTopic, request)
+                .thenApply(SwitchLacpStatusResponse.class::cast)
+                .thenApply(SwitchLacpStatusResponse::getData)
+                .thenApply(lacpStatusMapper::map);
     }
 
     @Override

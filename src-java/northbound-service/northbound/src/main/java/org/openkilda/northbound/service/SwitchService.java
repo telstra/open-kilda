@@ -316,7 +316,7 @@ public interface SwitchService {
 
     CompletableFuture<List<LacpStatusResponse>> getLacpStatus(SwitchId switchId);
 
-    CompletableFuture<List<LacpStatusResponse>> getLacpStatus(SwitchId switchId, int logicalPortNumber);
+    CompletableFuture<LacpStatusResponse> getLacpStatus(SwitchId switchId, int logicalPortNumber);
 
     CompletableFuture<LagPortResponse> updateLagPort(
             SwitchId switchId, int logicalPortNumber, LagPortRequest payload);
