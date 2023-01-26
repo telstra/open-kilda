@@ -39,6 +39,10 @@ build-latest: build-base compile-green
 build-stable: build-base compile-blue
 	TAG=$(STABLE_TAG) docker-compose build
 
+build-db-migration:
+	cd src-java && ./gradlew build -p orientdb-migration --info --stacktrace $(GRADLE_COMPILE_PARAMS)
+	docker-compose build db_migration
+
 run-dev:
 	docker-compose up
 

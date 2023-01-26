@@ -52,7 +52,7 @@ changeSet:
 
 To start DB update by hands you need to build migration container
 ```shell script
-docker-compose build db_migration
+make build-db-migration
 ```
 
 And execute following command (for DB on some foreign host):
