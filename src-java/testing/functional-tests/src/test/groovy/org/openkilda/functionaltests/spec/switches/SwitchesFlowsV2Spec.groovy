@@ -116,12 +116,10 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         when: "Get all flows going through the switch"
         def flows = switchHelper.getFlowsV2(switchProtectedPathGoesThrough, [])
 
-        then: "The created flows (including both y-flow subflows) are in the response list from the switch"
+        then: "The flow's protected path is in the response list from the switch"
         flows.flowsByPort.collectMany { it.value }*.flowId
                 .contains(flowId)
     }
-
-
 
     @Tidy
     @Tags([LOW_PRIORITY])
