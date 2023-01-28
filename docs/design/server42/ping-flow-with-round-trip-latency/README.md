@@ -2,20 +2,20 @@
 
 ## Goal
 
-Have ability to ping flow from one end to another and back with round trip latency measurement.  
+Have the ability to ping a flow from one end to the other and back with round trip latency measurement.  
 
 ## Kilda OF Rules
 
-There are 5 new OF rules will be added:
-* Input Rule - send packet from server 42 port to Pre Ingress Table
-* Pre Ingress Rule - match be outer Vlan and send packet to Ingress Table (Only for QinQ Flows) 
-* Ingress Rule - send packet to next switch
-* Turning Rule - send packet from last flow switch back to first
-* Catch Rule - send packet from first switch back to Server 42
+5 new OF rules will be added:
+* Input Rule: sends packets from server 42 port to Pre Ingress Table.
+* Pre Ingress Rule: matches the outer VLAN and sends packets to Ingress Table (Only for QinQ Flows).
+* Ingress Rule: sends packets to next switch.
+* Turning Rule: sends packets from the last flow switch back to first.
+* Catch Rule: sends packets from the first switch back to Server 42.
 
-Transit VXLAN rule will be changed.
+Thr Transit VXLAN rule will be changed.
 
-NOTE: Pinging of One Switch Flow has no meaning so One Switch Flows would not affected.
+NOTE: Pinging of One Switch Flow has no meaning so One Switch Flows are not affected.
 
 ## Input Rule
 
@@ -23,9 +23,9 @@ Quantity: One rule per switch<br/>
 Table: Input
 
 Purposes:
- * match Ping packet from Server 42 port
- * add first time stamp to the packet
- * send packet to Ingress table 
+ * match Ping packet from Server 42 port,
+ * add the first time stamp to the packet,
+ * send the packet to the Ingress table.
 
 ![Input Rule](input_rule.png "Input Rule")
 
@@ -63,8 +63,8 @@ Quantity: One rule per QinQ Flow<br/>
 Table: Pre Ingress
 
 Purposes:
- * match packet by outer Vlan
- * send in to Ingres table
+ * match packet by the outer VLAN,
+ * send in to the Ingres table.
  
 The only difference from other QinQ rules is in matching by Server 42 Port (other rules match packet by customer port).
 
@@ -96,12 +96,12 @@ Table: Ingress
 
 Purposes:
  * match packet by vlan
- * push transit encapsulation (vlan or VXLAN)
- * set `ETH_DST` equal to mac address of egress switch (to turn packet back on last switch)
- * set `ETH_SRC` equal to mac address of ingress switch (to swap `ETH_SRC` and `ETH_DST` on last switch)
- * set `UDP_SRC` equal to `61235` to mark packet as RTL Ping (Only for VXLAN encapsulation)
+ * push transit encapsulation (VLAN or VXLAN)
+ * set `ETH_DST` equal to mac address of the egress switch (to turn packet back on the last switch)
+ * set `ETH_SRC` equal to mac address of the ingress switch (to swap `ETH_SRC` and `ETH_DST` on the last switch)
+ * set `UDP_SRC` equal to `61235` to mark a packet as RTL Ping (only for VXLAN encapsulation)
  
-For Vlan encapsulation we do not need to set `UDP_SRC` port because it will be set by Server 42
+For VLAN encapsulation we do not need to set `UDP_SRC` port because it will be set by Server 42
  
 ![Vlan Encapsulation](vlan_encapsulation.png "Vlan Encapsulation")  
 
@@ -137,10 +137,10 @@ Quantity: One rule per Switch<br/>
 Table: Input
 
 Purposes of this rule are:
- * match Ping packet on egress switch
- * replace `ETH_SRC` and `ETH_DST` by NoviFlow swap field action
- * set `UDP_SRC` equal to `61236` to mark Ping packet as packet which was send back from Egress switch to Ingress
- * send packet back to `IN_PORT`
+ * match Ping packet on egress switch,
+ * replace `ETH_SRC` and `ETH_DST` by NoviFlow swap field action,
+ * set `UDP_SRC` equal to `61236` to mark Ping packet as a packet which was sent back from the Egress switch to Ingress
+ * send a packet back to `IN_PORT`
  
 ![Turning Rule](turning_rule.png "Turning Rule")
 
@@ -175,10 +175,10 @@ Quantity: One rule per Switch<br/>
 Table: Input
 
 Purposes of this rule are:
- * match Ping packet which is returning back to Ingress switch
- * add second time stamp to the packet
- * set `ETH_SRC` and `ETH_DST` which Server 42 need
- * send packet into Server 42 Port
+ * match Ping packets which are returning back to the Ingress switch,
+ * add the second time stamp to the packet,
+ * set `ETH_SRC` and `ETH_DST` which is required by Server 42,
+ * send packets to Server 42 Port.
  
 ![Catch Rule](catch_rule.png "Catch Rule") 
 
@@ -213,8 +213,8 @@ Purposes of this rule are:
 
 ## Changing of Transit VXLAN rule
 
-At this moment during VXLAN encapsulation Kilda set `UDP_SRC` port equal to `4500` just to set
-some value into blank field. Transit VXLAN rules match packet by this port but it is redundant match.
+At this moment, during VXLAN encapsulation Kilda sets `UDP_SRC` port equal to `4500` just to set
+some value into the blank field. Transit VXLAN rules match packet by this port, but it is a redundant matching.
 Ping Feature needs to put `61235` and `61236` into `UDP_SRC` field.
 That is why matching by `UDP_SRC` will be removed from Transit VXLAN rules.
 
@@ -222,4 +222,4 @@ That is why matching by `UDP_SRC` will be removed from Transit VXLAN rules.
 
 ## Summary
  
-Aggregated list of rules is available as [diagram](all_rules_diagram.png) and as [table](all_rules_table.pdf).
+An aggregated list of rules is available as a [diagram](all_rules_diagram.png) and as a [table](all_rules_table.pdf).

@@ -2,14 +2,14 @@
 
 ## Goal
 
-Have ability to ping ISL from one end to another and back with round trip latency measurement.  
+Have the ability to ping ISL from one end to the other and back with round trip latency measurement.  
 
 ## Kilda OF rules
 
-There are 3 new OF rules will be added:
-* Input Rule - forwards a ping packet from Server 42 port to the ISL port.
-* Turning Rule - sends a ping packet from the opposite switch back to the origin.
-* Output Rule - sends a ping packet back to Server 42.
+3 new OF rules will be added:
+* Input Rule: forwards a ping packet from Server 42 port to the ISL port.
+* Turning Rule: sends a ping packet from the opposite switch back to the origin.
+* Output Rule: sends a ping packet back to Server 42.
 
 ## Input Rule
 

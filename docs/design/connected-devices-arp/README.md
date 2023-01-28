@@ -2,25 +2,25 @@
 
 ## Summary
 
-This feature allows to detect devices connected to particular switch
+This feature allows to detect devices connected to a particular switch
 by catching ARP packets. Design of the feature is based on multi-table feature design and
 connected devices via LLDP feature design.
 
 ## API
 
-New boolean field `switch_arp` will be added to switch properties.
-After setting it to `true` by API `PUT /{switch-id}/properties` several rules will be installed on the switch.
-Description of these rules you can find in section `Detecting of connected devices via ARP`.
+A new boolean field `switch_arp` will be added to switch properties.
+After setting it to `true` by API `PUT /{switch-id}/properties`, several rules will be installed on the switch.
+You can find descriptions of these rules in the section [Detecting of connected devices via ARP](#detecting-connected-devices-via-arp).
 
-As switch ARP feature is based on multi-table feature user can't set `switch_arp` property to `true`
+Due to the switch ARP feature is based on multi-table feature user can't set `switch_arp` property to `true`
 without setting `multi_table` to `true`. Bad request will be returned otherwise.
 
 V2 API `GET /{switch_id}/devices?since={time}` will be updated.
 
-New field `arp` will be added to each port entity. This field will contain list of devices
-connected to port which were detected by ARP packets.
+A new field `arp` will be added to each port entity. This field will contain a list of devices
+connected to a specific port which were detected by ARP packets.
 
-Each device will have following fields:
+Each device will have the following fields:
 
 * `vlan`
 * `macAddress`
@@ -28,12 +28,12 @@ Each device will have following fields:
 * `timeFirstSeen`
 * `timeLastSeen`
 
-Also each device will have optional field `flowId`. 
-This field will be set if ARP packet belongs to a flow. 
+Each device will have an optional field `flowId`. 
+This field will be set if an ARP packet belongs to a specific flow. 
 
-Updated API response will be look like:
+Updated API response will look like:
 
-~~~
+~~~json
 {
   "ports": [
       {
@@ -64,22 +64,21 @@ Updated API response will be look like:
             "timeLastSeen": string
            },
            *** 
-         ],
+         ]
       },
       ***
    ]
 }
-
 ~~~
 
-## Detecting of connected devices via ARP
+## Detecting connected devices via ARP
 
 To detect connected devices via ARP we will catch ARP packets from each switch port
-and send them to controller to analyze them in Connected Devices Storm Topology.
+and send them to the controller to analyze them in Connected Devices Storm Topology.
 
 There are three types of switch ports:
 1. Customer (port with created flow on it).
-2. Isl
+2. ISL
 3. Other (port without ISL and without flows).
  
 Rules will be different for each port type.
@@ -97,14 +96,14 @@ Short description:
 
 ## Switch rules
 
-There are 7 types of new rules will be introduced:
+There  will be introduced 7 new rules, grouped in the following types:
 * Flow (1 rule for each flow and 3 default rules)
 * Isl (1 default rule)
 * Other (2 default rule)
 
 #### Flow rules
 
-Rule for each flow in Input Table:
+A rule for each flow in the Input Table:
 
 ![Input Flow](input_flow.png "Input Flow")
 
@@ -126,7 +125,7 @@ Rule for each flow in Input Table:
 
 ```
 
-Rule for one switch flows in Post Ingress table:
+A rule for one switch flows in the Post Ingress table:
 
 ![One Switch Flow](one_switch_flow.png "One Switch Flow")
 
@@ -144,7 +143,7 @@ Rule for one switch flows in Post Ingress table:
                     mlen = 65535
 ```
 
-Rule for vxlan flows in Post Ingress table:
+A rule for VXLAN flows in the Post Ingress table:
 
 ![VXLAN Flow](vxlan_flow.png "VXLAN Flow")
 
@@ -166,7 +165,7 @@ Rule for vxlan flows in Post Ingress table:
                     mlen = 65535
 ```
 
-Rule for other flows in Post Ingress table:
+A rule for other flows in the Post Ingress table:
 
 ![Vlan Flow](vlan_flow.png "Vlan Flow")
 
@@ -186,7 +185,7 @@ Rule for other flows in Post Ingress table:
 
 #### ISL rules
 
-One rule in Transit table:
+One rule in the Transit table:
 
 ![ISL rule](isl_rule.png "ISL rule")
 
@@ -206,7 +205,7 @@ One rule in Transit table:
 
 #### Other rule
 
-One rule in Input Table:
+One rule in the Input Table:
 
 ![Input_Drop Rule](input_drop.png "Input Drop Rule")
 
@@ -225,7 +224,7 @@ One rule in Input Table:
 
 ```
 
-One rule in Ingress Table to catch ARP from customer ports (only packets which are not belong to any flow):
+One rule in the Ingress Table to catch ARP from customer ports (only packets which are not belong to any flow):
 
 ![Ingress_Drop Rule](ingress_drop.png "Ingress Drop Rule")
 

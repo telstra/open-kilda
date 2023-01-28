@@ -12,8 +12,8 @@ Based on
 - Remove code duplication
 
 ## The idea
-Create a layer with domain objects which contains logic and data and
-separate domain logic from DB and Transport layers.
+Create a layer with domain objects, which contains logic and data, that
+separates the domain logic from DB and Transport layers.
 
 ## Diagrams
 

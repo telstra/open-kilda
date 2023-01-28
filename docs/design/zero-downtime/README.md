@@ -1,46 +1,47 @@
 # Zero Downtime Upgrades for Open Kilda
 
 ## Rationale
-Current deployment process requires time slot with no reactions from contol plane for any network events as long
-as no flow/switch ops are available as well. To improve this new deployment procedure is proposed.
-It's details are described in this document.
+
+The current deployment process requires a time slot with no reactions from the control plane for any network events because 
+flow and switch operations are not available. To improve this, a new deployment procedure is proposed.
+The details of this procedure are described in this document.
 
 ## Solution
 
-Provide ability to deploy kilda in so called blue/green mode. Which will allow to quickly switch
-system between different release versions. However, due to event-driven nature of kilda and a bunch of
-limitations from Apache Storm there are changes made in original Blue/Green approach.
+Provide the ability to deploy OpenKilda in a so-called blue/green mode. This will allow to quickly switch the
+system between different release versions. However, due to the event-driven nature of OpenKilda and a number of
+limitations from Apache Storm, It is required to tweak the standard Blue/Green approach.
 
 ### Shared Transport
 
-Kilda uses Kafka as a Message broker and messages in it to communicate between components of the system.
-To provide backward compatibility between green and new versions of kilda within the same kafka topic
-we need to split messages by some value between new and old ones. For this purpose will be used kafka message
-header with run-id encoded in it. Run id should be unique within a single deployment.
-Each component will emit messages with run-id header that is valid by the deployment. All receiver parts
-should validate message header first and verify that run id matches with its configuration in that case component
-will handle the message. Kafka provides API to write custom interceptors for both consumer and producer. This
-interceptor will be responsible for verifying deployment id.
+OpenKilda uses Kafka as a Message broker and messages in it to communicate between components of the system.
+To provide backward compatibility between green and new versions of OpenKilda within the same Kafka topic
+we need to distinguish messages using some value between new and old ones. For this purpose, there will be a Kafka message
+header with run ID encoded in it. Run ID is supposed to be unique within a single deployment.
+Each component will emit messages with the run ID header that is valid for the given deployment. All receiver parts
+should validate a message header first and verify that the run ID matches its configuration. In that case, the component
+will handle the message. Kafka provides an API to write custom interceptors for both consumer and producer. This
+interceptor will be responsible for verifying the deployment ID.
 
 ### Zookeeper to store the state
 
-Since storm has limitations on lifecycle of its topologies, new mechanism is required to deal with topologies states. 
-Also it should be responsible to handle graceful shutdown procedure for topologies. For this role Apache Zookeeper
-looks like a good fit.
+Since Storm has limitations on lifecycle of its topologies, a new mechanism is required to deal with topologies states. 
+In addition, it should be responsible for handling graceful shutdown procedure for topologies. Apache Zookeeper
+looks like a good fit for this role.
 
 #### Node structure for Zookeeper
 
-`/kilda/{component_type}/{env_id}` - root for every component process, where:
-`component_type` - topology or service name, e.g. `floodlight`, `network`, `nbworker`
-`env_id` - flag of blue or green env
+`/kilda/{component_type}/{env_id}`: root for every component process, where:
+`component_type` is a topology or service name, e.g. `floodlight`, `network`, `nbworker`, and
+`env_id` is a flag of blue or green env.
 
 #### Signal, States and Build-Version
 
-Each component, except Northbound and GRPC, root node will have 3 children zNodes:
-- signal - input field, can be `START` or `SHUTDOWN`, the way to make component start emittin processing new events
-- state - int, number of active subcomponents of a component, when `SHUTDOWN` is emitted, should be `0`, positive otherwise.
-- build-version - string field with run id, could be changed on fly, see #Shared transport for details
-For the long running task such as hub in hub and spoke topologies, there should be a way to stop receiving new
+Each component (except Northbound and GRPC and a root node) will have 3 children zNodes:
+- signal: input field, can be `START` or `SHUTDOWN`, it is a way to make the component start emitting or processing new events;
+- state: int, a number of active subcomponents of a component, when `SHUTDOWN` is emitted, the value is `0`, otherwise it is a positive number;
+- build-version: string field with the run ID, could be changed on fly, see [Shared transport](#shared-transport) for details
+For a long-running task, such as hub in hub and spoke topologies, there should be a way to stop receiving new
 requests, finishing up existing, and after that decrementing counter by 1 in a state field.
 
 #### Basic Deployment Scenario:
@@ -48,9 +49,9 @@ requests, finishing up existing, and after that decrementing counter by 1 in a s
 *Note*
 For this upgrade procedure each switch should be connected to 2 floodlights simultaneously.
  
-Since floodlights could be distinguished by region let's assume, that all odd regions are green and even are blue
-For the scenario, below suppose that `blue` is a current env and `green` is the one to be deployed.
-Based on that the process should look like:
+Floodlights could be distinguished by a region. Let's assume that all odd regions are green and all even are blue.
+For the scenario below, suppose that `blue` is the current env and `green` is the one to be deployed.
+Based on that the process is the following:
 
 - Ensure that `signal` for the `green` components is set to `SHUTDOWN` and the `build-version` is updated  
 - Deploy green topologies  
@@ -73,41 +74,40 @@ Based on that the process should look like:
 - Emit `START` for the network green
 - Deploy Green Northbound(forward new requests to it from customer)
 - Redeploy grpc containers of `green` color
-- Important!!!(Decision Point): if everything works and env upgraded is accepted, the following steps are required
+- *Important* a decision Point: if everything works and env upgraded is accepted, the following steps are required
 - Set `SHUTDOWN` signal for `blue` floodlights
 - Set new `build-version` for the left floodlights
-- Redeploy `blue` fl containers
-- Set `START` signal for `blue` floodlights (now they are become `green`)
+- Redeploy `blue` FL containers
+- Set `START` signal for `blue` FloodLights (now they become `green`)
 - Terminate `blue` topologies
 
-If during the process something goes wrong at a decision point, fallback to blue network topology is required,
-the following rollback:
-- Redeploy `blue` northbound
-- Rollback `green` floodlight containers back to `blue` version
-- Rollback GRPC to `blue` version 
+If during the process something goes wrong, it is required to perform a fallback at the decision point.
+The rollback process to the blue network topology is the following:
+- Redeploy `blue` northbound,
+- Rollback `green` floodlight containers back to `blue` version,
+- Rollback GRPC to `blue` version.
 
 #### Post Deployment phase
 
-Once a deployment is finished the last thing to be made is removal of consumer group offsets for the `blue` environment
+Once a deployment is finished the last thing to be made is the removal of consumer group offsets for the `blue` environment,
 so the next release recreate them for the `blue`.
 
 ### Example of local zero downtime deployment
 
 ##### Build stable and latest images. Deploy stable images
 
-```
+```shell
 make clean build-stable GRADLE_COMPILE_PARAMS="-x test"  build-latest GRADLE_COMPILE_PARAMS="-x test" up-stable
 ```
 
-NOTE: following commands will be run with the help of ZooKeeper CLI bash script.
+NOTE: the following commands will be executed with the help of ZooKeeper CLI bash script.
 You can download zookeeper from [here](https://archive.apache.org/dist/zookeeper/):
 * Download ZooKeeper sources (we used version 3.6.2)
 * Extract sources from `zookeeper-***.tar.gz`
 * Run CLI `./apache-zookeeper-3.6.2-bin/bin/zkCli.sh` to connect to local ZooKeeper
 * If you need to connect to remote ZooKeeper run `./apache-zookeeper-3.6.2-bin/bin/zkCli.sh -server server1,server2`
 
-After successfully connection to Zookeeper server you can run following commands
-from CLI to manipulate Kilda components.
+After connecting to Zookeeper Server successfully, you can run following commands from CLI to manipulate OpenKilda components:
 
 #### Send START signal to blue components
 
@@ -193,7 +193,7 @@ make func-tests PARAMS='--tests ConfigurationSpec'
 set /kilda/floodlight/2/signal SHUTDOWN
 ```
 
-#### Deploy green components from latest images
+#### Deploy green components from the latest images
 
 ```
 make up-green
@@ -270,7 +270,7 @@ set /kilda/stats/blue/signal SHUTDOWN
 set /kilda/server42-control/blue/signal SHUTDOWN
 ```
 
-#### Wait till state of all blue components will became 0
+#### Wait till state of all blue components will become 0
 
 ```
 get /kilda/floodlight/1/state
