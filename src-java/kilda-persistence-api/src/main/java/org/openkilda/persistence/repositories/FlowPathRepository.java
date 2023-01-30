@@ -53,6 +53,8 @@ public interface FlowPathRepository extends Repository<FlowPath> {
 
     Collection<PathId> findActualPathIdsByFlowIds(Set<String> flowIds);
 
+    Collection<PathId> findPathIdsBySharedBandwidthGroupId(String sharedBandwidthGroupId);
+
     /**
      * Finds paths that starts with passed {@param switchId} switch.
      * NB. This method does not return protected paths with src {@param switchId} switch.

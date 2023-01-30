@@ -394,6 +394,23 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         assertTrue(pathIds.contains(flowB.getReversePathId()));
     }
 
+    @Test
+    public void findPathIdsBySharedBandwidthGroupId() {
+        String sharedBandwidthGroupId = "shared-bw-gr-id";
+
+        Flow flowA = buildTestFlow(TEST_FLOW_ID_1, switchA, PORT_1, VLAN_2, switchB, PORT_2, 0,
+                sharedBandwidthGroupId);
+        flowRepository.add(flowA);
+        Flow flowB = buildTestFlow(TEST_FLOW_ID_2, switchB, PORT_1, VLAN_2, switchC, PORT_2, 0);
+        flowRepository.add(flowB);
+
+        Collection<PathId> pathIds = flowPathRepository.findPathIdsBySharedBandwidthGroupId(sharedBandwidthGroupId);
+        assertEquals(2, pathIds.size());
+        assertTrue(pathIds.contains(flowA.getForwardPathId()));
+        assertTrue(pathIds.contains(flowA.getReversePathId()));
+    }
+
+
     private FlowPath createTestFlowPath() {
         FlowPath flowPath = createFlowPath(flow, "_path", 1, 1, switchA, switchB);
         flow.setForwardPath(flowPath);
@@ -455,6 +472,11 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
 
     private Flow buildTestFlow(String flowId, Switch srcSwitch, int srcPort, int srcVlan,
                                Switch destSwitch, int destPort, int destVlan) {
+        return buildTestFlow(flowId, srcSwitch, srcPort, srcVlan, destSwitch, destPort, destVlan, null);
+    }
+
+    private Flow buildTestFlow(String flowId, Switch srcSwitch, int srcPort, int srcVlan,
+                               Switch destSwitch, int destPort, int destVlan, String sharedBandwidthGroupId) {
         Flow flow = Flow.builder()
                 .flowId(flowId)
                 .srcSwitch(srcSwitch)
@@ -474,6 +496,7 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
                 .srcSwitch(srcSwitch)
                 .destSwitch(destSwitch)
                 .status(FlowPathStatus.ACTIVE)
+                .sharedBandwidthGroupId(sharedBandwidthGroupId)
                 .build();
         flow.setForwardPath(forwardFlowPath);
 
@@ -493,6 +516,7 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
                 .srcSwitch(destSwitch)
                 .destSwitch(srcSwitch)
                 .status(FlowPathStatus.ACTIVE)
+                .sharedBandwidthGroupId(sharedBandwidthGroupId)
                 .build();
         flow.setReversePath(reverseFlowPath);
 
