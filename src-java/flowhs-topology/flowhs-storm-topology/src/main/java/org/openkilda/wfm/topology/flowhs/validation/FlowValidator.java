@@ -108,7 +108,7 @@ public class FlowValidator {
 
         checkFlags(flow);
         checkBandwidth(flow);
-        checkMaxLatency(flow);
+        checkMaxLatencyTier(flow);
         checkSwitchesSupportLldpAndArpIfNeeded(flow);
 
         if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
@@ -246,8 +246,8 @@ public class FlowValidator {
     }
 
     @VisibleForTesting
-    void checkMaxLatency(RequestedFlow flow) throws InvalidFlowException {
-        ValidatorUtils.maxLatencyValidator(flow.getMaxLatency(), flow.getMaxLatencyTier2());
+    void checkMaxLatencyTier(RequestedFlow flow) throws InvalidFlowException {
+        ValidatorUtils.validateMaxLatencyAndLatencyTier(flow.getMaxLatency(), flow.getMaxLatencyTier2());
     }
 
     private void checkFlowForIslConflicts(EndpointDescriptor descriptor) throws InvalidFlowException {
@@ -288,7 +288,7 @@ public class FlowValidator {
             if ((flowMirrorPointsForward.isPresent() || flowMirrorPointsReverse.isPresent())
                     && (endpoint.isTrackLldpConnectedDevices() || endpoint.isTrackArpConnectedDevices())) {
                 String errorMessage = format("Flow mirror point is created for the flow %s, "
-                        + "lldp or arp can not be set to true.", flowId);
+                        + "LLDP or arp can not be set to true.", flowId);
                 throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
             }
         }
@@ -387,13 +387,13 @@ public class FlowValidator {
     }
 
     /**
-     * Ensure vlans are not equal in the case when there is an attempt to create one-switch flow for a single port.
+     * Ensure VLANs are not equal in the case when there is an attempt to create one-switch flow for a single port.
      */
     @VisibleForTesting
     private void checkOneSwitchFlowConflict(FlowEndpoint source, FlowEndpoint destination) throws InvalidFlowException {
         if (source.isSwitchPortVlanEquals(destination)) {
             throw new InvalidFlowException(
-                    "It is not allowed to create one-switch flow for the same ports and vlans", ErrorType.DATA_INVALID);
+                    "It is not allowed to create one-switch flow for the same ports and VLANs", ErrorType.DATA_INVALID);
         }
     }
 
@@ -488,7 +488,7 @@ public class FlowValidator {
      *
      * @param requestedFlow a flow to be validated.
      */
-    // TODO: switch to per endpoint based strategy (same as other enpoint related checks)
+    // TODO: switch to per endpoint based strategy (same as other end point related checks)
     @VisibleForTesting
     void checkSwitchesSupportLldpAndArpIfNeeded(RequestedFlow requestedFlow) throws InvalidFlowException {
         SwitchId sourceId = requestedFlow.getSrcSwitch();

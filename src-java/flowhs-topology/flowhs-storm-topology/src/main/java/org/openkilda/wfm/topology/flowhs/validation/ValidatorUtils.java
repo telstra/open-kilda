@@ -25,20 +25,33 @@ public final class ValidatorUtils {
 
     private ValidatorUtils() {}
 
-    /** maxLatencyValidator method check if the maxLatency and
-     * maxLatencyTier2 are valid.
+    /**
+     * maxLatencyValidator method checks if the maxLatency and maxLatencyTier2 are valid.
      * @param maxLatency maxLatency property
      * @param maxLatencyTier2 maxLatencyTier2 property
      * @throws InvalidFlowException invalidFlow exception
      */
-    public static void maxLatencyValidator(Long maxLatency, Long maxLatencyTier2) throws InvalidFlowException {
-        if (maxLatencyTier2 == null) {
+    public static void validateMaxLatencyAndLatencyTier(Long maxLatency, Long maxLatencyTier2) throws InvalidFlowException {
+        if (maxLatency == null && maxLatencyTier2 == null) {
             return;
         }
         if (maxLatency == null) {
             throw new InvalidFlowException(
                     "maxLatencyTier2 property cannot be used without maxLatency",
                     ErrorType.DATA_INVALID);
+        }
+        if (maxLatencyTier2 == null || maxLatencyTier2.equals(0L)) {
+            return;
+        }
+
+        if (maxLatency < 0) {
+            throw new InvalidFlowException("maxLatency cannot be negative", ErrorType.DATA_INVALID);
+        }
+        if (maxLatencyTier2 < 0) {
+            throw new InvalidFlowException("maxLatencyTier2 cannot be negative", ErrorType.DATA_INVALID);
+        }
+        if (maxLatency.equals(0L) && maxLatencyTier2.equals(0L)) {
+            return;
         }
         if (maxLatency > maxLatencyTier2) {
             throw new InvalidFlowException(
