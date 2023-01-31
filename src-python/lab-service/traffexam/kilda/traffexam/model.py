@@ -360,6 +360,19 @@ class LLDPPush(Abstract):
         self.time_to_live = ttl
 
 
+class LACPPush(Abstract):
+    def __init__(self, payload, **fields):
+        super().__init__(**fields)
+        self.expired = payload.expired
+        self.defaulted = payload.defaulted
+        self.distributing = payload.distributing
+        self.collecting = payload.collecting
+        self.synchronization = payload.synchronization
+        self.aggregation = payload.aggregation
+        self.lacp_timeout = payload.lacp_timeout
+        self.lacp_activity = payload.lacp_activity
+
+
 class ARPPush(Abstract):
     def __init__(self, src_mac, src_ipv4, **fields):
         super().__init__(**fields)

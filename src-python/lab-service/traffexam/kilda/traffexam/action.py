@@ -18,12 +18,13 @@ import operator
 import pyroute2
 
 from scapy.all import ARP, IP, TCP, UDP, Ether, sendp
-from scapy.contrib import lldp
+from scapy.contrib import lldp, lacp
 
 from kilda.traffexam import context as context_module
 from kilda.traffexam import exc
 from kilda.traffexam import proc
 from kilda.traffexam import system
+from scapy.contrib.lacp import SlowProtocol
 
 
 class Abstract(context_module.ContextConsumer):
@@ -65,6 +66,30 @@ class LLDPPush(Abstract):
 
         return Ether(src=entry.mac_address, dst=self.lldp_bcast_mac) / payload
 
+
+class LACPPush(Abstract):
+    def __call__(self, iface, push_entry):
+        pkt = self._encode(push_entry)
+
+        with self._network_namespace_context:
+            sendp(pkt, iface=iface.name, verbose=False, promisc=False)
+
+    def _encode(self, entry):
+        # entry -> b'10011010'
+        actor_state_binary = functools.reduce(lambda a, b: a + b, map(self._bool_to_byte, [entry.expired,
+                                                                                           entry.defaulted,
+                                                                                           entry.distributing,
+                                                                                           entry.collecting,
+                                                                                           entry.synchronization,
+                                                                                           entry.aggregation,
+                                                                                           entry.lacp_timeout,
+                                                                                           entry.lacp_activity]))
+        # Kilda ignores everything except lacp actor state. If this changes - expand this method with more fields
+        return Ether() / SlowProtocol() / lacp.LACP(actor_state=actor_state_binary)
+
+    @staticmethod
+    def _bool_to_byte(self, boolean):
+        return b'1' if boolean else b'0'
 
 class ARPPush(Abstract):
     dst_ipv4 = "8.8.8.9"
@@ -116,6 +141,7 @@ class Adapter(object):
         network_namespace = self._make_network_namespace_context(context)
 
         self.lldp_push = LLDPPush(context, network_namespace)
+        self.lacp_push = LACPPush(context, network_namespace)
         self.arp_push = ARPPush(context, network_namespace)
         self.udp_push = UDPPush(context, network_namespace)
         self.tcp_push = TCPPush(context, network_namespace)
