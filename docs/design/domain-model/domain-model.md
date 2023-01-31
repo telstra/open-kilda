@@ -1,4 +1,4 @@
-# Kilda Domain Model
+# OpenKilda Domain Model
 
 Based on
 [Data Mapper](https://martinfowler.com/eaaCatalog/dataMapper.html),

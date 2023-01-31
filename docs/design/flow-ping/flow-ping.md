@@ -12,7 +12,7 @@ the packet via existing Open Flow rules on that switch.
 
 # Ping topology
 ## Periodic pings
-Periodic pings are initiated by Kilda system periodically with the interval defined by `flow.ping.interval` configuration option.
+Periodic pings are initiated by OpenKilda system periodically with the interval defined by `flow.ping.interval` configuration option.
 Pings for both directions for all existing flows are created on each iteration.
 
 If ping succeeds, its latency is saved into OTSDB, in metric `pen.flow.latency` with tags: flowid and direction.

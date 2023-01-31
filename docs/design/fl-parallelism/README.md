@@ -117,7 +117,7 @@ network topology.
 
 Floodlightrouter will add switch availability data into events proxied from
 floodlight into the network topology. In the following JSON event example, the
-original event, produced by FloodLight, is placed into the "event" field,
+original event, produced by Floodlight, is placed into the "event" field,
 corresponding connections are placed into "availability_data" fields.
 
 ```json

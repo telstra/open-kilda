@@ -1,7 +1,7 @@
 # Network discovery
 
 ## Overview
-One of the main Open-Kilda tasks is the automatic network discovery. This discovery 
+One of the main OpenKilda tasks is the automatic network discovery. This discovery 
 process is not a one-time action. We must be able to track and react on
 topology changes. For example, a new inter-switch link (ISL) must be detected and used 
 as a possible route for existing or future flows. Temporary or permanently corrupted 
@@ -14,12 +14,12 @@ Information about a discovered ISL contains:
 * link latency
 * whether it supports BFD or other optional capabilities
 
-Open-Kilda installs on all switches an OF rule that manages discovery packets. Switches use
+OpenKilda installs on all switches an OF rule that manages discovery packets. Switches use
 that rule to send and receive discovery packets (based on PACKET_IN and PACKET_OUT messages),
 as well as to report the state to the controller.
 
-Open-Kilda produces a "discovery" packet (Ethernet+IP+UDP+LLDP), puts inside it a source
-data path, source port number, current time. Open-Kilda sends this packet using a PACKET_OUT OF
+OpenKilda produces a "discovery" packet (Ethernet+IP+UDP+LLDP), puts inside it a source
+data path, source port number, current time. OpenKilda sends this packet using a PACKET_OUT OF
 message to the source switch and sets the source port number in actions as PORT_OUT.
 
 When the controller receives a "discovery" packet via PACKET_IN message, it extracts
@@ -35,7 +35,7 @@ which is passed in to the Storm for further processing.
 This "process" is done for each enabled port of each switch each N 
 seconds (a configuration parameter). As a result, we receive two discovery
 packets/events for each "link": one for each direction. Due to this process repeats
-periodically, Open-Kilda is able to detect ISL fails (link corruptions) and react
+periodically, OpenKilda is able to detect ISL fails (link corruptions) and react
 on them.
 
 In order to reduce the number of PACKET_OUT and PACKET_IN messages, network topology

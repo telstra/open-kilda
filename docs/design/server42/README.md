@@ -242,4 +242,4 @@ and then shut down a VM with old code. To separate old VMs with new VMs,
 I propose to use Linux network namespaces. That gives us the ability
 not to play with IP:PORT for each service. One of the advantages of this approach
 is that we don't need to create a complex code in applications, what simplifies
-the entire codebase. Also, if Kilda users don't need ZDD, they just don't set up it. 
+the entire codebase. Also, if OpenKilda users don't need ZDD, they just don't set up it. 

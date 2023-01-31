@@ -7,7 +7,7 @@ The `kilda.speaker` topic is split into the following incoming topics:
 * `kilda.speaker.flow` - incoming install / delete flow requests.
 * `kilda.speaker.flow.ping` - incoming flow ping requests.
 
-Floodlight Kilda Modules has multiple reactor threads running and each of them assigned to one or more topics. 
+Floodlight OpenKilda Modules has multiple reactor threads running and each of them assigned to one or more topics. 
 
 ### Sequence Diagrams
 

@@ -4,7 +4,7 @@
 
 Have the ability to ping ISL from one end to the other and back with round trip latency measurement.  
 
-## Kilda OF rules
+## OpenKilda OF rules
 
 3 new OF rules will be added:
 * Input Rule: forwards a ping packet from Server 42 port to the ISL port.

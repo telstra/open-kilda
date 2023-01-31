@@ -1,10 +1,10 @@
-# Multi-Table Pipelines for Kilda
+# Multi-Table Pipelines for OpenKilda
 
 ## Goal
 
 The goal of this document is to describe how kilda works with switches that support multi-table mode.
 
-## Kilda OF Rules
+## OpenKilda OF Rules
 
 There are 4 types of rules that controller installs to a switch:
 * Default Rules
@@ -157,7 +157,7 @@ that are responsible for tracking information about the actual state in which th
 per each switch. NOTE: since single switch flows don't have path segments in DB,
 the tracking is done on the both levels.
 
-A new switch property and kilda configuration parameters are introduced and added to REST API as well.
+A new switch property and OpenKilda configuration parameters are introduced and added to REST API as well.
 Kilda configuration is responsible for handling newly added switches, while switch property changes
 switch mode on the fly.
 

@@ -96,7 +96,7 @@ Short description:
 
 ## Switch rules
 
-There  will be introduced 7 new rules, grouped in the following types:
+There will be introduced 7 new rules, grouped in the following types:
 * Flow (1 rule for each flow and 3 default rules)
 * Isl (1 default rule)
 * Other (2 default rule)

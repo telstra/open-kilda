@@ -1,4 +1,4 @@
-# Kilda Persistence Layer
+# OpenKilda Persistence Layer
 
 ## Overview
 Kilda has a well-defined persistence layer which provides access to the data in the system database / graph storage.
@@ -13,7 +13,7 @@ data in different databases. For example, `COMMON` area can be stored into Orien
 
 ## Entities
 Persistent entities are classes whose instances can be stored in the database / graph storage. 
-The entities' interfaces are defined by Kilda Model, while the Persistence Layer encapsulates the logic required to perform 
+The entities' interfaces are defined by OpenKilda Model, while the Persistence Layer encapsulates the logic required to perform 
 CRUD operations with the entities' data.
 
 Kilda Model and Persistence Layer utilize the [Data Gateway](https://martinfowler.com/eaaCatalog/rowDataGateway.html) pattern
@@ -65,12 +65,12 @@ from other threads until the changes are successfully committed to the database 
 or the UoW code throws an exception, the whole transaction fails.
 
 Kilda-transaction queries a transaction adapter from a specific persistence implementation. This adapter is used to manage
-the state of the real DB transaction. Kilda-transaction will deny attempts to use multiple persistence implementations
-simultaneously. I.e. there is only one "real" transaction managed by Kilda-transaction.
+the state of the real DB transaction. OpenKilda-transaction will deny attempts to use multiple persistence implementations
+simultaneously. I.e. there is only one "real" transaction managed by OpenKilda-transaction.
 
 ## Tinkerpop implementation
 The current implementation of the Persistence Layer supports [Tinkerpop-enabled](https://tinkerpop.apache.org/) storages, and relies on the [Ferma framework](http://syncleus.com/Ferma/).
 
-The persistable piece of data in Ferma Framework is called frame; in Kilda, it is a Java class extending one of the base frames: Vertex or Edge frames. 
+The persistable piece of data in Ferma Framework is called frame; in OpenKilda, it is a Java class extending one of the base frames: Vertex or Edge frames. 
 This provides a level of abstraction for interacting with the underlying graph using Ferma Framework methods that operates on Frame objects.
 

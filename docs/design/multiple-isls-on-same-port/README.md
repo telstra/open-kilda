@@ -70,9 +70,9 @@ In LabService, we need to add the ability to emulate the network through which v
 
 It may be necessary to make changes to the statistics.
 
-### Kilda GUI
+### OpenKilda GUI
 
-Changes to the Kilda GUI will also be required.
+Changes to the OpenKilda GUI will also be required.
 
 ## Database changes
 

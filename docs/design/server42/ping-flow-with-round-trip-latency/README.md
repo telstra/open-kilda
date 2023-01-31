@@ -4,7 +4,7 @@
 
 Have the ability to ping a flow from one end to the other and back with round trip latency measurement.  
 
-## Kilda OF Rules
+## OpenKilda OF Rules
 
 5 new OF rules will be added:
 * Input Rule: sends packets from server 42 port to Pre Ingress Table.
@@ -29,7 +29,7 @@ Purposes:
 
 ![Input Rule](input_rule.png "Input Rule")
 
-NOTE: `61235` is Kilda reserved UDP port for forward ping packets.
+NOTE: `61235` is OpenKilda reserved UDP port for forward ping packets.
 
 ```
 [FLOW_ID5]
@@ -213,7 +213,7 @@ Purposes of this rule are:
 
 ## Changing of Transit VXLAN rule
 
-At this moment, during VXLAN encapsulation Kilda sets `UDP_SRC` port equal to `4500` just to set
+At this moment, during VXLAN encapsulation OpenKilda sets `UDP_SRC` port equal to `4500` just to set
 some value into the blank field. Transit VXLAN rules match packet by this port, but it is a redundant matching.
 Ping Feature needs to put `61235` and `61236` into `UDP_SRC` field.
 That is why matching by `UDP_SRC` will be removed from Transit VXLAN rules.

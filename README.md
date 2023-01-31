@@ -44,7 +44,7 @@ We do not recommend upgrading pip and install docker-compose using the methods d
 
 
 #### Dependency installation on Ubuntu 18.04 
-For running a virtual environment (that is a Docker instance with the Open vSwitch) it is required to have Linux kernel 4.18+ for OVS meters support.
+For running a virtual environment (that is a Docker instance with the Open vSwitch service) it is required to have Linux kernel 4.18+ for OVS meters support.
 The following commands will install necessary dependencies on Ubuntu 18.04:
 ```shell
 sudo apt install maven make openjdk-8-jdk openvswitch-switch python3-pip linux-generic-hwe-18.04 tox

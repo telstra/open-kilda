@@ -1,6 +1,6 @@
 @startuml
 
-title Kilda Domain Model
+title OpenKilda Domain Model
 
 class Flow {
     flow_id

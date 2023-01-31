@@ -1,4 +1,4 @@
-# Zero Downtime Upgrades for Open Kilda
+# Zero Downtime Upgrades for OpenKilda
 
 ## Rationale
 
@@ -78,7 +78,7 @@ Based on that the process is the following:
 - Set `SHUTDOWN` signal for `blue` floodlights
 - Set new `build-version` for the left floodlights
 - Redeploy `blue` FL containers
-- Set `START` signal for `blue` FloodLights (now they become `green`)
+- Set `START` signal for `blue` Floodlights (now they become `green`)
 - Terminate `blue` topologies
 
 If during the process something goes wrong, it is required to perform a fallback at the decision point.

@@ -33,7 +33,7 @@ Constraints:
 * SERVICE_FLAG == 1
 * TYPE_FIELD == SERVICE_OR_FLOW_SEGMENT (0x000)
 
-## Kilda-flow's segment cookies (org.openkilda.model.cookie.FlowSegmentCookie)
+## OpenKilda-flow's segment cookies (org.openkilda.model.cookie.FlowSegmentCookie)
 Fields:
 
 ```

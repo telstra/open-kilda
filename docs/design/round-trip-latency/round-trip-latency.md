@@ -24,10 +24,10 @@ Switch B has different actions for these two copies:
 
 ![Round trip latency design](new_discovery_noviflow_with_groups_support.png "Round trip latency design")
 
-## Round trip latency design with NOT NoviFlow switch
+## Round trip latency design with non-NoviFlow switch
 
 Non-NoviFlow switches can't store timestamps, so the old way of latency measuring will be used for them.
-![Round trip latency design for NOW noviflow switches](new_discovery_not_noviflow.png "Round trip latency design for NOT noviflow switches")
+![Round trip latency design for non-NoviFlow switches](new_discovery_not_noviflow.png "Round trip latency design for non-NoviFlow switches")
 
 ## One way latency VS round trip latency
 
