@@ -56,6 +56,7 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     public static final String SOURCE_EDGE = "source";
     public static final String DESTINATION_EDGE = "destination";
     public static final String OWNS_PATHS_EDGE = "owns";
+    public static final String OWNS_SEGMENTS_EDGE = "owns";
     public static final String FLOW_ID_PROPERTY = "flow_id";
     public static final String SRC_SWITCH_ID_PROPERTY = "src_switch_id";
     public static final String DST_SWITCH_ID_PROPERTY = "dst_switch_id";

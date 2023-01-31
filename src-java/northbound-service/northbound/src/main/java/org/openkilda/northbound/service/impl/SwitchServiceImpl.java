@@ -532,12 +532,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
         return messagingChannel.sendAndGet(nbworkerTopic, message)
                             .thenApply(GetFlowsPerPortForSwitchResponse.class::cast)
-                            .thenApply(GetFlowsPerPortForSwitchResponse::getFlowsByPorts)
-                            .thenApply(portToFlowDto -> portToFlowDto.entrySet().stream()
-                                    .collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()
-                                            .stream()
-                                            .map(flowMapper::toFlowResponseV2).collect(Collectors.toList()))))
-                            .thenApply(SwitchFlowsPerPortResponse::new);
+                            .thenApply(switchMapper::toSwitchFlowsPerPortResponseV2Api);
     }
 
 
