@@ -213,7 +213,7 @@ public class HibernateRepositoryFactory implements RepositoryFactory {
 
     @Override
     public LacpPartnerRepository createLacpPartnerRepository() {
-        throw new IllegalStateException("Repository not implemented on hibernate layer");
+        throw new IllegalStateException("The Repository is not implemented on hibernate layer");
     }
 
     @Override

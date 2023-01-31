@@ -40,18 +40,6 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
     }
 
     /**
-     * Main method to run topology.
-     */
-    public static void main(String[] args) {
-        try {
-            LaunchEnvironment env = new LaunchEnvironment(args);
-            (new ConnectedDevicesTopology(env)).setup();
-        } catch (Exception e) {
-            System.exit(handleLaunchException(e));
-        }
-    }
-
-    /**
      * Creating topology.
      */
     public StormTopology createTopology() {
@@ -81,6 +69,7 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
         RouterBolt routerBolt = new RouterBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID);
         declareBolt(builder, routerBolt, ROUTER_BOLT_ID)
                 .shuffleGrouping(CONNECTED_DEVICES_SPOUT_ID)
+                .shuffleGrouping(LACP_SPOUT_ID)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
@@ -109,5 +98,17 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
     @Override
     protected String getZkTopoName() {
         return "connecteddevices";
+    }
+
+    /**
+     * Main method to run topology.
+     */
+    public static void main(String[] args) {
+        try {
+            LaunchEnvironment env = new LaunchEnvironment(args);
+            (new ConnectedDevicesTopology(env)).setup();
+        } catch (Exception e) {
+            System.exit(handleLaunchException(e));
+        }
     }
 }

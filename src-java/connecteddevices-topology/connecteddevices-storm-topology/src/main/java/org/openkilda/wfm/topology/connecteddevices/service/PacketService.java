@@ -99,10 +99,9 @@ public class PacketService {
     /**
      * This key is needed to balance load on Packet Bolt. If you see that some packet bolts have high load, and
      * some have low load, try to extend this key. Maximum extension is equal to
-     * <code>SwitchConnectedDeviceFrame.UNIQUE_INDEX_PROPERTY</code>
      */
     public static String createMessageKey(LacpInfoData data) {
-        return String.format("%s_%s_arp", data.getSwitchId(), data.getLogicalPortNumber());
+        return String.format("%s_%s_lacp", data.getSwitchId(), data.getLogicalPortNumber());
     }
 
     /**

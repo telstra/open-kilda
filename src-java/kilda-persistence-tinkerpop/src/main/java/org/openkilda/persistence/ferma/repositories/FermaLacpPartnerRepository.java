@@ -1,4 +1,4 @@
-/* Copyright 2022 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -87,6 +87,11 @@ public class FermaLacpPartnerRepository extends FermaGenericRepository<LacpPartn
                         .has(LacpPartnerFrame.SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
                         .has(LacpPartnerFrame.LOGICAL_PORT_NUMBER_PROPERTY, logicalPortNumber))
                 .toListExplicit(LacpPartnerFrame.class);
+        if (lacpPartnerFrames.size() > 1) {
+            log.error(String.format("More then one LACP status fields for switch %s on port %s", 
+                    switchId, logicalPortNumber));
+        }
+        
         return lacpPartnerFrames.isEmpty() ? Optional.empty() : Optional.of(lacpPartnerFrames.get(0))
                 .map(LacpPartner::new);
     }

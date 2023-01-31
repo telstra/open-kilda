@@ -446,9 +446,9 @@ public class SwitchOperationsService {
             if (!flowsWitchEnabledLldp.isEmpty()) {
                 throw new IllegalSwitchPropertiesException(
                         format("Illegal switch properties combination for switch %s. "
-                         + "Detect Connected Devices feature is turn on for following flows [%s]. "
-                         + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
-                         + "Please disable detecting of connected devices via LLDP for each flow before set "
+                         + "Detect Connected Devices feature via LLDP is turned on for following flows [%s]."
+                         + "For correct work of this feature, switch property 'multiTable' must be set to 'true' "
+                         + "Please disable detecting of connected devices via LLDP for each flow before setting "
                          + "'multiTable' property to 'false'",
                                 switchId, String.join(", ", flowsWitchEnabledLldp)));
             }

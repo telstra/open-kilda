@@ -221,7 +221,8 @@ public class SwitchControllerV2 extends BaseController {
      *
      * @param switchId the switch
      */
-    @ApiOperation(value = "Read all LACP status on specific switch", response = LacpStatusResponse.class)
+    @ApiOperation(value = "Read all LACP status values/fields, on a specific switch", 
+            response = LacpStatusResponse.class)
     @GetMapping(value = "/{switch_id}/lacpstatus")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<LacpStatusResponse>> getLacpStatus(@PathVariable("switch_id") SwitchId switchId) {
@@ -235,7 +236,8 @@ public class SwitchControllerV2 extends BaseController {
      * @param logicalPortNumber the switch
      *
      */
-    @ApiOperation(value = "Read LACP status on specific port of the switch", response = LacpStatusResponse.class)
+    @ApiOperation(value = "Read LACP status values/fields, on a specific port of the switch", 
+            response = LacpStatusResponse.class)
     @GetMapping(value = "/{switch_id}/lacp/{logical_port_number}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<LacpStatusResponse> getLacpStatus(@PathVariable("switch_id") SwitchId switchId,
