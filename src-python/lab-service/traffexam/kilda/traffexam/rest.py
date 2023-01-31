@@ -145,7 +145,8 @@ def address_emmit_lacp_packet(idnr):
         get_context().action.lacp_push(address.iface, push_entry)
     except ValueError as e:
         return bottle.HTTPError(400, 'Invalid LACP payload - {}'.format(e))
-
+    except Exception as e:
+        return bottle.HTTPError(500, 'Unexpected error - {}'.format(e))
     return {
         'lacp_push': {
             'sent_packets': 1}}
