@@ -41,10 +41,13 @@ public class ValidatorUtilsTest {
                 {false, 1000L, 10000L},
                 {false, 1000L, 0L},
                 {false, 500L, null},
+                {false, 0L, 1000L},
                 {true, null, 50000000L},
                 {true, -1000L, 1000L},
                 {true, -1000L, -1000L},
                 {true, 1000L, -1000L},
+                {true, -1000L, 0L},
+                {true, -1000L, null},
                 {true, 1000L, 10L},
                 {true, 60000000L, 50000000L}
         };
@@ -70,7 +73,8 @@ public class ValidatorUtilsTest {
     }
 
     private void assertThatValidationThrows(Long maxLatency, Long maxLatencyTier2) {
-        assertThrows(InvalidFlowException.class, () -> ValidatorUtils.validateMaxLatencyAndLatencyTier(maxLatency, maxLatencyTier2));
+        assertThrows(InvalidFlowException.class, () ->
+                ValidatorUtils.validateMaxLatencyAndLatencyTier(maxLatency, maxLatencyTier2));
     }
 
     private void assertThatValidationPasses(Long maxLatency, Long maxLatencyTier2) {

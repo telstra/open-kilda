@@ -288,7 +288,7 @@ public class FlowValidator {
             if ((flowMirrorPointsForward.isPresent() || flowMirrorPointsReverse.isPresent())
                     && (endpoint.isTrackLldpConnectedDevices() || endpoint.isTrackArpConnectedDevices())) {
                 String errorMessage = format("Flow mirror point is created for the flow %s, "
-                        + "LLDP or arp can not be set to true.", flowId);
+                        + "LLDP or ARP can not be set to true.", flowId);
                 throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
             }
         }
