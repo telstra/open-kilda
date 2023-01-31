@@ -155,7 +155,8 @@ public class YFlowValidator {
     }
 
     private void checkMaxLatency(YFlowRequest yFlowRequest) throws InvalidFlowException {
-        ValidatorUtils.validateMaxLatencyAndLatencyTier(yFlowRequest.getMaxLatency(), yFlowRequest.getMaxLatencyTier2());
+        ValidatorUtils.validateMaxLatencyAndLatencyTier(yFlowRequest.getMaxLatency(),
+                yFlowRequest.getMaxLatencyTier2());
     }
     
     private void validateSubFlows(Collection<RequestedFlow> flows)
