@@ -129,7 +129,8 @@ public class PacketService {
      * <code>SwitchConnectedDeviceFrame.UNIQUE_INDEX_PROPERTY</code>
      */
     public static String createMessageKey(LldpInfoData data) {
-        return String.format("%s_%s_lldp", data.getSwitchId(), data.getPortNumber());
+        return String.format("%s_%s_%s_%s_%s_lldp", data.getSwitchId(), data.getPortNumber(), data.getMacAddress(),
+                data.getChassisId(), data.getPortId());
     }
 
     /**
@@ -138,7 +139,8 @@ public class PacketService {
      * <code>SwitchConnectedDeviceFrame.UNIQUE_INDEX_PROPERTY</code>
      */
     public static String createMessageKey(ArpInfoData data) {
-        return String.format("%s_%s_arp", data.getSwitchId(), data.getPortNumber());
+        return String.format("%s_%s_%s_%s_arp", data.getSwitchId(), data.getPortNumber(), data.getMacAddress(),
+                data.getIpAddress());
     }
 
     private FlowRelatedData findFlowRelatedData(ConnectedDevicePacketBase data) {
