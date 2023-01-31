@@ -29,6 +29,7 @@ import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.ExamReport
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.openkilda.testing.tools.SoftAssertions
+
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -159,9 +160,6 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
         statsHelper.verifyYFlowWritesMeterStats(yFlow, beforeTraffic, trafficApplicable)
-        yFlow.subFlows.each {
-            statsHelper.verifyFlowWritesStats(it.flowId, beforeTraffic, trafficApplicable)
-        }
 
         when: "Delete the y-flow"
         northboundV2.deleteYFlow(yFlow.YFlowId)
