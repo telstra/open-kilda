@@ -338,7 +338,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
                     .collect(Collectors.toList());
         } catch (SwitchNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(),
-                    "Could not get LACP Status for non existent switch");
+                    "Could not get LACP Status for non-existent switch");
         }
     }
 
