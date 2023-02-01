@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import org.openkilda.functionaltests.exception.ExpectedHttpClientErrorException
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.model.PathComputationStrategy
 
 import static groovyx.gpars.GParsPool.withPool
@@ -618,29 +619,29 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-	def "Unable to update to a flow with unavailable bandwidth"() {
-		given: "A flow"
-		def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-		def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-		flowHelperV2.addFlow(flow)
+    def "Unable to update to a flow with unavailable bandwidth"() {
+        given: "A flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
         def expectedException = new ExpectedHttpClientErrorException(HttpStatus.NOT_FOUND,
-                ~/Failed to find path with requested bandwidth=${this.IMPOSSIBLY_HIGH_BANDWIDTH}: Switch ${
-                    srcSwitch.dpId.toString()} doesn't have links with enough bandwidth/)
+                ~/Not enough bandwidth or no path found. Switch ${srcSwitch.dpId.toString()
+                } doesn't have links with enough bandwidth, Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
 
-		when: "Try to update the flow "
-		def flowInfo = northboundV2.getFlow(flow.flowId)
-        flowInfo = flowInfo.tap {it.maximumBandwidth = this.IMPOSSIBLY_HIGH_BANDWIDTH}
-		northboundV2.updateFlow(flowInfo.flowId,
+        when: "Try to update the flow "
+        def flowInfo = northboundV2.getFlow(flow.flowId)
+        flowInfo = flowInfo.tap { it.maximumBandwidth = IMPOSSIBLY_HIGH_BANDWIDTH }
+        northboundV2.updateFlow(flowInfo.flowId,
                 flowHelperV2.toRequest(flowInfo))
 
-		then: "Flow is not updated"
-		def actualException = thrown(HttpClientErrorException)
-		expectedException.equals(actualException)
+        then: "Flow is not updated"
+        def actualException = thrown(HttpClientErrorException)
+        expectedException.equals(actualException)
 
         cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-	}
+        Wrappers.silent {flowHelperV2.deleteFlow(flow.flowId)}
+    }
 
     @Tidy
     def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
