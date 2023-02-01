@@ -83,7 +83,6 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     private Switch destSwitch;
     private Set<PathId> pathIds;
     private Map<PathId, FlowPath> paths;
-    private Set<Integer> vlanStatistics;
 
     @Override
     @Property(FLOW_ID_PROPERTY)

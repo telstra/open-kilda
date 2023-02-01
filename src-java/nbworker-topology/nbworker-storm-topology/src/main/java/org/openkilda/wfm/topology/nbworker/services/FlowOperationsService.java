@@ -579,8 +579,8 @@ public class FlowOperationsService {
 
         if ((flow.getVlanStatistics() != null && !flow.getVlanStatistics().isEmpty())
                 || (flowPatch.getVlanStatistics() != null && !flowPatch.getVlanStatistics().isEmpty())) {
-            boolean zeroResultSrcVlan = isResultingVlanValueIsZero(flowPatch.getSource(), flow);
-            boolean zeroResultDstVlan = isResultingVlanValueIsZero(flowPatch.getDestination(), flow);
+            boolean zeroResultSrcVlan = isResultingVlanValueIsZero(flowPatch.getSource(), flow.getSrcVlan());
+            boolean zeroResultDstVlan = isResultingVlanValueIsZero(flowPatch.getDestination(), flow.getDestVlan());
 
             if (!zeroResultSrcVlan && !zeroResultDstVlan) {
                 throw new IllegalArgumentException("To collect vlan statistics you need to set source or "
@@ -589,8 +589,8 @@ public class FlowOperationsService {
         }
     }
 
-    private boolean isResultingVlanValueIsZero(PatchEndpoint patchEndpoint, Flow flow) {
-        boolean isResultVlanIsZero = flow.getSrcVlan() == 0;
+    private boolean isResultingVlanValueIsZero(PatchEndpoint patchEndpoint, int flowOuterVlan) {
+        boolean isResultVlanIsZero = flowOuterVlan == 0;
         Integer patchVlanResult = Optional.ofNullable(patchEndpoint)
                 .map(PatchEndpoint::getVlanId).orElse(null);
         if (patchVlanResult != null) {
