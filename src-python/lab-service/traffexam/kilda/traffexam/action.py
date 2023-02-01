@@ -76,20 +76,20 @@ class LACPPush(Abstract):
 
     def _encode(self, entry):
         # entry -> b'10011010'
-        actor_state_binary = functools.reduce(lambda a, b: a + b, map(self._bool_to_byte, [entry.expired,
-                                                                                           entry.defaulted,
-                                                                                           entry.distributing,
-                                                                                           entry.collecting,
-                                                                                           entry.synchronization,
-                                                                                           entry.aggregation,
-                                                                                           entry.lacp_timeout,
-                                                                                           entry.lacp_activity]))
+        actor_state_binary = functools.reduce(lambda a, b: a + b, map(self._bool_to_str, [entry.expired,
+                                                                                          entry.defaulted,
+                                                                                          entry.distributing,
+                                                                                          entry.collecting,
+                                                                                          entry.synchronization,
+                                                                                          entry.aggregation,
+                                                                                          entry.lacp_timeout,
+                                                                                          entry.lacp_activity]))
         # Kilda ignores everything except lacp actor state. If this changes - expand this method with more fields
-        return Ether() / SlowProtocol() / lacp.LACP(actor_state=actor_state_binary)
+        return Ether() / SlowProtocol() / lacp.LACP(actor_state=int(actor_state_binary, 2))
 
     @staticmethod
-    def _bool_to_byte(boolean):
-        return b'1' if boolean else b'0'
+    def _bool_to_str(boolean):
+        return '1' if boolean else '0'
 
 
 class ARPPush(Abstract):
