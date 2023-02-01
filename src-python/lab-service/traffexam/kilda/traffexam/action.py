@@ -88,8 +88,9 @@ class LACPPush(Abstract):
         return Ether() / SlowProtocol() / lacp.LACP(actor_state=actor_state_binary)
 
     @staticmethod
-    def _bool_to_byte(self, boolean):
+    def _bool_to_byte(boolean):
         return b'1' if boolean else b'0'
+
 
 class ARPPush(Abstract):
     dst_ipv4 = "8.8.8.9"
