@@ -75,7 +75,7 @@ class LACPPush(Abstract):
             sendp(pkt, iface=iface.name, verbose=False, promisc=False)
 
     def _encode(self, entry):
-        # entry -> b'10011010'
+        # entry, containing 8 boolean fields -> string representation of binary number '10011010'
         actor_state_binary = functools.reduce(lambda a, b: a + b, map(self._bool_to_str, [entry.expired,
                                                                                           entry.defaulted,
                                                                                           entry.distributing,
