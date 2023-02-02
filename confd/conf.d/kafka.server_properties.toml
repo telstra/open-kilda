@@ -1,0 +1,5 @@
+[template]
+src = "kafka/server.properties.tmpl"
+dest = "docker/kafka/kafka-conf/server.properties"
+keys = [ "/" ]
+mode = "0644"
