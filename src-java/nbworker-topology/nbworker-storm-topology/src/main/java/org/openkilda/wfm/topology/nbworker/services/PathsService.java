@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import org.openkilda.messaging.command.flow.PathValidateRequest;
+import org.openkilda.messaging.info.network.PathValidateResponse;
 import org.openkilda.messaging.info.network.PathsInfoData;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.KildaConfiguration;
@@ -28,6 +30,7 @@ import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -47,12 +50,14 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PathsService {
     private final int defaultMaxPathCount;
-    private PathComputer pathComputer;
-    private SwitchRepository switchRepository;
-    private SwitchPropertiesRepository switchPropertiesRepository;
-    private KildaConfigurationRepository kildaConfigurationRepository;
+    private final PathComputer pathComputer;
+    private final SwitchRepository switchRepository;
+    private final SwitchPropertiesRepository switchPropertiesRepository;
+    private final KildaConfigurationRepository kildaConfigurationRepository;
+    private final  AvailableNetworkFactory availableNetworkFactory;
 
-    public PathsService(RepositoryFactory repositoryFactory, PathComputerConfig pathComputerConfig) {
+    public PathsService(RepositoryFactory repositoryFactory, PathComputerConfig pathComputerConfig,
+                        PersistenceManager persistenceManager) {
         switchRepository = repositoryFactory.createSwitchRepository();
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
@@ -60,6 +65,9 @@ public class PathsService {
                 pathComputerConfig, new AvailableNetworkFactory(pathComputerConfig, repositoryFactory));
         pathComputer = pathComputerFactory.getPathComputer();
         defaultMaxPathCount = pathComputerConfig.getMaxPathCount();
+
+        availableNetworkFactory =
+                new AvailableNetworkFactory(pathComputerConfig, persistenceManager.getRepositoryFactory());
     }
 
     /**
@@ -87,7 +95,7 @@ public class PathsService {
         SwitchProperties srcProperties = switchPropertiesRepository.findBySwitchId(srcSwitchId).orElseThrow(
                 () -> new SwitchPropertiesNotFoundException(srcSwitchId));
         if (!srcProperties.getSupportedTransitEncapsulation().contains(flowEncapsulationType)) {
-            throw new IllegalArgumentException(String.format("Switch %s doesn't support %s encapslation type. Choose "
+            throw new IllegalArgumentException(String.format("Switch %s doesn't support %s encapsulation type. Choose "
                     + "one of the supported encapsulation types %s or update switch properties and add needed "
                     + "encapsulation type.", srcSwitchId, flowEncapsulationType,
                     srcProperties.getSupportedTransitEncapsulation()));
@@ -96,7 +104,7 @@ public class PathsService {
         SwitchProperties dstProperties = switchPropertiesRepository.findBySwitchId(dstSwitchId).orElseThrow(
                 () -> new SwitchPropertiesNotFoundException(dstSwitchId));
         if (!dstProperties.getSupportedTransitEncapsulation().contains(flowEncapsulationType)) {
-            throw new IllegalArgumentException(String.format("Switch %s doesn't support %s encapslation type. Choose "
+            throw new IllegalArgumentException(String.format("Switch %s doesn't support %s encapsulation type. Choose "
                     + "one of the supported encapsulation types %s or update switch properties and add needed "
                     + "encapsulation type.", dstSwitchId, requestEncapsulationType,
                     dstProperties.getSupportedTransitEncapsulation()));
@@ -119,5 +127,10 @@ public class PathsService {
         return flowPaths.stream().map(PathMapper.INSTANCE::map)
                 .map(path -> PathsInfoData.builder().path(path).build())
                 .collect(Collectors.toList());
+    }
+
+    public List<PathValidateResponse> validatePath(PathValidateRequest request) {
+        //TODO implement path validation
+        throw new UnsupportedOperationException();
     }
 }

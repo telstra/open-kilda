@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import org.openkilda.messaging.command.flow.PathValidateRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
@@ -46,7 +47,7 @@ public class PathsBolt extends PersistenceOperationsBolt {
     public void init() {
         super.init();
 
-        pathService = new PathsService(repositoryFactory, pathComputerConfig);
+        pathService = new PathsService(repositoryFactory, pathComputerConfig, persistenceManager);
     }
 
     @Override
@@ -55,6 +56,8 @@ public class PathsBolt extends PersistenceOperationsBolt {
         List<? extends InfoData> result = null;
         if (request instanceof GetPathsRequest) {
             result = getPaths((GetPathsRequest) request);
+        } else if (request instanceof PathValidateRequest) {
+            result = pathService.validatePath((PathValidateRequest) request);
         } else {
             unhandledInput(tuple);
         }
