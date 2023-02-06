@@ -4,7 +4,7 @@ databaseChangeLog:
       author: dkakollu
       changes:
         - tagDatabase:
-            tag: 025-add-lacp-partner-class
+            tag: 024-add-lacp-partner-class
 
   - changeSet:
       id: add-lacp-partner-class

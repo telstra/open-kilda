@@ -83,4 +83,4 @@ databaseChangeLog:
       file: 023-add-lacp-reply-into-lag-class.yaml
   - include:
       relativeToChangelogFile: true
-      file: 025-add-lacp-partner-class.yaml
+      file: 024-add-lacp-partner-class.yaml
