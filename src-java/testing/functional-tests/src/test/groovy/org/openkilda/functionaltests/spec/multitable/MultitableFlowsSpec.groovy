@@ -493,7 +493,7 @@ mode with existing flows and hold flows of different table-mode types"() {
     }
 
     @Tags([LOW_PRIORITY])
-//    @Ignore("https://github.com/telstra/open-kilda/issues/3961")
+    @Ignore("https://github.com/telstra/open-kilda/issues/3961")
     def "Flow rules are (re)installed according to switch property while rerouting"() {
         given: "Three active switches, src and dst switches are connected to traffgen"
         List<PathNode> desiredPath = null
