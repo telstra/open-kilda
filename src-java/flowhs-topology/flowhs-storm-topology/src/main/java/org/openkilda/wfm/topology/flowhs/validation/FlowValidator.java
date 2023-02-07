@@ -200,7 +200,11 @@ public class FlowValidator {
                 .anyMatch(it -> it < STATS_VLAN_LOWER_BOUND || it > STATS_VLAN_UPPER_BOUND);
 
         if (isAnyVlanOutsideOfBounds) {
-            throw new InvalidFlowException("To collect vlan statistics, the vlan IDs must be in valid range",
+            throw new InvalidFlowException(
+                    String.format(
+                            "To collect vlan statistics, the vlan IDs must be from %d up to %d",
+                            STATS_VLAN_LOWER_BOUND,
+                            STATS_VLAN_UPPER_BOUND),
                     ErrorType.PARAMETERS_INVALID);
         }
     }
