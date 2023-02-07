@@ -60,6 +60,24 @@ sudo apt install maven make openjdk-8-jdk openvswitch-switch python3-pip tox
 ```
 
 ```shell
+sudo apt install maven make openjdk-8-jdk openvswitch-switch tox
+```
+
+To avoid version conflict you can install python3-pip with the official script. To do it, you need to download script:
+
+```shell
+wget https://bootstrap.pypa.io/get-pip.py
+```
+
+and then run it:
+
+```shell
+sudo python3 get-pip.py
+```
+
+After pip installation you can install Docker compose:
+
+```shell
 sudo pip3 install docker-compose
 ```
 
@@ -77,13 +95,14 @@ Do that by adding the user to /etc/groups, logging out, and logging in back agai
 ##### Basic installation instruction from Docker site
 
 ```shell
-sudo apt-get install apt-transport-https ca-certificates curl gnupg lsb-release && \
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null && \
-sudo apt-get update && \
-sudo apt-get install docker-ce docker-ce-cli containerd.io && \
-sudo usermod -aG docker $USER \
-# re-login for apply the usermod command
+sudo apt-get install ca-certificates curl gnupg lsb-release
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+sudo usermod -aG docker $USER
+# re-login to apply the usermod command
 ```
 
 #### Maven
