@@ -21,15 +21,24 @@ after validation in the future.
 REST URL: ```/v2/network/validate-path```, method: ```GET```
 
 A user is required to provide a path represented by a list of nodes. Nodes must be ordered from start to end, 
-each next element is the next hop. A user can add optional parameters.
+each next element is the next hop. A user can add optional parameters:
+- encapsulation_type: enum value "TRANSIT_VLAN" or "VXLAN".
+- max_bandwidth: bandwidth required for this path.
+- max_latency: the first tier latency value. 
+- max_latency_tier2: the second tier latency value.
+- path_computation_strategy: "COST|LATENCY|MAX_LATENCY|COST_AND_AVAILABLE_BANDWIDTH",
+- reuse_flow_resources: a flow ID. Verify the given path as if it is created instead of the existing flow, that is as if
+the resources of some flow are released before validation.
 
 ### Request Body
 ```json
 {
   "encapsulation_type": "TRANSIT_VLAN|VXLAN",
+  "max_bandwidth": 0,
   "max_latency": 0,
   "max_latency_tier2": 0,
   "path_computation_strategy": "COST|LATENCY|MAX_LATENCY|COST_AND_AVAILABLE_BANDWIDTH",
+  "reuse_flow_resources": 0,
   "nodes": [
     {
       "switch_id": "00:00:00:00:00:00:00:01",
