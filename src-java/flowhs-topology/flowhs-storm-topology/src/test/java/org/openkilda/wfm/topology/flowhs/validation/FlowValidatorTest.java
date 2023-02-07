@@ -47,8 +47,8 @@ public class FlowValidatorTest {
     public static final int PORT_1 = 10;
     public static final int VLAN_1 = 11;
     public static final int VLAN_2 = 12;
-    public static final int VLAN_TOO_LOW = FlowValidator.VLAN_LOWER_BOUND - 1;
-    public static final int VLAN_TOO_HIGH = FlowValidator.VLAN_UPPER_BOUND + 1;
+    public static final int STATS_VLAN_TOO_LOW = FlowValidator.STATS_VLAN_LOWER_BOUND - 1;
+    public static final int STATS_VLAN_TOO_HIGH = FlowValidator.STATS_VLAN_UPPER_BOUND + 1;
     public static final EndpointDescriptor SRC_ENDPOINT = EndpointDescriptor.makeSource(
             FlowEndpoint.builder().switchId(SWITCH_ID_1).portNumber(PORT_1).build());
     public static final String FLOW_1 = "firstFlow";
@@ -203,13 +203,13 @@ public class FlowValidatorTest {
 
     @Test(expected = InvalidFlowException.class)
     public void shouldFailOnTooLowVlanStatistics() throws InvalidFlowException {
-        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, newHashSet(VLAN_TOO_LOW));
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, newHashSet(STATS_VLAN_TOO_LOW));
         flowValidator.checkFlowForVlanStatisticsInCorrectRange(flow);
     }
 
     @Test(expected = InvalidFlowException.class)
     public void shouldFailOnTooHighVlanStatistics() throws InvalidFlowException {
-        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, newHashSet(VLAN_TOO_HIGH));
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, newHashSet(STATS_VLAN_TOO_HIGH));
         flowValidator.checkFlowForVlanStatisticsInCorrectRange(flow);
     }
 

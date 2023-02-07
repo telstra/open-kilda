@@ -66,10 +66,10 @@ import java.util.stream.Collectors;
 public class FlowValidator {
 
     @VisibleForTesting
-    static final int VLAN_LOWER_BOUND = 1;
+    static final int STATS_VLAN_LOWER_BOUND = 1;
 
     @VisibleForTesting
-    static final int VLAN_UPPER_BOUND = 4094;
+    static final int STATS_VLAN_UPPER_BOUND = 4094;
 
     private final FlowRepository flowRepository;
     private final YFlowRepository yFlowRepository;
@@ -197,7 +197,7 @@ public class FlowValidator {
         }
 
         boolean isAnyVlanOutsideOfBounds = vlanStatistics.stream()
-                .anyMatch(it -> it < VLAN_LOWER_BOUND || it > VLAN_UPPER_BOUND);
+                .anyMatch(it -> it < STATS_VLAN_LOWER_BOUND || it > STATS_VLAN_UPPER_BOUND);
 
         if (isAnyVlanOutsideOfBounds) {
             throw new InvalidFlowException("To collect vlan statistics, the vlan IDs must be in valid range",
