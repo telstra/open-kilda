@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.127.0 (06/02/2023)
+
+### Bug Fixes:
+-  [#5059](https://github.com/telstra/open-kilda/pull/5059) Fixed incorrect vlan stats create/update (Issues: [#5057](https://github.com/telstra/open-kilda/issues/5057) [#5058](https://github.com/telstra/open-kilda/issues/5058)) [**storm-topologies**]
+-  [#5041](https://github.com/telstra/open-kilda/pull/5041) Fix Y-flow with one-switch flow ping timeout (Issue: [#5019](https://github.com/telstra/open-kilda/issues/5019))
+-  [#5045](https://github.com/telstra/open-kilda/pull/5045) fix max latency reason not shown
+-  [#5020](https://github.com/telstra/open-kilda/pull/5020) resuse bandwidth during Y create (Issue: [#4965](https://github.com/telstra/open-kilda/issues/4965))
+-  [#5023](https://github.com/telstra/open-kilda/pull/5023) Fix unit in max_latency validator log (Issue: [#5022](https://github.com/telstra/open-kilda/issues/5022))
+
+### Improvements:
+-  [#4994](https://github.com/telstra/open-kilda/pull/4994) Removed unused code from floodlight tests [**floodlight**]
+-  [#5002](https://github.com/telstra/open-kilda/pull/5002) Simplified and partially refactored tests in MultitableFlowsSpec [**tests**]
+-  [#5006](https://github.com/telstra/open-kilda/pull/5006) Stabilize YFlow swap paths steps [**tests**]
+-  [#5007](https://github.com/telstra/open-kilda/pull/5007) Add a reason to the exception message when no path is found.
+-  [#5042](https://github.com/telstra/open-kilda/pull/5042) move bw fail reason to the end of the log message
+-  [#5049](https://github.com/telstra/open-kilda/pull/5049) Update description
+-  [#5050](https://github.com/telstra/open-kilda/pull/5050) Added more fields for connected devices grouping
+-  [#5021](https://github.com/telstra/open-kilda/pull/5021) Removed unused classes FlowPathWithEncapsulation and FlowPathsWithEncapsulation
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.126.3...v1.127.0).
+
+### Affected Components:
+flow-hs, connected, nbworker, fl
+
+---
+
 ## v1.126.3 (20/12/2022)
 
 ### Bug Fixes:
