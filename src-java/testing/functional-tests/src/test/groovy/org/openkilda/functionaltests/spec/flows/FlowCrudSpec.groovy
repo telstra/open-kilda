@@ -1,5 +1,10 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+
 import org.openkilda.functionaltests.exception.ExpectedHttpClientErrorException
 import org.openkilda.model.PathComputationStrategy
 
@@ -1319,6 +1324,46 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         cleanup:
         !error && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    def "Unable to update to a flow with incorrect maxLatency input"() {
+        given: "A flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
+
+        when: "Try to update the flow "
+        def flowInfo = northboundV2.getFlow(flow.flowId)
+        flowInfo = flowInfo.tap {it.maxLatency = data.maxLatency
+            it.maxLatencyTier2 = data.maxLatencyTier2}
+        northboundV2.updateFlow(flowInfo.flowId,
+                flowHelperV2.toRequest(flowInfo))
+
+        then: "Bad Request response is returned"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.BAD_REQUEST
+        def errorDetails = error.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == data.message
+        errorDetails.errorDescription == data.errorDescr
+
+        cleanup: "Remove the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
+        where:
+        data << [
+                [
+                        maxLatency: 100,
+                        maxLatencyTier2: 200,
+                        message: "Can not get flow: Flow $NON_EXISTENT_FLOW_ID not found",
+                        errorDescr: "Flow not found"
+                ],
+                [
+                        description: "reroute",
+                        operation: { getNorthboundV2().rerouteFlow(NON_EXISTENT_FLOW_ID) },
+                        message: "Could not reroute flow",
+                        errorDescr: "Flow $NON_EXISTENT_FLOW_ID not found"
+                ]
+        ]
     }
 
     @Shared
