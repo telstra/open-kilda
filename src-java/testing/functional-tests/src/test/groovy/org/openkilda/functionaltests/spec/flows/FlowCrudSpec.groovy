@@ -1,5 +1,9 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.exception.ExpectedHttpClientErrorException
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.model.PathComputationStrategy
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -61,6 +65,8 @@ More specific cases like partialUpdate/protected/diverse etc. are covered in sep
 """)
 class FlowCrudSpec extends HealthCheckSpecification {
 
+    final static Integer IMPOSSIBLY_LOW_LATENCY = 1
+    final static Long IMPOSSIBLY_HIGH_BANDWIDTH = Long.MAX_VALUE
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
@@ -478,6 +484,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
     def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
         given: "A switch that has no connection to other switches"
         def isolatedSwitch = topologyHelper.notNeighboringSwitchPair.src
+        def expectedException = new ExpectedHttpClientErrorException(HttpStatus.NOT_FOUND,
+                ~/Switch ${isolatedSwitch.dpId.toString()} doesn't have links with enough bandwidth/)
         def flow = data.getFlow(isolatedSwitch)
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
             antiflap.portDown(isolatedSwitch.dpId, port)
@@ -495,12 +503,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         then: "Error is returned, stating that there is no path found for such flow"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.NOT_FOUND
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "Not enough bandwidth or no path found. Failed to find path with " +
-                "requested bandwidth=$flow.maximumBandwidth: Switch ${isolatedSwitch.dpId.toString()} doesn't have " +
-                "links with enough bandwidth"
+        expectedException.equals(error)
 
         cleanup: "Restore connection to the isolated switch and reset costs"
         !error && flowHelperV2.deleteFlow(flow.flowId)
@@ -583,45 +586,62 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "Unable to create a flow with invalid encapsulation type"() {
-        given: "A flow with invalid encapsulation type"
+    def "Unable to create a flow with #problem"() {
+        given: "A flow with #problem"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flow.setEncapsulationType("fake")
-
+        flow = update(flow)
         when: "Try to create a flow"
         flowHelperV2.addFlow(flow)
 
         then: "Flow is not created"
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorDescription == "Can not parse arguments of the create flow request"
-
+        def actualException = thrown(HttpClientErrorException)
+        expectedException.equals(actualException)
         cleanup:
-        !exc && flowHelperV2.deleteFlow(flow.flowId)
+        !actualException && flowHelperV2.deleteFlow(flow.flowId)
+
+        where:
+        problem |   update    | expectedException
+        "invalid encapsulation type"|
+        {FlowRequestV2 flowToSpoil ->
+            flowToSpoil.setEncapsulationType("fake")
+        return flowToSpoil} |
+        new ExpectedHttpClientErrorException(HttpStatus.BAD_REQUEST, ~/Can not parse arguments of the create flow request/)
+        "unavailable latency" |
+                {FlowRequestV2 flowToSpoil ->
+            flowToSpoil.setMaxLatency(IMPOSSIBLY_LOW_LATENCY)
+            flowToSpoil.setPathComputationStrategy(PathComputationStrategy.MAX_LATENCY.toString())
+        return flowToSpoil}|
+                new ExpectedHttpClientErrorException(HttpStatus.NOT_FOUND,
+                        ~/Latency limit: Requested path must have latency ${
+                            IMPOSSIBLY_LOW_LATENCY}ms or lower, but best path has latency \d+ms/)
+
     }
 
     @Tidy
-	def "Unable to update a flow with invalid encapsulation type"() {
-		given: "A flow with invalid encapsulation type"
-		def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-		def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-		flowHelperV2.addFlow(flow)
+    def "Unable to update to a flow with unavailable bandwidth"() {
+        given: "A flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowHelperV2.addFlow(flow)
+        def expectedException = new ExpectedHttpClientErrorException(HttpStatus.NOT_FOUND,
+                ~/Not enough bandwidth or no path found. Switch ${srcSwitch.dpId.toString()
+                } doesn't have links with enough bandwidth, Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
-		when: "Try to update the flow (faked encapsulation type)"
-		def flowInfo = northboundV2.getFlow(flow.flowId)
-		northboundV2.updateFlow(flowInfo.flowId,
-                flowHelperV2.toRequest(flowInfo.tap { it.encapsulationType = "fake" }))
 
-		then: "Flow is not updated"
-		def exc = thrown(HttpClientErrorException)
-		exc.rawStatusCode == 400
-		exc.responseBodyAsString.to(MessageError).errorDescription \
-				== "Can not parse arguments of the update flow request"
+        when: "Try to update the flow "
+        def flowInfo = northboundV2.getFlow(flow.flowId)
+        flowInfo = flowInfo.tap { it.maximumBandwidth = IMPOSSIBLY_HIGH_BANDWIDTH }
+        northboundV2.updateFlow(flowInfo.flowId,
+                flowHelperV2.toRequest(flowInfo))
+
+        then: "Flow is not updated"
+        def actualException = thrown(HttpClientErrorException)
+        expectedException.equals(actualException)
 
         cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-	}
+        Wrappers.silent {flowHelperV2.deleteFlow(flow.flowId)}
+    }
 
     @Tidy
     def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {

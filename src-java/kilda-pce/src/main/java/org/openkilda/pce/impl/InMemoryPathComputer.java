@@ -43,6 +43,9 @@ import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.pce.finder.FailReason;
+import org.openkilda.pce.finder.FailReasonType;
+import org.openkilda.pce.finder.FinderUtils;
 import org.openkilda.pce.finder.PathFinder;
 import org.openkilda.pce.model.Edge;
 import org.openkilda.pce.model.FindOneDirectionPathResult;
@@ -67,6 +70,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -115,9 +119,13 @@ public class InMemoryPathComputer implements PathComputer {
         try {
             findPathResult = findPathInNetwork(flow, network, weightFunction, strategy);
         } catch (UnroutableFlowException e) {
-            String message = format("Failed to find path with requested bandwidth=%s: %s",
-                    flow.isIgnoreBandwidth() ? " ignored" : flow.getBandwidth(), e.getMessage());
-            throw new UnroutableFlowException(message, e, flow.getFlowId(), flow.isIgnoreBandwidth());
+            String bandwidthMessage = "";
+            if (flow.getBandwidth() > 0) {
+                bandwidthMessage = format(", %s=%s", FailReasonType.MAX_BANDWIDTH,
+                        flow.isIgnoreBandwidth() ? " ignored" : flow.getBandwidth());
+            }
+            throw new UnroutableFlowException(e.getMessage().concat(bandwidthMessage), e, flow.getFlowId(),
+                    flow.isIgnoreBandwidth());
         }
 
         return convertToGetPathsResult(flow.getSrcSwitchId(), flow.getDestSwitchId(), findPathResult,
@@ -153,9 +161,34 @@ public class InMemoryPathComputer implements PathComputer {
                 return pathFinder.findPathWithMinWeightAndLatencyLimits(network, flow.getSrcSwitchId(),
                         flow.getDestSwitchId(), weightFunction, maxLatency, maxLatencyTier2);
             case MAX_LATENCY:
-                return pathFinder.findPathWithWeightCloseToMaxWeight(network, flow.getSrcSwitchId(),
-                        flow.getDestSwitchId(), weightFunction, flow.getMaxLatency(),
-                        Optional.ofNullable(flow.getMaxLatencyTier2()).orElse(0L));
+                try {
+                    return pathFinder.findPathWithWeightCloseToMaxWeight(network, flow.getSrcSwitchId(),
+                            flow.getDestSwitchId(), weightFunction, flow.getMaxLatency(),
+                            Optional.ofNullable(flow.getMaxLatencyTier2()).orElse(0L));
+                } catch (UnroutableFlowException e) {
+                    if (e.getFailReason() == null
+                            || !e.getFailReason().containsKey(FailReasonType.MAX_WEIGHT_EXCEEDED)) {
+                        throw e;
+                    }
+                    Long actualLatency = e.getFailReason().get(FailReasonType.MAX_WEIGHT_EXCEEDED).getWeight();
+                    Map<FailReasonType, FailReason> reasons = e.getFailReason();
+                    reasons.remove(FailReasonType.MAX_WEIGHT_EXCEEDED);
+                    String failLatencyReason;
+                    if (actualLatency == null) {
+                        failLatencyReason = format("Requested path must have latency %sms or lower",
+                                TimeUnit.NANOSECONDS.toMillis(flow.getMaxLatency()));
+                    } else {
+                        failLatencyReason = format("Requested path must have latency %sms or lower, "
+                                        + "but best path has latency %sms",
+                                TimeUnit.NANOSECONDS.toMillis(flow.getMaxLatency()),
+                                TimeUnit.NANOSECONDS.toMillis(actualLatency));
+                    }
+                    reasons.put(FailReasonType.LATENCY_LIMIT, new FailReason(FailReasonType.LATENCY_LIMIT,
+                            failLatencyReason));
+                    String[] split = e.getMessage().split(FinderUtils.REASONS_KEYWORD);
+                    throw new UnroutableFlowException(split[0] + FinderUtils.reasonsToString(reasons));
+
+                }
             default:
                 throw new UnsupportedOperationException(String.format("Unsupported strategy type %s", strategy));
         }

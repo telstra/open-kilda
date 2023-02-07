@@ -19,6 +19,8 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
 
+import java.util.concurrent.TimeUnit;
+
 public final class ValidatorUtils {
 
     private ValidatorUtils() {}
@@ -40,9 +42,9 @@ public final class ValidatorUtils {
         }
         if (maxLatency > maxLatencyTier2) {
             throw new InvalidFlowException(
-                    format("The maxLatency %d is higher than maxLatencyTier2 %d",
-                            maxLatency,
-                            maxLatencyTier2),
+                    format("The maxLatency %dms is higher than maxLatencyTier2 %dms",
+                            TimeUnit.NANOSECONDS.toMillis(maxLatency),
+                            TimeUnit.NANOSECONDS.toMillis(maxLatencyTier2)),
                     ErrorType.DATA_INVALID);
         }
     }

@@ -16,6 +16,7 @@
 package org.openkilda.pce.impl;
 
 import static java.lang.String.format;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -58,6 +59,7 @@ import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.BestWeightAndShortestPathFinder;
+import org.openkilda.pce.finder.FailReasonType;
 import org.openkilda.pce.finder.PathFinder;
 import org.openkilda.pce.model.Edge;
 import org.openkilda.pce.model.FindOneDirectionPathResult;
@@ -71,12 +73,14 @@ import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.collect.Lists;
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.junit.rules.ExpectedException;
 
 import java.time.Duration;
@@ -267,10 +271,12 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         long updatedFlowBandwidth = originFlowBandwidth + 1;
         flow.setBandwidth(updatedFlowBandwidth);
 
-        thrown.expect(UnroutableFlowException.class);
-
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        pathComputer.getPath(flow, flow.getPathIds(), false);
+
+        Exception exception = Assertions.assertThrows(UnroutableFlowException.class, () -> {
+            pathComputer.getPath(flow, flow.getPathIds(), false);
+        });
+        MatcherAssert.assertThat(exception.getMessage(), containsString(FailReasonType.MAX_BANDWIDTH.toString()));
     }
 
     @Test

@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.multitable
 
+import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -22,7 +25,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -54,42 +56,56 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    final String FLOW_DOESNT_PASS_TRAFFIC_ASSERTION_MESSAGE =
+            "Flow did not pass traffic at least in one direction when expected to pass"
+    final String FLOW_ISNT_PINGABLE_ASSERTION_MESSAGE = "Flow was not pingable when expected to be"
+
     @Tidy
     @Tags([LOW_PRIORITY])
-    def "System can use both single-table and multi-table switches in flow path at the same time, change switch table \
-mode with existing flows and hold flows of different table-mode types"() {
+    def "System can use both single-table and multi-table switches in flow path at the same time"() {
         given: "A potential flow on a path of 4 switches: multi -> single -> multi -> single"
-        List<PathNode> desiredPath = null
-        List<Switch> involvedSwitches = null
-        def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.dpId ?:
-                assumeTrue(false, "Should be at least two active traffgens connected to switches")
-        def swPair = topologyHelper.allNotNeighboringSwitchPairs.collectMany { [it, it.reversed] }.find { pair ->
-            desiredPath = pair.paths.find { path ->
-                involvedSwitches = pathHelper.getInvolvedSwitches(path)
-                //4 switches total. First and third switches should allow multi-table
-                involvedSwitches.size() == 4 && involvedSwitches[0].dpId in allTraffgenSwitchIds &&
-                        involvedSwitches[-1].dpId in allTraffgenSwitchIds &&
-                        involvedSwitches.every { it.features.contains(SwitchFeature.MULTI_TABLE) }
+        def (involvedSwitches, swPair, desiredPath, initSwProps) =
+                                                "get a potential flow on a path of 4 switches: multi and single"()
+        when: "Create the prepared hybrid flow"
+        def flow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow)
+        assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) == desiredPath
+
+        then: "Created flow is valid"
+        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
+
+        and: "Involved switches pass switch validation"
+        'every switch has only expected rules?'(involvedSwitches)
+
+        and: "The flow is pingable and allows traffic"
+        assert "is flow pingable?"(flow), FLOW_ISNT_PINGABLE_ASSERTION_MESSAGE
+        assert "does flow pass traffic?"(flow), FLOW_DOESNT_PASS_TRAFFIC_ASSERTION_MESSAGE
+
+        when: "Delete flow"
+        def flowCookies = getFlowCookies(swPair, flow)
+        flowHelperV2.deleteFlow(flow.flowId)
+        def flowIsDeleted = true
+
+        then: "Flow rules are deleted from switches"
+        involvedSwitches.each { sw ->
+            with(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
+                rules.findAll { it.cookie in flowCookies }.empty
             }
         }
-        assumeTrue(swPair.asBoolean(),
-"Unable to find a path that will allow 'multi -> single -> multi -> single' switch sequence")
-        //make required path the most preferred
-        swPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
 
-        // get init switch props
-        Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
-            [(it.dpId): switchHelper.getCachedSwProps(it.dpId)]
-        }
+        cleanup: "Revert system to original state"
+        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
+        initSwProps && revertSwitchesToInitState(involvedSwitches, initSwProps)
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+    }
 
-        //Change switch properties so that path switches are multi -> single -> multi -> single -table
-        [involvedSwitches[0], involvedSwitches[2]].each {
-            northbound.updateSwitchProperties(it.dpId, changeSwitchPropsMultiTableValue(initSwProps[it.dpId], true))
-        }
-        [involvedSwitches[1], involvedSwitches[3]].each {
-            northbound.updateSwitchProperties(it.dpId, changeSwitchPropsMultiTableValue(initSwProps[it.dpId], false))
-        }
-        checkDefaultRulesOnSwitches(involvedSwitches)
+
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "System can change switch table mode with existing flow"() {
+        given: "A potential flow on a path of 4 switches: multi -> single -> multi -> single"
+        def (involvedSwitches, swPair, desiredPath, initSwProps) =
+        "get a potential flow on a path of 4 switches: multi and single"()
 
         when: "Create the prepared hybrid flow"
         def flow = flowHelperV2.randomFlow(swPair)
@@ -100,31 +116,13 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         and: "Involved switches pass switch validation"
-        involvedSwitches.each {sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        'every switch has only expected rules?'(involvedSwitches)
 
         and: "Flow is pingable"
-        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        assert "is flow pingable?"(flow), FLOW_ISNT_PINGABLE_ASSERTION_MESSAGE
 
         and: "The flow allows traffic"
-        def traffExam = traffExamProvider.get()
-        def examFlow1 = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow), 1000, 8)
-        withPool {
-            [examFlow1.forward, examFlow1.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
-            }
-        }
+        assert "does flow pass traffic?"(flow), FLOW_DOESNT_PASS_TRAFFIC_ASSERTION_MESSAGE
 
         when: "Update table mode for involved switches so that it becomes 'single -> multi -> single -> multi'"
         [involvedSwitches[0], involvedSwitches[2]].each {
@@ -136,19 +134,54 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         then: "Flow remains valid and pingable, switch validation passes"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
+        'every switch has only expected rules?'(involvedSwitches)
+        assert "is flow pingable?"(flow), FLOW_ISNT_PINGABLE_ASSERTION_MESSAGE
+
+        and: "Flow allows traffic"
+        assert "does flow pass traffic?"(flow), FLOW_DOESNT_PASS_TRAFFIC_ASSERTION_MESSAGE
+
+        when: "Delete flow"
+        def flowCookies = getFlowCookies(swPair, flow)
+        flowHelperV2.deleteFlow(flow.flowId)
+        def flowIsDeleted = true
+
+        then: "Flow rules are deleted from switches"
         involvedSwitches.each { sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            with(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
+                rules.findAll { it.cookie in flowCookies }.empty
             }
         }
-        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
+
+        cleanup: "Revert system to original state"
+        !flowIsDeleted && flow && flowHelperV2.deleteFlow(flow.flowId)
+        initSwProps && revertSwitchesToInitState(involvedSwitches, initSwProps)
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+    }
+
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "System can hold flows of different table-mode types"() {
+        given: "A switch pair in single-table mode"
+        def (involvedSwitches, swPair, desiredPath, initSwProps) =
+        "get triplet of traffgen switches in single table mode with flow path"()
+        ArrayList<Switch> switches = [swPair.getSrc(), swPair.getDst()]
+
+        when: "Create the prepared hybrid flow"
+        def flow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow)
+        assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) == desiredPath
+
+        then: "Created flow is valid"
+        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
+
+        when: "Set switches to multi-table mode"
+        withPool {
+            involvedSwitches.eachParallel {
+                northbound.updateSwitchProperties(it.dpId, changeSwitchPropsMultiTableValue(initSwProps[it.dpId], true))
+            }
         }
 
-        when: "Create one more similar flow on the target path"
+        and: "Create one more similar flow on the target path"
         def flow2 = flowHelperV2.randomFlow(swPair).tap {
             it.source.portNumber = flow.source.portNumber
             it.source.vlanId = flow.source.vlanId - 1
@@ -156,217 +189,143 @@ mode with existing flows and hold flows of different table-mode types"() {
             it.destination.vlanId = flow.destination.vlanId - 1
         }
         flowHelperV2.addFlow(flow2)
+        def flows = [flow, flow2]
 
         then: "Both existing flows are valid"
-        [flow, flow2].each {
-            northbound.validateFlow(it.flowId).each { assert it.asExpected }
+        withPool {
+            flows.eachParallel {
+                northbound.validateFlow(it.flowId).each { assert it.asExpected }
+            }
         }
+
+        and: "First flow is in single table and the second is in multiple"
+        assert "flow rules are in tables"(swPair.getSrc(), flow) == [SINGLE_TABLE_ID]
+        assert "flow rules are in tables"(involvedSwitches[1], flow) == [SINGLE_TABLE_ID]
+        assert "flow rules are in tables"(swPair.getDst(), flow) == [SINGLE_TABLE_ID]
+        assert "flow rules are in tables"(swPair.getSrc(), flow2) == [INGRESS_RULE_MULTI_TABLE_ID, EGRESS_RULE_MULTI_TABLE_ID]
+        assert "flow rules are in tables"(involvedSwitches[1], flow2) == [TRANSIT_RULE_MULTI_TABLE_ID]
+        assert "flow rules are in tables"(swPair.getSrc(), flow2) == [INGRESS_RULE_MULTI_TABLE_ID, EGRESS_RULE_MULTI_TABLE_ID]
 
         and: "Involved switches pass switch validation"
-        involvedSwitches.each { sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        'every switch has only expected rules?'(involvedSwitches)
 
-        and: "Both flows are pingable"
-        [flow, flow2].each {
-            verifyAll(northbound.pingFlow(it.flowId, new PingInput())) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
-        }
-
-        and: "Both flows allow traffic"
-        def examFlow2 = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow2), 1000, 8)
-        withPool {
-            [examFlow1.forward, examFlow1.reverse, examFlow2.forward, examFlow2.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
-            }
+        and: "Both flows are pingable and allow traffic"
+        // This hangs (probably, blocks each other) if run in parallel mode
+        flows.each {
+            assert "is flow pingable?"(it), FLOW_ISNT_PINGABLE_ASSERTION_MESSAGE
+            assert "does flow pass traffic?"(it), FLOW_DOESNT_PASS_TRAFFIC_ASSERTION_MESSAGE
         }
 
         when: "Delete flows"
-        def flow1InfoFromDb = database.getFlow(flow.flowId)
-        def flow2InfoFromDb = database.getFlow(flow2.flowId)
-        def flowsCookies = [flow1InfoFromDb.forwardPath.cookie.value, flow1InfoFromDb.reversePath.cookie.value,
-                            flow2InfoFromDb.forwardPath.cookie.value, flow2InfoFromDb.reversePath.cookie.value]
-        [involvedSwitches[0], involvedSwitches[3]].each { sw ->
-            northbound.getSwitchRules(sw.dpId).flowEntries.each { rule ->
-                Cookie.isIngressRulePassThrough(rule.cookie) && flowsCookies << rule.cookie
-            }
-        }
-        [flow, flow2].each { flowHelperV2.deleteFlow(it.flowId) }
+        def flowsCookies = getFlowCookies(swPair, flow).addAll(getFlowCookies(swPair, flow2))
+        flows.each { flowHelperV2.deleteFlow(it.flowId) }
         def flowsAreDeleted = true
 
         then: "Flow rules are deleted from switches"
-        involvedSwitches.each { sw ->
+        switches.each { sw ->
             with(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
                 rules.findAll { it.cookie in flowsCookies }.empty
             }
         }
 
         cleanup: "Revert system to original state"
-        !flowsAreDeleted && [flow, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
-        initSwProps && revertSwitchesToInitState(involvedSwitches, initSwProps)
+        !flowsAreDeleted && flows.each { it && flowHelperV2.deleteFlow(it.flowId) }
+        initSwProps && revertSwitchesToInitState(switches, initSwProps)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tidy
     @Tags([LOW_PRIORITY])
-    def "Single-switch flow rules are (re)installed according to switch property while rerouting,syncing,updating"() {
+    def "Single-switch flow rules are updated single- to multi-table mode when #eventName"() {
         given: "An active switch"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.MULTI_TABLE) }
         SwitchPropertiesDto initSwProps = switchHelper.getCachedSwProps(sw.dpId)
 
-        and: "Multi table mode is enabled on it"
-        !initSwProps.multiTable && northbound.updateSwitchProperties(sw.dpId,
-                changeSwitchPropsMultiTableValue(initSwProps, true))
+        and: "Multi table mode is disabled on it"
+        if (initSwProps.multiTable) {
+            northbound.updateSwitchProperties(sw.dpId, changeSwitchPropsMultiTableValue(initSwProps, false))
+        }
         checkDefaultRulesOnSwitch(sw)
 
         when: "Create a single-switch flow"
         def flow = flowHelperV2.singleSwitchFlow(sw)
         flowHelperV2.addFlow(flow)
 
-        then: "Flow rules are created in multi table mode"
-        def flowInfoFromDb
-        def sharedRules
-        wait(RULES_INSTALLATION_TIME) {
-            flowInfoFromDb = database.getFlow(flow.flowId)
-            sharedRules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                new Cookie(it.cookie).type == CookieType.SHARED_OF_FLOW
-            }
-            verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-                rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
-                rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
-                rules.findAll { it.cookie in sharedRules*.cookie }*.tableId.unique() == [SHARED_RULE_TABLE_ID]
-            }
-        }
+        then: "Flow rules are created in single table mode"
+        assert "flow rules are in tables"(sw, flow) == [SINGLE_TABLE_ID]
 
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        when: "Update switch properties(multi_table: false) on the switch"
-        def defaultMultiTableSwRules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-            new Cookie(it.cookie).serviceFlag
-        }
-        northbound.updateSwitchProperties(sw.dpId, changeSwitchPropsMultiTableValue(initSwProps, false))
-
-        then: "Default switch rules are still in multi table mode"
-        Wrappers.timedLoop(RULES_INSTALLATION_TIME / 3) {
-            with(northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                new Cookie(it.cookie).serviceFlag
-            }) { rules ->
-                rules.size() == defaultMultiTableSwRules.size()
-                rules*.tableId.unique().sort() == defaultMultiTableSwRules*.tableId.unique().sort()
-            }
-        }
-
-        and: "Flow rules are still in multi table mode"
-        wait(RULES_INSTALLATION_TIME) {
-            verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-                rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
-                rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
-                rules.findAll { it.cookie in sharedRules*.cookie }*.tableId.unique() == [SHARED_RULE_TABLE_ID]
-            }
-        }
-
-        and: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        when: "Synchronize the flow"
-        with(northbound.synchronizeFlow(flow.flowId)) {
-            !it.rerouted
-        }
-
-        then: "Rules on the switch are reinstalled in single table mode"
-        def flowInfoFromDb2
-        wait(RULES_INSTALLATION_TIME) {
-            flowInfoFromDb2 = database.getFlow(flow.flowId)
-            verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-                rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
-                rules.find { it.cookie == flowInfoFromDb2.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
-                //shared rules should be deleted, , issue #3546
-                rules.findAll { it.cookie in sharedRules*.cookie }*.tableId.unique() == [SHARED_RULE_TABLE_ID]
-            }
-        }
 
         when: "Update switch properties(multi_table: true) on the switch"
         northbound.updateSwitchProperties(sw.dpId, changeSwitchPropsMultiTableValue(initSwProps, true))
 
-        then: "Flow rules are still in single table mode on the switch"
-        verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-            rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }.tableId == SINGLE_TABLE_ID
-            rules.find { it.cookie == flowInfoFromDb2.reversePath.cookie.value }.tableId == SINGLE_TABLE_ID
-            //shared rules should be deleted, issue #3546
-            rules.findAll { it.cookie in sharedRules*.cookie }*.tableId.unique() == [SHARED_RULE_TABLE_ID]
+        and: "#eventName"
+        event(flow)
+
+        then: "Flow rules go to multi table mode"
+        wait(RULES_INSTALLATION_TIME) {
+            "flow rules are in tables"(sw, flow) == [INGRESS_RULE_MULTI_TABLE_ID]
         }
 
         and: "Flow is valid and UP"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
         wait(WAIT_OFFSET / 2) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
-        when: "Update the flow"
-        flowHelperV2.updateFlow(flow.flowId, flow.tap { it.description = it.description + " updated" })
+        cleanup:
+        flowHelperV2.deleteFlow(flow.flowId)
+        initSwProps && revertSwitchToInitState(sw, initSwProps)
 
-        then: "Flow rules on the switch are recreated in multi table mode"
-        def flowInfoFromDb3
-        wait(RULES_INSTALLATION_TIME) {
-            flowInfoFromDb3 = database.getFlow(flow.flowId)
-            verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-                rules.find { it.cookie == flowInfoFromDb3.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
-                rules.find { it.cookie == flowInfoFromDb3.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
-                rules.findAll { it.cookie in sharedRules*.cookie }*.tableId.unique() == [SHARED_RULE_TABLE_ID]
-            }
+        where:
+        eventName           | event
+        /* https://github.com/telstra/open-kilda/issues/4865
+        "synchronize flow"  | {FlowRequestV2 testFlow ->
+            with(northbound.synchronizeFlow(testFlow.flowId)) {!it.rerouted}} */
+        "update flow"       | {FlowRequestV2 testFlow ->
+            flowHelperV2.updateFlow(testFlow.flowId,
+                    testFlow.tap { it.description = it.description + " updated" })}
+    }
+
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "Single-switch flow rules are not updated when try to reroute the flow"() {
+        given: "An active switch"
+        def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.MULTI_TABLE) }
+        SwitchPropertiesDto initSwProps = switchHelper.getCachedSwProps(sw.dpId)
+
+        and: "Multi table mode is disabled on it"
+        if (initSwProps.multiTable) {
+            northbound.updateSwitchProperties(sw.dpId, changeSwitchPropsMultiTableValue(initSwProps, false))
         }
+        checkDefaultRulesOnSwitch(sw)
 
-        when: "Update switch properties(multi_table: false) on the switch"
-        northbound.updateSwitchProperties(sw.dpId, changeSwitchPropsMultiTableValue(initSwProps, false))
+        when: "Create a single-switch flow"
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        flowHelperV2.addFlow(flow)
 
-        and: "Reroute(intentional) the flow via APIv1"
-        with(northbound.rerouteFlow(flow.flowId)) { !it.rerouted }
-        wait(rerouteDelay + WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-        }
-
-        then: "Flow rules on the switch are not recreated in single table mode because flow wasn't rerouted"
-        verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-            rules.find { it.cookie == flowInfoFromDb3.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
-            rules.find { it.cookie == flowInfoFromDb3.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
-            rules.findAll { it.cookie in sharedRules*.cookie }*.tableId.unique() == [SHARED_RULE_TABLE_ID]
-        }
-
-        when: "Reroute(intentional) the flow via APIv2"
-        with(northboundV2.rerouteFlow(flow.flowId)) { !it.rerouted }
-        wait(rerouteDelay + WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-        }
-
-        then: "Flow rules on the switch are not recreated in single table mode because the flow wasn't rerouted"
-        verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-            rules.find { it.cookie == flowInfoFromDb3.forwardPath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
-            rules.find { it.cookie == flowInfoFromDb3.reversePath.cookie.value }.tableId == INGRESS_RULE_MULTI_TABLE_ID
-        }
+        then: "Flow rules are created in single table mode"
+        assert "flow rules are in tables"(sw, flow) == [SINGLE_TABLE_ID]
 
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
-        when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
+        when: "Update switch properties(multi_table: true) on the switch"
+        northbound.updateSwitchProperties(sw.dpId, changeSwitchPropsMultiTableValue(initSwProps, true))
 
-        then: "Flow rules are deleted"
-        northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-            def cookie = new Cookie(it.cookie)
-            cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES || !cookie.serviceFlag
-        }.empty
+        and: "reroute the flow"
+        with(northboundV2.rerouteFlow(flow.flowId)) { !it.rerouted }
+
+        then: "Flow rules stay in single table mode"
+        wait(RULES_INSTALLATION_TIME) {
+            "flow rules are in tables"(sw, flow) == [SINGLE_TABLE_ID]
+        }
+
+        and: "Flow is valid and UP"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        wait(WAIT_OFFSET / 2) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         cleanup:
-        !flowIsDeleted && flow && flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
         initSwProps && revertSwitchToInitState(sw, initSwProps)
     }
 
@@ -520,7 +479,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         //make required path the most preferred
         switchPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
         Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
-            [(it.dpId): switchHelper.getCachedSwPropss(it.dpId)]
+            [(it.dpId): switchHelper.getCachedSwProps(it.dpId)]
         }
 
         and: "Multi table is disabled for them"
@@ -578,16 +537,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         and: "The flow allows traffic"
-        def traffExam = traffExamProvider.get()
-        def examFlow = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow), 1000, 8)
-        withPool {
-            [examFlow.forward, examFlow.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
-            }
-        }
+        assert "does flow pass traffic?"(flow), FLOW_DOESNT_PASS_TRAFFIC_ASSERTION_MESSAGE
 
         when: "Make current path not preferable"
         pathHelper.makePathNotPreferable(desiredPath)
@@ -661,6 +611,10 @@ mode with existing flows and hold flows of different table-mode types"() {
                 }
             }
         }
+        [switchPair.getSrc(), switchPair.getDst()].collect(){
+            verifySwitchRules(it.dpId)
+        }
+
 
         and: "The flow allows traffic"
         withPool {
@@ -959,11 +913,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         and: "Flow is valid and pingable"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        assert "is flow pingable?"(flow), FLOW_ISNT_PINGABLE_ASSERTION_MESSAGE
 
         //https://github.com/telstra/open-kilda/issues/3639
 //        when: "Synchronize the flow"
@@ -1139,10 +1089,10 @@ mode with existing flows and hold flows of different table-mode types"() {
         northbound.validateFlow(flow.flowId).each { direction -> assert !direction.asExpected }
 
         and: "Rule info is moved into the 'missing' section on the transit and dst switches"
-        verifyAll(northbound.validateSwitch(involvedSwitches[2].dpId)) { validateInfo ->
+        verifyAll(northboundV2.validateSwitch(involvedSwitches[2].dpId)) { validateInfo ->
             validateInfo.rules.excess.empty
             validateInfo.rules.misconfigured.empty
-            validateInfo.rules.missing.sort() ==
+            validateInfo.rules.missing.cookie.sort() ==
                     [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value, sharedRuleOnDstSwitch.cookie].sort()
             validateInfo.meters.excess.empty
             validateInfo.meters.missing.empty
@@ -1193,15 +1143,11 @@ mode with existing flows and hold flows of different table-mode types"() {
         }
 
         and: "Flow is valid and pingable"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        assert "is flow pingable?"(flow), FLOW_ISNT_PINGABLE_ASSERTION_MESSAGE
 
         and: "All involved switches pass switch validation"
         involvedSwitches.each { sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
+            with(northboundV2.validateSwitch(sw.dpId)) { validation ->
                 validation.verifyRuleSectionsAreEmpty(["missing", "excess"])
                 validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
@@ -1257,14 +1203,14 @@ mode with existing flows and hold flows of different table-mode types"() {
 
         then: "System detects  excess rules on the src and transit switches"
         Map<SwitchId, SwitchValidationExtendedResult> validationResultsMap = involvedSwitches.collectEntries {
-            [it.dpId, northbound.validateSwitch(it.dpId)]
+            [it.dpId, northboundV2.validateSwitch(it.dpId)]
         }
         involvedSwitches[0..1].each {
             assert validationResultsMap[it.dpId].rules.missing.empty
             assert validationResultsMap[it.dpId].rules.misconfigured.empty
             assert !validationResultsMap[it.dpId].rules.excess.empty
         }
-        with(northbound.validateSwitch(involvedSwitches[2].dpId)) { validation ->
+        with(northboundV2.validateSwitch(involvedSwitches[2].dpId)) { validation ->
             validationResultsMap[involvedSwitches[2].dpId].rules.missing.empty
             validationResultsMap[involvedSwitches[2].dpId].rules.misconfigured.empty
             validationResultsMap[involvedSwitches[2].dpId].rules.excess.empty
@@ -1280,13 +1226,13 @@ mode with existing flows and hold flows of different table-mode types"() {
             assert syncResultsMap[it.dpId].rules.missing.empty
             assert syncResultsMap[it.dpId].rules.misconfigured.empty
             assert syncResultsMap[it.dpId].rules.installed.empty
-            assert syncResultsMap[it.dpId].rules.excess.containsAll(validationResultsMap[it.dpId].rules.excess)
-            assert syncResultsMap[it.dpId].rules.removed.containsAll(validationResultsMap[it.dpId].rules.excess)
+            assert syncResultsMap[it.dpId].rules.excess.containsAll(validationResultsMap[it.dpId].rules.excess.cookie)
+            assert syncResultsMap[it.dpId].rules.removed.containsAll(validationResultsMap[it.dpId].rules.excess.cookie)
         }
 
         and: "Involved switches pass switch validation"
         involvedSwitches.each { sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
+            with(northboundV2.validateSwitch(sw.dpId)) { validation ->
                 validation.verifyRuleSectionsAreEmpty()
                 validation.verifyMeterSectionsAreEmpty()
             }
@@ -1433,7 +1379,7 @@ mode with existing flows and hold flows of different table-mode types"() {
         def allInvolvedSwitches = (pathHelper.getInvolvedSwitches(pathHelper.convert(path)) +
                 pathHelper.getInvolvedSwitches(pathHelper.convert(path.protectedPath))).unique()
         allInvolvedSwitches.each { sw ->
-            def validation = northbound.validateSwitch(sw.dpId)
+            def validation = northboundV2.validateSwitch(sw.dpId)
             validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
             validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
@@ -1450,9 +1396,9 @@ mode with existing flows and hold flows of different table-mode types"() {
             rules.find { it.cookie == flowInfoFromDb.protectedReversePath.cookie.value }.tableId == EGRESS_RULE_MULTI_TABLE_ID
         }
 
-        and: "No involved switches have rule discrepencies"
+        and: "No involved switches have rule discrepancies"
         allInvolvedSwitches.each { sw ->
-            def validation = northbound.validateSwitch(sw.dpId)
+            def validation = northboundV2.validateSwitch(sw.dpId)
             validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
             validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
@@ -1460,9 +1406,9 @@ mode with existing flows and hold flows of different table-mode types"() {
         when: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
-        then: "No involved switches have rule discrepencies"
+        then: "No involved switches have rule discrepancies"
         allInvolvedSwitches.each {
-            def validation = northbound.validateSwitch(it.dpId)
+            def validation = northboundV2.validateSwitch(it.dpId)
             validation.verifyRuleSectionsAreEmpty()
             validation.verifyMeterSectionsAreEmpty()
         }
@@ -1509,5 +1455,119 @@ mode with existing flows and hold flows of different table-mode types"() {
         return mapper.readValue(mapper.writeValueAsString(swProps), SwitchPropertiesDto).tap {
             it.multiTable = newValue
         }
+    }
+
+    //TODO: move to PathFinder."get a potential flow on a path of 4 switches: multi and single"() or something like this
+    def "get a potential flow on a path of 4 switches: multi and single"() {
+        List<PathNode> desiredPath = null
+        List<Switch> involvedSwitches = null
+        def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.dpId ?:
+                assumeTrue(false, "Should be at least two active traffgens connected to switches")
+        def swPair = topologyHelper.allNotNeighboringSwitchPairs.collectMany { [it, it.reversed] }.find { pair ->
+            desiredPath = pair.paths.find { path ->
+                involvedSwitches = pathHelper.getInvolvedSwitches(path)
+                //4 switches total. First and third switches should allow multi-table
+                involvedSwitches.size() == 4 && involvedSwitches[0].dpId in allTraffgenSwitchIds &&
+                        involvedSwitches[-1].dpId in allTraffgenSwitchIds &&
+                        involvedSwitches.every { it.features.contains(SwitchFeature.MULTI_TABLE) }
+            }
+        }
+        assumeTrue(swPair.asBoolean(),
+                "Unable to find a path that will allow 'multi -> single -> multi -> single' switch sequence")
+        //make required path the most preferred
+        swPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
+
+        // get init switch props
+        Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
+            [(it.dpId): switchHelper.getCachedSwProps(it.dpId)]
+        }
+
+        //Change switch properties so that path switches are multi -> single -> multi -> single -table
+        [involvedSwitches[0], involvedSwitches[2]].each {
+            northbound.updateSwitchProperties(it.dpId, changeSwitchPropsMultiTableValue(initSwProps[it.dpId], true))
+        }
+        [involvedSwitches[1], involvedSwitches[3]].each {
+            northbound.updateSwitchProperties(it.dpId, changeSwitchPropsMultiTableValue(initSwProps[it.dpId], false))
+        }
+        checkDefaultRulesOnSwitches(involvedSwitches)
+        return [involvedSwitches, swPair, desiredPath, initSwProps]
+    }
+
+    def "get triplet of traffgen switches in single table mode with flow path"() {
+        List<PathNode> desiredPath = null
+        List<Switch> involvedSwitches = null
+        def swPair = topologyHelper.allNotNeighboringSwitchPairs
+                .collectMany { [it, it.reversed] }
+                .find{pair ->
+                    desiredPath = pair.paths.find {path ->
+                        involvedSwitches = pathHelper.getInvolvedSwitches(path)
+                        involvedSwitches.size() == 3 &&
+                                involvedSwitches.every {it.features.contains(SwitchFeature.MULTI_TABLE)} &&
+                                [involvedSwitches[0], involvedSwitches[-1]]
+                                        .every {topology.activeTraffGens*.switchConnected.dpId.contains(it.dpId)}
+                    }
+                }
+        assumeTrue(swPair.asBoolean(), 'Unable to find appropriate switch pair')
+        swPair.paths.findAll { it != desiredPath }.each { pathHelper.makePathMorePreferable(desiredPath, it) }
+        Map<SwitchId, SwitchPropertiesDto> initSwProps = involvedSwitches.collectEntries {
+            [(it.dpId): switchHelper.getCachedSwProps(it.dpId)]
+        }
+        withPool {
+            involvedSwitches.eachParallel {
+                northbound.updateSwitchProperties(it.dpId, changeSwitchPropsMultiTableValue(initSwProps[it.dpId], false))
+            }
+        }
+        checkDefaultRulesOnSwitches(involvedSwitches)
+        return [involvedSwitches, swPair, desiredPath, initSwProps]
+
+    }
+    //TODO: move to wrapper class SwitchList.getGarbageRules() (from test package, not product itself)
+    Boolean 'every switch has only expected rules?'(List<Switch> switchesToValidate) {
+        return withPool {
+            switchesToValidate.collectParallel {Switch sw -> northboundV2.validateSwitch(sw.dpId).asExpected}.collect()
+        }.every()
+
+    }
+
+    //TODO: move to Flow.isPingable() (from test package, not product itself)
+    def "is flow pingable?"(FlowRequestV2 flow) {
+        def pingResponse = northbound.pingFlow(flow.flowId, new PingInput(null))
+        return pingResponse.forward.pingSuccess && pingResponse.reverse.pingSuccess
+    }
+
+    //TODO: move to Flow.isTrafficPass() (from test package, not product itself)
+    def "does flow pass traffic?"(FlowRequestV2 flow) {
+        def traffExam = traffExamProvider.get()
+        def flowExam = new FlowTrafficExamBuilder(topology, traffExam)
+                .buildBidirectionalExam(flowHelperV2.toV1(flow), 1000, 3)
+        List<Boolean> result = withPool {
+            [flowExam.forward, flowExam.reverse].parallel.map { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                return traffExam.waitExam(direction).hasTraffic()
+            }.collection
+        }
+        return result.every() //is true
+    }
+
+    //TODO: move to Flow.getCookies() (from test package, not product itself)
+    def getFlowCookies(SwitchPair switches, FlowRequestV2 flow) {
+        def flow1InfoFromDb = database.getFlow(flow.flowId)
+        def flowsCookies = [flow1InfoFromDb.forwardPath.cookie.value, flow1InfoFromDb.reversePath.cookie.value]
+        [switches.getSrc(), switches.getDst()].each { sw ->
+            northbound.getSwitchRules(sw.dpId).flowEntries.each { rule ->
+                Cookie.isIngressRulePassThrough(rule.cookie) && flowsCookies << rule.cookie
+            }
+        }
+        return flowsCookies
+    }
+
+    List<Integer> "flow rules are in tables" (Switch sw, FlowRequestV2 flow) {
+        def flowInfoFromDb = database.getFlow(flow.flowId)
+        def flowCookiesFromDb = [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value]
+        return northbound.getSwitchRules(sw.dpId).flowEntries
+                .findAll {flowCookiesFromDb.contains(it.cookie)}
+                .tableId
+                .unique()
     }
 }
