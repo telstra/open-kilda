@@ -208,6 +208,18 @@ public class FlowValidatorTest {
     }
 
     @Test(expected = InvalidFlowException.class)
+    public void shouldNotFailOnNullVlanStatistics() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, null);
+        flowValidator.checkFlowForVlanStatisticsInCorrectRange(flow);
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void shouldNotFailOnEmptyVlanStatistics() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, newHashSet());
+        flowValidator.checkFlowForVlanStatisticsInCorrectRange(flow);
+    }
+
+    @Test(expected = InvalidFlowException.class)
     public void shouldFailOnTooHighVlanStatistics() throws InvalidFlowException {
         RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, newHashSet(STATS_VLAN_TOO_HIGH));
         flowValidator.checkFlowForVlanStatisticsInCorrectRange(flow);
