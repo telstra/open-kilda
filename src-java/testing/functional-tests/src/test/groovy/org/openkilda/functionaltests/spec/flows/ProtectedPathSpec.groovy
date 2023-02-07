@@ -914,7 +914,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         where:
         flowDescription | bandwidth
         "a metered"     | 1000
-//        "an unmetered"  | 0
+        "an unmetered"  | 0
     }
 
     @Tidy
