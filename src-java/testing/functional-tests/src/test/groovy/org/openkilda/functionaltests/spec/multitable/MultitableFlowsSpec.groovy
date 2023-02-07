@@ -683,8 +683,6 @@ mode with existing flows and hold flows of different table-mode types"() {
     }
 
     @Tags([LOW_PRIORITY])
-//    @Ignore("https://github.com/telstra/open-kilda/issues/4043")
-//    unignored. Test needs supervision next build. On phys environment.
     def "Flow rules are not reinstalled according to switch property while swapping to protected path"() {
         given: "Three active switches with 3 diverse paths at least"
         List<PathNode> desiredPath = null

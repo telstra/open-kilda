@@ -71,7 +71,6 @@ class LagPortSpec extends HealthCheckSpecification {
             logicalPortNumber > 0
             portNumbers.sort() == portsArrayCreate.sort()
             it.lacpReply == lacpReply
-            print(it.lacpReply)
         }
         def lagPort = createResponse.logicalPortNumber
 
