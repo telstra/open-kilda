@@ -1,9 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.exception.ExpectedHttpClientErrorException
 import org.openkilda.model.PathComputationStrategy
@@ -1327,7 +1323,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "Unable to update to a flow with incorrect maxLatency input"() {
+    def "Unable to update to a flow with incorrect maxLatency input - #title"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
@@ -1335,8 +1331,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         when: "Try to update the flow "
         def flowInfo = northboundV2.getFlow(flow.flowId)
-        flowInfo = flowInfo.tap {it.maxLatency = data.maxLatency
-            it.maxLatencyTier2 = data.maxLatencyTier2}
+        flowInfo = flowInfo.tap {it.maxLatency = maxLatencyValue
+            it.maxLatencyTier2 = maxLatencyTier2}
         northboundV2.updateFlow(flowInfo.flowId,
                 flowHelperV2.toRequest(flowInfo))
 
@@ -1344,26 +1340,19 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def error = thrown(HttpClientErrorException)
         error.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == data.message
-        errorDetails.errorDescription == data.errorDescr
+        errorDetails.errorMessage == message
+        errorDetails.errorDescription == errorDescr
 
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
         where:
-        data << [
-                [
-                        maxLatency: 100,
-                        maxLatencyTier2: 200,
-                        message: "Can not get flow: Flow $NON_EXISTENT_FLOW_ID not found",
-                        errorDescr: "Flow not found"
-                ],
-                [
-                        description: "reroute",
-                        operation: { getNorthboundV2().rerouteFlow(NON_EXISTENT_FLOW_ID) },
-                        message: "Could not reroute flow",
-                        errorDescr: "Flow $NON_EXISTENT_FLOW_ID not found"
-                ]
-        ]
+        maxLatencyValue|maxLatencyTier2|message|errorDescr|title
+        2         |1              |"Could not update flow"|"The maxLatency 2ms is higher than maxLatencyTier2 1ms"|
+                "maxLatencyTier2 higher as maxLatency"
+        2         |-1             |"Could not update flow"|"maxLatencyTier2 cannot be negative"                   |
+                "negative maxLatencyTier2"
+        -1        |2              |"Could not update flow"|"maxLatency cannot be negative"                        |
+                "negative maxLatency"
     }
 
     @Shared
