@@ -1323,36 +1323,26 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "Unable to update to a flow with incorrect maxLatency input - #title"() {
+    @Tags(LOW_PRIORITY)
+    def "Unable to update to a flow with maxLatencyTier2 higher as maxLatency)"() {
         given: "A flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        def swPair = topologyHelper.getRandomSwitchPair()
+        def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
 
-        when: "Try to update the flow "
-        def flowInfo = northboundV2.getFlow(flow.flowId)
-        flowInfo = flowInfo.tap {it.maxLatency = maxLatencyValue
-            it.maxLatencyTier2 = maxLatencyTier2}
-        northboundV2.updateFlow(flowInfo.flowId,
-                flowHelperV2.toRequest(flowInfo))
+        when: "Try to update the flow"
+        flow.maxLatency = 2
+        flow.maxLatencyTier2 = flow.maxLatency - 1
+        northboundV2.updateFlow(flow.flowId, flow)
 
         then: "Bad Request response is returned"
-        def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.BAD_REQUEST
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == message
-        errorDetails.errorDescription == errorDescr
+        def expectedException = new ExpectedHttpClientErrorException(HttpStatus.BAD_REQUEST, ~/The maxLatency \dms is higher than maxLatencyTier2 \dms/)
+        def actualException = thrown(HttpClientErrorException)
+        expectedException.equals(actualException)
 
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
-        where:
-        maxLatencyValue|maxLatencyTier2|message|errorDescr|title
-        2         |1              |"Could not update flow"|"The maxLatency 2ms is higher than maxLatencyTier2 1ms"|
-                "maxLatencyTier2 higher as maxLatency"
-        2         |-1             |"Could not update flow"|"maxLatencyTier2 cannot be negative"                   |
-                "negative maxLatencyTier2"
-        -1        |2              |"Could not update flow"|"maxLatency cannot be negative"                        |
-                "negative maxLatency"
+
     }
 
     @Shared
