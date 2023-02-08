@@ -1,4 +1,4 @@
-/* Copyright 2022 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -108,7 +108,7 @@ public class DiversityPathFinderTest {
     }
 
     @Test
-    public void shouldChooseSamePath() throws RecoverableException, UnroutableFlowException {
+    public void chooseSamePathTest() throws RecoverableException, UnroutableFlowException {
         // Topology:
         // A----B----C     Already created flow: A-B-C
         //                 Requested flow: A-B-C
@@ -199,7 +199,7 @@ public class DiversityPathFinderTest {
     }
 
     @Test
-    public void shouldUseSameSwitch() throws RecoverableException, UnroutableFlowException {
+    public void useSameSwitchTest() throws RecoverableException, UnroutableFlowException {
         // Topology:
         //      D
         //      |
@@ -296,7 +296,7 @@ public class DiversityPathFinderTest {
     }
 
     @Test
-    public void shouldChooseLongerPath() throws RecoverableException, UnroutableFlowException {
+    public void chooseLongerPathTest() throws RecoverableException, UnroutableFlowException {
         // Topology:
         //      D----E
         //      |    |
@@ -387,6 +387,91 @@ public class DiversityPathFinderTest {
                 () -> assertThat(firstReverseSegment.getDestSwitchId(), equalTo(switchE.getSwitchId()))
         );
         Segment lastReverseSegment = path.getReverse().getSegments().get(3);
+        assertAll(
+                () -> assertThat(lastReverseSegment.getSrcSwitchId(), equalTo(switchB.getSwitchId())),
+                () -> assertThat(lastReverseSegment.getDestSwitchId(), equalTo(switchA.getSwitchId()))
+        );
+    }
+
+    @Test
+    public void choosePathWithoutSingleSwitchFlowTest() throws RecoverableException, UnroutableFlowException {
+        // Topology:
+        // -----E----D
+        // |         |
+        // A----B----C     Already created single switch flow: E
+        //                 Requested flow: A-B-C-D
+
+        List<IslImmutableView> isls = new ArrayList<>();
+        isls.addAll(getBidirectionalIsls(switchA, 1, switchB, 2));
+        isls.addAll(getBidirectionalIsls(switchB, 3, switchC, 4));
+        isls.addAll(getBidirectionalIsls(switchC, 5, switchD, 6));
+        isls.addAll(getBidirectionalIsls(switchD, 7, switchE, 8));
+        isls.addAll(getBidirectionalIsls(switchE, 9, switchA, 10));
+
+        FlowPath forwardPath = FlowPath.builder()
+                .srcSwitch(switchE)
+                .destSwitch(switchE)
+                .pathId(FORWARD_PATH_ID)
+                .segments(Collections.emptyList())
+                .build();
+        when(flowPathRepository.findById(FORWARD_PATH_ID)).thenReturn(java.util.Optional.of(forwardPath));
+
+        FlowPath reversePath = FlowPath.builder()
+                .srcSwitch(switchE)
+                .destSwitch(switchE)
+                .pathId(REVERSE_PATH_ID)
+                .segments(Collections.emptyList())
+                .build();
+        when(flowPathRepository.findById(REVERSE_PATH_ID)).thenReturn(java.util.Optional.of(reversePath));
+
+        Flow flow = getFlow();
+        flow.setSrcSwitch(switchA);
+        flow.setDestSwitch(switchD);
+        flow.setDiverseGroupId(DIVERSE_GROUP_ID);
+        flow.setForwardPathId(new PathId("forward_path_id"));
+        flow.setReversePathId(new PathId("reverse_path_id"));
+        flow.setMaxLatency(Long.MAX_VALUE);
+        flow.setPathComputationStrategy(pathComputationStrategy);
+
+        when(config.getNetworkStrategy()).thenReturn(BuildStrategy.COST.name());
+        when(islRepository.findActiveByBandwidthAndEncapsulationType(flow.getBandwidth(), flow.getEncapsulationType()))
+                .thenReturn(isls);
+
+        when(flowPathRepository.findPathIdsByFlowDiverseGroupId(DIVERSE_GROUP_ID))
+                .thenReturn(Lists.newArrayList(FORWARD_PATH_ID, REVERSE_PATH_ID));
+
+        // check diversity counter
+        AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, Collections.emptyList());
+        assertEquals(2, availableNetwork.getSwitch(switchE.getSwitchId()).getDiversityGroupUseCounter());
+
+        // check found path
+        PathComputer pathComputer = new InMemoryPathComputer(
+                availableNetworkFactory, new BestWeightAndShortestPathFinder(200), config);
+
+        GetPathsResult path = pathComputer.getPath(flow);
+        assertThat(path, is(notNullValue()));
+        assertThat(path.getForward(), is(notNullValue()));
+        assertThat(path.getForward().getSegments().size(), is(3));
+        assertThat(path.getReverse(), is(notNullValue()));
+        assertThat(path.getReverse().getSegments().size(), is(3));
+
+        Segment firstSegment = path.getForward().getSegments().get(0);
+        assertAll(
+                () -> assertThat(firstSegment.getSrcSwitchId(), equalTo(switchA.getSwitchId())),
+                () -> assertThat(firstSegment.getDestSwitchId(), equalTo(switchB.getSwitchId()))
+        );
+        Segment lastSegment = path.getForward().getSegments().get(2);
+        assertAll(
+                () -> assertThat(lastSegment.getSrcSwitchId(), equalTo(switchC.getSwitchId())),
+                () -> assertThat(lastSegment.getDestSwitchId(), equalTo(switchD.getSwitchId()))
+        );
+
+        Segment firstReverseSegment = path.getReverse().getSegments().get(0);
+        assertAll(
+                () -> assertThat(firstReverseSegment.getSrcSwitchId(), equalTo(switchD.getSwitchId())),
+                () -> assertThat(firstReverseSegment.getDestSwitchId(), equalTo(switchC.getSwitchId()))
+        );
+        Segment lastReverseSegment = path.getReverse().getSegments().get(2);
         assertAll(
                 () -> assertThat(lastReverseSegment.getSrcSwitchId(), equalTo(switchB.getSwitchId())),
                 () -> assertThat(lastReverseSegment.getDestSwitchId(), equalTo(switchA.getSwitchId()))

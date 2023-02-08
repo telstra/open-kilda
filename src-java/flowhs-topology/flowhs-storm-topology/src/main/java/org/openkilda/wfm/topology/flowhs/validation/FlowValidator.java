@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -399,7 +399,7 @@ public class FlowValidator {
 
     @VisibleForTesting
     void checkDiverseFlow(RequestedFlow targetFlow) throws InvalidFlowException {
-        if (targetFlow.getSrcSwitch().equals(targetFlow.getDestSwitch())) {
+        if (targetFlow.isOneSwitchFlow()) {
             throw new InvalidFlowException("Couldn't add one-switch flow into diverse group",
                     ErrorType.PARAMETERS_INVALID);
         }
@@ -420,14 +420,12 @@ public class FlowValidator {
                                             targetFlow.getDiverseFlowId()), ErrorType.INTERNAL_ERROR));
         }
 
-
         if (StringUtils.isNotBlank(diverseFlow.getAffinityGroupId())) {
             String diverseFlowId = diverseFlow.getAffinityGroupId();
             diverseFlow = flowRepository.findById(diverseFlowId)
                     .orElseThrow(() ->
                             new InvalidFlowException(format("Failed to find diverse flow id %s", diverseFlowId),
                                     ErrorType.PARAMETERS_INVALID));
-
 
             Collection<String> affinityFlowIds = flowRepository
                     .findFlowsIdByAffinityGroupId(diverseFlow.getAffinityGroupId()).stream()
@@ -437,11 +435,6 @@ public class FlowValidator {
                 throw new InvalidFlowException("Couldn't create diverse group with flow in the same affinity group",
                         ErrorType.PARAMETERS_INVALID);
             }
-        }
-
-        if (diverseFlow.isOneSwitchFlow()) {
-            throw new InvalidFlowException("Couldn't create diverse group with one-switch flow",
-                    ErrorType.PARAMETERS_INVALID);
         }
     }
 
