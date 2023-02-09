@@ -60,6 +60,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @RunWith(Parameterized.class)
 public class DiversityPathFinderTest {
@@ -414,7 +415,7 @@ public class DiversityPathFinderTest {
                 .pathId(FORWARD_PATH_ID)
                 .segments(Collections.emptyList())
                 .build();
-        when(flowPathRepository.findById(FORWARD_PATH_ID)).thenReturn(java.util.Optional.of(forwardPath));
+        when(flowPathRepository.findById(FORWARD_PATH_ID)).thenReturn(Optional.of(forwardPath));
 
         FlowPath reversePath = FlowPath.builder()
                 .srcSwitch(switchE)
@@ -422,7 +423,7 @@ public class DiversityPathFinderTest {
                 .pathId(REVERSE_PATH_ID)
                 .segments(Collections.emptyList())
                 .build();
-        when(flowPathRepository.findById(REVERSE_PATH_ID)).thenReturn(java.util.Optional.of(reversePath));
+        when(flowPathRepository.findById(REVERSE_PATH_ID)).thenReturn(Optional.of(reversePath));
 
         Flow flow = getFlow();
         flow.setSrcSwitch(switchA);

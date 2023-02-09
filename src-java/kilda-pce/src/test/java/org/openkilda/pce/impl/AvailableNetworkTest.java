@@ -43,7 +43,7 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 
 public class AvailableNetworkTest {
-    private static final int cost = 700;
+    private static final int COST = 700;
 
     private static final WeightFunction WEIGHT_FUNCTION = edge -> {
         long total = edge.getCost();
@@ -107,24 +107,24 @@ public class AvailableNetworkTest {
     @Test
     public void updateEdgeWeightWithPopDiversityPenaltyTest() {
         AvailableNetwork network = new AvailableNetwork();
-        addLink(network, SWITCH_1, SWITCH_2, 1, 2, cost, 5, POP_1, POP_2);
-        addLink(network, SWITCH_1, SWITCH_3, 2, 1, cost, 5, POP_1, POP_4);
-        addLink(network, SWITCH_1, SWITCH_4, 3, 1, cost, 5, POP_1, POP_4);
-        addLink(network, SWITCH_5, SWITCH_4, 1, 2, cost, 5, POP_3, POP_4);
-        addLink(network, SWITCH_5, SWITCH_3, 2, 2, cost, 5, POP_3, POP_4);
-        addLink(network, SWITCH_5, SWITCH_2, 3, 2, cost, 5, POP_3, POP_2);
+        addLink(network, SWITCH_1, SWITCH_2, 1, 2, COST, 5, POP_1, POP_2);
+        addLink(network, SWITCH_1, SWITCH_3, 2, 1, COST, 5, POP_1, POP_4);
+        addLink(network, SWITCH_1, SWITCH_4, 3, 1, COST, 5, POP_1, POP_4);
+        addLink(network, SWITCH_5, SWITCH_4, 1, 2, COST, 5, POP_3, POP_4);
+        addLink(network, SWITCH_5, SWITCH_3, 2, 2, COST, 5, POP_3, POP_4);
+        addLink(network, SWITCH_5, SWITCH_2, 3, 2, COST, 5, POP_3, POP_2);
 
         network.processDiversitySegmentsWithPop(
                 asList(buildPathWithSegment(SWITCH_1, SWITCH_3, 2, 1, POP_1, POP_4, 0),
                         buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, POP_4, POP_3, 1)));
-        long expectedWeight = cost + 1000L;
+        long expectedWeight = COST + 1000L;
         for (Edge edge : network.edges) {
             long currentWeight = WEIGHT_FUNCTION.apply(edge).getTotalWeight();
             if (edge.getSrcSwitch().getPop().equals(POP_4)
                     || edge.getDestSwitch().getPop().equals(POP_4)) {
                 assertEquals(expectedWeight, currentWeight);
             } else {
-                assertEquals(cost, currentWeight);
+                assertEquals(COST, currentWeight);
             }
         }
     }
@@ -132,57 +132,57 @@ public class AvailableNetworkTest {
     @Test
     public void dontUpdateWeightsWhenTransitSegmentsNotInPopTest() {
         AvailableNetwork network = new AvailableNetwork();
-        addLink(network, SWITCH_1, SWITCH_2, 1, 2, cost, 5, POP_1, POP_2);
-        addLink(network, SWITCH_1, SWITCH_3, 2, 1, cost, 5, POP_1, null);
-        addLink(network, SWITCH_1, SWITCH_4, 3, 1, cost, 5, POP_1, POP_4);
-        addLink(network, SWITCH_5, SWITCH_4, 1, 2, cost, 5, POP_3, POP_4);
-        addLink(network, SWITCH_5, SWITCH_3, 2, 2, cost, 5, POP_3, null);
-        addLink(network, SWITCH_5, SWITCH_2, 3, 2, cost, 5, POP_3, POP_2);
+        addLink(network, SWITCH_1, SWITCH_2, 1, 2, COST, 5, POP_1, POP_2);
+        addLink(network, SWITCH_1, SWITCH_3, 2, 1, COST, 5, POP_1, null);
+        addLink(network, SWITCH_1, SWITCH_4, 3, 1, COST, 5, POP_1, POP_4);
+        addLink(network, SWITCH_5, SWITCH_4, 1, 2, COST, 5, POP_3, POP_4);
+        addLink(network, SWITCH_5, SWITCH_3, 2, 2, COST, 5, POP_3, null);
+        addLink(network, SWITCH_5, SWITCH_2, 3, 2, COST, 5, POP_3, POP_2);
 
         network.processDiversitySegmentsWithPop(
                 asList(buildPathWithSegment(SWITCH_1, SWITCH_3, 2, 1, POP_1, null, 0),
                         buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, null, POP_3, 1)));
         for (Edge edge : network.edges) {
             long currentWeight = WEIGHT_FUNCTION.apply(edge).getTotalWeight();
-            assertEquals(cost, currentWeight);
+            assertEquals(COST, currentWeight);
         }
     }
 
     @Test
     public void dontUpdateWeightsWhenTransitSegmentsOnlyInPopTest() {
         AvailableNetwork network = new AvailableNetwork();
-        addLink(network, SWITCH_1, SWITCH_2, 1, 2, cost, 5, null, null);
-        addLink(network, SWITCH_1, SWITCH_3, 2, 1, cost, 5, null, POP_4);
-        addLink(network, SWITCH_1, SWITCH_4, 3, 1, cost, 5, null, null);
-        addLink(network, SWITCH_5, SWITCH_4, 1, 2, cost, 5, null, null);
-        addLink(network, SWITCH_5, SWITCH_3, 2, 2, cost, 5, null, POP_4);
-        addLink(network, SWITCH_5, SWITCH_2, 3, 2, cost, 5, null, null);
+        addLink(network, SWITCH_1, SWITCH_2, 1, 2, COST, 5, null, null);
+        addLink(network, SWITCH_1, SWITCH_3, 2, 1, COST, 5, null, POP_4);
+        addLink(network, SWITCH_1, SWITCH_4, 3, 1, COST, 5, null, null);
+        addLink(network, SWITCH_5, SWITCH_4, 1, 2, COST, 5, null, null);
+        addLink(network, SWITCH_5, SWITCH_3, 2, 2, COST, 5, null, POP_4);
+        addLink(network, SWITCH_5, SWITCH_2, 3, 2, COST, 5, null, null);
 
         network.processDiversitySegmentsWithPop(
                 asList(buildPathWithSegment(SWITCH_1, SWITCH_3, 2, 1, POP_1, null, 0),
                         buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, null, POP_3, 1)));
         for (Edge edge : network.edges) {
             long currentWeight = WEIGHT_FUNCTION.apply(edge).getTotalWeight();
-            assertEquals(cost, currentWeight);
+            assertEquals(COST, currentWeight);
         }
     }
 
     @Test
     public void dontUpdateEdgeWeightWithPopDiversityPenaltyIfNoPopTest() {
         AvailableNetwork network = new AvailableNetwork();
-        addLink(network, SWITCH_1, SWITCH_2, 1, 2, cost, 5);
-        addLink(network, SWITCH_1, SWITCH_3, 2, 1, cost, 5);
-        addLink(network, SWITCH_1, SWITCH_4, 3, 1, cost, 5);
-        addLink(network, SWITCH_5, SWITCH_4, 1, 2, cost, 5);
-        addLink(network, SWITCH_5, SWITCH_3, 2, 2, cost, 5);
-        addLink(network, SWITCH_5, SWITCH_2, 3, 2, cost, 5);
+        addLink(network, SWITCH_1, SWITCH_2, 1, 2, COST, 5);
+        addLink(network, SWITCH_1, SWITCH_3, 2, 1, COST, 5);
+        addLink(network, SWITCH_1, SWITCH_4, 3, 1, COST, 5);
+        addLink(network, SWITCH_5, SWITCH_4, 1, 2, COST, 5);
+        addLink(network, SWITCH_5, SWITCH_3, 2, 2, COST, 5);
+        addLink(network, SWITCH_5, SWITCH_2, 3, 2, COST, 5);
 
         network.processDiversitySegmentsWithPop(
                 asList(buildPathSegment(SWITCH_1, SWITCH_3, 2, 1, 0),
                         buildPathSegment(SWITCH_3, SWITCH_5, 2, 2, 1)));
         for (Edge edge : network.edges) {
             long currentWeight = WEIGHT_FUNCTION.apply(edge).getTotalWeight();
-            assertEquals(cost, currentWeight);
+            assertEquals(COST, currentWeight);
         }
     }
 
@@ -211,7 +211,7 @@ public class AvailableNetworkTest {
     }
 
     @Test
-    public void createSymmetricOutgoingAndIncomingTest() {
+    public void createSymmetricOutgoingAndIncomingLinksTest() {
         AvailableNetwork network = new AvailableNetwork();
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);

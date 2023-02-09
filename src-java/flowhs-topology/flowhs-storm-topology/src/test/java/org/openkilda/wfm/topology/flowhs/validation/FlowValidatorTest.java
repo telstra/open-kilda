@@ -266,9 +266,13 @@ public class FlowValidatorTest {
         flowValidator.checkMaxLatency(flow);
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failOnAddingOneSwitchFlowToDiverseGroupWithExistingFlowTest() throws InvalidFlowException {
+    @Test
+    public void doesntFailOnAddingOneSwitchFlowToDiverseGroupWithExistingFlowTest() throws InvalidFlowException {
         RequestedFlow oneSwitchFlow = buildOneSwitchFlow();
+
+        Flow flow = buildDiverseGroupFlow(SWITCH_ID_1, PORT_1, SWITCH_ID_2, PORT_1);
+
+        when(flowRepository.findById(DIVERSE_FLOW_ID)).thenReturn(Optional.of(flow));
         flowValidator.checkDiverseFlow(oneSwitchFlow);
     }
 
@@ -284,16 +288,7 @@ public class FlowValidatorTest {
                 .diverseFlowId(DIVERSE_FLOW_ID)
                 .build();
 
-        Switch singleSwitch = Switch.builder().switchId(SWITCH_ID_1).build();
-
-        Flow oneSwitchFlow = Flow.builder()
-                .flowId("oneSwitchFlow")
-                .srcSwitch(singleSwitch)
-                .srcPort(PORT_1)
-                .destSwitch(singleSwitch)
-                .destPort(11)
-                .diverseGroupId(DIVERSE_FLOW_ID)
-                .build();
+        Flow oneSwitchFlow = buildDiverseGroupFlow(SWITCH_ID_1, PORT_1, SWITCH_ID_1, 11);
 
         when(flowRepository.findById(DIVERSE_FLOW_ID)).thenReturn(Optional.of(oneSwitchFlow));
         flowValidator.checkDiverseFlow(flow);
@@ -337,6 +332,20 @@ public class FlowValidatorTest {
                 .destPort(11)
                 .detectConnectedDevices(new DetectConnectedDevices())
                 .diverseFlowId(DIVERSE_FLOW_ID)
+                .build();
+    }
+
+    private Flow buildDiverseGroupFlow(SwitchId srcSwitchId, int srcPort, SwitchId destSwitchId, int destPort) {
+        Switch srcSwitch = Switch.builder().switchId(srcSwitchId).build();
+        Switch destSwitch = Switch.builder().switchId(destSwitchId).build();
+
+        return Flow.builder()
+                .flowId(FLOW_2)
+                .srcSwitch(srcSwitch)
+                .srcPort(srcPort)
+                .destSwitch(destSwitch)
+                .destPort(destPort)
+                .diverseGroupId(DIVERSE_FLOW_ID)
                 .build();
     }
 }

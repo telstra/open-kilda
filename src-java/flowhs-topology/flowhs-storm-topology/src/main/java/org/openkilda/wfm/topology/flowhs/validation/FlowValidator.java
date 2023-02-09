@@ -399,11 +399,6 @@ public class FlowValidator {
 
     @VisibleForTesting
     void checkDiverseFlow(RequestedFlow targetFlow) throws InvalidFlowException {
-        if (targetFlow.isOneSwitchFlow()) {
-            throw new InvalidFlowException("Couldn't add one-switch flow into diverse group",
-                    ErrorType.PARAMETERS_INVALID);
-        }
-
         Flow diverseFlow = flowRepository.findById(targetFlow.getDiverseFlowId()).orElse(null);
         if (diverseFlow == null) {
             YFlow diverseYFlow = yFlowRepository.findById(targetFlow.getDiverseFlowId())
