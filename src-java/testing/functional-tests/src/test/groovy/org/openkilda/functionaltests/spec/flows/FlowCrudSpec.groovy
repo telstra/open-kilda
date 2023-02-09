@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+
 import org.openkilda.functionaltests.exception.ExpectedHttpClientErrorException
 import org.openkilda.model.PathComputationStrategy
 
@@ -1319,6 +1320,29 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         cleanup:
         !error && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    @Tags(LOW_PRIORITY)
+    def "Unable to update to a flow with maxLatencyTier2 higher as maxLatency)"() {
+        given: "A flow"
+        def swPair = topologyHelper.getRandomSwitchPair()
+        def flow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow)
+
+        when: "Try to update the flow"
+        flow.maxLatency = 2
+        flow.maxLatencyTier2 = flow.maxLatency - 1
+        northboundV2.updateFlow(flow.flowId, flow)
+
+        then: "Bad Request response is returned"
+        def expectedException = new ExpectedHttpClientErrorException(HttpStatus.BAD_REQUEST, ~/The maxLatency \dms is higher than maxLatencyTier2 \dms/)
+        def actualException = thrown(HttpClientErrorException)
+        expectedException.equals(actualException)
+
+        cleanup: "Remove the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
+
     }
 
     @Shared
