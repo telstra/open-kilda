@@ -38,9 +38,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class FermaPhysicalPortTest extends InMemoryGraphBasedTest {
-    static final SwitchId SWITCH_ID_1 = new SwitchId(1);
-    static final SwitchId SWITCH_ID_2 = new SwitchId(2);
-    static final SwitchId SWITCH_ID_3 = new SwitchId(3);
     static final int LOGICAL_PORT_NUMBER_1 = 1;
     static final int LOGICAL_PORT_NUMBER_2 = 2;
     static final int LOGICAL_PORT_NUMBER_3 = 2;

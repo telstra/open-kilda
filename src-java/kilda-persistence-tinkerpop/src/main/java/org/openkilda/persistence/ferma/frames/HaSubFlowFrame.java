@@ -40,6 +40,7 @@ public abstract class HaSubFlowFrame extends KildaBaseVertexFrame implements HaS
     public static final String ENDPOINT_PORT_PROPERTY = "endpoint_port";
     public static final String ENDPOINT_VLAN_PROPERTY = "endpoint_vlan";
     public static final String ENDPOINT_INNER_VLAN_PROPERTY = "endpoint_inner_vlan";
+    public static final String DESCRIPTION_PROPERTY = "description";
 
     private HaFlow haFlow;
 
@@ -96,6 +97,14 @@ public abstract class HaSubFlowFrame extends KildaBaseVertexFrame implements HaS
     @Override
     @Property(ENDPOINT_INNER_VLAN_PROPERTY)
     public abstract void setEndpointInnerVlan(int endpointInnerVlan);
+
+    @Override
+    @Property(DESCRIPTION_PROPERTY)
+    public abstract String getDescription();
+
+    @Override
+    @Property(DESCRIPTION_PROPERTY)
+    public abstract void setDescription(String description);
 
     @Override
     public HaFlow getHaFlow() {

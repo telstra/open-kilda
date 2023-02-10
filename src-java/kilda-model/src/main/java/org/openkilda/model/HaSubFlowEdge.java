@@ -72,7 +72,6 @@ public class HaSubFlowEdge implements CompositeDataEntity<HaSubFlowEdgeData> {
         this.data = data;
     }
 
-
     @Builder
     public HaSubFlowEdge(@NonNull String haFlowId, @NonNull HaSubFlow haSubFlow, MeterId meterId) {
         HaSubFlowEdgeImpl.HaSubFlowEdgeImplBuilder builder = HaSubFlowEdgeImpl.builder()
