@@ -15,16 +15,7 @@
 
 package org.openkilda.testing.service.traffexam;
 
-import org.openkilda.testing.service.traffexam.model.Address;
-import org.openkilda.testing.service.traffexam.model.AddressStats;
-import org.openkilda.testing.service.traffexam.model.ArpData;
-import org.openkilda.testing.service.traffexam.model.Exam;
-import org.openkilda.testing.service.traffexam.model.ExamReport;
-import org.openkilda.testing.service.traffexam.model.ExamResources;
-import org.openkilda.testing.service.traffexam.model.Host;
-import org.openkilda.testing.service.traffexam.model.LldpData;
-import org.openkilda.testing.service.traffexam.model.UdpData;
-import org.openkilda.testing.service.traffexam.model.Vlan;
+import org.openkilda.testing.service.traffexam.model.*;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4ValueException;
 
 import java.util.List;
@@ -55,6 +46,8 @@ public interface TraffExamService {
     void releaseAddress(Address subject);
 
     void sendLldp(Address address, LldpData lldpData);
+
+    void sendLacp(Address address, LacpData lacpData);
 
     void sendArp(Address address, ArpData arpData);
 

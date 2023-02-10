@@ -18,10 +18,7 @@ package org.openkilda.testing.tools;
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen;
 import org.openkilda.testing.service.traffexam.OperationalException;
 import org.openkilda.testing.service.traffexam.TraffExamService;
-import org.openkilda.testing.service.traffexam.model.Address;
-import org.openkilda.testing.service.traffexam.model.ArpData;
-import org.openkilda.testing.service.traffexam.model.LldpData;
-import org.openkilda.testing.service.traffexam.model.Vlan;
+import org.openkilda.testing.service.traffexam.model.*;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4ValueException;
 
 import java.util.ArrayList;
@@ -49,6 +46,10 @@ public class ConnectedDevice implements AutoCloseable {
 
     public void sendArp(ArpData data) {
         examService.sendArp(address, data);
+    }
+
+    public void sendLacp(LacpData data) {
+        examService.sendLacp(address, data);
     }
 
     @Override

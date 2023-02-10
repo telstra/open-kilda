@@ -18,25 +18,7 @@ package org.openkilda.testing.service.traffexam;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen;
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGenConfig;
-import org.openkilda.testing.service.traffexam.model.Address;
-import org.openkilda.testing.service.traffexam.model.AddressResponse;
-import org.openkilda.testing.service.traffexam.model.AddressStats;
-import org.openkilda.testing.service.traffexam.model.ArpData;
-import org.openkilda.testing.service.traffexam.model.ConsumerEndpoint;
-import org.openkilda.testing.service.traffexam.model.Endpoint;
-import org.openkilda.testing.service.traffexam.model.EndpointAddress;
-import org.openkilda.testing.service.traffexam.model.EndpointReport;
-import org.openkilda.testing.service.traffexam.model.EndpointResponse;
-import org.openkilda.testing.service.traffexam.model.Exam;
-import org.openkilda.testing.service.traffexam.model.ExamReport;
-import org.openkilda.testing.service.traffexam.model.ExamResources;
-import org.openkilda.testing.service.traffexam.model.Host;
-import org.openkilda.testing.service.traffexam.model.HostResource;
-import org.openkilda.testing.service.traffexam.model.LldpData;
-import org.openkilda.testing.service.traffexam.model.ProducerEndpoint;
-import org.openkilda.testing.service.traffexam.model.ReportResponse;
-import org.openkilda.testing.service.traffexam.model.UdpData;
-import org.openkilda.testing.service.traffexam.model.Vlan;
+import org.openkilda.testing.service.traffexam.model.*;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4Network;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4NetworkPool;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4ValueException;
@@ -379,6 +361,13 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         restTemplate.put(
                 makeHostUri(address.getHost()).path("address/").path(address.getId().toString()).path("/lldp").build(),
                 lldpData);
+    }
+
+    @Override
+    public void sendLacp(Address address, LacpData lacpData) {
+        restTemplate.put(
+                makeHostUri(address.getHost()).path("address/").path(address.getId().toString()).path("/lacp").build(),
+                lacpData);
     }
 
     @Override
