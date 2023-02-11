@@ -397,7 +397,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         error.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = error.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "It is not allowed to create one-switch flow for the same ports and vlans"
+        errorDetails.errorDescription == "It is not allowed to create one-switch flow for the same ports and VLANs"
 
         cleanup:
         !error && flowHelperV2.deleteFlow(flow.flowId)
