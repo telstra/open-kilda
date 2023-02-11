@@ -19,6 +19,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.PathValidateRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
+import org.openkilda.messaging.info.network.PathValidateData;
 import org.openkilda.messaging.info.network.PathsInfoData;
 import org.openkilda.messaging.nbtopology.request.GetPathsRequest;
 import org.openkilda.messaging.payload.network.PathDto;
@@ -100,14 +101,16 @@ public class NetworkServiceImpl implements NetworkService {
      * it responds with the reasons, such as: not enough bandwidth, requested latency it too low, there is no
      * links between the selected switches, and so on.
      * @param path a path provided by a user
-     * @return either a successful response or the list of errors
+     * @return either a successful response or a list of errors
      */
     @Override
     public CompletableFuture<PathValidateResponse> validateFlowPath(PathDto path) {
         PathValidateRequest request = new PathValidateRequest(path);
 
-        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), RequestCorrelationId.getId());
-        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
-                .thenApply(PathValidateResponse.class::cast);
+        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(nbworkerTopic, message)
+                .thenApply(PathValidateData.class::cast)
+                .thenApply(pathMapper::toPathValidateResponse);
     }
 }

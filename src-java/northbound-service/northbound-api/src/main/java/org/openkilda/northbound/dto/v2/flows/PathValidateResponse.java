@@ -28,6 +28,6 @@ import java.util.List;
 @AllArgsConstructor
 @JsonNaming(value = PropertyNamingStrategy.SnakeCaseStrategy.class)
 public class PathValidateResponse {
-    boolean isValid;
-    List<PathCheckErrorPayload> errors;
+    Boolean isValid;
+    List<String> errors;
 }

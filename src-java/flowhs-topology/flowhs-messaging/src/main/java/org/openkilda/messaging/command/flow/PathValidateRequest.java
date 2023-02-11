@@ -15,22 +15,27 @@
 
 package org.openkilda.messaging.command.flow;
 
+import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.payload.network.PathDto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
-
 
 /**
  * Request to validate that the given path is possible to create with the given constraints and resources availability.
  */
 @Value
-@EqualsAndHashCode(callSuper = false)
+@ReadRequest
+@EqualsAndHashCode(callSuper = true)
 public class PathValidateRequest extends BaseRequest {
+    @JsonProperty("path")
     PathDto pathDto;
 
-    public PathValidateRequest(PathDto pathDto) {
+    @JsonCreator
+    public PathValidateRequest(@JsonProperty("path") PathDto pathDto) {
         this.pathDto = pathDto;
     }
 }

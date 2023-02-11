@@ -16,10 +16,12 @@
 package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.info.network.Path;
+import org.openkilda.messaging.info.network.PathValidateData;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload.FlowProtectedPathsPayload;
 import org.openkilda.messaging.payload.network.PathDto;
+import org.openkilda.northbound.dto.v2.flows.PathValidateResponse;
 
 import org.mapstruct.Mapper;
 
@@ -33,4 +35,6 @@ public interface PathMapper {
     GroupFlowPathPayload mapGroupFlowPathPayload(FlowPathDto data);
 
     FlowProtectedPathsPayload mapFlowProtectedPathPayload(FlowPathDto.FlowProtectedPathDto data);
+
+    PathValidateResponse toPathValidateResponse(PathValidateData data);
 }

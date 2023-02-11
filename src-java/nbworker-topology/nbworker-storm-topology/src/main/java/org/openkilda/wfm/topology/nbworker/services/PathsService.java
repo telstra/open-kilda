@@ -16,8 +16,9 @@
 package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.messaging.command.flow.PathValidateRequest;
-import org.openkilda.messaging.info.network.PathValidateResponse;
+import org.openkilda.messaging.info.network.PathValidateData;
 import org.openkilda.messaging.info.network.PathsInfoData;
+import org.openkilda.messaging.payload.network.PathDto;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.PathComputationStrategy;
@@ -30,7 +31,7 @@ import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
-import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -38,10 +39,13 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.mappers.PathMapper;
+import org.openkilda.wfm.topology.nbworker.validators.PathValidator;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -54,10 +58,10 @@ public class PathsService {
     private final SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
-    private final  AvailableNetworkFactory availableNetworkFactory;
+    private final IslRepository islRepository;
 
     public PathsService(RepositoryFactory repositoryFactory, PathComputerConfig pathComputerConfig,
-                        PersistenceManager persistenceManager) {
+                        IslRepository islRepository) {
         switchRepository = repositoryFactory.createSwitchRepository();
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
@@ -65,9 +69,7 @@ public class PathsService {
                 pathComputerConfig, new AvailableNetworkFactory(pathComputerConfig, repositoryFactory));
         pathComputer = pathComputerFactory.getPathComputer();
         defaultMaxPathCount = pathComputerConfig.getMaxPathCount();
-
-        availableNetworkFactory =
-                new AvailableNetworkFactory(pathComputerConfig, persistenceManager.getRepositoryFactory());
+        this.islRepository = islRepository;
     }
 
     /**
@@ -129,8 +131,38 @@ public class PathsService {
                 .collect(Collectors.toList());
     }
 
-    public List<PathValidateResponse> validatePath(PathValidateRequest request) {
-        //TODO implement path validation
-        throw new UnsupportedOperationException();
+    /**
+     * This method validates a path and collects errors if any. Validations depend on the information in the request.
+     * For example, if the request doesn't contain latency, the path will not be validated using max latency strategy.
+     * @param request request containing the path and parameters to validate
+     * @return a response with the success or the list of errors
+     */
+    public List<PathValidateData> validatePath(PathValidateRequest request) {
+        PathValidator pathValidator = new PathValidator(islRepository);
+
+        return Collections.singletonList(pathValidator.validatePath(pathDtoToPath(request.getPathDto())));
     }
+
+    private Path pathDtoToPath(PathDto pathDto) {
+        List<Path.Segment> segments = new LinkedList<>();
+
+        for (int i = 0; i < pathDto.getNodes().size() - 1; i++) {
+            segments.add(Path.Segment.builder()
+                            .srcSwitchId(pathDto.getNodes().get(i).getSwitchId())
+                            .srcPort(pathDto.getNodes().get(i).getOutputPort())
+                            .destSwitchId(pathDto.getNodes().get(i + 1).getSwitchId())
+                            .destPort(pathDto.getNodes().get(i + 1).getInputPort())
+                    .build());
+        }
+
+        return Path.builder()
+                .srcSwitchId(pathDto.getNodes().get(0).getSwitchId())
+                .destSwitchId(pathDto.getNodes().get(pathDto.getNodes().size() - 1).getSwitchId())
+                .isBackupPath(pathDto.getIsBackupPath())
+                .minAvailableBandwidth(pathDto.getBandwidth())
+                .latency(pathDto.getLatency())
+                .segments(segments)
+                .build();
+    }
+
 }

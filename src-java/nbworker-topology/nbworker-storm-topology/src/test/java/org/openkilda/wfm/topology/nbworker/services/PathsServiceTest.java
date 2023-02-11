@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.nbworker.services;
 
 import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -26,7 +27,11 @@ import static org.openkilda.model.PathComputationStrategy.LATENCY;
 import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
+import org.openkilda.messaging.command.flow.PathValidateRequest;
+import org.openkilda.messaging.info.network.PathValidateData;
 import org.openkilda.messaging.info.network.PathsInfoData;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.messaging.payload.network.PathDto;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
@@ -53,6 +58,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.time.Duration;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
@@ -64,6 +70,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     private static final SwitchId SWITCH_ID_2 = new SwitchId(2);
     private static final SwitchId SWITCH_ID_3 = new SwitchId(3);
+    private static final SwitchId SWITCH_ID_4 = new SwitchId(4);
     public static final long BASE_LATENCY = 10000;
     public static final long MIN_LATENCY = BASE_LATENCY - SWITCH_COUNT;
 
@@ -84,7 +91,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
         PathComputerConfig pathComputerConfig = new PropertiesBasedConfigurationProvider()
                 .getConfiguration(PathComputerConfig.class);
-        pathsService = new PathsService(repositoryFactory, pathComputerConfig, persistenceManager);
+        pathsService = new PathsService(repositoryFactory, pathComputerConfig, islRepository);
     }
 
     @Before
@@ -288,6 +295,108 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, null, COST,
                 null, null, MAX_PATH_COUNT);
         assertVxlanAndCostPathes(paths);
+    }
+
+    @Test
+    public void whenValidPath_validatePathReturnsValidResponseTest() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathDto.builder()
+                .nodes(nodes)
+                .bandwidth(0L)
+                .isBackupPath(false)
+                .latency(0L)
+                .build());
+        List<PathValidateData> responses = pathsService.validatePath(request);
+
+        assertFalse(responses.isEmpty());
+        assertTrue(responses.get(0).getIsValid());
+    }
+
+    @Test
+    public void whenValidPathButNotEnoughBandwidth_validateReturnsErrorResponseTest() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathDto.builder()
+                .nodes(nodes)
+                .bandwidth(1000000000L)
+                .isBackupPath(false)
+                .latency(10L)
+                .build());
+        List<PathValidateData> responses = pathsService.validatePath(request);
+
+        assertFalse(responses.isEmpty());
+        assertFalse(responses.get(0).getIsValid());
+        assertFalse(responses.get(0).getErrors().isEmpty());
+        assertTrue(responses.get(0).getErrors().get(0)
+                .contains("There is not enough Bandwidth between source switch"));
+    }
+
+    @Test
+    public void whenValidPathButTooLowLatency_validateReturnsErrorResponseTest() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathDto.builder()
+                .nodes(nodes)
+                .bandwidth(0L)
+                .isBackupPath(false)
+                .latency(10L)
+                .build());
+        List<PathValidateData> responses = pathsService.validatePath(request);
+
+        assertFalse(responses.isEmpty());
+        assertFalse(responses.get(0).getIsValid());
+        assertFalse(responses.get(0).getErrors().isEmpty());
+        assertTrue(responses.get(0).getErrors().get(0)
+                .contains("Requested latency is too low between source switch"));
+    }
+
+    @Test
+    public void whenNoLinkBetweenSwitches_validatePathReturnsErrorResponseTest() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 1));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 0, null));
+        PathValidateRequest request = new PathValidateRequest(PathDto.builder()
+                .nodes(nodes)
+                .bandwidth(0L)
+                .isBackupPath(false)
+                .latency(0L)
+                .build());
+        List<PathValidateData> responses = pathsService.validatePath(request);
+
+        assertFalse(responses.isEmpty());
+        assertFalse(responses.get(0).getIsValid());
+        assertFalse(responses.get(0).getErrors().isEmpty());
+        assertTrue(responses.get(0).getErrors().get(0)
+                .startsWith("There is no ISL between source switch"));
+    }
+
+    @Test
+    public void whenMultipleProblemsOnPath_validatePathReturnsAllErrorResponseTest() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_4, 7, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathDto.builder()
+                .nodes(nodes)
+                .bandwidth(1000000L)
+                .isBackupPath(false)
+                .latency(10L)
+                .build());
+        List<PathValidateData> responses = pathsService.validatePath(request);
+
+        assertFalse(responses.isEmpty());
+        assertFalse(responses.get(0).getIsValid());
+        assertFalse(responses.get(0).getErrors().isEmpty());
+        assertEquals("There must be 4 errors in total. bandwidth, latency, 2 links are not present",
+                4, responses.get(0).getErrors().size());
     }
 
     private void assertMaxLatencyPaths(List<PathsInfoData> paths, Duration maxLatency, long expectedCount,
