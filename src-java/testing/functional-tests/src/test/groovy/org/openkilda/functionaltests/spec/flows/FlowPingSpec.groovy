@@ -5,8 +5,9 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_RULE
+import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -59,7 +60,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         when: "Ping the flow"
         def beforePingTime = new Date()
         def unicastCounterBefore = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.find {
-            it.cookie == DefaultRule.VERIFICATION_UNICAST_RULE.cookie
+            it.cookie == VERIFICATION_UNICAST_RULE.cookie
         }.byteCount
         def response = northbound.pingFlow(flow.flowId, new PingInput())
 
@@ -78,14 +79,9 @@ class FlowPingSpec extends HealthCheckSpecification {
         // response.reverse.latency
 
         and: "Unicast rule packet count is increased and logged to otsdb"
-        def statsData = null
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
-            statsData = otsdb.query(beforePingTime, metricPrefix + "switch.flow.system.bytes",
-                    [switchid : srcSwitch.dpId.toOtsdFormat(),
-                     cookieHex: DefaultRule.VERIFICATION_UNICAST_RULE.toHexString()]).dps
-            assert statsData && !statsData.empty
-        }
-        statsData.values().last().toLong() > unicastCounterBefore
+        statsHelper.'ping packets count on switch'(beforePingTime,
+                srcSwitch,
+                VERIFICATION_UNICAST_RULE) > unicastCounterBefore
 
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -113,7 +109,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         when: "Ping the flow"
         def beforePingTime = new Date()
         def unicastCounterBefore = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.find {
-            it.cookie == DefaultRule.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE.cookie //rule for the vxlan differs from vlan
+            it.cookie == VERIFICATION_UNICAST_VXLAN_RULE_COOKIE.cookie //rule for the vxlan differs from vlan
         }.byteCount
         def response = northbound.pingFlow(flow.flowId, new PingInput())
 
@@ -128,14 +124,9 @@ class FlowPingSpec extends HealthCheckSpecification {
 
 
         and: "Unicast rule packet count is increased and logged to otsdb"
-        def statsData = null
-        Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
-            statsData = otsdb.query(beforePingTime, metricPrefix + "switch.flow.system.bytes",
-                    [switchid : switchPair.src.dpId.toOtsdFormat(),
-                     cookieHex: DefaultRule.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE.toHexString()]).dps
-            assert statsData && !statsData.empty
-        }
-        statsData.values().last().toLong() > unicastCounterBefore
+        statsHelper."ping packets count on switch"(beforePingTime,
+                switchPair.src,
+                VERIFICATION_UNICAST_VXLAN_RULE_COOKIE) > unicastCounterBefore
 
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)

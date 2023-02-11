@@ -119,9 +119,13 @@ public class InMemoryPathComputer implements PathComputer {
         try {
             findPathResult = findPathInNetwork(flow, network, weightFunction, strategy);
         } catch (UnroutableFlowException e) {
-            String message = format("%s=%s: %s", FailReasonType.MAX_BANDWIDTH,
-                    flow.isIgnoreBandwidth() ? " ignored" : flow.getBandwidth(), e.getMessage());
-            throw new UnroutableFlowException(message, e, flow.getFlowId(), flow.isIgnoreBandwidth());
+            String bandwidthMessage = "";
+            if (flow.getBandwidth() > 0) {
+                bandwidthMessage = format(", %s=%s", FailReasonType.MAX_BANDWIDTH,
+                        flow.isIgnoreBandwidth() ? " ignored" : flow.getBandwidth());
+            }
+            throw new UnroutableFlowException(e.getMessage().concat(bandwidthMessage), e, flow.getFlowId(),
+                    flow.isIgnoreBandwidth());
         }
 
         return convertToGetPathsResult(flow.getSrcSwitchId(), flow.getDestSwitchId(), findPathResult,

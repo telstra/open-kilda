@@ -171,7 +171,7 @@ public class FlowValidator {
     void checkFlowForCorrectOuterVlansWithVlanStatistics(RequestedFlow flow) throws InvalidFlowException {
         Set<Integer> vlanStatistics = flow.getVlanStatistics();
 
-        if (vlanStatistics == null) {
+        if (vlanStatistics == null || vlanStatistics.isEmpty()) {
             return;
         }
 

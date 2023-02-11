@@ -49,6 +49,7 @@ import org.openkilda.wfm.share.flow.TestFlowBuilder;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsCarrier;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService.UpdateFlowResult;
 
+import com.google.common.collect.Sets;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -73,6 +74,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     public static final SwitchId SWITCH_ID_2 = new SwitchId(2);
     public static final SwitchId SWITCH_ID_3 = new SwitchId(3);
     public static final SwitchId SWITCH_ID_4 = new SwitchId(4);
+    public static final int VLAN_1 = 1;
 
     private static FlowOperationsService flowOperationsService;
     private static FlowRepository flowRepository;
@@ -229,6 +231,63 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
         Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
 
         assertThat(updatedFlow.getVlanStatistics(), containsInAnyOrder(expectedVlanStatistics.toArray()));
+    }
+
+    @Test
+    public void shouldUpdateVlanStatisticsToZeroDstVlanIsZero() throws FlowNotFoundException {
+        runShouldUpdateVlanStatisticsToZero(VLAN_1, 0);
+    }
+
+    @Test
+    public void shouldUpdateVlanStatisticsToZeroSrcVlanIsZero() throws FlowNotFoundException {
+        runShouldUpdateVlanStatisticsToZero(0, VLAN_1);
+    }
+
+    @Test
+    public void shouldUpdateVlanStatisticsToZeroSrcAndVlanAreZero() throws FlowNotFoundException {
+        runShouldUpdateVlanStatisticsToZero(0, 0);
+    }
+
+    private void runShouldUpdateVlanStatisticsToZero(int srcVLan, int dstVlan)
+            throws FlowNotFoundException {
+        Set<Integer> originalVlanStatistics = Sets.newHashSet(1, 2, 3);
+        Flow flow = new TestFlowBuilder()
+                .flowId(FLOW_ID_1)
+                .srcSwitch(createSwitch(SWITCH_ID_1))
+                .srcVlan(srcVLan)
+                .destSwitch(createSwitch(SWITCH_ID_2))
+                .destVlan(dstVlan)
+                .vlanStatistics(originalVlanStatistics)
+                .build();
+        flowRepository.add(flow);
+
+        FlowPatch receivedFlow = FlowPatch.builder()
+                .flowId(FLOW_ID_1)
+                .vlanStatistics(new HashSet<>())
+                .build();
+
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+        assertTrue(updatedFlow.getVlanStatistics().isEmpty());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotUpdateVlanStatistics() throws FlowNotFoundException {
+        Flow flow = new TestFlowBuilder()
+                .flowId(FLOW_ID_1)
+                .srcSwitch(createSwitch(SWITCH_ID_1))
+                .srcVlan(VLAN_1)
+                .destSwitch(createSwitch(SWITCH_ID_2))
+                .destVlan(VLAN_1)
+                .vlanStatistics(new HashSet<>())
+                .build();
+        flowRepository.add(flow);
+
+        FlowPatch receivedFlow = FlowPatch.builder()
+                .flowId(FLOW_ID_1)
+                .vlanStatistics(Sets.newHashSet(1, 2, 3))
+                .build();
+
+        flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
     }
 
     @Test
