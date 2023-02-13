@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,16 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.yflows;
+package org.openkilda.northbound.dto.v2.haflows;
 
 import org.openkilda.northbound.dto.utils.Constraints;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.experimental.FieldDefaults;
 
 import java.util.List;
 import javax.validation.constraints.PositiveOrZero;
@@ -31,10 +32,10 @@ import javax.validation.constraints.PositiveOrZero;
 @Builder
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
-public class YFlowCreatePayload {
-    @JsonProperty("y_flow_id")
-    String yFlowId;
-    YFlowSharedEndpoint sharedEndpoint;
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class HaFlowCreatePayload {
+    String haFlowId;
+    HaFlowSharedEndpoint sharedEndpoint;
 
     @PositiveOrZero(message = Constraints.NEGATIVE_MAXIMUM_BANDWIDTH_MESSAGE)
     long maximumBandwidth;
@@ -53,5 +54,5 @@ public class YFlowCreatePayload {
     boolean allocateProtectedPath;
     String diverseFlowId;
 
-    List<SubFlowUpdatePayload> subFlows;
+    List<HaSubFlowUpdatePayload> subFlows;
 }

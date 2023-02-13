@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,42 +13,28 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.yflows;
+package org.openkilda.northbound.dto.v2.haflows;
 
-import org.openkilda.northbound.dto.utils.Constraints;
+import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.experimental.FieldDefaults;
 
 import java.util.List;
-import javax.validation.constraints.PositiveOrZero;
 
 @Data
 @Builder
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
-public class YFlowPatchPayload {
-    YFlowPatchSharedEndpoint sharedEndpoint;
-
-    @PositiveOrZero(message = Constraints.NEGATIVE_MAXIMUM_BANDWIDTH_MESSAGE)
-    Long maximumBandwidth;
-    String pathComputationStrategy;
-    String encapsulationType;
-    @PositiveOrZero(message = Constraints.NEGATIVE_MAX_LATENCY_MESSAGE)
-    Long maxLatency;
-    @PositiveOrZero(message = Constraints.NEGATIVE_MAX_LATENCY_TIER_2_MESSAGE)
-    Long maxLatencyTier2;
-    Boolean ignoreBandwidth;
-    Boolean periodicPings;
-    Boolean pinned;
-    Integer priority;
-    Boolean strictBandwidth;
-    String description;
-    Boolean allocateProtectedPath;
-    String diverseFlowId;
-
-    List<SubFlowPatchPayload> subFlows;
+@FieldDefaults(level = AccessLevel.PRIVATE)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class HaFlowDiscrepancy {
+    Boolean asExpected;
+    List<PathDiscrepancyDto> discrepancies;
 }

@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,36 +13,40 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.yflows;
+package org.openkilda.northbound.dto.v2.haflows;
 
-import org.openkilda.northbound.dto.utils.Constraints;
+import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.experimental.FieldDefaults;
 
 import java.util.List;
-import javax.validation.constraints.PositiveOrZero;
+import java.util.Set;
 
 @Data
 @Builder
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
-public class YFlowCreatePayload {
-    @JsonProperty("y_flow_id")
-    String yFlowId;
-    YFlowSharedEndpoint sharedEndpoint;
+@FieldDefaults(level = AccessLevel.PRIVATE)
+@JsonInclude(Include.NON_NULL)
+public class HaFlow {
+    String haFlowId;
+    String status;
 
-    @PositiveOrZero(message = Constraints.NEGATIVE_MAXIMUM_BANDWIDTH_MESSAGE)
+    HaFlowSharedEndpoint sharedEndpoint;
+
     long maximumBandwidth;
     String pathComputationStrategy;
     String encapsulationType;
-    @PositiveOrZero(message = Constraints.NEGATIVE_MAX_LATENCY_MESSAGE)
     Long maxLatency;
-    @PositiveOrZero(message = Constraints.NEGATIVE_MAX_LATENCY_TIER_2_MESSAGE)
     Long maxLatencyTier2;
     boolean ignoreBandwidth;
     boolean periodicPings;
@@ -51,7 +55,19 @@ public class YFlowCreatePayload {
     boolean strictBandwidth;
     String description;
     boolean allocateProtectedPath;
-    String diverseFlowId;
 
-    List<SubFlowUpdatePayload> subFlows;
+    @JsonProperty("y_point")
+    SwitchId yPoint;
+    @JsonProperty("protected_path_y_point")
+    SwitchId protectedPathYPoint;
+
+    Set<String> diverseWithFlows;
+    @JsonProperty("diverse_with_y_flows")
+    Set<String> diverseWithYFlows;
+    Set<String> diverseWithHaFlows;
+
+    List<HaSubFlow> subFlows;
+
+    String timeCreate;
+    String timeUpdate;
 }
