@@ -420,6 +420,8 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .allocateProtectedPath(true)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .pathComputationStrategy(PathComputationStrategy.COST)
+                .maxLatency(1L)
+                .maxLatencyTier2(1L)
                 .build();
 
         // new src switch
@@ -515,6 +517,16 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
 
         // new path computation strategy
         flowPatch = FlowPatch.builder().pathComputationStrategy(PathComputationStrategy.LATENCY).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new max latency
+        flowPatch = FlowPatch.builder().maxLatency(2L).build();
+        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
+        assertTrue(result.isNeedUpdateFlow());
+
+        // new max latency tier 2
+        flowPatch = FlowPatch.builder().maxLatencyTier2(2L).build();
         result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
         assertTrue(result.isNeedUpdateFlow());
     }

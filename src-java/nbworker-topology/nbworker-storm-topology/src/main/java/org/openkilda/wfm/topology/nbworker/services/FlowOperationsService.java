@@ -418,22 +418,16 @@ public class FlowOperationsService {
 
         updateRequired |= updateRequiredByVlanStatistics(flowPatch, flow);
 
+        updateRequired |= updateRequiredByMaxLatency(flowPatch, flow);
+        updateRequired |= updateRequiredByMaxLatencyTier2(flowPatch, flow);
+
         return UpdateFlowResult.builder()
                 .needUpdateFlow(updateRequired);
     }
 
     private boolean updateRequiredByPathComputationStrategy(FlowPatch flowPatch, Flow flow) {
-        boolean changedStrategy = flowPatch.getPathComputationStrategy() != null
+        return flowPatch.getPathComputationStrategy() != null
                 && !flowPatch.getPathComputationStrategy().equals(flow.getPathComputationStrategy());
-        boolean changedMaxLatency = flowPatch.getMaxLatency() != null
-                && !flowPatch.getMaxLatency().equals(flow.getMaxLatency());
-        boolean changedMaxLatencyTier2 = flowPatch.getMaxLatencyTier2() != null
-                && !flowPatch.getMaxLatencyTier2().equals(flow.getMaxLatencyTier2());
-        boolean strategyIsLatencyBased =
-                LATENCY_BASED_STRATEGIES.contains(flowPatch.getPathComputationStrategy())
-                        || flowPatch.getPathComputationStrategy() == null
-                        && LATENCY_BASED_STRATEGIES.contains(flow.getPathComputationStrategy());
-        return changedStrategy || (strategyIsLatencyBased && (changedMaxLatency || changedMaxLatencyTier2));
     }
 
     private boolean updateRequiredBySource(FlowPatch flowPatch, Flow flow) {
@@ -456,6 +450,20 @@ public class FlowOperationsService {
                 && !flowPatch.getSource().getTrackArpConnectedDevices()
                 .equals(flow.getDetectConnectedDevices().isSrcArp());
         return updateRequired;
+    }
+
+    private boolean updateRequiredByMaxLatency(FlowPatch flowPatch, Flow flow) {
+        if (flowPatch.getMaxLatency() == null) {
+            return false;
+        }
+        return !Objects.equals(flowPatch.getMaxLatency(), flow.getMaxLatency());
+    }
+
+    private boolean updateRequiredByMaxLatencyTier2(FlowPatch flowPatch, Flow flow) {
+        if (flowPatch.getMaxLatencyTier2() == null) {
+            return false;
+        }
+        return !Objects.equals(flowPatch.getMaxLatencyTier2(), flow.getMaxLatencyTier2());
     }
 
     private boolean updateRequiredByDestination(FlowPatch flowPatch, Flow flow) {
