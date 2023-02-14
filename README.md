@@ -178,15 +178,15 @@ make up-stable
 
 The next command starts the green version of OpenKilda from the latest images.
 Common components wouldn't be restarted (we started them using the previous command).
-FloodLight 1 wouldn't be restarted; FloodLight 1 will stay on blue mode.   
-Only FloodLight 2 will be restarted.
+Floodlight 1 wouldn't be restarted; Floodlight 1 will stay on blue mode.   
+Only Floodlight 2 will be restarted.
 ```shell
 make up-green
 ```
 
 The next command is used to test rollbacks. It runs stable components in blue mode.
 The difference with `make up-stable` is that this command wouldn't start common components
-(like Zookeeper, Kafka, etc) and FloodLight 2 (it stays in green mode). 
+(like Zookeeper, Kafka, etc) and Floodlight 2 (it stays in green mode). 
 
 ```shell
 make up-blue

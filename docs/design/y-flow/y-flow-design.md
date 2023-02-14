@@ -33,7 +33,7 @@ Otherwise, it can be `DEGRADED` or `DOWN`.
 Update behaviour is the same as the creation behaviour, except OpenKilda removes the existing Y-flow and then proceeds with creation.
 
 ### Delete
-Kilda marks all sub-flows to remove and remove them one by one.
+OpenKilda marks all sub-flows to remove and remove them one by one.
 
 ### Reroute
 If OpenKilda detects (via a network event or flow monitoring) a failure of any sub-flow, a complete Y-flow "reroute" procedure must be triggered:
