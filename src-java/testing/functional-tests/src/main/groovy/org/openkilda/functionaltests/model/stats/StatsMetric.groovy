@@ -1,16 +1,20 @@
 package org.openkilda.functionaltests.model.stats
 
+import org.openkilda.testing.service.otsdb.model.StatsResult
+
 enum StatsMetric {
-    FLOW_RAW_PACKETS("flow.raw.packets"),
-    Y_FLOW_SHARED_BYTES("yFlow.meter.shared.bytes"),
-    Y_FLOW_Y_POINT_BYTES("yFlow.meter.yPoint.bytes"),
+    Y_FLOW_SHARED_PACKETS("yFlow.meter.shared.packets"),
+    Y_FLOW_Y_POINT_PACKETS("yFlow.meter.yPoint.packets"),
     FLOW_INGRESS_PACKETS("flow.ingress.packets"),
-    FLOW_PACKETS("flow.packets"),
-    FLOW_RAW_BYTES("flow.raw.bytes")
+    FLOW_EGRESS_PACKETS("flow.packets")
 
     final String metric;
 
     StatsMetric(String metric) {
         this.metric = metric
+    }
+
+    def "result filter for metric"() {
+        return {StatsResult result -> result.metric.endsWith(this.getMetric())}
     }
 }

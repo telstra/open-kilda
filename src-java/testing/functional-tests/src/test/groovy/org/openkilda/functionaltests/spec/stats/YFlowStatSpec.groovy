@@ -13,6 +13,7 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
+import spock.lang.Unroll
 
 import javax.inject.Provider
 
@@ -49,7 +50,7 @@ class YFlowStatSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam)
                 .buildYFlowExam(yFlow, yFlow.maximumBandwidth, traffgenRunDuration)
-        Wrappers.safeRunSeveralTimes(3, 0) {
+        Wrappers.safeRunSeveralTimes(4, 0) {
             withPool {
                 [exam.forward1, exam.forward2, exam.reverse1, exam.reverse2].collectParallel { Exam direction ->
                     def resources = traffExam.startExam(direction)
@@ -63,7 +64,8 @@ class YFlowStatSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "System is able to collect #statsName stats"() {
+    @Unroll
+    def "System is able to collect #statsName stats and they grow monotonically"() {
         when: "Stats were collected"
         then: "#statsName stats is available"
         assert assertedStats(stats).isGrowingMonotonically(),
@@ -71,15 +73,17 @@ class YFlowStatSpec extends HealthCheckSpecification {
 
 
         where:
-        statsName                    | assertedStats                                                            | assertionMethod
-        "sub-flow 1 ingress packets" | { YFlowStats yfstats -> yfstats.getSubFlow1Stats().getPacketsIngress() } | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
-        "sub-flow 2 ingress packets" | { YFlowStats yfstats -> yfstats.getSubFlow2Stats().getPacketsIngress() } | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
-        "sub-flow 1 packets"         | { YFlowStats yfstats -> yfstats.getSubFlow1Stats().getPackets() }        | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
-        "sub-flow 2 packets"         | { YFlowStats yfstats -> yfstats.getSubFlow2Stats().getPackets() }        | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
-        "sub-flow 1 raw packets"     | { YFlowStats yfstats -> yfstats.getSubFlow1Stats().getPacketsRaw() }     | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
-        "sub-flow 2 raw packets"     | { YFlowStats yfstats -> yfstats.getSubFlow2Stats().getPacketsRaw() }     | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
-        "Y-Point bytes"              | { YFlowStats yfstats -> yfstats.getyPointBytes() }                       | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
-        "Shared endndpoint bytes"    | { YFlowStats yfstats -> yfstats.getSharedBytes() }                       | { StatsResult statsResult -> statsResult.isGrowingMonotonically() }
+        statsName                            | assertedStats
+        "sub-flow 1 ingress forward packets" | { YFlowStats yfstats -> yfstats.getSubFlow1Stats().getPacketsForwardIngress() }
+        "sub-flow 1 ingress reverse packets" | { YFlowStats yfstats -> yfstats.getSubFlow1Stats().getPacketsReverseIngress() }
+        "sub-flow 1 egress forward packets"  | { YFlowStats yfstats -> yfstats.getSubFlow1Stats().getPacketsForwardEgress() }
+        "sub-flow 1 egress reverse packets"  | { YFlowStats yfstats -> yfstats.getSubFlow1Stats().getPacketsReverseEgress() }
+        "sub-flow 2 ingress forward packets" | { YFlowStats yfstats -> yfstats.getSubFlow2Stats().getPacketsForwardIngress() }
+        "sub-flow 2 ingress reverse packets" | { YFlowStats yfstats -> yfstats.getSubFlow2Stats().getPacketsReverseIngress() }
+        "sub-flow 2 egress forward packets"  | { YFlowStats yfstats -> yfstats.getSubFlow2Stats().getPacketsForwardEgress() }
+        "sub-flow 2 egress reverse packets"  | { YFlowStats yfstats -> yfstats.getSubFlow2Stats().getPacketsReverseEgress() }
+        "Y-Point packets"                    | { YFlowStats yfstats -> yfstats.getyPointPackets() }
+        "Shared endndpoint packets"          | { YFlowStats yfstats -> yfstats.getSharedPackets() }
     }
 
     def cleanupSpec() {
