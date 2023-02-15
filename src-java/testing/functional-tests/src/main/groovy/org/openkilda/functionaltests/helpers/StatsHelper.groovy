@@ -1,9 +1,9 @@
 package org.openkilda.functionaltests.helpers
 
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.openkilda.functionaltests.helpers.Wrappers.WaitTimeoutException
 import org.openkilda.functionaltests.model.stats.StatsQueryFilter
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.openkilda.messaging.command.CommandMessage
 import org.openkilda.messaging.command.stats.StatsRequest
 import org.openkilda.northbound.dto.v2.yflows.YFlow
@@ -14,10 +14,11 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
+import static groovyx.gpars.GParsPool.withPool
+
 import static org.openkilda.testing.Constants.DefaultRule
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import static groovyx.gpars.GParsPool.withPool
 
 @Component
 class StatsHelper {
@@ -46,7 +47,7 @@ class StatsHelper {
         }
     }
 
-    void verifyYFlowWritesStats(YFlow yFlow, Date from, boolean expectTraffic) {
+    void verifyYFlowWritesMeterStats(YFlow yFlow, Date from, boolean expectTraffic) {
         "force kilda to collect stats"(yFlow.getYFlowId())
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
             def yFlowId = yFlow.YFlowId

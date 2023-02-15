@@ -152,6 +152,17 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
     }
 
     @Override
+    public Collection<PathId> findPathIdsBySharedBandwidthGroupId(String sharedBandwidthGroupId) {
+        return framedGraph().traverse(g -> g.V()
+                        .hasLabel(FlowPathFrame.FRAME_LABEL)
+                        .has(FlowPathFrame.SHARED_BANDWIDTH_GROUP_ID_PROPERTY, sharedBandwidthGroupId)
+                        .values(FlowPathFrame.PATH_ID_PROPERTY))
+                .getRawTraversal().toStream()
+                .map(pathId -> PathIdConverter.INSTANCE.toEntityAttribute((String) pathId))
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public Collection<FlowPath> findByFlowId(String flowId) {
         return framedGraph().traverse(g -> g.V()
                 .hasLabel(FlowPathFrame.FRAME_LABEL)

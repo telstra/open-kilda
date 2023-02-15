@@ -16,10 +16,10 @@
 package org.openkilda.pce.impl;
 
 import static java.lang.String.format;
+import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.Assert.assertEquals;
@@ -47,7 +47,6 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.BestWeightAndShortestPathFinder;
 import org.openkilda.pce.model.Node;
 
-import org.hamcrest.MatcherAssert;
 import org.junit.Test;
 
 import java.time.Duration;
@@ -351,7 +350,7 @@ public class MaxLatencyPathComputationStrategyBaseTest extends InMemoryPathCompu
     }
 
     @Test
-    public void shouldNotFindPathGreaterThanMaxLatency() {
+    public void exceptionInPathComputationWhenPathLatencyGreaterThanMaxLatency() {
         createThreeWaysTopo(TimeUnit.MILLISECONDS);
         PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
                 new BestWeightAndShortestPathFinder(200), config);
@@ -360,7 +359,6 @@ public class MaxLatencyPathComputationStrategyBaseTest extends InMemoryPathCompu
                 .flowId("test flow")
                 .srcSwitch(getSwitchById("00:01")).srcPort(15)
                 .destSwitch(getSwitchById("00:05")).destPort(15)
-                .bandwidth(500)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
                 .maxLatency(TimeUnit.MILLISECONDS.toNanos(10L))
@@ -369,8 +367,34 @@ public class MaxLatencyPathComputationStrategyBaseTest extends InMemoryPathCompu
         Exception exception = assertThrows(UnroutableFlowException.class, () -> {
             pathComputer.getPath(flow);
         });
-        MatcherAssert.assertThat(exception.getMessage(), containsString(
-                "Requested path must have latency 10ms or lower, but best path has latency 11ms"));
+        assertThat(exception.getMessage(), endsWith("Latency limit: Requested path must have "
+                + "latency 10ms or lower, but best path has latency 11ms"));
+    }
+
+    @Test
+    public void exceptionInPathComputationWhenPathLatencyGreaterThanMaxLatencyWithoutResultPathLatency() {
+        // In this case the path is not fully calculated, so we can't know the latency of the
+        // full path because there is a point during the path computation where the latency is
+        // already higher than the max_latency property
+        createThreeWaysTopo(TimeUnit.MILLISECONDS);
+        PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
+                new BestWeightAndShortestPathFinder(200), config);
+
+        Flow flow = Flow.builder()
+                .flowId("test flow")
+                .srcSwitch(getSwitchById("00:01")).srcPort(15)
+                .destSwitch(getSwitchById("00:05")).destPort(15)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
+                .maxLatency(TimeUnit.MILLISECONDS.toNanos(1L))
+                .build();
+
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
+            pathComputer.getPath(flow);
+        });
+
+        assertThat(exception.getMessage(), endsWith(
+                "Latency limit: Requested path must have latency 1ms or lower"));
     }
 
     private void createThreeWaysTopo(TimeUnit latencyUnit) {
