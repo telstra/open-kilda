@@ -47,7 +47,7 @@ class StatsHelper {
         }
     }
 
-    void verifyYFlowWritesMeterStats(YFlow yFlow, Date from, boolean expectTraffic) {
+    void verifyYFlowWritesStats(YFlow yFlow, Date from, boolean expectTraffic) {
         "force kilda to collect stats"(yFlow.getYFlowId())
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
             def yFlowId = yFlow.YFlowId
