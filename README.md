@@ -7,7 +7,8 @@ OPEN KILDA SDN CONTROLLER
 
 OpenKilda is a Web-Scale Software-Defined Networking controller. OpenKilda is capable of manage traffic on tens of thousands of switches simultaneously, 
 control millions of flows, and provide sub-second network telemetry. OpenKilda provides a variety of features, such as:
-- manual and automatic management of traffic flows: simple flows, Y-flows, mirroring, single-switch flows;
+- manual and automatic management of L2 services: point-to-point flows, Y-flows, etc.;
+- advanced features for some types of services: mirroring, data gathering, path pinning, etc.;
 - path computation engine: calculating paths based on different cost functions;
 - resilient mechanisms: quick reaction on changes on hardware level, paths recalculations, diverse flow groups to ensure back-up routes;
 - parallelism: flexible distributed computation, easy-to-change configuration;
