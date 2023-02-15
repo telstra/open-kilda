@@ -1073,13 +1073,17 @@ class LagPortSpec extends HealthCheckSpecification {
         .build()
 
         when: "Send LACP dataunit to switch LAG port"
-        new ConnectedDevice(traffExamProvider.get(), traffGen, [100]).sendLacp(lacpData)
+        def connectedDevice = new ConnectedDevice(traffExamProvider.get(), traffGen, [100])
+        connectedDevice.sendLacp(lacpData)
 
         then: "Information from LACP dataunit is available LACP status response"
         lacpData == lag.getLacpData()
 
         cleanup:
-        Wrappers.silent(lag.delete())
+        Wrappers.silent{
+            lag.delete()
+            connectedDevice.close()
+        }
     }
 
     def getLagCookie(portNumber) {
