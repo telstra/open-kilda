@@ -16,6 +16,7 @@
 package org.openkilda.testing.service.northbound;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.nbtopology.response.SwitchLacpStatusResponse;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
@@ -144,7 +145,7 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     @Override
     public FlowResponseV2 partialUpdate(String flowId, FlowPatchV2 patch) {
         return restTemplate.exchange("/api/v2/flows/{flow_id}", HttpMethod.PATCH,
-                new HttpEntity<>(patch, buildHeadersWithCorrelationId()), FlowResponseV2.class, flowId)
+                        new HttpEntity<>(patch, buildHeadersWithCorrelationId()), FlowResponseV2.class, flowId)
                 .getBody();
     }
 
@@ -296,7 +297,7 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     @Override
     public SwitchDtoV2 partialSwitchUpdate(SwitchId switchId, SwitchPatchDto dto) {
         return restTemplate.exchange("/api/v2/switches/{switchId}", HttpMethod.PATCH,
-                new HttpEntity<>(dto, buildHeadersWithCorrelationId()), SwitchDtoV2.class, switchId)
+                        new HttpEntity<>(dto, buildHeadersWithCorrelationId()), SwitchDtoV2.class, switchId)
                 .getBody();
     }
 
@@ -511,4 +512,16 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResultV2.class, switchId).getBody());
         return new SwitchValidationV2ExtendedResult(switchId, result);
     }
+
+    @Override
+    public SwitchLacpStatusResponse getLacpPortStatus(SwitchId switchId, int logicalPort) {
+        return restTemplate.exchange("/api/v2/switches/{switch_id}/lacp/{logical_port_number}",
+                        HttpMethod.GET,
+                        new HttpEntity(buildHeadersWithCorrelationId()),
+                        SwitchLacpStatusResponse.class,
+                        switchId,
+                        logicalPort)
+                .getBody();
+    }
+
 }

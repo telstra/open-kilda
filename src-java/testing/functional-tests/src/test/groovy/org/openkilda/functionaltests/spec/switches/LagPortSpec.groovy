@@ -1,5 +1,12 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.LAGFactory
+import org.openkilda.testing.service.traffexam.model.LacpData
+import org.openkilda.testing.tools.ConnectedDevice
+
+import static org.openkilda.functionaltests.helpers.model.SwitchFilter.HAS_CONNECTED_TRAFFGENS
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -52,6 +59,10 @@ class LagPortSpec extends HealthCheckSpecification {
     @Shared
     Provider<TraffExamService> traffExamProvider
 
+    @Autowired
+    @Shared
+    LAGFactory lagFactory
+
     @Shared
     Integer lagOffset = 2000
 
@@ -101,7 +112,7 @@ class LagPortSpec extends HealthCheckSpecification {
         def payloadUpdate = new LagPortRequest(portNumbers: portsArrayUpdate)
         def updateResponse = northboundV2.updateLagLogicalPort(sw.dpId, lagPort, payloadUpdate)
 
-        then: "Response reports successful updation of the LAG port"
+        then: "Response reports successful update of the LAG port"
         with(updateResponse) {
             logicalPortNumber == lagPort
             portNumbers.sort() == portsArrayUpdate.sort()
@@ -1036,6 +1047,42 @@ class LagPortSpec extends HealthCheckSpecification {
         with(deleteResponse) {
             logicalPortNumber == lagPort
             portNumbers.sort() == portsArray.sort()
+        }
+    }
+
+    @Tidy
+    def "Able to retrieve actual LACP connection status on LAG port"() {
+        given: "A switch with a connected traffgen"
+        def sw = topology.getActiveSwitches().findAll(HAS_CONNECTED_TRAFFGENS).shuffled().first()
+        def traffGen = sw.getTraffGens().first()
+
+        and: "LAG port on a traffgen port"
+        def lag = lagFactory.get(sw, traffGen.getSwitchPort(), true)
+        lag.create()
+
+        and: "LACP data example"
+        def lacpData = LacpData.builder()
+        .expired(true)
+        .defaulted(false)
+        .distributing(true)
+        .collecting(false)
+        .synchronization(true)
+        .aggregation(false)
+        .lacpTimeout(true)
+        .lacpActivity(false)
+        .build()
+
+        when: "Send LACP dataunit to switch LAG port"
+        def connectedDevice = new ConnectedDevice(traffExamProvider.get(), traffGen, [100])
+        connectedDevice.sendLacp(lacpData)
+
+        then: "Information from LACP dataunit is available LACP status response"
+        lacpData == lag.getLacpData()
+
+        cleanup:
+        Wrappers.silent{
+            lag.delete()
+            connectedDevice.close()
         }
     }
 

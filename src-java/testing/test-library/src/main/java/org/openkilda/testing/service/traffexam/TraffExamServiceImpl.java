@@ -32,6 +32,7 @@ import org.openkilda.testing.service.traffexam.model.ExamReport;
 import org.openkilda.testing.service.traffexam.model.ExamResources;
 import org.openkilda.testing.service.traffexam.model.Host;
 import org.openkilda.testing.service.traffexam.model.HostResource;
+import org.openkilda.testing.service.traffexam.model.LacpData;
 import org.openkilda.testing.service.traffexam.model.LldpData;
 import org.openkilda.testing.service.traffexam.model.ProducerEndpoint;
 import org.openkilda.testing.service.traffexam.model.ReportResponse;
@@ -379,6 +380,13 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         restTemplate.put(
                 makeHostUri(address.getHost()).path("address/").path(address.getId().toString()).path("/lldp").build(),
                 lldpData);
+    }
+
+    @Override
+    public void sendLacp(Address address, LacpData lacpData) {
+        restTemplate.put(
+                makeHostUri(address.getHost()).path("address/").path(address.getId().toString()).path("/lacp").build(),
+                lacpData);
     }
 
     @Override

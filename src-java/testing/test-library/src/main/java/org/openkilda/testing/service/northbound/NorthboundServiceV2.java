@@ -15,6 +15,7 @@
 
 package org.openkilda.testing.service.northbound;
 
+import org.openkilda.messaging.nbtopology.response.SwitchLacpStatusResponse;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
@@ -171,4 +172,6 @@ public interface NorthboundServiceV2 {
     SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId);
 
     SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId, String include, String exclude);
+
+    SwitchLacpStatusResponse getLacpPortStatus(SwitchId switchId, int logicalPort);
 }
