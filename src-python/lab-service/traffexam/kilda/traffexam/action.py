@@ -75,15 +75,17 @@ class LACPPush(Abstract):
             sendp(pkt, iface=iface.name, verbose=False, promisc=False)
 
     def _encode(self, entry):
-        # entry, containing 8 boolean fields -> string representation of binary number '10011010'
-        actor_state_binary = functools.reduce(lambda a, b: a + b, map(self._bool_to_str, [entry.expired,
-                                                                                          entry.defaulted,
-                                                                                          entry.distributing,
-                                                                                          entry.collecting,
-                                                                                          entry.synchronization,
-                                                                                          entry.aggregation,
-                                                                                          entry.lacp_timeout,
-                                                                                          entry.lacp_activity]))
+        # entry, containing 8 boolean fields -> string representation of binary number, e.g. '10011010'
+        actor_state_binary = ""
+        for field in [entry.expired,
+                      entry.defaulted,
+                      entry.distributing,
+                      entry.collecting,
+                      entry.synchronization,
+                      entry.aggregation,
+                      entry.lacp_timeout,
+                      entry.lacp_activity]:
+            actor_state_binary += self._bool_to_str(field)
         # Kilda ignores everything except lacp actor state. If this changes - expand this method with more fields
         return Ether() / SlowProtocol() / lacp.LACP(actor_state=int(actor_state_binary, 2))
 
@@ -134,7 +136,6 @@ class AddressStats(Abstract):
     def __call__(self, iface):
         with pyroute2.NetNS(self.context.make_network_namespace_name()) as ipr:
             return ipr.get_links(iface.index)[0].get_attr('IFLA_STATS')
-
 
 
 class Adapter(object):

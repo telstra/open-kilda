@@ -137,8 +137,12 @@ def address_emmit_lldp_packet(idnr):
 def address_emmit_lacp_packet(idnr):
     address = _address_lookup(unpack_idnr(idnr))
     payload = bottle.request.json
+    expired, defaulted, distributing, collecting, synchronization, aggregation, lacp_timeout, lacp_activity = \
+        extract_payload_fields(payload,
+                               'expired', 'defaulted', 'distributing', 'collecting', 'synchronization', 'aggregation', "lacp_timeout", 'lacp_activity')
+
     try:
-        push_entry = model.LACPPush(payload)
+        push_entry = model.LACPPush(expired, defaulted, distributing, collecting, synchronization, aggregation, lacp_timeout, lacp_activity, **{})
         get_context().action.lacp_push(address.iface, push_entry)
     except ValueError as e:
         return bottle.HTTPError(400, 'Invalid LACP payload - {}'.format(e))

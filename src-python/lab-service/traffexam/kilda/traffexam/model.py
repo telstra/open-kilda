@@ -361,16 +361,16 @@ class LLDPPush(Abstract):
 
 
 class LACPPush(Abstract):
-    def __init__(self, payload):
-        super().__init__(**{})
-        self.expired = payload["expired"]
-        self.defaulted = payload["defaulted"]
-        self.distributing = payload["distributing"]
-        self.collecting = payload["collecting"]
-        self.synchronization = payload["synchronization"]
-        self.aggregation = payload["aggregation"]
-        self.lacp_timeout = payload["lacp_timeout"]
-        self.lacp_activity = payload["lacp_activity"]
+    def __init__(self, expired, defaulted, distributing, collecting, synchronization, aggregation, lacp_timeout, lacp_activity, **fields):
+        super().__init__(**fields)
+        self.expired = expired
+        self.defaulted = defaulted
+        self.distributing = distributing
+        self.collecting = collecting
+        self.synchronization = synchronization
+        self.aggregation = aggregation
+        self.lacp_timeout = lacp_timeout
+        self.lacp_activity = lacp_activity
 
 
 class ARPPush(Abstract):
