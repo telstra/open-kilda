@@ -15,6 +15,16 @@
 
 package org.openkilda.northbound.service.impl;
 
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
+import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
+import org.openkilda.messaging.command.haflow.HaFlowReadRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRequest;
+import org.openkilda.messaging.command.haflow.HaFlowResponse;
+import org.openkilda.messaging.command.haflow.HaFlowsDumpRequest;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
+import org.openkilda.northbound.converter.HaFlowMapper;
 import org.openkilda.northbound.dto.v2.haflows.HaFlow;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowDump;
@@ -26,12 +36,17 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSyncResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult;
+import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.HaFlowService;
+import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 /**
  * Handles the HA-flow operations.
@@ -39,19 +54,63 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 @Service
 public class HaFlowServiceImpl implements HaFlowService {
+    @Value("#{kafkaTopicsConfig.getFlowHsTopic()}")
+    private String flowHsTopic;
+
+    private final MessagingChannel messagingChannel;
+    private final HaFlowMapper flowMapper;
+
+    @Autowired
+    public HaFlowServiceImpl(MessagingChannel messagingChannel, HaFlowMapper flowMapper) {
+        this.messagingChannel = messagingChannel;
+        this.flowMapper = flowMapper;
+    }
+
     @Override
     public CompletableFuture<HaFlow> createHaFlow(HaFlowCreatePayload createPayload) {
-        return null;
+        log.info("API request: create ha-flow: {}", createPayload);
+        String correlationId = RequestCorrelationId.getId();
+
+        HaFlowRequest flowRequest;
+        try {
+            flowRequest = flowMapper.toHaFlowCreateRequest(createPayload);
+        } catch (IllegalArgumentException e) {
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments of the create ha-flow request");
+        }
+
+        CommandMessage command = new CommandMessage(flowRequest, System.currentTimeMillis(), correlationId);
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(HaFlowResponse.class::cast)
+                .thenApply(HaFlowResponse::getHaFlow)
+                .thenApply(flowMapper::toHaFlow);
     }
 
     @Override
     public CompletableFuture<HaFlowDump> dumpHaFlows() {
-        return null;
+        log.info("API request: Dump all ha-flows");
+        HaFlowsDumpRequest dumpRequest = new HaFlowsDumpRequest();
+        CommandMessage request = new CommandMessage(dumpRequest, System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+        return messagingChannel.sendAndGetChunked(flowHsTopic, request)
+                .thenApply(result -> result.stream()
+                        .map(HaFlowResponse.class::cast)
+                        .map(HaFlowResponse::getHaFlow)
+                        .map(flowMapper::toHaFlow)
+                        .collect(Collectors.toList()))
+                .thenApply(HaFlowDump::new);
     }
 
     @Override
     public CompletableFuture<HaFlow> getHaFlow(String haFlowId) {
-        return null;
+        log.info("API request: Get ha-flow: {}", haFlowId);
+        HaFlowReadRequest readRequest = new HaFlowReadRequest(haFlowId);
+        CommandMessage request = new CommandMessage(readRequest, System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(flowHsTopic, request)
+                .thenApply(HaFlowResponse.class::cast)
+                .thenApply(HaFlowResponse::getHaFlow)
+                .thenApply(flowMapper::toHaFlow);
     }
 
     @Override
@@ -61,17 +120,54 @@ public class HaFlowServiceImpl implements HaFlowService {
 
     @Override
     public CompletableFuture<HaFlow> updateHaFlow(String haFlowId, HaFlowUpdatePayload updatePayload) {
-        return null;
+        log.info("API request: Update ha-flow {}. New properties {}", haFlowId, updatePayload);
+        String correlationId = RequestCorrelationId.getId();
+
+        HaFlowRequest flowRequest;
+        try {
+            flowRequest = flowMapper.toHaFlowUpdateRequest(haFlowId, updatePayload);
+        } catch (IllegalArgumentException e) {
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments of the update ha-flow request");
+        }
+
+        CommandMessage command = new CommandMessage(flowRequest, System.currentTimeMillis(), correlationId);
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(HaFlowResponse.class::cast)
+                .thenApply(HaFlowResponse::getHaFlow)
+                .thenApply(flowMapper::toHaFlow);
     }
 
     @Override
     public CompletableFuture<HaFlow> patchHaFlow(String haFlowId, HaFlowPatchPayload patchPayload) {
-        return null;
+        log.info("API request: Patch ha-flow {}. New properties {}", haFlowId, patchPayload);
+        String correlationId = RequestCorrelationId.getId();
+
+        HaFlowPartialUpdateRequest partialUpdateRequest;
+        try {
+            partialUpdateRequest = flowMapper.toHaFlowPatchRequest(haFlowId, patchPayload);
+        } catch (IllegalArgumentException e) {
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments of the ha-flow patch request");
+        }
+
+        CommandMessage request = new CommandMessage(partialUpdateRequest,
+                System.currentTimeMillis(), correlationId);
+        return messagingChannel.sendAndGet(flowHsTopic, request)
+                .thenApply(HaFlowResponse.class::cast)
+                .thenApply(HaFlowResponse::getHaFlow)
+                .thenApply(flowMapper::toHaFlow);
     }
 
     @Override
     public CompletableFuture<HaFlow> deleteHaFlow(String haFlowId) {
-        return null;
+        log.info("API request: Delete ha-flow: {}", haFlowId);
+        CommandMessage command = new CommandMessage(new HaFlowDeleteRequest(haFlowId), System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(HaFlowResponse.class::cast)
+                .thenApply(HaFlowResponse::getHaFlow)
+                .thenApply(flowMapper::toHaFlow);
     }
 
     @Override
