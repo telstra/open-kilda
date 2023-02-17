@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,27 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.yflow;
+package org.openkilda.messaging.command.haflow;
 
-import org.openkilda.model.SwitchId;
+import org.openkilda.messaging.info.InfoData;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-
-import java.io.Serializable;
+import lombok.EqualsAndHashCode;
 
 @Data
 @Builder
 @AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowPartialUpdateEndpoint implements Serializable {
+@EqualsAndHashCode(callSuper = false)
+@JsonNaming(SnakeCaseStrategy.class)
+public class HaFlowResponse extends InfoData {
     private static final long serialVersionUID = 1L;
 
-    SwitchId switchId;
-    Integer portNumber;
-    Integer vlanId;
-    Integer innerVlanId;
+    HaFlowDto haFlow;
 }
