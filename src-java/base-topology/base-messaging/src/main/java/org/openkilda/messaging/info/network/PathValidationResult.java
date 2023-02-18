@@ -31,15 +31,15 @@ import java.util.List;
 @Builder
 @EqualsAndHashCode(callSuper = false)
 @JsonNaming(value = PropertyNamingStrategy.SnakeCaseStrategy.class)
-public class PathValidateData extends InfoData {
+public class PathValidationResult extends InfoData {
     @JsonProperty("is_valid")
     Boolean isValid;
     @JsonProperty("errors")
     List<String> errors;
 
     @JsonCreator
-    public PathValidateData(@JsonProperty("is_valid") Boolean isValid,
-                            @JsonProperty("errors") List<String> errors) {
+    public PathValidationResult(@JsonProperty("is_valid") Boolean isValid,
+                                @JsonProperty("errors") List<String> errors) {
         this.isValid = isValid;
         this.errors = errors;
     }

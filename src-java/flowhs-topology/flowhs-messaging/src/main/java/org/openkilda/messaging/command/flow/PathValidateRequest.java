@@ -17,7 +17,7 @@ package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
-import org.openkilda.messaging.payload.network.PathDto;
+import org.openkilda.messaging.payload.network.PathValidationDto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -31,11 +31,12 @@ import lombok.Value;
 @ReadRequest
 @EqualsAndHashCode(callSuper = true)
 public class PathValidateRequest extends BaseRequest {
+
     @JsonProperty("path")
-    PathDto pathDto;
+    PathValidationDto pathValidationDto;
 
     @JsonCreator
-    public PathValidateRequest(@JsonProperty("path") PathDto pathDto) {
-        this.pathDto = pathDto;
+    public PathValidateRequest(@JsonProperty("path") PathValidationDto pathValidationDtoDto) {
+        this.pathValidationDto = pathValidationDtoDto;
     }
 }

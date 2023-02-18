@@ -47,7 +47,8 @@ public class PathsBolt extends PersistenceOperationsBolt {
     public void init() {
         super.init();
 
-        pathService = new PathsService(repositoryFactory, pathComputerConfig, repositoryFactory.createIslRepository());
+        pathService = new PathsService(repositoryFactory, pathComputerConfig, repositoryFactory.createIslRepository(),
+                repositoryFactory.createFlowRepository());
     }
 
     @Override

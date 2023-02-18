@@ -15,7 +15,7 @@
 
 package org.openkilda.northbound.service;
 
-import org.openkilda.messaging.payload.network.PathDto;
+import org.openkilda.messaging.payload.network.PathValidationDto;
 import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.PathComputationStrategy;
@@ -42,8 +42,8 @@ public interface NetworkService {
      * Validates that a flow with the given path can possibly be created. If it is not possible,
      * it responds with the reasons, such as: not enough bandwidth, requested latency it too low, there is no
      * links between the selected switches, and so on.
-     * @param path a path provided by a user
+     * @param pathValidationDto a path together with validation parameters provided by a user
      * @return either a successful response or the list of errors
      */
-    CompletableFuture<PathValidateResponse> validateFlowPath(PathDto path);
+    CompletableFuture<PathValidateResponse> validateFlowPath(PathValidationDto pathValidationDto);
 }
