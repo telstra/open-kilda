@@ -1,0 +1,5 @@
+[template]
+src = "wfm/app/makefile.tmpl"
+dest = "docker/wfm/app/Makefile"
+keys = [ "/" ]
+mode = "0644"
