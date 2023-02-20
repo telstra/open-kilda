@@ -17,7 +17,6 @@ package org.openkilda.floodlight.converter;
 
 import static java.util.stream.Collectors.toList;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowApplyActions.FlowApplyActionsBuilder;
 import org.openkilda.messaging.info.rule.FlowCopyFieldAction;
@@ -33,6 +32,7 @@ import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.SwitchId;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 import org.projectfloodlight.openflow.protocol.OFBucket;
