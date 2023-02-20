@@ -145,8 +145,10 @@ public class OfFlowStatsMapperTest {
     @Test
     public void toFlowInstructions() {
         FlowApplyActions applyActions = buildFlowApplyActions();
-        FlowInstructions expectedNoneEmptyFlowInstructions = new FlowInstructions(applyActions, null, meterId, goToTable.getValue());
-        FlowInstructions actualNoneEmptyFlowInstructions = OfFlowStatsMapper.INSTANCE.toFlowInstructions(buildInstruction());
+        FlowInstructions expectedNoneEmptyFlowInstructions = new FlowInstructions(applyActions,
+                null, meterId, goToTable.getValue());
+        FlowInstructions actualNoneEmptyFlowInstructions
+                = OfFlowStatsMapper.INSTANCE.toFlowInstructions(buildInstruction());
 
         assertEquals(expectedNoneEmptyFlowInstructions, actualNoneEmptyFlowInstructions);
 
@@ -193,7 +195,8 @@ public class OfFlowStatsMapperTest {
                 .build();
 
         return new FlowApplyActions(port.toString(),
-                Lists.newArrayList(flowSetEthSrcAction, flowSetEthDstAction), ethType.toString(), null, null, null,
+                Lists.newArrayList(flowSetEthSrcAction, flowSetEthDstAction),
+                ethType.toString(), null, null, null,
                 group.toString(), flowCopyFieldAction, flowSwapFieldAction);
     }
 
