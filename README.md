@@ -195,6 +195,23 @@ The difference with `make up-stable` is that this command wouldn't start common 
 make up-blue
 ``` 
 
+### How to run a limited set of OpenKilda Controller components
+
+If you do not need to run some components (e.g. GUI, any topology, etc.) you can use
+[docker-compose.yaml](confd/vars/docker-compose.yaml) file.
+
+This file contains a list of kilda modules. If you decided not to run some of them you need to do the following steps:
+1. Make sure the environment is stopped (the commands `make clean`/`make clean-test` don't stop disabled modules).
+2. Uncomment modules you do not want to run.
+    ```yaml
+    no_gui: true
+    #no_kibana: true
+    #no_floodlight_2: true
+    ```
+   The example above will help you to run modules `kibana` and `floodlight_2` but do not run `gui`.
+3. Run `make update-props` to apply the changes
+4. Build and run OpenKilda as usual.
+
 ### How to debug OpenKilda Controller components
 
 An important aspect of troubleshooting errors and problems in your code is to avoid them in the first place. It's not
