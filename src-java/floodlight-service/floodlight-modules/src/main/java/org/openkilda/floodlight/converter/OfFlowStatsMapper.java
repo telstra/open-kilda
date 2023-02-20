@@ -17,6 +17,7 @@ package org.openkilda.floodlight.converter;
 
 import static java.util.stream.Collectors.toList;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowApplyActions.FlowApplyActionsBuilder;
 import org.openkilda.messaging.info.rule.FlowCopyFieldAction;
@@ -77,6 +78,8 @@ public abstract class OfFlowStatsMapper {
      * OF specification added 13 bit that defines existence of vlan tag.
      */
     private static final int VLAN_MASK = 0xFFF;
+
+    private static final String DROP = "drop";
 
     /**
      * Convert {@link OFFlowStatsEntry} to format that kilda supports {@link FlowEntry}.
@@ -175,16 +178,20 @@ public abstract class OfFlowStatsMapper {
     public FlowInstructions toFlowInstructions(final List<OFInstruction> instructions) {
         FlowInstructions.FlowInstructionsBuilder flowInstructions = FlowInstructions.builder();
 
-        for (OFInstruction entry : instructions) {
-            if (entry instanceof OFInstructionApplyActions) {
-                List<OFAction> actions = ((OFInstructionApplyActions) entry).getActions();
-                flowInstructions.applyActions(toFlowApplyActions(actions));
-            } else if (entry instanceof OFInstructionMeter) {
-                flowInstructions.goToMeter(((OFInstructionMeter) entry).getMeterId());
-            } else if (entry instanceof OFInstructionGotoTable) {
-                flowInstructions.goToTable(((OFInstructionGotoTable) entry).getTableId().getValue());
+        if (CollectionUtils.isEmpty(instructions)) {
+            flowInstructions.none(DROP);
+        } else {
+            for (OFInstruction entry : instructions) {
+                if (entry instanceof OFInstructionApplyActions) {
+                    List<OFAction> actions = ((OFInstructionApplyActions) entry).getActions();
+                    flowInstructions.applyActions(toFlowApplyActions(actions));
+                } else if (entry instanceof OFInstructionMeter) {
+                    flowInstructions.goToMeter(((OFInstructionMeter) entry).getMeterId());
+                } else if (entry instanceof OFInstructionGotoTable) {
+                    flowInstructions.goToTable(((OFInstructionGotoTable) entry).getTableId().getValue());
+                }
+                // add handling for other instructions here
             }
-            // add handling for other instructions here
         }
 
         return flowInstructions.build();
