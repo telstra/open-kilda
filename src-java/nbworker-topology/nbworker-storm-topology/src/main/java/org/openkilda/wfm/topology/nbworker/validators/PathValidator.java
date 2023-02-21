@@ -15,6 +15,10 @@
 
 package org.openkilda.wfm.topology.nbworker.validators;
 
+import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH;
+import static org.openkilda.model.PathComputationStrategy.LATENCY;
+import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
+
 import org.openkilda.messaging.info.network.PathValidationResult;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -22,8 +26,10 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.PathValidationData;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -43,10 +49,14 @@ public class PathValidator {
 
     private final IslRepository islRepository;
     private final FlowRepository flowRepository;
+    private final SwitchPropertiesRepository switchPropertiesRepository;
 
-    public PathValidator(IslRepository islRepository, FlowRepository flowRepository) {
+    public PathValidator(IslRepository islRepository,
+                         FlowRepository flowRepository,
+                         SwitchPropertiesRepository switchPropertiesRepository) {
         this.islRepository = islRepository;
         this.flowRepository = flowRepository;
+        this.switchPropertiesRepository = switchPropertiesRepository;
     }
 
     /**
@@ -61,7 +71,7 @@ public class PathValidator {
         Set<String> result = pathValidationData.getPathSegments().stream()
                 .map(segment -> executeValidations(
                         new InputData(pathValidationData, segment),
-                        new RepositoryData(islRepository, flowRepository),
+                        new RepositoryData(islRepository, flowRepository, switchPropertiesRepository),
                         getValidations(pathValidationData)))
                 .flatMap(Set::stream)
                 .collect(Collectors.toSet());
@@ -83,22 +93,40 @@ public class PathValidator {
     }
 
     private List<BiFunction<InputData, RepositoryData, Set<String>>> getValidations(
-            PathValidationData inputData) {
+            PathValidationData pathValidationData) {
         List<BiFunction<InputData, RepositoryData, Set<String>>> validationFunctions = new LinkedList<>();
 
         validationFunctions.add(this::validateLink);
 
-        if (inputData.getLatencyMs() != 0) {
+        if (pathValidationData.getLatencyMs() != null
+                && pathValidationData.getLatencyMs() != 0
+                && (pathValidationData.getPathComputationStrategy() == null
+                || pathValidationData.getPathComputationStrategy() == LATENCY
+                || pathValidationData.getPathComputationStrategy() == MAX_LATENCY)) {
             validationFunctions.add(this::validateLatency);
         }
-        if (inputData.getLatencyTier2ms() != 0) {
+
+        if (pathValidationData.getLatencyTier2ms() != null
+                && pathValidationData.getLatencyTier2ms() != 0
+                && (pathValidationData.getPathComputationStrategy() == null
+                || pathValidationData.getPathComputationStrategy() == LATENCY
+                || pathValidationData.getPathComputationStrategy() == MAX_LATENCY)) {
             validationFunctions.add(this::validateLatencyTier2);
         }
-        if (inputData.getBandwidth() != 0) {
+
+        if (pathValidationData.getBandwidth() != null
+                && pathValidationData.getBandwidth() != 0
+                && (pathValidationData.getPathComputationStrategy() == null
+                || pathValidationData.getPathComputationStrategy() == COST_AND_AVAILABLE_BANDWIDTH)) {
             validationFunctions.add(this::validateBandwidth);
         }
-        if (inputData.getDiverseWithFlow() != null && !inputData.getDiverseWithFlow().isEmpty()) {
+
+        if (pathValidationData.getDiverseWithFlow() != null && !pathValidationData.getDiverseWithFlow().isEmpty()) {
             validationFunctions.add(this::validateDiverseWithFlow);
+        }
+
+        if (pathValidationData.getFlowEncapsulationType() != null) {
+            validationFunctions.add(this::validateEncapsulationType);
         }
 
         return validationFunctions;
@@ -183,7 +211,7 @@ public class PathValidator {
 
             Optional<Flow> flow = flowRepository.findById(inputData.getPath().getReuseFlowResources());
 
-            Optional<PathSegment> segment = flow.flatMap(value -> value.getData().getPaths().stream()
+            Optional<PathSegment> segment = flow.flatMap(value -> value.getPaths().stream()
                     .map(FlowPath::getSegments)
                     .flatMap(List::stream)
                     .filter(pathSegmentPredicate)
@@ -197,8 +225,33 @@ public class PathValidator {
     }
 
     private Set<String> validateEncapsulationType(InputData inputData, RepositoryData repositoryData) {
-        // TODO what does it actually mean to validate the encapsulation type?
-        throw new UnsupportedOperationException();
+        Set<String> errors = new HashSet<>();
+        Optional<SwitchProperties> srcSwitchProperties = switchPropertiesRepository.findBySwitchId(
+                inputData.getPath().getSrcSwitchId());
+        if (!srcSwitchProperties.isPresent()) {
+            errors.add(getSrcSwitchNotFoundError(inputData));
+        }
+
+        srcSwitchProperties.ifPresent(switchProperties -> {
+            if (!switchProperties.getSupportedTransitEncapsulation()
+                    .contains(inputData.getPath().getFlowEncapsulationType())) {
+                errors.add(getSrcSwitchDoesNotSupportEncapsulationTypeError(inputData));
+            }
+        });
+
+        Optional<SwitchProperties> destSwitchProperties = switchPropertiesRepository.findBySwitchId(
+                inputData.getPath().getDestSwitchId());
+        if (!destSwitchProperties.isPresent()) {
+            errors.add(getDestSwitchNotFoundError(inputData));
+        }
+
+        destSwitchProperties.ifPresent(switchProperties -> {
+            if (!switchProperties.getSupportedTransitEncapsulation()
+                    .contains(inputData.getPath().getFlowEncapsulationType())) {
+                errors.add(getDestSwitchDoesNotSupportEncapsulationTypeError(inputData));
+            }
+        });
+        return errors;
     }
 
     private Set<String> validateDiverseWithFlow(InputData inputData, RepositoryData repositoryData) {
@@ -286,7 +339,7 @@ public class PathValidator {
 
     private String getReverseBandwidthErrorMessage(InputData data, long actualBandwidth) {
         return String.format(
-                "There is not enough Bandwidth between the source switch %s port %d and destination switch %s port %d"
+                "There is not enough bandwidth between the source switch %s port %d and destination switch %s port %d"
                         + " (reverse path). Requested bandwidth %d, but the link supports %d",
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort(),
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort(),
@@ -333,6 +386,24 @@ public class PathValidator {
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort());
     }
 
+    private String getSrcSwitchNotFoundError(InputData data) {
+        return String.format("The following switch has not been found: %s", data.getSegment().getSrcSwitchId());
+    }
+
+    private String getDestSwitchNotFoundError(InputData data) {
+        return String.format("The following switch has not been found: %s", data.getSegment().getDestSwitchId());
+    }
+
+    private String getSrcSwitchDoesNotSupportEncapsulationTypeError(InputData data) {
+        return String.format("The switch %s doesn't support encapsulation type %s",
+                data.getSegment().getSrcSwitchId(), data.getPath().getFlowEncapsulationType());
+    }
+
+    private String getDestSwitchDoesNotSupportEncapsulationTypeError(InputData data) {
+        return String.format("The switch %s doesn't support encapsulation type %s",
+                data.getSegment().getDestSwitchId(), data.getPath().getFlowEncapsulationType());
+    }
+
     @Getter
     @AllArgsConstructor
     private static class InputData {
@@ -345,5 +416,6 @@ public class PathValidator {
     private static class RepositoryData {
         IslRepository islRepository;
         FlowRepository flowRepository;
+        SwitchPropertiesRepository switchPropertiesRepository;
     }
 }

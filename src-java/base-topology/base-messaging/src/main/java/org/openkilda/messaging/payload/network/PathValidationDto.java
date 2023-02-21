@@ -17,6 +17,7 @@ package org.openkilda.messaging.payload.network;
 
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.model.PathComputationStrategy;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -42,9 +43,6 @@ public class PathValidationDto {
     @JsonProperty("nodes")
     List<PathNodePayload> nodes;
 
-    @JsonProperty("is_backup_path")
-    Boolean isBackupPath;
-
     @JsonProperty("diverse_with_flow")
     String diverseWithFlow;
 
@@ -54,22 +52,25 @@ public class PathValidationDto {
     @JsonProperty("flow_encapsulation_type")
     FlowEncapsulationType flowEncapsulationType;
 
+    @JsonProperty("path_computation_strategy")
+    PathComputationStrategy pathComputationStrategy;
+
     @JsonCreator
     public PathValidationDto(@JsonProperty("bandwidth") Long bandwidth,
                              @JsonProperty("latency_ms") Long latencyMs,
                              @JsonProperty("max_latency_tier2") Long latencyTier2ms,
                              @JsonProperty("nodes") List<PathNodePayload> nodes,
-                             @JsonProperty("is_backup_path") Boolean isBackupPath,
                              @JsonProperty("diverse_with_flow") String diverseWithFlow,
                              @JsonProperty("reuse_flow_resources") String reuseFlowResources,
-                             @JsonProperty("flow_encapsulation_type") FlowEncapsulationType flowEncapsulationType) {
+                             @JsonProperty("flow_encapsulation_type") FlowEncapsulationType flowEncapsulationType,
+                             @JsonProperty("path_computation_strategy") PathComputationStrategy computationStrategy) {
         this.bandwidth = bandwidth;
         this.latencyMs = latencyMs;
         this.latencyTier2ms = latencyTier2ms;
         this.nodes = nodes;
-        this.isBackupPath = isBackupPath;
         this.diverseWithFlow = diverseWithFlow;
         this.reuseFlowResources = reuseFlowResources;
         this.flowEncapsulationType = flowEncapsulationType;
+        this.pathComputationStrategy = computationStrategy;
     }
 }

@@ -49,7 +49,6 @@ public abstract class PathValidationDataMapper {
         return PathValidationData.builder()
                 .srcSwitchId(pathValidationDto.getNodes().get(0).getSwitchId())
                 .destSwitchId(pathValidationDto.getNodes().get(pathValidationDto.getNodes().size() - 1).getSwitchId())
-                .isBackupPath(pathValidationDto.getIsBackupPath())
                 .bandwidth(pathValidationDto.getBandwidth())
                 .latencyMs(pathValidationDto.getLatencyMs())
                 .latencyTier2ms(pathValidationDto.getLatencyTier2ms())
@@ -57,6 +56,7 @@ public abstract class PathValidationDataMapper {
                 .reuseFlowResources(pathValidationDto.getReuseFlowResources())
                 .flowEncapsulationType(FlowEncapsulationTypeMapper.INSTANCE.toOpenKildaModel(
                         pathValidationDto.getFlowEncapsulationType()))
+                .pathComputationStrategy(pathValidationDto.getPathComputationStrategy())
                 .pathSegments(segments)
                 .build();
     }

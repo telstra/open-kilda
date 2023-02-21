@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.openkilda.model.PathComputationStrategy.COST;
+import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH;
 import static org.openkilda.model.PathComputationStrategy.LATENCY;
 import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 
@@ -317,7 +318,6 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         PathValidateRequest request = new PathValidateRequest(PathValidationDto.builder()
                 .nodes(nodes)
                 .bandwidth(0L)
-                .isBackupPath(false)
                 .latencyMs(0L)
                 .latencyTier2ms(0L)
                 .build());
@@ -335,7 +335,6 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         PathValidateRequest request = new PathValidateRequest(PathValidationDto.builder()
                 .nodes(nodes)
                 .bandwidth(1000000000L)
-                .isBackupPath(false)
                 .latencyMs(0L)
                 .latencyTier2ms(0L)
                 .build());
@@ -355,7 +354,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void whenValidPathButTooLowLatency_validateReturnsErrorResponseTest() {
+    public void whenValidPathButTooLowLatency_andLatencyStrategy_validateReturnsErrorResponseTest() {
         List<PathNodePayload> nodes = new LinkedList<>();
         nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
         nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
@@ -363,9 +362,9 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         PathValidateRequest request = new PathValidateRequest(PathValidationDto.builder()
                 .nodes(nodes)
                 .bandwidth(0L)
-                .isBackupPath(false)
                 .latencyMs(10L)
                 .latencyTier2ms(0L)
+                .pathComputationStrategy(LATENCY)
                 .build());
         List<PathValidationResult> responses = pathsService.validatePath(request);
 
@@ -377,6 +376,70 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
+    public void whenValidPathButTooLowLatency_andMaxLatencyStrategy_validateReturnsErrorResponseTest() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathValidationDto.builder()
+                .nodes(nodes)
+                .bandwidth(0L)
+                .latencyMs(10L)
+                .latencyTier2ms(0L)
+                .pathComputationStrategy(MAX_LATENCY)
+                .build());
+        List<PathValidationResult> responses = pathsService.validatePath(request);
+
+        assertFalse(responses.isEmpty());
+        assertFalse(responses.get(0).getIsValid());
+        assertFalse(responses.get(0).getErrors().isEmpty());
+        assertTrue(responses.get(0).getErrors().get(0)
+                .contains("Requested latency is too low between source switch"));
+    }
+
+    @Test
+    public void whenValidPathButTooLowLatencyTier2_andLatencyStrategy_validateReturnsErrorResponseTest() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathValidationDto.builder()
+                .nodes(nodes)
+                .bandwidth(0L)
+                .latencyMs(10000000000L)
+                .latencyTier2ms(100L)
+                .pathComputationStrategy(LATENCY)
+                .build());
+        List<PathValidationResult> responses = pathsService.validatePath(request);
+
+        assertFalse(responses.isEmpty());
+        assertFalse(responses.get(0).getIsValid());
+        assertFalse(responses.get(0).getErrors().isEmpty());
+        assertTrue(responses.get(0).getErrors().get(0)
+                .contains("Requested latency tier 2 is too low"));
+    }
+
+    @Test
+    public void whenSwitchDoesNotSupportEncapsulationType_validateReturnsErrorResponseTest() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        // TODO investigate: when uncommenting the following line, switch 3 supports VXLAN. Why?
+        //nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathValidationDto.builder()
+                .nodes(nodes)
+                .flowEncapsulationType(org.openkilda.messaging.payload.flow.FlowEncapsulationType.VXLAN)
+                .build());
+        List<PathValidationResult> responses = pathsService.validatePath(request);
+
+        assertFalse(responses.isEmpty());
+        assertFalse(responses.get(0).getIsValid());
+        assertFalse(responses.get(0).getErrors().isEmpty());
+        assertTrue(responses.get(0).getErrors().get(0)
+                .contains("doesn't support encapsulation type VXLAN"));
+    }
+
+    @Test
     public void whenNoLinkBetweenSwitches_validatePathReturnsErrorResponseTest() {
         List<PathNodePayload> nodes = new LinkedList<>();
         nodes.add(new PathNodePayload(SWITCH_ID_1, null, 1));
@@ -384,7 +447,6 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         PathValidateRequest request = new PathValidateRequest(PathValidationDto.builder()
                 .nodes(nodes)
                 .bandwidth(0L)
-                .isBackupPath(false)
                 .latencyMs(0L)
                 .latencyTier2ms(0L)
                 .build());
@@ -413,7 +475,6 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         PathValidateRequest request = new PathValidateRequest(PathValidationDto.builder()
                 .nodes(nodes)
                 .bandwidth(0L)
-                .isBackupPath(false)
                 .latencyMs(0L)
                 .latencyTier2ms(0L)
                 .diverseWithFlow("flow_1")
@@ -435,7 +496,6 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         PathValidateRequest request = new PathValidateRequest(PathValidationDto.builder()
                 .nodes(nodes)
                 .bandwidth(1000000L)
-                .isBackupPath(false)
                 .latencyMs(10L)
                 .latencyTier2ms(0L)
                 .build());
@@ -446,6 +506,84 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         assertFalse(responses.get(0).getErrors().isEmpty());
         assertEquals("There must be 5 errors in total: 2 bandwidth (forward and reverse paths), "
                 + "2 links are not present, and 1 latency", 5, responses.get(0).getErrors().size());
+    }
+
+    @Test
+    public void whenNonLatencyPathComputationStrategy_ignoreLatencyAnd_validatePathReturnsSuccessResponseTest() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathValidationDto.builder()
+                .nodes(nodes)
+                .bandwidth(0L)
+                .latencyMs(10L)
+                .latencyTier2ms(0L)
+                .pathComputationStrategy(COST)
+                .build());
+        List<PathValidationResult> responses = pathsService.validatePath(request);
+
+        assertFalse(responses.isEmpty());
+        assertTrue(responses.get(0).getIsValid());
+    }
+
+    @Test
+    public void whenValidPathWithExistingFlowAndReuseResources_validatePathReturnsSuccessResponseTest() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathValidationDto.builder()
+                .nodes(nodes)
+                .bandwidth(1000L)
+                .latencyMs(0L)
+                .latencyTier2ms(0L)
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
+                .build());
+        List<PathValidationResult> responsesBefore = pathsService.validatePath(request);
+
+        assertFalse(responsesBefore.isEmpty());
+        assertTrue("The path using default segments with bandwidth 1003 must be valid",
+                responsesBefore.get(0).getIsValid());
+
+        Optional<Isl> islForward = islRepository.findByEndpoints(SWITCH_ID_3, 7, SWITCH_ID_2, 7);
+        assertTrue(islForward.isPresent());
+        islForward.get().setAvailableBandwidth(100L);
+        Optional<Isl> islReverse = islRepository.findByEndpoints(SWITCH_ID_2, 7, SWITCH_ID_3, 7);
+        assertTrue(islReverse.isPresent());
+        islReverse.get().setAvailableBandwidth(100L);
+
+        String flowToReuse = "flow_3_2";
+        createFlow(flowToReuse, Switch.builder().switchId(SWITCH_ID_3).build(), 2000,
+                Switch.builder().switchId(SWITCH_ID_2).build(), 2000,
+                false, 900L, islForward.get());
+
+        List<PathValidationResult> responsesAfter = pathsService.validatePath(request);
+
+        assertFalse(responsesAfter.isEmpty());
+        assertFalse("The path must not be valid because the flow %s consumes bandwidth",
+                responsesAfter.get(0).getIsValid());
+        assertFalse(responsesAfter.get(0).getErrors().isEmpty());
+        assertEquals("There must be 2 errors in total: not enough bandwidth on forward and reverse paths",
+                 2, responsesAfter.get(0).getErrors().size());
+        assertTrue(responsesAfter.get(0).getErrors().get(0).contains("There is not enough bandwidth"));
+        assertTrue(responsesAfter.get(0).getErrors().get(1).contains("There is not enough bandwidth"));
+
+        PathValidateRequest requestWithReuseResources = new PathValidateRequest(PathValidationDto.builder()
+                .nodes(nodes)
+                .bandwidth(1000L)
+                .latencyMs(0L)
+                .latencyTier2ms(0L)
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
+                .reuseFlowResources(flowToReuse)
+                .build());
+
+        List<PathValidationResult> responseWithReuseResources = pathsService.validatePath(requestWithReuseResources);
+
+        assertFalse(responseWithReuseResources.isEmpty());
+        assertTrue("The path must be valid because, although the flow %s consumes bandwidth, the validator"
+                + " includes the consumed bandwidth to available bandwidth",
+                responseWithReuseResources.get(0).getIsValid());
     }
 
     private void assertMaxLatencyPaths(List<PathsInfoData> paths, Duration maxLatency, long expectedCount,
@@ -534,6 +672,11 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     }
 
     private void createFlow(String flowId, Switch srcSwitch, int srcPort, Switch destSwitch, int destPort) {
+        createFlow(flowId, srcSwitch, srcPort, destSwitch, destPort, null, null, null);
+    }
+
+    private void createFlow(String flowId, Switch srcSwitch, int srcPort, Switch destSwitch, int destPort,
+                            Boolean ignoreBandwidth, Long bandwidth, Isl isl) {
         Flow flow = Flow.builder()
                 .flowId(flowId)
                 .srcSwitch(srcSwitch)
@@ -541,6 +684,8 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
                 .destSwitch(destSwitch)
                 .destPort(destPort)
                 .build();
+        Optional.ofNullable(ignoreBandwidth).ifPresent(flow::setIgnoreBandwidth);
+        Optional.ofNullable(bandwidth).ifPresent(flow::setBandwidth);
         FlowPath forwardPath = FlowPath.builder()
                 .pathId(new PathId("path_1"))
                 .srcSwitch(srcSwitch)
@@ -551,9 +696,9 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
                 .segments(Collections.singletonList(PathSegment.builder()
                         .pathId(new PathId("forward_segment"))
                         .srcSwitch(srcSwitch)
-                        .srcPort(srcPort)
+                        .srcPort(isl == null ? srcPort : isl.getSrcPort())
                         .destSwitch(destSwitch)
-                        .destPort(destPort)
+                        .destPort(isl == null ? destPort : isl.getDestPort())
                         .build()))
                 .build();
 
@@ -568,9 +713,9 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
                 .segments(Collections.singletonList(PathSegment.builder()
                         .pathId(new PathId("reverse_segment"))
                         .srcSwitch(destSwitch)
-                        .srcPort(destPort)
+                        .srcPort(isl == null ? destPort : isl.getDestPort())
                         .destSwitch(srcSwitch)
-                        .destPort(srcPort)
+                        .destPort(isl == null ? srcPort : isl.getSrcPort())
                         .build()))
                 .build();
         flow.setReversePath(reversePath);

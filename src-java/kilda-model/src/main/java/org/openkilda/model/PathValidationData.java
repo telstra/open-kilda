@@ -28,7 +28,6 @@ public class PathValidationData {
     Long latencyMs;
     Long latencyTier2ms;
     List<PathSegmentValidationData> pathSegments;
-    Boolean isBackupPath;
     String diverseWithFlow;
     String reuseFlowResources;
     FlowEncapsulationType flowEncapsulationType;
@@ -36,6 +35,7 @@ public class PathValidationData {
     Integer srcPort;
     SwitchId destSwitchId;
     Integer destPort;
+    PathComputationStrategy pathComputationStrategy;
 
     @Value
     @Builder
