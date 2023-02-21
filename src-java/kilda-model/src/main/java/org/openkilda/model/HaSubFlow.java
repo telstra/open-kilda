@@ -76,10 +76,10 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
 
     @Builder
     public HaSubFlow(@NonNull String subFlowId, FlowStatus status, SwitchId endpointSwitchId,
-                     int endpointPort, int endpointVlan, int endpointInnerVlan) {
+                     int endpointPort, int endpointVlan, int endpointInnerVlan, String description) {
         HaSubFlowDataImpl.HaSubFlowDataImplBuilder builder = HaSubFlowDataImpl.builder().haSubFlowId(subFlowId)
                 .status(status).endpointSwitchId(endpointSwitchId).endpointPort(endpointPort)
-                .endpointVlan(endpointVlan).endpointInnerVlan(endpointInnerVlan);
+                .endpointVlan(endpointVlan).endpointInnerVlan(endpointInnerVlan).description(description);
         this.data = builder.build();
     }
 
@@ -100,6 +100,7 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
                 .append(getEndpointPort(), that.getEndpointPort())
                 .append(getEndpointVlan(), that.getEndpointVlan())
                 .append(getEndpointInnerVlan(), that.getEndpointInnerVlan())
+                .append(getDescription(), that.getDescription())
                 .append(getTimeCreate(), that.getTimeCreate())
                 .append(getTimeModify(), that.getTimeModify())
                 .isEquals();
@@ -108,7 +109,7 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
     @Override
     public int hashCode() {
         return Objects.hash(getHaFlowId(), getHaSubFlowId(), getStatus(), getEndpointSwitchId(), getEndpointPort(),
-                getEndpointVlan(), getEndpointInnerVlan(), getTimeCreate(), getTimeModify());
+                getEndpointVlan(), getEndpointInnerVlan(), getDescription(), getTimeCreate(), getTimeModify());
     }
 
     /**
@@ -143,6 +144,10 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
 
         void setEndpointInnerVlan(int endpointInnerVlan);
 
+        String getDescription();
+
+        void setDescription(String description);
+
         Instant getTimeCreate();
 
         void setTimeCreate(Instant timeCreate);
@@ -172,6 +177,7 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
         int endpointPort;
         int endpointVlan;
         int endpointInnerVlan;
+        String description;
 
         Instant timeCreate;
         Instant timeModify;
