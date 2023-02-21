@@ -233,49 +233,6 @@ To check how debugging works we need to:
 - set up a breakpoint;
 - make a call to execute some functionality;
 
-#### How to debug Floodlight component
-
-In order to run floodLight in the debug mode we have to add this line of arguments
-```
-"-agentlib:jdwp=transport=dt_socket,address=50506,suspend=n,server=y”
-``` 
-when running the app.
-Particularly in floodLight we can not do this straight to the Dockerfile since it leads us to entrypoint.sh script.
-We have to add these arguments to the
-```
-projectroot/docker/floodlight-modules/entrypoint.sh
-```
-file;
-
-
-in this file find `exec java` line under the ```"$1" = 'floodlight’```  condition.
-In the end it should look something like this:
-```
-exec java "-agentlib:jdwp=transport=dt_socket,address=50506,suspend=n,server=y" -XX:+PrintFlagsFinal……… the rest arguments….;
-```
-then we have to expose debugging port in docker-compose.tmpl file.
-go to ```projectroot/confd/templates/docker-compose/docker-compose.tmpl```
-find floodlight_1 and add desirable port mapping:
-```ex: 50506:323232     - (inside:outside).```
-In this example, 50506 is the port number that we have pointed for entrypoint.sh file previously,
-323232 - port number that we will use to attach to debug.
-As a last step we have to stop our container, rebuild image, run new container.
-let ensure that we expose our ports: run this command:
-```
-docker ps | grep floodlight
-```
-should show us our mapping ports.
-Inside the container run
-```
-docker exec -it floodlight_1(2) bash
-```
-
-the entrypoint.sh should contain this argument
-```
-"-agentlib:jdwp=transport=dt_socket,address=50506,suspend=n,server=y” argument.
-```
-
-### Debug for a couple components
 In some cases, we must have an approach for debugging a deploy process for a couple (or more) components that interact with each other. Let's
 suppose both of them work under docker and some component doesn't belong to us and provided as a library. The typical case:
 WorkflowManager (further WFM) and Storm. The approach that is going to be used is almost the same as for northbound but there are

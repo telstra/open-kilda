@@ -143,7 +143,7 @@ public class OfFlowStatsMapperTest {
     }
 
     @Test
-    public void toFlowInstructions() {
+    public void toFlowNoneEmptyInstructions() {
         FlowApplyActions applyActions = buildFlowApplyActions();
         FlowInstructions expectedNoneEmptyFlowInstructions = new FlowInstructions(applyActions,
                 null, meterId, goToTable.getValue());
@@ -151,7 +151,10 @@ public class OfFlowStatsMapperTest {
                 = OfFlowStatsMapper.INSTANCE.toFlowInstructions(buildInstruction());
 
         assertEquals(expectedNoneEmptyFlowInstructions, actualNoneEmptyFlowInstructions);
+    }
 
+    @Test
+    public void toFlowEmptyInstructions() {
         FlowInstructions expectedEmptyFlowInstructions = FlowInstructions.builder().none(NONE_DROP).build();
         List<OFInstruction> emptyInstructions = Collections.emptyList();
         FlowInstructions actualEmptyInstructions = OfFlowStatsMapper.INSTANCE.toFlowInstructions(emptyInstructions);
