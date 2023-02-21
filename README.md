@@ -233,8 +233,8 @@ To check how debugging works we need to:
 - set up a breakpoint;
 - make a call to execute some functionality;
 
-### Debug for a couple components
-In some cases, we must have an approach for debugging a deploy process for a couple (or more) components that interact with each other. Let's
+### Debug a couple of components
+In some cases, we must have an approach for debugging a deploy process for a couple (or more) of components that interact with each other. Let's
 suppose both of them work under docker and some component doesn't belong to us and provided as a library. The typical case:
 WorkflowManager (further WFM) and Storm. The approach that is going to be used is almost the same as for northbound but there are
 nuances.
