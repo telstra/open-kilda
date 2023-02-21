@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.dto.v2.haflows;
 
+import org.openkilda.northbound.dto.utils.Constraints;
+
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AccessLevel;
@@ -24,6 +26,8 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
 
+import javax.validation.constraints.NotBlank;
+
 @Data
 @SuperBuilder
 @AllArgsConstructor
@@ -31,5 +35,6 @@ import lombok.experimental.SuperBuilder;
 @JsonNaming(SnakeCaseStrategy.class)
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class HaSubFlowUpdatePayload extends HaSubFlowCreatePayload {
+    @NotBlank(message = Constraints.BLANK_SUBFLOW_FLOW_ID_TYPE_MESSAGE)
     String flowId;
 }

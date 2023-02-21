@@ -15,9 +15,8 @@
 
 package org.openkilda.northbound.dto.v2.haflows;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import org.openkilda.model.SwitchId;
+
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AccessLevel;
@@ -26,41 +25,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
-import java.util.List;
-import java.util.Set;
-
 @Data
 @Builder
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@JsonInclude(Include.NON_NULL)
-public class HaFlow {
-    String haFlowId;
-    String status;
-
-    HaFlowSharedEndpoint sharedEndpoint;
-
-    long maximumBandwidth;
-    String pathComputationStrategy;
-    String encapsulationType;
-    Long maxLatency;
-    Long maxLatencyTier2;
-    boolean ignoreBandwidth;
-    boolean periodicPings;
-    boolean pinned;
-    Integer priority;
-    boolean strictBandwidth;
-    String description;
-    boolean allocateProtectedPath;
-
-    Set<String> diverseWithFlows;
-    @JsonProperty("diverse_with_y_flows")
-    Set<String> diverseWithYFlows;
-    Set<String> diverseWithHaFlows;
-
-    List<HaSubFlow> subFlows;
-
-    String timeCreate;
-    String timeUpdate;
+public class HaFlowPatchEndpoint {
+    SwitchId switchId;
+    Integer portNumber;
+    Integer vlanId;
+    Integer innerVlanId;
 }

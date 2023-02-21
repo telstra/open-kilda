@@ -24,4 +24,5 @@ public final class Constraints {
     public static final String NEGATIVE_MAX_LATENCY_TIER_2_MESSAGE = "maxLatencyTier2 can't be negative";
     public static final String BLANK_PATH_COMPUTATION_STRATEGY_MESSAGE = "pathComputationStrategy should be provided";
     public static final String BLANK_ENCAPSULATION_TYPE_MESSAGE = "encapsulationType should be provided";
+    public static final String BLANK_SUBFLOW_FLOW_ID_TYPE_MESSAGE = "sub flow flowId must be provided";
 }

@@ -13,37 +13,35 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.haflows;
+package org.openkilda.messaging.command.haflow;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.PathComputationStrategy;
+
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.experimental.FieldDefaults;
+import lombok.EqualsAndHashCode;
 
 import java.util.List;
-import java.util.Set;
 
 @Data
 @Builder
+@EqualsAndHashCode(callSuper = false)
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
-@FieldDefaults(level = AccessLevel.PRIVATE)
-@JsonInclude(Include.NON_NULL)
-public class HaFlow {
+public class HaFlowRequest extends CommandData {
+    private static final long serialVersionUID = 1L;
+
     String haFlowId;
-    String status;
-
-    HaFlowSharedEndpoint sharedEndpoint;
-
+    FlowEndpoint sharedEndpoint;
     long maximumBandwidth;
-    String pathComputationStrategy;
-    String encapsulationType;
+    PathComputationStrategy pathComputationStrategy;
+    FlowEncapsulationType encapsulationType;
     Long maxLatency;
     Long maxLatencyTier2;
     boolean ignoreBandwidth;
@@ -53,14 +51,12 @@ public class HaFlow {
     boolean strictBandwidth;
     String description;
     boolean allocateProtectedPath;
+    String diverseFlowId;
+    List<HaSubFlowDto> subFlows;
+    Type type;
 
-    Set<String> diverseWithFlows;
-    @JsonProperty("diverse_with_y_flows")
-    Set<String> diverseWithYFlows;
-    Set<String> diverseWithHaFlows;
-
-    List<HaSubFlow> subFlows;
-
-    String timeCreate;
-    String timeUpdate;
+    public enum Type {
+        CREATE,
+        UPDATE
+    }
 }

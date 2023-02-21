@@ -54,5 +54,5 @@ public class HaFlowCreatePayload {
     boolean allocateProtectedPath;
     String diverseFlowId;
 
-    List<HaSubFlowUpdatePayload> subFlows;
+    List<HaSubFlowCreatePayload> subFlows;
 }

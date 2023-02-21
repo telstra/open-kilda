@@ -15,8 +15,6 @@
 
 package org.openkilda.northbound.dto.v2.haflows;
 
-import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2;
-
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AccessLevel;
@@ -35,6 +33,6 @@ import javax.validation.constraints.NotBlank;
 public class HaSubFlowPatchPayload {
     @NotBlank(message = "sub flow flowId must be provided")
     String flowId;
-    BaseFlowEndpointV2 endpoint;
+    HaFlowPatchEndpoint endpoint;
     String description;
 }
