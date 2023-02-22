@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -26,18 +26,21 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.util.List;
+import javax.validation.constraints.PositiveOrZero;
 
 @Value
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class PathValidationDto {
+public class PathValidationPayload {
     @JsonProperty("bandwidth")
     Long bandwidth;
 
     @JsonProperty("max_latency")
+    @PositiveOrZero(message = "max_latency cannot be negative")
     Long latencyMs;
 
     @JsonProperty("max_latency_tier2")
+    @PositiveOrZero(message = "max_latency_tier2 cannot be negative")
     Long latencyTier2ms;
 
     @JsonProperty("nodes")
@@ -56,14 +59,15 @@ public class PathValidationDto {
     PathComputationStrategy pathComputationStrategy;
 
     @JsonCreator
-    public PathValidationDto(@JsonProperty("bandwidth") Long bandwidth,
-                             @JsonProperty("latency_ms") Long latencyMs,
-                             @JsonProperty("max_latency_tier2") Long latencyTier2ms,
-                             @JsonProperty("nodes") List<PathNodePayload> nodes,
-                             @JsonProperty("diverse_with_flow") String diverseWithFlow,
-                             @JsonProperty("reuse_flow_resources") String reuseFlowResources,
-                             @JsonProperty("flow_encapsulation_type") FlowEncapsulationType flowEncapsulationType,
-                             @JsonProperty("path_computation_strategy") PathComputationStrategy computationStrategy) {
+    public PathValidationPayload(
+            @JsonProperty("bandwidth") Long bandwidth,
+            @JsonProperty("latency_ms") Long latencyMs,
+            @JsonProperty("max_latency_tier2") Long latencyTier2ms,
+            @JsonProperty("nodes") List<PathNodePayload> nodes,
+            @JsonProperty("diverse_with_flow") String diverseWithFlow,
+            @JsonProperty("reuse_flow_resources") String reuseFlowResources,
+            @JsonProperty("flow_encapsulation_type") FlowEncapsulationType flowEncapsulationType,
+            @JsonProperty("path_computation_strategy") PathComputationStrategy computationStrategy) {
         this.bandwidth = bandwidth;
         this.latencyMs = latencyMs;
         this.latencyTier2ms = latencyTier2ms;

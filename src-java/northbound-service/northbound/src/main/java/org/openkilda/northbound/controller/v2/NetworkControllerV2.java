@@ -17,7 +17,7 @@ package org.openkilda.northbound.controller.v2;
 
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
-import org.openkilda.messaging.payload.network.PathValidationDto;
+import org.openkilda.messaging.payload.network.PathValidationPayload;
 import org.openkilda.northbound.dto.v2.flows.PathValidateResponse;
 import org.openkilda.northbound.service.NetworkService;
 
@@ -36,33 +36,32 @@ import java.util.concurrent.CompletableFuture;
 @RequestMapping("/v2/network")
 public class NetworkControllerV2 {
 
+    private final NetworkService networkService;
+
     @Autowired
-    private NetworkService networkService;
+    public NetworkControllerV2(NetworkService networkService) {
+        this.networkService = networkService;
+    }
 
     /**
      * Validates that a given path complies with the chosen strategy and the network availability.
-     * It is required that the input contains path nodes. Other parameters are opti
-     * @param pathValidationDto a payload with a path and additional flow parameters provided by a user
+     * It is required that the input contains path nodes. Other parameters are optional.
+     * @param pathValidationPayload a payload with a path and additional flow parameters provided by a user
      * @return either a successful response or the list of errors
      */
     @GetMapping(path = "/path/check")
     @ApiOperation(value = "Validates that a given path complies with the chosen strategy and the network availability")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<PathValidateResponse> validateCustomFlowPath(
-            @RequestBody PathValidationDto pathValidationDto) {
-        validateInput(pathValidationDto);
+            @RequestBody PathValidationPayload pathValidationPayload) {
 
-        return networkService.validateFlowPath(pathValidationDto);
-    }
-
-    private void validateInput(PathValidationDto pathValidationDto) {
-        //TODO validate all fields
-
-        if (pathValidationDto == null
-                || pathValidationDto.getNodes() == null
-                || pathValidationDto.getNodes().size() < 2) {
+        if (pathValidationPayload == null
+                || pathValidationPayload.getNodes() == null
+                || pathValidationPayload.getNodes().size() < 2) {
             throw new MessageException(ErrorType.DATA_INVALID, "Invalid Request Body",
                     "Invalid 'nodes' value in the request body");
         }
+
+        return networkService.validateFlowPath(pathValidationPayload);
     }
 }

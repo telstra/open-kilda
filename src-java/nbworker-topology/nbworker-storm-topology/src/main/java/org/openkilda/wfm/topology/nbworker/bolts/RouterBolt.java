@@ -89,9 +89,7 @@ public class RouterBolt extends AbstractBolt {
             emitWithContext(StreamType.FEATURE_TOGGLES.toString(), input, new Values(request));
         } else if (request instanceof KildaConfigurationBaseRequest) {
             emitWithContext(StreamType.KILDA_CONFIG.toString(), input, new Values(request));
-        } else if (request instanceof GetPathsRequest) {
-            emitWithContext(StreamType.PATHS.toString(), input, new Values(request));
-        } else if (request instanceof PathValidateRequest) {
+        } else if (request instanceof GetPathsRequest || request instanceof PathValidateRequest) {
             emitWithContext(StreamType.PATHS.toString(), input, new Values(request));
         } else if (request instanceof HistoryRequest) {
             emitWithContext(StreamType.HISTORY.toString(), input, new Values(request));

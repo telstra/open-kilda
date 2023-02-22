@@ -15,12 +15,13 @@
 
 package org.openkilda.wfm.share.mappers;
 
-import org.openkilda.messaging.payload.network.PathValidationDto;
+import org.openkilda.messaging.payload.network.PathValidationPayload;
 import org.openkilda.model.PathValidationData;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 
+import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -31,32 +32,35 @@ public abstract class PathValidationDataMapper {
 
     /**
      * Converts NB PathValidationDto to messaging PathValidationData.
-     * @param pathValidationDto NB representation of a path validation data
+     * @param pathValidationPayload NB representation of a path validation data
      * @return the messaging representation of a path validation data
      */
-    public PathValidationData toPathValidationData(PathValidationDto pathValidationDto) {
+    public PathValidationData toPathValidationData(PathValidationPayload pathValidationPayload) {
         List<PathValidationData.PathSegmentValidationData> segments = new LinkedList<>();
 
-        for (int i = 0; i < pathValidationDto.getNodes().size() - 1; i++) {
+        for (int i = 0; i < pathValidationPayload.getNodes().size() - 1; i++) {
             segments.add(PathValidationData.PathSegmentValidationData.builder()
-                    .srcSwitchId(pathValidationDto.getNodes().get(i).getSwitchId())
-                    .srcPort(pathValidationDto.getNodes().get(i).getOutputPort())
-                    .destSwitchId(pathValidationDto.getNodes().get(i + 1).getSwitchId())
-                    .destPort(pathValidationDto.getNodes().get(i + 1).getInputPort())
+                    .srcSwitchId(pathValidationPayload.getNodes().get(i).getSwitchId())
+                    .srcPort(pathValidationPayload.getNodes().get(i).getOutputPort())
+                    .destSwitchId(pathValidationPayload.getNodes().get(i + 1).getSwitchId())
+                    .destPort(pathValidationPayload.getNodes().get(i + 1).getInputPort())
                     .build());
         }
 
         return PathValidationData.builder()
-                .srcSwitchId(pathValidationDto.getNodes().get(0).getSwitchId())
-                .destSwitchId(pathValidationDto.getNodes().get(pathValidationDto.getNodes().size() - 1).getSwitchId())
-                .bandwidth(pathValidationDto.getBandwidth())
-                .latencyMs(pathValidationDto.getLatencyMs())
-                .latencyTier2ms(pathValidationDto.getLatencyTier2ms())
-                .diverseWithFlow(pathValidationDto.getDiverseWithFlow())
-                .reuseFlowResources(pathValidationDto.getReuseFlowResources())
+                .srcSwitchId(pathValidationPayload.getNodes().get(0).getSwitchId())
+                .destSwitchId(
+                        pathValidationPayload.getNodes().get(pathValidationPayload.getNodes().size() - 1).getSwitchId())
+                .bandwidth(pathValidationPayload.getBandwidth())
+                .latency(pathValidationPayload.getLatencyMs() == null ? null :
+                        Duration.ofMillis(pathValidationPayload.getLatencyMs()))
+                .latencyTier2(pathValidationPayload.getLatencyTier2ms() == null ? null :
+                        Duration.ofMillis(pathValidationPayload.getLatencyTier2ms()))
+                .diverseWithFlow(pathValidationPayload.getDiverseWithFlow())
+                .reuseFlowResources(pathValidationPayload.getReuseFlowResources())
                 .flowEncapsulationType(FlowEncapsulationTypeMapper.INSTANCE.toOpenKildaModel(
-                        pathValidationDto.getFlowEncapsulationType()))
-                .pathComputationStrategy(pathValidationDto.getPathComputationStrategy())
+                        pathValidationPayload.getFlowEncapsulationType()))
+                .pathComputationStrategy(pathValidationPayload.getPathComputationStrategy())
                 .pathSegments(segments)
                 .build();
     }
