@@ -615,8 +615,8 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
                                     has(PathSegmentFrame.SRC_SWITCH_ID_PROPERTY, switchId.toString()),
                                     has(PathSegmentFrame.DST_SWITCH_ID_PROPERTY, switchId.toString()))
                             .as(PATH_SEGMENT_ALIAS)
-                            .in(FlowFrame.OWNS_SEGMENTS_EDGE)
-                            .in(FlowFrame.OWNS_SEGMENTS_EDGE)
+                            .in(FlowPathFrame.OWNS_SEGMENTS_EDGE)
+                            .in(FlowFrame.OWNS_PATHS_EDGE)
                             .hasLabel(FlowFrame.FRAME_LABEL)
                             .as(FLOWS_ALIAS)
                             .select(PATH_SEGMENT_ALIAS, FLOWS_ALIAS)
