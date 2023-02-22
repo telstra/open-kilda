@@ -17,7 +17,7 @@
 -  [#5030](https://github.com/telstra/open-kilda/pull/5030) #5017: #4926: Add tests to verify missing YFlow/subflows stats (Issues: [#4926](https://github.com/telstra/open-kilda/issues/4926) [#5017](https://github.com/telstra/open-kilda/issues/5017)) [**tests**]
 -  [#5073](https://github.com/telstra/open-kilda/pull/5073) Unignore a set of functional tests [**tests**]
 -  [#5086](https://github.com/telstra/open-kilda/pull/5086) Add max depth to the error while path computation (Issue: [#5085](https://github.com/telstra/open-kilda/issues/5085))
-
+-  [#5095](https://github.com/telstra/open-kilda/pull/5095) Fixing descriptions for the legacy test [**tests**]
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.127.0...v1.128.0).
 
