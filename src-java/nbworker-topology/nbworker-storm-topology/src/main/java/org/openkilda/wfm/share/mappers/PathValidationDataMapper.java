@@ -21,6 +21,7 @@ import org.openkilda.model.PathValidationData;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 
+import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -50,8 +51,10 @@ public abstract class PathValidationDataMapper {
                 .srcSwitchId(pathValidationDto.getNodes().get(0).getSwitchId())
                 .destSwitchId(pathValidationDto.getNodes().get(pathValidationDto.getNodes().size() - 1).getSwitchId())
                 .bandwidth(pathValidationDto.getBandwidth())
-                .latencyMs(pathValidationDto.getLatencyMs())
-                .latencyTier2ms(pathValidationDto.getLatencyTier2ms())
+                .latency(pathValidationDto.getLatencyMs() == null ? null :
+                        Duration.ofMillis(pathValidationDto.getLatencyMs()))
+                .latencyTier2(pathValidationDto.getLatencyTier2ms() == null ? null :
+                        Duration.ofMillis(pathValidationDto.getLatencyTier2ms()))
                 .diverseWithFlow(pathValidationDto.getDiverseWithFlow())
                 .reuseFlowResources(pathValidationDto.getReuseFlowResources())
                 .flowEncapsulationType(FlowEncapsulationTypeMapper.INSTANCE.toOpenKildaModel(

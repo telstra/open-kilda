@@ -142,7 +142,8 @@ public class PathsService {
     public List<PathValidationResult> validatePath(PathValidateRequest request) {
         PathValidator pathValidator = new PathValidator(islRepository,
                 flowRepository,
-                switchPropertiesRepository);
+                switchPropertiesRepository,
+                switchRepository);
 
         return Collections.singletonList(pathValidator.validatePath(
                 PathValidationDataMapper.INSTANCE.toPathValidationData(request.getPathValidationDto())

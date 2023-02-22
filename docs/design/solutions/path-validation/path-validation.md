@@ -18,15 +18,24 @@ after validation in the future.
 
 REST URL: ```/v2/network/path/check```, method: ```GET```
 
-A user is required to provide a path represented by a list of nodes. Nodes must be ordered from start to end, 
+A user is required to provide a path represented by a list of nodes. Nodes must be ordered from start to end; 
 each next element is the next hop. A user can add optional parameters:
-- encapsulation_type: enum value "TRANSIT_VLAN" or "VXLAN".
-- max_bandwidth: bandwidth required for this path.
-- max_latency: the first tier latency value. 
-- max_latency_tier2: the second tier latency value.
-- path_computation_strategy: "COST|LATENCY|MAX_LATENCY|COST_AND_AVAILABLE_BANDWIDTH".
-- reuse_flow_resources: a flow ID. Verify the given path as if it is created instead of the existing flow, that is as if
-the resources of some flow are released before validation.
+- `encapsulation_type`: enum value "TRANSIT_VLAN" or "VXLAN". API returns an error for every switch in the list if it 
+  doesn't support the given encapsulation type.
+- `max_bandwidth`: bandwidth required for this path. API returns an error for each segment of the given path when the 
+  available bandwidth on the segment is less than the given value. When used in combination with `reuse_flow_resources`,
+  available bandwidth as if the given flow doesn't consume any bandwidth.
+- `max_latency`: the first tier latency value in milliseconds. API returns an error for each segment of the given path,  
+  which max latency is greater than the given value.
+- `max_latency_tier2`: the second tier latency value in milliseconds. API returns an error for each segment of the given
+  path, which max latency is greater than the given value.
+- `path_computation_strategy`: an enum value PathComputationStrategy. API will return different set of errors depending 
+  on the selected strategy. For example, when COST is selected API ignores available bandwidth and latency parameters. 
+  If none is selected, all validations are executed.  
+- `reuse_flow_resources`: a flow ID. Verify the given path as if it is created instead of the existing flow, that is as 
+  if the resources of some flow are released before validation. Returns an error if this flow doesn't exist.
+- `diverse_with_flow`: a flow ID. Verify whether the given path intersects with the given flow. API returns an error for 
+  each common segment. Returns an error if this flow doesn't exist.
 
 ### Request Body
 ```json
@@ -36,7 +45,8 @@ the resources of some flow are released before validation.
   "max_latency": 0,
   "max_latency_tier2": 0,
   "path_computation_strategy": "COST|LATENCY|MAX_LATENCY|COST_AND_AVAILABLE_BANDWIDTH",
-  "reuse_flow_resources": 0,
+  "reuse_flow_resources": "flow_id",
+  "diverse_with_flow": "diverse_flow_id",
   "nodes": [
     {
       "switch_id": "00:00:00:00:00:00:00:01",

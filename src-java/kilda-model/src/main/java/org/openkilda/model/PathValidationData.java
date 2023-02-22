@@ -18,6 +18,7 @@ package org.openkilda.model;
 import lombok.Builder;
 import lombok.Value;
 
+import java.time.Duration;
 import java.util.List;
 
 @Value
@@ -25,8 +26,8 @@ import java.util.List;
 public class PathValidationData {
 
     Long bandwidth;
-    Long latencyMs;
-    Long latencyTier2ms;
+    Duration latency;
+    Duration latencyTier2;
     List<PathSegmentValidationData> pathSegments;
     String diverseWithFlow;
     String reuseFlowResources;

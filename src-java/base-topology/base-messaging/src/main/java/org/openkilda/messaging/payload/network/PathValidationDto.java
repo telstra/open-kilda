@@ -26,6 +26,7 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.util.List;
+import javax.validation.constraints.PositiveOrZero;
 
 @Value
 @Builder
@@ -35,9 +36,11 @@ public class PathValidationDto {
     Long bandwidth;
 
     @JsonProperty("max_latency")
+    @PositiveOrZero(message = "max_latency cannot be negative")
     Long latencyMs;
 
     @JsonProperty("max_latency_tier2")
+    @PositiveOrZero(message = "max_latency_tier2 cannot be negative")
     Long latencyTier2ms;
 
     @JsonProperty("nodes")
