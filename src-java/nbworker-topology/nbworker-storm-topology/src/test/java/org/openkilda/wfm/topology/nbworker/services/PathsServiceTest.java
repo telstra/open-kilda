@@ -345,12 +345,14 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         assertEquals("There must be 2 errors: forward and reverse paths",
                 2, responses.get(0).getErrors().size());
         Collections.sort(responses.get(0).getErrors());
-        assertTrue(responses.get(0).getErrors().get(0)
-                .startsWith("There is not enough Bandwidth between the source switch 00:00:00:00:00:00:00:03 port 6 "
-                        + "and destination switch 00:00:00:00:00:00:00:01 port 6 (reverse path)."));
-        assertTrue(responses.get(0).getErrors().get(1)
-                .startsWith("There is not enough bandwidth between the source switch 00:00:00:00:00:00:00:01 port 6 and"
-                        + " destination switch 00:00:00:00:00:00:00:03 port 6 (forward path)."));
+        assertEquals(responses.get(0).getErrors().get(0),
+                "There is not enough bandwidth between the source switch 00:00:00:00:00:00:00:01 port 6 and "
+                        + "destination switch 00:00:00:00:00:00:00:03 port 6 (forward path). "
+                        + "Requested bandwidth 1000000000, but the link supports 1003");
+        assertEquals(responses.get(0).getErrors().get(1),
+                "There is not enough bandwidth between the source switch 00:00:00:00:00:00:00:03 port 6 and "
+                        + "destination switch 00:00:00:00:00:00:00:01 port 6 (reverse path). "
+                        + "Requested bandwidth 1000000000, but the link supports 1003");
     }
 
     @Test
