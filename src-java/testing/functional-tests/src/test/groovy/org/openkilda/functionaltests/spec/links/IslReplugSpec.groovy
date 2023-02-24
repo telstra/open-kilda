@@ -316,9 +316,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         }
 
         when: "Replug a new link back where it was before"
-
         def newOldIsl = islUtils.replug(newIsl, true, isl, true, true)
-        def originIslIsUp = true
         verifyAll(newOldIsl) {
             it.srcSwitch == isl.srcSwitch
             it.dstSwitch == isl.dstSwitch
