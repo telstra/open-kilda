@@ -21,6 +21,8 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.ExamReport
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
+
+import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
@@ -119,7 +121,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
 
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
-        statsHelper.verifyYFlowWritesStats(yFlow, beforeTraffic, true)
+        statsHelper.verifyYFlowWritesMeterStats(yFlow, beforeTraffic, true)
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)

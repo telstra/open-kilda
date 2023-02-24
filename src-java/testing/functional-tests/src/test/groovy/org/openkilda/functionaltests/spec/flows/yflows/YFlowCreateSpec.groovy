@@ -159,7 +159,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
-        statsHelper.verifyYFlowWritesStats(yFlow, beforeTraffic, trafficApplicable)
+        statsHelper.verifyYFlowWritesMeterStats(yFlow, beforeTraffic, trafficApplicable)
 
         when: "Delete the y-flow"
         northboundV2.deleteYFlow(yFlow.YFlowId)
