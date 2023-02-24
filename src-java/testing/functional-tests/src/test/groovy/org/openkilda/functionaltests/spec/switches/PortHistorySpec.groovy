@@ -201,7 +201,6 @@ class PortHistorySpec extends HealthCheckSpecification {
         switchToDisconnect && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/3007")
     def "System shows antiflap statistic in the ANTI_FLAP_DEACTIVATED event when antiflap is deactivated\
  before collecting ANTI_FLAP_PERIODIC_STATS"() {
         assumeTrue(antiflapCooldown + 3 < antiflapDumpingInterval,

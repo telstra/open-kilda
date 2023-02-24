@@ -15,12 +15,40 @@
 
 package org.openkilda.wfm.topology.flowhs.validation;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import org.junit.Test;
 
 public class ValidatorUtilsTest {
+
     @Test
     public void maxLatencyValidatorMustAcceptEqualMaxLatencyAndMaxLatencyTier2() throws InvalidFlowException {
         // should not raise exception
         ValidatorUtils.maxLatencyValidator(500L, 500L);
     }
+
+    @Test
+    public void maxLatencyValidatorThrowsExceptionIfMaxLatencyTier2HigherThanMaxLatency() throws InvalidFlowException {
+        Exception exception = assertThrows(InvalidFlowException.class, () -> {
+            ValidatorUtils.maxLatencyValidator(60000000L, 50000000L);
+        });
+        assertThat(exception.getMessage(), equalTo("The maxLatency 60ms is higher than maxLatencyTier2 50ms"));
+    }
+
+    @Test
+    public void maxLatencyValidatorThrowsExceptionIfMaxLatencyNullAndMaxLatencyTier2Not() throws InvalidFlowException {
+        Exception exception = assertThrows(InvalidFlowException.class, () -> {
+            ValidatorUtils.maxLatencyValidator(null, 50000000L);
+        });
+        assertThat(exception.getMessage(), equalTo("maxLatencyTier2 property cannot be used without maxLatency"));
+    }
+
+    @Test
+    public void maxLatencyValidatorMustAcceptMaxLatencyExistAndMaxLatencyTier2IsNull() throws InvalidFlowException {
+        // should not raise exception
+        ValidatorUtils.maxLatencyValidator(500L, null);
+    }
+
 }

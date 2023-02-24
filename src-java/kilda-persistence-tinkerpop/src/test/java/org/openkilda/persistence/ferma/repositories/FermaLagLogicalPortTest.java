@@ -39,10 +39,6 @@ import java.util.Map;
 import java.util.Optional;
 
 public class FermaLagLogicalPortTest extends InMemoryGraphBasedTest {
-    static final SwitchId SWITCH_ID_1 = new SwitchId(1);
-    static final SwitchId SWITCH_ID_2 = new SwitchId(2);
-    static final SwitchId SWITCH_ID_3 = new SwitchId(3);
-    static final SwitchId SWITCH_ID_4 = new SwitchId(4);
     static final int LOGICAL_PORT_NUMBER_1 = 1;
     static final int LOGICAL_PORT_NUMBER_2 = 2;
     static final int LOGICAL_PORT_NUMBER_3 = 3;

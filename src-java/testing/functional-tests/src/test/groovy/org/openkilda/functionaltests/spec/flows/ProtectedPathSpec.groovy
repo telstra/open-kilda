@@ -450,7 +450,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 status == FlowState.DEGRADED.toString()
                 flowStatusDetails.mainFlowPathStatus == "Up"
                 flowStatusDetails.protectedFlowPathStatus == "Down"
-                statusInfo.startsWith("Not enough bandwidth or no path found. Failed to find path with requested bandwidth=$flow.maximumBandwidth")
+                statusInfo == "Not enough bandwidth or no path found. Switch ${switchPair.getSrc().getDpId()} \
+doesn't have links with enough bandwidth, Failed to find path with requested bandwidth=$flow.maximumBandwidth"
             }
         }
 
@@ -892,7 +893,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 it.state == IslChangeType.FAILED
             }.size() == broughtDownPorts.size() * 2
         }
-
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = true })
 

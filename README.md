@@ -51,7 +51,7 @@ The following commands will install necessary dependencies on Ubuntu 18.04:
 sudo apt install maven make openjdk-8-jdk openvswitch-switch python3-pip linux-generic-hwe-18.04 tox
 ```
 ```shell
-sudo pip3 install --upgrade pip && \
+sudo pip3 install --upgrade pip
 sudo pip3 install docker-compose
 ```
 #### Dependency installation on Ubuntu 20.04

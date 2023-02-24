@@ -579,18 +579,38 @@ public class FlowOperationsService {
 
         if ((flow.getVlanStatistics() != null && !flow.getVlanStatistics().isEmpty())
                 || (flowPatch.getVlanStatistics() != null && !flowPatch.getVlanStatistics().isEmpty())) {
-            boolean zeroResultSrcVlan = isResultingVlanValueIsZero(flowPatch.getSource(), flow);
-            boolean zeroResultDstVlan = isResultingVlanValueIsZero(flowPatch.getDestination(), flow);
+            boolean zeroResultSrcVlan = isResultingVlanValueIsZero(flowPatch.getSource(), flow.getSrcVlan());
+            boolean zeroResultDstVlan = isResultingVlanValueIsZero(flowPatch.getDestination(), flow.getDestVlan());
 
             if (!zeroResultSrcVlan && !zeroResultDstVlan) {
                 throw new IllegalArgumentException("To collect vlan statistics you need to set source or "
                         + "destination vlan_id to zero");
             }
         }
+
+        if (isProtectedPathNeedToBeAllocated(flowPatch, flow) && isOneSwitchFlow(flowPatch, flow)) {
+            throw new IllegalArgumentException("Can not allocate protected path for one switch flow");
+        }
     }
 
-    private boolean isResultingVlanValueIsZero(PatchEndpoint patchEndpoint, Flow flow) {
-        boolean isResultVlanIsZero = flow.getSrcVlan() == 0;
+    private boolean isProtectedPathNeedToBeAllocated(FlowPatch flowPatch, Flow flow) {
+        if (flowPatch.getAllocateProtectedPath() == null) {
+            return flow.isAllocateProtectedPath();
+        } else {
+            return flowPatch.getAllocateProtectedPath();
+        }
+    }
+
+    private boolean isOneSwitchFlow(FlowPatch patch, Flow flow) {
+        SwitchId srcSwitchId = Optional.ofNullable(patch.getSource()).map(PatchEndpoint::getSwitchId)
+                .orElse(flow.getSrcSwitchId());
+        SwitchId dstSwitchId = Optional.ofNullable(patch.getDestination()).map(PatchEndpoint::getSwitchId)
+                .orElse(flow.getDestSwitchId());
+        return srcSwitchId.equals(dstSwitchId);
+    }
+
+    private boolean isResultingVlanValueIsZero(PatchEndpoint patchEndpoint, int flowOuterVlan) {
+        boolean isResultVlanIsZero = flowOuterVlan == 0;
         Integer patchVlanResult = Optional.ofNullable(patchEndpoint)
                 .map(PatchEndpoint::getVlanId).orElse(null);
         if (patchVlanResult != null) {

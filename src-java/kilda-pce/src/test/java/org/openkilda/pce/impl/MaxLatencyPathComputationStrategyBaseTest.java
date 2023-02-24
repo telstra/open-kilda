@@ -16,6 +16,7 @@
 package org.openkilda.pce.impl;
 
 import static java.lang.String.format;
+import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -25,6 +26,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -50,6 +52,7 @@ import org.junit.Test;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class MaxLatencyPathComputationStrategyBaseTest extends InMemoryPathComputerBaseTest {
 
@@ -302,7 +305,7 @@ public class MaxLatencyPathComputationStrategyBaseTest extends InMemoryPathCompu
 
     @Test
     public void maxLatencyShouldChooseCorrectWayTest() throws Exception {
-        createThreeWaysTopo();
+        createThreeWaysTopo(TimeUnit.NANOSECONDS);
 
         Flow flow = Flow.builder()
                 .flowId("test flow")
@@ -323,7 +326,7 @@ public class MaxLatencyPathComputationStrategyBaseTest extends InMemoryPathCompu
 
     @Test
     public void shouldNotFindPathsGreaterThenMaxLatency() throws Exception {
-        createThreeWaysTopo();
+        createThreeWaysTopo(TimeUnit.NANOSECONDS);
         PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
                 new BestWeightAndShortestPathFinder(200), config);
         long maxLatencyNs = 20;
@@ -346,7 +349,55 @@ public class MaxLatencyPathComputationStrategyBaseTest extends InMemoryPathCompu
         affinityOvercomeDiversity(PathComputationStrategy.MAX_LATENCY);
     }
 
-    private void createThreeWaysTopo() {
+    @Test
+    public void exceptionInPathComputationWhenPathLatencyGreaterThanMaxLatency() {
+        createThreeWaysTopo(TimeUnit.MILLISECONDS);
+        PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
+                new BestWeightAndShortestPathFinder(200), config);
+
+        Flow flow = Flow.builder()
+                .flowId("test flow")
+                .srcSwitch(getSwitchById("00:01")).srcPort(15)
+                .destSwitch(getSwitchById("00:05")).destPort(15)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
+                .maxLatency(TimeUnit.MILLISECONDS.toNanos(10L))
+                .build();
+
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
+            pathComputer.getPath(flow);
+        });
+        assertThat(exception.getMessage(), endsWith("Latency limit: Requested path must have "
+                + "latency 10ms or lower, but best path has latency 11ms"));
+    }
+
+    @Test
+    public void exceptionInPathComputationWhenPathLatencyGreaterThanMaxLatencyWithoutResultPathLatency() {
+        // In this case the path is not fully calculated, so we can't know the latency of the
+        // full path because there is a point during the path computation where the latency is
+        // already higher than the max_latency property
+        createThreeWaysTopo(TimeUnit.MILLISECONDS);
+        PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
+                new BestWeightAndShortestPathFinder(200), config);
+
+        Flow flow = Flow.builder()
+                .flowId("test flow")
+                .srcSwitch(getSwitchById("00:01")).srcPort(15)
+                .destSwitch(getSwitchById("00:05")).destPort(15)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
+                .maxLatency(TimeUnit.MILLISECONDS.toNanos(1L))
+                .build();
+
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
+            pathComputer.getPath(flow);
+        });
+
+        assertThat(exception.getMessage(), endsWith(
+                "Latency limit: Requested path must have latency 1ms or lower"));
+    }
+
+    private void createThreeWaysTopo(TimeUnit latencyUnit) {
         //   / - B - \
         //  A  - C - E
         //   \ - D - /
@@ -359,12 +410,12 @@ public class MaxLatencyPathComputationStrategyBaseTest extends InMemoryPathCompu
         Switch nodeD = createSwitch(switchStart + format("%02X", index++));
         Switch nodeE = createSwitch(switchStart + format("%02X", index));
 
-        createBiIsl(nodeA, nodeB, IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 1000, 1, 1L);
-        createBiIsl(nodeB, nodeE, IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 1000, 2, 10L);
-        createBiIsl(nodeA, nodeC, IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 1000, 3, 1L);
-        createBiIsl(nodeC, nodeE, IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 1000, 4, 20L);
-        createBiIsl(nodeA, nodeD, IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 1000, 5, 1L);
-        createBiIsl(nodeD, nodeE, IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 1000, 6, 30L);
+        createBiIsl(nodeA, nodeB, IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 1000, 1, latencyUnit.toNanos(1L));
+        createBiIsl(nodeB, nodeE, IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 1000, 2, latencyUnit.toNanos(10L));
+        createBiIsl(nodeA, nodeC, IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 1000, 3, latencyUnit.toNanos(1L));
+        createBiIsl(nodeC, nodeE, IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 1000, 4, latencyUnit.toNanos(20L));
+        createBiIsl(nodeA, nodeD, IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 1000, 5, latencyUnit.toNanos(1L));
+        createBiIsl(nodeD, nodeE, IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 1000, 6, latencyUnit.toNanos(30L));
     }
 
     /**

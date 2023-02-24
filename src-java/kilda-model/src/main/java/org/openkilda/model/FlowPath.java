@@ -187,6 +187,24 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         }
     }
 
+    /**
+     * Checks if ingress endpoint has mirror.
+     * NOTE: this method needs external transaction
+     */
+    public boolean hasIngressMirror() {
+        return getFlowMirrorPointsSet().stream()
+                .anyMatch(point -> point.getMirrorSwitchId().equals(getSrcSwitchId()));
+    }
+
+    /**
+     * Checks if ingress endpoint has mirror.
+     * NOTE: this method needs external transaction
+     */
+    public boolean hasEgressMirror() {
+        return getFlowMirrorPointsSet().stream()
+                .anyMatch(point -> point.getMirrorSwitchId().equals(getDestSwitchId()));
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

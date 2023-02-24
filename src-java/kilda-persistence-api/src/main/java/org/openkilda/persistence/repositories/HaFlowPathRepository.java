@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,7 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.test.standard;
+package org.openkilda.persistence.repositories;
 
-public class ReplaceSchemeOutputCommands extends PushSchemeOutputCommands {
+import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.PathId;
+
+import java.util.Collection;
+import java.util.Optional;
+
+public interface HaFlowPathRepository extends Repository<HaFlowPath> {
+    Collection<HaFlowPath> findAll();
+
+    Optional<HaFlowPath> findById(PathId pathId);
+
+    Collection<HaFlowPath> findByHaFlowId(String haFlowId);
+
+    Optional<HaFlowPath> remove(PathId pathId);
 }

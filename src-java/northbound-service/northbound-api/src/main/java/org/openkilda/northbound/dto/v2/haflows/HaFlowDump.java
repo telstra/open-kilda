@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,19 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flow.model;
+package org.openkilda.northbound.dto.v2.haflows;
 
-import org.openkilda.model.FlowPath;
-import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
-
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
+import lombok.experimental.FieldDefaults;
 
+import java.util.List;
+
+@Data
+@Builder
 @AllArgsConstructor
-@Builder(toBuilder = true)
-@Getter
-public class FlowPathWithEncapsulation {
-    private final FlowPath flowPath;
-    private final EncapsulationResources encapsulation;
+@JsonNaming(SnakeCaseStrategy.class)
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class HaFlowDump {
+    List<HaFlow> haFlows;
 }

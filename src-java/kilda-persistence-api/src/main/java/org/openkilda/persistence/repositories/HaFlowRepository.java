@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,13 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight;
+package org.openkilda.persistence.repositories;
 
-import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
+import org.openkilda.model.HaFlow;
 
-public class OFFactoryMock extends OFFactoryVer13 {
-    @Override
-    public long nextXid() {
-        return 0;
-    }
+import java.util.Collection;
+import java.util.Optional;
+
+public interface HaFlowRepository extends Repository<HaFlow> {
+    Collection<HaFlow> findAll();
+
+    boolean exists(String haFlowId);
+
+    Optional<HaFlow> findById(String haFlowId);
+
+    Optional<HaFlow> remove(String haFlowId);
 }

@@ -17,6 +17,7 @@ package org.openkilda.messaging.info.stats;
 
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -44,12 +45,13 @@ public class UpdateFlowPathInfo extends BaseFlowPathInfo {
     @JsonCreator
     public UpdateFlowPathInfo(@NonNull @JsonProperty("flow_id") String flowId,
                               @JsonProperty("yflow_id") String yFlowId,
+                              @JsonProperty("ypoint_switch_id") SwitchId yPointSwitchId,
                               @NonNull @JsonProperty("cookie") FlowSegmentCookie cookie,
                               @JsonProperty("meter_id") MeterId meterId,
                               @NonNull @JsonProperty("path_nodes") List<PathNodePayload> pathNodes,
                               @JsonProperty("stat_vlans") Set<Integer> statVlans,
                               @JsonProperty("ingress_mirror") boolean ingressMirror,
                               @JsonProperty("egress_mirror") boolean egressMirror) {
-        super(flowId, yFlowId, cookie, meterId, pathNodes, statVlans, ingressMirror, egressMirror);
+        super(flowId, yFlowId, yPointSwitchId, cookie, meterId, pathNodes, statVlans, ingressMirror, egressMirror);
     }
 }

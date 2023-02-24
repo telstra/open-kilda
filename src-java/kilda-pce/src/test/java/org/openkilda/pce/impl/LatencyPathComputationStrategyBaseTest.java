@@ -15,12 +15,15 @@
 
 package org.openkilda.pce.impl;
 
+import static java.lang.String.format;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -36,12 +39,16 @@ import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.BestWeightAndShortestPathFinder;
+import org.openkilda.pce.finder.FailReasonType;
 
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputerBaseTest {
 
@@ -232,10 +239,11 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
                 .pathComputationStrategy(PathComputationStrategy.LATENCY)
                 .build();
 
-        thrown.expect(UnroutableFlowException.class);
-
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        pathComputer.getPath(flow);
+        Exception exception = Assertions.assertThrows(UnroutableFlowException.class, () -> {
+            pathComputer.getPath(flow);
+        });
+        MatcherAssert.assertThat(exception.getMessage(), containsString(FailReasonType.NO_CONNECTION.toString()));
     }
 
     @Test
@@ -352,27 +360,42 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
     @Test
     public void shouldReturnEmptyPathWhenPathHasLatencyGreaterThanMaxLatencyTier2()
             throws RecoverableException, UnroutableFlowException {
-        createTriangleTopo(IslStatus.ACTIVE, 100, 100, "00:", 1);
+        createLinear(100,  "00:", 1, TimeUnit.MILLISECONDS.toNanos(100));
 
         //when: request a flow with LATENCY strategy and 'max-latency-tier-2' is lower than found path
         Flow flow = Flow.builder()
                 .flowId("test flow")
                 .srcSwitch(getSwitchById("00:01")).srcPort(15)
-                .destSwitch(getSwitchById("00:02")).destPort(15)
+                .destSwitch(getSwitchById("00:03")).destPort(15)
                 .bandwidth(500)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .pathComputationStrategy(PathComputationStrategy.LATENCY)
-                .maxLatency(50L)
-                .maxLatencyTier2(70L)
+                .maxLatency(TimeUnit.MILLISECONDS.toNanos(50))
+                .maxLatencyTier2(TimeUnit.MILLISECONDS.toNanos(70))
                 .build();
         PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
                 new BestWeightAndShortestPathFinder(5), config);
 
         //then: system can't find path
-        thrown.expect(UnroutableFlowException.class);
-        pathComputer.getPath(flow);
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
+            pathComputer.getPath(flow);
+        });
+        MatcherAssert.assertThat(exception.getMessage(), containsString("Reasons: Latency limit: "
+                + "Requested path must have latency 70ms or lower, but best path has latency 200ms"));
     }
 
+    private void createLinear(int cost, String switchStart, int startIndex, long latency) {
+        // A - B - C
+        int index = startIndex;
+
+        Switch nodeA = createSwitch(switchStart + format("%02X", index++));
+        Switch nodeB = createSwitch(switchStart + format("%02X", index++));
+        Switch nodeC = createSwitch(switchStart + format("%02X", index));
+
+        createIsl(nodeA, nodeB, IslStatus.ACTIVE, IslStatus.ACTIVE, cost, 1000, 5, latency);
+        createIsl(nodeB, nodeC, IslStatus.ACTIVE, IslStatus.ACTIVE, cost, 1000, 6, latency);
+
+    }
 
     private void createDiamond(IslStatus pathBstatus, IslStatus pathCstatus, long pathBlatency, long pathClatency) {
         createDiamond(pathBstatus, pathCstatus, 10, 10, "00", 1, pathBlatency, pathClatency);

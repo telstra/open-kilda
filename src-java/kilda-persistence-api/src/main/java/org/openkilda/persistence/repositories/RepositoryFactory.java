@@ -87,4 +87,10 @@ public interface RepositoryFactory {
     YFlowRepository createYFlowRepository();
 
     PortRepository createPortRepository();
+
+    HaFlowRepository createHaFlowRepository();
+
+    HaSubFlowRepository createHaSubFlowRepository();
+
+    HaFlowPathRepository createHaFlowPathRepository();
 }
