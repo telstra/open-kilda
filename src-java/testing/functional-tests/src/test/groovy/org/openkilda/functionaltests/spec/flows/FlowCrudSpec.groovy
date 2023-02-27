@@ -3,6 +3,9 @@ package org.openkilda.functionaltests.spec.flows
 import org.openkilda.functionaltests.exception.ExpectedHttpClientErrorException
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.model.PathComputationStrategy
+import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
+import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -67,7 +70,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     final static Integer IMPOSSIBLY_LOW_LATENCY = 1
     final static Long IMPOSSIBLY_HIGH_BANDWIDTH = Long.MAX_VALUE
-    @Autowired @Shared
+    @Autowired
+    @Shared
     Provider<TraffExamService> traffExamProvider
 
     @Shared
@@ -124,7 +128,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         and: "Flow writes stats"
-        if(trafficApplicable) { statsHelper.verifyFlowWritesStats(flow.flowId, beforeTraffic, true) }
+        if (trafficApplicable) {
+            statsHelper.verifyFlowWritesStats(flow.flowId, beforeTraffic, true)
+        }
 
         when: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -178,7 +184,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         where:
         data << [
                 [
-                        description  : "same switch-port but vlans on src and dst are swapped",
+                        description           : "same switch-port but vlans on src and dst are swapped",
                         getNotConflictingFlows: {
                             def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
                             def flow1 = getFlowHelperV2().randomFlow(srcSwitch, dstSwitch).tap {
@@ -194,7 +200,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         }
                 ],
                 [
-                        description  : "same switch-port but vlans on src and dst are different",
+                        description           : "same switch-port but vlans on src and dst are different",
                         getNotConflictingFlows: {
                             def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
                             def flow1 = getFlowHelperV2().randomFlow(srcSwitch, dstSwitch)
@@ -208,7 +214,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         }
                 ],
                 [
-                        description  : "vlan-port of new src = vlan-port of existing dst (+ different src)",
+                        description           : "vlan-port of new src = vlan-port of existing dst (+ different src)",
                         getNotConflictingFlows: {
                             def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
                             def flow1 = getFlowHelperV2().randomFlow(srcSwitch, dstSwitch)
@@ -227,7 +233,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         }
                 ],
                 [
-                        description  : "vlan-port of new dst = vlan-port of existing src (but different switches)",
+                        description           : "vlan-port of new dst = vlan-port of existing src (but different switches)",
                         getNotConflictingFlows: {
                             def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
                             def flow1 = getFlowHelperV2().randomFlow(srcSwitch, dstSwitch).tap {
@@ -243,7 +249,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         }
                 ],
                 [
-                        description  : "vlan of new dst = vlan of existing src and port of new dst = port of " +
+                        description           : "vlan of new dst = vlan of existing src and port of new dst = port of " +
                                 "existing dst",
                         getNotConflictingFlows: {
                             def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
@@ -256,7 +262,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         }
                 ],
                 [
-                        description  : "default and tagged flows on the same port on dst switch",
+                        description           : "default and tagged flows on the same port on dst switch",
                         getNotConflictingFlows: {
                             def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
                             def flow1 = getFlowHelperV2().randomFlow(srcSwitch, dstSwitch)
@@ -268,7 +274,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         }
                 ],
                 [
-                        description  : "default and tagged flows on the same port on src switch",
+                        description           : "default and tagged flows on the same port on src switch",
                         getNotConflictingFlows: {
                             def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
                             def flow1 = getFlowHelperV2().randomFlow(srcSwitch, dstSwitch)
@@ -280,7 +286,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         }
                 ],
                 [
-                        description  : "tagged and default flows on the same port on dst switch",
+                        description           : "tagged and default flows on the same port on dst switch",
                         getNotConflictingFlows: {
                             def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
                             def flow1 = getFlowHelperV2().randomFlow(srcSwitch, dstSwitch).tap {
@@ -293,7 +299,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         }
                 ],
                 [
-                        description  : "tagged and default flows on the same port on src switch",
+                        description           : "tagged and default flows on the same port on src switch",
                         getNotConflictingFlows: {
                             def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
                             def flow1 = getFlowHelperV2().randomFlow(srcSwitch, dstSwitch).tap {
@@ -306,7 +312,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         }
                 ],
                 [
-                        description  : "default and tagged flows on the same ports on src and dst switches",
+                        description           : "default and tagged flows on the same ports on src and dst switches",
                         getNotConflictingFlows: {
                             def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
                             def flow1 = getFlowHelperV2().randomFlow(srcSwitch, dstSwitch)
@@ -320,7 +326,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         }
                 ],
                 [
-                        description  : "tagged and default flows on the same ports on src and dst switches",
+                        description           : "tagged and default flows on the same ports on src and dst switches",
                         getNotConflictingFlows: {
                             def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
                             def flow1 = getFlowHelperV2().randomFlow(srcSwitch, dstSwitch).tap {
@@ -572,7 +578,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
             validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
             def swProps = switchHelper.getCachedSwProps(it.dpId)
             def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
-            def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
+            def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId, dstSwitch.dpId]) ? 1 : 0
             if (swProps.multiTable && swProps.server42FlowRtt) {
                 if ((flow.destination.getSwitchId() == it.dpId && flow.destination.vlanId) || (flow.source.getSwitchId() == it.dpId && flow.source.vlanId))
                     amountOfServer42Rules += 1
@@ -601,17 +607,19 @@ class FlowCrudSpec extends HealthCheckSpecification {
         !actualException && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
-        problem |   update    | expectedException
-        "invalid encapsulation type"|
-        {FlowRequestV2 flowToSpoil ->
-            flowToSpoil.setEncapsulationType("fake")
-        return flowToSpoil} |
-        new ExpectedHttpClientErrorException(HttpStatus.BAD_REQUEST, ~/Can not parse arguments of the create flow request/)
-        "unavailable latency" |
-                {FlowRequestV2 flowToSpoil ->
-            flowToSpoil.setMaxLatency(IMPOSSIBLY_LOW_LATENCY)
-            flowToSpoil.setPathComputationStrategy(PathComputationStrategy.MAX_LATENCY.toString())
-        return flowToSpoil}|
+        problem                      | update                                                              | expectedException
+        "invalid encapsulation type" |
+                { FlowRequestV2 flowToSpoil ->
+                    flowToSpoil.setEncapsulationType("fake")
+                    return flowToSpoil
+                }                                                                                          |
+                new ExpectedHttpClientErrorException(HttpStatus.BAD_REQUEST, ~/Can not parse arguments of the create flow request/)
+        "unavailable latency"        |
+                { FlowRequestV2 flowToSpoil ->
+                    flowToSpoil.setMaxLatency(IMPOSSIBLY_LOW_LATENCY)
+                    flowToSpoil.setPathComputationStrategy(PathComputationStrategy.MAX_LATENCY.toString())
+                    return flowToSpoil
+                }                                                                                          |
                 new ExpectedHttpClientErrorException(HttpStatus.NOT_FOUND,
                         ~/Latency limit: Requested path must have latency ${
                             IMPOSSIBLY_LOW_LATENCY}ms or lower, but best path has latency \d+ms/)
@@ -640,7 +648,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         expectedException.equals(actualException)
 
         cleanup: "Remove the flow"
-        Wrappers.silent {flowHelperV2.deleteFlow(flow.flowId)}
+        Wrappers.silent { flowHelperV2.deleteFlow(flow.flowId) }
     }
 
     @Tidy
@@ -667,22 +675,22 @@ class FlowCrudSpec extends HealthCheckSpecification {
         where:
         data << [
                 [
-                        switchType: "source",
-                        port      : "srcPort",
-                        errorMessage : { Isl violatedIsl ->
+                        switchType      : "source",
+                        port            : "srcPort",
+                        errorMessage    : { Isl violatedIsl ->
                             "Could not create flow"
                         },
-                        errorDescription   : { Isl violatedIsl ->
+                        errorDescription: { Isl violatedIsl ->
                             getPortViolationError("source", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
                         }
                 ],
                 [
-                        switchType: "destination",
-                        port      : "dstPort",
-                        errorMessage : { Isl violatedIsl ->
+                        switchType      : "destination",
+                        port            : "dstPort",
+                        errorMessage    : { Isl violatedIsl ->
                             "Could not create flow"
                         },
-                        errorDescription   : { Isl violatedIsl ->
+                        errorDescription: { Isl violatedIsl ->
                             getPortViolationError("destination", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
                         }
                 ]
@@ -829,7 +837,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(LOW_PRIORITY)
-    def "System allows to set/update description/priority/max-latency for a flow"(){
+    def "System allows to set/update description/priority/max-latency for a flow"() {
         given: "Two active neighboring switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
 
@@ -894,11 +902,11 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def endpointName = "source"
 
         def swWithoutVxlan = swPair.src
-        def encapsTypesWithoutVxlan = srcProps.supportedTransitEncapsulation.collect {it.toString().toUpperCase()}
+        def encapsTypesWithoutVxlan = srcProps.supportedTransitEncapsulation.collect { it.toString().toUpperCase() }
 
         if (srcProps.supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())) {
             swWithoutVxlan = swPair.dst
-            encapsTypesWithoutVxlan = dstProps.supportedTransitEncapsulation.collect {it.toString().toUpperCase()}
+            encapsTypesWithoutVxlan = dstProps.supportedTransitEncapsulation.collect { it.toString().toUpperCase() }
             endpointName = "destination"
         }
 
@@ -998,11 +1006,11 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "Flow history shows actual info into stateBefore and stateAfter sections"
         def flowHistory = northbound.getFlowHistory(flow.flowId)
-        with(flowHistory.last().dumps.find { it.type == "stateBefore" }){
+        with(flowHistory.last().dumps.find { it.type == "stateBefore" }) {
             it.sourcePort == flow.source.portNumber
             it.sourceVlan == flow.source.vlanId
         }
-        with(flowHistory.last().dumps.find { it.type == "stateAfter" }){
+        with(flowHistory.last().dumps.find { it.type == "stateAfter" }) {
             it.sourcePort == updatedFlow.source.portNumber
             it.sourceVlan == updatedFlow.source.vlanId
         }
@@ -1052,10 +1060,10 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "Flow history shows actual info into stateBefore and stateAfter sections"
         def flowHistory2 = northbound.getFlowHistory(flow.flowId)
-        with(flowHistory2.last().dumps.find { it.type == "stateBefore" }){
+        with(flowHistory2.last().dumps.find { it.type == "stateBefore" }) {
             it.destinationSwitch == dstSwitch.dpId.toString()
         }
-        with(flowHistory2.last().dumps.find { it.type == "stateAfter" }){
+        with(flowHistory2.last().dumps.find { it.type == "stateAfter" }) {
             it.destinationSwitch == newDstSwitch.dpId.toString()
         }
 
@@ -1206,9 +1214,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         then: "Update the flow: port number and vlanId on the src/dst endpoints"
         def updatedFlow = flow.jacksonCopy().tap {
-            it.source.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.src.dpId}.switchPort
+            it.source.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.src.dpId }.switchPort
             it.source.vlanId = updatedFlowDstEndpoint.source.vlanId - 1
-            it.destination.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.dst.dpId}.switchPort
+            it.destination.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.dst.dpId }.switchPort
             it.destination.vlanId = updatedFlowDstEndpoint.destination.vlanId - 1
         }
         flowHelperV2.updateFlow(flow.flowId, updatedFlow)
@@ -1270,7 +1278,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         when: "Update the dst endpoint to make this flow as multi switch flow"
         def newPortNumber = topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
-            it.dpId == swPair.dst.dpId }
+            it.dpId == swPair.dst.dpId
+        }
         ).first()
         flowHelperV2.updateFlow(flow.flowId, flow.tap {
             it.destination.switchId = swPair.dst.dpId
@@ -1291,7 +1300,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         and: "Involved switches pass switch validation"
-        [swPair.src, swPair.dst].each {sw ->
+        [swPair.src, swPair.dst].each { sw ->
             with(northbound.validateSwitch(sw.dpId)) { validation ->
                 validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
                 validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
@@ -1320,6 +1329,51 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         cleanup:
         !error && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    def "Able to #method with empty VLAN stats and non-zero VLANs (#5063)"() {
+        given: "A flow with non empty vlans stats and with src and dst vlans set to '0'"
+        def switches = topologyHelper.getSwitchPairs().shuffled().first()
+        def flowRequest = flowHelperV2.randomFlow(switches, false).tap {
+            it.source.tap { it.vlanId = 0 }
+            it.destination.tap { it.vlanId = 0 }
+            it.statistics = new FlowStatistics([1, 2, 3] as Set)
+        }
+        def flow = flowHelperV2.addFlow(flowRequest)
+        def UNUSED_VLAN = 1909
+
+        when: "Try to #method update flow with empty VLAN stats and non-zero VLANs"
+        def updatedFlow = updateCall(flow.getFlowId(), flowRequest, UNUSED_VLAN)
+
+        then: "Flow is really updated"
+        def actualFlow = northboundV2.getFlow(flow.getFlowId())
+        actualFlow.getSource() == updatedFlow.getSource()
+        actualFlow.getDestination() == updatedFlow.getDestination()
+        actualFlow.getStatistics() == updatedFlow.getStatistics()
+
+        cleanup:
+        Wrappers.silent {
+            flowHelperV2.deleteFlow(flow.getFlowId())
+        }
+
+        where:
+        method           | updateCall
+        "partial" | { String flowId, FlowRequestV2 originalFlow, Integer newVlan ->
+            flowHelperV2.partialUpdate(flowId, new FlowPatchV2().tap {
+                it.source = new FlowPatchEndpoint().tap {it.vlanId = newVlan}
+                it.destination = new FlowPatchEndpoint().tap {it.vlanId = newVlan}
+                it.statistics = new FlowStatistics([] as Set)
+            })
+        }
+        ""|  { String flowId, FlowRequestV2 originalFlow, Integer newVlan  ->
+            flowHelperV2.updateFlow(flowId, originalFlow.tap {
+                it.source = originalFlow.source.tap{it.vlanId = newVlan}
+                it.destination = originalFlow.destination.tap{it.vlanId = newVlan}
+                it.statistics = new FlowStatistics([] as Set)
+            })
+
+        }
     }
 
     @Shared
@@ -1485,12 +1539,12 @@ class FlowCrudSpec extends HealthCheckSpecification {
                             flowToConflict.source.portNumber = dominantFlow.source.portNumber
                             flowToConflict.source.vlanId = dominantFlow.source.vlanId
                         },
-                        getErrorMessage            : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
-                                                       String operation = "create" ->
+                        getErrorMessage     : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
+                                                String operation = "create" ->
                             "Could not $operation flow"
                         },
-                        getErrorDescription        : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
-                                                       String operation = "create" ->
+                        getErrorDescription : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
+                                                String operation = "create" ->
                             errorDescription(operation, dominantFlow, "source", flowToConflict, "source")
                         }
                 ],
@@ -1500,12 +1554,12 @@ class FlowCrudSpec extends HealthCheckSpecification {
                             flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
                             flowToConflict.destination.vlanId = dominantFlow.destination.vlanId
                         },
-                        getErrorMessage            : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
-                                                       String operation = "create" ->
+                        getErrorMessage     : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
+                                                String operation = "create" ->
                             "Could not $operation flow"
                         },
-                        getErrorDescription        : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
-                                                       String operation = "create" ->
+                        getErrorDescription : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
+                                                String operation = "create" ->
                             errorDescription(operation, dominantFlow, "destination", flowToConflict, "destination")
                         }
                 ],
@@ -1516,12 +1570,12 @@ class FlowCrudSpec extends HealthCheckSpecification {
                             flowToConflict.source.vlanId = 0
                             dominantFlow.source.vlanId = 0
                         },
-                        getErrorMessage            : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
-                                                       String operation = "create" ->
+                        getErrorMessage     : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
+                                                String operation = "create" ->
                             "Could not $operation flow"
                         },
-                        getErrorDescription        : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
-                                                       String operation = "create" ->
+                        getErrorDescription : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
+                                                String operation = "create" ->
                             errorDescription(operation, dominantFlow, "source", flowToConflict, "source")
                         }
                 ],
@@ -1532,12 +1586,12 @@ class FlowCrudSpec extends HealthCheckSpecification {
                             flowToConflict.destination.vlanId = 0
                             dominantFlow.destination.vlanId = 0
                         },
-                        getErrorMessage            : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
-                                                       String operation = "create" ->
+                        getErrorMessage     : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
+                                                String operation = "create" ->
                             "Could not $operation flow"
                         },
-                        getErrorDescription        : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
-                                                       String operation = "create" ->
+                        getErrorDescription : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
+                                                String operation = "create" ->
                             errorDescription(operation, dominantFlow, "destination", flowToConflict, "destination")
                         }
                 ]
