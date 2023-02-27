@@ -162,6 +162,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         if (trafficApplicable) {
             statsHelper.verifyYFlowWritesStats(yFlow, beforeTraffic, trafficApplicable)
         }
+
         when: "Delete the y-flow"
         northboundV2.deleteYFlow(yFlow.YFlowId)
 
