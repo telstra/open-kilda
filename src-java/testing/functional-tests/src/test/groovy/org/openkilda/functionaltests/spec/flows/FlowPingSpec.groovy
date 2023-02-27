@@ -80,10 +80,6 @@ class FlowPingSpec extends HealthCheckSpecification {
         // response.reverse.latency
 
         and: "Unicast rule packet count is increased and logged to otsdb"
-//        statsHelper.'ping packets count on switch'(beforePingTime,
-//                srcSwitch,
-//                VERIFICATION_UNICAST_RULE) > unicastCounterBefore
-
 
         Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
             assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.find {
@@ -133,9 +129,6 @@ class FlowPingSpec extends HealthCheckSpecification {
 
 
         and: "Unicast rule packet count is increased and logged to otsdb"
-//        statsHelper."ping packets count on switch"(beforePingTime,
-//                switchPair.src,
-//                VERIFICATION_UNICAST_VXLAN_RULE_COOKIE) > unicastCounterBefore
 
         Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
             assert northbound.getSwitchRules(switchPair.src.dpId).flowEntries.find {
