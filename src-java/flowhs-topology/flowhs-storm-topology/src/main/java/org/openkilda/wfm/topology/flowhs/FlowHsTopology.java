@@ -69,6 +69,10 @@ import org.openkilda.wfm.topology.flowhs.bolts.FlowSyncHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowUpdateHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowUpdateHubBolt.FlowUpdateConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowValidationHubBolt;
+import org.openkilda.wfm.topology.flowhs.bolts.HaFlowCreateHubBolt;
+import org.openkilda.wfm.topology.flowhs.bolts.HaFlowDeleteHubBolt;
+import org.openkilda.wfm.topology.flowhs.bolts.HaFlowReadBolt;
+import org.openkilda.wfm.topology.flowhs.bolts.HaFlowUpdateHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.RouterBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.SpeakerWorkerBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.SpeakerWorkerForDumpsBolt;
@@ -133,6 +137,10 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         yFlowReadBolt(tb, persistenceManager);
         yFlowValidationHub(tb, persistenceManager);
         yFlowPathSwapHub(tb, persistenceManager);
+        haFlowCreateHub(tb, persistenceManager);
+        haFlowUpdateHub(tb, persistenceManager);
+        haFlowDeleteHub(tb, persistenceManager);
+        haFlowReadBolt(tb, persistenceManager);
 
         speakerSpout(tb);
         speakerWorkers(tb);
@@ -661,6 +669,34 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .directGrouping(CoordinatorBolt.ID);
     }
 
+
+    private void haFlowCreateHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
+        HaFlowCreateHubBolt hubBolt = new HaFlowCreateHubBolt(persistenceManager);
+        declareBolt(topologyBuilder, hubBolt, ComponentId.HA_FLOW_CREATE_HUB.name())
+                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(),
+                        Stream.ROUTER_TO_HA_FLOW_CREATE_HUB.name(), FLOW_FIELD);
+    }
+
+    private void haFlowUpdateHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
+        HaFlowUpdateHubBolt hubBolt = new HaFlowUpdateHubBolt(persistenceManager);
+        declareBolt(topologyBuilder, hubBolt, ComponentId.HA_FLOW_UPDATE_HUB.name())
+                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(),
+                        Stream.ROUTER_TO_HA_FLOW_UPDATE_HUB.name(), FLOW_FIELD);
+    }
+
+    private void haFlowDeleteHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
+        HaFlowDeleteHubBolt hubBolt = new HaFlowDeleteHubBolt(persistenceManager);
+        declareBolt(topologyBuilder, hubBolt, ComponentId.HA_FLOW_DELETE_HUB.name())
+                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(),
+                        Stream.ROUTER_TO_HA_FLOW_DELETE_HUB.name(), FLOW_FIELD);
+    }
+
+    private void haFlowReadBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
+        HaFlowReadBolt bolt = new HaFlowReadBolt(persistenceManager);
+        declareBolt(topologyBuilder, bolt, ComponentId.HA_FLOW_READ_BOLT.name())
+                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), Stream.ROUTER_TO_HA_FLOW_READ.name(), FIELDS_KEY);
+    }
+
     private void speakerSpout(TopologyBuilder topologyBuilder) {
         declareKafkaSpoutForAbstractMessage(topologyBuilder, getConfig().getKafkaFlowSpeakerWorkerTopic(),
                 ComponentId.SPEAKER_WORKER_SPOUT.name());
@@ -799,15 +835,17 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.FLOW_VALIDATION_HUB.name(),
                         Stream.HUB_TO_NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.YFLOW_CREATE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
-                .shuffleGrouping(ComponentId.YFLOW_UPDATE_HUB.name(),
-                        Stream.HUB_TO_NB_RESPONSE_SENDER.name())
-                .shuffleGrouping(ComponentId.YFLOW_REROUTE_HUB.name(),
-                        Stream.HUB_TO_NB_RESPONSE_SENDER.name())
+                .shuffleGrouping(ComponentId.YFLOW_UPDATE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
+                .shuffleGrouping(ComponentId.YFLOW_REROUTE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(ComponentId.YFLOW_DELETE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
                 .shuffleGrouping(YFlowSyncHubBolt.BOLT_ID, YFlowSyncHubBolt.STREAM_NB_RESPONSE)
                 .shuffleGrouping(ComponentId.YFLOW_READ_BOLT.name())
                 .shuffleGrouping(ComponentId.YFLOW_VALIDATION_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
-                .shuffleGrouping(ComponentId.YFLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name());
+                .shuffleGrouping(ComponentId.YFLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
+                .shuffleGrouping(ComponentId.HA_FLOW_CREATE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
+                .shuffleGrouping(ComponentId.HA_FLOW_UPDATE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
+                .shuffleGrouping(ComponentId.HA_FLOW_DELETE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name())
+                .shuffleGrouping(ComponentId.HA_FLOW_READ_BOLT.name());
     }
 
     private void rerouteTopologyOutput(TopologyBuilder topologyBuilder) {
@@ -1009,6 +1047,11 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         YFLOW_VALIDATION_SPEAKER_WORKER("y_flow.validation.worker.bolt"),
 
+        HA_FLOW_CREATE_HUB("ha_flow.create.hub.bolt"),
+        HA_FLOW_UPDATE_HUB("ha_flow.update.hub.bolt"),
+        HA_FLOW_DELETE_HUB("ha_flow.delete.hub.bolt"),
+        HA_FLOW_READ_BOLT("ha_flow.read.bolt"),
+
         NB_RESPONSE_SENDER("nb.kafka.bolt"),
         REROUTE_RESPONSE_SENDER("reroute.kafka.bolt"),
         RESPONSE_SENDER("response.kafka.bolt"),
@@ -1056,6 +1099,10 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         ROUTER_TO_YFLOW_READ,
         ROUTER_TO_YFLOW_VALIDATION_HUB,
         ROUTER_TO_YFLOW_PATH_SWAP_HUB,
+        ROUTER_TO_HA_FLOW_CREATE_HUB,
+        ROUTER_TO_HA_FLOW_UPDATE_HUB,
+        ROUTER_TO_HA_FLOW_DELETE_HUB,
+        ROUTER_TO_HA_FLOW_READ,
 
         HUB_TO_SPEAKER_WORKER,
         HUB_TO_HISTORY_TOPOLOGY_SENDER,

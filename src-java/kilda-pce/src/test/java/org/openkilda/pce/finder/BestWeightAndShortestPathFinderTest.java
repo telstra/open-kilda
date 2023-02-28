@@ -17,6 +17,7 @@ package org.openkilda.pce.finder;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.endsWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
@@ -229,24 +230,24 @@ public class BestWeightAndShortestPathFinderTest {
 
     @Test
     public void shouldFailWhenPathIsLongerThanAllowedDepth() {
+        int allowedDepth = 1;
         AvailableNetwork network = buildTestNetwork();
-
-        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(1);
+        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(allowedDepth);
 
         Exception exception = assertThrows(UnroutableFlowException.class, () -> {
             pathFinder.findPathWithMinWeight(network, SWITCH_ID_D, SWITCH_ID_F, WEIGHT_FUNCTION);
         });
 
         MatcherAssert.assertThat(exception.getMessage(),
-                containsString(FailReasonType.ALLOWED_DEPTH_EXCEEDED.toString()));
+                endsWith(FailReasonType.ALLOWED_DEPTH_EXCEEDED + ": Max allowed depth is " + allowedDepth));
     }
 
     @Test
     public void shouldFailWhenPathIsLongerThanAllowedDepthMaxWeightStrategy() throws UnroutableFlowException {
+        int allowedDepth = 1;
         AvailableNetwork network = buildTestNetwork();
 
-        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(1);
-
+        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(allowedDepth);
 
         Exception exception = assertThrows(UnroutableFlowException.class, () -> {
             pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_D, SWITCH_ID_F, WEIGHT_FUNCTION,
@@ -254,7 +255,7 @@ public class BestWeightAndShortestPathFinderTest {
         });
 
         MatcherAssert.assertThat(exception.getMessage(),
-                containsString(FailReasonType.ALLOWED_DEPTH_EXCEEDED.toString()));
+                endsWith(FailReasonType.ALLOWED_DEPTH_EXCEEDED + ": Max allowed depth is " + allowedDepth));
     }
 
     @Test

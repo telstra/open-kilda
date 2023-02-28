@@ -893,7 +893,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
                 it.state == IslChangeType.FAILED
             }.size() == broughtDownPorts.size() * 2
         }
-
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = true })
 

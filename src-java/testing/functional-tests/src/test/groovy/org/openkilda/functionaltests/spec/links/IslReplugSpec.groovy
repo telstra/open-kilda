@@ -266,7 +266,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/3780")
+    @Ignore("https://github.com/telstra/open-kilda/issues/5099")
     def "User is able to replug ISL with enabled BFD, receive new ISL, enable bfd on it and replug back"() {
         given: "An ISL with BFD and ability to replug"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort &&
