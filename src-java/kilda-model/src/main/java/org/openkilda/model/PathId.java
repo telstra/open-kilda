@@ -25,7 +25,7 @@ import java.io.Serializable;
  * Represents a flow path id.
  */
 @Value
-public class PathId implements Serializable {
+public class PathId implements Serializable, Comparable<PathId> {
     private static final long serialVersionUID = 1L;
 
     @NonNull
@@ -39,5 +39,10 @@ public class PathId implements Serializable {
     @Override
     public String toString() {
         return id;
+    }
+
+    @Override
+    public int compareTo(@NonNull PathId pathId) {
+        return id.compareTo(pathId.id);
     }
 }

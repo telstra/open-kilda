@@ -27,6 +27,10 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.haflows.HaFlow;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.links.BfdProperties;
 import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
@@ -171,4 +175,17 @@ public interface NorthboundServiceV2 {
     SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId);
 
     SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId, String include, String exclude);
+
+    //ha-flows
+    HaFlow getHaFlow(String haFlowId);
+
+    List<HaFlow> getAllHaFlows();
+
+    HaFlow addHaFlow(HaFlowCreatePayload request);
+
+    HaFlow updateHaFlow(String haFlowId, HaFlowUpdatePayload request);
+
+    HaFlow partialUpdateHaFlow(String haFlowId, HaFlowPatchPayload request);
+
+    HaFlow deleteHaFlow(String haFlowId);
 }

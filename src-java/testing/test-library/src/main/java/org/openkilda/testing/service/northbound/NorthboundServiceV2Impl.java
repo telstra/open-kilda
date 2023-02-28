@@ -28,6 +28,12 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.haflows.HaFlow;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowDump;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
+import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
 import org.openkilda.northbound.dto.v2.links.BfdProperties;
 import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
@@ -483,8 +489,17 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         return yFlow;
     }
 
+    private HaFlow sorted(@Nullable HaFlow haFlow) {
+        haFlow.getSubFlows().sort(Comparator.comparing(HaSubFlow::getFlowId));
+        return haFlow;
+    }
+
     private List<YFlow> sorted(List<YFlow> yFlows) {
         return yFlows.stream().map(this::sorted).collect(Collectors.toList());
+    }
+
+    private List<HaFlow> sortedHaFlows(List<HaFlow> haFlows) {
+        return haFlows.stream().map(this::sorted).collect(Collectors.toList());
     }
 
     @Override
@@ -510,5 +525,50 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
                 uriBuilder.build().toString(), HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResultV2.class, switchId).getBody());
         return new SwitchValidationV2ExtendedResult(switchId, result);
+    }
+
+    @Override
+    public HaFlow getHaFlow(String haFlowId) {
+        try {
+            return sorted(restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}", HttpMethod.GET,
+                    new HttpEntity(buildHeadersWithCorrelationId()), HaFlow.class, haFlowId).getBody());
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
+                throw ex;
+            }
+            return null;
+        }
+    }
+
+    @Override
+    public List<HaFlow> getAllHaFlows() {
+        return sortedHaFlows(restTemplate.exchange("/api/v2/ha-flows", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), HaFlowDump.class).getBody().getHaFlows());
+    }
+
+    @Override
+    public HaFlow addHaFlow(HaFlowCreatePayload request) {
+        HttpEntity<HaFlowCreatePayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return sorted(restTemplate.exchange("/api/v2/ha-flows", HttpMethod.POST, httpEntity, HaFlow.class).getBody());
+    }
+
+    @Override
+    public HaFlow updateHaFlow(String haFlowId, HaFlowUpdatePayload request) {
+        HttpEntity<HaFlowUpdatePayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return sorted(restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}", HttpMethod.PUT, httpEntity, HaFlow.class,
+                haFlowId).getBody());
+    }
+
+    @Override
+    public HaFlow partialUpdateHaFlow(String haFlowId, HaFlowPatchPayload request) {
+        HttpEntity<HaFlowPatchPayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return sorted(restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}", HttpMethod.PATCH, httpEntity,
+                HaFlow.class, haFlowId).getBody());
+    }
+
+    @Override
+    public HaFlow deleteHaFlow(String haFlowId) {
+        return sorted(restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}", HttpMethod.DELETE,
+                new HttpEntity(buildHeadersWithCorrelationId()), HaFlow.class, haFlowId).getBody());
     }
 }

@@ -190,6 +190,21 @@ public class RepositoryFactoryProxy implements RepositoryFactory {
         return resolve(PortRepository.class).createPortRepository();
     }
 
+    @Override
+    public HaFlowRepository createHaFlowRepository() {
+        return resolve(HaFlowRepository.class).createHaFlowRepository();
+    }
+
+    @Override
+    public HaSubFlowRepository createHaSubFlowRepository() {
+        return resolve(HaSubFlowRepository.class).createHaSubFlowRepository();
+    }
+
+    @Override
+    public HaFlowPathRepository createHaFlowPathRepository() {
+        return resolve(HaFlowPathRepository.class).createHaFlowPathRepository();
+    }
+
     private RepositoryFactory resolve(Class<?> repositoryClass) {
         PersistenceArea area = RepositoryAreaBinding.INSTANCE.lookup(repositoryClass);
         PersistenceImplementation implementation = manager.getImplementation(area);

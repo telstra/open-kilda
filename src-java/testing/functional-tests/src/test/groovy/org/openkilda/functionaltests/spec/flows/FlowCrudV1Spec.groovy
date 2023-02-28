@@ -827,7 +827,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2576")
     @Tidy
     @Tags(VIRTUAL)
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
@@ -841,8 +840,8 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $sw.dpId not found"
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Could not create flow"
 
         cleanup: "Activate the switch and reset costs"
         blockData && switchHelper.reviveSwitch(sw, blockData, true)
