@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: dstudeny
+      changes:
+        - tagDatabase:
+            tag: 024-add-description-prop
+
+  - changeSet:
+      id: add_description_prop
+      author: dstudeny
+      changes:
+        - sql: "CREATE PROPERTY isl.description IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY link_props.description IF NOT EXISTS STRING"
+      rollback:
+        - sql: "DROP PROPERTY isl.description"
+        - sql: "DROP PROPERTY link_props.description"

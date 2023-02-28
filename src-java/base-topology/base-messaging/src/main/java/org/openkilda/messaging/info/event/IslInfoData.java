@@ -36,7 +36,7 @@ import java.util.Objects;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @EqualsAndHashCode(of = {"latency", "source", "destination", "speed", "availableBandwidth", "maxBandwidth",
         "defaultMaxBandwidth", "state", "actualState", "roundTripStatus", "cost", "underMaintenance", "enableBfd",
-        "bfdSessionStatus"},
+        "bfdSessionStatus", "description"},
         callSuper = false)
 public class IslInfoData extends CacheTimeTag {
     /**
@@ -101,6 +101,9 @@ public class IslInfoData extends CacheTimeTag {
     @JsonProperty("bfd_session_status")
     private String bfdSessionStatus;
 
+    @JsonProperty("description")
+    private String description;
+
     private PathNode source;
     private PathNode destination;
 
@@ -133,7 +136,8 @@ public class IslInfoData extends CacheTimeTag {
                 that.isUnderMaintenance(),
                 that.isEnableBfd(),
                 that.getBfdSessionStatus(),
-                that.getPacketId());
+                that.getPacketId(),
+                that.getDescription());
     }
 
     /**
@@ -141,7 +145,7 @@ public class IslInfoData extends CacheTimeTag {
      */
     public IslInfoData(PathNode source, PathNode destination, IslChangeType state, boolean underMaintenance) {
         this(-1, source, destination, 0, 0, 0, 0, state, null, null, 0, null, null, underMaintenance, false, null,
-                null);
+                null, null);
     }
 
     @Builder(toBuilder = true)
@@ -162,7 +166,8 @@ public class IslInfoData extends CacheTimeTag {
                        @JsonProperty("under_maintenance") boolean underMaintenance,
                        @JsonProperty("enable_bfd") boolean enableBfd,
                        @JsonProperty("bfd_session_status") String bfdSessionStatus,
-                       @JsonProperty("packet_id") Long packetId) {
+                       @JsonProperty("packet_id") Long packetId,
+                       @JsonProperty("description") String description) {
         this.latency = latency;
         this.source = source;
         this.destination = destination;
@@ -181,6 +186,7 @@ public class IslInfoData extends CacheTimeTag {
         this.enableBfd = enableBfd;
         this.bfdSessionStatus = bfdSessionStatus;
         this.packetId = packetId;
+        this.description = description;
     }
 
     /**

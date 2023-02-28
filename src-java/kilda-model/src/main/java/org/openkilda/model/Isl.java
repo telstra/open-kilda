@@ -142,7 +142,8 @@ public class Isl implements CompositeDataEntity<Isl.IslData> {
                 getSpeed(), getCost(), getMaxBandwidth(), getDefaultMaxBandwidth(), getAvailableBandwidth(),
                 getStatus(), getActualStatus(), getRoundTripStatus(), getDownReason(),
                 getTimeCreate(), getTimeModify(),
-                isUnderMaintenance(), getBfdInterval(), getBfdMultiplier(), getBfdSessionStatus(), getTimeUnstable());
+                isUnderMaintenance(), getBfdInterval(), getBfdMultiplier(),
+                getBfdSessionStatus(), getTimeUnstable(), getDescription());
     }
 
     @Override
@@ -249,6 +250,10 @@ public class Isl implements CompositeDataEntity<Isl.IslData> {
         Instant getTimeUnstable();
 
         void setTimeUnstable(Instant timeUnstable);
+
+        String getDescription();
+
+        void setDescription(String description);
     }
 
     /**
@@ -281,6 +286,7 @@ public class Isl implements CompositeDataEntity<Isl.IslData> {
         Short bfdMultiplier;
         BfdSessionStatus bfdSessionStatus;
         Instant timeUnstable;
+        String description;
 
         @Override
         public SwitchId getSrcSwitchId() {

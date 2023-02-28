@@ -76,7 +76,8 @@ public class LinkMapperTest {
                 false,
                 true,
                 BFD_SESSION_STATUS,
-                PACKET_ID);
+                PACKET_ID,
+                null);
 
         LinkDto response = linkMapper.mapResponse(islInfoData);
 

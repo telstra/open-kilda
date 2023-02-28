@@ -83,4 +83,7 @@ databaseChangeLog:
       file: 023-add-lacp-reply-into-lag-class.yaml
   - include:
       relativeToChangelogFile: true
+      file: 024-add-description-prop
+  - include:
+      relativeToChangelogFile: true
       file: 024-add-ha-flow-classes.yaml

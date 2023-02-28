@@ -153,7 +153,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "Updating cost and max bandwidth via link props actually updates cost and max bandwidth on ISLs"() {
+    def "Updating cost, max bandwidth and description via link props actually updates cost, max bandwidth and description on ISLs"() {
         given: "An active ISL"
         def isl = topology.islsForActiveSwitches.first()
         def initialMaxBandwidth = islUtils.getIslInfo(isl).get().maxBandwidth
@@ -161,7 +161,12 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         when: "Create link props of ISL to update cost and max bandwidth on the forward and reverse directions"
         def costValue = "12345"
         def maxBandwidthValue = "54321"
-        def linkProps = [islUtils.toLinkProps(isl, ["cost": costValue, "max_bandwidth": maxBandwidthValue])]
+        def descriptionValue = "Description test"
+        def linkProps = [islUtils.toLinkProps(isl, [
+                "cost": costValue,
+                "max_bandwidth": maxBandwidthValue,
+                "description": descriptionValue
+        ])]
         northbound.updateLinkProps(linkProps)
         assert northbound.getLinkProps(topology.isls).size() == 2
 
@@ -173,6 +178,10 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         def updatedLinks = northbound.getAllLinks()
         islUtils.getIslInfo(updatedLinks, isl).get().maxBandwidth == maxBandwidthValue.toInteger()
         islUtils.getIslInfo(updatedLinks, isl.reversed).get().maxBandwidth == maxBandwidthValue.toInteger()
+
+        and: "Description on forward and reverse ISLs us really updated as well"
+        islUtils.getIslInfo(updatedLinks, isl).get().description == descriptionValue
+        islUtils.getIslInfo(updatedLinks, isl.reversed).get().description == descriptionValue
 
         when: "Update link props on the forward direction of ISL to update cost one more time"
         def newCostValue = "345"
@@ -199,6 +208,10 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         def links = northbound.getAllLinks()
         islUtils.getIslInfo(links, isl).get().maxBandwidth == initialMaxBandwidth
         islUtils.getIslInfo(links, isl.reversed).get().maxBandwidth == initialMaxBandwidth
+
+        and: "Description on forward and reverse ISLs are removed"
+        islUtils.getIslInfo(links, isl).get().description == null
+        islUtils.getIslInfo(links, isl.reversed).get().description == null
 
         cleanup:
         !linkPropsAreDeleted && northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
