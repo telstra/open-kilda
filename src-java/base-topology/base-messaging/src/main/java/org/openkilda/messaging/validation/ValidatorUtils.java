@@ -1,4 +1,4 @@
-/* Copyright 2022 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,11 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.validation;
+package org.openkilda.messaging.validation;
 
 import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
 
 import java.util.concurrent.TimeUnit;
 

@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 
+import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;

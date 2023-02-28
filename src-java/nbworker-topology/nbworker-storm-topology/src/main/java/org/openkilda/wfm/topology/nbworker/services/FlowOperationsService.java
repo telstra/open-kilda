@@ -23,6 +23,7 @@ import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
@@ -34,6 +35,7 @@ import org.openkilda.messaging.model.PatchEndpoint;
 import org.openkilda.messaging.nbtopology.request.FlowsDumpRequest;
 import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse.FlowMirrorPoint;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.messaging.validation.ValidatorUtils;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowFilter;
@@ -147,7 +149,7 @@ public class FlowOperationsService {
      */
     public Collection<FlowStats> getFlowStats() {
         return transactionManager.doInTransaction(getReadOperationRetryPolicy(),
-                () -> flowStatsRepository.findAll());
+                flowStatsRepository::findAll);
     }
 
     /**
@@ -193,7 +195,7 @@ public class FlowOperationsService {
         }
 
         Collection<FlowPath> paths = flowPathRepository.findWithPathSegment(srcSwitchId, srcPort, dstSwitchId, dstPort);
-        paths.forEach(path -> flowPathRepository.detach(path));
+        paths.forEach(flowPathRepository::detach);
         return paths;
     }
 
@@ -247,7 +249,7 @@ public class FlowOperationsService {
         flowDashboardLogger.onFlowPathsDumpBySwitch(switchId);
 
         Collection<FlowPath> paths = flowPathRepository.findBySegmentSwitch(switchId);
-        paths.forEach(path -> flowPathRepository.detach(path));
+        paths.forEach(flowPathRepository::detach);
         return paths;
     }
 
@@ -277,7 +279,7 @@ public class FlowOperationsService {
             FlowPathDtoBuilder targetFlowDtoBuilder = this.toFlowPathDtoBuilder(flow)
                     .segmentsStats(primaryIntersectionComputer.getOverlappingStats());
 
-            // other flows in the the group
+            // other flows in the group
             List<FlowPathDto> payloads = flowsInGroup.stream()
                     .filter(e -> !e.getFlowId().equals(flowId))
                     .map(e -> this.mapGroupPathFlowDto(e, true, primaryIntersectionComputer))
@@ -296,7 +298,7 @@ public class FlowOperationsService {
                                 protectedIntersectionComputer.getOverlappingStats())
                         .build());
 
-                // other flows in the the group
+                // other flows in the group
                 List<FlowPathDto> protectedPathPayloads = flowsInGroup.stream()
                         .filter(e -> !e.getFlowId().equals(flowId))
                         .map(e -> this.mapGroupPathFlowDto(e, false, protectedIntersectionComputer))
@@ -342,12 +344,15 @@ public class FlowOperationsService {
     /**
      * Partial update flow.
      */
-    public Flow updateFlow(FlowOperationsCarrier carrier, FlowPatch flowPatch) throws FlowNotFoundException {
+    public Flow updateFlow(FlowOperationsCarrier carrier, FlowPatch flowPatch)
+            throws FlowNotFoundException, InvalidFlowException {
         String flowId = flowPatch.getFlowId();
         if (yFlowRepository.isSubFlow(flowId)) {
             throw new MessageException(ErrorType.REQUEST_INVALID, "Could not modify flow",
                     format("%s is a sub-flow of a y-flow. Operations on sub-flows are forbidden.", flowId));
         }
+
+        ValidatorUtils.validateMaxLatencyAndLatencyTier(flowPatch.getMaxLatency(), flowPatch.getMaxLatencyTier2());
 
         UpdateFlowResult updateFlowResult = transactionManager.doInTransaction(() -> {
             Optional<Flow> foundFlow = flowRepository.findById(flowId);
@@ -426,8 +431,17 @@ public class FlowOperationsService {
     }
 
     private boolean updateRequiredByPathComputationStrategy(FlowPatch flowPatch, Flow flow) {
-        return flowPatch.getPathComputationStrategy() != null
+        boolean changedStrategy = flowPatch.getPathComputationStrategy() != null
                 && !flowPatch.getPathComputationStrategy().equals(flow.getPathComputationStrategy());
+        boolean changedMaxLatency = flowPatch.getMaxLatency() != null
+                && !flowPatch.getMaxLatency().equals(flow.getMaxLatency());
+        boolean changedMaxLatencyTier2 = flowPatch.getMaxLatencyTier2() != null
+                && !flowPatch.getMaxLatencyTier2().equals(flow.getMaxLatencyTier2());
+        boolean strategyIsLatencyBased =
+                LATENCY_BASED_STRATEGIES.contains(flowPatch.getPathComputationStrategy())
+                        || flowPatch.getPathComputationStrategy() == null
+                        && LATENCY_BASED_STRATEGIES.contains(flow.getPathComputationStrategy());
+        return changedStrategy || (strategyIsLatencyBased && (changedMaxLatency || changedMaxLatencyTier2));
     }
 
     private boolean updateRequiredBySource(FlowPatch flowPatch, Flow flow) {
@@ -490,15 +504,7 @@ public class FlowOperationsService {
 
     private boolean updateRequiredByVlanStatistics(FlowPatch flowPatch, Flow flow) {
         Set<Integer> patchVlanStatistics = flowPatch.getVlanStatistics();
-        if (patchVlanStatistics == null) {
-            return false;
-        }
-
-        if (Objects.equals(patchVlanStatistics, flow.getVlanStatistics())) {
-            return false;
-        }
-
-        return true;
+        return patchVlanStatistics != null && !Objects.equals(patchVlanStatistics, flow.getVlanStatistics());
     }
 
     private boolean updateRequiredByDiverseFlowIdField(FlowPatch flowPatch, Flow flow) {

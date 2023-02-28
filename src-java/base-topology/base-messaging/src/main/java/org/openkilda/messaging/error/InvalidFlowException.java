@@ -13,9 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.validation;
-
-import org.openkilda.messaging.error.ErrorType;
+package org.openkilda.messaging.error;
 
 import lombok.Getter;
 

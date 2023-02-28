@@ -20,6 +20,8 @@ import static java.lang.String.format;
 import org.openkilda.adapter.FlowDestAdapter;
 import org.openkilda.adapter.FlowSourceAdapter;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
+import org.openkilda.messaging.validation.ValidatorUtils;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
@@ -61,7 +63,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Checks whether flow can be created and has no conflicts with already created ones.
+ * Checks whether a flow can be created and has no conflicts with existing flows.
  */
 public class FlowValidator {
 
@@ -205,7 +207,7 @@ public class FlowValidator {
     }
 
     /**
-     * Validates the specified flow when swap endpoint operation.
+     * Validates the specified flows whether the swap endpoint operation can be done.
      */
     public void validateForSwapEndpoints(RequestedFlow firstFlow, RequestedFlow secondFlow)
             throws InvalidFlowException, UnavailableFlowEndpointException {
@@ -347,11 +349,11 @@ public class FlowValidator {
     }
 
     /**
-     * Ensure switches are exists.
+     * This method verifies that a pair of switches exist and is active.
      *
-     * @param sourceId source flow switch id to be validated.
-     * @param destinationId destination flow switch id to be validated.
-     * @throws UnavailableFlowEndpointException if switch not found.
+     * @param sourceId a source switch ID to be validated.
+     * @param destinationId a destination switch ID to be validated.
+     * @throws UnavailableFlowEndpointException if a switch has not been found.
      */
     @VisibleForTesting
     void checkSwitchesExistsAndActive(SwitchId sourceId, SwitchId destinationId)
@@ -387,7 +389,7 @@ public class FlowValidator {
     }
 
     /**
-     * Ensure VLANs are not equal in the case when there is an attempt to create one-switch flow for a single port.
+     * Verifies VLANs are not equal in the case when there is an attempt to create one-switch flow for a single port.
      */
     @VisibleForTesting
     private void checkOneSwitchFlowConflict(FlowEndpoint source, FlowEndpoint destination) throws InvalidFlowException {
@@ -484,7 +486,7 @@ public class FlowValidator {
     }
 
     /**
-     * Ensure switches support LLDP/ARP.
+     * Verifies that the given switches support LLDP and ARP.
      *
      * @param requestedFlow a flow to be validated.
      */

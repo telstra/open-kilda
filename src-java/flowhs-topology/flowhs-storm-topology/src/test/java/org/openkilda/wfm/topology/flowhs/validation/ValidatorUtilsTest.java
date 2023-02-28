@@ -18,6 +18,9 @@ package org.openkilda.wfm.topology.flowhs.validation;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import org.openkilda.messaging.error.InvalidFlowException;
+import org.openkilda.messaging.validation.ValidatorUtils;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
