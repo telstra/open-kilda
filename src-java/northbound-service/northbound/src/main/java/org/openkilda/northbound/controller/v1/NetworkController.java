@@ -75,13 +75,15 @@ public class NetworkController extends BaseController {
             @RequestParam(value = "max_latency_tier2", required = false) Long maxLatencyTier2Ms,
             @ApiParam(value = "Maximum count of paths which will be calculated. "
                     + "If maximum path count is not specified, default value from Kilda Configuration will be used")
-            @RequestParam(value = "max_path_count", required = false) Integer maxPathCount) {
+            @RequestParam(value = "max_path_count", required = false) Integer maxPathCount,
+            @ApiParam(value = "Calculate whether a protected path is available for the found paths")
+            @RequestParam(value = "protected", required = false) Boolean includeProtectedPathAvailability) {
 
         Duration maxLatency = maxLatencyMs != null ? Duration.ofMillis(maxLatencyMs) : null;
         Duration maxLatencyTier2 = maxLatencyTier2Ms != null ? Duration.ofMillis(maxLatencyTier2Ms) : null;
 
         return networkService.getPaths(srcSwitchId, dstSwitchId, encapsulationType, pathComputationStrategy, maxLatency,
-                maxLatencyTier2, maxPathCount);
+                maxLatencyTier2, maxPathCount, includeProtectedPathAvailability);
     }
 
     /**

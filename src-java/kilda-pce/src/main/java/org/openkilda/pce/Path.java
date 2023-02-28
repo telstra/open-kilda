@@ -31,22 +31,24 @@ public class Path implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @NonNull
-    private SwitchId srcSwitchId;
+    SwitchId srcSwitchId;
 
     @NonNull
-    private SwitchId destSwitchId;
+    SwitchId destSwitchId;
 
     /**
-     * Latency value in nseconds.
+     * Latency value in nanoseconds.
      */
-    private long latency;
+    long latency;
 
-    private Long minAvailableBandwidth;
+    Long minAvailableBandwidth;
 
     @NonNull
-    private List<Segment> segments;
+    List<Segment> segments;
 
-    private boolean isBackupPath;
+    boolean isBackupPath;
+
+    Boolean isProtectedPathAvailable;
 
     @Value
     @Builder(toBuilder = true)
@@ -55,18 +57,18 @@ public class Path implements Serializable {
         private static final long serialVersionUID = 1L;
 
         @NonNull
-        private SwitchId srcSwitchId;
+        SwitchId srcSwitchId;
 
         @NonNull
-        private SwitchId destSwitchId;
+        SwitchId destSwitchId;
 
-        private int srcPort;
+        int srcPort;
 
-        private int destPort;
+        int destPort;
 
         /**
          * Segment latency value in nseconds.
          */
-        private long latency;
+        long latency;
     }
 }

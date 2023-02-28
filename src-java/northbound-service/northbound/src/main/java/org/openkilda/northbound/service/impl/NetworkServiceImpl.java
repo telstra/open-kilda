@@ -60,11 +60,12 @@ public class NetworkServiceImpl implements NetworkService {
     public CompletableFuture<PathsDto> getPaths(
             SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType encapsulationType,
             PathComputationStrategy pathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2,
-            Integer maxPathCount) {
+            Integer maxPathCount, Boolean includeProtectedPathAvailability) {
         log.info("API request: Get Paths: srcSwitch {}, dstSwitch {}, encapsulationType {}, "
-                + "pathComputationStrategy {}, maxLatency {}, maxLatencyTier2 {}, maxPathCount {}",
+                + "pathComputationStrategy {}, maxLatency {}, maxLatencyTier2 {}, maxPathCount {},"
+                + "includeProtectedPathAvailability {}",
                 srcSwitch, dstSwitch, encapsulationType, pathComputationStrategy,
-                maxLatency, maxLatencyTier2, maxPathCount);
+                maxLatency, maxLatencyTier2, maxPathCount, includeProtectedPathAvailability);
 
         String correlationId = RequestCorrelationId.getId();
 
@@ -81,7 +82,7 @@ public class NetworkServiceImpl implements NetworkService {
         }
 
         GetPathsRequest request = new GetPathsRequest(srcSwitch, dstSwitch, encapsulationType, pathComputationStrategy,
-                maxLatency, maxLatencyTier2, maxPathCount);
+                maxLatency, maxLatencyTier2, maxPathCount, includeProtectedPathAvailability);
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)

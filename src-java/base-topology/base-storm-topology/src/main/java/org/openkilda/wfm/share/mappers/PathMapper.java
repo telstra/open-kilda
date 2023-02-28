@@ -39,7 +39,8 @@ public abstract class PathMapper {
      */
     public org.openkilda.messaging.info.network.Path map(org.openkilda.pce.Path path) {
         if (path == null || path.getSegments().isEmpty()) {
-            return new org.openkilda.messaging.info.network.Path(0L, Duration.ZERO, new ArrayList<>(), false);
+            return new org.openkilda.messaging.info.network.Path(0L, Duration.ZERO, new ArrayList<>(), false,
+                    false);
         }
 
         List<PathNodePayload> nodes = new ArrayList<>();
@@ -62,6 +63,6 @@ public abstract class PathMapper {
         }
 
         return new org.openkilda.messaging.info.network.Path(path.getMinAvailableBandwidth(),
-                Duration.ofNanos(path.getLatency()), nodes, path.isBackupPath());
+                Duration.ofNanos(path.getLatency()), nodes, path.isBackupPath(), path.getIsProtectedPathAvailable());
     }
 }
