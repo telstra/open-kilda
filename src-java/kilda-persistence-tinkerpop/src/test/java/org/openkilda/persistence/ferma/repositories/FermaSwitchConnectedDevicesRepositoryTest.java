@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -179,14 +179,14 @@ public class FermaSwitchConnectedDevicesRepositoryTest extends InMemoryGraphBase
         runFindByLldpUniqueFields(lldpConnectedDeviceF);
         runFindByLldpUniqueFields(arpConnectedDeviceC);
 
-        assertFalse(connectedDeviceRepository.findLldpByUniqueFieldCombination(
-                firstSwitch.getSwitchId(), 999, 999, "fake", CHASSIS_ID, PORT_ID).isPresent());
+        assertFalse(connectedDeviceRepository.findLldpByUniqueIndex(createUniqueLldpIndex(
+                firstSwitch.getSwitchId(), 999, 999, "fake", CHASSIS_ID, PORT_ID)).isPresent());
     }
 
     private void runFindByLldpUniqueFields(SwitchConnectedDevice device) {
-        Optional<SwitchConnectedDevice> foundDevice = connectedDeviceRepository.findLldpByUniqueFieldCombination(
-                device.getSwitchId(), device.getPortNumber(), device.getVlan(), device.getMacAddress(),
-                device.getChassisId(), device.getPortId());
+        Optional<SwitchConnectedDevice> foundDevice = connectedDeviceRepository.findLldpByUniqueIndex(
+                createUniqueLldpIndex(device.getSwitchId(), device.getPortNumber(), device.getVlan(),
+                        device.getMacAddress(), device.getChassisId(), device.getPortId()));
 
         if (LLDP.equals(device.getType())) {
             assertTrue(foundDevice.isPresent());
@@ -208,14 +208,14 @@ public class FermaSwitchConnectedDevicesRepositoryTest extends InMemoryGraphBase
         runFindByArpUniqueFields(arpConnectedDeviceD);
         runFindByArpUniqueFields(arpConnectedDeviceE);
 
-        assertFalse(connectedDeviceRepository.findLldpByUniqueFieldCombination(
-                firstSwitch.getSwitchId(), 999, 999, "fake", CHASSIS_ID, PORT_ID).isPresent());
+        assertFalse(connectedDeviceRepository.findLldpByUniqueIndex(createUniqueLldpIndex(
+                firstSwitch.getSwitchId(), 999, 999, "fake", CHASSIS_ID, PORT_ID)).isPresent());
     }
 
     private void runFindByArpUniqueFields(SwitchConnectedDevice device) {
-        Optional<SwitchConnectedDevice> foundDevice = connectedDeviceRepository.findArpByUniqueFieldCombination(
-                device.getSwitchId(), device.getPortNumber(), device.getVlan(), device.getMacAddress(),
-                device.getIpAddress());
+        Optional<SwitchConnectedDevice> foundDevice = connectedDeviceRepository.findArpByUniqueIndex(
+                createUniqueArpIndex(device.getSwitchId(), device.getPortNumber(), device.getVlan(),
+                        device.getMacAddress(), device.getIpAddress()));
 
         if (ARP.equals(device.getType())) {
             assertTrue(foundDevice.isPresent());
@@ -233,9 +233,9 @@ public class FermaSwitchConnectedDevicesRepositoryTest extends InMemoryGraphBase
         connectedDeviceRepository.add(arpConnectedDeviceE);
 
         for (SwitchConnectedDevice device : Lists.newArrayList(lldpConnectedDeviceA, lldpConnectedDeviceF)) {
-            Optional<SwitchConnectedDevice> foundDevice = connectedDeviceRepository.findLldpByUniqueFieldCombination(
-                    device.getSwitchId(), device.getPortNumber(), device.getVlan(), device.getMacAddress(),
-                    device.getChassisId(), device.getPortId());
+            Optional<SwitchConnectedDevice> foundDevice = connectedDeviceRepository.findLldpByUniqueIndex(
+                    createUniqueLldpIndex(device.getSwitchId(), device.getPortNumber(), device.getVlan(),
+                            device.getMacAddress(), device.getChassisId(), device.getPortId()));
             assertTrue(foundDevice.isPresent());
             SwitchConnectedDeviceFrame frame = (SwitchConnectedDeviceFrame) foundDevice.get().getData();
 
@@ -245,15 +245,25 @@ public class FermaSwitchConnectedDevicesRepositoryTest extends InMemoryGraphBase
         }
 
         for (SwitchConnectedDevice device : Lists.newArrayList(arpConnectedDeviceC, arpConnectedDeviceE)) {
-            Optional<SwitchConnectedDevice> foundDevice = connectedDeviceRepository.findArpByUniqueFieldCombination(
-                    device.getSwitchId(), device.getPortNumber(), device.getVlan(), device.getMacAddress(),
-                    device.getIpAddress());
+            Optional<SwitchConnectedDevice> foundDevice = connectedDeviceRepository.findArpByUniqueIndex(
+                    createUniqueArpIndex(device.getSwitchId(), device.getPortNumber(), device.getVlan(),
+                            device.getMacAddress(), device.getIpAddress()));
             assertTrue(foundDevice.isPresent());
             SwitchConnectedDeviceFrame frame = (SwitchConnectedDeviceFrame) foundDevice.get().getData();
 
             assertEquals(String.format("%s_%s_%s_%s_%s_%s", device.getSwitchId(), device.getPortNumber(),
-                    device.getType(), device.getVlan(), device.getMacAddress(), device.getIpAddress()),
+                            device.getType(), device.getVlan(), device.getMacAddress(), device.getIpAddress()),
                     frame.getProperty(UNIQUE_INDEX_PROPERTY));
         }
+    }
+
+    private String createUniqueLldpIndex(
+            SwitchId switchId, int portNumber, int vlan, String macAddress, String chassisId, String portId) {
+        return String.format("%s_%s_%s_%s_%s_%s_%s", switchId, portNumber, LLDP, vlan, macAddress, chassisId, portId);
+    }
+
+    private String createUniqueArpIndex(
+            SwitchId switchId, int portNumber, int vlan, String macAddress, String ipAddress) {
+        return String.format("%s_%s_%s_%s_%s_%s", switchId, portNumber, ARP, vlan, macAddress, ipAddress);
     }
 }

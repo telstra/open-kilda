@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,14 +17,12 @@ package org.openkilda.persistence.ferma.repositories;
 
 import static java.lang.String.format;
 import static org.openkilda.model.ConnectedDeviceType.ARP;
-import static org.openkilda.model.ConnectedDeviceType.LLDP;
-import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.CHASSIS_ID_PROPERTY;
 import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.IP_ADDRESS_PROPERTY;
 import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.MAC_ADDRESS_PROPERTY;
-import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.PORT_ID_PROPERTY;
 import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.PORT_NUMBER_PROPERTY;
 import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.SWITCH_ID_PROPERTY;
 import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.TYPE_PROPERTY;
+import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.UNIQUE_INDEX_PROPERTY;
 import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.VLAN_PROPERTY;
 
 import org.openkilda.model.SwitchConnectedDevice;
@@ -58,7 +56,7 @@ public class FermaSwitchConnectedDevicesRepository
     @Override
     public Collection<SwitchConnectedDevice> findAll() {
         return framedGraph().traverse(g -> g.V()
-                .hasLabel(SwitchConnectedDeviceFrame.FRAME_LABEL))
+                        .hasLabel(SwitchConnectedDeviceFrame.FRAME_LABEL))
                 .toListExplicit(SwitchConnectedDeviceFrame.class).stream()
                 .map(SwitchConnectedDevice::new)
                 .collect(Collectors.toList());
@@ -67,8 +65,8 @@ public class FermaSwitchConnectedDevicesRepository
     @Override
     public Collection<SwitchConnectedDevice> findBySwitchId(SwitchId switchId) {
         return framedGraph().traverse(g -> g.V()
-                .hasLabel(SwitchConnectedDeviceFrame.FRAME_LABEL)
-                .has(SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId)))
+                        .hasLabel(SwitchConnectedDeviceFrame.FRAME_LABEL)
+                        .has(SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId)))
                 .toListExplicit(SwitchConnectedDeviceFrame.class).stream()
                 .map(SwitchConnectedDevice::new)
                 .collect(Collectors.toList());
@@ -77,57 +75,38 @@ public class FermaSwitchConnectedDevicesRepository
     @Override
     public Collection<SwitchConnectedDevice> findByFlowId(String flowId) {
         return framedGraph().traverse(g -> g.V()
-                .hasLabel(SwitchConnectedDeviceFrame.FRAME_LABEL)
-                .has(SwitchConnectedDeviceFrame.FLOW_ID_PROPERTY, flowId))
+                        .hasLabel(SwitchConnectedDeviceFrame.FRAME_LABEL)
+                        .has(SwitchConnectedDeviceFrame.FLOW_ID_PROPERTY, flowId))
                 .toListExplicit(SwitchConnectedDeviceFrame.class).stream()
                 .map(SwitchConnectedDevice::new)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public Optional<SwitchConnectedDevice> findLldpByUniqueFieldCombination(
-            SwitchId switchId, int portNumber, int vlan, String macAddress, String chassisId, String portId) {
+    public Optional<SwitchConnectedDevice> findLldpByUniqueIndex(String uniqueIndex) {
         Collection<? extends SwitchConnectedDeviceFrame> devices =
-                framedGraph().traverse(g -> {
-                    GraphTraversal<Vertex, Vertex> traverse = g.V()
-                            .hasLabel(SwitchConnectedDeviceFrame.FRAME_LABEL)
-                            .has(SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
-                            .has(PORT_NUMBER_PROPERTY, portNumber)
-                            .has(VLAN_PROPERTY, vlan)
-                            .has(MAC_ADDRESS_PROPERTY, macAddress)
-                            .has(TYPE_PROPERTY, ConnectedDeviceTypeConverter.INSTANCE.toGraphProperty(LLDP));
-                    traverse = hasNullableProperty(CHASSIS_ID_PROPERTY, chassisId, traverse);
-                    return hasNullableProperty(PORT_ID_PROPERTY, portId, traverse);
-                })
+                framedGraph().traverse(g -> g.V()
+                                .hasLabel(SwitchConnectedDeviceFrame.FRAME_LABEL)
+                                .has(UNIQUE_INDEX_PROPERTY, uniqueIndex))
                         .toListExplicit(SwitchConnectedDeviceFrame.class);
         if (devices.size() > 1) {
-            throw new PersistenceException(format("Found more that 1 LLDP Connected Device by switch ID '%s', "
-                            + "port number '%d', vlan '%d', mac address '%s', chassis ID '%s' and port ID '%s'",
-                    switchId, portNumber, vlan, macAddress, chassisId, portId));
+            throw new PersistenceException(format("Found more that 1 LLDP Connected Device by unique index '%s'",
+                    uniqueIndex));
         }
         return devices.isEmpty() ? Optional.empty() :
                 Optional.of(devices.iterator().next()).map(SwitchConnectedDevice::new);
     }
 
     @Override
-    public Optional<SwitchConnectedDevice> findArpByUniqueFieldCombination(
-            SwitchId switchId, int portNumber, int vlan, String macAddress, String ipAddress) {
+    public Optional<SwitchConnectedDevice> findArpByUniqueIndex(String uniqueIndex) {
         Collection<? extends SwitchConnectedDeviceFrame> devices =
-                framedGraph().traverse(g -> {
-                    GraphTraversal<Vertex, Vertex> traverse = g.V()
-                            .hasLabel(SwitchConnectedDeviceFrame.FRAME_LABEL)
-                            .has(SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
-                            .has(PORT_NUMBER_PROPERTY, portNumber)
-                            .has(VLAN_PROPERTY, vlan)
-                            .has(MAC_ADDRESS_PROPERTY, macAddress)
-                            .has(TYPE_PROPERTY, ConnectedDeviceTypeConverter.INSTANCE.toGraphProperty(ARP));
-                    return hasNullableProperty(IP_ADDRESS_PROPERTY, ipAddress, traverse);
-                })
+                framedGraph().traverse(g -> g.V()
+                                .hasLabel(SwitchConnectedDeviceFrame.FRAME_LABEL)
+                                .has(UNIQUE_INDEX_PROPERTY, uniqueIndex))
                         .toListExplicit(SwitchConnectedDeviceFrame.class);
         if (devices.size() > 1) {
-            throw new PersistenceException(format("Found more that 1 ARP Connected Device by switch ID '%s', "
-                            + "port number '%d', vlan '%d', mac address '%s', IP address '%s'",
-                    switchId, portNumber, vlan, macAddress, ipAddress));
+            throw new PersistenceException(format("Found more that 1 ARP Connected Device by unique index '%s'",
+                    uniqueIndex));
         }
         return devices.isEmpty() ? Optional.empty() :
                 Optional.of(devices.iterator().next()).map(SwitchConnectedDevice::new);
