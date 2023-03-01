@@ -440,7 +440,7 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
     }
 
     @Tidy
-    @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
+    @Tags([LOW_PRIORITY])
     def "System allows to create y-flow with bandwidth equal to link bandwidth between shared endpoint and y-point (#4965)"() {
         /* Shared <----------------> Y-Point ----------- Ep1
                          ⬆              \ ______________ Ep2
