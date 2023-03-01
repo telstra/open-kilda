@@ -352,8 +352,6 @@ public class FlowOperationsService {
                     format("%s is a sub-flow of a y-flow. Operations on sub-flows are forbidden.", flowId));
         }
 
-        ValidatorUtils.validateMaxLatencyAndLatencyTier(flowPatch.getMaxLatency(), flowPatch.getMaxLatencyTier2());
-
         UpdateFlowResult updateFlowResult = transactionManager.doInTransaction(() -> {
             Optional<Flow> foundFlow = flowRepository.findById(flowId);
             if (!foundFlow.isPresent()) {
@@ -422,9 +420,6 @@ public class FlowOperationsService {
                 && !flow.getEncapsulationType().equals(flowPatch.getEncapsulationType());
 
         updateRequired |= updateRequiredByVlanStatistics(flowPatch, flow);
-
-        updateRequired |= updateRequiredByMaxLatency(flowPatch, flow);
-        updateRequired |= updateRequiredByMaxLatencyTier2(flowPatch, flow);
 
         return UpdateFlowResult.builder()
                 .needUpdateFlow(updateRequired);
@@ -582,7 +577,7 @@ public class FlowOperationsService {
         return flowRequest;
     }
 
-    private void validateFlow(FlowPatch flowPatch, Flow flow) {
+    private void validateFlow(FlowPatch flowPatch, Flow flow) throws InvalidFlowException {
         boolean strictBandwidthPatch = Optional.ofNullable(flowPatch.getStrictBandwidth()).orElse(false);
         boolean ignoreBandwidthPatch = Optional.ofNullable(flowPatch.getIgnoreBandwidth()).orElse(false);
 
@@ -605,6 +600,10 @@ public class FlowOperationsService {
         if (isProtectedPathNeedToBeAllocated(flowPatch, flow) && isOneSwitchFlow(flowPatch, flow)) {
             throw new IllegalArgumentException("Can not allocate protected path for one switch flow");
         }
+
+        ValidatorUtils.validateMaxLatencyAndLatencyTier(
+                Optional.ofNullable(flowPatch.getMaxLatency()).orElse(flow.getMaxLatency()),
+                Optional.ofNullable(flowPatch.getMaxLatencyTier2()).orElse(flow.getMaxLatencyTier2()));
     }
 
     private boolean isProtectedPathNeedToBeAllocated(FlowPatch flowPatch, Flow flow) {

@@ -20,6 +20,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
@@ -612,16 +615,6 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
         flowPatch = FlowPatch.builder().pathComputationStrategy(PathComputationStrategy.LATENCY).build();
         result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
         assertTrue(result.isNeedUpdateFlow());
-
-        // new max latency
-        flowPatch = FlowPatch.builder().maxLatency(2L).build();
-        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
-        assertTrue(result.isNeedUpdateFlow());
-
-        // new max latency tier 2
-        flowPatch = FlowPatch.builder().maxLatencyTier2(2L).build();
-        result = flowOperationsService.prepareFlowUpdateResult(flowPatch, flow).build();
-        assertTrue(result.isNeedUpdateFlow());
     }
 
     @Test
@@ -707,6 +700,68 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
         assertFlows(flowOperationsService.getFlowsForEndpoint(SWITCH_ID_2, 2), FLOW_ID_1, FLOW_ID_2);
     }
 
+    @Test
+    public void patchFlowWithLatencyOnlyTest() throws FlowNotFoundException, InvalidFlowException {
+        Flow createdFlow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2, FORWARD_PATH_1, REVERSE_PATH_1, switchB);
+        assertNotEquals(Long.valueOf(100_500L), createdFlow.getMaxLatency());
+        FlowPatch flowPatch = FlowPatch.builder()
+                .flowId(FLOW_ID_1)
+                .maxLatency(100_500L)
+                .build();
+
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch);
+        assertEquals(Long.valueOf(100_500L), updatedFlow.getMaxLatency());
+    }
+
+    @Test
+    public void patchFlowWithLatencyAndLatencyTier2Test() throws FlowNotFoundException, InvalidFlowException {
+        Flow createdFlow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2, FORWARD_PATH_1, REVERSE_PATH_1, switchB);
+        assertNotEquals(Long.valueOf(100_500L), createdFlow.getMaxLatency());
+        assertNotEquals(Long.valueOf(420_000L), createdFlow.getMaxLatencyTier2());
+
+        FlowPatch flowPatch = FlowPatch.builder()
+                .flowId(FLOW_ID_1)
+                .maxLatency(100_500L)
+                .maxLatencyTier2(420_000L)
+                .build();
+
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch);
+
+        assertEquals(Long.valueOf(100_500L), updatedFlow.getMaxLatency());
+        assertEquals(Long.valueOf(420_000L), updatedFlow.getMaxLatencyTier2());
+    }
+
+    @Test
+    public void whenFlowWithNullLatency_patchFlowWithLatencyTier2OnlyThrowsAnException() {
+        Flow createdFlow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2, FORWARD_PATH_1, REVERSE_PATH_1, switchB);
+        assertNull(createdFlow.getMaxLatency());
+
+        FlowPatch flowPatch = FlowPatch.builder()
+                .flowId(FLOW_ID_1)
+                .maxLatencyTier2(420_000L)
+                .build();
+
+        assertThrows("Max latency tier 2 cannot be used without max latency parameter",
+                InvalidFlowException.class,
+                () -> flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch));
+    }
+
+    @Test
+    public void whenFlowWithMaxLatency_patchFlowWithLatencyTier2OnlyTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        Flow createdFlow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2, FORWARD_PATH_1, REVERSE_PATH_1, switchB, false,
+                100_500L, 0L);
+        FlowPatch flowPatch = FlowPatch.builder()
+                .flowId(FLOW_ID_1)
+                .maxLatencyTier2(420_000L)
+                .build();
+
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch);
+
+        assertEquals(Long.valueOf(100_500L), updatedFlow.getMaxLatency());
+        assertEquals(Long.valueOf(420_000L), updatedFlow.getMaxLatencyTier2());
+    }
+
     private void assertFlows(Collection<Flow> actualFlows, String... expectedFlowIds) {
         assertEquals(expectedFlowIds.length, actualFlows.size());
         assertEquals(new HashSet<>(Arrays.asList(expectedFlowIds)),
@@ -762,17 +817,19 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
 
     private void createFlow(String flowId, Switch srcSwitch, Switch dstSwitch, Boolean protectedPath) {
         createFlow(flowId, srcSwitch, PORT_1, dstSwitch, PORT_2,
-                FORWARD_PATH_1, REVERSE_PATH_1, null, protectedPath);
+                FORWARD_PATH_1, REVERSE_PATH_1, null, protectedPath, null, null);
     }
 
     private Flow createFlow(String flowId, Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort,
                             PathId forwardPartId, PathId reversePathId, Switch transitSwitch) {
         return createFlow(
-                flowId, srcSwitch, srcPort, dstSwitch, dstPort, forwardPartId, reversePathId, transitSwitch, false);
+                flowId, srcSwitch, srcPort, dstSwitch, dstPort, forwardPartId, reversePathId, transitSwitch, false,
+                null, null);
     }
 
     private Flow createFlow(String flowId, Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort,
-                            PathId forwardPartId, PathId reversePathId, Switch transitSwitch, boolean protectedPath) {
+                            PathId forwardPartId, PathId reversePathId, Switch transitSwitch, boolean protectedPath,
+                            Long maxLatency, Long maxLatencyTier2) {
 
         Flow flow = Flow.builder()
                 .flowId(flowId)
@@ -782,6 +839,8 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .destPort(dstPort)
                 .status(FlowStatus.UP)
                 .allocateProtectedPath(protectedPath)
+                .maxLatency(maxLatency)
+                .maxLatencyTier2(maxLatencyTier2)
                 .build();
 
         FlowPath forwardPath = FlowPath.builder()
