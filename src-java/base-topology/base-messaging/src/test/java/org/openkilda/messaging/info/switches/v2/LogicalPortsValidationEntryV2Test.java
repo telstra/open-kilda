@@ -43,6 +43,22 @@ public class LogicalPortsValidationEntryV2Test {
     }
 
     @Test
+    public void splitAndUniteEmptyLogicalPortEntryWithErrorTest() {
+        LogicalPortsValidationEntryV2 entry = LogicalPortsValidationEntryV2.builder()
+                .asExpected(false)
+                .error("Timeout for waiting response on DumpLogicalPortsRequest() Details: Error in SpeakerWorkerService")
+                .missing(new ArrayList<>())
+                .misconfigured(new ArrayList<>())
+                .excess(new ArrayList<>())
+                .proper(new ArrayList<>())
+                .build();
+        List<LogicalPortsValidationEntryV2> list = entry.split(4, 4);
+        assertEquals(1, list.size());
+        LogicalPortsValidationEntryV2 united = LogicalPortsValidationEntryV2.join(list);
+        assertEquals(entry, united);
+    }
+
+    @Test
     public void splitAndUniteNullLogicalPortEntryTest() {
         LogicalPortsValidationEntryV2 entry = LogicalPortsValidationEntryV2.builder()
                 .asExpected(true)
