@@ -19,8 +19,6 @@ import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import static org.openkilda.model.ConnectedDeviceType.ARP;
-import static org.openkilda.model.ConnectedDeviceType.LLDP;
 import static org.openkilda.model.cookie.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
 
@@ -441,14 +439,14 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
 
     private void assertLldpConnectedDeviceExistInDatabase(LldpInfoData data) {
         Optional<SwitchConnectedDevice> switchConnectedDevice = switchConnectedDeviceRepository
-                .findLldpByUniqueIndex(createUniqueLldpIndex(data, data.getVlans().get(0)));
+                .findLldpByUniqueIndex(packetService.createUniqueLldpIndex(data, data.getVlans().get(0)));
         assertTrue(switchConnectedDevice.isPresent());
         assertLldpInfoDataDataEqualsSwitchConnectedDevice(data, switchConnectedDevice.get());
     }
 
     private void assertArpConnectedDeviceExistInDatabase(ArpInfoData data) {
         Optional<SwitchConnectedDevice> switchConnectedDevice = switchConnectedDeviceRepository
-                .findArpByUniqueIndex(createUniqueArpIndex(data, data.getVlans().get(0)));
+                .findArpByUniqueIndex(packetService.createUniqueArpIndex(data, data.getVlans().get(0)));
         assertTrue(switchConnectedDevice.isPresent());
         assertArpInfoDataEqualsSwitchConnectedDevice(data, switchConnectedDevice.get());
     }
@@ -509,15 +507,5 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
     private ArpInfoData createArpInfoData() {
         return new ArpInfoData(SWITCH_ID_1, PORT_NUMBER_1, newArrayList(VLAN_1), ARP_INPUT_PRE_DROP_COOKIE,
                 MAC_ADDRESS_1, IP_ADDRESS_1);
-    }
-
-    private String createUniqueLldpIndex(LldpInfoData data, int vlan) {
-        return String.format("%s_%s_%s_%s_%s_%s_%s", data.getSwitchId(), data.getPortNumber(), LLDP,
-                vlan, data.getMacAddress(), data.getChassisId(), data.getPortId());
-    }
-
-    private String createUniqueArpIndex(ArpInfoData data, int vlan) {
-        return String.format("%s_%s_%s_%s_%s_%s", data.getSwitchId(), data.getPortNumber(), ARP,
-                vlan, data.getMacAddress(), data.getIpAddress());
     }
 }
