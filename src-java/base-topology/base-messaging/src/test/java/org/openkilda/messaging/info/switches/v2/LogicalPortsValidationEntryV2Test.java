@@ -46,8 +46,8 @@ public class LogicalPortsValidationEntryV2Test {
     public void splitAndUniteEmptyLogicalPortEntryWithErrorTest() {
         LogicalPortsValidationEntryV2 entry = LogicalPortsValidationEntryV2.builder()
                 .asExpected(false)
-                .error("Timeout for waiting response on DumpLogicalPortsRequest()" +
-                        " Details: Error in SpeakerWorkerService")
+                .error("Timeout for waiting response on DumpLogicalPortsRequest()" 
+                        + " Details: Error in SpeakerWorkerService")
                 .missing(new ArrayList<>())
                 .misconfigured(new ArrayList<>())
                 .excess(new ArrayList<>())
