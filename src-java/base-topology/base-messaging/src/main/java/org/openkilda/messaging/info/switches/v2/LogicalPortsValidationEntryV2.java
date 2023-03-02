@@ -75,6 +75,7 @@ public class LogicalPortsValidationEntryV2 implements Serializable {
                     .excess(entry.getExcess())
                     .proper(entry.getProper())
                     .misconfigured(entry.getMisconfigured())
+                    .error(error)
                     .build());
         }
         return result;
