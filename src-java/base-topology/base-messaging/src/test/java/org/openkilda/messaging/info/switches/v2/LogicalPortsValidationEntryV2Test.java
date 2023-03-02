@@ -46,7 +46,8 @@ public class LogicalPortsValidationEntryV2Test {
     public void splitAndUniteEmptyLogicalPortEntryWithErrorTest() {
         LogicalPortsValidationEntryV2 entry = LogicalPortsValidationEntryV2.builder()
                 .asExpected(false)
-                .error("Timeout for waiting response on DumpLogicalPortsRequest() Details: Error in SpeakerWorkerService")
+                .error("Timeout for waiting response on DumpLogicalPortsRequest()" +
+                        " Details: Error in SpeakerWorkerService")
                 .missing(new ArrayList<>())
                 .misconfigured(new ArrayList<>())
                 .excess(new ArrayList<>())
@@ -152,6 +153,22 @@ public class LogicalPortsValidationEntryV2Test {
     public void splitAndUniteManyEntriesLogicalPortEntryTest() {
         LogicalPortsValidationEntryV2 entry = LogicalPortsValidationEntryV2.builder()
                 .asExpected(true)
+                .missing(buildLogicalPortsInfo(1, 500))
+                .excess(buildLogicalPortsInfo(1000, 600))
+                .proper(buildLogicalPortsInfo(2000, 700))
+                .misconfigured(buildMisconfiguredLogicalPortsInfo(3000, 800))
+                .build();
+        List<LogicalPortsValidationEntryV2> list = entry.split(100, 200);
+        assertEquals(14, list.size());
+        LogicalPortsValidationEntryV2 united = LogicalPortsValidationEntryV2.join(list);
+        assertEquals(entry, united);
+    }
+
+    @Test
+    public void splitAndUniteManyEntriesLogicalPortEntryWithErrorMessageTest() {
+        LogicalPortsValidationEntryV2 entry = LogicalPortsValidationEntryV2.builder()
+                .asExpected(true)
+                .error("Some error message")
                 .missing(buildLogicalPortsInfo(1, 500))
                 .excess(buildLogicalPortsInfo(1000, 600))
                 .proper(buildLogicalPortsInfo(2000, 700))
