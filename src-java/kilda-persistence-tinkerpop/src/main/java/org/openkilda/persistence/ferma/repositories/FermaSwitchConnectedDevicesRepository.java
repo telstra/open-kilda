@@ -16,14 +16,8 @@
 package org.openkilda.persistence.ferma.repositories;
 
 import static java.lang.String.format;
-import static org.openkilda.model.ConnectedDeviceType.ARP;
-import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.IP_ADDRESS_PROPERTY;
-import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.MAC_ADDRESS_PROPERTY;
-import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.PORT_NUMBER_PROPERTY;
 import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.SWITCH_ID_PROPERTY;
-import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.TYPE_PROPERTY;
 import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.UNIQUE_INDEX_PROPERTY;
-import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.VLAN_PROPERTY;
 
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchConnectedDevice.SwitchConnectedDeviceData;
@@ -32,7 +26,6 @@ import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame;
-import org.openkilda.persistence.ferma.frames.converters.ConnectedDeviceTypeConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 
