@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -59,6 +60,8 @@ public class LogicalPortsValidationEntryV2 implements Serializable {
         builder.proper(joinLists(nonNullEntries.stream().map(LogicalPortsValidationEntryV2::getProper)));
         builder.missing(joinLists(nonNullEntries.stream().map(LogicalPortsValidationEntryV2::getMissing)));
         builder.misconfigured(joinLists(nonNullEntries.stream().map(LogicalPortsValidationEntryV2::getMisconfigured)));
+        nonNullEntries.stream().filter(e -> StringUtils.isNoneBlank(e.error)).findFirst()
+                .map(LogicalPortsValidationEntryV2::getError).ifPresent(builder::error);
         return builder.build();
     }
 
