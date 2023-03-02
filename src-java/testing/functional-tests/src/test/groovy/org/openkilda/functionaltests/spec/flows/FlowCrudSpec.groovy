@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import org.openkilda.functionaltests.exception.ExpectedHttpClientErrorException
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 
@@ -621,7 +622,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         return flowToSpoil}|
                 new ExpectedHttpClientErrorException(HttpStatus.NOT_FOUND,
                         ~/Latency limit: Requested path must have latency ${
-                            IMPOSSIBLY_LOW_LATENCY}ms or lower/)                                                                        |
+                            IMPOSSIBLY_LOW_LATENCY}ms or lower/)
         "invalid statistics vlan number" |
                 { FlowRequestV2 flowToSpoil ->
                     flowToSpoil.setStatistics(FLOW_STATISTICS_CAUSING_ERROR)
