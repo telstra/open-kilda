@@ -140,7 +140,7 @@ public class PathsService {
                 .build();
         try {
             GetPathsResult pathsResult = pathComputer.getPath(flow, Collections.emptyList(), true);
-            return pathsResult != null;
+            return pathsResult.getForward() != null && pathsResult.getReverse() != null;
         } catch (RecoverableException | UnroutableFlowException e) {
             return false;
         }

@@ -52,5 +52,6 @@ public class Path implements Serializable {
         this.latency = latency;
         this.nodes = nodes;
         this.isBackupPath = isBackupPath;
+        this.isProtectedPathAvailable = isProtectedPathAvailable;
     }
 }
