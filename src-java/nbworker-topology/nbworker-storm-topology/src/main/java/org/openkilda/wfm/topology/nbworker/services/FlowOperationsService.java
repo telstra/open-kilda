@@ -461,20 +461,6 @@ public class FlowOperationsService {
         return updateRequired;
     }
 
-    private boolean updateRequiredByMaxLatency(FlowPatch flowPatch, Flow flow) {
-        if (flowPatch.getMaxLatency() == null) {
-            return false;
-        }
-        return !Objects.equals(flowPatch.getMaxLatency(), flow.getMaxLatency());
-    }
-
-    private boolean updateRequiredByMaxLatencyTier2(FlowPatch flowPatch, Flow flow) {
-        if (flowPatch.getMaxLatencyTier2() == null) {
-            return false;
-        }
-        return !Objects.equals(flowPatch.getMaxLatencyTier2(), flow.getMaxLatencyTier2());
-    }
-
     private boolean updateRequiredByDestination(FlowPatch flowPatch, Flow flow) {
         if (flowPatch.getDestination() == null) {
             return false;
