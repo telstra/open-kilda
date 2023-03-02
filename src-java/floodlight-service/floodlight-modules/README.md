@@ -18,29 +18,33 @@ where:
 
 #### How to debug Floodlight component
 
-In order to run Floodlight in the debug mode, we have to add the following arguments
-`"-agentlib:jdwp=transport=dt_socket,address=50506,suspend=n,server=y”` 
-when running the app.
-Particularly in Floodlight we can not do this straight to the Dockerfile since it leads us to entrypoint.sh script.
-We have to add the arguments above to the
-`projectroot/docker/floodlight-modules/entrypoint.sh` file.
-To do so, in this file find `exec java` line under the ```"$1" = 'floodlight’```  condition block.
-In this line add arguments for debug and leave the existing arguments as is.
-As result the exec java line should look something like this:
+In order to run Floodlight in the debug mode, we have to add the following arguments when run the app:  
+
+`"-agentlib:jdwp=transport=dt_socket, address=50506, suspend=n, server=y”`.  
+
+Particularly in Floodlight we can not do this straight in the Dockerfile since it leads us to the entrypoint.sh script.
+Thus, we have to add the arguments above to the following file:  `projectroot/docker/floodlight-modules/entrypoint.sh`.  
+To do so, in the entrypoint.sh file find a line with the `exec java`  under the following condition block: ```"$1" = 'floodlight’```  ,
+add the arguments for debug, and leave the existing arguments as they are.  
+As a result, the `exec java` line should look something like this:
 ```
 exec java "-agentlib:jdwp=transport=dt_socket,address=50506,suspend=n,server=y" -XX:+PrintFlagsFinal……… the rest arguments….;
 ```
-Then we have to expose a debugging port in docker-compose.tmpl file.
+Then we have to expose a debugging port in the docker-compose.tmpl file.
 
-Go to `projectroot/confd/templates/docker-compose/docker-compose.tmpl`, 
+Go to the docker-compose.tmpl file which is located on the following path:  
+`projectroot/confd/templates/docker-compose/docker-compose.tmpl`.  
+Find `floodlight_1` and add a desirable port mapping:  
+`ex: 50506:323232 -(inside:outside)`.  
+In this example, port `50506` is the port number that we previously have pointed in the entrypoint.sh file, and
+`323232` - is the port number that we will use in order to debug.  
 
-find floodlight_1 and add a desirable port mapping:`ex: 50506:323232     - (inside:outside)`.
-In this example, 50506 is the port number that we have pointed for entrypoint.sh file previously,
-323232 - port number that we will use to debug.
-As for the last step we have to stop our container, rebuild image, run new container.
+Next, we have to stop the container, rebuild the image, and run a new container.  
 
-To make sure that we expose our ports, run this command `docker ps | grep floodlight`,
-it should show us our mapping ports.
+To make sure that we have exposed our ports, run the following command, it should show us our mapping ports:  
+`docker ps | grep floodlight`.
 
-Inside the container run `docker exec -it floodlight_1(2) bash`, the entrypoint.sh should contain this argument
-`"-agentlib:jdwp=transport=dt_socket,address=50506,suspend=n,server=y”`
+Connect to the container using the following command:  
+`docker exec -it floodlight_1(2) bash`,  
+Inside the container locate the entrypoint.sh file, it should contain this argument:  
+`"-agentlib:jdwp=transport=dt_socket,address=50506,suspend=n,server=y”`.
