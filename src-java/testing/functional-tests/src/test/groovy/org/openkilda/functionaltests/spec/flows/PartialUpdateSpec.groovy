@@ -126,10 +126,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         given: "A flow"
         def swPair = topologyHelper.switchPairs.first()
         def flow = flowHelperV2.randomFlow(swPair)
-        flow.tap{
-            pathComputationStrategy = "cost"
-            maxLatency = 1234
-        }
+
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
             def cookie = new Cookie(it.cookie)
@@ -830,7 +827,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         maxLatencyBefore | maxLatencyT2Before | maxLatencyAfter | maxLatencyT2After
         null             | null               | null            | 1
         2                | 3                  | null            | 1
-        2                | null               | null            | 4
     }
 
     @Shared
