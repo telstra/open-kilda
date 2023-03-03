@@ -439,14 +439,14 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
 
     private void assertLldpConnectedDeviceExistInDatabase(LldpInfoData data) {
         Optional<SwitchConnectedDevice> switchConnectedDevice = switchConnectedDeviceRepository
-                .findLldpByUniqueIndex(packetService.createUniqueLldpIndex(data, data.getVlans().get(0)));
+                .findLldpByUniqueIndex(packetService.createLldpUniqueIndex(data, data.getVlans().get(0)));
         assertTrue(switchConnectedDevice.isPresent());
         assertLldpInfoDataDataEqualsSwitchConnectedDevice(data, switchConnectedDevice.get());
     }
 
     private void assertArpConnectedDeviceExistInDatabase(ArpInfoData data) {
         Optional<SwitchConnectedDevice> switchConnectedDevice = switchConnectedDeviceRepository
-                .findArpByUniqueIndex(packetService.createUniqueArpIndex(data, data.getVlans().get(0)));
+                .findArpByUniqueIndex(packetService.createArpUniqueIndex(data, data.getVlans().get(0)));
         assertTrue(switchConnectedDevice.isPresent());
         assertArpInfoDataEqualsSwitchConnectedDevice(data, switchConnectedDevice.get());
     }

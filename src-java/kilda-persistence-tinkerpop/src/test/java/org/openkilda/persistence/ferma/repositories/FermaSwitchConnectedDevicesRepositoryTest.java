@@ -22,6 +22,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.ConnectedDeviceType.ARP;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
+import static org.openkilda.model.SwitchConnectedDevice.createUniqueArpIndex;
+import static org.openkilda.model.SwitchConnectedDevice.createUniqueLldpIndex;
 import static org.openkilda.persistence.ferma.frames.SwitchConnectedDeviceFrame.UNIQUE_INDEX_PROPERTY;
 
 import org.openkilda.model.Switch;
@@ -255,15 +257,5 @@ public class FermaSwitchConnectedDevicesRepositoryTest extends InMemoryGraphBase
                             device.getType(), device.getVlan(), device.getMacAddress(), device.getIpAddress()),
                     frame.getProperty(UNIQUE_INDEX_PROPERTY));
         }
-    }
-
-    private String createUniqueLldpIndex(
-            SwitchId switchId, int portNumber, int vlan, String macAddress, String chassisId, String portId) {
-        return String.format("%s_%s_%s_%s_%s_%s_%s", switchId, portNumber, LLDP, vlan, macAddress, chassisId, portId);
-    }
-
-    private String createUniqueArpIndex(
-            SwitchId switchId, int portNumber, int vlan, String macAddress, String ipAddress) {
-        return String.format("%s_%s_%s_%s_%s_%s", switchId, portNumber, ARP, vlan, macAddress, ipAddress);
     }
 }
