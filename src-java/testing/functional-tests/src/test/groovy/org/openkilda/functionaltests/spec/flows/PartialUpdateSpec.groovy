@@ -86,10 +86,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                         newValue: 12345
                 ],
                 [
-                        field   : "maxLatencyTier2",
-                        newValue: 23456
-                ],
-                [
                         field   : "priority",
                         newValue: 654
                 ],
@@ -790,6 +786,38 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         cleanup:
         defaultFlow && flowHelperV2.deleteFlow(defaultFlow.flowId)
+    }
+
+    @Tidy
+    @Unroll("Unable to partial update flow (maxLatency #maxLatencyAfter and maxLatencyTier2 #maxLatencyT2After)")
+    def "Unable to partial update flow with maxLatency incorrect value"() {
+        given: "Two potential flows"
+        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0]).tap {
+            maxLatency = maxLatencyBefore
+            maxLatencyT2Before
+
+        }
+        flowHelperV2.addFlow(flow)
+
+        when: "Partial update the flow "
+        northboundV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
+            maxLatency = maxLatencyAfter
+            maxLatencyTier2 = maxLatencyT2After
+        })
+
+        then: "Bad Request response is returned"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.BAD_REQUEST
+        def errorDetails = error.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "Invalid flow data"
+
+        cleanup:
+        flowHelperV2.deleteFlow(flow.flowId)
+
+        where:
+        maxLatencyBefore | maxLatencyT2Before | maxLatencyAfter | maxLatencyT2After
+        null             | null               | null            | 1
+        2                | 3                  | null            | 1
     }
 
     @Shared
