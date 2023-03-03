@@ -802,7 +802,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         given: "Two potential flows"
         def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0]).tap {
             maxLatency = maxLatencyBefore
-            maxLatencyT2Before
+            maxLatencyTier2 = maxLatencyT2Before
 
         }
         flowHelperV2.addFlow(flow)
