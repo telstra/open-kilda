@@ -126,7 +126,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         given: "A flow"
         def swPair = topologyHelper.switchPairs.first()
         def flow = flowHelperV2.randomFlow(swPair)
-
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
             def cookie = new Cookie(it.cookie)
