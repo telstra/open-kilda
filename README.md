@@ -26,6 +26,10 @@ Since the release 1.126.2 (December 2022), single-table mode for switches became
 only for multi-table mode. Current features will support single table mode till July 1, 2023. After that, single table
 mode support might be removed from any feature.
 
+## How to contribute to OpenKilda
+OpenKilda is an open source project that welcomes contributions from developers.
+To contribute, it is mandatory to follow our contribution [workflow](docs/contrib/workflow.md).
+
 ## How to build and deploy OpenKilda
 
 The build process described below requires to install a number of packages. It is recommended that you build OpenKilda on a virtual machine.
