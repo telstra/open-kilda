@@ -44,6 +44,7 @@ import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
 import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
@@ -350,6 +351,21 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         return restTemplate.exchange("/api/v2/switches/{switch_id}/lags/{logical_port_number}", HttpMethod.DELETE,
                 new HttpEntity<>(buildHeadersWithCorrelationId()), LagPortResponse.class, switchId,
                 logicalPortNumber).getBody();
+    }
+
+    @Override
+    public SwitchFlowsPerPortResponse getSwitchFlows(SwitchId switchId, List<Integer> portIds) {
+        log.debug("Get flows from switch {} on ports {}", switchId, portIds);
+        UriComponentsBuilder uriBuilder =
+                UriComponentsBuilder.fromUriString("/api/v2/switches/{switch_id}/flows-by-port");
+        if (!portIds.isEmpty()) {
+            uriBuilder.queryParam("ports", portIds);
+        }
+        return restTemplate.exchange(
+                uriBuilder.build().toString(),
+                HttpMethod.GET,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), SwitchFlowsPerPortResponse.class, switchId
+                ).getBody();
     }
 
     @Override
