@@ -72,7 +72,6 @@ wget https://bootstrap.pypa.io/get-pip.py
 
 and then run it:
 
-
 ```shell
 sudo python3 get-pip.py
 ```
