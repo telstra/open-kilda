@@ -182,20 +182,20 @@ response payload:
     }
   ],
   "time_create": "YYYY-MM-DDThh:mm:ss[.SSS]",
-  "time_update": "YYYY-MM-DDThh:mm:ss[.SSS]",
+  "time_update": "YYYY-MM-DDThh:mm:ss[.SSS]"
 }
 ```
 
-`y_point` contain switch_id where flow path's become different. I.e. from "shared_endpoint" to "y_point" all subordinate
-flows have same path, from "y_point" to each "endpoint" defined in "flows" array they have independent path's. Can
-be `null` if can't be determined (whole y_flow status in this case can't be UP). `protected_path_y_point` is the similar,
+The `y_point` contains the switch_id on which the flow path split into two paths. I.e. from a "shared_endpoint" to a "y_point", all subordinate
+flows have the same path. From "y_point" to each "endpoint" defined in "flows" array, flows have independent paths. In case a path
+cannot be determined, the `y_point` is `null` (the y_flow status in this case can't be `UP`). `protected_path_y_point` is similar to `y_point`,
 but for protected paths.
 
-`sub_flows` contain info about "second"(not shared) endpoint of subordinate flows. It can contain from 0 to 2 records.
+The `sub_flows` collection contains information about the "second" (not shared) endpoint of subordinate flows. It can contain 0 to 2 records.
 
-`status` calculated from subordinate flow's statuses. It will `UP` if all subordinate flow statuses are `UP`. It will
-be `DEGRADED` if any of subordinate flow status is not `UP`. It will be `DOWN` if there is no one subordinate flow
-in `UP` status or there is no any subordinate flow at all. At least one subordinate flow must be `UP` for y_flow start
+The `status` is calculated using subordinate flow's statuses. It will `UP` if all subordinate flow statuses are `UP`. It will
+be `DEGRADED` if any of the subordinate flow statuses is not `UP`. It will be `DOWN` if there is no any subordinate flow
+in `UP` status or there is no any subordinate flow at all. At least one subordinate flow must be `UP` for a y_flow to start
 passing traffic.
 
 ## Update operation
@@ -206,8 +206,8 @@ REST endpoints:
  * `PUT /v2/y-flows/{y_flow_id}`
  * `PATCH /v2/y-flows/{y_flow_id}`
 
-Request/response bodies are the same to the create operation. In case of PATCH request only present in request body
-fields will be updated.
+Request/response bodies are the same as the create operation. In case of PATCH request, only fields present in the request body
+will be updated.
 
 ## Reroute operation
 
@@ -258,7 +258,7 @@ Request body is ignored, response payload:
 
 REST endpoint: `DELETE /v2/y-flows/{y_flow_id}`
 
-Request body is ignored, response body is the same to the read operation.
+Request body is ignored, response body is the same as the read operation.
 
 ## Read subordinate flows
 
@@ -438,11 +438,11 @@ Request body is ignored, response payload:
 
 REST endpoint: `POST /v2/y-flows/{y_flow_id}/swap`
 
-Request body is ignored, response body is the same to the create/update operations.
+Request body is ignored, response body is the same as the create/update operations.
 
 # Existing API changes
 
-All flows CRUD operation responses will be extended with following fields:
+All flows CRUD operation responses will be extended with the following fields:
 
 ```json
 {
@@ -452,9 +452,9 @@ All flows CRUD operation responses will be extended with following fields:
 }
 ```
 
-`y_flow_id` must be not null if the flow is subordinate flow of y_flow.
+The `y_flow_id` must be non-null if the flow is a subordinate flow of some y_flow.
 
-Update operations for y-flow subordinate flows requested via:
+The following operations must be rejected for y-flow subordinate flows requested via:
 
 * `PUT /v1/flows/{flow_id}`
 * `PUT /v2/flows/{flow_id}`
@@ -469,5 +469,3 @@ Update operations for y-flow subordinate flows requested via:
 * `DELETE /v2/flows/{flow_id}`
 * `POST /v2/flows/swap-endpoint`
 * `POST /v2/flows/{flow_id}/loops`
-
-must be denied.
