@@ -19,10 +19,10 @@ import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
-import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -35,18 +35,17 @@ import java.util.Set;
 @Slf4j
 @Getter
 public final class SpeakerCommandFsm
-        extends WithCommandContextFsm<SpeakerCommandFsm, State, Event, SpeakerFlowSegmentResponse> {
+        extends AbstractBaseFsm<SpeakerCommandFsm, State, Event, SpeakerFlowSegmentResponse> {
 
     private final FlowSegmentRequest request;
-    private final FlowCreateHubCarrier carrier;
+    private final FlowGenericCarrier carrier;
     private final Set<ErrorCode> giveUpErrors = new HashSet<>();
     private final int allowedRetriesCount;
     private int remainingRetries;
 
     private SpeakerCommandFsm(
-            FlowSegmentRequest request, FlowCreateHubCarrier carrier, Set<ErrorCode> giveUpErrors,
+            FlowSegmentRequest request, FlowGenericCarrier carrier, Set<ErrorCode> giveUpErrors,
             Integer retriesLimit) {
-        super(new CommandContext(request.getMessageContext().getCorrelationId()));
         this.request = request;
         this.carrier = carrier;
         this.giveUpErrors.addAll(giveUpErrors);
@@ -87,18 +86,16 @@ public final class SpeakerCommandFsm
         carrier.sendSpeakerRequest(request);
     }
 
-    @Override
     public void fireNext(SpeakerFlowSegmentResponse context) {
         fire(Event.NEXT);
     }
 
-    @Override
     public void fireError(String errorReason) {
         log.info("Failed to execute the flow command {}", errorReason);
         fire(Event.ERROR);
     }
 
-    public static Builder getBuilder(FlowCreateHubCarrier carrier, int retriesLimit) {
+    public static Builder getBuilder(FlowGenericCarrier carrier, int retriesLimit) {
         return new Builder(carrier, retriesLimit);
     }
 
@@ -120,18 +117,18 @@ public final class SpeakerCommandFsm
     }
 
     public static final class Builder {
-        private final FlowCreateHubCarrier carrier;
+        private final FlowGenericCarrier carrier;
         private final int retriesLimit;
         private final StateMachineBuilder<SpeakerCommandFsm, State, Event, SpeakerFlowSegmentResponse> builder;
 
-        private Builder(FlowCreateHubCarrier carrier, int retriesLimit) {
+        private Builder(FlowGenericCarrier carrier, int retriesLimit) {
             this.carrier = carrier;
             this.retriesLimit = retriesLimit;
 
             builder = StateMachineBuilderFactory.create(
                     SpeakerCommandFsm.class, State.class, Event.class, SpeakerFlowSegmentResponse.class,
                     // extra params
-                    FlowSegmentRequest.class, FlowCreateHubCarrier.class, Set.class, Integer.class
+                    FlowSegmentRequest.class, FlowGenericCarrier.class, Set.class, Integer.class
             );
 
             builder.transition()

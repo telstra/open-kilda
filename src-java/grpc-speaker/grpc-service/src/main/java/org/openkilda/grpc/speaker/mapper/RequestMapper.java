@@ -16,12 +16,12 @@
 package org.openkilda.grpc.speaker.mapper;
 
 import org.openkilda.grpc.speaker.model.LogicalPortDto;
-import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
+import org.openkilda.messaging.command.grpc.CreateOrUpdateLogicalPortRequest;
 
 import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface RequestMapper {
 
-    LogicalPortDto toLogicalPort(CreateLogicalPortRequest request);
+    LogicalPortDto toLogicalPort(CreateOrUpdateLogicalPortRequest request);
 }

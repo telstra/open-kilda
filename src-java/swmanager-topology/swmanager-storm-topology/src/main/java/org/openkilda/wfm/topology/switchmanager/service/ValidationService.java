@@ -15,26 +15,31 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
-import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
+import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.SpeakerData;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateGroupsResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateLogicalPortsResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateMetersResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateRulesResultV2;
 
 import java.util.List;
 
 public interface ValidationService {
-    ValidateRulesResult validateRules(SwitchId switchId, List<FlowEntry> presentRules,
-                                      List<FlowEntry> expectedDefaultRules);
+    ValidateRulesResultV2 validateRules(SwitchId switchId, List<FlowSpeakerData> presentRules,
+                                        List<FlowSpeakerData> expectedRules, boolean includeFlowInfo);
 
-    ValidateGroupsResult validateGroups(SwitchId switchId, List<GroupEntry> presentGroups);
+    ValidateGroupsResultV2 validateGroups(SwitchId switchId, List<GroupSpeakerData> presentGroups,
+                                          List<GroupSpeakerData> expectedGroups, boolean includeFlowInfo);
 
-    ValidateLogicalPortsResult validateLogicalPorts(SwitchId switchId, List<LogicalPort> presentLogicalPorts);
+    ValidateLogicalPortsResultV2 validateLogicalPorts(SwitchId switchId, List<LogicalPort> presentLogicalPorts);
 
-    ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
-                                        List<MeterEntry> expectedDefaultMeters);
+    ValidateMetersResultV2 validateMeters(
+            SwitchId switchId, List<MeterSpeakerData> presentMeters, List<MeterSpeakerData> expectedMeters,
+            boolean includeAllFlowInfo, boolean includeMeterFlowInfo);
+
+    List<SpeakerData> buildExpectedEntities(SwitchId switchId);
 }

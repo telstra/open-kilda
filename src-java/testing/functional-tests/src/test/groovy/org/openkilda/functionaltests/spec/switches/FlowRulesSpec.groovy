@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.spec.switches
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -93,7 +92,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             defaultPlusFlowRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries
             def multiTableFlowRules = 0
-            if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable) {
+            if (switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable) {
                 multiTableFlowRules = multiTableFlowRulesCount + sharedRulesCount
             }
             assert defaultPlusFlowRules.size() == srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRules
@@ -161,8 +160,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
                 ],
                 [// Drop all non-base rules (ie IGNORE), and add base rules back (eg overwrite)
                  deleteRulesAction: DeleteRulesAction.OVERWRITE_DEFAULTS,
-                 rulesDeleted     : flowRulesCount + (s42IsEnabledOnSrcSw ? s42FlowRttIngressForwardCount : 0),
-                 getExpectedRules : { sw, defaultRules -> defaultRules }
+                 rulesDeleted     : srcSwDefaultRules.size(),
+                 getExpectedRules : { sw, defaultRules -> defaultRules + getFlowRules(sw) }
                 ],
                 [// Drop all default rules in single-table mode
                  deleteRulesAction: DeleteRulesAction.REMOVE_DEFAULTS,
@@ -240,13 +239,12 @@ class FlowRulesSpec extends HealthCheckSpecification {
                 ],
                 [// Drop all non-base rules (ie IGNORE), and add base rules back (eg overwrite)
                  deleteRulesAction: DeleteRulesAction.OVERWRITE_DEFAULTS,
-                 rulesDeleted     : flowRulesCount + sharedRulesCount +
-                         (s42IsEnabledOnSrcSw ? s42QinqOuterVlanCount + s42FlowRttIngressForwardCount : 0),
-                 getExpectedRules : { sw, defaultRules ->
-                     def noDefaultSwRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries - defaultRules
-                     defaultRules + noDefaultSwRules.findAll { Cookie.isIngressRulePassThrough(it.cookie) } +
-                         (s42IsEnabledOnSrcSw ? northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
-                             new Cookie(it.cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INPUT } : [])
+                 rulesDeleted     : srcSwDefaultRules.size() + multiTableFlowRulesCount +
+                         (s42IsEnabledOnSrcSw ? s42FlowRttInput : 0),
+                 getExpectedRules : { sw, defaultRules -> defaultRules + getFlowRules(sw) +
+                         northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+                             Cookie.isIngressRulePassThrough(it.cookie)
+                         }
                  }
                 ],
                 [// Drop all default rules
@@ -318,7 +316,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flowHelperV2.addFlow(flow)
 
-        if (northbound.getSwitchProperties(srcSwitch.dpId).multiTable ) {
+        if (switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable) {
             def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
                 new Cookie(it.cookie).serviceFlag
             }
@@ -496,7 +494,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         def amountOfRulesMap = involvedSwitches.collectEntries { switchId ->
-            def swProps = northbound.getSwitchProperties(switchId)
+            def swProps = switchHelper.getCachedSwProps(switchId)
             def switchIdInSrcOrDst = (switchId in [switchPair.src.dpId, switchPair.dst.dpId])
             def defaultAmountOfFlowRules = 2 // ingress + egress
             def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
@@ -721,8 +719,10 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def flowInfo = database.getFlow(flow.flowId)
         def flowRulesSrcSw = getFlowRules(srcSwitch)
         def flowRulesDstSw = getFlowRules(dstSwitch)
-        def sharedRuleSrcSw = flowRulesSrcSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW }.cookie
-        def sharedRuleDstSw = flowRulesDstSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW }.cookie
+        def sharedRuleSrcSw = flowRulesSrcSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW &&
+                it.match.inPort.toInteger() == flow.source.portNumber }.cookie
+        def sharedRuleDstSw = flowRulesDstSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW &&
+                it.match.inPort.toInteger() == flow.destination.portNumber }.cookie
 
         def ingressSrcSw = flowInfo.forwardPath.cookie.value
         def egressSrcSw = flowInfo.reversePath.cookie.value
@@ -796,8 +796,10 @@ class FlowRulesSpec extends HealthCheckSpecification {
             rulesAfterRerouteSrcSw = getFlowRules(srcSwitch)
             rulesAfterRerouteDstSw = getFlowRules(dstSwitch)
             //system doesn't reinstall shared rule
-            assert rulesAfterRerouteSrcSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW }.cookie == sharedRuleSrcSw
-            assert rulesAfterRerouteDstSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW }.cookie == sharedRuleDstSw
+            assert rulesAfterRerouteSrcSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW &&
+                    it.match.inPort.toInteger() == flow.source.portNumber }.cookie == sharedRuleSrcSw
+            assert rulesAfterRerouteDstSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW &&
+                    it.match.inPort.toInteger() == flow.destination.portNumber }.cookie == sharedRuleDstSw
             rulesAfterRerouteSrcSw.findAll { new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW }.cookie.each {
                 assert !(it in [ingressSrcSw, egressSrcSw])
             }
@@ -852,7 +854,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([HARDWARE, LOW_PRIORITY, SMOKE_SWITCHES])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
+    @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY, SMOKE_SWITCHES])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
@@ -875,7 +877,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         def rulesCountMap = involvedSwitches.collectEntries { switchId ->
-            def swProps = northbound.getSwitchProperties(switchId)
+            def swProps = switchHelper.getCachedSwProps(switchId)
             def switchIdInSrcOrDst = (switchId in [switchPair.src.dpId, switchPair.dst.dpId])
             def defaultAmountOfFlowRules = 2 // ingress + egress
             def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)

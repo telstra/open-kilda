@@ -35,6 +35,7 @@
         <i *ngIf="user.user_id != loggedInUserId && commonService.hasPermission('um_user_edit')" title="Edit" (click)="editUser(user.user_id)" class="fa fa-pencil-square-o fa-2x cursor-pointer"></i>
         <i *ngIf="user.user_id != loggedInUserId && commonService.hasPermission('um_user_delete')" title="Delete" (click)="deleteUser(user.user_id)" class="fa fa-trash-o fa-2x cursor-pointer"></i>
         <i *ngIf="user.user_id != loggedInUserId && commonService.hasPermission('um_user_activate')" title="Active/Inactive" (click)="activeInactiveUser(user.user_id, user.status)" [ngClass]="{'fa-toggle-on': user.status== 'Active', 'fa-toggle-off': user.status== 'Inactive'}" class="fa cursor-pointer fa-2x"></i>
+        <i *ngIf="user.user_id != loggedInUserId && user.status =='Lock' && commonService.hasPermission('um_user_account_unlock')"  title="Unblock User" (click)="unblockUser(user.user_id)"  class="fa fa-unlock cursor-pointer fa-2x"></i>
         <span title="Reset Password" (click)="resetpassword(user.user_id)" class="fa-passwd-reset fa-stack cursor-pointer" *ngIf="commonService.hasPermission('um_user_reset')">
           <i title="Reset Password" class="fa fa-undo fa-stack-2x"></i>
           <i class="fa fa-lock fa-stack-1x"></i>

@@ -118,7 +118,7 @@ public class AvailableNetworkTest {
                         buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, POP_4, POP_3, 1)));
         long expectedWeight = cost + 1000L;
         for (Edge edge : network.edges) {
-            long currentWeight = weightFunction.apply(edge).toLong();
+            long currentWeight = weightFunction.apply(edge).getTotalWeight();
             if (edge.getSrcSwitch().getPop().equals(POP_4)
                     || edge.getDestSwitch().getPop().equals(POP_4)) {
                 assertEquals(expectedWeight, currentWeight);
@@ -146,7 +146,7 @@ public class AvailableNetworkTest {
                 asList(buildPathWithSegment(SWITCH_1, SWITCH_3, 2, 1, POP_1, null, 0),
                         buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, null, POP_3, 1)));
         for (Edge edge : network.edges) {
-            long currentWeight = weightFunction.apply(edge).toLong();
+            long currentWeight = weightFunction.apply(edge).getTotalWeight();
             assertEquals(cost, currentWeight);
         }
     }
@@ -169,7 +169,7 @@ public class AvailableNetworkTest {
                 asList(buildPathWithSegment(SWITCH_1, SWITCH_3, 2, 1, POP_1, null, 0),
                         buildPathWithSegment(SWITCH_3, SWITCH_5, 2, 2, null, POP_3, 1)));
         for (Edge edge : network.edges) {
-            long currentWeight = weightFunction.apply(edge).toLong();
+            long currentWeight = weightFunction.apply(edge).getTotalWeight();
             assertEquals(cost, currentWeight);
         }
     }
@@ -192,7 +192,7 @@ public class AvailableNetworkTest {
                 asList(buildPathSegment(SWITCH_1, SWITCH_3, 2, 1, 0),
                         buildPathSegment(SWITCH_3, SWITCH_5, 2, 2, 1)));
         for (Edge edge : network.edges) {
-            long currentWeight = weightFunction.apply(edge).toLong();
+            long currentWeight = weightFunction.apply(edge).getTotalWeight();
             assertEquals(cost, currentWeight);
         }
     }

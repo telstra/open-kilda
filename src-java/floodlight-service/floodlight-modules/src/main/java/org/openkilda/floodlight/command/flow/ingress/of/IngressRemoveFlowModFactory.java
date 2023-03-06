@@ -65,4 +65,9 @@ public abstract class IngressRemoveFlowModFactory extends IngressFlowModFactory 
     protected List<OFInstruction> makeServer42IngressFlowMessageInstructions(List<Integer> vlanStack) {
         return Collections.emptyList();
     }
+
+    @Override
+    protected List<OFInstruction> makeIngressVlanStatsInstructions() {
+        return Collections.emptyList();
+    }
 }

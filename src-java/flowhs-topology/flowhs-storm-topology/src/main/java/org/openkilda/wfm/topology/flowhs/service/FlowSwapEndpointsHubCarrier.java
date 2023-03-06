@@ -22,11 +22,4 @@ public interface FlowSwapEndpointsHubCarrier extends FlowGenericCarrier {
      * Sends a FlowUpdate request.
      */
     void sendFlowUpdateRequest(FlowRequest flowRequest);
-
-    /**
-     * Cancels timeout callback.
-     *
-     * @param key operation identifier.
-     */
-    void cancelTimeoutCallback(String key);
 }

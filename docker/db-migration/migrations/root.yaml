@@ -60,3 +60,27 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 016-remove-flow-latency-properties.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 017-add-yflow-classes.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 018-add-support-of-yflow-meters.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 019-add-shared-bandwidth-group-properties.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 020-add-unique-index-field-for-switch-connected-devices.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 021-add-unique-constraint-for-switch-connected-devices.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 022-add-port-class.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 023-add-lacp-reply-into-lag-class.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 024-add-ha-flow-classes.yaml

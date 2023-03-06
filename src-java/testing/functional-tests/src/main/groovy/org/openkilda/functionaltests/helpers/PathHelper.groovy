@@ -5,12 +5,15 @@ import static org.springframework.beans.factory.config.ConfigurableBeanFactory.S
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath
-import org.openkilda.northbound.dto.v2.flows.FlowPathV2
+import org.openkilda.messaging.payload.flow.PathNodePayload
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2
+import org.openkilda.northbound.dto.v2.yflows.YFlowPaths
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.IslUtils
 
 import groovy.util.logging.Slf4j
@@ -35,6 +38,8 @@ class PathHelper {
     TopologyDefinition topology
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
+    @Autowired @Qualifier("islandNbV2")
+    NorthboundServiceV2 northboundV2
     @Autowired
     IslUtils islUtils
     @Autowired
@@ -154,9 +159,16 @@ class PathHelper {
     }
 
     /**
+     * Converts List<PathNodePayload> path representation to a List<PathNode> representation
+     */
+    static List<PathNode> convert(List<PathNodePayload> path, boolean removeTail = true) {
+        getPathNodes(path, removeTail)
+    }
+
+    /**
      * Returns a List<PathNode> representation of a path
      */
-    static List<PathNode> getPathNodes(path) {
+    static List<PathNode> getPathNodes(path, boolean removeTail = true) {
         if (path.empty) {
             throw new IllegalArgumentException("Path cannot be empty. " +
                     "This should be impossible for valid FlowPathPayload")
@@ -168,7 +180,10 @@ class PathHelper {
         }
         def seqId = 0
         if (pathNodes.size() > 2) {
-            pathNodes = pathNodes.dropRight(1).tail() //remove first and last elements (not used in PathNode view)
+            pathNodes = pathNodes.tail() //remove first elements (not used in PathNode view)
+            if (removeTail) {
+                pathNodes = pathNodes.dropRight(1) //remove last elements (not used in PathNode view)
+            }
         }
         pathNodes.each { it.seqId = seqId++ } //set valid seqId indexes
         return pathNodes
@@ -177,17 +192,17 @@ class PathHelper {
     /**
      * Converts FlowPathPayload path representation to a List<FlowPathV2.PathNodeV2> representation
      */
-    static List<FlowPathV2.PathNodeV2> convertToNodesV2(FlowPathPayload pathPayload, pathToConvert = "forwardPath") {
+    static List<PathNodeV2> convertToNodesV2(FlowPathPayload pathPayload, pathToConvert = "forwardPath") {
         def path = pathPayload."$pathToConvert"
         if (path.empty) {
             throw new IllegalArgumentException("Path cannot be empty. " +
                     "This should be impossible for valid FlowPathPayload")
         }
-        List<FlowPathV2.PathNodeV2> pathNodes = []
+        List<PathNodeV2> pathNodes = []
         path.each { pathEntry ->
-            pathNodes << new FlowPathV2.PathNodeV2(pathEntry.switchId,
+            pathNodes << new PathNodeV2(pathEntry.switchId,
                     pathEntry.inputPort == null ? 0 : pathEntry.inputPort, null)
-            pathNodes << new FlowPathV2.PathNodeV2(pathEntry.switchId,
+            pathNodes << new PathNodeV2(pathEntry.switchId,
                     pathEntry.outputPort == null ? 0 : pathEntry.outputPort, null)
         }
         if (pathNodes.size() > 2) {
@@ -199,13 +214,13 @@ class PathHelper {
     /**
      * Converts path nodes (in the form of List<PathNode>) to a List<FlowPathV2.PathNodeV2> representation
      */
-    static List<FlowPathV2.PathNodeV2> convertToNodesV2(List<PathNode> path) {
+    static List<PathNodeV2> convertToNodesV2(List<PathNode> path) {
         if (path.empty) {
             throw new IllegalArgumentException("Path cannot be empty.")
         }
-        List<FlowPathV2.PathNodeV2> pathNodes = []
+        List<PathNodeV2> pathNodes = []
         path.each { pathEntry ->
-            pathNodes << new FlowPathV2.PathNodeV2(pathEntry.switchId, pathEntry.portNo, pathEntry.segmentLatency)
+            pathNodes << new PathNodeV2(pathEntry.switchId, pathEntry.portNo, pathEntry.segmentLatency)
         }
         return pathNodes
     }
@@ -215,6 +230,20 @@ class PathHelper {
      */
     List<Switch> getInvolvedSwitches(List<PathNode> path) {
         return (List<Switch>) getInvolvedIsls(path).collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique()
+    }
+
+    List<Switch> getInvolvedYSwitches(YFlowPaths yFlowPaths) {
+        return yFlowPaths.subFlowPaths.collectMany { subFlowPath ->
+            getInvolvedSwitchesV2(subFlowPath.forward)
+        }.unique()
+    }
+
+    List<Switch> getInvolvedYSwitches(String yFlowId) {
+        return getInvolvedYSwitches(northboundV2.getYFlowPaths(yFlowId))
+    }
+
+    List<Switch> getInvolvedSwitchesV2(List<PathNodePayload> nodes) {
+        return nodes.collect { it.switchId }.unique().collect { topology.find(it) }
     }
 
     /**

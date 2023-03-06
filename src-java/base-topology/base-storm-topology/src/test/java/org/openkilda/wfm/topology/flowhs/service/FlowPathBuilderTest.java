@@ -238,7 +238,7 @@ public class FlowPathBuilderTest {
                 .build();
         FlowSegmentCookie cookie = new FlowSegmentCookie(FlowPathDirection.FORWARD, 1);
 
-        FlowPath flowPath = builder.buildFlowPath(flow, pathResources, path, cookie, false);
+        FlowPath flowPath = builder.buildFlowPath(flow, pathResources, path, cookie, false, flow.getFlowId());
 
         assertEquals(pathId, flowPath.getPathId());
         assertEquals(meterId, flowPath.getMeterId());
@@ -275,7 +275,7 @@ public class FlowPathBuilderTest {
                 .build();
         FlowSegmentCookie cookie = new FlowSegmentCookie(FlowPathDirection.FORWARD, 1);
 
-        FlowPath flowPath = builder.buildFlowPath(flow, pathResources, path, cookie, false);
+        FlowPath flowPath = builder.buildFlowPath(flow, pathResources, path, cookie, false, flow.getFlowId());
 
         assertEquals(switchId1, flowPath.getSrcSwitchId());
         assertEquals(switchId2, flowPath.getDestSwitchId());
@@ -320,7 +320,7 @@ public class FlowPathBuilderTest {
                 .build();
         FlowSegmentCookie cookie = new FlowSegmentCookie(FlowPathDirection.FORWARD, 1);
 
-        FlowPath flowPath = builder.buildFlowPath(flow, pathResources, path, cookie, false);
+        FlowPath flowPath = builder.buildFlowPath(flow, pathResources, path, cookie, false, flow.getFlowId());
 
         assertEquals(switchId1, flowPath.getSrcSwitchId());
         assertEquals(switchId2, flowPath.getDestSwitchId());

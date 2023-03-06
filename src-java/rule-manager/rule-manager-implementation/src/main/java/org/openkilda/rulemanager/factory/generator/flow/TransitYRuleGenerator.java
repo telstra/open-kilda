@@ -15,75 +15,85 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
+import static org.openkilda.model.SwitchFeature.METERS;
+
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Constants.Priority;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.factory.MeteredRuleGenerator;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import lombok.NonNull;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @SuperBuilder
 public class TransitYRuleGenerator extends TransitRuleGenerator implements MeteredRuleGenerator {
+    @NonNull
     protected final MeterId sharedMeterId;
-    protected RuleManagerConfig config;
-
+    @NonNull
+    protected final RuleManagerConfig config;
+    @NonNull
+    protected final UUID externalMeterCommandUuid;
+    protected final boolean generateMeterCommand;
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         if (flowPath.isOneSwitchFlow()) {
             return new ArrayList<>();
         }
-
-        List<SpeakerCommandData> result = new ArrayList<>();
-        SpeakerCommandData command = buildTransitCommand(sw, inPort, outPort);
+        List<SpeakerData> result = new ArrayList<>();
+        SpeakerData command = buildTransitCommand(sw);
         result.add(command);
 
-        // TODO(tdurakov): since it's shared meter, this build might be moved outside.
-        SpeakerCommandData meterCommand = buildMeter(flowPath, config, sharedMeterId, sw);
-        if (meterCommand != null) {
-            result.add(meterCommand);
-            command.getDependsOn().add(meterCommand.getUuid());
+        if (generateMeterCommand) {
+            SpeakerData meterCommand = buildMeter(externalMeterCommandUuid, flowPath, config, sharedMeterId, sw);
+            if (meterCommand != null) {
+                result.add(meterCommand);
+                command.getDependsOn().add(externalMeterCommandUuid);
+            }
+        } else if (sw.getFeatures().contains(METERS) && sharedMeterId != null) {
+            command.getDependsOn().add(externalMeterCommandUuid);
         }
-
         return result;
     }
 
-
-    private SpeakerCommandData buildTransitCommand(Switch sw, int inPort, int outPort) {
-        Instructions instructions = Instructions.builder()
-                .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(outPort))))
-                .build();
-        if (sharedMeterId != null && sharedMeterId.getValue() != 0L) {
-            addMeterToInstructions(sharedMeterId, sw, instructions);
-        }
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+    private SpeakerData buildTransitCommand(Switch sw) {
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie().toBuilder().yFlow(true).build())
                 .table(multiTable ? OfTable.TRANSIT : OfTable.INPUT)
                 .priority(Priority.Y_FLOW_PRIORITY)
                 .match(makeTransitMatch(sw, inPort, encapsulation))
-                .instructions(instructions);
+                .instructions(buildInstructions(sw));
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
             builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
         }
         return builder.build();
+    }
+
+    private Instructions buildInstructions(Switch sw) {
+        Instructions instructions = Instructions.builder()
+                .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(outPort))))
+                .build();
+        addMeterToInstructions(sharedMeterId, sw, instructions);
+        return instructions;
     }
 }

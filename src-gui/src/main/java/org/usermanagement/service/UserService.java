@@ -271,6 +271,8 @@ public class UserService implements UserDetailsService {
             throw new RequestValidationException(messageUtil.getAttributeInvalid("username", userName + ""));
         }
         userEntity.setLoginTime(Calendar.getInstance().getTime());
+        userEntity.setFailedLoginCount(null);
+        userEntity.setUnlockTime(null);
         if (userEntity.getIs2FaEnabled()) {
             userEntity.setIs2FaConfigured(true);
         }
@@ -581,6 +583,20 @@ public class UserService implements UserDetailsService {
         userInfo.setName(requestContext.getFullName());
         userInfo.setPermissions(requestContext.getPermissions());
         return userInfo;
+    }
+
+    /**
+     * Unlock user account.
+     *
+     * @param userId the user id
+     */
+    public void unlockUserAccount(Long userId) {
+        UserEntity userEntity = userValidator.validateUserId(userId);
+        userEntity.setStatusEntity(Status.ACTIVE.getStatusEntity());
+        userEntity.setFailedLoginCount(null);
+        userEntity.setUnlockTime(null);
+        userEntity.setLoginTime(new Timestamp(System.currentTimeMillis()));
+        userRepository.save(userEntity);
     }
     
     /**

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,23 +16,32 @@
 package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
+import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
+import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.wfm.error.PipelineException;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class SpeakerWorkerService {
     private final SpeakerCommandCarrier carrier;
+    private final Map<String, SpeakerRequest> keyToRequest = new HashMap<>();
 
-    private final Map<String, FlowSegmentRequest> keyToRequest = new HashMap<>();
-
-    public SpeakerWorkerService(SpeakerCommandCarrier carrier) {
+    public SpeakerWorkerService(@NonNull SpeakerCommandCarrier carrier) {
         this.carrier = carrier;
     }
 
@@ -41,7 +50,7 @@ public class SpeakerWorkerService {
      * @param key unique operation's key.
      * @param command command to be executed.
      */
-    public void sendCommand(String key, FlowSegmentRequest command) throws PipelineException {
+    public void sendCommand(@NonNull String key, @NonNull SpeakerRequest command) throws PipelineException {
         log.debug("Got a request from hub bolt {}", command);
         keyToRequest.put(key, command);
         carrier.sendCommand(key, command);
@@ -52,10 +61,10 @@ public class SpeakerWorkerService {
      * @param key operation's key.
      * @param response response payload.
      */
-    public void handleResponse(String key, SpeakerFlowSegmentResponse response)
+    public void handleResponse(@NonNull String key, @NonNull SpeakerResponse response)
             throws PipelineException {
         log.debug("Got a response from speaker {}", response);
-        FlowSegmentRequest pendingRequest = keyToRequest.remove(key);
+        SpeakerRequest pendingRequest = keyToRequest.remove(key);
         if (pendingRequest != null) {
             if (pendingRequest.getCommandId().equals(response.getCommandId())) {
                 carrier.sendResponse(key, response);
@@ -69,16 +78,37 @@ public class SpeakerWorkerService {
      * Handles operation timeout.
      * @param key operation identifier.
      */
-    public void handleTimeout(String key) throws PipelineException {
-        FlowSegmentRequest failedRequest = keyToRequest.remove(key);
+    public void handleTimeout(@NonNull String key) throws PipelineException {
+        SpeakerRequest failedRequest = keyToRequest.remove(key);
 
-        SpeakerFlowSegmentResponse response = FlowErrorResponse.errorBuilder()
-                .commandId(failedRequest.getCommandId())
-                .switchId(failedRequest.getSwitchId())
-                .metadata(failedRequest.getMetadata())
-                .errorCode(ErrorCode.OPERATION_TIMED_OUT)
-                .messageContext(failedRequest.getMessageContext())
-                .build();
-        carrier.sendResponse(key, response);
+        if (failedRequest instanceof FlowSegmentRequest) {
+            FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) failedRequest;
+            SpeakerFlowSegmentResponse response = FlowErrorResponse.errorBuilder()
+                    .commandId(flowSegmentRequest.getCommandId())
+                    .switchId(flowSegmentRequest.getSwitchId())
+                    .metadata(flowSegmentRequest.getMetadata())
+                    .errorCode(ErrorCode.OPERATION_TIMED_OUT)
+                    .messageContext(flowSegmentRequest.getMessageContext())
+                    .build();
+            carrier.sendResponse(key, response);
+        } else if (failedRequest instanceof BaseSpeakerCommandsRequest) {
+            BaseSpeakerCommandsRequest speakerCommandsRequest = (BaseSpeakerCommandsRequest) failedRequest;
+            SpeakerCommandResponse response = SpeakerCommandResponse.builder()
+                    .commandId(speakerCommandsRequest.getCommandId())
+                    .switchId(speakerCommandsRequest.getSwitchId())
+                    .messageContext(speakerCommandsRequest.getMessageContext())
+                    .success(false)
+                    .failedCommandIds(speakerCommandsRequest.getCommands().stream().map(command -> {
+                        if (command instanceof FlowCommand) {
+                            return ((FlowCommand) command).getData();
+                        }
+                        if (command instanceof MeterCommand) {
+                            return ((MeterCommand) command).getData();
+                        }
+                        return ((GroupCommand) command).getData();
+                    }).collect(Collectors.toMap(SpeakerData::getUuid, error -> "Operation is timed out")))
+                    .build();
+            carrier.sendResponse(key, response);
+        }
     }
 }

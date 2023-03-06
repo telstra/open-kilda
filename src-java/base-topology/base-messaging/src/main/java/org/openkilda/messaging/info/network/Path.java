@@ -37,11 +37,16 @@ public class Path implements Serializable {
     @JsonProperty("nodes")
     private List<PathNodePayload> nodes;
 
+    @JsonProperty("is_backup_path")
+    private Boolean isBackupPath;
+
     public Path(@JsonProperty("bandwidth") Long bandwidth,
                 @JsonProperty("latency") Duration latency,
-                @JsonProperty("nodes") List<PathNodePayload> nodes) {
+                @JsonProperty("nodes") List<PathNodePayload> nodes,
+                @JsonProperty("is_backup_path") Boolean isBackupPath) {
         this.bandwidth = bandwidth;
         this.latency = latency;
         this.nodes = nodes;
+        this.isBackupPath = isBackupPath;
     }
 }

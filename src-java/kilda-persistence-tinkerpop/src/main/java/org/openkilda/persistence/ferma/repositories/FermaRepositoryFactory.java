@@ -27,6 +27,9 @@ import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowStatsRepository;
+import org.openkilda.persistence.repositories.HaFlowPathRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
+import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
@@ -36,6 +39,7 @@ import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.PortPropertiesRepository;
+import org.openkilda.persistence.repositories.PortRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SpeakerRepository;
 import org.openkilda.persistence.repositories.SwitchConnectRepository;
@@ -44,6 +48,7 @@ import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.VxlanRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
@@ -218,5 +223,30 @@ public class FermaRepositoryFactory implements RepositoryFactory {
     @Override
     public PhysicalPortRepository createPhysicalPortRepository() {
         return new FermaPhysicalPortRepository(implementation);
+    }
+
+    @Override
+    public PortRepository createPortRepository() {
+        return new FermaPortRepository(implementation);
+    }
+
+    @Override
+    public YFlowRepository createYFlowRepository() {
+        return new FermaYFlowRepository(implementation);
+    }
+
+    @Override
+    public HaFlowRepository createHaFlowRepository() {
+        return new FermaHaFlowRepository(implementation, createHaFlowPathRepository(), createHaSubFlowRepository());
+    }
+
+    @Override
+    public HaSubFlowRepository createHaSubFlowRepository() {
+        return new FermaHaSubFlowRepository(implementation);
+    }
+
+    @Override
+    public HaFlowPathRepository createHaFlowPathRepository() {
+        return new FermaHaFlowPathRepository(implementation);
     }
 }

@@ -47,6 +47,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
 
@@ -184,6 +185,10 @@ public class TopologyDefinition {
         if (sw.prop != null) {
             allPorts.remove(sw.prop.server42Port);
         }
+        List<Integer> tgPorts = traffGens.stream()
+                .filter(it -> it.switchConnected.dpId.equals(sw.dpId))
+                .map(it -> it.switchPort).collect(toList());
+        allPorts.addAll(tgPorts);
         return allPorts;
     }
 
@@ -197,6 +202,11 @@ public class TopologyDefinition {
     @JsonIgnore
     public List<Integer> getBusyPortsForSwitch(Switch sw) {
         return getRelatedIsls(sw).stream().map(Isl::getSrcPort).collect(toList());
+    }
+
+    @JsonIgnore
+    public List<Integer> getBusyPortsForSwitch(SwitchId swId) {
+        return getBusyPortsForSwitch(find(swId));
     }
 
     /**
@@ -218,13 +228,24 @@ public class TopologyDefinition {
     }
 
     /**
+     * Get random ISLs between two switches.
+     * Returns only outgoing from the first switch ISL.
+     */
+    @JsonIgnore
+    public Optional<Isl> getIslBetween(Switch srcSwitch, Switch dstSwitch) {
+        return getRelatedIsls(srcSwitch).stream()
+                .filter(isl -> isl.dstSwitch.equals(dstSwitch))
+                .findFirst();
+    }
+
+    /**
      * Get all switches that are marked as active in config with server42 enabled.
      */
     @JsonIgnore
     public List<Switch> getActiveServer42Switches() {
         return switches.stream()
                 .filter(Switch::isActive)
-                .filter(s -> s.prop != null)
+                .filter(s -> s.prop != null && s.prop.server42FlowRtt)
                 .collect(toList());
     }
 
@@ -232,7 +253,7 @@ public class TopologyDefinition {
     @NonFinal
     @JsonNaming(SnakeCaseStrategy.class)
     @JsonIdentityInfo(property = "name", generator = ObjectIdGenerators.PropertyGenerator.class)
-    public static class Switch {
+    public static class Switch implements Comparable<Switch> {
 
         private static int DEFAULT_MAX_PORT = 100;
 
@@ -298,6 +319,11 @@ public class TopologyDefinition {
 
         public void setDpId(SwitchId switchId) {
             this.dpId = switchId;
+        }
+
+        @Override
+        public int compareTo(Switch other) {
+            return this.dpId.compareTo(other.dpId);
         }
     }
 

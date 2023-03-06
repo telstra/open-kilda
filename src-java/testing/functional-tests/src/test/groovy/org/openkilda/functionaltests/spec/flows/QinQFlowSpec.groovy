@@ -55,9 +55,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
     def "System allows to manipulate with QinQ flow\
 [srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.hwSwString()]#trafficDisclaimer"() {
-        assumeFalse((swPair.src.wb5164 || swPair.dst.wb5164), "Forbid QinQ flows for WB-series switches #4408")
-        assumeFalse(!trafficDisclaimer && (swPair.src.wb5164 || swPair.dst.wb5164),
-                "https://github.com/telstra/open-kilda/issues/4407")
         when: "Create a QinQ flow"
         def qinqFlow = flowHelperV2.randomFlow(swPair)
         qinqFlow.source.vlanId = srcVlanId
@@ -110,9 +107,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
         )
         involvedSwitchesFlow1.each {sw ->
             with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
-                validation.verifyHexRuleSectionsAreEmpty(sw.dpId, ["missingHex", "excessHex", "misconfiguredHex"])
-                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
+                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
 
@@ -135,8 +132,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def involvedSwitchesforBothFlows = (involvedSwitchesFlow1 + involvedSwitchesFlow2).unique { it.dpId }
         involvedSwitchesforBothFlows.each { sw ->
             with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
 
@@ -220,7 +217,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Flows rules are deleted"
         involvedSwitchesforBothFlows.each { sw ->
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+                assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
+                        .containsExactlyInAnyOrder(*sw.defaultCookies)
             }
         }
 
@@ -247,7 +245,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Tidy
     def "System allows to create a single switch QinQ flow\
 [srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.src.hwSwString]#trafficDisclaimer"() {
-        assumeFalse(!trafficDisclaimer && swPair.src.wb5164, "https://github.com/telstra/open-kilda/issues/4407")
         when: "Create a single switch QinQ flow"
         def qinqFlow = flowHelperV2.singleSwitchFlow(swPair)
         qinqFlow.source.vlanId = srcVlanId
@@ -279,13 +276,13 @@ class QinQFlowSpec extends HealthCheckSpecification {
         verifyAll(northbound.pingFlow(qinqFlow.flowId, new PingInput())) {
             !it.forward
             !it.reverse
-            it.error == "Flow ${qinqFlow.flowId} should not be one switch flow"
+            it.error == "Flow ${qinqFlow.flowId} should not be one-switch flow"
         }
 
         and: "Involved switches pass switch validation"
         def validationInfo = northbound.validateSwitch(swPair.src.dpId)
-        validationInfo.verifyRuleSectionsAreEmpty(swPair.src.dpId, ["missing", "excess", "misconfigured"])
-        validationInfo.verifyMeterSectionsAreEmpty(swPair.src.dpId, ["missing", "excess", "misconfigured"])
+        validationInfo.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        validationInfo.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
 
         and: "Traffic examination is successful (if possible)"
         if(!trafficDisclaimer) {
@@ -330,12 +327,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
     def "System doesn't allow to create a QinQ flow when a switch supports multi table mode but it is disabled"() {
         given: "A switch pair with disabled multi table mode at least on the one switch"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            //"Forbid QinQ flows for WB-series switches #4408"
-            [it.src, it.dst].every { !it.wb5164 }
-        }
-
-        def initSrcSwProps = northbound.getSwitchProperties(swP.src.dpId)
+        def swP = topologyHelper.getNeighboringSwitchPair()
+        def initSrcSwProps = switchHelper.getCachedSwProps(swP.src.dpId)
         SwitchHelper.updateSwitchProperties(swP.src, initSrcSwProps.jacksonCopy().tap {
             it.multiTable = false
         })
@@ -662,8 +655,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         and: "Involved switches pass switch validation"
         pathHelper.getInvolvedSwitches(pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId))).each {
             def validationInfo = northbound.validateSwitch(it.dpId)
-            validationInfo.verifyRuleSectionsAreEmpty(it.dpId, ["missing", "excess", "misconfigured"])
-            validationInfo.verifyMeterSectionsAreEmpty(it.dpId, ["missing", "excess", "misconfigured"])
+            validationInfo.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validationInfo.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
 
         when: "Delete the flow"
@@ -672,7 +665,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+            assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
+                    .containsExactlyInAnyOrder(*sw.defaultCookies)
         }
 
         cleanup:
@@ -685,7 +679,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE) //not tested
+    @Tags(HARDWARE) //https://github.com/telstra/open-kilda/issues/4783
     @IterationTags([
             @IterationTag(tags=[SMOKE_SWITCHES],
                     iterationNameRegex = /srcVlan:10, srcInnerVlan:20, dstVlan:30, dstInnerVlan:40/)
@@ -750,8 +744,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         )
         involvedSwitchesFlow1.each {sw ->
             with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
 
@@ -774,8 +768,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def involvedSwitchesforBothFlows = (involvedSwitchesFlow1 + involvedSwitchesFlow2).unique { it.dpId }
         involvedSwitchesforBothFlows.each { sw ->
             with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "excess", "misconfigured"])
+                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
 
@@ -844,7 +838,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Flows rules are deleted"
         involvedSwitchesforBothFlows.each { sw ->
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+                assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
+                        .containsExactlyInAnyOrder(*sw.defaultCookies)
             }
         }
 
@@ -863,10 +858,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
         [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
                 [[10, 20, 30, 40],
                  [10, 20, 0, 0]],
-                //Forbid QinQ flows for WB-series switches #4408
                 getUniqueSwitchPairs(topologyHelper.getSwitchPairs().findAll { SwitchPair swP ->
                     def allTraffGenSwitchIds = getTopology().getActiveTraffGens()*.switchConnected*.dpId
-                    [swP.src, swP.dst].every { !it.wb5164 && it.dpId in allTraffGenSwitchIds } &&
+                    [swP.src, swP.dst].every { it.dpId in allTraffGenSwitchIds } &&
                             swP.paths.find {
                         pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) }
                     }})
@@ -892,7 +886,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         northbound.deleteSwitchRules(swP.src.dpId, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
 
         then: "System detects missing rules on the src switch"
-        def amountOfServer42Rules = northbound.getSwitchProperties(swP.src.dpId).server42FlowRtt ? 2 : 0
+        def amountOfServer42Rules = switchHelper.getCachedSwProps(swP.src.dpId).server42FlowRtt ? 2 : 0
         with(northbound.validateSwitch(swP.src.dpId).rules) {
             it.excess.empty
             it.excessHex.empty
@@ -905,8 +899,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "Missing rules are reinstalled"
         def validateSwResponse = northbound.validateSwitch(swP.src.dpId)
-        validateSwResponse.verifyRuleSectionsAreEmpty(swP.src.dpId, ["missing", "excess", "misconfigured"])
-        validateSwResponse.verifyHexRuleSectionsAreEmpty(swP.src.dpId, ["missingHex", "excessHex", "misconfiguredHex"])
+        validateSwResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        validateSwResponse.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
 
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
@@ -983,45 +977,15 @@ class QinQFlowSpec extends HealthCheckSpecification {
         withPool {
             currentPath*.switchId.eachParallel { SwitchId swId ->
                 with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
                 }
             }
         }
-        def involvedSwitchesPassSwValidation = true
 
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        !involvedSwitchesPassSwValidation && currentPath*.switchId.each { SwitchId swId ->
-            northbound.synchronizeSwitch(swId, true)
-        }
-    }
-
-    @Tidy
-    @Tags(HARDWARE)
-    def "Unable to create a qinq flow on a WB switch"() {
-        given: "Two switches with enabled multi table mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { northbound.getSwitchProperties(it.dpId).multiTable } &&
-                    [it.src, it.dst].any { it.wb5164 }
-        } ?: assumeTrue(false, "Not able to find required switches")
-
-        when: "Create a QinQ flow"
-        def flow = flowHelperV2.randomFlow(swP)
-        flow.source.innerVlanId = 234
-        flow.destination.innerVlanId = 432
-        flowHelperV2.addFlow(flow)
-
-        then: "Human readable error is returned"
-        def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription.contains("QinQ feature is temporary disabled for WB-series switch")
-
-        cleanup: "Revert system to original state"
-        !exc && northboundV2.deleteFlow(flow.flowId)
     }
 
     @Memoized

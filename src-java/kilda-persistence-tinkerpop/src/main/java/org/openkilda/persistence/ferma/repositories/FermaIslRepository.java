@@ -18,6 +18,9 @@ package org.openkilda.persistence.ferma.repositories;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableCollection;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.toSet;
 
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.Isl;
@@ -372,7 +375,7 @@ public class FermaIslRepository extends FermaGenericRepository<Isl, IslData, Isl
                 .values(SwitchFrame.SWITCH_ID_PROPERTY))
                 .getRawTraversal().toStream()
                 .map(s -> (String) s)
-                .collect(Collectors.toSet());
+                .collect(toSet());
     }
 
     protected Set<String> findActiveSwitchesWithSupportEncapsulationType(FlowEncapsulationType flowEncapsulationType) {
@@ -388,7 +391,7 @@ public class FermaIslRepository extends FermaGenericRepository<Isl, IslData, Isl
                 .values(SwitchFrame.SWITCH_ID_PROPERTY))
                 .getRawTraversal().toStream()
                 .map(s -> (String) s)
-                .collect(Collectors.toSet());
+                .collect(toSet());
     }
 
     private Isl addIslConfigToIsl(Isl isl) {
@@ -447,6 +450,21 @@ public class FermaIslRepository extends FermaGenericRepository<Isl, IslData, Isl
             updatedEndpoints.put(endpoint, updatedAvailableBandwidth);
         });
         return updatedEndpoints;
+    }
+
+    @Override
+    public Map<SwitchId, Set<Integer>> findIslPortsBySwitchIds(Set<SwitchId> switchIds) {
+        Set<String> graphSwitchIds = switchIds.stream()
+                .map(SwitchIdConverter.INSTANCE::toGraphProperty)
+                .collect(toSet());
+        List<Isl> result = new ArrayList<>();
+        framedGraph().traverse(g -> g.E()
+                        .hasLabel(IslFrame.FRAME_LABEL)
+                        .has(IslFrame.SRC_SWITCH_ID_PROPERTY, P.within(graphSwitchIds)))
+                .frameExplicit(IslFrame.class)
+                .forEachRemaining(frame -> result.add(addIslConfigToIsl(new Isl(frame))));
+        return result.stream()
+                .collect(groupingBy(Isl::getSrcSwitchId, mapping(Isl::getSrcPort, toSet())));
     }
 
     /**

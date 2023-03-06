@@ -40,6 +40,9 @@ public class CompleteFlowPathRemovalAction extends
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         Flow originalFlow = RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
+        originalFlow.setAffinityGroupId(stateMachine.getOriginalAffinityFlowGroup());
+        originalFlow.setDiverseGroupId(stateMachine.getOriginalDiverseFlowGroup());
+
         removeOldPrimaryFlowPaths(originalFlow, stateMachine);
         removeOldProtectedFlowPaths(originalFlow, stateMachine);
 

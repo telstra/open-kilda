@@ -23,7 +23,9 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 
+import java.util.Collections;
 import java.util.Set;
 
 /**
@@ -32,18 +34,23 @@ import java.util.Set;
 @Data
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowRerouteRequest extends CommandData {
     private static final long serialVersionUID = 1L;
 
     String yFlowId;
     Set<IslEndpoint> affectedIsl;
-    boolean force;
+    boolean force;  // TODO: remove
     String reason;
     boolean ignoreBandwidth;
 
-    public YFlowRerouteRequest(String flowId, String reason) {
+    public YFlowRerouteRequest(@NonNull String flowId, String reason) {
+        this(flowId, Collections.emptySet(), reason);
+    }
+
+    public YFlowRerouteRequest(@NonNull String flowId, @NonNull Set<IslEndpoint> affectedIsl, String reason) {
         this.yFlowId = flowId;
+        this.affectedIsl = affectedIsl;
         this.reason = reason;
     }
 }

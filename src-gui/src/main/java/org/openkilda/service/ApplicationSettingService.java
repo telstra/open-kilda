@@ -88,6 +88,12 @@ public class ApplicationSettingService {
         } else if (applicationSetting == ApplicationSetting.SWITCH_NAME_STORAGE_TYPE) {
             IConstants.STORAGE_TYPE_FOR_SWITCH_NAME = StorageType.get(value);
             activityLogger.log(ActivityType.CONFIG_SWITCH_NAME_STORAGE_TYPE, value);
+        } else if (applicationSetting ==  ApplicationSetting.INVALID_LOGIN_ATTEMPT) {
+            IConstants.InvalidLoginAttempt.INVALID_LOGIN_ATTEMPTS_COUNT = Integer.valueOf(value);
+            activityLogger.log(ActivityType.CONFIG_INVALID_LOGIN_ATTEMPT_COUNT, value);
+        } else if (applicationSetting ==  ApplicationSetting.USER_ACCOUNT_UNLOCK_TIME) {
+            activityLogger.log(ActivityType.CONFIG_USER_ACCOUNT_UNLOCK_TIME, value);
+            IConstants.UserAccUnlockTime.USER_ACCOUNT_UNLOCK_TIME = Integer.valueOf(value);
         }
         applicationSettingEntity.setValue(value);
         applicationSettingEntity.setUpdatedDate(new Date());

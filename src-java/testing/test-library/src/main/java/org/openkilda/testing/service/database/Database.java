@@ -18,7 +18,6 @@ package org.openkilda.testing.service.database;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMirrorPoints;
-import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -82,7 +81,7 @@ public interface Database {
 
     void updateFlowBandwidth(String flowId, long newBw);
 
-    void updateFlowMeterId(String flowId, MeterId newMeterId);
+    void updateFlowMeterId(String flowId, long newMeterId);
 
     List<FlowMirrorPoints> getMirrorPoints();
 

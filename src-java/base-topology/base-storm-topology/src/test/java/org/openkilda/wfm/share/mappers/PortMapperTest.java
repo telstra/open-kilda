@@ -18,7 +18,6 @@ package org.openkilda.wfm.share.mappers;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.model.Port;
-import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 
 import org.junit.Assert;
@@ -32,15 +31,23 @@ public class PortMapperTest {
     @Test
     public void portMapperTest() {
         PortMapper portMapper = Mappers.getMapper(PortMapper.class);
+        PortInfoData portInfoData = new PortInfoData(TEST_SWITCH_ID, 1, 10000000L,
+                999999L, PortChangeType.UP);
 
-        PortInfoData portInfoData = new PortInfoData(TEST_SWITCH_ID, 1, PortChangeType.UP);
         Port port = portMapper.map(portInfoData);
 
-        Assert.assertEquals(PortStatus.UP, port.getStatus());
+        Assert.assertNotNull(port.getSwitchObj());
+        Assert.assertEquals(portInfoData.getSwitchId(), port.getSwitchObj().getSwitchId());
+        Assert.assertEquals(portInfoData.getSwitchId(), port.getSwitchId());
+        Assert.assertEquals(portInfoData.getPortNo(), port.getPortNo());
+        Assert.assertEquals(portInfoData.getCurrentSpeed().longValue(), port.getCurrentSpeed());
+        Assert.assertEquals(portInfoData.getMaxSpeed().longValue(), port.getMaxSpeed());
 
         PortInfoData portInfoDataMapping = portMapper.map(port);
 
-        Assert.assertEquals(TEST_SWITCH_ID, portInfoDataMapping.getSwitchId());
-        Assert.assertEquals(1, portInfoDataMapping.getPortNo());
+        Assert.assertEquals(port.getSwitchId(), portInfoDataMapping.getSwitchId());
+        Assert.assertEquals(port.getPortNo(), portInfoDataMapping.getPortNo());
+        Assert.assertEquals(port.getCurrentSpeed(), portInfoDataMapping.getCurrentSpeed().longValue());
+        Assert.assertEquals(port.getMaxSpeed(), portInfoDataMapping.getMaxSpeed().longValue());
     }
 }

@@ -57,6 +57,7 @@ import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.model.Endpoint;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -66,6 +67,8 @@ import java.util.Optional;
 import java.util.Set;
 
 public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
+    public static final Set<org.openkilda.messaging.payload.flow.FlowEncapsulationType> SUPPORTED_TRANSIT_ENCAPSULATION
+            = Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN);
     private static SwitchRepository switchRepository;
     private static SwitchPropertiesRepository switchPropertiesRepository;
     private static PortPropertiesRepository portPropertiesRepository;
@@ -134,11 +137,10 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test
     public void shouldUpdateLinkUnderMaintenanceFlag() throws SwitchNotFoundException {
-        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(sw);
+        createSwitch(TEST_SWITCH_ID);
 
         switchOperationsService.updateSwitchUnderMaintenanceFlag(TEST_SWITCH_ID, true);
-        sw = switchRepository.findById(TEST_SWITCH_ID).get();
+        Switch sw = switchRepository.findById(TEST_SWITCH_ID).get();
         assertTrue(sw.isUnderMaintenance());
 
         switchOperationsService.updateSwitchUnderMaintenanceFlag(TEST_SWITCH_ID, false);
@@ -148,8 +150,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test
     public void shouldDeletePortPropertiesWhenDeletingSwitch() throws SwitchNotFoundException {
-        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(sw);
+        Switch sw = createSwitch(TEST_SWITCH_ID);
         PortProperties portProperties = PortProperties.builder().switchObj(sw).port(7).discoveryEnabled(false).build();
         portPropertiesRepository.add(portProperties);
 
@@ -160,8 +161,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test(expected = IllegalSwitchPropertiesException.class)
     public void shouldValidateSupportedEncapsulationTypeWhenUpdatingSwitchProperties() {
-        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(sw);
+        Switch sw = createSwitch(TEST_SWITCH_ID);
         createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false, false);
 
         switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, new SwitchPropertiesDto());
@@ -169,8 +169,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test(expected = IllegalSwitchPropertiesException.class)
     public void shouldValidateMultiTableFlagWhenUpdatingSwitchProperties() {
-        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(sw);
+        Switch sw = createSwitch(TEST_SWITCH_ID);
         createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, true, false);
 
         // user can't disable multiTable without disabling LLDP
@@ -185,10 +184,8 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test(expected = IllegalSwitchPropertiesException.class)
     public void shouldValidateFlowWithLldpFlagWhenUpdatingSwitchProperties() {
-        Switch firstSwitch = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        Switch secondSwitch = Switch.builder().switchId(TEST_SWITCH_ID_2).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(firstSwitch);
-        switchRepository.add(secondSwitch);
+        Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
+        Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
 
         Flow flow = Flow.builder()
                 .flowId(TEST_FLOW_ID_1)
@@ -214,8 +211,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test(expected = IllegalSwitchPropertiesException.class)
     public void shouldValidateMultiTableFlagWhenUpdatingSwitchPropertiesWithArp() {
-        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(sw);
+        Switch sw = createSwitch(TEST_SWITCH_ID);
         createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, true);
 
         // user can't disable multiTable without disabling ARP
@@ -230,10 +226,8 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test(expected = IllegalSwitchPropertiesException.class)
     public void shouldValidateFlowWithArpFlagWhenUpdatingSwitchProperties() {
-        Switch firstSwitch = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        Switch secondSwitch = Switch.builder().switchId(TEST_SWITCH_ID_2).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(firstSwitch);
-        switchRepository.add(secondSwitch);
+        Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
+        Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
 
         Flow flow = Flow.builder()
                 .flowId(TEST_FLOW_ID_1)
@@ -258,13 +252,108 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldUpdateServer42FlowRttSwitchProperties() {
-        Switch sw = Switch.builder()
-                .switchId(TEST_SWITCH_ID)
-                .status(SwitchStatus.ACTIVE)
-                .features(Collections.singleton(SwitchFeature.MULTI_TABLE))
+    public void shouldDisableSwitchLldpForFlow() {
+        Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
+        Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
+
+        Flow flow = Flow.builder()
+                .flowId(TEST_FLOW_ID_1)
+                .srcSwitch(firstSwitch)
+                .destSwitch(secondSwitch)
+                .detectConnectedDevices(
+                        new DetectConnectedDevices(false, false, false, false, true, true, true, true))
                 .build();
-        switchRepository.add(sw);
+        flowRepository.add(flow);
+
+        createSwitchProperties(firstSwitch,
+                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, true, true);
+        createSwitchProperties(secondSwitch,
+                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, true, true);
+
+        SwitchPropertiesDto firstUpdate = new SwitchPropertiesDto();
+        firstUpdate.setSupportedTransitEncapsulation(SUPPORTED_TRANSIT_ENCAPSULATION);
+        firstUpdate.setMultiTable(true);
+        firstUpdate.setSwitchLldp(false);
+        firstUpdate.setSwitchArp(false);
+
+        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, firstUpdate);
+
+        Optional<Flow> foundFlow = flowRepository.findById(TEST_FLOW_ID_1);
+        assertTrue(foundFlow.isPresent());
+        assertFalse(foundFlow.get().getDetectConnectedDevices().isSrcSwitchLldp());
+        assertFalse(foundFlow.get().getDetectConnectedDevices().isSrcSwitchArp());
+        assertTrue(foundFlow.get().getDetectConnectedDevices().isDstSwitchLldp());
+        assertTrue(foundFlow.get().getDetectConnectedDevices().isDstSwitchArp());
+
+        SwitchPropertiesDto secondUpdate = new SwitchPropertiesDto();
+        secondUpdate.setSupportedTransitEncapsulation(SUPPORTED_TRANSIT_ENCAPSULATION);
+        secondUpdate.setMultiTable(true);
+        secondUpdate.setSwitchLldp(false);
+        secondUpdate.setSwitchArp(false);
+
+        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID_2, secondUpdate);
+
+        foundFlow = flowRepository.findById(TEST_FLOW_ID_1);
+        assertTrue(foundFlow.isPresent());
+        assertFalse(foundFlow.get().getDetectConnectedDevices().isSrcSwitchLldp());
+        assertFalse(foundFlow.get().getDetectConnectedDevices().isSrcSwitchArp());
+        assertFalse(foundFlow.get().getDetectConnectedDevices().isDstSwitchLldp());
+        assertFalse(foundFlow.get().getDetectConnectedDevices().isDstSwitchArp());
+    }
+
+    @Test
+    public void shouldEnableSwitchLldpForFlow() {
+        Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
+        Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
+
+        Flow flow = Flow.builder()
+                .flowId(TEST_FLOW_ID_1)
+                .srcSwitch(firstSwitch)
+                .destSwitch(secondSwitch)
+                .detectConnectedDevices(
+                        new DetectConnectedDevices(false, false, false, false, false, false, false, false))
+                .build();
+        flowRepository.add(flow);
+
+        createSwitchProperties(firstSwitch,
+                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+        createSwitchProperties(secondSwitch,
+                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+
+        SwitchPropertiesDto firstUpdate = new SwitchPropertiesDto();
+        firstUpdate.setSupportedTransitEncapsulation(SUPPORTED_TRANSIT_ENCAPSULATION);
+        firstUpdate.setMultiTable(true);
+        firstUpdate.setSwitchLldp(true);
+        firstUpdate.setSwitchArp(true);
+
+        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, firstUpdate);
+
+        Optional<Flow> foundFlow = flowRepository.findById(TEST_FLOW_ID_1);
+        assertTrue(foundFlow.isPresent());
+        assertTrue(foundFlow.get().getDetectConnectedDevices().isSrcSwitchLldp());
+        assertTrue(foundFlow.get().getDetectConnectedDevices().isSrcSwitchArp());
+        assertFalse(foundFlow.get().getDetectConnectedDevices().isDstSwitchLldp());
+        assertFalse(foundFlow.get().getDetectConnectedDevices().isDstSwitchArp());
+
+        SwitchPropertiesDto secondUpdate = new SwitchPropertiesDto();
+        secondUpdate.setSupportedTransitEncapsulation(SUPPORTED_TRANSIT_ENCAPSULATION);
+        secondUpdate.setMultiTable(true);
+        secondUpdate.setSwitchLldp(true);
+        secondUpdate.setSwitchArp(true);
+
+        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID_2, secondUpdate);
+
+        foundFlow = flowRepository.findById(TEST_FLOW_ID_1);
+        assertTrue(foundFlow.isPresent());
+        assertTrue(foundFlow.get().getDetectConnectedDevices().isSrcSwitchLldp());
+        assertTrue(foundFlow.get().getDetectConnectedDevices().isSrcSwitchArp());
+        assertTrue(foundFlow.get().getDetectConnectedDevices().isDstSwitchLldp());
+        assertTrue(foundFlow.get().getDetectConnectedDevices().isDstSwitchArp());
+    }
+
+    @Test
+    public void shouldUpdateServer42FlowRttSwitchProperties() {
+        Switch sw = createSwitch(TEST_SWITCH_ID);
         createServer42SwitchProperties(sw, false, SERVER_42_PORT_1, SERVER_42_VLAN_1, SERVER_42_MAC_ADDRESS_1);
 
         SwitchPropertiesDto update = new SwitchPropertiesDto();
@@ -321,8 +410,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test(expected = IllegalSwitchPropertiesException.class)
     public void shouldValidateFlowMirrorPointsWhenUpdatingSwitchLldpProperties() {
-        Switch mirrorSwitch = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(mirrorSwitch);
+        Switch mirrorSwitch = createSwitch(TEST_SWITCH_ID);
 
         MirrorGroup mirrorGroup = MirrorGroup.builder()
                 .switchId(TEST_SWITCH_ID)
@@ -354,8 +442,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test(expected = IllegalSwitchPropertiesException.class)
     public void shouldValidateFlowMirrorPointsWhenUpdatingSwitchArpProperties() {
-        Switch mirrorSwitch = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(mirrorSwitch);
+        Switch mirrorSwitch = createSwitch(TEST_SWITCH_ID);
 
         MirrorGroup mirrorGroup = MirrorGroup.builder()
                 .switchId(TEST_SWITCH_ID)
@@ -387,10 +474,8 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test(expected = IllegalSwitchPropertiesException.class)
     public void shouldValidateFlowWhenUpdatingServer42PortSwitchProperties() {
-        Switch firstSwitch = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        Switch secondSwitch = Switch.builder().switchId(TEST_SWITCH_ID_2).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(firstSwitch);
-        switchRepository.add(secondSwitch);
+        Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
+        Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
 
         Flow flow = Flow.builder()
                 .flowId(TEST_FLOW_ID_1)
@@ -415,10 +500,8 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test(expected = IllegalSwitchPropertiesException.class)
     public void shouldValidateFlowMirrorPathWhenUpdatingServer42PortSwitchProperties() {
-        Switch firstSwitch = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        Switch secondSwitch = Switch.builder().switchId(TEST_SWITCH_ID_2).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(firstSwitch);
-        switchRepository.add(secondSwitch);
+        Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
+        Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
 
         FlowMirrorPath flowMirrorPath = FlowMirrorPath.builder()
                 .pathId(new PathId("test_path_id"))
@@ -441,12 +524,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test
     public void shouldUpdateServer42IslRttSwitchProperties() {
-        Switch sw = Switch.builder()
-                .switchId(TEST_SWITCH_ID)
-                .status(SwitchStatus.ACTIVE)
-                .features(Collections.singleton(SwitchFeature.MULTI_TABLE))
-                .build();
-        switchRepository.add(sw);
+        Switch sw = createSwitch(TEST_SWITCH_ID);
         SwitchProperties switchProperties = SwitchProperties.builder()
                 .switchObj(sw)
                 .supportedTransitEncapsulation(Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN))
@@ -477,12 +555,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test
     public void shouldUpdateServer42IslRttSwitchPropertiesToAuto() {
-        Switch sw = Switch.builder()
-                .switchId(TEST_SWITCH_ID)
-                .status(SwitchStatus.ACTIVE)
-                .features(Collections.singleton(SwitchFeature.MULTI_TABLE))
-                .build();
-        switchRepository.add(sw);
+        Switch sw = createSwitch(TEST_SWITCH_ID);
         SwitchProperties switchProperties = SwitchProperties.builder()
                 .switchObj(sw)
                 .supportedTransitEncapsulation(Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN))
@@ -546,8 +619,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test
     public void shouldPatchSwitch() throws SwitchNotFoundException {
-        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(sw);
+        createSwitch(TEST_SWITCH_ID);
 
         SwitchPatch switchPatch =
                 new SwitchPatch("pop", new SwitchLocation(48.860611, 2.337633, "street", "city", "country"));
@@ -564,8 +636,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test
     public void shouldSetNullPopWhenPopIsEmptyString() throws SwitchNotFoundException {
-        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(sw);
+        createSwitch(TEST_SWITCH_ID);
 
         SwitchPatch switchPatch = new SwitchPatch("", null);
         switchOperationsService.patchSwitch(TEST_SWITCH_ID, switchPatch);
@@ -576,11 +647,10 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
 
     @Test
     public void shouldReturnLagPorts() throws SwitchNotFoundException {
-        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
-        switchRepository.add(sw);
+        createSwitch(TEST_SWITCH_ID);
 
         LagLogicalPort lagLogicalPort = new LagLogicalPort(TEST_SWITCH_ID, LAG_LOGICAL_PORT,
-                Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2));
+                Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2), true);
         lagLogicalPortRepository.add(lagLogicalPort);
 
         Collection<LagLogicalPort> ports = switchOperationsService.getSwitchLagPorts(TEST_SWITCH_ID);
@@ -589,6 +659,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         assertEquals(LAG_LOGICAL_PORT, ports.iterator().next().getLogicalPortNumber());
         assertEquals(PHYSICAL_PORT_1, ports.iterator().next().getPhysicalPorts().get(0).getPortNumber());
         assertEquals(PHYSICAL_PORT_2, ports.iterator().next().getPhysicalPorts().get(1).getPortNumber());
+        assertTrue(ports.iterator().next().isLacpReply());
     }
 
     @Test(expected = SwitchNotFoundException.class)
@@ -601,12 +672,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         invalidProperties.setSupportedTransitEncapsulation(Collections.singleton(
                 org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
 
-        Switch sw = Switch.builder()
-                .switchId(TEST_SWITCH_ID)
-                .status(SwitchStatus.ACTIVE)
-                .features(Collections.singleton(SwitchFeature.MULTI_TABLE))
-                .build();
-        switchRepository.add(sw);
+        Switch sw = createSwitch(TEST_SWITCH_ID);
         createServer42SwitchProperties(sw, false, SERVER_42_PORT_1, SERVER_42_VLAN_1, SERVER_42_MAC_ADDRESS_1);
 
         switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, invalidProperties);
@@ -636,5 +702,15 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
                 .switchArp(switchArp)
                 .build();
         switchPropertiesRepository.add(switchProperties);
+    }
+
+    private Switch createSwitch(SwitchId switchId) {
+        Switch sw = Switch.builder()
+                .switchId(switchId)
+                .status(SwitchStatus.ACTIVE)
+                .features(Sets.newHashSet(SwitchFeature.MULTI_TABLE))
+                .build();
+        switchRepository.add(sw);
+        return sw;
     }
 }

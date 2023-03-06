@@ -16,14 +16,14 @@
 package org.openkilda.wfm.topology.network.storm.bolt.bfd.worker;
 
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
+import org.openkilda.messaging.command.grpc.CreateOrUpdateLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DeleteLogicalPortRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.floodlight.request.RemoveBfdSession;
 import org.openkilda.messaging.floodlight.request.SetupBfdSession;
 import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
-import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.messaging.model.grpc.LogicalPortType;
@@ -149,8 +149,8 @@ public class BfdWorker extends WorkerBolt {
             return;
         }
 
-        CreateLogicalPortRequest request = new CreateLogicalPortRequest(
-                address.get(), Collections.singletonList(physicalPortNumber), logical.getPortNumber(),
+        CreateOrUpdateLogicalPortRequest request = new CreateOrUpdateLogicalPortRequest(
+                address.get(), Collections.singleton(physicalPortNumber), logical.getPortNumber(),
                 LogicalPortType.BFD);
         emit(STREAM_GRPC_ID, getCurrentTuple(), makeGrpcTuple(requestId, request));
     }
@@ -169,7 +169,8 @@ public class BfdWorker extends WorkerBolt {
         emit(STREAM_GRPC_ID, getCurrentTuple(), makeGrpcTuple(requestId, request));
     }
 
-    public void processPortCreateResponse(String requestId, Endpoint logical, CreateLogicalPortResponse response) {
+    public void processPortCreateResponse(
+            String requestId, Endpoint logical, CreateOrUpdateLogicalPortResponse response) {
         emitResponseToHub(getCurrentTuple(), makeHubTuple(requestId, new BfdHubPortCreateResponseCommand(
                 requestId, logical, response)));
     }

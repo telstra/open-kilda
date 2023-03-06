@@ -73,8 +73,9 @@ public class LagLogicalPort implements CompositeDataEntity<LagLogicalPortData> {
         data = LagLogicalPortCloner.INSTANCE.deepCopy(entityToClone.getData(), this);
     }
 
-    public LagLogicalPort(@NonNull SwitchId switchId, int logicalPortNumber, Collection<Integer> physicalPortNumbers) {
-        this(switchId, logicalPortNumber, new ArrayList<PhysicalPort>());
+    public LagLogicalPort(@NonNull SwitchId switchId, int logicalPortNumber, Collection<Integer> physicalPortNumbers,
+                          boolean lacpReply) {
+        this(switchId, logicalPortNumber, new ArrayList<PhysicalPort>(), lacpReply);
         if (physicalPortNumbers != null) {
             data.setPhysicalPorts(physicalPortNumbers.stream()
                     .map(port -> new PhysicalPort(switchId, port, this))
@@ -83,10 +84,12 @@ public class LagLogicalPort implements CompositeDataEntity<LagLogicalPortData> {
     }
 
     @Builder
-    public LagLogicalPort(@NonNull SwitchId switchId, int logicalPortNumber, List<PhysicalPort> physicalPorts) {
+    public LagLogicalPort(@NonNull SwitchId switchId, int logicalPortNumber, List<PhysicalPort> physicalPorts,
+                          boolean lacpReply) {
         data = LagLogicalPortDataImpl.builder()
                 .switchId(switchId)
                 .logicalPortNumber(logicalPortNumber)
+                .lacpReply(lacpReply)
                 .build();
         // The reference is used to link physical ports back to the LAG port. See {@link #setPhysicalPorts(List)}.
         ((LagLogicalPortDataImpl) data).lagLogicalPort = this;
@@ -120,11 +123,6 @@ public class LagLogicalPort implements CompositeDataEntity<LagLogicalPortData> {
         return Objects.hash(getSwitchId(), getLogicalPortNumber());
     }
 
-    public static int generateLogicalPortNumber(Collection<Integer> physicalPorts, int lagPortOffset) {
-        return physicalPorts.stream().min(Integer::compareTo).map(port -> port + lagPortOffset).orElseThrow(
-                () -> new IllegalArgumentException("No physical ports provided"));
-    }
-
     /**
      * Defines persistable data of the LagLogicalPort.
      */
@@ -140,6 +138,10 @@ public class LagLogicalPort implements CompositeDataEntity<LagLogicalPortData> {
         List<PhysicalPort> getPhysicalPorts();
 
         void setPhysicalPorts(List<PhysicalPort> physicalPorts);
+
+        boolean isLacpReply();
+
+        void setLacpReply(boolean lacpReply);
     }
 
     /**
@@ -153,6 +155,8 @@ public class LagLogicalPort implements CompositeDataEntity<LagLogicalPortData> {
         private static final long serialVersionUID = 1L;
         int logicalPortNumber;
         @NonNull SwitchId switchId;
+
+        boolean lacpReply;
 
         @Builder.Default
         @ToString.Exclude

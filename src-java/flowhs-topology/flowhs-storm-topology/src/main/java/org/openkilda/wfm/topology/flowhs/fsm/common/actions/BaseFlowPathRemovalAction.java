@@ -25,7 +25,7 @@ import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
-import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,11 +33,11 @@ import lombok.extern.slf4j.Slf4j;
  * A base for action classes that remove flow paths.
  */
 @Slf4j
-public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingFsm<T, S, E, C>, S, E, C> extends
-        FlowProcessingAction<T, S, E, C> {
+public abstract class BaseFlowPathRemovalAction<T extends FlowProcessingWithHistorySupportFsm<T, S, E, C, ?, ?>, S, E,
+        C> extends FlowProcessingWithHistorySupportAction<T, S, E, C> {
     protected final IslRepository islRepository;
 
-    public BaseFlowPathRemovalAction(PersistenceManager persistenceManager) {
+    protected BaseFlowPathRemovalAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
 
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();

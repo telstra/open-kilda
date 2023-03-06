@@ -23,6 +23,8 @@ import org.openkilda.wfm.share.model.MirrorContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import java.util.List;
 
 public interface FlowCommandBuilder {
@@ -85,6 +87,13 @@ public interface FlowCommandBuilder {
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath, MirrorContext mirrorContext);
 
     /**
+     * Build commands for transit(if needed) and egress rules for provided paths severally (i.e. each path
+     * segments returned severally).
+     */
+    Pair<FlowSegmentRequestFactoriesSequence, FlowSegmentRequestFactoriesSequence> buildAllExceptIngressSeverally(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath);
+
+    /**
      * Build install commands for ingress rules for active forward and reverse paths.
      */
     List<FlowSegmentRequestFactory> buildIngressOnly(
@@ -103,6 +112,13 @@ public interface FlowCommandBuilder {
     List<FlowSegmentRequestFactory> buildIngressOnly(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
             SpeakerRequestBuildContext speakerRequestBuildContext, MirrorContext mirrorContext);
+
+    /**
+     * Build commands for ingress segments for provided paths and return them severally.
+     */
+    Pair<FlowSegmentRequestFactoriesSequence, FlowSegmentRequestFactoriesSequence> buildIngressOnlySeverally(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
+            SpeakerRequestBuildContext speakerRequestBuildContext);
 
     /**
      * Build install commands for ingress rules for provided paths.

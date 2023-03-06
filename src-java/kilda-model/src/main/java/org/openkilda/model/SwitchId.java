@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import java.util.Objects;
 @Value
 public class SwitchId implements Comparable<SwitchId>, Serializable {
     private static final long serialVersionUID = 1L;
+    public static final long MAC_ADDRESS_MASK = 0x0000_FFFF_FFFF_FFFFL;
 
     private final long id;
 
@@ -45,7 +46,7 @@ public class SwitchId implements Comparable<SwitchId>, Serializable {
         Objects.requireNonNull(switchId, "Switch id must not be null");
 
         try {
-            this.id = Long.parseUnsignedLong(switchId.replaceAll("[-:]", ""), 16);
+            this.id = Long.parseUnsignedLong(switchId.replaceAll("[-:]", "").trim(), 16);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(String.format("Can not parse input string: \"%s\"", switchId));
         }
@@ -67,6 +68,13 @@ public class SwitchId implements Comparable<SwitchId>, Serializable {
      */
     public String toMacAddress() {
         return colonSeparatedBytes(toHexArray(), 4);
+    }
+
+    /**
+     * Return Switch MAC address as long (it is equal to last 6 bytes of switch ID).
+     */
+    public long toMacAddressAsLong() {
+        return id & MAC_ADDRESS_MASK;
     }
 
     /**

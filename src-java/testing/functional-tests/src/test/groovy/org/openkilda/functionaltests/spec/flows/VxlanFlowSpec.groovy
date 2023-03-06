@@ -62,7 +62,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     ])
     def "System allows to create/update encapsulation type for a flow\
 [#data.encapsulationCreate.toString() -> #data.encapsulationUpdate.toString(), #swPair.hwSwString()]"(Map data, SwitchPair swPair) {
-        assumeFalse((swPair.src.wb5164 || swPair.dst.wb5164), "Forbid QinQ flows for WB-series switches #4408")
         when: "Create a flow with #encapsulationCreate.toString() encapsulation type"
         def flow = flowHelperV2.randomFlow(swPair)
         flow.encapsulationType = data.encapsulationCreate
@@ -100,6 +99,13 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         and: "Flow is valid"
         Wrappers.wait(PATH_INSTALLATION_TIME) {
             northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        }
+
+        //todo remove in case no traffic on jenkins
+        and: "Flow is pingable"
+        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
+            forward.pingSuccess
+            reverse.pingSuccess
         }
 
         and: "The flow allows traffic"
@@ -184,6 +190,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         cleanup: "Delete the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
+        sleep(7000) //subsequent test fails due to traffexam. Was not able to track down the reason
 
         where:
         [data, swPair] << ([
@@ -356,7 +363,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
         given: "Two active VXLAN supported switches connected to traffgen"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
-            !it.wb5164 && switchHelper.isVxlanEnabled(it.dpId) //Forbid QinQ flows for WB-series switches #4408
+            switchHelper.isVxlanEnabled(it.dpId)
         }*.dpId ?: assumeTrue(false,
 "Should be at least two active traffgens connected to VXLAN supported switches")
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -394,7 +401,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         given: "Src and dst switches do not support VXLAN"
         def switchPair = topologyHelper.switchPairs.first()
         Map<Switch, SwitchPropertiesDto> initProps = [switchPair.src, switchPair.dst].collectEntries {
-            [(it): northbound.getSwitchProperties(it.dpId)]
+            [(it): switchHelper.getCachedSwProps(it.dpId)]
         }
         initProps.each { sw, swProp ->
             SwitchHelper.updateSwitchProperties(sw, swProp.jacksonCopy().tap {
@@ -556,7 +563,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
             !forward
             !reverse
-            error == "Flow ${flow.flowId} should not be one switch flow"
+            error == "Flow ${flow.flowId} should not be one-switch flow"
         }
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"

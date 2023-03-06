@@ -27,14 +27,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
-import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
-import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
 import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.BfdProperties;
@@ -378,15 +376,10 @@ public class NetworkIslServiceTest {
         service.remove(reference);
 
         if (multiTable && (initialStatus == IslStatus.INACTIVE || initialStatus == IslStatus.MOVED)) {
-            service.islDefaultRuleDeleted(reference, new RemoveIslDefaultRulesResult(endpointAlpha1.getDatapath(),
-                    endpointAlpha1.getPortNumber(), endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
-                    true));
-            service.islDefaultRuleDeleted(reference, new RemoveIslDefaultRulesResult(
-                    endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
-                    endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
-                    true));
-            verify(carrier).islDefaultRulesDelete(endpointAlpha1, endpointBeta2);
-            verify(carrier).islDefaultRulesDelete(endpointBeta2, endpointAlpha1);
+            service.islRulesDeleted(reference, endpointAlpha1);
+            service.islRulesDeleted(reference, endpointBeta2);
+            verify(carrier).islRulesDelete(reference, endpointAlpha1);
+            verify(carrier).islRulesDelete(reference, endpointBeta2);
         }
     }
 
@@ -801,14 +794,14 @@ public class NetworkIslServiceTest {
 
         reset(dashboardLogger);
         service.bfdPropertiesUpdate(reference);
-        verifyZeroInteractions(dashboardLogger);
+        verifyNoInteractions(dashboardLogger);
 
         service.bfdStatusUpdate(reference.getSource(), reference, BfdStatusUpdate.DOWN);
         service.bfdStatusUpdate(reference.getSource(), reference, BfdStatusUpdate.KILL);
-        verifyZeroInteractions(dashboardLogger);
+        verifyNoInteractions(dashboardLogger);
 
         service.bfdStatusUpdate(reference.getSource(), reference, BfdStatusUpdate.DOWN);
-        verifyZeroInteractions(dashboardLogger);
+        verifyNoInteractions(dashboardLogger);
 
         service.bfdStatusUpdate(reference.getDest(), reference, BfdStatusUpdate.DOWN);
         verify(dashboardLogger).onIslDown(eq(reference), any());
@@ -819,10 +812,10 @@ public class NetworkIslServiceTest {
     public void pollDiscoveryResetsPortDownStatus() {
         IslReference reference = preparePortDownStatusReset();
 
-        verifyZeroInteractions(dashboardLogger); // only destination endpoint status is cleaned
+        verifyNoInteractions(dashboardLogger); // only destination endpoint status is cleaned
 
         service.islUp(reference.getSource(), reference, new IslDataHolder(100, 100, 100));
-        verifyZeroInteractions(dashboardLogger); // only destination endpoint status is cleaned
+        verifyNoInteractions(dashboardLogger); // only destination endpoint status is cleaned
 
         service.islUp(reference.getDest(), reference, new IslDataHolder(100, 100, 100));
         verify(dashboardLogger).onIslUp(eq(reference), any());
@@ -927,8 +920,8 @@ public class NetworkIslServiceTest {
         reset(carrier);
         service.remove(reference);
 
-        verify(carrier).islDefaultRulesDelete(eq(alphaEnd), eq(zetaEnd));
-        verify(carrier).islDefaultRulesDelete(eq(zetaEnd), eq(alphaEnd));
+        verify(carrier).islRulesDelete(eq(reference), eq(alphaEnd));
+        verify(carrier).islRulesDelete(eq(reference), eq(zetaEnd));
         verify(carrier).bfdDisableRequest(eq(alphaEnd));
         verify(carrier).bfdDisableRequest(eq(zetaEnd));
         verify(carrier).auxiliaryPollModeUpdateRequest(alphaEnd, false);
@@ -944,14 +937,8 @@ public class NetworkIslServiceTest {
         final Endpoint zetaEnd = reference.getDest();
 
         reset(carrier);
-        service.islDefaultRuleDeleted(reference, new RemoveIslDefaultRulesResult(
-                alphaEnd.getDatapath(), alphaEnd.getPortNumber(),
-                zetaEnd.getDatapath(), zetaEnd.getPortNumber(),
-                true));
-        service.islDefaultRuleDeleted(reference, new RemoveIslDefaultRulesResult(
-                zetaEnd.getDatapath(), zetaEnd.getPortNumber(),
-                alphaEnd.getDatapath(), alphaEnd.getPortNumber(),
-                true));
+        service.islRulesDeleted(reference, alphaEnd);
+        service.islRulesDeleted(reference, zetaEnd);
 
         if (!shouldResurrect) {
             verify(carrier).islRemovedNotification(eq(alphaEnd), eq(reference));
@@ -1014,14 +1001,8 @@ public class NetworkIslServiceTest {
         service.islUp(endpointBeta2, reference, new IslDataHolder(islBetaAlpha));
 
         if (isMultitable) {
-            service.islDefaultRuleInstalled(reference, new InstallIslDefaultRulesResult(
-                    endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
-                    endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
-                    true));
-            service.islDefaultRuleInstalled(reference, new InstallIslDefaultRulesResult(
-                    endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
-                    endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
-                    true));
+            service.islRulesInstalled(reference, endpointAlpha1);
+            service.islRulesInstalled(reference, endpointBeta2);
         }
 
         verify(dashboardLogger).onIslUp(eq(reference), any());

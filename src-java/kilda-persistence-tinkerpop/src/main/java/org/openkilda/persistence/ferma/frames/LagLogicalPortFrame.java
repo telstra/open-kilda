@@ -27,10 +27,12 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.Edge;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -39,6 +41,7 @@ public abstract class LagLogicalPortFrame extends KildaBaseVertexFrame implement
     public static final String COMPRISES_PHYSICAL_PORT_EDGE = "comprises";
     public static final String SWITCH_ID_PROPERTY = "switch_id";
     public static final String LOGICAL_PORT_NUMBER_PROPERTY = "logical_port_number";
+    public static final String LACP_REPLY_PROPERTY = "lacp_reply";
 
     private List<PhysicalPort> physicalPorts;
 
@@ -51,6 +54,14 @@ public abstract class LagLogicalPortFrame extends KildaBaseVertexFrame implement
     @Property(SWITCH_ID_PROPERTY)
     @Convert(SwitchIdConverter.class)
     public abstract void setSwitchId(@NonNull SwitchId switchId);
+
+    @Override
+    @Property(LACP_REPLY_PROPERTY)
+    public abstract boolean isLacpReply();
+
+    @Override
+    @Property(LACP_REPLY_PROPERTY)
+    public abstract void setLacpReply(boolean lacpReply);
 
     @Override
     @Property(LOGICAL_PORT_NUMBER_PROPERTY)
@@ -75,13 +86,23 @@ public abstract class LagLogicalPortFrame extends KildaBaseVertexFrame implement
 
     @Override
     public void setPhysicalPorts(List<PhysicalPort> physicalPorts) {
+        Set<Integer> missing = physicalPorts.stream()
+                .map(PhysicalPort::getPortNumber)
+                .collect(Collectors.toSet());
         getElement().edges(Direction.OUT, COMPRISES_PHYSICAL_PORT_EDGE)
-                .forEachRemaining(edge -> {
-                    edge.inVertex().remove();
-                    edge.remove();
-                });
+                 .forEachRemaining(edge -> {
+                     Vertex target = edge.inVertex();
+                     Integer value = target.value(PhysicalPortFrame.PORT_NUMBER_PROPERTY);
+                     if (! missing.remove(value)) {
+                         target.remove();
+                     }
+                 });
 
         for (PhysicalPort physicalPort : physicalPorts) {
+            if (! missing.contains(physicalPort.getPortNumber())) {
+                continue;
+            }
+
             PhysicalPort.PhysicalPortData data = physicalPort.getData();
             PhysicalPortFrame frame;
 
@@ -90,6 +111,7 @@ public abstract class LagLogicalPortFrame extends KildaBaseVertexFrame implement
                 // Unlink physical port from the previous owner.
                 frame.getElement().edges(Direction.IN, COMPRISES_PHYSICAL_PORT_EDGE)
                         .forEachRemaining(Edge::remove);
+                frame.setSwitchId(getSwitchId());  // just precaution
             } else {
                 frame = PhysicalPortFrame.create(getGraph(), data);
             }

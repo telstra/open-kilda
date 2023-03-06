@@ -1,5 +1,5 @@
 [template]
-src = "atdd-staging/kilda.properties.tmpl"
+src = "functional-tests/kilda.properties.tmpl"
 dest = "src-java/testing/performance-tests/kilda.properties"
 keys = [ "/" ]
 mode = "0644"

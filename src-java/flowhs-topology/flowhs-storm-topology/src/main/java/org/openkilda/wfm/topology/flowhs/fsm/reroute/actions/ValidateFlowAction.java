@@ -20,6 +20,7 @@ import static java.util.Collections.emptySet;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.reroute.error.FlowInProgressError;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -34,7 +35,7 @@ import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.TimedExecution;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -49,7 +50,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public class ValidateFlowAction extends
+        NbTrackableWithHistorySupportAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final KildaConfigurationRepository kildaConfigurationRepository;
     private final KildaFeatureTogglesRepository featureTogglesRepository;
     private final FlowOperationsDashboardLogger dashboardLogger;
@@ -81,7 +83,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
             Flow foundFlow = getFlow(flowId);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS) {
                 String message = format("Flow %s is in progress now", flowId);
-                stateMachine.setRerouteError(new RerouteError(message));
+                stateMachine.setRerouteError(new FlowInProgressError(message));
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID, message);
             }
 
@@ -127,13 +129,14 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
         } else {
             reroutePrimary = checkIsPathAffected(flow.getForwardPath(), affectedIsl)
                     || checkIsPathAffected(flow.getReversePath(), affectedIsl);
-            rerouteProtected = checkIsPathAffected(flow.getProtectedForwardPath(), affectedIsl)
+            // Reroute the protected if the primary is affected to properly handle the case of overlapped paths.
+            rerouteProtected = reroutePrimary || checkIsPathAffected(flow.getProtectedForwardPath(), affectedIsl)
                     || checkIsPathAffected(flow.getProtectedReversePath(), affectedIsl);
         }
         // check protected path presence
         rerouteProtected &= flow.isAllocateProtectedPath();
 
-        if (! reroutePrimary && ! rerouteProtected) {
+        if (!reroutePrimary && !rerouteProtected) {
             throw new FlowProcessingException(ErrorType.NOT_FOUND, format(
                     "No paths of the flow %s are affected by failure on %s", flowId,
                     affectedIsl.stream()
@@ -182,7 +185,7 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
         boolean isAffected = false;
         for (PathSegment segment : path.getSegments()) {
             isAffected = affectedIsl.contains(getSegmentSourceEndpoint(segment));
-            if (! isAffected) {
+            if (!isAffected) {
                 isAffected = affectedIsl.contains(getSegmentDestEndpoint(segment));
             }
 
@@ -200,5 +203,13 @@ public class ValidateFlowAction extends NbTrackableAction<FlowRerouteFsm, State,
 
     private IslEndpoint getSegmentDestEndpoint(PathSegment segment) {
         return new IslEndpoint(segment.getDestSwitchId(), segment.getDestPort());
+    }
+
+    @Override
+    protected void handleError(FlowRerouteFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed validation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
     }
 }

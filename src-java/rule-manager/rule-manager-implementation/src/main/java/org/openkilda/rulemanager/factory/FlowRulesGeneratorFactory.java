@@ -23,17 +23,33 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.factory.generator.flow.EgressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.EgressYRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.EmptyGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.InputArpRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.InputLldpRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressYRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.MultiTableServer42IngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressYRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.SingleTableServer42IngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitYRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.VlanStatsRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopTransitRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.mirror.EgressMirrorRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.mirror.IngressMirrorRuleGenerator;
+
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Set;
+import java.util.UUID;
 
+@Slf4j
 public class FlowRulesGeneratorFactory {
 
     private final RuleManagerConfig config;
@@ -68,11 +84,54 @@ public class FlowRulesGeneratorFactory {
     }
 
     /**
+     * Get server42 ingress rule generator.
+     */
+    public RuleGenerator getServer42IngressRuleGenerator(
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
+            SwitchProperties switchProperties) {
+        boolean multiTable = isPathSrcMultiTable(flowPath, flow);
+        if (multiTable) {
+            return MultiTableServer42IngressRuleGenerator.builder()
+                    .config(config)
+                    .flowPath(flowPath)
+                    .flow(flow)
+                    .encapsulation(encapsulation)
+                    .switchProperties(switchProperties)
+                    .build();
+        } else {
+            return SingleTableServer42IngressRuleGenerator.builder()
+                    .config(config)
+                    .flowPath(flowPath)
+                    .flow(flow)
+                    .encapsulation(encapsulation)
+                    .switchProperties(switchProperties)
+                    .build();
+        }
+    }
+
+    /**
+     * Get vlan stats rule generator.
+     */
+    public RuleGenerator getVlanStatsRuleGenerator(FlowPath flowPath, Flow flow) {
+        boolean multiTable = isPathSrcMultiTable(flowPath, flow);
+        if (multiTable) {
+            return VlanStatsRuleGenerator.builder()
+                    .flow(flow)
+                    .flowPath(flowPath)
+                    .build();
+        } else {
+            // Vlan stats feature is not supported in single table mode.
+            return new EmptyGenerator();
+        }
+    }
+
+    /**
      * Get ingress y-rule generator.
      */
     public RuleGenerator getIngressYRuleGenerator(
             FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
-            Set<FlowSideAdapter> overlappingIngressAdapters, MeterId sharedMeterId) {
+            Set<FlowSideAdapter> overlappingIngressAdapters, MeterId sharedMeterId, UUID externalMeterCommandUuid,
+            boolean generateMeterCommand) {
         boolean multiTable = isPathSrcMultiTable(flowPath, flow);
         if (multiTable) {
             return MultiTableIngressYRuleGenerator.builder()
@@ -82,6 +141,8 @@ public class FlowRulesGeneratorFactory {
                     .encapsulation(encapsulation)
                     .overlappingIngressAdapters(overlappingIngressAdapters)
                     .sharedMeterId(sharedMeterId)
+                    .externalMeterCommandUuid(externalMeterCommandUuid)
+                    .generateMeterCommand(generateMeterCommand)
                     .build();
         } else {
             return SingleTableIngressYRuleGenerator.builder()
@@ -90,27 +151,99 @@ public class FlowRulesGeneratorFactory {
                     .flow(flow)
                     .encapsulation(encapsulation)
                     .sharedMeterId(sharedMeterId)
+                    .externalMeterCommandUuid(externalMeterCommandUuid)
+                    .generateMeterCommand(generateMeterCommand)
                     .build();
         }
+    }
+
+    /**
+     * Get ingress loop rule generator.
+     */
+    public RuleGenerator getIngressLoopRuleGenerator(FlowPath flowPath, Flow flow) {
+        return FlowLoopIngressRuleGenerator.builder()
+                .flowPath(flowPath)
+                .flow(flow)
+                .multiTable(isPathSrcMultiTable(flowPath, flow))
+                .build();
+    }
+
+    /**
+     * Get ingress mirror rule generator.
+     */
+    public RuleGenerator getIngressMirrorRuleGenerator(
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation, UUID sharedMeterCommandUuid) {
+        return IngressMirrorRuleGenerator.builder()
+                .flowPath(flowPath)
+                .flow(flow)
+                .multiTable(isPathSrcMultiTable(flowPath, flow))
+                .config(config)
+                .encapsulation(encapsulation)
+                .sharedMeterCommandUuid(sharedMeterCommandUuid)
+                .build();
+    }
+
+    /**
+     * Get input LLDP rule generator.
+     */
+    public RuleGenerator getInputLldpRuleGenerator(
+            FlowPath flowPath, Flow flow, Set<FlowSideAdapter> overlappingIngressAdapters) {
+        return InputLldpRuleGenerator.builder()
+                .ingressEndpoint(FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint())
+                .multiTable(isPathSrcMultiTable(flowPath, flow))
+                .overlappingIngressAdapters(overlappingIngressAdapters)
+                .build();
+    }
+
+    /**
+     * Get input ARP rule generator.
+     */
+    public RuleGenerator getInputArpRuleGenerator(
+            FlowPath flowPath, Flow flow, Set<FlowSideAdapter> overlappingIngressAdapters) {
+        return InputArpRuleGenerator.builder()
+                .ingressEndpoint(FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint())
+                .multiTable(isPathSrcMultiTable(flowPath, flow))
+                .overlappingIngressAdapters(overlappingIngressAdapters)
+                .build();
     }
 
     /**
      * Get egress rule generator.
      */
     public RuleGenerator getEgressRuleGenerator(FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation) {
-        if (flowPath.isOneSwitchFlow()) {
-            throw new IllegalArgumentException(format(
-                    "Couldn't create egress rule for flow %s and path %s because it is one switch flow",
-                    flow.getFlowId(), flowPath.getPathId()));
-        }
-
-        if (flowPath.getSegments().isEmpty()) {
-            throw new IllegalArgumentException(format(
-                    "Couldn't create egress rule for flow %s and path %s because path segments list is empty",
-                    flow.getFlowId(), flowPath.getPathId()));
-        }
-
+        checkEgressRulePreRequirements(flowPath, flow, "egress");
         return EgressRuleGenerator.builder()
+                .flowPath(flowPath)
+                .flow(flow)
+                .encapsulation(encapsulation)
+                .build();
+    }
+
+    /**
+     * Get egress rule generator.
+     */
+    public RuleGenerator getEgressYRuleGenerator(FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
+                                                 MeterId sharedMeterId, UUID externalMeterCommandUuid,
+                                                 boolean generateMeterCommand) {
+        checkEgressRulePreRequirements(flowPath, flow, "egress");
+        return EgressYRuleGenerator.builder()
+                .flowPath(flowPath)
+                .flow(flow)
+                .encapsulation(encapsulation)
+                .config(config)
+                .sharedMeterId(sharedMeterId)
+                .externalMeterCommandUuid(externalMeterCommandUuid)
+                .generateMeterCommand(generateMeterCommand)
+                .build();
+    }
+
+    /**
+     * Get egress mirror rule generator.
+     */
+    public RuleGenerator getEgressMirrorRuleGenerator(
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation) {
+        checkEgressRulePreRequirements(flowPath, flow, "egress mirror");
+        return EgressMirrorRuleGenerator.builder()
                 .flowPath(flowPath)
                 .flow(flow)
                 .encapsulation(encapsulation)
@@ -145,9 +278,10 @@ public class FlowRulesGeneratorFactory {
     /**
      * Get transit y-rule generator.
      */
-    public RuleGenerator getTransitYRuleGenerator(FlowPath flowPath, FlowTransitEncapsulation encapsulation,
-                                                  PathSegment firstSegment, PathSegment secondSegment,
-                                                  MeterId sharedMeterId) {
+    public TransitYRuleGenerator getTransitYRuleGenerator(FlowPath flowPath, FlowTransitEncapsulation encapsulation,
+                                                          PathSegment firstSegment, PathSegment secondSegment,
+                                                          MeterId sharedMeterId, UUID externalMeterCommandUuid,
+                                                          boolean generateMeterCommand) {
         if (flowPath.isOneSwitchFlow()) {
             throw new IllegalArgumentException(format(
                     "Couldn't create transit rule for path %s because it is one switch path", flowPath.getPathId()));
@@ -167,6 +301,22 @@ public class FlowRulesGeneratorFactory {
                 .multiTable(isSegmentMultiTable(firstSegment, secondSegment))
                 .config(config)
                 .sharedMeterId(sharedMeterId)
+                .externalMeterCommandUuid(externalMeterCommandUuid)
+                .generateMeterCommand(generateMeterCommand)
+                .build();
+    }
+
+    /**
+     * Get transit loop rule generator.
+     */
+    public RuleGenerator getTransitLoopRuleGenerator(
+            FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation, int inPort) {
+        return FlowLoopTransitRuleGenerator.builder()
+                .flowPath(flowPath)
+                .flow(flow)
+                .multiTable(isPathSrcMultiTable(flowPath, flow))
+                .inPort(inPort)
+                .encapsulation(encapsulation)
                 .build();
     }
 
@@ -199,6 +349,20 @@ public class FlowRulesGeneratorFactory {
                     flow.getFlowId(), flowPath.getPathId(),
                     flowPath.isSrcWithMultiTable(), segment.isSrcWithMultiTable());
             throw new IllegalArgumentException(errorMessage);
+        }
+    }
+
+    private void checkEgressRulePreRequirements(FlowPath flowPath, Flow flow, String ruleName) {
+        if (flowPath.isOneSwitchFlow()) {
+            throw new IllegalArgumentException(format(
+                    "Couldn't create %s rule for flow %s and path %s because it is one switch flow",
+                    ruleName, flow.getFlowId(), flowPath.getPathId()));
+        }
+
+        if (flowPath.getSegments().isEmpty()) {
+            throw new IllegalArgumentException(format(
+                    "Couldn't create %s rule for flow %s and path %s because path segments list is empty",
+                    ruleName, flow.getFlowId(), flowPath.getPathId()));
         }
     }
 }

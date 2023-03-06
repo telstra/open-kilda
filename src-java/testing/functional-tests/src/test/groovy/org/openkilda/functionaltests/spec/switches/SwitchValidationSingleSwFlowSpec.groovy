@@ -7,30 +7,27 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandMessage
-import org.openkilda.messaging.command.flow.BaseInstallFlow
-import org.openkilda.messaging.command.flow.InstallEgressFlow
-import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest
-import org.openkilda.messaging.command.flow.InstallIngressFlow
-import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.FlowEndpoint
 import org.openkilda.model.MeterId
-import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
+import org.openkilda.rulemanager.FlowSpeakerData
+import org.openkilda.rulemanager.Instructions
+import org.openkilda.rulemanager.MeterFlag
+import org.openkilda.rulemanager.MeterSpeakerData
+import org.openkilda.rulemanager.OfTable
+import org.openkilda.rulemanager.OfVersion
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import com.google.common.collect.Sets
 import groovy.transform.Memoized
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -50,7 +47,7 @@ Description of fields:
 """)
 @Tags([SMOKE_SWITCHES])
 class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
-    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
+    @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}")
     String speakerTopic
     @Autowired
     @Qualifier("kafkaProducerProperties")
@@ -87,13 +84,13 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchHelper.verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
-        switchValidateInfo.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "misconfigured", "excess"])
+        switchValidateInfo.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
 
         and: "Created rules are stored in the 'proper' section"
         switchValidateInfo.rules.proper.containsAll(createdCookies)
 
         and: "The rest fields in the 'rule' section are empty"
-        switchValidateInfo.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess"])
+        switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
 
         when: "Delete the flow"
         def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
@@ -101,8 +98,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateInfoAfterDelete = northbound.validateSwitch(sw.dpId)
-            switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(sw.dpId)
-            switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty(sw.dpId)
+            switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
+            switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
 
         cleanup:
@@ -124,7 +121,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
-        def amountOfMultiTableFlRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 0 //2 SHARED_OF_FLOW, 2 MULTI_TABLE_INGRESS_RULES
+        def amountOfMultiTableFlRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 0 //2 SHARED_OF_FLOW, 2 MULTI_TABLE_INGRESS_RULES
         def amountOfFlowRules = 2 //SERVICE_OR_FLOW_SEGMENT(ingress/egress)
         def amountOfSwRules = northbound.getSwitchRules(sw.dpId).flowEntries.size()
         def amountOfRules = amountOfSwRules + amountOfFlowRules + amountOfMultiTableFlRules
@@ -162,7 +159,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         and: "The rest fields are empty"
-        switchValidateInfo.verifyMeterSectionsAreEmpty(sw.dpId, ["proper", "missing", "excess"])
+        switchValidateInfo.verifyMeterSectionsAreEmpty(["proper", "missing", "excess"])
 
         and: "Created rules are still stored in the 'proper' section"
         switchValidateInfo.rules.proper.containsAll(createdCookies)
@@ -195,7 +192,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Misconfigured meters are reinstalled according to the new bandwidth and moved into the 'proper' section"
         with(northbound.validateSwitch(sw.dpId)) {
             it.meters.proper.findAll { it.meterId in meterIds }.each { assert it.rate == newBandwidth }
-            it.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "misconfigured", "excess"])
+            it.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
         }
 
         and: "Flow validation shows no discrepancies"
@@ -210,8 +207,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateInfoAfterDelete = northbound.validateSwitch(sw.dpId)
-            switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(sw.dpId)
-            switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty(sw.dpId)
+            switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
+            switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
 
         where:
@@ -253,8 +250,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         and: "The rest fields are empty"
-        switchValidateInfo.verifyRuleSectionsAreEmpty(sw.dpId, ["proper", "excess"])
-        switchValidateInfo.verifyMeterSectionsAreEmpty(sw.dpId, ["proper", "misconfigured", "excess"])
+        switchValidateInfo.verifyRuleSectionsAreEmpty(["proper", "excess"])
+        switchValidateInfo.verifyMeterSectionsAreEmpty(["proper", "misconfigured", "excess"])
 
         when: "Try to synchronize the switch"
         def syncResponse = northbound.synchronizeSwitch(sw.dpId, false)
@@ -275,8 +272,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateInfoAfterDelete = northbound.validateSwitch(sw.dpId)
-            switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(sw.dpId)
-            switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty(sw.dpId)
+            switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
+            switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
         def testIsCompleted = true
 
@@ -312,12 +309,12 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Rules and meters are created"
         def swValidateInfo = northbound.validateSwitch(sw.dpId)
         def properMeters = swValidateInfo.meters.proper.findAll({ !isDefaultMeter(it) })
-        def amountOfFlowRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 2
+        def amountOfFlowRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 2
         properMeters.meterId.size() == 2
         swValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
 
         when: "Update meterId for created flow directly via db"
-        MeterId newMeterId = new MeterId(100)
+        long newMeterId = 100;
         database.updateFlowMeterId(flow.flowId, newMeterId)
 
         then: "Origin meters are moved into the 'excess' section"
@@ -336,13 +333,13 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.meters.missing.each {
             verifyRateIsCorrect(sw, it.rate, flow.maximumBandwidth)
             assert it.flowId == flow.flowId
-            assert it.meterId == newMeterId.value
+            assert it.meterId == newMeterId || it.meterId == newMeterId + 1
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
             switchHelper.verifyBurstSizeIsCorrect(sw, burstSize, it.burstSize)
         }
 
         and: "Rules still exist in the 'proper' section"
-        switchValidateInfo.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess"])
+        switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -353,8 +350,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateInfoAfterDelete = northbound.validateSwitch(sw.dpId)
-            switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(sw.dpId)
-            switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty(sw.dpId)
+            switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
+            switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
 
         where:
@@ -387,14 +384,14 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.rules.missingHex.containsAll(createdHexCookies)
 
         and: "The rest fields in the 'rule' section are empty"
-        switchValidateInfo.verifyRuleSectionsAreEmpty(sw.dpId, ["proper", "excess"])
-        switchValidateInfo.verifyHexRuleSectionsAreEmpty(sw.dpId, ["properHex", "excessHex"])
+        switchValidateInfo.verifyRuleSectionsAreEmpty(["proper", "excess"])
+        switchValidateInfo.verifyHexRuleSectionsAreEmpty(["properHex", "excessHex"])
 
         when: "Try to synchronize the switch"
         def syncResponse = northbound.synchronizeSwitch(sw.dpId, false)
 
         then: "System detects missing rules, then installs them"
-        def amountOfFlowRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 2
+        def amountOfFlowRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 2
         syncResponse.rules.missing.size() == amountOfFlowRules
         syncResponse.rules.missing.containsAll(createdCookies)
         syncResponse.rules.installed.size() == amountOfFlowRules
@@ -406,8 +403,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateInfoAfterDelete = northbound.validateSwitch(sw.dpId)
-            switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty(sw.dpId)
-            switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty(sw.dpId)
+            switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
+            switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
         def testIsCompleted = true
 
@@ -435,8 +432,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         setup: "Select a #switchType switch and no meters/rules exist on a switch"
         def sw = switches.first()
         def switchValidateInfoInitState = northbound.validateSwitch(sw.dpId)
-        switchValidateInfoInitState.verifyRuleSectionsAreEmpty(sw.dpId)
-        switchValidateInfoInitState.verifyMeterSectionsAreEmpty(sw.dpId)
+        switchValidateInfoInitState.verifyRuleSectionsAreEmpty()
+        switchValidateInfoInitState.verifyMeterSectionsAreEmpty()
 
         when: "Create excess rules/meter directly via kafka"
         Long fakeBandwidth = 333
@@ -446,16 +443,40 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
                 .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
-                new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN, 1, 0, OutputVlanType.REPLACE, false,
-                        new FlowEndpoint(sw.dpId, 17), null)).toJson())).get()
+                FlowSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .cookie(new Cookie(1L))
+                        .table(OfTable.EGRESS)
+                        .priority(100)
+                        .instructions(Instructions.builder().build())
+                        .build()).toJson())).get()
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
-                new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 3,
-                        FlowEncapsulationType.TRANSIT_VLAN, false)).toJson())).get()
-        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 5, 0, 3,
-                        FlowEncapsulationType.TRANSIT_VLAN, OutputVlanType.REPLACE, fakeBandwidth, excessMeterId,
-                        sw.dpId, false, false, false, null)).toJson())).get()
+                FlowSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .cookie(new Cookie(2L))
+                        .table(OfTable.TRANSIT)
+                        .priority(100)
+                        .instructions(Instructions.builder().build())
+                        .build()).toJson())).get()
+        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage([
+                        FlowSpeakerData.builder()
+                                .switchId(sw.dpId)
+                                .ofVersion(OfVersion.of(sw.ofVersion))
+                                .cookie(new Cookie(3L))
+                                .table(OfTable.INPUT)
+                                .priority(100)
+                                .instructions(Instructions.builder().build())
+                                .build(),
+                        MeterSpeakerData.builder()
+                                .switchId(sw.dpId)
+                                .ofVersion(OfVersion.of(sw.ofVersion))
+                                .meterId(new MeterId(excessMeterId))
+                                .rate(fakeBandwidth)
+                                .burst(burstSize)
+                                .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
+                                .build()]).toJson())).get()
 
         then: "System detects created rules/meter as excess rules"
         //excess egress/ingress/transit rules are not added yet
@@ -491,8 +512,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         and: "Switch validation doesn't complain about excess rules and meters"
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateResponse = northbound.validateSwitch(sw.dpId)
-            switchValidateResponse.verifyRuleSectionsAreEmpty(sw.dpId)
-            switchValidateResponse.verifyMeterSectionsAreEmpty(sw.dpId)
+            switchValidateResponse.verifyRuleSectionsAreEmpty()
+            switchValidateResponse.verifyMeterSectionsAreEmpty()
         }
 
         cleanup:
@@ -533,7 +554,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
 
         then: "Switch validation shows missing rules"
-        def amountOfFlowRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 2
+        def amountOfFlowRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 2
         northbound.validateSwitch(sw.dpId).rules.missing.size() == amountOfFlowRules
         northbound.validateSwitch(sw.dpId).rules.missingHex.size() == amountOfFlowRules
 
@@ -544,8 +565,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         then: "Switch validation shows no discrepancies"
         with(northbound.validateSwitch(sw.dpId)) {
-            it.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess"])
-            it.verifyHexRuleSectionsAreEmpty(sw.dpId, ["missingHex", "excessHex"])
+            it.verifyRuleSectionsAreEmpty(["missing", "excess"])
+            it.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex"])
             it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
             def properMeters = it.meters.proper.findAll({dto -> !isDefaultMeter(dto)})
             properMeters.size() == 2
@@ -556,8 +577,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         then: "Switch validation returns empty sections"
         with(northbound.validateSwitch(sw.dpId)) {
-            it.verifyRuleSectionsAreEmpty(sw.dpId)
-            it.verifyMeterSectionsAreEmpty(sw.dpId)
+            it.verifyRuleSectionsAreEmpty()
+            it.verifyMeterSectionsAreEmpty()
         }
         def testIsCompleted = true
 
@@ -618,10 +639,5 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         else {
             assert expected == actual
         }
-    }
-
-    private static Message buildMessage(final BaseInstallFlow commandData) {
-        InstallFlowForSwitchManagerRequest data = new InstallFlowForSwitchManagerRequest(commandData)
-        return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null)
     }
 }

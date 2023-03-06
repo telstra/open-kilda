@@ -18,7 +18,7 @@ package org.openkilda.wfm.topology.network.storm.bolt.bfd.worker.command;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
-import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.wfm.topology.network.storm.ICommand;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.worker.BfdWorker;
@@ -37,7 +37,7 @@ public abstract class BfdWorkerCommand implements ICommand<BfdWorker> {
         failedToConsume(response);
     }
 
-    public void consumeResponse(BfdWorker handler, CreateLogicalPortResponse response) {
+    public void consumeResponse(BfdWorker handler, CreateOrUpdateLogicalPortResponse response) {
         failedToConsume(response);
     }
 

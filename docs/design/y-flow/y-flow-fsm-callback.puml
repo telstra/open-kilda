@@ -1,0 +1,70 @@
+@startuml
+title Y-Flow FSM Callbacks & Carriers
+
+interface FlowGenericCarrier {
+    sendSpeakerRequest(...)
+}
+
+class YFlowCreateHubBolt <<Storm Bolt>> {
+}
+class YFlowCreateService {
+    Map<Key, YFlowCreateFsm> fsms
+}
+class YFlowCreateFsm {
+    FlowGenericCarrier carrier
+    YFlowCreateEventListener eventListener
+
+    FlowCreateService flowService
+}
+interface YFlowCreateCarrier {
+    sendNorthboundResponse(...)
+}
+interface YFlowCreateEventListener {
+    onValidationPassed(...)
+    onCompleted(...)
+    onError(...)
+}
+
+class FlowCreateHubBolt <<Storm Bolt>> {
+}
+class FlowCreateService {
+    Map<Key, FlowCreateFsm> fsms
+}
+class FlowCreateFsm {
+    FlowGenericCarrier carrier
+    FlowCreateEventListener eventListener
+}
+interface FlowCreateCarrier {
+    sendNorthboundResponse(...)
+}
+interface FlowCreateEventListener {
+    onValidationPassed(...)
+    onCompleted(...)
+    onError(...)
+}
+
+
+FlowGenericCarrier <-- YFlowCreateFsm : send \nFL request
+FlowGenericCarrier <-- FlowCreateFsm : send \nFL request
+
+YFlowCreateService <-up- YFlowCreateHubBolt: forward \nNB request \nor FL response
+YFlowCreateService *-- YFlowCreateFsm
+YFlowCreateEventListener <|.up. YFlowCreateService
+YFlowCreateEventListener <-up- YFlowCreateFsm : notify \non events
+
+FlowGenericCarrier <|.left. YFlowCreateHubBolt
+YFlowCreateCarrier <|.up. YFlowCreateHubBolt
+YFlowCreateCarrier <-- YFlowCreateService: send \nNB response
+
+FlowCreateService <-up- FlowCreateHubBolt: forward \nNB request \nor FL response
+FlowCreateService *-- FlowCreateFsm
+FlowCreateEventListener <|.up. FlowCreateService
+FlowCreateEventListener <|.up. YFlowCreateService
+FlowCreateEventListener <-up- FlowCreateFsm : notify \non events
+FlowCreateService <-- YFlowCreateFsm : initiate \nflow creation
+
+FlowGenericCarrier <|.right. FlowCreateHubBolt
+FlowCreateCarrier <|.up. FlowCreateHubBolt
+FlowCreateCarrier <-- FlowCreateService : send \nNB response
+
+@enduml

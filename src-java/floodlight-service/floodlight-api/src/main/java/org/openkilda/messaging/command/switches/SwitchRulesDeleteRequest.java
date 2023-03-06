@@ -15,9 +15,7 @@
 
 package org.openkilda.messaging.command.switches;
 
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.model.MacAddress;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -26,11 +24,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -49,48 +43,6 @@ public class SwitchRulesDeleteRequest extends CommandData {
     @JsonProperty("criteria")
     private DeleteRulesCriteria criteria;
 
-    @JsonProperty("multi_table")
-    private boolean multiTable = false;
-
-    @JsonProperty("switch_lldp")
-    private boolean switchLldp = false;
-
-    @JsonProperty("switch_arp")
-    private boolean switchArp = false;
-
-    @JsonProperty("server42_flow_rtt_feature_toggle")
-    private boolean server42FlowRttFeatureToggle = false;
-
-    @JsonProperty("server42_flow_rtt_switch_property")
-    private boolean server42FlowRttSwitchProperty = false;
-
-    @JsonProperty("server42_port")
-    private Integer server42Port;
-
-    @JsonProperty("server42_vlan")
-    private Integer server42Vlan;
-
-    @JsonProperty("server42_mac_address")
-    private MacAddress server42MacAddress;
-
-    @JsonProperty("isl_ports")
-    private List<Integer> islPorts = new ArrayList<>();
-
-    @JsonProperty("flow_ports")
-    private List<Integer> flowPorts = new ArrayList<>();
-
-    @JsonProperty("flow_lldp_ports")
-    private Set<Integer> flowLldpPorts = new HashSet<>();
-
-    @JsonProperty("flow_arp_ports")
-    private Set<Integer> flowArpPorts = new HashSet<>();
-
-    @JsonProperty("server42_flow_rtt_ports")
-    private Set<Integer> server42FlowRttPorts;
-
-    @JsonProperty("server42_isl_rtt_enabled")
-    private boolean server42IslRttEnabled = false;
-
     /**
      * Constructs a delete switch rules request.
      *
@@ -102,12 +54,8 @@ public class SwitchRulesDeleteRequest extends CommandData {
     public SwitchRulesDeleteRequest(
             @JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("delete_rules") DeleteRulesAction deleteRulesAction,
-            @JsonProperty("criteria") DeleteRulesCriteria criteria
-    ) {
+            @JsonProperty("criteria") DeleteRulesCriteria criteria) {
         this.switchId = Objects.requireNonNull(switchId, "switch_id must not be null");
-        if (!Utils.validateSwitchId(switchId)) {
-            throw new IllegalArgumentException("switch_id has invalid value");
-        }
 
         this.deleteRulesAction = deleteRulesAction;
         // NB: criteria is only needed if deleteRulesAction is not provided

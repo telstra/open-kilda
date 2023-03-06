@@ -28,24 +28,40 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.haflows.HaFlow;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowDump;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
+import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
 import org.openkilda.northbound.dto.v2.links.BfdProperties;
 import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
-import org.openkilda.northbound.dto.v2.switches.CreateLagPortDto;
-import org.openkilda.northbound.dto.v2.switches.LagPortDto;
+import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
+import org.openkilda.northbound.dto.v2.switches.LagPortResponse;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
+import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
+import org.openkilda.northbound.dto.v2.yflows.SubFlow;
 import org.openkilda.northbound.dto.v2.yflows.YFlow;
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingPayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,9 +78,13 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 
 @Service
 @Slf4j
@@ -302,27 +322,50 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     }
 
     @Override
-    public List<LagPortDto> getLagLogicalPort(SwitchId switchId) {
+    public List<LagPortResponse> getLagLogicalPort(SwitchId switchId) {
         log.debug("Get LAG ports from switch('{}')", switchId);
-        LagPortDto[] lagPorts = restTemplate.exchange("/api/v2/switches/{switchId}/lags", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), LagPortDto[].class, switchId).getBody();
+        LagPortResponse[] lagPorts = restTemplate.exchange("/api/v2/switches/{switch_id}/lags", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), LagPortResponse[].class, switchId).getBody();
         return Arrays.asList(lagPorts);
     }
 
     @Override
-    public LagPortDto createLagLogicalPort(SwitchId switchId, CreateLagPortDto payload) {
+    public LagPortResponse createLagLogicalPort(SwitchId switchId, LagPortRequest payload) {
         log.debug("Create LAG port on switch('{}')", switchId);
-        HttpEntity<CreateLagPortDto> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v2/switches/{switchId}/lags", HttpMethod.POST, httpEntity,
-                LagPortDto.class, switchId).getBody();
+        HttpEntity<LagPortRequest> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/switches/{switch_id}/lags", HttpMethod.POST, httpEntity,
+                LagPortResponse.class, switchId).getBody();
     }
 
     @Override
-    public LagPortDto deleteLagLogicalPort(SwitchId switchId, Integer logicalPortNumber) {
+    public LagPortResponse updateLagLogicalPort(SwitchId switchId, Integer logicalPortNumber, LagPortRequest payload) {
+        log.debug("Create LAG port on switch('{}')", switchId);
+        HttpEntity<LagPortRequest> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/switches/{switch_id}/lags/{logical_port_number}", HttpMethod.PUT,
+                httpEntity, LagPortResponse.class, switchId, logicalPortNumber).getBody();
+    }
+
+    @Override
+    public LagPortResponse deleteLagLogicalPort(SwitchId switchId, Integer logicalPortNumber) {
         log.debug("Delete LAG port('{}') from switch('{}')", logicalPortNumber, switchId);
         return restTemplate.exchange("/api/v2/switches/{switch_id}/lags/{logical_port_number}", HttpMethod.DELETE,
-                new HttpEntity<>(buildHeadersWithCorrelationId()), LagPortDto.class, switchId,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), LagPortResponse.class, switchId,
                 logicalPortNumber).getBody();
+    }
+
+    @Override
+    public SwitchFlowsPerPortResponse getSwitchFlows(SwitchId switchId, List<Integer> portIds) {
+        log.debug("Get flows from switch {} on ports {}", switchId, portIds);
+        UriComponentsBuilder uriBuilder =
+                UriComponentsBuilder.fromUriString("/api/v2/switches/{switch_id}/flows-by-port");
+        if (!portIds.isEmpty()) {
+            uriBuilder.queryParam("ports", portIds);
+        }
+        return restTemplate.exchange(
+                uriBuilder.build().toString(),
+                HttpMethod.GET,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), SwitchFlowsPerPortResponse.class, switchId
+                ).getBody();
     }
 
     @Override
@@ -371,41 +414,47 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
 
     @Override
     public YFlow getYFlow(String yFlowId) {
-        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), YFlow.class, yFlowId).getBody();
+        try {
+            return sorted(restTemplate.exchange("/api/v2/y-flows/{y_flow_id}", HttpMethod.GET,
+                    new HttpEntity(buildHeadersWithCorrelationId()), YFlow.class, yFlowId).getBody());
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
+                throw ex;
+            }
+            return null;
+        }
     }
 
     @Override
     public List<YFlow> getAllYFlows() {
-        YFlow[] flows = restTemplate.exchange("/api/v2/y-flows", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), YFlow[].class).getBody();
-        return Arrays.asList(flows);
+        return sorted(restTemplate.exchange("/api/v2/y-flows", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), YFlowDump.class).getBody().getYFlows());
     }
 
     @Override
     public YFlow addYFlow(YFlowCreatePayload request) {
         HttpEntity<YFlowCreatePayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v2/y-flows", HttpMethod.POST, httpEntity, YFlow.class).getBody();
+        return sorted(restTemplate.exchange("/api/v2/y-flows", HttpMethod.POST, httpEntity, YFlow.class).getBody());
     }
 
     @Override
     public YFlow updateYFlow(String yFlowId, YFlowUpdatePayload request) {
         HttpEntity<YFlowUpdatePayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}", HttpMethod.PUT, httpEntity, YFlow.class,
-                yFlowId).getBody();
+        return sorted(restTemplate.exchange("/api/v2/y-flows/{y_flow_id}", HttpMethod.PUT, httpEntity, YFlow.class,
+                yFlowId).getBody());
     }
 
     @Override
     public YFlow partialUpdateYFlow(String yFlowId, YFlowPatchPayload request) {
         HttpEntity<YFlowPatchPayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}", HttpMethod.PATCH, httpEntity, YFlow.class,
-                yFlowId).getBody();
+        return sorted(restTemplate.exchange("/api/v2/y-flows/{y_flow_id}", HttpMethod.PATCH, httpEntity, YFlow.class,
+                yFlowId).getBody());
     }
 
     @Override
     public YFlow deleteYFlow(String yFlowId) {
-        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}", HttpMethod.DELETE,
-                new HttpEntity(buildHeadersWithCorrelationId()), YFlow.class, yFlowId).getBody();
+        return sorted(restTemplate.exchange("/api/v2/y-flows/{y_flow_id}", HttpMethod.DELETE,
+                new HttpEntity(buildHeadersWithCorrelationId()), YFlow.class, yFlowId).getBody());
     }
 
     @Override
@@ -414,9 +463,128 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
                 new HttpEntity<>(buildHeadersWithCorrelationId()), YFlowRerouteResult.class, yFlowId).getBody();
     }
 
+    @Override
+    public YFlowPaths getYFlowPaths(String yFlowId) {
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/paths", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), YFlowPaths.class, yFlowId).getBody();
+    }
+
+    @Override
+    public YFlowValidationResult validateYFlow(String yFlowId) {
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/validate", HttpMethod.POST,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), YFlowValidationResult.class, yFlowId).getBody();
+    }
+
+    @Override
+    public YFlowSyncResult synchronizeYFlow(String yFlowId) {
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/sync", HttpMethod.POST,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), YFlowSyncResult.class, yFlowId).getBody();
+    }
+
+    @Override
+    public YFlowPingResult pingYFlow(String yFlowId, YFlowPingPayload payload) {
+        HttpEntity<YFlowPingPayload> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/ping", HttpMethod.POST, httpEntity,
+                YFlowPingResult.class, yFlowId).getBody();
+    }
+
+    @Override
+    public YFlow swapYFlowPaths(String yFlowId) {
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/swap", HttpMethod.POST,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), YFlow.class, yFlowId).getBody();
+    }
+
     private HttpHeaders buildHeadersWithCorrelationId() {
         HttpHeaders headers = new HttpHeaders();
         headers.set(Utils.CORRELATION_ID, "fn-tests-" + UUID.randomUUID().toString());
         return headers;
+    }
+
+    private YFlow sorted(@Nullable YFlow yFlow) {
+        yFlow.getSubFlows().sort(Comparator.comparing(SubFlow::getFlowId));
+        return yFlow;
+    }
+
+    private HaFlow sorted(@Nullable HaFlow haFlow) {
+        haFlow.getSubFlows().sort(Comparator.comparing(HaSubFlow::getFlowId));
+        return haFlow;
+    }
+
+    private List<YFlow> sorted(List<YFlow> yFlows) {
+        return yFlows.stream().map(this::sorted).collect(Collectors.toList());
+    }
+
+    private List<HaFlow> sortedHaFlows(List<HaFlow> haFlows) {
+        return haFlows.stream().map(this::sorted).collect(Collectors.toList());
+    }
+
+    @Override
+    public SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId) {
+        log.debug("Switch validating '{}'", switchId);
+        SwitchValidationResultV2 result = Objects.requireNonNull(restTemplate.exchange(
+                "/api/v2/switches/{switch_id}/validate", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResultV2.class, switchId).getBody());
+        return new SwitchValidationV2ExtendedResult(switchId, result);
+    }
+
+    @Override
+    public SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId, String include, String exclude) {
+        log.debug("Switch validating '{}'", switchId);
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v2/switches/{switch_id}/validate");
+        if (exclude != null) {
+            uriBuilder.queryParam("exclude", exclude);
+        }
+        if (include != null) {
+            uriBuilder.queryParam("include", include);
+        }
+        SwitchValidationResultV2 result = Objects.requireNonNull(restTemplate.exchange(
+                uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResultV2.class, switchId).getBody());
+        return new SwitchValidationV2ExtendedResult(switchId, result);
+    }
+
+    @Override
+    public HaFlow getHaFlow(String haFlowId) {
+        try {
+            return sorted(restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}", HttpMethod.GET,
+                    new HttpEntity(buildHeadersWithCorrelationId()), HaFlow.class, haFlowId).getBody());
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
+                throw ex;
+            }
+            return null;
+        }
+    }
+
+    @Override
+    public List<HaFlow> getAllHaFlows() {
+        return sortedHaFlows(restTemplate.exchange("/api/v2/ha-flows", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), HaFlowDump.class).getBody().getHaFlows());
+    }
+
+    @Override
+    public HaFlow addHaFlow(HaFlowCreatePayload request) {
+        HttpEntity<HaFlowCreatePayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return sorted(restTemplate.exchange("/api/v2/ha-flows", HttpMethod.POST, httpEntity, HaFlow.class).getBody());
+    }
+
+    @Override
+    public HaFlow updateHaFlow(String haFlowId, HaFlowUpdatePayload request) {
+        HttpEntity<HaFlowUpdatePayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return sorted(restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}", HttpMethod.PUT, httpEntity, HaFlow.class,
+                haFlowId).getBody());
+    }
+
+    @Override
+    public HaFlow partialUpdateHaFlow(String haFlowId, HaFlowPatchPayload request) {
+        HttpEntity<HaFlowPatchPayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return sorted(restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}", HttpMethod.PATCH, httpEntity,
+                HaFlow.class, haFlowId).getBody());
+    }
+
+    @Override
+    public HaFlow deleteHaFlow(String haFlowId) {
+        return sorted(restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}", HttpMethod.DELETE,
+                new HttpEntity(buildHeadersWithCorrelationId()), HaFlow.class, haFlowId).getBody());
     }
 }

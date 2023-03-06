@@ -60,6 +60,11 @@ COPY BUILD/flowmonitoring-storm-topology/build.gradle           /app/flowmonitor
 COPY BUILD/flowmonitoring-storm-topology/resources/flowmonitoring-topology.yaml	    /app/flowmonitoring-storm-topology/topology-definition.yaml
 
 
+#history
+COPY BUILD/history-storm-topology/libs/*                        /app/history-storm-topology/libs/
+COPY BUILD/history-storm-topology/build.gradle                  /app/history-storm-topology/
+COPY BUILD/history-storm-topology/resources/history-topology.yaml	    /app/history-storm-topology/topology-definition.yaml
+
 
 #isllatency
 COPY BUILD/isllatency-storm-topology/libs/*                     /app/isllatency-storm-topology/libs/

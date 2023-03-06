@@ -29,7 +29,8 @@ class PathsSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair))
 
         when: "Get paths between switches"
-        def paths = northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId, null, null, null, null)
+        def paths = northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId,
+                null, null, null, null, null)
 
         then: "Paths will be sorted by bandwidth (descending order) and then by latency (ascending order)"
         paths.paths.size() > 0
@@ -45,6 +46,13 @@ class PathsSpec extends HealthCheckSpecification {
             }
         }
 
+        then: "Maximum count of paths can be changed during PCE calculations"
+        def limited_paths = northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId,
+                null, null, null, null, 1)
+        assert limited_paths.paths.size() == 1
+        assert paths.paths.size() > limited_paths.paths.size()
+
+
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
@@ -59,8 +67,8 @@ class PathsSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair))
 
         when: "Get paths between switches using the LATENCY strategy"
-        def paths = northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId, null,
-                PathComputationStrategy.LATENCY, 10, null)
+        def paths = northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId,
+                null, PathComputationStrategy.LATENCY, 10, null, null)
 
         then: "Paths will be sorted by latency (ascending order) and then by bandwidth (descending order)"
         paths.paths.size() > 0
@@ -85,7 +93,7 @@ class PathsSpec extends HealthCheckSpecification {
         def sw = topology.getActiveSwitches()[0]
 
         when: "Try to get paths between one switch"
-        northbound.getPaths(sw.dpId, sw.dpId, null, null, null, null)
+        northbound.getPaths(sw.dpId, sw.dpId, null, null, null, null, null)
 
         then: "Get 400 BadRequest error because request is invalid"
         def exc = thrown(HttpClientErrorException)
@@ -99,7 +107,7 @@ class PathsSpec extends HealthCheckSpecification {
         def sw = topology.getActiveSwitches()[0]
 
         when: "Try to get paths between real switch and nonexistent switch"
-        northbound.getPaths(sw.dpId, NON_EXISTENT_SWITCH_ID, null, null, null, null)
+        northbound.getPaths(sw.dpId, NON_EXISTENT_SWITCH_ID, null, null, null, null, null)
 
         then: "Get 404 NotFound error"
         def exc = thrown(HttpClientErrorException)
@@ -112,8 +120,8 @@ class PathsSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getNotNeighboringSwitchPair()
 
         when: "Try to get paths between switches with max_latency stragy but without max_latency parameter"
-        northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId, null, PathComputationStrategy.MAX_LATENCY,
-                null, null)
+        northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId,
+                null, PathComputationStrategy.MAX_LATENCY, null, null, null)
 
         then: "Human readable error is returned"
         def error = thrown(HttpClientErrorException)
@@ -138,25 +146,18 @@ class PathsSpec extends HealthCheckSpecification {
             })
         }
         assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
-        def srcProps = northbound.getSwitchProperties(switchPair.src.dpId)
-        def dstProps = northbound.getSwitchProperties(switchPair.dst.dpId)
-
-        def swWithoutVxlan = switchPair.src
-        def encapsTypesWithoutVxlan = srcProps.supportedTransitEncapsulation.collect {it.toString().toUpperCase()}
-
-        if (srcProps.supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())) {
-            swWithoutVxlan = switchPair.dst
-            encapsTypesWithoutVxlan = dstProps.supportedTransitEncapsulation.collect {it.toString().toUpperCase()}
-        }
+        def encapsTypesWithoutVxlan = northbound.getSwitchProperties(switchPair.src.dpId)
+                .supportedTransitEncapsulation.collect { it.toString().toUpperCase() }
 
         when: "Try to get a path for a 'vxlan' flowEncapsulationType between the given switches"
-        northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId, FlowEncapsulationType.VXLAN, null, null, null)
+        northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId,
+                FlowEncapsulationType.VXLAN, null, null, null, null)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Switch $swWithoutVxlan.dpId doesn't support $FlowEncapsulationType.VXLAN " +
+        errorDetails.errorMessage == "Switch $switchPair.src.dpId doesn't support $FlowEncapsulationType.VXLAN " +
                 "encapslation type. Choose one of the supported encapsulation types $encapsTypesWithoutVxlan or " +
                 "update switch properties and add needed encapsulation type."
 

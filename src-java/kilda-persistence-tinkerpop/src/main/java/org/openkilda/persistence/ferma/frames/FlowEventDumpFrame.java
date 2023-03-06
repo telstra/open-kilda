@@ -18,9 +18,10 @@ package org.openkilda.persistence.ferma.frames;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.MirrorPointStatus;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.history.FlowEventDump.FlowEventDumpData;
 import org.openkilda.persistence.ferma.frames.converters.Convert;
 import org.openkilda.persistence.ferma.frames.converters.FlowEncapsulationTypeConverter;
@@ -31,6 +32,8 @@ import org.openkilda.persistence.ferma.frames.converters.PathComputationStrategy
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 
 import com.syncleus.ferma.annotations.Property;
+
+import java.util.List;
 
 public abstract class FlowEventDumpFrame extends KildaBaseVertexFrame implements FlowEventDumpData {
     public static final String FRAME_LABEL = "flow_dump";
@@ -78,24 +81,32 @@ public abstract class FlowEventDumpFrame extends KildaBaseVertexFrame implements
     public abstract void setIgnoreBandwidth(boolean ignoreBandwidth);
 
     @Override
-    @Property("forward_cookie")
-    @Convert(FlowSegmentCookieConverter.class)
-    public abstract Cookie getForwardCookie();
+    @Property("strict_bandwidth")
+    public abstract boolean isStrictBandwidth();
+
+    @Override
+    @Property("strict_bandwidth")
+    public abstract void setStrictBandwidth(boolean strictBandwidth);
 
     @Override
     @Property("forward_cookie")
     @Convert(FlowSegmentCookieConverter.class)
-    public abstract void setForwardCookie(Cookie forwardCookie);
+    public abstract FlowSegmentCookie getForwardCookie();
+
+    @Override
+    @Property("forward_cookie")
+    @Convert(FlowSegmentCookieConverter.class)
+    public abstract void setForwardCookie(FlowSegmentCookie forwardCookie);
 
     @Override
     @Property("reverse_cookie")
     @Convert(FlowSegmentCookieConverter.class)
-    public abstract Cookie getReverseCookie();
+    public abstract FlowSegmentCookie getReverseCookie();
 
     @Override
     @Property("reverse_cookie")
     @Convert(FlowSegmentCookieConverter.class)
-    public abstract void setReverseCookie(Cookie reverseCookie);
+    public abstract void setReverseCookie(FlowSegmentCookie reverseCookie);
 
     @Override
     @Property("src_switch")
@@ -288,6 +299,30 @@ public abstract class FlowEventDumpFrame extends KildaBaseVertexFrame implements
     @Override
     @Property("max_latency")
     public abstract void setMaxLatency(Long maxLatency);
+
+    @Override
+    @Property("max_latency_tier2")
+    public abstract Long getMaxLatencyTier2();
+
+    @Override
+    @Property("max_latency_tier2")
+    public abstract void setMaxLatencyTier2(Long maxLatencyTier2);
+
+    @Override
+    @Property("priority")
+    public abstract Integer getPriority();
+
+    @Override
+    @Property("priority")
+    public abstract void setPriority(Integer priority);
+
+    @Override
+    @Property("mirror_point_statuses")
+    public abstract List<MirrorPointStatus> getMirrorPointStatuses();
+
+    @Override
+    @Property("mirror_point_statuses")
+    public abstract void setMirrorPointStatuses(List<MirrorPointStatus> mirrorPointStatuses);
 
     @Override
     @Property("loop_switch_id")

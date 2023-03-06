@@ -88,18 +88,6 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         }
     }
 
-    /**
-     * Desired to be used on the end of switch activation to send discovery messages.
-     */
-    public void completeSwitchActivation(DatapathId dpId) {
-        discoveryLock.readLock().lock();
-        try {
-            switchDiscoveryAction(dpId, SwitchChangeType.ACTIVATED);
-        } finally {
-            discoveryLock.readLock().unlock();
-        }
-    }
-
     @Override
     @NewCorrelationContextRequired
     public void switchAdded(final DatapathId switchId) {
@@ -113,7 +101,6 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         dashboardLogger.onSwitchEvent(switchId, SwitchChangeType.REMOVED);
 
         // TODO(surabujin): must figure out events order/set during lost connection
-        switchManager.deactivate(switchId);
         switchDiscovery(switchId, SwitchChangeType.REMOVED);
     }
 
@@ -122,10 +109,11 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     public void switchActivated(final DatapathId switchId) {
         dashboardLogger.onSwitchEvent(switchId, SwitchChangeType.ACTIVATED);
 
+        discoveryLock.readLock().lock();
         try {
-            switchManager.activate(switchId);
-        } catch (SwitchOperationException e) {
-            logger.error("Switch {} activation have failed", switchId, e);
+            switchDiscoveryAction(switchId, SwitchChangeType.ACTIVATED);
+        } finally {
+            discoveryLock.readLock().unlock();
         }
     }
 
@@ -134,7 +122,6 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     public void switchDeactivated(final DatapathId switchId) {
         dashboardLogger.onSwitchEvent(switchId, SwitchChangeType.DEACTIVATED);
 
-        switchManager.deactivate(switchId);
         switchDiscovery(switchId, SwitchChangeType.DEACTIVATED);
     }
 
@@ -150,7 +137,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     public void switchPortChanged(final DatapathId switchId, final OFPortDesc portDesc, final PortChangeType type) {
         dashboardLogger.onPortEvent(switchId, portDesc, type);
 
-        if (! OfPortDescConverter.INSTANCE.isReservedPort(portDesc.getPortNo())) {
+        if (!OfPortDescConverter.INSTANCE.isReservedPort(portDesc.getPortNo())) {
             portDiscovery(switchId, portDesc, type);
         }
     }
@@ -284,7 +271,9 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
                         port.getPortNo().getPortNumber(),
                         port.isEnabled()
                                 ? SpeakerSwitchPortView.State.UP
-                                : SpeakerSwitchPortView.State.DOWN))
+                                : SpeakerSwitchPortView.State.DOWN,
+                        port.getMaxSpeed(),
+                        port.getCurrSpeed()))
                 .forEach(builder::port);
 
         buildSwitchAddress(builder, sw);

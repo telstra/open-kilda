@@ -15,14 +15,14 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.bfd.worker.response;
 
-import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.worker.BfdWorker;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.worker.command.BfdWorkerCommand;
 
 public class BfdWorkerLogicalPortCreateResponse extends BfdWorkerAsyncResponse {
-    private final CreateLogicalPortResponse response;
+    private final CreateOrUpdateLogicalPortResponse response;
 
-    public BfdWorkerLogicalPortCreateResponse(CreateLogicalPortResponse response) {
+    public BfdWorkerLogicalPortCreateResponse(CreateOrUpdateLogicalPortResponse response) {
         this.response = response;
     }
 

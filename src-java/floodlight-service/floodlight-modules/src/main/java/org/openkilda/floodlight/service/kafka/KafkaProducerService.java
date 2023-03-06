@@ -23,6 +23,7 @@ import org.openkilda.floodlight.service.zookeeper.ZooKeeperEventObserver;
 import org.openkilda.floodlight.service.zookeeper.ZooKeeperService;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
@@ -37,6 +38,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEventObserver {
@@ -73,6 +75,13 @@ public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEve
     public void sendMessageAndTrack(String topic, String key, AbstractMessage message) {
         produce(encode(topic, key, message), new SendStatusCallback(this, topic,
                 message.getMessageContext().getCorrelationId()));
+    }
+
+    @Override
+    public void sendChunkedMessageAndTrack(String topic, String key, Collection<? extends InfoData> data) {
+        for (Message message : ChunkedInfoMessage.createChunkedList(data, key)) {
+            sendMessageAndTrack(topic, key, message);
+        }
     }
 
     @Override

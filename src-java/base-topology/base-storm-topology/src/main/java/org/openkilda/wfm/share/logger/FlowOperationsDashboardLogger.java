@@ -16,8 +16,10 @@
 package org.openkilda.wfm.share.logger;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.reporting.AbstractDashboardLogger;
 
@@ -26,6 +28,7 @@ import org.slf4j.event.Level;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
@@ -39,6 +42,8 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String UPDATE_RESULT_EVENT = "flow_update_result";
     private static final String FLOW_DELETE_EVENT = "flow_delete";
     private static final String DELETE_RESULT_EVENT = "flow_delete_result";
+    private static final String FLOW_SYNC_EVENT = "flow_sync";
+    private static final String SYNC_RESULT_EVENT = "flow_sync_result";
     private static final String PATHS_SWAP_EVENT = "paths_swap";
     private static final String REROUTE_EVENT = "flow_reroute";
     private static final String REROUTE_RESULT_EVENT = "flow_reroute_result";
@@ -47,6 +52,17 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String FLOW_MIRROR_POINT_CREATE_RESULT_EVENT = "flow_mirror_point_create_result";
     private static final String FLOW_MIRROR_POINT_DELETE_EVENT = "flow_mirror_point_delete";
     private static final String FLOW_MIRROR_POINT_DELETE_RESULT_EVENT = "flow_mirror_point_create_delete";
+
+    private static final String YFLOW_CREATE_EVENT = "y_flow_create";
+    private static final String YFLOW_CREATE_RESULT_EVENT = "y_flow_create_result";
+    private static final String YFLOW_UPDATE_EVENT = "y_flow_update";
+    private static final String YFLOW_UPDATE_RESULT_EVENT = "y_flow_update_result";
+    private static final String YFLOW_REROUTE_EVENT = "y_flow_reroute";
+    private static final String YFLOW_REROUTE_RESULT_EVENT = "y_flow_reroute_result";
+    private static final String YFLOW_DELETE_EVENT = "y_flow_delete";
+    private static final String YFLOW_DELETE_RESULT_EVENT = "y_flow_delete_result";
+    private static final String YFLOW_PATHS_SWAP_EVENT = "y_flow_paths_swap";
+    private static final String YFLOW_PATHS_SWAP_RESULT_EVENT = "y_flow_paths_swap_result";
 
     private static final String TAG = "FLOW_OPERATIONS_DASHBOARD";
     private static final String DASHBOARD = "dashboard";
@@ -134,14 +150,16 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
      * Log a flow-create event.
      */
     public void onFlowCreate(String flowId, SwitchId srcSwitch, int srcPort, int srcVlan,
-                             SwitchId destSwitch, int destPort, int destVlan, String diverseFlowId, long bandwidth) {
+                             SwitchId destSwitch, int destPort, int destVlan, String diverseFlowId, long bandwidth,
+                             PathComputationStrategy strategy, Long maxLatency, Long maxLatencyTier2) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-create");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_CREATE_EVENT);
         invokeLogger(Level.INFO, String.format("Create the flow: %s, source %s_%d_%d, destination %s_%d_%d, "
-                        + "diverse flowId %s, bandwidth %d", flowId, srcSwitch, srcPort, srcVlan,
-                destSwitch, destPort, destVlan, diverseFlowId, bandwidth), data);
+                        + "diverse flowId %s, bandwidth %d, path computation strategy %s, max latency %s, "
+                        + "max latency tier2 %s", flowId, srcSwitch, srcPort, srcVlan, destSwitch, destPort, destVlan,
+                diverseFlowId, bandwidth, strategy, maxLatency, maxLatencyTier2), data);
     }
 
     /**
@@ -208,14 +226,16 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
      * Log a flow-update event.
      */
     public void onFlowUpdate(String flowId, SwitchId srcSwitch, int srcPort, int srcVlan,
-                             SwitchId destSwitch, int destPort, int destVlan, String diverseFlowId, long bandwidth) {
+                             SwitchId destSwitch, int destPort, int destVlan, String diverseFlowId, long bandwidth,
+                             PathComputationStrategy strategy, Long maxLatency, Long maxLatencyTier2) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-update");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_UPDATE_EVENT);
         invokeLogger(Level.INFO, String.format("Update the flow %s with: source %s_%d_%d, destination %s_%d_%d, "
-                        + "diverse flowId %s, bandwidth %d", flowId, srcSwitch, srcPort, srcVlan,
-                destSwitch, destPort, destVlan, diverseFlowId, bandwidth), data);
+                        + "diverse flowId %s, bandwidth %d, path computation strategy %s, max latency %s, "
+                        + "max latency tier2 %s", flowId, srcSwitch, srcPort, srcVlan,
+                destSwitch, destPort, destVlan, diverseFlowId, bandwidth, strategy, maxLatency, maxLatencyTier2), data);
     }
 
     /**
@@ -289,6 +309,45 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put("delete-result", "failed");
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed delete of the flow %s, reason: %s", flowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a flow-sync event.
+     */
+    public void onFlowSync(String flowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "flow-sync");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_SYNC_EVENT);
+        invokeLogger(Level.INFO, String.format("Performing flow \"%s\" SYNC", flowId), data);
+    }
+
+    /**
+     * Log a flow-sync-successful event.
+     */
+    public void onSuccessfulFlowSync(String flowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "flow-sync-success");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_SYNC_EVENT);
+        data.put("sync-result", "successful");
+        invokeLogger(Level.INFO, String.format("Flow \"%s\" SYNC success", flowId), data);
+    }
+
+    /**
+     * Log a flow-sync-failed event.
+     */
+    public void onFailedFlowSync(String flowId, int failedPathsCount, int totalPathsCount) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "flow-sync-failed");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_SYNC_EVENT);
+        data.put("sync-result", "failed");
+        invokeLogger(
+                Level.INFO, String.format(
+                        "Flow \"%s\" SYNC failed - %d of %d path have failed to sync",
+                        flowId, failedPathsCount, totalPathsCount),
                 data);
     }
 
@@ -442,4 +501,212 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
                 flowMirrorPointId, flowId, failureReason), data);
     }
 
+    /**
+     * Log a y-flow-create event.
+     */
+    public void onYFlowCreate(
+            String yFlowId, FlowEndpoint sharedEndpoint, List<FlowEndpoint> subFlowEndpoints, long maximumBandwidth,
+            PathComputationStrategy strategy, Long maxLatency, Long maxLatencyTier2) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-create");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_CREATE_EVENT);
+        invokeLogger(Level.INFO, String.format("Create the y-flow: %s, shared endpoint %s, endpoints (%s), "
+                        + "bandwidth %d, path computation strategy %s, max latency %s, max latency tier2 %s",
+                yFlowId, sharedEndpoint, subFlowEndpoints, maximumBandwidth, strategy, maxLatency, maxLatencyTier2),
+                data);
+    }
+
+    /**
+     * Log a y-flow-create-successful event.
+     */
+    public void onSuccessfulYFlowCreate(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-create-successful");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_CREATE_RESULT_EVENT);
+        data.put("create-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful create of the y-flow %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-create-failed event.
+     */
+    public void onFailedYFlowCreate(String yFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-create-failed");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_CREATE_RESULT_EVENT);
+        data.put("update-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed create of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a y-flow-update event.
+     */
+    public void onYFlowUpdate(
+            String yFlowId, FlowEndpoint sharedEndpoint, List<FlowEndpoint> subFlowEndpoints, long maximumBandwidth,
+            PathComputationStrategy strategy, Long maxLatency, Long maxLatencyTier2) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-update");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_UPDATE_EVENT);
+        invokeLogger(Level.INFO, String.format("Update the y-flow: %s, shared endpoint %s, endpoints (%s), "
+                + "bandwidth %d, path computation strategy %s, max latency %s, max latency tier2 %s",
+                yFlowId, sharedEndpoint, subFlowEndpoints, maximumBandwidth, strategy, maxLatency, maxLatencyTier2),
+                data);
+    }
+
+    /**
+     * Log a y-flow-update-successful event.
+     */
+    public void onSuccessfulYFlowUpdate(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-update-successful");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_UPDATE_RESULT_EVENT);
+        data.put("update-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful update of the y-flow %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-update-failed event.
+     */
+    public void onFailedYFlowUpdate(String yFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-update-failed");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_UPDATE_RESULT_EVENT);
+        data.put("update-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed update of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a y-flow-reroute event.
+     */
+    public void onYFlowReroute(String yFlowId, Collection<IslEndpoint> affectedIsl, boolean forceToReroute) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-reroute");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_REROUTE_EVENT);
+        data.put("forced_reroute", Boolean.toString(forceToReroute));
+        invokeLogger(Level.INFO, String.format("Reroute y-flow due to failure on %s ISLs flow %s",
+                affectedIsl, yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-reroute-successful event.
+     */
+    public void onSuccessfulYFlowReroute(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-reroute-successful");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_REROUTE_RESULT_EVENT);
+        data.put("reroute-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful reroute of the y-flow %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-reroute-failed event.
+     */
+    public void onFailedYFlowReroute(String yFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-reroute-failed");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_REROUTE_RESULT_EVENT);
+        data.put("reroute-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed reroute of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a y-flow-status-update event.
+     */
+    public void onYFlowStatusUpdate(String yFlowId, FlowStatus status) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-status-update");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, STATUS_UPDATE_EVENT);
+        data.put("status", status.toString());
+        invokeLogger(Level.INFO, String.format("Update the status of the y-flow %s to %s", yFlowId, status), data);
+    }
+
+    /**
+     * Log a y-flow-delete event.
+     */
+    public void onYFlowDelete(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-delete");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_DELETE_EVENT);
+        invokeLogger(Level.INFO, String.format("Delete the y-flow: %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-delete-successful event.
+     */
+    public void onSuccessfulYFlowDelete(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-delete-successful");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_DELETE_RESULT_EVENT);
+        data.put("delete-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful delete of the y-flow %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-delete-failed event.
+     */
+    public void onFailedYFlowDelete(String yFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-delete-failed");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_DELETE_RESULT_EVENT);
+        data.put("delete-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed delete of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a y-flow-paths-swap event.
+     */
+    public void onYFlowPathsSwap(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-paths-swap");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_PATHS_SWAP_EVENT);
+        invokeLogger(Level.INFO, String.format("Swap paths for the y-flow: %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-paths-swap-successful event.
+     */
+    public void onSuccessfulYFlowPathsSwap(String yFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-paths-swap-successful");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_PATHS_SWAP_RESULT_EVENT);
+        data.put("swap-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful path swap of the y-flow %s", yFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-paths-swap-failed event.
+     */
+    public void onFailedYFlowPathsSwap(String yFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "y-flow-paths-swap-failed");
+        data.put(FLOW_ID, yFlowId);
+        data.put(EVENT_TYPE, YFLOW_PATHS_SWAP_RESULT_EVENT);
+        data.put("swap-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed path swap of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
+    }
 }

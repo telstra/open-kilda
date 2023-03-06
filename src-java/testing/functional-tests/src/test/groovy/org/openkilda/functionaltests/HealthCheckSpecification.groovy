@@ -30,8 +30,9 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
         def zk = new ZooKeeper(zkConnectString, 5000, {})
         def activeColor = getActiveNetworkColor(zk)
         def zkAssertions = new SoftAssertions()
-        ["connecteddevices", "floodlightrouter", "flowhs", "isllatency", "nbworker", "network", "flowmonitoring",
-         "opentsdb", "ping", "portstate", "reroute", "server42-control", "stats", "swmanager"].each { component ->
+        ["connecteddevices", "floodlightrouter", "flowhs", "isllatency", "nbworker",
+         "network", "flowmonitoring", "opentsdb", "ping", "portstate",
+         "reroute", "server42-control", "stats", "swmanager", "history"].each { component ->
             def expected = new String(zk.getData("/$component/$activeColor/expected_state", null, null))
             def actual = new String(zk.getData("/$component/$activeColor/state", null, null))
             zkAssertions.checkSucceeds { assert actual == expected, component }
@@ -60,6 +61,7 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
             def missingLinks = links.findAll { it.state == IslChangeType.DISCOVERED } - topoLinks
             assert missingLinks.empty, "These links are missing in topology.yaml"
             northbound.allFlows.empty
+            northboundV2.allFlows.empty
             northbound.allLinkProps.empty
         }
 

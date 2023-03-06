@@ -46,6 +46,10 @@ public interface RuleManagerConfig extends Serializable {
     @Default("1")
     int getArpRateLimit(); // rate in packets per second
 
+    @Key("lacp-rate-limit")
+    @Default("100")
+    int getLacpRateLimit(); // rate in packets per second
+
     // Size of packets used for discovery. Used to calculate service meters rate in KBPS
     @Key("disco-packet-size")
     @Default("250")
@@ -58,6 +62,10 @@ public interface RuleManagerConfig extends Serializable {
     @Key("arp-packet-size")
     @Default("100")
     int getArpPacketSize(); // rate in bytes
+
+    @Key("lacp-packet-size")
+    @Default("150")
+    int getLacpPacketSize(); // rate in bytes
 
     @Key("flow-meter-burst-coefficient")
     @Default("1.05")
@@ -92,8 +100,35 @@ public interface RuleManagerConfig extends Serializable {
     @Description("This is burst size for ARP rule meters in packets.")
     long getArpMeterBurstSizeInPackets();
 
+    @Key("lacp-meter-burst-size-in-packets")
+    @Default("4096")
+    @Min(0)
+    @Description("This is burst size for LACP rule meters in packets.")
+    long getLacpMeterBurstSizeInPackets();
+
     @Key("flow-ping-magic-src-mac-address")
     @Default("00:26:E1:FF:FF:FE")
     String getFlowPingMagicSrcMacAddress();
+
+    /**
+     * This offset is used for encoding flow in_port number into udp_src port of Server 42 Flow RTT packets.
+     * Example: Flow with in_port 10. Server 42 Input rule will match RTT packets by
+     * udp_src port number 5010 (offset + flow in_port).
+     * We need an offset to do not intersect with some popular ports (like 22 port for ssh)
+     */
+    @Key("server42-flow-rtt-udp-port-offset")
+    @Default("5000")
+    int getServer42FlowRttUdpPortOffset();
+
+    /**
+     * This offset is used for encoding ISL in_port number into udp_src port of Server 42 ISL RTT packets.
+     */
+    @Key("server42-isl-rtt-udp-port-offset")
+    @Default("10000")
+    int getServer42IslRttUdpPortOffset();
+
+    @Key("server42-isl-rtt-magic-mac-address")
+    @Default("00:26:E1:FF:FF:FD")
+    String getServer42IslRttMagicMacAddress();
 }
 

@@ -16,8 +16,9 @@
 package org.openkilda.messaging.command.yflow;
 
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.PathComputationStrategy;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -33,14 +34,14 @@ import java.util.List;
 @Data
 @Builder
 @EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowRequest extends CommandData {
     private static final long serialVersionUID = 1L;
 
     String yFlowId;
     FlowEndpoint sharedEndpoint;
     long maximumBandwidth;
-    String pathComputationStrategy;
+    PathComputationStrategy pathComputationStrategy;
     FlowEncapsulationType encapsulationType;
     Long maxLatency;
     Long maxLatencyTier2;
@@ -51,6 +52,7 @@ public class YFlowRequest extends CommandData {
     boolean strictBandwidth;
     String description;
     boolean allocateProtectedPath;
+    String diverseFlowId;
 
     List<SubFlowDto> subFlows;
 

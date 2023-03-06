@@ -18,12 +18,17 @@ package org.openkilda.rulemanager;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.KildaFeatureToggles;
+import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.YFlow;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface DataAdapter {
 
@@ -31,9 +36,17 @@ public interface DataAdapter {
 
     Flow getFlow(PathId pathId);
 
-    FlowTransitEncapsulation getTransitEncapsulation(PathId pathId);
+    FlowTransitEncapsulation getTransitEncapsulation(PathId pathId, PathId oppositePathId);
 
     Switch getSwitch(SwitchId switchId);
 
     SwitchProperties getSwitchProperties(SwitchId switchId);
+
+    KildaFeatureToggles getFeatureToggles();
+
+    Set<Integer> getSwitchIslPorts(SwitchId switchId);
+
+    List<LagLogicalPort> getLagLogicalPorts(SwitchId switchId);
+
+    YFlow getYFlow(PathId pathId);
 }

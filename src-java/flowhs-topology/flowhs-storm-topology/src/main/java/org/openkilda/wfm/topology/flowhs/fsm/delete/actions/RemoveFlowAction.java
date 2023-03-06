@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -28,7 +28,8 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.Collection;
 
 @Slf4j
-public class RemoveFlowAction extends FlowProcessingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
+public class RemoveFlowAction extends
+        FlowProcessingWithHistorySupportAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     public RemoveFlowAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }

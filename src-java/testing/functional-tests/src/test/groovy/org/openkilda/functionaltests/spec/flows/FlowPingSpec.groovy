@@ -2,12 +2,13 @@ package org.openkilda.functionaltests.spec.flows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_RULE
+import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -15,6 +16,7 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -48,17 +50,18 @@ class FlowPingSpec extends HealthCheckSpecification {
     int pingInterval
 
     @Tidy
-    @Unroll("Able to ping a flow with vlan between switches #srcSwitch.dpId - #dstSwitch.dpId")
+    @Unroll("Able to ping a flow with vlan between switches #swPair.toString()")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with vlan"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with random vlan"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flow.encapsulationType=  FlowEncapsulationType.TRANSIT_VLAN
         flowHelperV2.addFlow(flow)
 
         when: "Ping the flow"
         def beforePingTime = new Date()
         def unicastCounterBefore = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.find {
-            it.cookie == DefaultRule.VERIFICATION_UNICAST_RULE.cookie
+            it.cookie == VERIFICATION_UNICAST_RULE.cookie
         }.byteCount
         def response = northbound.pingFlow(flow.flowId, new PingInput())
 
@@ -77,24 +80,70 @@ class FlowPingSpec extends HealthCheckSpecification {
         // response.reverse.latency
 
         and: "Unicast rule packet count is increased and logged to otsdb"
-        def statsData = null
+
         Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
-            statsData = otsdb.query(beforePingTime, metricPrefix + "switch.flow.system.bytes",
-                    [switchid : srcSwitch.dpId.toOtsdFormat(),
-                     cookieHex: DefaultRule.VERIFICATION_UNICAST_RULE.toHexString()]).dps
-            assert statsData && !statsData.empty
+            assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.find {
+                it.cookie == VERIFICATION_UNICAST_RULE.cookie
+            }.byteCount > unicastCounterBefore
+
         }
-        statsData.values().last().toLong() > unicastCounterBefore
 
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
+        swPair = new SwitchPair(src: srcSwitch, dst: dstSwitch, paths: [])
     }
 
     @Tidy
-    @Unroll("Able to ping a flow with no vlan between switches #srcSwitch.dpId - #dstSwitch.dpId")
+    @Unroll("Able to ping a flow with vxlan between switches #swPair.toString()")
+    @Tags([TOPOLOGY_DEPENDENT])
+    def "Able to ping a flow with vxlan"() {
+        given: "A flow with random vxlan"
+        //defining switches pair with vxlan support
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
+            [swP.src, swP.dst].every { switchHelper.isVxlanEnabled(it.dpId) }
+        }
+        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
+
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flow.encapsulationType = FlowEncapsulationType.VXLAN
+        flowHelperV2.addFlow(flow)
+
+        when: "Ping the flow"
+        def beforePingTime = new Date()
+        def unicastCounterBefore = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.find {
+            it.cookie == VERIFICATION_UNICAST_VXLAN_RULE_COOKIE.cookie //rule for the vxlan differs from vlan
+        }.byteCount
+        def response = northbound.pingFlow(flow.flowId, new PingInput())
+
+        then: "Ping is successful"
+        response.forward.pingSuccess
+        response.reverse.pingSuccess
+
+        and: "No errors"
+        !response.error
+        !response.forward.error
+        !response.reverse.error
+
+
+        and: "Unicast rule packet count is increased and logged to otsdb"
+
+        Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
+            assert northbound.getSwitchRules(switchPair.src.dpId).flowEntries.find {
+                it.cookie == VERIFICATION_UNICAST_VXLAN_RULE_COOKIE.cookie
+            }.byteCount > unicastCounterBefore
+
+        }
+
+        cleanup: "Remove the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
+
+    }
+
+    @Tidy
+    @Unroll("Able to ping a flow with no vlan between switches #swPair.toString()")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with no vlan"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with no vlan"
@@ -120,6 +169,7 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
+        swPair = new SwitchPair(src: srcSwitch, dst: dstSwitch, paths: [])
     }
 
     @Tidy
@@ -229,7 +279,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         then: "Error received"
         !response.forward
         !response.reverse
-        response.error == "Flow ${flow.flowId} should not be one switch flow"
+        response.error == "Flow ${flow.flowId} should not be one-switch flow"
 
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -251,7 +301,7 @@ class FlowPingSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags(HARDWARE)
+    @Tags(TOPOLOGY_DEPENDENT)
     def "Flow ping can detect a broken path for a vxlan flow on an intermediate switch"() {
         given: "A vxlan flow with intermediate switch(es)"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->

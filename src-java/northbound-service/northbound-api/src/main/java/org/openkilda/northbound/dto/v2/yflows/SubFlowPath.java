@@ -15,21 +15,23 @@
 
 package org.openkilda.northbound.dto.v2.yflows;
 
-import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2;
-
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-
-import java.util.List;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import lombok.experimental.SuperBuilder;
 
 @Data
-@Builder
+@SuperBuilder
 @AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class SubFlowPath {
+@JsonNaming(SnakeCaseStrategy.class)
+@JsonInclude(Include.NON_NULL)
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+public class SubFlowPath extends YFlowPath {
     String flowId;
-    List<PathNodeV2> nodes;
 }

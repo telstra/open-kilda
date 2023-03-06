@@ -16,11 +16,11 @@
 package org.openkilda.rulemanager.factory;
 
 import org.openkilda.model.Switch;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 
 import java.util.List;
 
 public interface RuleGenerator {
 
-    List<SpeakerCommandData> generateCommands(Switch sw);
+    List<SpeakerData> generateCommands(Switch sw);
 }

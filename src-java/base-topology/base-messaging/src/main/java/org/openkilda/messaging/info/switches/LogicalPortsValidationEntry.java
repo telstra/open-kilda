@@ -31,4 +31,5 @@ public class LogicalPortsValidationEntry implements Serializable {
     private List<LogicalPortInfoEntry> misconfigured;
     private List<LogicalPortInfoEntry> proper;
     private List<LogicalPortInfoEntry> excess;
+    private String error;
 }

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,14 +18,15 @@ package org.openkilda.wfm.topology.flowhs.bolts;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_REQUEST_SENDER;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandCarrier;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerWorkerService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import lombok.NonNull;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
@@ -35,7 +36,7 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     public static final String ID = "speaker.worker.bolt";
     private transient SpeakerWorkerService service;
 
-    public SpeakerWorkerBolt(Config config) {
+    public SpeakerWorkerBolt(@NonNull Config config) {
         super(config);
     }
 
@@ -47,14 +48,19 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
 
     @Override
     protected void onHubRequest(Tuple input) throws PipelineException {
-        FlowSegmentRequest command = pullValue(input, FIELD_ID_PAYLOAD, FlowSegmentRequest.class);
+        SpeakerRequest command = pullValue(input, FIELD_ID_PAYLOAD, SpeakerRequest.class);
         service.sendCommand(pullKey(), command);
     }
 
     @Override
     protected void onAsyncResponse(Tuple request, Tuple response) throws PipelineException {
-        SpeakerFlowSegmentResponse message = pullValue(response, FIELD_ID_PAYLOAD, SpeakerFlowSegmentResponse.class);
-        service.handleResponse(pullKey(response), message);
+        Object payload = response.getValueByField(FIELD_ID_PAYLOAD);
+        if (payload instanceof SpeakerResponse) {
+            SpeakerResponse message = (SpeakerResponse) payload;
+            service.handleResponse(pullKey(response), message);
+        } else {
+            log.debug("Unknown response received: {}", payload);
+        }
     }
 
     @Override
@@ -70,12 +76,12 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     }
 
     @Override
-    public void sendCommand(String key, FlowSegmentRequest command) {
+    public void sendCommand(@NonNull String key, @NonNull SpeakerRequest command) {
         emitWithContext(SPEAKER_WORKER_REQUEST_SENDER.name(), getCurrentTuple(), new Values(key, command));
     }
 
     @Override
-    public void sendResponse(String key, SpeakerFlowSegmentResponse response) {
+    public void sendResponse(@NonNull String key, @NonNull SpeakerResponse response) {
         Values values = new Values(key, response, getCommandContext());
         emitResponseToHub(getCurrentTuple(), values);
     }

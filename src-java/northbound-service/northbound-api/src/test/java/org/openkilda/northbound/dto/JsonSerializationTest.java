@@ -149,7 +149,7 @@ public class JsonSerializationTest {
         GroupsSyncDto groups = new GroupsSyncDto(emptyList(), emptyList(), emptyList(), emptyList(),
                 emptyList(), emptyList(), emptyList());
         LogicalPortsSyncDto logicalPorts = new LogicalPortsSyncDto(emptyList(), emptyList(), emptyList(), emptyList(),
-                emptyList(), emptyList());
+                emptyList(), emptyList(), "");
         SwitchSyncResult dto = new SwitchSyncResult(rules, meters, groups, logicalPorts);
         assertEquals(dto, pass(dto, SwitchSyncResult.class));
     }
@@ -158,11 +158,16 @@ public class JsonSerializationTest {
     public void switchValidateResultTest() throws IOException {
         RulesValidationDto rules = new RulesValidationDto(singletonList(0L), singletonList(1L),
                 singletonList(2L), singletonList(3L));
-        MetersValidationDto meters = new MetersValidationDto(emptyList(), emptyList(), emptyList(), emptyList());
-        GroupsValidationDto groups = new GroupsValidationDto(emptyList(), emptyList(), emptyList(), emptyList());
+        MetersValidationDto meters = MetersValidationDto.empty();
+        GroupsValidationDto groups = GroupsValidationDto.empty();
         LogicalPortsValidationDto logicalPorts = new LogicalPortsValidationDto(
-                emptyList(), emptyList(), emptyList(), emptyList());
-        SwitchValidationResult dto = new SwitchValidationResult(rules, meters, groups, logicalPorts);
+                emptyList(), emptyList(), emptyList(), emptyList(), "");
+        SwitchValidationResult dto = SwitchValidationResult.builder()
+                .rules(rules)
+                .meters(meters)
+                .groups(groups)
+                .logicalPorts(logicalPorts)
+                .build();
         assertEquals(dto, pass(dto, SwitchValidationResult.class));
     }
 

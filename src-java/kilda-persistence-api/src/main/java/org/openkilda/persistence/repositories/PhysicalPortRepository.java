@@ -20,12 +20,11 @@ import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
 import java.util.Optional;
-import java.util.Set;
 
 public interface PhysicalPortRepository extends Repository<PhysicalPort> {
     Collection<PhysicalPort> findAll();
 
-    Set<Integer> findPortNumbersBySwitchId(SwitchId switchId);
+    Collection<PhysicalPort> findBySwitchId(SwitchId switchId);
 
     Optional<PhysicalPort> findBySwitchIdAndPortNumber(SwitchId switchId, int portNumber);
 }

@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.error;
 
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.info.reroute.error.SpeakerRequestError;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
@@ -37,7 +37,7 @@ public class SetValidateRuleErrorAction extends AnonymousAction<FlowRerouteFsm, 
     public void execute(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         Set<SwitchId> switches = Stream.concat(stateMachine.getPendingCommands().values().stream(),
                 stateMachine.getFailedValidationResponses().values().stream()
-                        .map(SpeakerFlowSegmentResponse::getSwitchId))
+                        .map(SpeakerResponse::getSwitchId))
                 .collect(Collectors.toSet());
         stateMachine.setRerouteError(new SpeakerRequestError("Failed to validate rules", switches));
         log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());

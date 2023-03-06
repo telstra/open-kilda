@@ -10,6 +10,7 @@ Input signals:
 * port-del
 * port-up
 * port-down
+* port-data
 * connections-update
 
 Output signals:
@@ -19,6 +20,7 @@ Output signals:
 * remove-port
 * port-up
 * port-down
+* port-data
 
 @startuml
 title Switch FSM
@@ -62,15 +64,18 @@ SETUP : enter / emit online for ALL ports
 SETUP : enter / emit port-del for REMOVED ports
 SETUP : enter / emit port-down for DOWN ports
 SETUP : enter / emit port-up for UP ports
+SETUP : enter / emit port-data for UPDATED ports
 SETUP : enter / send reroute affected flows command
 SETUP --> ONLINE : next
 
+ONLINE : port-add / emit setup for port
 ONLINE : port-add / setup port FSM
 ONLINE : port-add / emit online for port
 ONLINE : port-add / emit port-up/down
-ONLINE : port-del / kill port FSM
+ONLINE : port-del / emit port-del for port
 ONLINE : port-up / proxy
 ONLINE : port-down / proxy
+ONLINE : port-data / emit port-data for port
 ONLINE : connections-update / save connections in DB
 ONLINE : online / update ports status
 ONLINE : online / [dump-generation in context] update dump-generation

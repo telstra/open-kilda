@@ -402,8 +402,8 @@ idle, mass manual reroute, isl break. Step repeats for pre-defined amount of tim
         if (flow.source.switchId == flow.destination.switchId) {
             return false
         } else {
-            def srcSw = topoHelper.findSwitch(flow.source.switchId)
-            def dstSw = topoHelper.findSwitch(flow.destination.switchId)
+            def srcSw = topology.find(flow.source.switchId)
+            def dstSw = topology.find(flow.destination.switchId)
             !(srcSw.ofVersion == "OF_12" || srcSw.centec || dstSw.ofVersion == "OF_12" || dstSw.centec)
         }
     }

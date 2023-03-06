@@ -98,6 +98,7 @@ abstract class IngressCommandRemoveTest extends IngressCommandTest {
 
     protected void processZeroVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
         expectMakeDefaultPortForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
+        expectMakeVlanStatsFlowMessage(command);
         executeCommand(command, 1);
     }
 

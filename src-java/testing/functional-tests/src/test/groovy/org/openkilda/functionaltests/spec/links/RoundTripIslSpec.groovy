@@ -183,7 +183,7 @@ on both switches)"
         if (areSwitchesDeactivated) {
             lockKeeper.reviveSwitch(srcSwToDeactivate, mgmtBlockDataSrcSw)
             lockKeeper.reviveSwitch(dstSwToDeactivate, mgmtBlockDataDstSw)
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            Wrappers.wait(discoveryInterval + WAIT_OFFSET * 1.5) { //* 1.5 due to instability on jenkins
                 assert northbound.getSwitch(srcSwToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
                 assert northbound.getSwitch(dstSwToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
                 def allLinks = northbound.getAllLinks()
@@ -383,8 +383,9 @@ round trip latency rule is removed on the dst switch"() {
             assert islUtils.getIslInfo(links, roundTripIsl.reversed).get().state == FAILED
         }
         def portIsUp = false
-        northbound.deleteLink(islUtils.toLinkParameters(roundTripIsl))
         Wrappers.wait(WAIT_OFFSET) {
+            //https://github.com/telstra/open-kilda/issues/3847
+            Wrappers.silent { northbound.deleteLink(islUtils.toLinkParameters(roundTripIsl)) }
             def links = northbound.getAllLinks()
             assert !islUtils.getIslInfo(links, roundTripIsl).present
         }

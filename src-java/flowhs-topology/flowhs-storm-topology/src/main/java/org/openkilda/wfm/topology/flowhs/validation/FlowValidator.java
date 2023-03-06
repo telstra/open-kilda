@@ -29,6 +29,8 @@ import org.openkilda.model.PhysicalPort;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
@@ -37,6 +39,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlowMirrorPoint;
@@ -49,18 +52,27 @@ import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Checks whether flow can be created and has no conflicts with already created ones.
  */
 public class FlowValidator {
 
+    @VisibleForTesting
+    static final int STATS_VLAN_LOWER_BOUND = 1;
+
+    @VisibleForTesting
+    static final int STATS_VLAN_UPPER_BOUND = 4094;
+
     private final FlowRepository flowRepository;
+    private final YFlowRepository yFlowRepository;
     private final SwitchRepository switchRepository;
     private final IslRepository islRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
@@ -70,6 +82,7 @@ public class FlowValidator {
 
     public FlowValidator(PersistenceManager persistenceManager) {
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        this.yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
@@ -101,21 +114,19 @@ public class FlowValidator {
 
         checkFlags(flow);
         checkBandwidth(flow);
+        checkMaxLatency(flow);
         checkSwitchesSupportLldpAndArpIfNeeded(flow);
 
-        if (StringUtils.isNotBlank(flow.getDiverseFlowId()) && StringUtils.isNotBlank(flow.getAffinityFlowId())) {
-            throw new InvalidFlowException("Couldn't add flow to diverse and affinity groups at the same time",
-                    ErrorType.PARAMETERS_INVALID);
-        } else if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
+        if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
             checkDiverseFlow(flow);
-        } else if (StringUtils.isNotBlank(flow.getAffinityFlowId())) {
+        }
+
+        if (StringUtils.isNotBlank(flow.getAffinityFlowId())) {
             checkAffinityFlow(flow);
         }
 
         validateFlowLoop(flow);
 
-        //todo remove after noviflow fix
-        validateQinQonWB(flow);
         checkFlowForLagPortConflict(flow);
     }
 
@@ -138,6 +149,8 @@ public class FlowValidator {
 
         checkOneSwitchFlowConflict(source, destination);
         checkSwitchesExistsAndActive(flow.getSrcSwitch(), flow.getDestSwitch());
+        checkFlowForCorrectOuterVlansWithVlanStatistics(flow);
+        checkFlowForVlanStatisticsInCorrectRange(flow);
 
         for (EndpointDescriptor descriptor : new EndpointDescriptor[]{
                 EndpointDescriptor.makeSource(source),
@@ -158,6 +171,41 @@ public class FlowValidator {
             checkFlowForSinkEndpointConflicts(descriptor);
             checkFlowForMirrorEndpointConflicts(flow.getFlowId(), descriptor);
             checkFlowForServer42Conflicts(descriptor, properties);
+        }
+    }
+
+    @VisibleForTesting
+    void checkFlowForCorrectOuterVlansWithVlanStatistics(RequestedFlow flow) throws InvalidFlowException {
+        Set<Integer> vlanStatistics = flow.getVlanStatistics();
+
+        if (vlanStatistics == null || vlanStatistics.isEmpty()) {
+            return;
+        }
+
+        if (flow.getSrcVlan() != 0 && flow.getDestVlan() != 0) {
+            throw new InvalidFlowException("To collect vlan statistics you need to set source or destination "
+                    + "vlan_id to zero", ErrorType.PARAMETERS_INVALID);
+        }
+    }
+
+    @VisibleForTesting
+    void checkFlowForVlanStatisticsInCorrectRange(RequestedFlow flow) throws InvalidFlowException {
+        Set<Integer> vlanStatistics = flow.getVlanStatistics();
+
+        if (vlanStatistics == null || vlanStatistics.isEmpty()) {
+            return;
+        }
+
+        boolean isAnyVlanOutsideOfBounds = vlanStatistics.stream()
+                .anyMatch(it -> it < STATS_VLAN_LOWER_BOUND || it > STATS_VLAN_UPPER_BOUND);
+
+        if (isAnyVlanOutsideOfBounds) {
+            throw new InvalidFlowException(
+                    format(
+                            "To collect vlan statistics, the vlan IDs must be from %d up to %d",
+                            STATS_VLAN_LOWER_BOUND,
+                            STATS_VLAN_UPPER_BOUND),
+                    ErrorType.PARAMETERS_INVALID);
         }
     }
 
@@ -196,14 +244,38 @@ public class FlowValidator {
     }
 
     @VisibleForTesting
-    void checkBandwidth(RequestedFlow flow) throws InvalidFlowException {
+    void checkBandwidth(RequestedFlow flow) throws InvalidFlowException, UnavailableFlowEndpointException {
         if (flow.getBandwidth() < 0) {
             throw new InvalidFlowException(
-                    format("The flow '%s' has invalid bandwidth %d provided.",
+                    format("The flow '%s' has invalid bandwidth %d provided. Bandwidth cannot be less than 0 kbps.",
                             flow.getFlowId(),
                             flow.getBandwidth()),
                     ErrorType.DATA_INVALID);
         }
+
+        Switch srcSwitch = switchRepository.findById(flow.getSrcSwitch())
+                .orElseThrow(() -> new UnavailableFlowEndpointException(format("Endpoint switch not found %s",
+                        flow.getSrcSwitch())));
+
+        Switch destSwitch = switchRepository.findById(flow.getDestSwitch())
+                .orElseThrow(() -> new UnavailableFlowEndpointException(format("Endpoint switch not found %s",
+                        flow.getDestSwitch())));
+
+        if ((Switch.isNoviflowSwitch(srcSwitch.getOfDescriptionSoftware())
+                || Switch.isNoviflowSwitch(destSwitch.getOfDescriptionSoftware()))
+                && flow.getBandwidth() != 0 && flow.getBandwidth() < 64) {
+            // Min rate that the NoviFlow switches allows is 64 kbps.
+            throw new InvalidFlowException(
+                    format("The flow '%s' has invalid bandwidth %d provided. Bandwidth cannot be less than 64 kbps.",
+                            flow.getFlowId(),
+                            flow.getBandwidth()),
+                    ErrorType.DATA_INVALID);
+        }
+    }
+
+    @VisibleForTesting
+    void checkMaxLatency(RequestedFlow flow) throws InvalidFlowException {
+        ValidatorUtils.maxLatencyValidator(flow.getMaxLatency(), flow.getMaxLatencyTier2());
     }
 
     private void checkFlowForIslConflicts(EndpointDescriptor descriptor) throws InvalidFlowException {
@@ -360,18 +432,43 @@ public class FlowValidator {
                     ErrorType.PARAMETERS_INVALID);
         }
 
-        Flow diverseFlow = flowRepository.findById(targetFlow.getDiverseFlowId())
-                .orElseThrow(() ->
-                        new InvalidFlowException(format("Failed to find diverse flow id %s",
-                                targetFlow.getDiverseFlowId()), ErrorType.PARAMETERS_INVALID));
+        Flow diverseFlow = flowRepository.findById(targetFlow.getDiverseFlowId()).orElse(null);
+        if (diverseFlow == null) {
+            YFlow diverseYFlow = yFlowRepository.findById(targetFlow.getDiverseFlowId())
+                    .orElseThrow(() ->
+                            new InvalidFlowException(format("Failed to find diverse flow id %s",
+                                    targetFlow.getDiverseFlowId()), ErrorType.PARAMETERS_INVALID));
+            diverseFlow = diverseYFlow.getSubFlows().stream()
+                    .map(YSubFlow::getFlow)
+                    .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
+                    .findFirst()
+                    .orElseThrow(() ->
+                            new InvalidFlowException(
+                                    format("Failed to find main affinity flow for diverse y-flow id %s",
+                                            targetFlow.getDiverseFlowId()), ErrorType.INTERNAL_ERROR));
+        }
+
+
+        if (StringUtils.isNotBlank(diverseFlow.getAffinityGroupId())) {
+            String diverseFlowId = diverseFlow.getAffinityGroupId();
+            diverseFlow = flowRepository.findById(diverseFlowId)
+                    .orElseThrow(() ->
+                            new InvalidFlowException(format("Failed to find diverse flow id %s", diverseFlowId),
+                                    ErrorType.PARAMETERS_INVALID));
+
+
+            Collection<String> affinityFlowIds = flowRepository
+                    .findFlowsIdByAffinityGroupId(diverseFlow.getAffinityGroupId()).stream()
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            if (affinityFlowIds.contains(targetFlow.getAffinityFlowId())) {
+                throw new InvalidFlowException("Couldn't create diverse group with flow in the same affinity group",
+                        ErrorType.PARAMETERS_INVALID);
+            }
+        }
 
         if (diverseFlow.isOneSwitchFlow()) {
             throw new InvalidFlowException("Couldn't create diverse group with one-switch flow",
-                    ErrorType.PARAMETERS_INVALID);
-        }
-
-        if (StringUtils.isNotBlank(diverseFlow.getAffinityGroupId())) {
-            throw new InvalidFlowException("Couldn't create diverse group with flow in affinity group",
                     ErrorType.PARAMETERS_INVALID);
         }
     }
@@ -393,9 +490,24 @@ public class FlowValidator {
                     ErrorType.PARAMETERS_INVALID);
         }
 
-        if (StringUtils.isNotBlank(affinityFlow.getDiverseGroupId())) {
-            throw new InvalidFlowException("Couldn't create affinity group with flow in diverse group",
-                    ErrorType.PARAMETERS_INVALID);
+        if (StringUtils.isNotBlank(affinityFlow.getAffinityGroupId())) {
+            String mainAffinityFlowId = affinityFlow.getAffinityGroupId();
+            Flow mainAffinityFlow = flowRepository.findById(mainAffinityFlowId)
+                    .orElseThrow(() ->
+                            new InvalidFlowException(format("Failed to find main affinity flow id %s",
+                                    mainAffinityFlowId), ErrorType.PARAMETERS_INVALID));
+
+            if (StringUtils.isNotBlank(mainAffinityFlow.getDiverseGroupId())) {
+                Collection<String> diverseFlowIds = flowRepository
+                        .findFlowsIdByAffinityGroupId(mainAffinityFlow.getDiverseGroupId()).stream()
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+
+                if (!diverseFlowIds.contains(targetFlow.getDiverseFlowId())) {
+                    throw new InvalidFlowException("Couldn't create a diverse group with flow "
+                            + "in a different diverse group than main affinity flow", ErrorType.PARAMETERS_INVALID);
+                }
+            }
         }
     }
 
@@ -589,37 +701,6 @@ public class FlowValidator {
                             flow.getFlowId(), destination);
                     throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
                 }
-            }
-        }
-    }
-
-    @VisibleForTesting
-    void validateQinQonWB(RequestedFlow requestedFlow)
-            throws UnavailableFlowEndpointException, InvalidFlowException {
-        final FlowEndpoint source = RequestedFlowMapper.INSTANCE.mapSource(requestedFlow);
-        final FlowEndpoint destination = RequestedFlowMapper.INSTANCE.mapDest(requestedFlow);
-
-        if (source.getInnerVlanId() != 0) {
-            Switch srcSwitch = switchRepository.findById(source.getSwitchId())
-                    .orElseThrow(() -> new UnavailableFlowEndpointException(format("Endpoint switch not found %s",
-                            source.getSwitchId())));
-            if (Switch.isNoviflowESwitch(srcSwitch.getOfDescriptionManufacturer(),
-                    srcSwitch.getOfDescriptionHardware())) {
-                String message = format("QinQ feature is temporary disabled for WB-series switch '%s'",
-                        srcSwitch.getSwitchId());
-                throw new InvalidFlowException(message, ErrorType.PARAMETERS_INVALID);
-            }
-        }
-
-        if (destination.getInnerVlanId() != 0) {
-            Switch destSwitch = switchRepository.findById(destination.getSwitchId())
-                    .orElseThrow(() -> new UnavailableFlowEndpointException(format("Endpoint switch not found %s",
-                            destination.getSwitchId())));
-            if (Switch.isNoviflowESwitch(destSwitch.getOfDescriptionManufacturer(),
-                    destSwitch.getOfDescriptionHardware())) {
-                String message = format("QinQ feature is temporary disabled for WB-series switch '%s'",
-                        destSwitch.getSwitchId());
-                throw new InvalidFlowException(message, ErrorType.PARAMETERS_INVALID);
             }
         }
     }

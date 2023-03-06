@@ -27,7 +27,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.metrics.TimedExecution;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -36,7 +36,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class SwapFlowPathsAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public class SwapFlowPathsAction extends
+        FlowProcessingWithHistorySupportAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final FlowResourcesManager resourcesManager;
 
     public SwapFlowPathsAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
@@ -68,14 +69,14 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowRerouteFsm, St
                 FlowPath oldForward = flow.getForwardPath();
                 if (oldForward != null) {
                     stateMachine.setOldPrimaryForwardPath(oldForward.getPathId());
-                    stateMachine.setOldPrimaryForwardPathStatus(oldForward.getStatus());
+                    stateMachine.setOldPathStatuses(oldForward);
                     oldForward.setStatus(FlowPathStatus.IN_PROGRESS);
                 }
 
                 FlowPath oldReverse = flow.getReversePath();
                 if (oldReverse != null) {
                     stateMachine.setOldPrimaryReversePath(oldReverse.getPathId());
-                    stateMachine.setOldPrimaryReversePathStatus(oldReverse.getStatus());
+                    stateMachine.setOldPathStatuses(oldReverse);
                     oldReverse.setStatus(FlowPathStatus.IN_PROGRESS);
                 }
 
@@ -107,14 +108,14 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowRerouteFsm, St
                 FlowPath oldForward = flow.getProtectedForwardPath();
                 if (oldForward != null) {
                     stateMachine.setOldProtectedForwardPath(oldForward.getPathId());
-                    stateMachine.setOldProtectedForwardPathStatus(oldForward.getStatus());
+                    stateMachine.setOldPathStatuses(oldForward);
                     oldForward.setStatus(FlowPathStatus.IN_PROGRESS);
                 }
 
                 FlowPath oldReverse = flow.getProtectedReversePath();
                 if (oldReverse != null) {
                     stateMachine.setOldProtectedReversePath(oldReverse.getPathId());
-                    stateMachine.setOldProtectedReversePathStatus(oldReverse.getStatus());
+                    stateMachine.setOldPathStatuses(oldReverse);
                     oldReverse.setStatus(FlowPathStatus.IN_PROGRESS);
                 }
 

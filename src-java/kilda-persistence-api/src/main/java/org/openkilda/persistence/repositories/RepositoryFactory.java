@@ -83,4 +83,14 @@ public interface RepositoryFactory {
     LagLogicalPortRepository createLagLogicalPortRepository();
 
     PhysicalPortRepository createPhysicalPortRepository();
+
+    YFlowRepository createYFlowRepository();
+
+    PortRepository createPortRepository();
+
+    HaFlowRepository createHaFlowRepository();
+
+    HaSubFlowRepository createHaSubFlowRepository();
+
+    HaFlowPathRepository createHaFlowPathRepository();
 }

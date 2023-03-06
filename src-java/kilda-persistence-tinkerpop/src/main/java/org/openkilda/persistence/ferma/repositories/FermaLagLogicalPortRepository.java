@@ -15,9 +15,13 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toSet;
+
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.LagLogicalPort.LagLogicalPortData;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.LagLogicalPortFrame;
@@ -27,10 +31,16 @@ import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tinkerpop.gremlin.process.traversal.P;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -79,6 +89,63 @@ public class FermaLagLogicalPortRepository
 
         return lagLogicalPortFrames.isEmpty() ? Optional.empty()
                 : Optional.of(lagLogicalPortFrames.get(0)).map(LagLogicalPort::new);
+    }
+
+    @Override
+    public Optional<Integer> findUnassignedPortInRange(SwitchId switchId, int portFirst, int portLast) {
+        String switchIdAsStr = SwitchIdConverter.INSTANCE.toGraphProperty(switchId);
+
+        try (GraphTraversal<?, ?> traversal = framedGraph().traverse(g -> g.V()
+                        .hasLabel(LagLogicalPortFrame.FRAME_LABEL)
+                        .has(LagLogicalPortFrame.SWITCH_ID_PROPERTY, switchIdAsStr)
+                        .has(LagLogicalPortFrame.LOGICAL_PORT_NUMBER_PROPERTY, P.gte(portFirst))
+                        .has(LagLogicalPortFrame.LOGICAL_PORT_NUMBER_PROPERTY, P.lt(portLast))
+                        .values(LagLogicalPortFrame.LOGICAL_PORT_NUMBER_PROPERTY)
+                        .order().math("_ + 1").as("a")
+                        .where(__.not(__.V().hasLabel(LagLogicalPortFrame.FRAME_LABEL)
+                                .has(LagLogicalPortFrame.SWITCH_ID_PROPERTY, switchIdAsStr)
+                                .values(LagLogicalPortFrame.LOGICAL_PORT_NUMBER_PROPERTY)
+                                .where(P.eq("a"))))
+                        .select("a")
+                        .limit(1))
+                .getRawTraversal()) {
+            if (traversal.hasNext()) {
+                return traversal.tryNext()
+                        .map(l -> ((Double) l).intValue());
+            }
+        } catch (Exception e) {
+            throw new PersistenceException("Failed to traverse", e);
+        }
+
+        // If there is no one record for specific switch exists
+        try (GraphTraversal<?, ?> traversal = framedGraph().traverse(g -> g.V()
+                        .hasLabel(LagLogicalPortFrame.FRAME_LABEL)
+                        .has(LagLogicalPortFrame.SWITCH_ID_PROPERTY, switchIdAsStr)
+                        .has(LagLogicalPortFrame.LOGICAL_PORT_NUMBER_PROPERTY, portFirst))
+                .getRawTraversal()) {
+            if (! traversal.hasNext()) {
+                return Optional.of(portFirst);
+            }
+        } catch (Exception e) {
+            throw new PersistenceException("Failed to traverse", e);
+        }
+
+        return Optional.empty();
+    }
+
+    @Override
+    public Map<SwitchId, List<LagLogicalPort>> findBySwitchIds(Set<SwitchId> switchIds) {
+        Set<String> graphSwitchIds = switchIds.stream()
+                .map(SwitchIdConverter.INSTANCE::toGraphProperty)
+                .collect(toSet());
+        List<LagLogicalPort> result = new ArrayList<>();
+        framedGraph().traverse(g -> g.V()
+                        .hasLabel(LagLogicalPortFrame.FRAME_LABEL)
+                        .has(LagLogicalPortFrame.SWITCH_ID_PROPERTY, P.within(graphSwitchIds)))
+                .toListExplicit(LagLogicalPortFrame.class).stream()
+                .map(LagLogicalPort::new)
+                .forEach(result::add);
+        return result.stream().collect(groupingBy(LagLogicalPort::getSwitchId, Collectors.toList()));
     }
 
     @Override

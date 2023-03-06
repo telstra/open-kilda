@@ -19,21 +19,25 @@ import static java.lang.String.format;
 import static org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagEvent.ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagEvent.LAG_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagEvent.NEXT;
-import static org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagState.CREATE_GRPC_COMMAND;
+import static org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagEvent.SKIP_SPEAKER_ENTITIES_REMOVAL;
+import static org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagEvent.SPEAKER_ENTITIES_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagState.FINISHED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagState.FINISHED_WITH_ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagState.GRPC_COMMAND_SEND;
 import static org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagState.REMOVE_LAG_FROM_DB;
+import static org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagState.SPEAKER_COMMAND_SEND;
 import static org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagState.START;
+import static org.openkilda.wfm.topology.switchmanager.fsm.DeleteLagPortFsm.DeleteLagState.VALIDATE_REMOVE_REQUEST;
 
+import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.messaging.command.grpc.DeleteLogicalPortRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.swmanager.request.DeleteLagPortRequest;
 import org.openkilda.messaging.swmanager.response.LagPortResponse;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PhysicalPort;
-import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.topology.switchmanager.bolt.SwitchManagerHub.OfCommandAction;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.InvalidDataException;
 import org.openkilda.wfm.topology.switchmanager.error.LagPortNotFoundException;
@@ -54,8 +58,8 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.StateMachineStatus;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
-import java.util.ArrayList;
-import java.util.Optional;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -70,6 +74,7 @@ public class DeleteLagPortFsm extends AbstractStateMachine<
     private final DeleteLagPortRequest request;
     private final SwitchManagerCarrier carrier;
     private DeleteLogicalPortRequest grpcRequest;
+    private LagLogicalPort initialLagPort;
     private LagLogicalPort removedLagPort;
 
     public DeleteLagPortFsm(SwitchManagerCarrier carrier, String key, DeleteLagPortRequest request,
@@ -96,12 +101,18 @@ public class DeleteLagPortFsm extends AbstractStateMachine<
                 DeleteLagPortRequest.class,
                 LagPortOperationService.class);
 
-        builder.transition().from(START).to(CREATE_GRPC_COMMAND).on(NEXT).callMethod("createGrpcRequest");
+        builder.transition().from(START).to(VALIDATE_REMOVE_REQUEST).on(NEXT).callMethod("validateRemoveRequest");
         builder.transition().from(START).to(FINISHED_WITH_ERROR).on(ERROR);
 
-        builder.transition().from(CREATE_GRPC_COMMAND).to(GRPC_COMMAND_SEND).on(NEXT).callMethod("sendGrpcRequest");
-        builder.transition().from(CREATE_GRPC_COMMAND).to(FINISHED_WITH_ERROR).on(ERROR);
+        builder.transition().from(VALIDATE_REMOVE_REQUEST).to(SPEAKER_COMMAND_SEND).on(NEXT)
+                .callMethod("sendSpeakerCommands");
+        builder.transition().from(VALIDATE_REMOVE_REQUEST).to(FINISHED_WITH_ERROR).on(ERROR);
 
+        builder.transition().from(SPEAKER_COMMAND_SEND).to(GRPC_COMMAND_SEND).on(SKIP_SPEAKER_ENTITIES_REMOVAL);
+        builder.transition().from(SPEAKER_COMMAND_SEND).to(GRPC_COMMAND_SEND).on(SPEAKER_ENTITIES_REMOVED);
+        builder.transition().from(SPEAKER_COMMAND_SEND).to(FINISHED_WITH_ERROR).on(ERROR);
+
+        builder.onEntry(GRPC_COMMAND_SEND).callMethod("sendGrpcRequest");
         builder.transition().from(GRPC_COMMAND_SEND).to(REMOVE_LAG_FROM_DB).on(LAG_REMOVED).callMethod("removeDbLag");
         builder.transition().from(GRPC_COMMAND_SEND).to(FINISHED_WITH_ERROR).on(ERROR);
 
@@ -121,19 +132,37 @@ public class DeleteLagPortFsm extends AbstractStateMachine<
         return key;
     }
 
-    void createGrpcRequest(DeleteLagState from, DeleteLagState to, DeleteLagEvent event, DeleteLagContext context) {
+    void validateRemoveRequest(DeleteLagState from, DeleteLagState to, DeleteLagEvent event, DeleteLagContext context) {
         log.info("Removing LAG {} on switch {}. Key={}", request, switchId, key);
         try {
-            Switch sw = lagPortOperationService.getSwitch(switchId);
-            String ipAddress = lagPortOperationService.getSwitchIpAddress(sw);
-            lagPortOperationService.validateLagBeforeDelete(switchId, request.getLogicalPortNumber());
+            initialLagPort = lagPortOperationService.ensureDeleteIsPossible(switchId, request.getLogicalPortNumber());
+
+            String ipAddress = lagPortOperationService.getSwitchIpAddress(switchId);
             grpcRequest = new DeleteLogicalPortRequest(ipAddress, request.getLogicalPortNumber());
         } catch (LagPortNotFoundException | InvalidDataException | SwitchNotFoundException
                 | InconsistentDataException e) {
-            log.error(format("Enable to delete LAG port %s from switch %s. Error: %s", request.getLogicalPortNumber(),
-                    switchId, e.getMessage()), e);
+            log.error(format("Unable to delete LAG logical port %d on switch %s. Error: %s",
+                    request.getLogicalPortNumber(), switchId, e.getMessage()), e);
             fire(ERROR, DeleteLagContext.builder().error(e).build());
         }
+    }
+
+    void sendSpeakerCommands(DeleteLagState from, DeleteLagState to, DeleteLagEvent event, DeleteLagContext context) {
+        if (!initialLagPort.isLacpReply()) {
+            log.info("Skip sending OF commands to switch {} because LAG port {} doesn't require LACP. Key={}",
+                    switchId, initialLagPort.getLogicalPortNumber(), key);
+            fire(DeleteLagEvent.SKIP_SPEAKER_ENTITIES_REMOVAL);
+            return;
+        }
+
+        log.info("Creating LACP commands for switch {} LAG port {}. Key={}",
+                switchId, initialLagPort.getLogicalPortNumber(), key);
+        List<OfCommand> commands = lagPortOperationService
+                .buildLacpSpeakerCommands(switchId, initialLagPort.getLogicalPortNumber());
+
+        log.info("Sending LACP commands {} to switch {} LAG port {}. Key={}",
+                commands, switchId, initialLagPort.getLogicalPortNumber(), key);
+        carrier.sendOfCommandsToSpeaker(key, commands, OfCommandAction.DELETE, switchId);
     }
 
     void sendGrpcRequest(DeleteLagState from, DeleteLagState to, DeleteLagEvent event, DeleteLagContext context) {
@@ -142,23 +171,31 @@ public class DeleteLagPortFsm extends AbstractStateMachine<
     }
 
     void removeDbLag(DeleteLagState from, DeleteLagState to, DeleteLagEvent event, DeleteLagContext context) {
-        log.info("Removing LAG  port {} from database. Switch {}. Key={}", context.deletedLogicalPort, switchId, key);
-        Optional<LagLogicalPort> lagPort = lagPortOperationService.removeLagPort(
-                switchId, request.getLogicalPortNumber());
-
-        if (lagPort.isPresent()) {
-            log.info("Successfully removed LAG {} from DB", lagPort.get());
-            removedLagPort = lagPort.get();
-        } else {
-            log.warn("Can't remove LAG {} from DB because LAG is not found", lagPort);
-            removedLagPort = new LagLogicalPort(switchId, request.getLogicalPortNumber(), new ArrayList<Integer>());
+        log.info("Removing LAG  port {} from database. Switch {}. Key={}",
+                request.getLogicalPortNumber(), switchId, key);
+        Integer portNumber = request.getLogicalPortNumber();
+        try {
+            removedLagPort = lagPortOperationService.removeLagPort(switchId, portNumber);
+            log.info("Successfully removed LAG logical port {} on switch {} from DB", portNumber, switchId);
+        } catch (LagPortNotFoundException | InvalidDataException e) {
+            log.error(
+                    "Can't remove LAG logical port {} on switch {} from DB: {}", portNumber, switchId, e.getMessage());
         }
     }
 
     void finishedEnter(DeleteLagState from, DeleteLagState to, DeleteLagEvent event, DeleteLagContext context) {
-        LagPortResponse response = new LagPortResponse(
-                removedLagPort.getLogicalPortNumber(), removedLagPort.getPhysicalPorts().stream()
-                .map(PhysicalPort::getPortNumber).collect(Collectors.toList()));
+        LagPortResponse response;
+        if (removedLagPort != null) {
+            response = new LagPortResponse(
+                    removedLagPort.getLogicalPortNumber(), removedLagPort.getPhysicalPorts().stream()
+                    .map(PhysicalPort::getPortNumber).collect(Collectors.toSet()), removedLagPort.isLacpReply());
+
+        } else {
+            // dummy response entity
+            // TODO(surabujin): weird behaviour, can we be more correct?
+            response = new LagPortResponse(request.getLogicalPortNumber(), Collections.emptySet(), false);
+        }
+
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
 
         carrier.cancelTimeoutCallback(key);
@@ -196,7 +233,8 @@ public class DeleteLagPortFsm extends AbstractStateMachine<
     public enum DeleteLagState {
         START,
         REMOVE_LAG_FROM_DB,
-        CREATE_GRPC_COMMAND,
+        VALIDATE_REMOVE_REQUEST,
+        SPEAKER_COMMAND_SEND,
         GRPC_COMMAND_SEND,
         FINISHED_WITH_ERROR,
         FINISHED
@@ -205,6 +243,8 @@ public class DeleteLagPortFsm extends AbstractStateMachine<
     public enum DeleteLagEvent {
         NEXT,
         LAG_REMOVED,
+        SKIP_SPEAKER_ENTITIES_REMOVAL,
+        SPEAKER_ENTITIES_REMOVED,
         ERROR
     }
 

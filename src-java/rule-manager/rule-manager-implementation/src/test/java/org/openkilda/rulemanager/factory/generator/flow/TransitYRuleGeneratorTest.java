@@ -37,16 +37,16 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.rulemanager.Constants;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 
@@ -57,6 +57,7 @@ import org.junit.Test;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 public class TransitYRuleGeneratorTest {
     public static final PathId PATH_ID = new PathId("path_id");
@@ -71,6 +72,8 @@ public class TransitYRuleGeneratorTest {
     public static final int VLAN = 5;
     public static final int VXLAN = 10;
     public static final MeterId SHARED_METER_ID = new MeterId(34);
+    public static final UUID SHARED_METER_UUID = UUID.fromString("dc8b54d3-3f25-4c5b-9d90-5f59d2836bc2");
+
     public static final FlowTransitEncapsulation VLAN_ENCAPSULATION = new FlowTransitEncapsulation(
             VLAN, FlowEncapsulationType.TRANSIT_VLAN);
     public static final FlowTransitEncapsulation VXLAN_ENCAPSULATION = new FlowTransitEncapsulation(
@@ -103,10 +106,12 @@ public class TransitYRuleGeneratorTest {
                 .multiTable(true)
                 .encapsulation(VLAN_ENCAPSULATION)
                 .sharedMeterId(SHARED_METER_ID)
+                .generateMeterCommand(true)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
                 .config(config)
                 .build();
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertTransitCommands(commands, OfTable.TRANSIT, VLAN_ENCAPSULATION);
     }
 
@@ -119,10 +124,12 @@ public class TransitYRuleGeneratorTest {
                 .multiTable(false)
                 .encapsulation(VLAN_ENCAPSULATION)
                 .sharedMeterId(SHARED_METER_ID)
+                .generateMeterCommand(true)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
                 .config(config)
                 .build();
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertTransitCommands(commands, OfTable.INPUT, VLAN_ENCAPSULATION);
     }
 
@@ -135,10 +142,12 @@ public class TransitYRuleGeneratorTest {
                 .multiTable(true)
                 .encapsulation(VXLAN_ENCAPSULATION)
                 .sharedMeterId(SHARED_METER_ID)
+                .generateMeterCommand(true)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
                 .config(config)
                 .build();
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertTransitCommands(commands, OfTable.TRANSIT, VXLAN_ENCAPSULATION);
     }
 
@@ -151,19 +160,68 @@ public class TransitYRuleGeneratorTest {
                 .multiTable(false)
                 .encapsulation(VXLAN_ENCAPSULATION)
                 .sharedMeterId(SHARED_METER_ID)
+                .generateMeterCommand(true)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
                 .config(config)
                 .build();
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_1);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertTransitCommands(commands, OfTable.INPUT, VXLAN_ENCAPSULATION);
     }
 
-    private void assertTransitCommands(List<SpeakerCommandData> commands, OfTable table,
+    @Test
+    public void buildCommandsWithoutMeter() {
+        TransitYRuleGenerator generator = TransitYRuleGenerator.builder()
+                .flowPath(PATH)
+                .inPort(PORT_NUMBER_1)
+                .outPort(PORT_NUMBER_2)
+                .multiTable(false)
+                .encapsulation(VXLAN_ENCAPSULATION)
+                .sharedMeterId(SHARED_METER_ID)
+                .generateMeterCommand(false)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
+                .config(config)
+                .build();
+
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
+        assertTransitCommand(commands, OfTable.INPUT, VXLAN_ENCAPSULATION);
+    }
+
+    private void assertTransitCommand(List<SpeakerData> commands, OfTable table,
+                                      FlowTransitEncapsulation encapsulation) {
+        assertEquals(1, commands.size());
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
+        assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
+        assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
+        assertTrue(flowCommandData.getDependsOn().contains(SHARED_METER_UUID));
+
+        assertEquals(COOKIE, flowCommandData.getCookie());
+        assertEquals(table, flowCommandData.getTable());
+        assertEquals(Priority.Y_FLOW_PRIORITY, flowCommandData.getPriority());
+
+
+        Set<FieldMatch> expectedMatch;
+        if (encapsulation.getType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
+            expectedMatch = buildExpectedVlanMatch(PORT_NUMBER_1, encapsulation.getId());
+        } else {
+            expectedMatch = buildExpectedVxlanMatch(PORT_NUMBER_1, encapsulation.getId());
+        }
+        assertEqualsMatch(expectedMatch, flowCommandData.getMatch());
+
+        Instructions expectedInstructions = Instructions.builder()
+                .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(PORT_NUMBER_2))))
+                .goToMeter(SHARED_METER_ID)
+                .build();
+        assertEquals(expectedInstructions, flowCommandData.getInstructions());
+        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
+    }
+
+    private void assertTransitCommands(List<SpeakerData> commands, OfTable table,
                                        FlowTransitEncapsulation encapsulation) {
         assertEquals(2, commands.size());
-        MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
+        MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
         assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
@@ -199,7 +257,7 @@ public class TransitYRuleGeneratorTest {
         return Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(port).build(),
                 FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.IPv4).build(),
-                FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP_IP_PROTO).build(),
+                FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP).build(),
                 FieldMatch.builder().field(Field.UDP_DST).value(Constants.VXLAN_UDP_DST).build(),
                 FieldMatch.builder().field(Field.NOVIFLOW_TUNNEL_ID).value(vni).build());
     }
@@ -221,6 +279,7 @@ public class TransitYRuleGeneratorTest {
                 .encapsulation(VLAN_ENCAPSULATION)
                 .sharedMeterId(SHARED_METER_ID)
                 .config(config)
+                .externalMeterCommandUuid(UUID.randomUUID())
                 .build();
         assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }

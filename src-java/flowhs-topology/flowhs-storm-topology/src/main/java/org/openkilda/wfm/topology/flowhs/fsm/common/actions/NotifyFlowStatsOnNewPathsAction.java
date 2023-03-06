@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
+import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
@@ -24,9 +25,8 @@ import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-public class NotifyFlowStatsOnNewPathsAction<T extends FlowPathSwappingFsm<T, S, E, C>, S, E, C> extends
-        FlowProcessingAction<T, S, E, C> {
-
+public class NotifyFlowStatsOnNewPathsAction<T extends FlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C> extends
+        FlowProcessingWithHistorySupportAction<T, S, E, C> {
     private FlowGenericCarrier carrier;
 
     public NotifyFlowStatsOnNewPathsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {
@@ -42,9 +42,11 @@ public class NotifyFlowStatsOnNewPathsAction<T extends FlowPathSwappingFsm<T, S,
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .forEach(flowPath -> {
+                    Flow flow = flowPath.getFlow();
                     UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
-                            flowPath.getFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
-                            FlowPathMapper.INSTANCE.mapToPathNodes(flowPath));
+                            flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), flowPath.getCookie(),
+                            flowPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath),
+                            flow.getVlanStatistics(), flowPath.hasIngressMirror(), flowPath.hasEgressMirror());
                     carrier.sendNotifyFlowStats(pathInfo);
                 });
     }

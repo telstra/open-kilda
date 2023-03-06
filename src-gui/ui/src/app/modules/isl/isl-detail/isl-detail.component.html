@@ -2,7 +2,7 @@
   <div class="row isl_details_div" style="margin-bottom: 10px;">
     <div class="col-md-6 isl_details">
       <h5 class='modal-title'>SOURCE DETAILS</h5>
-       <div id="isl-source-details-div">
+      <div id="isl-source-details-div">
         <div class='row'>
           <label class='col-sm-4 col-form-label'>Port:</label>
           <p class="col-sm-8 col-form-label">
@@ -11,13 +11,14 @@
         </div>
         <div class='row'>
           <label class='col-sm-4 col-form-label'>Switch Id:</label>
-            <div class=" col-sm-4 col-form-label" >
-              <span [contextMenu]="copySrcSwitch">{{src_switch}}</span>
-            </div>
+          <div class=" col-sm-4 col-form-label">
+            <span [contextMenu]="copySrcSwitch">{{src_switch}}</span>
+          </div>
           <div class='col-sm-4'>
             <div class="pull-left">
               <div class="onoffswitch">
-                <input type="checkbox" (change)="maskSwitchId('source',$event)" name="onoffswitch" class="onoffswitch-checkbox" id="onoffswitchsource">
+                <input type="checkbox" (change)="maskSwitchId('source',$event)" name="onoffswitch"
+                  class="onoffswitch-checkbox" id="onoffswitchsource">
                 <label class="onoffswitch-label" for="onoffswitchsource">
                   <span class="onoffswitch-inner onoffswitch-inner-kilda-switch"></span>
                   <span class="onoffswitch-switch" id="onoffswitch-switch"></span>
@@ -29,18 +30,44 @@
         <div class='row'>
           <label class='col-sm-4 col-form-label'>Name:</label>
           <!-- <p class='col-sm-8 copy_to_clipBoard link_div_source_switch_name'>{{src_switch_name}}</p> -->
-           <div class=" col-sm-4 col-form-label">
-              <span [contextMenu]="copySrcSwitchName">{{src_switch_name }}</span>
-            </div>
+          <div class=" col-sm-4 col-form-label">
+            <span [contextMenu]="copySrcSwitchName">{{src_switch_name }}</span>
+          </div>
+        </div>
+        <div class='row' *ngIf="bfdPropertyData && bfdPropertyData.properties">
+          <label class='col-sm-4 col-form-label'> Interval(ms):</label>
+          <div class="col-sm-8 col-form-label">
+            <span>{{bfdPropertyData.effective_source.properties['interval_ms']}}</span>
+          </div>
+        </div>
+        <div class='row' *ngIf="bfdPropertyData && bfdPropertyData.properties">
+          <label class='col-sm-4 col-form-label'> Multiplier:</label>
+          <div class="col-sm-8 col-form-label">
+            <span>{{bfdPropertyData.effective_source.properties['multiplier']}}</span>
+          </div>
         </div>
       </div>
     </div>
     <!-- ISL DESTINATION Details -->
     <div class="col-md-6 isl_details">
-      <h5 class='modal-title'>DESTINATION DETAILS
-        <span *ngIf="commonService.hasPermission('isl_delete_link')" class="btn btn-dark btn-sm pull-right" style="margin-top:-10px;" (click)="deleteISL()">Delete</span> 
-        <!-- <div class="clear clearfix"></div> -->
-      </h5>
+      <div class="d-flex">
+        <h5 class='modal-title'>DESTINATION DETAILS
+          <!-- <div class="clear clearfix"></div> -->
+        </h5>
+        <div ngbDropdown placement="bottom-right" class="isl_delete_dropdown d-inline-block ml-auto mb-2" *ngIf="commonService.hasPermission('isl_delete_link')||commonService.hasPermission('isl_delete_bfd')">
+          <button class="btn btn-dark" id="dropdownBasic1" ngbDropdownToggle>Delete<i class="fa fa-angle-down"
+              aria-hidden="true"></i></button>
+          <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
+            <button *ngIf="commonService.hasPermission('isl_delete_link')" (click)="deleteISL()"  class="dropdown-item">
+                <i  aria-hidden="true"></i>  &nbsp; Delete ISL
+            </button>
+            <button class="dropdown-item"  *ngIf="commonService.hasPermission('isl_delete_bfd')"  (click)="deleteBFDProperties()">
+              <i  aria-hidden="true"></i>  &nbsp; Delete
+              BFD
+            </button>
+           </div>
+        </div>
+      </div>
       <div id="isl-destination-details-div">
         <div class='row'>
           <label class='col-sm-4 col-form-label'>Port:</label>
@@ -50,14 +77,15 @@
         </div>
         <div class='row'>
           <label class='col-sm-4 col-form-label'>Switch Id:</label>
-           <!--  <span class="link_div_destination_switch copy_to_clipBoard">{{dst_switch}}</span> -->
-             <div class="col-form-label col-sm-4">
-              <span [contextMenu]="copyTrgSwitch" >{{dst_switch }}</span>
-            </div>
+          <!--  <span class="link_div_destination_switch copy_to_clipBoard">{{dst_switch}}</span> -->
+          <div class="col-form-label col-sm-4">
+            <span [contextMenu]="copyTrgSwitch">{{dst_switch }}</span>
+          </div>
           <div class='col-sm-4'>
             <div class="pull-left">
               <div class="onoffswitch">
-                <input type="checkbox" (change)="maskSwitchId('destination',$event)" name="onoffswitch" class="onoffswitch-checkbox" id="onoffswitchdestination">
+                <input type="checkbox" (change)="maskSwitchId('destination',$event)" name="onoffswitch"
+                  class="onoffswitch-checkbox" id="onoffswitchdestination">
                 <label class="onoffswitch-label" for="onoffswitchdestination">
                   <span class="onoffswitch-inner onoffswitch-inner-kilda-switch"></span>
                   <span class="onoffswitch-switch" id="onoffswitch-switch"></span>
@@ -68,225 +96,350 @@
         </div>
         <div class='row'>
           <label class='col-sm-4 col-form-label'> Name:</label>
-           <div class="col-sm-8 col-form-label">
-              <span [contextMenu]="copyTrgSwitchName">{{dst_switch_name}}</span>
-            </div>
+          <div class="col-sm-8 col-form-label">
+            <span [contextMenu]="copyTrgSwitchName">{{dst_switch_name}}</span>
+          </div>
+        </div>
+        <div class='row' *ngIf="bfdPropertyData && bfdPropertyData.properties">
+          <label class='col-sm-4 col-form-label'> Interval(ms):</label>
+          <div class="col-sm-8 col-form-label">
+            <span>{{bfdPropertyData.effective_destination.properties['interval_ms']}}</span>
+          </div>
+        </div>
+        <div class='row' *ngIf="bfdPropertyData && bfdPropertyData.properties">
+          <label class='col-sm-4 col-form-label'> Multiplier:</label>
+          <div class="col-sm-8 col-form-label">
+            <span>{{bfdPropertyData.effective_destination.properties['multiplier']}}</span>
+          </div>
         </div>
       </div>
     </div>
     <!-- ISL Speed Details -->
     <form [formGroup]="islForm" style="width: 100%;">
       <div class="col-lg-12 isl_detail_title_div">
-        <h5 class='modal-title' style="margin-top: 0px !important">ISL DETAILS </h5> 
+        <h5 class='modal-title' style="margin-top: 0px !important">ISL DETAILS </h5>
 
         <div class="isl-speed-latency-bandwidth-details-div">
           <div class="row">
-              <div class="col-sm-8">
-                <div class='row isl_sbl_details'>
-                  <label class='col-sm-6 col-form-label'>Max Bandwidth(Mbps):</label>
-                  <!-- <p class='col-sm-6 isl_div_speed'>{{ convertInMB(max_bandwidth) }}</p> -->
-                  <div class="text_cost_details" id="text_bandwidth_details" [hidden]="showBandwidthEditing">
-                    <span class="col-sm-3" style="padding-right: 0 !important">{{ convertInMB(max_bandwidth) }}
-                      &nbsp; <i title="Max bandwidth is different from speed" *ngIf="max_bandwidth!=speed" class="fa fa-exclamation-triangle text-orange"></i>
+            <div class="col-sm-8">
+              <div class='row isl_sbl_details'>
+                <label class='col-sm-6 col-form-label'>Max Bandwidth(Mbps):</label>
+                <!-- <p class='col-sm-6 isl_div_speed'>{{ convertInMB(max_bandwidth) }}</p> -->
+                <div class="text_cost_details" id="text_bandwidth_details" [hidden]="showBandwidthEditing">
+                  <span class="col-sm-3" style="padding-right: 0 !important">{{ convertInMB(max_bandwidth) }}
+                    &nbsp; <i title="Max bandwidth is different from speed" *ngIf="max_bandwidth!=speed"
+                      class="fa fa-exclamation-triangle text-orange"></i>
+                  </span>
+                  <span>
+                    <span class="isl_div_bandwidth"></span><span class="ml-1 cursor-pointer" id="edit_isl_bandwidth"
+                      *ngIf="commonService.hasPermission('isl_update_bandwidth')" style="display: inline;">
+                      <i title="Edit" (click)="editMaxbandwidth()"
+                        class="fa fa-pencil-square-o fa-2x cursor-pointer"></i>
                     </span>
-                    <span >
-                      <span class="isl_div_bandwidth"></span><span class="ml-1 cursor-pointer" id="edit_isl_bandwidth" *ngIf="commonService.hasPermission('isl_update_bandwidth')"  style="display: inline;">
-                      <i title="Edit" (click)="editMaxbandwidth()" class="fa fa-pencil-square-o fa-2x cursor-pointer" ></i>
-                      </span>
-                    </span>
+                  </span>
+                </div>
+                <div class="update_isl_cost col-sm-6" id="isl_cost_update" [hidden]="!showBandwidthEditing">
+                  <div class="row" style=" margin-bottom: 10px;">
+                    <input formControlName="max_bandwidth" type="text" name="max_bandwidth"
+                      style="height: 35px; margin-left: 15px; width: 25%; padding: 10px;">
+                    <span style="margin-right: 5px; border: 1; padding: 7px 12px;" class="btn kilda_btn ml-1"
+                      data-toggle="modal" (click)="saveEditedBandwidth()"><i class="icon icon-ok-sign"></i></span>
+                    <span style="margin-right: 5px; border: 1; padding: 6px 11px;" id="cancel_isl_bandwidth_update"
+                      class="btn kilda_btn ml-0.5" (click)="cancelEditedBandwidth()"><i
+                        class="icon icon-remove-sign"></i></span>
                   </div>
-                  <div class="update_isl_cost col-sm-6" id="isl_cost_update" [hidden]="!showBandwidthEditing">
-                    <div class="row" style=" margin-bottom: 10px;">
-                      <input formControlName="max_bandwidth" type="text" name="max_bandwidth" style="height: 35px; margin-left: 15px; width: 25%; padding: 10px;">
-                      <span style="margin-right: 5px; border: 1; padding: 7px 12px;" class="btn kilda_btn ml-1" data-toggle="modal" (click)="saveEditedBandwidth()"><i class="icon icon-ok-sign"></i></span>
-                      <span style="margin-right: 5px; border: 1; padding: 6px 11px;" id="cancel_isl_bandwidth_update" class="btn kilda_btn ml-0.5" (click)="cancelEditedBandwidth()"><i class="icon icon-remove-sign"></i></span>
+                </div>
+              </div>
+              <div class='row isl_sbl_details'>
+                <label class='col-sm-6 col-form-label'>Speed(Mbps):</label>
+                <p class='col-sm-6 isl_div_speed'>{{ convertInMB(speed) }}</p>
+              </div>
+              <!-- ISL Latency Details -->
+              <div class='row isl_sbl_details'>
+                <label class='col-sm-6 col-form-label'>Latency:</label>
+                <p class='col-sm-6 isl_div_latency'>{{latency}} ns</p>
+              </div>
+              <div class='row isl_sbl_details'>
+                <label id="isl_cost_lbl" class='col-sm-6 col-form-label'>Cost:</label>
+                <div class="text_cost_details" id="text_cost_details" [hidden]="showCostEditing">
+                  <span class="col-sm-3" style="padding-right: 0 !important">{{detailDataObservable.props.cost}}</span>
+                  <span>
+                    <span class="isl_div_cost"></span><span class="ml-1 cursor-pointer" id="edit_isl_cost"
+                      *ngIf="commonService.hasPermission('isl_permission_editcost')" style="display: inline;">
+                      <i title="Edit" (click)="editCost()" class="fa fa-pencil-square-o fa-2x cursor-pointer"></i>
+                    </span>
+                  </span>
+                </div>
+                <div class="update_isl_cost col-sm-6" id="isl_cost_update" [hidden]="!showCostEditing">
+                  <!-- <div class="row col-sm-2"> -->
+                  <div class="row" style=" margin-bottom: 10px;">
+                    <input formControlName="cost" type="number" name="cost"
+                      style="height: 35px; margin-left: 15px; width: 10%; padding: 10px;">
+                    <!--  <input id="isl_cost_obj" type="hidden" /> -->
+                    <span style="margin-right: 5px; border: 1; padding: 7px 12px;" class="btn kilda_btn ml-1"
+                      data-toggle="modal" (click)="saveEditedCost()"><i class="icon icon-ok-sign"></i></span>
+                    <span style="margin-right: 5px; border: 1; padding: 6px 11px;" id="cancel_isl_cost_update"
+                      class="btn kilda_btn ml-0.5" (click)="cancelEditedCost()"><i
+                        class="icon icon-remove-sign"></i></span>
+                  </div>
+                </div>
+              </div>
+              <!-- ISL Avaliable Bandwidth Details -->
+              <div class='row isl_sbl_details'>
+                <label class='col-sm-6 col-form-label'>Available Bandwidth(Mbps):
+                </label>
+                <p class='col-sm-6 isl_div_avaliable_bandwidth'>{{ convertInMB(available_bandwidth) }}</p>
+              </div>
+              <div class='row isl_sbl_details'>
+                <label class='col-sm-6 col-form-label'>State:</label>
+                <p class='col-sm-6 isl_div_state'>{{state}}</p>
+              </div>
+              <div class='row isl_sbl_details'>
+                <label class='col-sm-6 col-form-label'>BFD Session Status:</label>
+                <p class='col-sm-6 isl_div_state'>{{bfd_session_status}}</p>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class='row isl_sbl_details' *ngIf="commonService.hasPermission('isl_update_maintenance')">
+                <label class='col-sm-6 col-form-label'>Maintenance Mode:
+                </label>
+                <div class='col-sm-6'>
+                  <div class="pull-left">
+                    <div class="onoffswitch">
+                      <input type="checkbox" (change)="islMaintenance($event)" name="isl-manitenance"
+                        class="onoffswitch-checkbox" id="onoffmaintenance" [checked]="under_maintenance">
+                      <label class="onoffswitch-label" for="onoffmaintenance">
+                        <span class="onoffswitch-inner onoffswitch-inner-maintenance-switch"></span>
+                        <span class="onoffswitch-switch" id="onoffswitch-switch"></span>
+                      </label>
                     </div>
                   </div>
                 </div>
-                    <div class='row isl_sbl_details'>
-                      <label class='col-sm-6 col-form-label'>Speed(Mbps):</label>
-                      <p class='col-sm-6 isl_div_speed'>{{ convertInMB(speed) }}</p>
-                    </div>
-                    <!-- ISL Latency Details -->
-                    <div class='row isl_sbl_details'>
-                      <label class='col-sm-6 col-form-label'>Latency:</label>
-                      <p class='col-sm-6 isl_div_latency'>{{latency}} ns</p>
-                    </div>
-                    <div class='row isl_sbl_details'>
-                      <label id="isl_cost_lbl" class='col-sm-6 col-form-label'>Cost:</label>
-                      <div class="text_cost_details" id="text_cost_details" [hidden]="showCostEditing">
-                        <span class="col-sm-3" style="padding-right: 0 !important">{{detailDataObservable.props.cost}}</span>
-                        <span >
-                          <span class="isl_div_cost"></span><span class="ml-1 cursor-pointer" id="edit_isl_cost" *ngIf="commonService.hasPermission('isl_permission_editcost')" style="display: inline;">
-                          <i title="Edit" (click)="editCost()" class="fa fa-pencil-square-o fa-2x cursor-pointer" ></i>
-                          </span>
-                        </span>
-                      </div>
-                      <div class="update_isl_cost col-sm-6" id="isl_cost_update" [hidden]="!showCostEditing">
-                        <!-- <div class="row col-sm-2"> -->
-                        <div class="row" style=" margin-bottom: 10px;">
-                          <input formControlName="cost" type="number" name="cost" style="height: 35px; margin-left: 15px; width: 10%; padding: 10px;">
-                          <!--  <input id="isl_cost_obj" type="hidden" /> -->
-                          <span style="margin-right: 5px; border: 1; padding: 7px 12px;" class="btn kilda_btn ml-1" data-toggle="modal" (click)="saveEditedCost()"><i class="icon icon-ok-sign"></i></span>
-                          <span style="margin-right: 5px; border: 1; padding: 6px 11px;" id="cancel_isl_cost_update" class="btn kilda_btn ml-0.5" (click)="cancelEditedCost()"><i class="icon icon-remove-sign"></i></span>
-                        </div>
-                      </div>
-                    </div>
-                    <!-- ISL Avaliable Bandwidth Details -->
-                    <div class='row isl_sbl_details'>
-                      <label class='col-sm-6 col-form-label'>Available Bandwidth(Mbps):
-                      </label>
-                      <p class='col-sm-6 isl_div_avaliable_bandwidth'>{{ convertInMB(available_bandwidth) }}</p>
-                    </div>
-                    <div class='row isl_sbl_details'>
-                      <label class='col-sm-6 col-form-label'>State:</label>
-                      <p class='col-sm-6 isl_div_state'>{{state}}</p>
-                    </div> 
-                    <div class='row isl_sbl_details'>
-                      <label class='col-sm-6 col-form-label'>BFD Session Status:</label>
-                      <p class='col-sm-6 isl_div_state'>{{bfd_session_status}}</p>
-                    </div>    
-              </div>    
-              <div class="col-sm-4" >
-                  <div class='row isl_sbl_details' *ngIf="commonService.hasPermission('isl_update_maintenance')">
-                      <label class='col-sm-6 col-form-label'>Maintenance Mode:
-                      </label>
-                          <div class='col-sm-6'>
-                              <div class="pull-left">
-                                <div class="onoffswitch">
-                                  <input type="checkbox" (change)="islMaintenance($event)" name="isl-manitenance" class="onoffswitch-checkbox" id="onoffmaintenance" [checked]="under_maintenance">
-                                  <label class="onoffswitch-label" for="onoffmaintenance">
-                                    <span class="onoffswitch-inner onoffswitch-inner-maintenance-switch"></span>
-                                    <span class="onoffswitch-switch" id="onoffswitch-switch"></span>
-                                  </label>
-                                </div>
-                              </div>
-                            </div>
-                    </div>
-                    <div class='row isl_sbl_details mt-3' *ngIf="commonService.hasPermission('isl_update_maintenance')">
-                        <label class='col-sm-6 col-form-label'>Evacuate All Flows:
-                        </label>
-                            <div class='col-sm-6'>
-                                <div class="pull-left">
-                                  <div class="onoffswitch">
-                                    <input type="checkbox" (change)="evacuateIsl($event)" name="isl-evacuate" class="onoffswitch-checkbox" id="onoffevacuateisl" [checked]="evacuate">
-                                    <label class="onoffswitch-label" for="onoffevacuateisl">
-                                      <span class="onoffswitch-inner onoffswitch-inner-maintenance-switch"></span>
-                                      <span class="onoffswitch-switch" id="onoffswitch-switch"></span>
-                                    </label>
-                                  </div>
-                                </div>
-                              </div>
-                      </div>
-                      <div class='row isl_sbl_details mt-3' *ngIf="commonService.hasPermission('isl_update_bfd_flag')">
-                        <label class='col-sm-6 col-form-label'>Enable BFD:
-                        </label>
-                            <div class='col-sm-6'>
-                                <div class="pull-left">
-                                  <div class="onoffswitch">
-                                    <input type="checkbox" (change)="enablebfd_flag($event)" name="enable_bfd" class="onoffswitch-checkbox" id="onoffenablebfd" [checked]="enable_bfd">
-                                    <label class="onoffswitch-label" for="onoffenablebfd">
-                                      <span class="onoffswitch-inner onoffswitch-inner-maintenance-switch"></span>
-                                      <span class="onoffswitch-switch" id="onoffswitch-switch"></span>
-                                    </label>
-                                  </div>
-                                </div>
-                              </div>
-                      </div>
               </div>
+              <div class='row isl_sbl_details mt-3' *ngIf="commonService.hasPermission('isl_update_maintenance')">
+                <label class='col-sm-6 col-form-label'>Evacuate All Flows:
+                </label>
+                <div class='col-sm-6'>
+                  <div class="pull-left">
+                    <div class="onoffswitch">
+                      <input type="checkbox" (change)="evacuateIsl($event)" name="isl-evacuate"
+                        class="onoffswitch-checkbox" id="onoffevacuateisl" [checked]="evacuate">
+                      <label class="onoffswitch-label" for="onoffevacuateisl">
+                        <span class="onoffswitch-inner onoffswitch-inner-maintenance-switch"></span>
+                        <span class="onoffswitch-switch" id="onoffswitch-switch"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class='row isl_sbl_details mt-3' *ngIf="commonService.hasPermission('isl_update_bfd_flag')">
+                <label class='col-sm-6 col-form-label'>Enable BFD:
+                </label>
+                <div class='col-sm-6'>
+                  <div class="pull-left">
+                    <div class="onoffswitch">
+                      <input type="checkbox" (change)="enablebfd_flag($event)" name="enable_bfd"
+                        class="onoffswitch-checkbox" id="onoffenablebfd" [checked]="enable_bfd">
+                      <label class="onoffswitch-label" for="onoffenablebfd">
+                        <span class="onoffswitch-inner onoffswitch-inner-maintenance-switch"></span>
+                        <span class="onoffswitch-switch" id="onoffswitch-switch"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </form>
   </div>
+  <!-- BDF properties-->
+  <div class="row">
+    <div class="col-lg-12 isl_detail_title_div">
+      <h5 class='modal-title' style="margin-top: 0px !important">BFD PROPERTIES </h5>
+      <form [formGroup]="bfdPropForm">
+        <div class="col-md-12 isl-source-details-div">
+          <div class='isl_sbl_details'>
+            <div class="text_cost_details" id="text_bandwidth_details" [hidden]="isBFDEdit">
+              <div class="row">
+                <div class="col-md-8">
+                  <div class='row'>
+                    <div class="col-md-6">
+                      <div class="row">
+                        <label class='col-md-4 col-form-label'> Interval(ms):</label>
+                        <div class="col-md-8 col-form-label">
+                          <span>{{bfdPropertyData.properties['interval_ms']}}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="row">
+                        <label class='col-md-4 col-form-label'> Multiplier:</label>
+                        <div class="col-md-4 col-form-label">
+                          <span>{{bfdPropertyData.properties['multiplier']}}</span>
+                        </div>
+                        <div class="col-md-4 col-form-label">
+                          <span>
+                            <span class="isl_div_bfd"></span><span class="ml-1 cursor-pointer" id="edit_isl_bfd"
+                              *ngIf="commonService.hasPermission('isl_update_bfd_properties')" style="display: inline;">
+                              <i title="Edit" (click)="editBFDProperties()"
+                                class="fa fa-pencil-square-o fa-2x cursor-pointer"></i>
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+
+
+            </div>
+            <div class="update_isl_cost col-md-12" id="isl_cost_update" [hidden]="!isBFDEdit">
+              <div class="" style=" margin-bottom: 10px;">
+                <div class="row">
+                  <div class="col-md-8">
+                    <div class='row'>
+                      <div class="col-md-6">
+                        <div class="row">
+                          <label class='col-md-4 col-form-label'> Interval</label>
+                          <div class="col-md-8 col-form-label">
+                            <input formControlName="interval_ms" value="{{bfdPropertyData.properties['interval_ms']}}"
+                              class="form-control" type="number" name="interval_ms" min="0">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="row">
+                          <label class='col-md-4 col-form-label'> Multiplier</label>
+                          <div class="col-md-8 col-form-label">
+                            <input formControlName="multiplier" value="{{bfdPropertyData.properties['multiplier']}}"
+                              class="form-control" type="number" name="multiplier" min="0">
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <span style="margin-right: 5px; border: 1; padding: 7px 12px;" class="btn kilda_btn ml-1"
+                      data-toggle="modal" (click)="updateBFDProperties()"><i class="icon icon-ok-sign"></i></span>
+                    <span style="margin-right: 5px; border: 1; padding: 6px 11px;" id="cancel_isl_bfd_update"
+                      class="btn kilda_btn ml-0.5" (click)="cancelEditBFDProperties()"><i
+                        class="icon icon-remove-sign"></i></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+
   <div class="row">
     <div id="exTab1" class="col-lg-12 tab-wrapper">
       <ul class="nav nav-pills">
         <li [ngClass]="{'active': openedTab == 'graph'}">
           <a href="javascript:void(0);" (click)="openTab('graph');">Graph</a>
         </li>
-        <li *ngIf="commonService.hasPermission('menu_flows')" [ngClass]="{'active': openedTab == 'flow'}" >
+        <li *ngIf="commonService.hasPermission('menu_flows')" [ngClass]="{'active': openedTab == 'flow'}">
           <a href="javascript:void(0);" (click)="openTab('flow');">Flows</a>
         </li>
       </ul>
       <div class="tab-content padding-15 clearfix">
         <div class="tab-pane" *ngIf="openedTab == 'graph'" [ngClass]="{'active': openedTab == 'graph'}">
-            <form [formGroup]="filterForm">
-              <div class="container-fluid graph_div topology-graph" >
-                <div class="row">
-                  <div class="col-xs-8 col-md-8 " id="stats_div" style="border: 0px white; padding-top: 15px;
+          <form [formGroup]="filterForm">
+            <div class="container-fluid graph_div topology-graph">
+              <div class="row">
+                <div class="col-xs-8 col-md-8 " id="stats_div" style="border: 0px white; padding-top: 15px;
                         padding-bottom: 15px;
                         padding-left: 0;
                         padding-right: 0;">
-                      
-                        <h2 class="isl-header text-center" id="graphLabel">{{currentGraphName}}</h2>
-                        <ngx-spinner [fullScreen]="false" name="graphSpinner" bdColor = "rgba(51, 51, 51, 0.8)" size="medium" color = "#4ec0ec" type = "ball-clip-rotate">
-                          <p >Loading data..<span class="loader__dot">.</span><span class="loader__dot">.</span><span class="loader__dot">.</span></p>
-                          </ngx-spinner>
-                       <app-dygraph (zoomChange)='zoomHandler($event)' style="width: 780px !important;  height: 400px;"></app-dygraph>
-                      
+
+                  <h2 class="isl-header text-center" id="graphLabel">{{currentGraphName}}</h2>
+                  <ngx-spinner [fullScreen]="false" name="graphSpinner" bdColor="rgba(51, 51, 51, 0.8)" size="medium"
+                    color="#4ec0ec" type="ball-clip-rotate">
+                    <p>Loading data..<span class="loader__dot">.</span><span class="loader__dot">.</span><span
+                        class="loader__dot">.</span></p>
+                  </ngx-spinner>
+                  <app-dygraph (zoomChange)='zoomHandler($event)' style="width: 780px !important;  height: 400px;">
+                  </app-dygraph>
+
+                </div>
+                <div class="col-md-4 col-xs-4 filter">
+                  <div *ngIf="f.graph.value !='flow'" class="stats-graph row" style="margin-top: 30px;">
+                    <ul class="line-legend col-lg-12">
+                      <li>Forward</li>
+                      <li>Reverse</li>
+                    </ul>
                   </div>
-                  <div class="col-md-4 col-xs-4 filter">
-                    <div *ngIf="f.graph.value !='flow'" class="stats-graph row" style="margin-top: 30px;">
-                      <ul class="line-legend col-lg-12">
-                        <li>Forward</li>
-                        <li>Reverse</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <div class="row form-group clearfix">
-                        <label class="col-xs-4 col-md-4 text-label">Timezone:</label>
-                        <div class="col-xs-8 col-md-8">
-                           <select formControlName="timezone" class="form-control" name="timezone" (change)="changeTimezone()">
+                  <div>
+                    <div class="row form-group clearfix">
+                      <label class="col-xs-4 col-md-4 text-label">Timezone:</label>
+                      <div class="col-xs-8 col-md-8">
+                        <select formControlName="timezone" class="form-control" name="timezone"
+                          (change)="changeTimezone()">
                           <option value="UTC">UTC</option>
                           <option value="LOCAL">My Timezone</option>
                         </select>
-                        </div>
-                       </div>
-                      <div class="row form-group clearfix">
-                        <label class="col-xs-4 col-md-4 text-label">From:</label>
-                        <div class="col-xs-8 col-md-8">
-                           <input formControlName="fromDate" type="text"  (change)="changeDate('fromDate',$event)" datetime-picker  placeholder="From" class="form-control">
-                        </div>
-                       </div>
-                       <div class="row form-group clearfix" *ngIf="!f.auto_reload.value">
-                        <label class="col-xs-4 col-md-4 text-label">To:</label>
-                        <div class="col-xs-8 col-md-8">
-                          <input type="text" formControlName="toDate"    (change)="changeDate('toDate',$event)" datetime-picker  placeholder="From" class="form-control">
-                        </div>
-                       </div>
-                      <div id="DownsampleID" class="row form-group clearfix">
-                        <label class="col-xs-4 col-md-4 text-label">Downsample:</label>
-                        <div class="col-xs-8 col-md-8">
-                          <select formControlName="download_sample" class="form-control" (change)="loadGraphData()">
-                            <option value="30s">30s</option>
-                            <option value="1m">1m</option>
-                            <option value="5m">5m</option>
-                            <option value="10m">10m</option>
+                      </div>
+                    </div>
+                    <div class="row form-group clearfix">
+                      <label class="col-xs-4 col-md-4 text-label">From:</label>
+                      <div class="col-xs-8 col-md-8">
+                        <input formControlName="fromDate" type="text" (change)="changeDate('fromDate',$event)"
+                          datetime-picker placeholder="From" class="form-control">
+                      </div>
+                    </div>
+                    <div class="row form-group clearfix" *ngIf="!f.auto_reload.value">
+                      <label class="col-xs-4 col-md-4 text-label">To:</label>
+                      <div class="col-xs-8 col-md-8">
+                        <input type="text" formControlName="toDate" (change)="changeDate('toDate',$event)"
+                          datetime-picker placeholder="From" class="form-control">
+                      </div>
+                    </div>
+                    <div id="DownsampleID" class="row form-group clearfix">
+                      <label class="col-xs-4 col-md-4 text-label">Downsample:</label>
+                      <div class="col-xs-8 col-md-8">
+                        <select formControlName="download_sample" class="form-control" (change)="loadGraphData()">
+                          <option value="30s">30s</option>
+                          <option value="1m">1m</option>
+                          <option value="5m">5m</option>
+                          <option value="10m">10m</option>
+                        </select>
+                        <span class="downsample-error-message pull-left"></span>
+                      </div>
+                    </div>
+                    <div id="autoreloadId" class="row form-group clearfix">
+                      <label class="col-xs-4 col-md-4 text-label">Autoreload(Sec):</label>
+                      <div class="col-xs-8 col-md-8">
+                        <input formControlName="auto_reload" value="1" type="checkbox">
+                        <span [hidden]="!f.auto_reload.value">
+                          <select formControlName="auto_reload_time" name="auto_reload_time"
+                            (change)="startAutoReload()"
+                            style="width: 90%; position: relative; left: 11px; border-radius: 3px; top: -7px;">
+                            <option value="">Please select a value</option>
+                            <option *ngFor="let option of getautoReloadValues" value="{{option.value}}">{{option.text}}
+                            </option>
                           </select>
-                          <span class="downsample-error-message pull-left"></span>
-                        </div>
+                          <div class="invalid-feedback" *ngIf="!f.auto_reload_time.valid && f.auto_reload_time.dirty">
+                            <div *ngIf="f.auto_reload_time.errors.pattern">Auto reload time should be number</div>
+                            <div *ngIf="f.auto_reload_time.errors.required">Auto reload time required</div>
+                          </div>
+                        </span>
                       </div>
-                      <div id="autoreloadId" class="row form-group clearfix">
-                        <label class="col-xs-4 col-md-4 text-label">Autoreload(Sec):</label>
-                        <div class="col-xs-8 col-md-8">
-                          <input formControlName="auto_reload" value="1" type="checkbox">
-                          <span [hidden]="!f.auto_reload.value">
-                            <select formControlName="auto_reload_time" name="auto_reload_time" (change)="startAutoReload()" style="width: 90%; position: relative; left: 11px; border-radius: 3px; top: -7px;">
-                              <option value="">Please select a value</option>
-                              <option *ngFor="let option of getautoReloadValues" value="{{option.value}}">{{option.text}}</option>
-                              </select>
-                           <div class="invalid-feedback" *ngIf="!f.auto_reload_time.valid && f.auto_reload_time.dirty">
-                             <div *ngIf="f.auto_reload_time.errors.pattern">Auto reload time should be number</div>
-                             <div *ngIf="f.auto_reload_time.errors.required">Auto reload time required</div>
-                           </div>
-                          </span>
-                        </div>
-                      </div>
-                      <div id="SourceDestinationSwitchId" class="row form-group clearfix">
-                        <label class="col-xs-4 col-md-4 text-label">Graph:</label>
-                        <div class="col-xs-8 col-md-8">
-                          <select formControlName="graph" class="form-control" (change)="graphChanged()">
+                    </div>
+                    <div id="SourceDestinationSwitchId" class="row form-group clearfix">
+                      <label class="col-xs-4 col-md-4 text-label">Graph:</label>
+                      <div class="col-xs-8 col-md-8">
+                        <select formControlName="graph" class="form-control" (change)="graphChanged()">
                           <option value="rtt">Round Trip Latency</option>
                           <option value="latency">Latency</option>
                           <option value="source">Source</option>
@@ -295,78 +448,84 @@
                           <option value="isllossreverse">Loss packet reverse</option>
                           <option value="flow">Flow</option>
                         </select>
-                        </div>
                       </div>
-                      <div class="row form-group clearfix" id="GraphType" *ngIf="f.graph.value =='flow'">
-                        <label class="col-xs-4 col-md-4 text-label">Graph Type:</label>
-                        <div class="col-xs-8 col-md-8">
-                           <select formControlName="graph_type" class="form-control" (change)="loadGraphData()">
-                           <option value="linegraph">Line Graph</option>
-                           <option value="stackedgraph">Stacked Graph</option>
+                    </div>
+                    <div class="row form-group clearfix" id="GraphType" *ngIf="f.graph.value =='flow'">
+                      <label class="col-xs-4 col-md-4 text-label">Graph Type:</label>
+                      <div class="col-xs-8 col-md-8">
+                        <select formControlName="graph_type" class="form-control" (change)="loadGraphData()">
+                          <option value="linegraph">Line Graph</option>
+                          <option value="stackedgraph">Stacked Graph</option>
                         </select>
-                        </div>
                       </div>
-                      <div class="row form-group clearfix" id="islMetric" *ngIf="f.graph.value !='latency'">
-                        <label class="col-xs-4 col-md-4 text-label">Metric:</label>
-                        <div class="col-xs-8 col-md-8">
-                           <select *ngIf="f.graph.value !='flow'" formControlName="metric" class="form-control" (change)="loadGraphData()">
+                    </div>
+                    <div class="row form-group clearfix" id="islMetric" *ngIf="f.graph.value !='latency'">
+                      <label class="col-xs-4 col-md-4 text-label">Metric:</label>
+                      <div class="col-xs-8 col-md-8">
+                        <select *ngIf="f.graph.value !='flow'" formControlName="metric" class="form-control"
+                          (change)="loadGraphData()">
                           <option *ngFor="let option of graphMetrics" value="{{option.value}}">{{option.label}}</option>
                         </select>
-                        <select *ngIf="f.graph.value =='flow' || f.graph.value =='flowstacked'" formControlName="metric" class="form-control" (change)="loadGraphData()">
-                          <option *ngFor="let option of flowGraphMetrics" value="{{option.value}}">{{option.label}}</option>
+                        <select *ngIf="f.graph.value =='flow' || f.graph.value =='flowstacked'" formControlName="metric"
+                          class="form-control" (change)="loadGraphData()">
+                          <option *ngFor="let option of flowGraphMetrics" value="{{option.value}}">{{option.label}}
+                          </option>
                         </select>
-                        </div>
                       </div>
-                     
-                      <div class="row form-group clearfix" id="Direction" *ngIf="f.graph.value =='flow'">
-                        <label class="col-xs-4 col-md-4 text-label">Direction:</label>
-                        <div class="col-xs-8 col-md-8">
-                           <select formControlName="direction" class="form-control" (change)="loadGraphData()">
-                           <option value="forward">Forward</option>
-                           <option value="reverse">Reverse</option>
+                    </div>
+
+                    <div class="row form-group clearfix" id="Direction" *ngIf="f.graph.value =='flow'">
+                      <label class="col-xs-4 col-md-4 text-label">Direction:</label>
+                      <div class="col-xs-8 col-md-8">
+                        <select formControlName="direction" class="form-control" (change)="loadGraphData()">
+                          <option value="forward">Forward</option>
+                          <option value="reverse">Reverse</option>
                         </select>
-                        </div>
                       </div>
-                      <div class="row form-group clearfix" id="flow_number" *ngIf="f.graph.value =='flow'">
-                        <label class="col-xs-4 col-md-4 text-label">No Of Flows:</label>
-                        <div class="col-xs-8 col-md-8">
-                          <div class="row">
-                            <div class="col-xs-8 col-md-8">
-                              <select formControlName="flow_number" class="form-control" (change)="loadIslAllFlowOrTopTen()">
-                                <option value="top">High Throughput</option>
-                                <option value="least">Low Throughput</option>
-                                <option value="all">All</option>
-                             </select>
-                            </div>
-                            <div class="col-xs-4 col-md-4" *ngIf="f.flow_number.value !='all'">
-                              <input name="no_flows" type="number" min = 1 (change)="loadIslAllFlowOrTopTen()" formControlName="no_flows" class="form-control" />
-                            </div>
+                    </div>
+                    <div class="row form-group clearfix" id="flow_number" *ngIf="f.graph.value =='flow'">
+                      <label class="col-xs-4 col-md-4 text-label">No Of Flows:</label>
+                      <div class="col-xs-8 col-md-8">
+                        <div class="row">
+                          <div class="col-xs-8 col-md-8">
+                            <select formControlName="flow_number" class="form-control"
+                              (change)="loadIslAllFlowOrTopTen()">
+                              <option value="top">High Throughput</option>
+                              <option value="least">Low Throughput</option>
+                              <option value="all">All</option>
+                            </select>
                           </div>
-                          
-                          
+                          <div class="col-xs-4 col-md-4" *ngIf="f.flow_number.value !='all'">
+                            <input name="no_flows" type="number" min=1 (change)="loadIslAllFlowOrTopTen()"
+                              formControlName="no_flows" class="form-control" />
+                          </div>
                         </div>
+
+
                       </div>
-                      <!-- <div class="row form-group clearfix" *ngIf="f.graph.value =='flow'">
+                    </div>
+                    <!-- <div class="row form-group clearfix" *ngIf="f.graph.value =='flow'">
                         <label class="col-xs-4 col-md-4 text-label"></label>
                         <button class="btn btn-dark ml-3" (click)="copySelectedStatsFlows()">Copy Flows</button>
                       </div> -->
-                      <div class="col-xs-12 col-md-12 submit-btn">
-                       <div id="errorMesg" class="error"></div>
-                      </div>
+                    <div class="col-xs-12 col-md-12 submit-btn">
+                      <div id="errorMesg" class="error"></div>
                     </div>
                   </div>
                 </div>
               </div>
-              </form>
+            </div>
+          </form>
 
         </div>
         <div class="tab-pane" *ngIf="openedTab == 'flow'" [ngClass]="{'active': openedTab == 'flow'}">
-            <app-isl-flow-datatables [srcSwitch]="src_switch" (refresh)="refreshIslFlows()" [dstSwitch]="dst_switch" [data]="dataSet" *ngIf="!loadingData"></app-isl-flow-datatables>
+          <app-isl-flow-datatables [srcSwitch]="src_switch" (refresh)="refreshIslFlows()" [dstSwitch]="dst_switch"
+            [data]="dataSet" *ngIf="!loadingData"></app-isl-flow-datatables>
         </div>
       </div>
     </div>
   </div>
-  
+
 </div>
 <context-menu #copySrcSwitch>
   <ng-template contextMenuItem (execute)="copyToClip($event,'sourceSwitch');">
@@ -391,5 +550,3 @@
     Copy to Clipboard
   </ng-template>
 </context-menu>
-
-

@@ -1,11 +1,12 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static groovyx.gpars.GParsPool.withPool
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.cookie.Cookie.LLDP_INGRESS_COOKIE
@@ -80,6 +81,8 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
     def "Able to create a #flowDescr flow with lldp and arp enabled on #devicesDescr"() {
         assumeTrue(data.encapsulation != FlowEncapsulationType.VXLAN,
 "Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
+        assumeTrue(data.switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2,
+ "Unable to find swPair with protected path")
 
         given: "A flow with enabled or disabled connected devices"
         def tgService = traffExamProvider.get()
@@ -652,8 +655,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def tg = topology.activeTraffGens[0]
         def sw = tg.switchConnected
-        def initialProps = northbound.getSwitchProperties(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, northbound.getSwitchProperties(sw.dpId).tap {
+        def initialProps = switchHelper.getCachedSwProps(sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
             it.multiTable = true
             it.switchLldp = true
             it.switchArp = true
@@ -709,8 +712,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def tg = topology.activeTraffGens[0]
         def sw = tg.switchConnected
-        def initialProps = northbound.getSwitchProperties(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, northbound.getSwitchProperties(sw.dpId).tap {
+        def initialProps = switchHelper.getCachedSwProps(sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
             it.multiTable = true
             it.switchLldp = true
             it.switchArp = true
@@ -747,8 +750,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def tg = topology.activeTraffGens[0]
         def sw = tg.switchConnected
-        def initialProps = northbound.getSwitchProperties(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, northbound.getSwitchProperties(sw.dpId).tap {
+        def initialProps = switchHelper.getCachedSwProps(sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
             it.multiTable = true
             it.switchLldp = true
             it.switchArp = true
@@ -995,8 +998,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "System forbids to turn on '#propertyToTurnOn' on a single-table-mode switch"() {
         when: "Try to change switch props so that connected devices are 'on' but switch is in a single-table mode"
         def sw = topology.activeSwitches.first()
-        def initSwitchProperties = northbound.getSwitchProperties(sw.dpId)
-        northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
+        def initSwitchProperties = switchHelper.getCachedSwProps(sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initSwitchProperties.jacksonCopy().tap {
             it.multiTable = false
             it."$propertyToTurnOn" = true
         })
@@ -1019,8 +1022,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         given: "Switch in single-table mode"
         def swPair = topologyHelper.switchPairs.first()
         def sw = swPair.src
-        def initProps = northbound.getSwitchProperties(sw.dpId)
-        SwitchHelper.updateSwitchProperties(sw, initProps.jacksonCopy().tap {
+        def initProps = switchHelper.getCachedSwProps(sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initProps.jacksonCopy().tap {
             it.multiTable = false
         })
 
@@ -1083,8 +1086,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find two active traffgens")
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].every { sw ->
-                //4407
-                !sw.wb5164 && sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
+                sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
             }
         } ?: assumeTrue(false, "No suiting switches found")
 
@@ -1183,8 +1185,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find two active traffgens")
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
             [it.src, it.dst].every { sw ->
-                //4407
-                !sw.wb5164 && sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
+                sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
             }
         } ?: assumeTrue(false, "No suiting switches found")
 
@@ -1243,7 +1244,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "Able to detect devices on a qinq single-switch different-port flow"() {
         given: "A flow between different ports on the same switch"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def sw = topology.activeTraffGens*.switchConnected.find { !it.wb5164 } //4407
+        def sw = topology.activeTraffGens*.switchConnected.first()
         assumeTrue(sw.asBoolean(), "Wasn't able to find switch connected to traffGen")
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
@@ -1308,7 +1309,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "Able to detect devices when two qinq single-switch different-port flows exist with the same outerVlanId"() {
         given: "Two flows between different ports on the same switch with the same outerVlanId"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def sw = topology.activeTraffGens*.switchConnected.find { !it.wb5164 } //4407
+        def sw = topology.activeTraffGens*.switchConnected.first()
         assumeTrue(sw.asBoolean(), "Wasn't able to find switch connected to traffGen")
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
@@ -1382,6 +1383,169 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         1                 | 2                | 4                | FlowEncapsulationType.TRANSIT_VLAN
         1                 | 3                | 5                | FlowEncapsulationType.VXLAN
     }
+
+    @Tidy
+    def "Switch is not containing extra rules after connected devices removal"() {
+
+        given: "A switch with devices feature turned on"
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
+        def tg = topology.activeTraffGens[0]
+        def sw = tg.switchConnected
+        def initialProps = switchHelper.getCachedSwProps(sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
+            it.multiTable = true
+            it.switchLldp = true
+            it.switchArp = true
+        })
+
+        and: "Flow is created on a target switch with devices feature 'off'"
+        def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        def flow = flowHelperV2.randomFlow(sw, dst)
+        flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
+        flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
+        flowHelperV2.addFlow(flow)
+
+        when: "Turn LLDP and ARP detection off on switch"
+        switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
+            it.multiTable = true
+            it.switchLldp = false
+            it.switchArp = false
+        })
+        flow.maximumBandwidth = flow.maximumBandwidth + 1
+        flowHelperV2.updateFlow(flow.flowId, flow)
+
+        then: "Check excess rules are not registered on device"
+        wait(WAIT_OFFSET) {
+             verifySwitchRules(sw.dpId)
+        }
+        cleanup: "Remove created flow and registered devices, revert switch props"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        sw && database.removeConnectedDevices(sw.dpId)
+        initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
+    }
+
+    @Tidy
+    def "System starts detect connected after device properties turned on"() {
+        given: "A switch with devices feature turned off"
+        def tgService = traffExamProvider.get()
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
+        def sw = topology.activeTraffGens[0].switchConnected
+        def initialPropsSource = enableMultiTableIfNeeded(true, sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
+            it.multiTable = true
+            it.switchLldp = false
+            it.switchArp = false
+        })
+
+        and: "Flow is created on a target switch with devices feature 'off'"
+        def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        def initialPropsDst = enableMultiTableIfNeeded(true, dst.dpId)
+        def flow = flowHelperV2.randomFlow(sw, dst)
+        def outerVlan = 100
+        flow.source.vlanId = outerVlan
+        flow.source.innerVlanId = 200
+
+        flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
+        flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
+        flowHelperV2.addFlow(flow)
+        def var = false
+
+        assert northboundV2.getConnectedDevices(flow.source.switchId).ports.empty
+        assert northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
+
+        when: "update device properties and send lldp and arp packets on flow"
+        switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
+            it.multiTable = true
+            it.switchLldp = true
+            it.switchArp = true
+        })
+
+        def srcLldpData = LldpData.buildRandom()
+        def dstLldpData = LldpData.buildRandom()
+        def srcArpData = ArpData.buildRandom()
+        def dstArpData = ArpData.buildRandom()
+        [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
+            endpoint, lldpData, arpData ->
+                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [outerVlan]).withCloseable {
+                    it.sendLldp(lldpData)
+                    it.sendArp(arpData)
+                }
+        }
+
+        then: "Getting connecting devices show corresponding devices on src endpoint"
+        Wrappers.wait(3) {
+            //under usual condition system needs some time for devices to appear, that's why timeLoop is used here
+            verifyAll(northboundV2.getConnectedDevices(sw.dpId)) {
+                !(it.ports.lldp.empty)
+                !(it.ports.arp.empty)
+            }
+        }
+
+        cleanup: "Delete the flow and restore initial switch properties"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        initialPropsSource && restoreSwitchProperties(sw.dpId, initialPropsSource)
+        initialPropsDst && restoreSwitchProperties(dst.dpId, initialPropsDst)
+        database.removeConnectedDevices(sw.dpId)
+    }
+
+    @Tidy
+    def "System stops receiving statistics if config is changed to 'off'"() {
+        given: "A switch with devices feature turned on"
+        def tgService = traffExamProvider.get()
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
+        def sw = topology.activeTraffGens[0].switchConnected
+        def initialPropsSource = enableMultiTableIfNeeded(true, sw.dpId)
+        switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
+            it.multiTable = true
+            it.switchLldp = true
+            it.switchArp = true
+        })
+
+        and: "Flow is created on a target switch with devices feature 'off'"
+        def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        def initialPropsDst = enableMultiTableIfNeeded(true, dst.dpId)
+        def flow = flowHelperV2.randomFlow(sw, dst)
+        def outerVlan = 100
+        flow.source.vlanId = outerVlan
+        flow.source.innerVlanId = 200
+        flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
+        flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
+        flowHelperV2.addFlow(flow)
+
+        when: "update device properties and send lldp and arp packets on flow"
+        switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
+            it.multiTable = true
+            it.switchLldp = false
+            it.switchArp = false
+        })
+        def srcLldpData = LldpData.buildRandom()
+        def dstLldpData = LldpData.buildRandom()
+        def srcArpData = ArpData.buildRandom()
+        def dstArpData = ArpData.buildRandom()
+        [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
+            endpoint, lldpData, arpData ->
+                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [outerVlan]).withCloseable {
+                    it.sendLldp(lldpData)
+                    it.sendArp(arpData)
+                }
+        }
+
+        then: "Getting connecting devices doesn't show corresponding devices on src endpoint"
+        Wrappers.timedLoop(3) {
+            //under usual condition system needs some time for devices to appear, that's why timeLoop is used here
+            verifyAll(northboundV2.getConnectedDevices(sw.dpId)) {
+                it.ports.lldp.empty
+                it.ports.arp.empty
+            }
+        }
+
+        cleanup: "Delete the flow and restore initial switch properties"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        initialPropsSource && restoreSwitchProperties(sw.dpId, initialPropsSource)
+        initialPropsDst && restoreSwitchProperties(dst.dpId, initialPropsDst)
+        database.removeConnectedDevices(sw.dpId)
+    }
+
 
     /**
      * Returns a potential flow for creation according to passed params.
@@ -1463,14 +1627,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
     private void validateFlowAndSwitches(Flow flow) {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-        trySwValidation([flow.srcSwitch, flow.destSwitch]*.switchId) {
-            [flow.srcSwitch, flow.destSwitch].each {
-                def validation = northbound.validateSwitch(it.switchId)
-                validation.verifyRuleSectionsAreEmpty(it.switchId, ["missing", "excess", "misconfigured"])
-                validation.verifyHexRuleSectionsAreEmpty(it.switchId, ["missingHex", "excessHex", "misconfiguredHex"])
-                if (it.ofVersion != "OF_12") {
-                    validation.verifyMeterSectionsAreEmpty(it.switchId, ["missing", "misconfigured", "excess"])
-                }
+        [flow.srcSwitch, flow.destSwitch].each {
+            def validation = northbound.validateSwitch(it.switchId)
+            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
+            if (it.ofVersion != "OF_12") {
+                validation.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
             }
         }
     }
@@ -1579,23 +1741,5 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         } else {
             "none of the endpoints"
         }
-    }
-
-    private trySwValidation(List<SwitchId> switches = topology.activeSwitches*.dpId, Closure code) {
-        try {
-            code()
-        } catch(Throwable t) {
-            switchesToSync.addAll(switches)
-            throw t
-        }
-    }
-
-    def cleanup() {
-        withPool {
-            switchesToSync.unique().eachParallel { SwitchId swId ->
-                Wrappers.silent { northbound.synchronizeSwitch(swId, true) }
-            }
-        }
-        switchesToSync.clear()
     }
 }

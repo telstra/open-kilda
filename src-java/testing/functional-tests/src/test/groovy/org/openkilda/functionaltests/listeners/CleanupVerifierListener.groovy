@@ -63,8 +63,8 @@ class CleanupVerifierListener extends AbstractSpringListener {
         withPool {
             topology.activeSwitches.eachParallel { Switch sw ->
                 def validation = northbound.validateSwitch(sw.dpId)
-                validation.verifyRuleSectionsAreEmpty(sw.dpId)
-                validation.verifyMeterSectionsAreEmpty(sw.dpId)
+                validation.verifyRuleSectionsAreEmpty()
+                validation.verifyMeterSectionsAreEmpty()
                 def swProps = northbound.getSwitchProperties(sw.dpId)
                 assert swProps.multiTable == useMultitable
                 def s42Config = sw.prop

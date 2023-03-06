@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.server42
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
+import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -231,8 +232,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         and: "Involved switches pass the switch validation"
         [isl.srcSwitch.dpId, isl.dstSwitch.dpId, newIsl.dstSwitch.dpId].each { swId ->
             with(northbound.validateSwitch(swId)) { validationResponse ->
-                validationResponse.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
-                validationResponse.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                validationResponse.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
 
@@ -262,8 +263,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         and: "All involved switches pass switch validation"
         [isl.srcSwitch.dpId, isl.dstSwitch.dpId, newIsl.dstSwitch.dpId].each { swId ->
             with(northbound.validateSwitch(swId)) { validationResponse ->
-                validationResponse.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
-                validationResponse.verifyMeterSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                validationResponse.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
 
@@ -362,7 +363,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         def islRttFeatureStartState = changeIslRttToggle(false)
 
         and: "server42IslRtt is disabled on the switch"
-        def originSwProps = northbound.getSwitchProperties(sw.dpId)
+        def originSwProps = switchHelper.getCachedSwProps(sw.dpId)
         changeIslRttSwitch(sw, false)
 
         then: "No IslRtt rules on the switch"
@@ -567,8 +568,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
 
         and: "Switch is valid"
         with(northbound.validateSwitch(isl.srcSwitch.dpId)) {
-            it.verifyRuleSectionsAreEmpty(isl.srcSwitch.dpId, ["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty(isl.srcSwitch.dpId)
+            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            it.verifyMeterSectionsAreEmpty()
         }
 
         and: "ISL RTT stats in both directions are available"
@@ -613,7 +614,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
 
         and: "Switch validation shows deleted rules as missing"
         def validateInfo = northbound.validateSwitch(isl.srcSwitch.dpId)
-        validateInfo.verifyRuleSectionsAreEmpty(isl.srcSwitch.dpId, ["misconfigured", "excess"])
+        validateInfo.verifyRuleSectionsAreEmpty(["misconfigured", "excess"])
         northbound.validateSwitch(isl.srcSwitch.dpId).rules.missing.sort() == rulesToDelete*.cookie.sort()
 
         and: "No ISL Rtt stats in forward/reverse directions"
@@ -686,7 +687,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         initialSwitchRtt.each { sw, state -> changeIslRttSwitch(sw, state) }
         initialSwitchRtt.keySet().each { sw ->
             wait(RULES_INSTALLATION_TIME) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+                assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
+                        .containsExactlyInAnyOrder(*sw.defaultCookies)
             }
         }
     }

@@ -20,10 +20,9 @@ switches:
         vlan_range: 101..150
     prop:
       server42_flow_rtt: true
-      server42_port: 11
+      server42_port: 13
       server42_mac_address: 02:70:63:61:70:00
       server42_vlan: 1002
-      server42_isl_rtt: false
 
   - name: ofsw3
     dp_id: 00:00:00:00:00:00:00:03
@@ -36,7 +35,7 @@ switches:
         vlan_range: 101..150
     prop:
       server42_flow_rtt: true
-      server42_port: 11
+      server42_port: 13
       server42_mac_address: 02:70:63:61:70:00
       server42_vlan: 1003
 
@@ -112,6 +111,12 @@ isls:
     src_port: 1
     dst_switch: ofsw2
     dst_port: 2
+    max_bandwidth: 40000000
+
+  - src_switch: ofsw8
+    src_port: 1
+    dst_switch: ofsw2
+    dst_port: 5
     max_bandwidth: 40000000
 
   - src_switch: ofsw4
@@ -193,7 +198,7 @@ isls:
       in_port: 33
 
   - src_switch: ofsw9
-    src_port: 10
+    src_port: 15
     max_bandwidth: 36000000
     a_switch:
       in_port: 20
@@ -201,26 +206,50 @@ isls:
 traff_gens:
   - name: tg1
     iface: eth0
-    control_endpoint: http://0.0.0.0:4041
-    switch: ofsw3
+    control_endpoint: http://0.0.0.0:4011
+    switch: ofsw1
     switch_port: 10
     status: active
   - name: tg2
     iface: eth0
-    control_endpoint: http://0.0.0.0:4042
-    switch: ofsw8
-    switch_port: 9
+    control_endpoint: http://0.0.0.0:4021
+    switch: ofsw2
+    switch_port: 10
     status: active
   - name: tg3
     iface: eth0
-    control_endpoint: http://0.0.0.0:4043
-    switch: ofsw8
-    switch_port: 10
+    control_endpoint: http://0.0.0.0:4031
+    switch: ofsw3
+    switch_port: 11
     status: active
   - name: tg4
     iface: eth0
-    control_endpoint: http://0.0.0.0:4044
+    control_endpoint: http://0.0.0.0:4041
+    switch: ofsw4
+    switch_port: 10
+    status: active
+  - name: tg7
+    iface: eth0
+    control_endpoint: http://0.0.0.0:4071
     switch: ofsw7
+    switch_port: 10
+    status: active
+  - name: tg8
+    iface: eth0
+    control_endpoint: http://0.0.0.0:4081
+    switch: ofsw8
+    switch_port: 9
+    status: active
+  - name: tg88
+    iface: eth0
+    control_endpoint: http://0.0.0.0:4082
+    switch: ofsw8
+    switch_port: 10
+    status: active
+  - name: tg9
+    iface: eth0
+    control_endpoint: http://0.0.0.0:4091
+    switch: ofsw9
     switch_port: 10
     status: active
 

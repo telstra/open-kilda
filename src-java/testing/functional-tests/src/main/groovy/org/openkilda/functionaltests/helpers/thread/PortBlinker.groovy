@@ -36,7 +36,7 @@ class PortBlinker extends Thread {
 
     def kafkaChangePort(PortChangeType status) {
         producer.send(new ProducerRecord(topic, sw.dpId.toString(),
-                buildMessage(new PortInfoData(sw.dpId, port, null, status)).toJson())).get()
+                buildMessage(new PortInfoData(sw.dpId, port, null, null, status, null)).toJson())).get()
     }
 
     private static Message buildMessage(final InfoData data) {

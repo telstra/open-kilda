@@ -15,19 +15,27 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
+import org.openkilda.messaging.command.flow.YFlowPingRequest;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
+import org.openkilda.messaging.info.flow.YFlowPingResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.context.PersistenceContextRequired;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.topology.ping.model.GroupId;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 import org.openkilda.wfm.topology.ping.model.PingContext.Kinds;
 
@@ -40,6 +48,8 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -61,10 +71,13 @@ public class FlowFetcher extends Abstract {
     public static final Fields STREAM_ON_DEMAND_RESPONSE_FIELDS = new Fields(
             FIELD_ID_ON_DEMAND_RESPONSE, FIELD_ID_CONTEXT);
     public static final String STREAM_ON_DEMAND_RESPONSE_ID = "on_demand_response";
+    public static final String STREAM_ON_DEMAND_Y_FLOW_RESPONSE_ID = "on_demand_y_flow_response";
+    public static final int DIRECTION_COUNT_PER_FLOW = 2; // forward and reverse
 
     private final FlowResourcesConfig flowResourcesConfig;
     private transient FlowResourcesManager flowResourcesManager;
     private transient FlowRepository flowRepository;
+    private transient YFlowRepository yFlowRepository;
     private Set<FlowWithTransitEncapsulation> flowsSet;
     private long periodicPingCacheExpiryInterval;
     private long lastPeriodicPingCacheRefresh;
@@ -86,6 +99,8 @@ public class FlowFetcher extends Abstract {
             String sourceStream = input.getSourceStreamId();
             if (InputRouter.STREAM_ON_DEMAND_REQUEST_ID.equals(sourceStream)) {
                 handleOnDemandRequest(input);
+            } else if (InputRouter.STREAM_ON_DEMAND_Y_FLOW_REQUEST_ID.equals(sourceStream)) {
+                handleOnDemandYFlowRequest(input);
             } else if (InputRouter.STREAM_PERIODIC_PING_UPDATE_REQUEST_ID.equals(sourceStream)) {
                 updatePeriodicPingHeap(input);
             }
@@ -134,8 +149,10 @@ public class FlowFetcher extends Abstract {
         final CommandContext commandContext = pullContext(input);
         for (FlowWithTransitEncapsulation flow : flowsSet) {
             PingContext pingContext = PingContext.builder()
+                    .group(new GroupId(DIRECTION_COUNT_PER_FLOW))
                     .kind(Kinds.PERIODIC)
                     .flow(flow.getFlow())
+                    .yFlowId(flow.yFlowId)
                     .transitEncapsulation(flow.getTransitEncapsulation())
                     .build();
             emit(input, pingContext, commandContext);
@@ -144,7 +161,7 @@ public class FlowFetcher extends Abstract {
     }
 
     private void handleOnDemandRequest(Tuple input) throws PipelineException {
-        log.debug("Handle on demand ping request");
+        log.debug("Handle on demand flow ping request");
         FlowPingRequest request = pullOnDemandRequest(input);
 
         Optional<Flow> optionalFlow = flowRepository.findById(request.getFlowId());
@@ -157,6 +174,7 @@ public class FlowFetcher extends Abstract {
                 Optional<FlowTransitEncapsulation> transitEncapsulation = getTransitEncapsulation(flow);
                 if (transitEncapsulation.isPresent()) {
                     PingContext pingContext = PingContext.builder()
+                            .group(new GroupId(DIRECTION_COUNT_PER_FLOW))
                             .kind(Kinds.ON_DEMAND)
                             .flow(flow)
                             .transitEncapsulation(transitEncapsulation.get())
@@ -164,30 +182,88 @@ public class FlowFetcher extends Abstract {
                             .build();
                     emit(input, pingContext, pullContext(input));
                 } else {
-                    emitOnDemandResponse(input, request, String.format(
+                    emitOnDemandResponse(input, request, format(
                             "Encapsulation resource not found for flow %s", request.getFlowId()));
                 }
             } else {
-                emitOnDemandResponse(input, request, String.format(
-                        "Flow %s should not be one switch flow", request.getFlowId()));
+                emitOnDemandResponse(input, request, format(
+                        "Flow %s should not be one-switch flow", request.getFlowId()));
             }
         } else {
-            emitOnDemandResponse(input, request, String.format(
-                    "Flow %s does not exist", request.getFlowId()));
+            emitOnDemandResponse(input, request, format("Flow %s does not exist", request.getFlowId()));
+        }
+    }
+
+    private void handleOnDemandYFlowRequest(Tuple input) throws PipelineException {
+        log.debug("Handle on demand y-flow ping request");
+        YFlowPingRequest request = pullOnDemandYFlowRequest(input);
+
+        Optional<YFlow> optionalYFlow = yFlowRepository.findById(request.getYFlowId());
+
+        if (!optionalYFlow.isPresent()) {
+            emitOnDemandYFlowResponse(input, request, format("Y-flow %s does not exist", request.getYFlowId()));
+            return;
+        }
+
+        YFlow yFlow = optionalYFlow.get();
+        Set<YSubFlow> subFlows = yFlow.getSubFlows();
+
+        if (subFlows.isEmpty()) {
+            emitOnDemandYFlowResponse(input, request, format("Y-flow %s has no sub-flows", request.getYFlowId()));
+            return;
+        }
+
+        Set<YSubFlow> multipleSwitchSubFlows = subFlows.stream().filter(sf -> !sf.getFlow().isOneSwitchFlow())
+                .collect(Collectors.toSet());
+        GroupId groupId = new GroupId(multipleSwitchSubFlows.size() * DIRECTION_COUNT_PER_FLOW);
+        List<PingContext> subFlowPingRequests = new ArrayList<>();
+
+        for (YSubFlow subFlow : multipleSwitchSubFlows) {
+            Flow flow = subFlow.getFlow();
+            flow.getPaths(); // Load paths to use in PingProducer
+            flowRepository.detach(flow);
+
+            Optional<FlowTransitEncapsulation> transitEncapsulation = getTransitEncapsulation(flow);
+            if (transitEncapsulation.isPresent()) {
+                subFlowPingRequests.add(PingContext.builder()
+                        .group(groupId)
+                        .kind(Kinds.ON_DEMAND_Y_FLOW)
+                        .flow(flow)
+                        .yFlowId(yFlow.getYFlowId())
+                        .transitEncapsulation(transitEncapsulation.get())
+                        .timeout(request.getTimeout())
+                        .build());
+            } else {
+                emitOnDemandYFlowResponse(input, request, format(
+                        "Encapsulation resource not found for sub flow %s of YFlow %s",
+                        subFlow.getSubFlowId(), yFlow.getYFlowId()));
+                return;
+            }
+        }
+        if (subFlowPingRequests.isEmpty()) {
+            emitOnDemandYFlowResponse(input, request,
+                    format("Y-flow %s has only one-switch sub-flows", request.getYFlowId()));
+            return;
+        }
+        CommandContext commandContext = pullContext(input);
+        for (PingContext pingContext : subFlowPingRequests) {
+            emit(input, pingContext, commandContext);
         }
     }
 
     private Optional<FlowWithTransitEncapsulation> getFlowWithTransitEncapsulation(Flow flow) {
         if (!flow.isOneSwitchFlow()) {
+            Optional<String> yFlowId = yFlowRepository.findYFlowId(flow.getFlowId());
             return getTransitEncapsulation(flow)
-                    .map(transitEncapsulation -> new FlowWithTransitEncapsulation(flow, transitEncapsulation));
+                    .map(transitEncapsulation -> new FlowWithTransitEncapsulation(
+                            flow, yFlowId.orElse(null), transitEncapsulation));
         }
         return Optional.empty();
     }
 
     private Optional<FlowTransitEncapsulation> getTransitEncapsulation(Flow flow) {
         return flowResourcesManager.getEncapsulationResources(flow.getForwardPathId(),
-                flow.getReversePathId(), flow.getEncapsulationType())
+                        flow.getReversePathId(), flow.getEncapsulationType())
                 .map(resources ->
                         new FlowTransitEncapsulation(resources.getTransitEncapsulationId(),
                                 resources.getEncapsulationType()));
@@ -205,6 +281,12 @@ public class FlowFetcher extends Abstract {
         getOutput().emit(STREAM_ON_DEMAND_RESPONSE_ID, input, output);
     }
 
+    private void emitOnDemandYFlowResponse(Tuple input, YFlowPingRequest request, String errorMessage)
+            throws PipelineException {
+        YFlowPingResponse response = new YFlowPingResponse(request.getYFlowId(), false, errorMessage, null);
+        getOutput().emit(STREAM_ON_DEMAND_Y_FLOW_RESPONSE_ID, input, new Values(response, pullContext(input)));
+    }
+
     private void emitCacheExpire(Tuple input, CommandContext commandContext, Set<FlowWithTransitEncapsulation> flows) {
         OutputCollector collector = getOutput();
         flowsSet.removeAll(flows);
@@ -218,6 +300,10 @@ public class FlowFetcher extends Abstract {
         return pullValue(input, InputRouter.FIELD_ID_PING_REQUEST, FlowPingRequest.class);
     }
 
+    private YFlowPingRequest pullOnDemandYFlowRequest(Tuple input) throws PipelineException {
+        return pullValue(input, InputRouter.FIELD_ID_PING_REQUEST, YFlowPingRequest.class);
+    }
+
     private PeriodicPingCommand pullPeriodicPingRequest(Tuple input) throws PipelineException {
         return pullValue(input, InputRouter.FIELD_ID_PING_REQUEST, PeriodicPingCommand.class);
     }
@@ -227,6 +313,7 @@ public class FlowFetcher extends Abstract {
         outputManager.declare(STREAM_FIELDS);
         outputManager.declareStream(STREAM_EXPIRE_CACHE_ID, STREAM_EXPIRE_CACHE_FIELDS);
         outputManager.declareStream(STREAM_ON_DEMAND_RESPONSE_ID, STREAM_ON_DEMAND_RESPONSE_FIELDS);
+        outputManager.declareStream(STREAM_ON_DEMAND_Y_FLOW_RESPONSE_ID, STREAM_ON_DEMAND_RESPONSE_FIELDS);
     }
 
     @Override
@@ -235,6 +322,7 @@ public class FlowFetcher extends Abstract {
         super.init();
 
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
         flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         try {
             refreshHeap(null, false);
@@ -248,6 +336,7 @@ public class FlowFetcher extends Abstract {
     @EqualsAndHashCode(exclude = {"transitEncapsulation"})
     private static class FlowWithTransitEncapsulation {
         Flow flow;
+        String yFlowId;
         FlowTransitEncapsulation transitEncapsulation;
     }
 }

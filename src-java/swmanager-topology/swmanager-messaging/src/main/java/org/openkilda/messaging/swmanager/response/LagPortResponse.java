@@ -23,7 +23,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
-import java.util.List;
+import java.util.Set;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
@@ -31,5 +31,6 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class LagPortResponse extends InfoData {
     int logicalPortNumber;
-    List<Integer> portNumbers;
+    Set<Integer> portNumbers;
+    boolean lacpReply;
 }

@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2022 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,80 +16,91 @@
 package org.openkilda.wfm.topology.switchmanager.fsm;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
+import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
+import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
-import org.openkilda.messaging.info.switches.MeterInfoEntry;
-import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.topology.switchmanager.service.configs.SwitchSyncConfig;
 
 import org.junit.Test;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 public class SwitchSyncFsmTest {
-
-    private static final SwitchId SWITCH_ID = new SwitchId(1);
-    private static final long COOKIE_1 = 1;
-    private static final long COOKIE_2 = 2;
-    private static final long COOKIE_3 = 3;
-    private static final long METER_ID_1 = 4;
-    private static final long METER_ID_2 = 5;
-    private static final long METER_ID_3 = 6;
-    private static final ValidateGroupsResult EMPTY_VALIDATE_GROUPS_RESULT = new ValidateGroupsResult(
-            newArrayList(), newArrayList(), newArrayList(), newArrayList());
-    private static final ValidateRulesResult EMPTY_VALIDATE_RULES_RESULT = new ValidateRulesResult(
-            newHashSet(), newHashSet(), newHashSet(), newHashSet());
-    private static final ValidateLogicalPortsResult EMPTY_LOGICAL_PORTS_RESULT = new ValidateLogicalPortsResult(
-            newArrayList(), newArrayList(), newArrayList(), newArrayList());
-
     @Test
-    public void getModifyDefaultMetersWithMissingRulesTest() {
-        ValidateRulesResult validateRulesResult = new ValidateRulesResult(
-                newHashSet(COOKIE_1), newHashSet(), newHashSet(), newHashSet(COOKIE_2));
+    public void cleanupDependenciesAndBuildCommandBatchesSmallBatchTest() {
+        SwitchSyncFsm fsm = buildFsm(2);
 
-        ArrayList<MeterInfoEntry> misconfiguredMeters = newArrayList(
-                MeterInfoEntry.builder().cookie(COOKIE_1).meterId(METER_ID_1).build(),
-                MeterInfoEntry.builder().cookie(COOKIE_2).meterId(METER_ID_2).build(),
-                MeterInfoEntry.builder().cookie(COOKIE_3).meterId(METER_ID_3).build());
+        FlowSpeakerData command1 = buildFlowSpeakerCommandData();
+        FlowSpeakerData command2 = buildFlowSpeakerCommandData();
+        FlowSpeakerData command3 = buildFlowSpeakerCommandData(command1.getUuid(), command2.getUuid());
 
-        ValidateMetersResult validateMetersResult = new ValidateMetersResult(
-                newArrayList(), misconfiguredMeters, newArrayList(), newArrayList());
+        List<List<OfCommand>> result = fsm.cleanupDependenciesAndBuildCommandBatches(
+                newArrayList(command1, command2, command3));
 
-        ValidationResult validationResult = new ValidationResult(new ArrayList<>(), true,
-                validateRulesResult, validateMetersResult, EMPTY_VALIDATE_GROUPS_RESULT, EMPTY_LOGICAL_PORTS_RESULT);
-
-        SwitchSyncFsm fsm = new SwitchSyncFsm(null, null, null,
-                new SwitchValidateRequest(SWITCH_ID, true, true, true), validationResult);
-
-        List<Long> modifyMeters = fsm.getModifyDefaultMeters();
-        assertEquals(1, modifyMeters.size());
-        assertEquals(METER_ID_3, modifyMeters.get(0).longValue());
+        assertEquals(1, result.size());
+        assertEquals(3, result.get(0).size());
+        assertEquals(command3.getUuid(), ((FlowCommand) result.get(0).get(2)).getData().getUuid());
     }
 
     @Test
-    public void getModifyDefaultMetersWithFlowMeters() {
-        ArrayList<MeterInfoEntry> misconfiguredMeters = newArrayList(
-                MeterInfoEntry.builder().cookie(COOKIE_1).meterId((long) MeterId.MIN_FLOW_METER_ID).build());
+    public void cleanupDependenciesAndBuildCommandBatchesFullBatchTest() {
+        SwitchSyncFsm fsm = buildFsm(5);
 
-        ValidateMetersResult validateMetersResult = new ValidateMetersResult(
-                newArrayList(), misconfiguredMeters, newArrayList(), newArrayList());
+        FlowSpeakerData command1 = buildFlowSpeakerCommandData();
+        FlowSpeakerData command2 = buildFlowSpeakerCommandData();
+        FlowSpeakerData command3 = buildFlowSpeakerCommandData(command1.getUuid(), command2.getUuid());
+        FlowSpeakerData command4 = buildFlowSpeakerCommandData();
+        FlowSpeakerData command5 = buildFlowSpeakerCommandData();
+        FlowSpeakerData command6 = buildFlowSpeakerCommandData();
 
-        ValidationResult validationResult = new ValidationResult(new ArrayList<>(), true,
-                EMPTY_VALIDATE_RULES_RESULT, validateMetersResult, EMPTY_VALIDATE_GROUPS_RESULT,
-                EMPTY_LOGICAL_PORTS_RESULT);
+        List<List<OfCommand>> result = fsm.cleanupDependenciesAndBuildCommandBatches(
+                newArrayList(command1, command2, command3, command4, command5, command6));
 
-        SwitchSyncFsm fsm = new SwitchSyncFsm(null, null, null,
-                new SwitchValidateRequest(SWITCH_ID, true, true, true), validationResult);
+        assertEquals(2, result.size());
+        assertEquals(5, result.get(0).size());
+        assertEquals(1, result.get(1).size());
+    }
 
-        assertTrue(fsm.getModifyDefaultMeters().isEmpty());
+    @Test
+    public void cleanupDependenciesAndBuildCommandBatchesMixedBatchTest() {
+        SwitchSyncFsm fsm = buildFsm(3);
+
+        FlowSpeakerData command1 = buildFlowSpeakerCommandData();
+        FlowSpeakerData command2 = buildFlowSpeakerCommandData(command1.getUuid());
+        FlowSpeakerData command3 = buildFlowSpeakerCommandData();
+        FlowSpeakerData command4 = buildFlowSpeakerCommandData(command3.getUuid());
+        FlowSpeakerData command5 = buildFlowSpeakerCommandData();
+        FlowSpeakerData command6 = buildFlowSpeakerCommandData(command5.getUuid());
+        FlowSpeakerData command7 = buildFlowSpeakerCommandData(command5.getUuid());
+        FlowSpeakerData command8 = buildFlowSpeakerCommandData(command5.getUuid());
+
+        List<List<OfCommand>> result = fsm.cleanupDependenciesAndBuildCommandBatches(
+                newArrayList(command1, command2, command3, command4, command5, command6, command7, command8));
+
+        assertEquals(3, result.size());
+        assertEquals(2, result.get(0).size());
+        assertEquals(2, result.get(1).size());
+        assertEquals(4, result.get(2).size());
+    }
+
+    private SwitchSyncFsm buildFsm(int batchSize) {
+        SwitchValidateRequest request = new SwitchValidateRequest(new SwitchId(1), true,
+                true, Collections.emptySet());
+        return new SwitchSyncFsm(null, null, null, request, new ValidationResult(
+                null, false, null, null, null, null, null, null, null, null), new SwitchSyncConfig(batchSize));
+    }
+
+    private FlowSpeakerData buildFlowSpeakerCommandData(UUID... dependsOnUuid) {
+        return FlowSpeakerData.builder()
+                .uuid(UUID.randomUUID())
+                .dependsOn(dependsOnUuid == null ? newArrayList() : newArrayList(dependsOnUuid))
+                .build();
     }
 }

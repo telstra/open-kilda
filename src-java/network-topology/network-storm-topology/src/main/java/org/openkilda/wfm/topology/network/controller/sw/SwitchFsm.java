@@ -35,7 +35,9 @@ import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
+import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SpeakerRepository;
 import org.openkilda.persistence.repositories.SwitchConnectRepository;
@@ -86,6 +88,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private final SwitchConnectRepository switchConnectRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
+    private final KildaFeatureTogglesRepository kildaFeatureTogglesRepository;
     private final SpeakerRepository speakerRepository;
 
     @Getter
@@ -119,8 +122,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.switchConnectRepository = repositoryFactory.createSwitchConnectRepository();
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
-        this.kildaConfigurationRepository = repositoryFactory
-                .createKildaConfigurationRepository();
+        this.kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
+        this.kildaFeatureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
         this.speakerRepository = repositoryFactory.createSpeakerRepository();
 
         this.switchId = switchId;
@@ -250,7 +253,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     public void handlePortAdd(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                               SwitchFsmContext context) {
-        AbstractPort port = makePortRecord(Endpoint.of(switchId, context.getPortNumber()));
+        AbstractPort port = makePortRecord(Endpoint.of(switchId, context.getPortNumber()),
+                context.getPortMaxSpeed(), context.getPortCurrentSpeed());
         log.info("Receive port-add notification for {}", port);
 
         portAdd(port, context);
@@ -263,6 +267,17 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         }
         port.setLinkStatus(isPortEnabled ? LinkStatus.UP : LinkStatus.DOWN);
         updatePortLinkMode(port, context);
+    }
+
+    public void handlePortUpdate(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                 SwitchFsmContext context) {
+        AbstractPort port = portByNumber.get(context.getPortNumber());
+        if (port == null) {
+            log.error("Port {} is not listed into {}", context.getPortNumber(), switchId);
+            return;
+        }
+        log.info("Receive port-update notification for {}", port.getEndpoint());
+        portUpdate(port, context);
     }
 
     public void handlePortDel(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
@@ -382,7 +397,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     private void performActionsDependingOnAttemptsCount(SwitchFsmContext context) {
-        if (syncAttempts <= 0) {
+        if (syncAttempts <= 0 || !kildaFeatureTogglesRepository.getOrDefault().getSyncSwitchOnConnect()) {
             fire(SwitchFsmEvent.SYNC_ENDED, context);
         } else {
             initSync(context);
@@ -444,6 +459,16 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         portByNumber.put(port.getPortNumber(), port);
         port.portAdd(context.getOutput());
         logWrapper.onPortAdd(port);
+
+        return port;
+    }
+
+    private AbstractPort portUpdate(AbstractPort port, SwitchFsmContext context) {
+        logWrapper.onPortUpdate(port);
+        port.setMaxSpeed(context.getPortMaxSpeed());
+        port.setCurrentSpeed(context.getPortCurrentSpeed());
+
+        port.portUpdate(context.getOutput());
 
         return port;
     }
@@ -518,9 +543,23 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     private void persistSwitchConnections(SwitchAvailabilityData availabilityData) {
+        RetryPolicy<?> retryPolicy = new RetryPolicy<>()
+                .handle(RecoverablePersistenceException.class, ConstraintViolationException.class)
+                .withMaxRetries(-1)  // removing default(==2) retries limit
+                .withMaxDuration(Duration.ofSeconds(options.getDbRepeatMaxDurationSeconds()))
+                .withDelay(Duration.ofMillis(20))
+                .withJitter(Duration.ofMillis(8))
+                .onRetry(
+                        e -> log.warn(
+                                "Failure updating switch connection's set {} - {}. Retrying #{}...",
+                                switchId, e.getLastFailure().getMessage(), e.getAttemptCount()))
+                .onRetriesExceeded(
+                        e -> log.error(
+                                "Failed to update switch {} connection's set, DB data is not actual now",
+                                switchId, e.getFailure()));
+
         transactionManager.doInTransaction(
-                transactionRetryPolicy,
-                () -> persistSwitchConnections(lookupSwitchCreateIfMissing(), availabilityData));
+                retryPolicy, () -> persistSwitchConnections(lookupSwitchCreateIfMissing(), availabilityData));
     }
 
     private void persistSwitchConnections(Switch sw, SwitchAvailabilityData availabilityData) {
@@ -598,15 +637,16 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     private AbstractPort makePortRecord(SpeakerSwitchPortView speakerPort) {
-        AbstractPort port = makePortRecord(Endpoint.of(switchId, speakerPort.getNumber()));
+        AbstractPort port = makePortRecord(Endpoint.of(switchId, speakerPort.getNumber()), speakerPort.getMaxSpeed(),
+                speakerPort.getCurrentSpeed());
         port.setLinkStatus(LinkStatus.of(speakerPort.getState()));
         return port;
     }
 
-    private AbstractPort makePortRecord(Endpoint endpoint) {
+    private AbstractPort makePortRecord(Endpoint endpoint, Long maxSpeed, Long currentSpeed) {
         AbstractPort record;
         if (isPhysicalPort(endpoint.getPortNumber())) {
-            record = new PhysicalPort(endpoint);
+            record = new PhysicalPort(endpoint, maxSpeed, currentSpeed);
         } else if (isBfdPort(endpoint.getPortNumber())) {
             record = new LogicalBfdPort(endpoint, endpoint.getPortNumber() - options.getBfdLogicalPortOffset());
         } else if (isLagPort(endpoint.getPortNumber())) {
@@ -709,6 +749,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
             builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_ADD)
                     .callMethod("handlePortAdd");
+            builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_DATA)
+                    .callMethod("handlePortUpdate");
             builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_DEL)
                     .callMethod("handlePortDel");
             builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_UP)
@@ -755,6 +797,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         private Integer portNumber;
         private Boolean portEnabled;
+        private Long portMaxSpeed;
+        private Long portCurrentSpeed;
 
         private Boolean isRegionOffline;
         private boolean missingInPeriodicDumps;
@@ -779,7 +823,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         ONLINE, OFFLINE,
         CONNECTIONS_UPDATE,
 
-        PORT_ADD, PORT_DEL, PORT_UP, SWITCH_REMOVE, PORT_DOWN
+        PORT_ADD, PORT_DEL, PORT_UP, SWITCH_REMOVE, PORT_DOWN, PORT_DATA
     }
 
     public enum SwitchFsmState {

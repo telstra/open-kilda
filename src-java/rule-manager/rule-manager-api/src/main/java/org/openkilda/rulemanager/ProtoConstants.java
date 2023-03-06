@@ -15,6 +15,10 @@
 
 package org.openkilda.rulemanager;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -26,10 +30,11 @@ public final class ProtoConstants {
         public static final long IPv4 = 0x0800;
         public static final long LLDP = 0x88CC;
         public static final long ARP = 0x0806;
+        public static final long SLOW_PROTOCOLS = 0x8809;
     }
 
     public static final class IpProto {
-        public static final long UDP_IP_PROTO = 17;
+        public static final long UDP = 17;
     }
 
     public static final class Mask {
@@ -40,9 +45,17 @@ public final class ProtoConstants {
     @Getter
     @EqualsAndHashCode(of = {"portNumber", "portType"})
     @ToString
+    @JsonNaming(SnakeCaseStrategy.class)
     public static class PortNumber {
         private int portNumber;
         private SpecialPortType portType;
+
+        @JsonCreator
+        public PortNumber(@JsonProperty("port_number") int portNumber,
+                          @JsonProperty("port_type") SpecialPortType portType) {
+            this.portNumber = portNumber;
+            this.portType = portType;
+        }
 
         public PortNumber(int number) {
             portNumber = number;
@@ -54,7 +67,10 @@ public final class ProtoConstants {
 
         public enum SpecialPortType {
             IN_PORT,
-            CONTROLLER
+            CONTROLLER,
+            LOCAL,
+            ALL,
+            FLOOD
         }
 
     }

@@ -15,11 +15,21 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
+import static java.lang.String.format;
+import static org.openkilda.messaging.model.FlowDirection.FORWARD;
+import static org.openkilda.messaging.model.FlowDirection.REVERSE;
+
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.FlowPingResponse.FlowPingResponseBuilder;
+import org.openkilda.messaging.info.flow.SubFlowPingPayload;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
+import org.openkilda.messaging.info.flow.UniSubFlowPingPayload;
+import org.openkilda.messaging.info.flow.YFlowPingResponse;
+import org.openkilda.messaging.model.FlowDirection;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.Group;
+import org.openkilda.wfm.topology.ping.model.Group.Type;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -28,8 +38,12 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 public class OnDemandResultManager extends ResultManager {
     public static final String BOLT_ID = ComponentId.ON_DEMAND_RESULT_MANAGER.toString();
@@ -45,12 +59,21 @@ public class OnDemandResultManager extends ResultManager {
     @Override
     protected void handleGroup(Tuple input) throws PipelineException {
         final Group group = pullPingGroup(input);
-        FlowPingResponse response;
+        if (group.getType() == Type.FLOW) {
+            handleFlowResponse(input, group);
+        } else if (group.getType() == Type.Y_FLOW) {
+            handleYFlowResponse(input, group);
+        } else {
+            unhandledInput(input);
+        }
+    }
+
+    private void handleFlowResponse(Tuple input, Group group) throws PipelineException {
         try {
-            response = collectResults(group);
+            FlowPingResponse response = collectResults(group);
             emit(input, response);
         } catch (IllegalArgumentException e) {
-            for (FlowPingResponse errorResponse : produceErrors(group, e.getMessage())) {
+            for (FlowPingResponse errorResponse : produceFlowErrors(group, e.getMessage())) {
                 emit(input, errorResponse);
             }
         }
@@ -71,14 +94,13 @@ public class OnDemandResultManager extends ResultManager {
                     builder.reverse(makeResponse(entry));
                     break;
                 default:
-                    throw new IllegalArgumentException(String.format(
-                            "Unsupported %s.%s value",
+                    throw new IllegalArgumentException(format("Unsupported %s.%s value",
                             entry.getDirection().getClass().getName(), entry.getDirection()));
             }
         }
 
         if (idSet.size() != 1) {
-            throw new IllegalArgumentException(String.format(
+            throw new IllegalArgumentException(format(
                     "Expect exact one flow id in pings group response, got - \"%s\"", String.join("\", \"", idSet)));
         }
         builder.flowId(idSet.iterator().next());
@@ -86,7 +108,7 @@ public class OnDemandResultManager extends ResultManager {
         return builder.build();
     }
 
-    private List<FlowPingResponse> produceErrors(Group group, String errorMessage) {
+    private List<FlowPingResponse> produceFlowErrors(Group group, String errorMessage) {
         HashSet<String> seen = new HashSet<>();
         ArrayList<FlowPingResponse> results = new ArrayList<>();
         for (PingContext pingContext : group.getRecords()) {
@@ -108,7 +130,85 @@ public class OnDemandResultManager extends ResultManager {
         return new UniFlowPingResponse(pingContext.getPing(), pingContext.getMeters(), pingContext.getError());
     }
 
-    private void emit(Tuple input, FlowPingResponse response) throws PipelineException {
+    private void handleYFlowResponse(Tuple input, Group group) throws PipelineException {
+        try {
+            YFlowPingResponse response = buildYFlowPingResponse(group);
+            emit(input, response);
+        } catch (IllegalArgumentException e) {
+            String yFlowId = group.getRecords().stream().map(PingContext::getYFlowId).filter(Objects::nonNull)
+                    .findFirst().orElse(null);
+            YFlowPingResponse errorResponse = new YFlowPingResponse(yFlowId, e.getMessage(), null);
+            emit(input, errorResponse);
+        }
+    }
+
+    private YFlowPingResponse buildYFlowPingResponse(Group group) {
+        Map<String, SubFlowPingPayload> subFlowMap = new HashMap<>();
+        Set<String> yFlowIdSet = new HashSet<>();
+
+        for (PingContext record : group.getRecords()) {
+            if (record.getYFlowId() == null) {
+                throw new IllegalArgumentException(format("Ping report %s has no yFlowId", record));
+            }
+            yFlowIdSet.add(record.getYFlowId());
+            SubFlowPingPayload subFlow = subFlowMap.computeIfAbsent(record.getFlowId(),
+                    mappingFunction -> new SubFlowPingPayload(record.getFlowId(), null, null));
+
+            switch (record.getDirection()) {
+                case FORWARD:
+                    validateSubFlow(subFlow.getForward(), FORWARD, group, record, subFlow.getFlowId());
+                    subFlow.setForward(makeSubFlowPayload(record));
+                    break;
+                case REVERSE:
+                    validateSubFlow(subFlow.getReverse(), REVERSE, group, record, subFlow.getFlowId());
+                    subFlow.setReverse(makeSubFlowPayload(record));
+                    break;
+                default:
+                    throw new IllegalArgumentException(format("Unsupported %s.%s value",
+                            record.getDirection().getClass().getName(), record.getDirection()));
+            }
+        }
+
+        if (subFlowMap.size() * 2 != group.getRecords().size()) {
+            throw new IllegalArgumentException(format(
+                    "Expect %d unique Flow IDs in ping group responses, but got responses about %d Flows: %s",
+                    group.getRecords().size() / 2, subFlowMap.size(), subFlowMap.keySet()));
+        }
+
+        if (yFlowIdSet.size() != 1) {
+            throw new IllegalArgumentException(format(
+                    "Expect exact one Y Flow id in pings group response, got - %s", yFlowIdSet));
+        }
+
+        String error = oneSwitchFlowExists(subFlowMap) ? "One sub flow is one-switch flow" : null;
+
+        return new YFlowPingResponse(yFlowIdSet.iterator().next(), error, new ArrayList<>(subFlowMap.values()));
+    }
+
+    private boolean oneSwitchFlowExists(Map<String, SubFlowPingPayload> subFlowMap) {
+        //map size is odd means that one subflow was not included
+        return subFlowMap.size() % 2 == 1;
+    }
+
+    private void validateSubFlow(UniSubFlowPingPayload existPayloadPayload, FlowDirection direction,
+                                 Group group, PingContext pingContext, String flowId) {
+        if (existPayloadPayload != null) {
+            throw new IllegalArgumentException(
+                    format("Ping Group %s has 2 ping reports for %s direction of Flow %s. "
+                                    + "First report %s, Second report %s", group, direction, flowId,
+                            existPayloadPayload, pingContext));
+        }
+    }
+
+    private UniSubFlowPingPayload makeSubFlowPayload(PingContext pingContext) {
+        long latency = 0;
+        if (pingContext.getMeters() != null) {
+            latency = pingContext.getMeters().getNetworkLatency();
+        }
+        return new UniSubFlowPingPayload(pingContext.getError(), latency);
+    }
+
+    private void emit(Tuple input, InfoData response) throws PipelineException {
         Values output = new Values(response, pullContext(input));
         getOutput().emit(input, output);
     }

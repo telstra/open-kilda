@@ -3,12 +3,21 @@ title LAG port delete FSM
 
 [*] --> START
 
-START --> CREATE_GRPC_COMMAND : next
+START --> VALIDATE_REMOVE_REQUEST : next
 START --> FINISHED_WITH_ERROR : error
 
-CREATE_GRPC_COMMAND --> REMOVE_LAG_FROM_DB : lag_removed
-CREATE_GRPC_COMMAND --> FINISHED_WITH_ERROR : error
-CREATE_GRPC_COMMAND : enter / validate delete LAG port request, create GRPC command
+VALIDATE_REMOVE_REQUEST --> SPEAKER_COMMAND_SEND : next
+VALIDATE_REMOVE_REQUEST --> FINISHED_WITH_ERROR : error
+VALIDATE_REMOVE_REQUEST : enter / validate delete LAG port request, create GRPC command
+
+SPEAKER_COMMAND_SEND --> GRPC_COMMAND_SEND : skip_speaker_entities_removal
+SPEAKER_COMMAND_SEND --> GRPC_COMMAND_SEND : speaker_entities_removed
+SPEAKER_COMMAND_SEND --> FINISHED_WITH_ERROR : error
+SPEAKER_COMMAND_SEND : enter / send remove commands to speaker
+
+GRPC_COMMAND_SEND --> REMOVE_LAG_FROM_DB : lag_removed
+GRPC_COMMAND_SEND --> FINISHED_WITH_ERROR : error
+GRPC_COMMAND_SEND : enter / send command to GRPC
 
 REMOVE_LAG_FROM_DB --> FINISHED : next
 REMOVE_LAG_FROM_DB --> FINISHED_WITH_ERROR : error

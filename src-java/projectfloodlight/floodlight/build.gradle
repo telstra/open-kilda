@@ -1,10 +1,10 @@
 plugins {
     id 'java-base'
-    id 'org.ajoberstar.grgit' version '4.1.0' apply false
+    id 'org.ajoberstar.grgit' version '4.1.1' apply false
 }
 
 group = 'org.projectfloodlight'
-def versionTag = '1.3-kilda-2'
+def versionTag = '1.3-kilda-3'
 
 import org.ajoberstar.grgit.Grgit
 
@@ -33,25 +33,28 @@ repositories {
 }
 
 task cloneFloodlightRepo {
-    def repo = file('floodlight')
-    outputs.dir(repo)
+    outputs.dir('floodlight')
+    outputs.upToDateWhen { false }
 
-    if (repo.exists()) {
-        try {
-            def grgit = Grgit.open(currentDir: repo.absolutePath)
-            grgit.fetch()
-            grgit.checkout(branch: versionTag)
+    doLast {
+        def repo = file('floodlight')
+        if (repo.exists() && repo.list()) {
+            try {
+                def grgit = Grgit.open(currentDir: repo.absolutePath)
+                grgit.fetch()
+                grgit.checkout(branch: versionTag)
+                grgit.close()
+            } catch (Exception e) {
+                throw new GradleException("Failed to fetch floodlight from git: $e.message")
+            }
+        } else {
+            def repoUri = 'https://github.com/kilda/floodlight.git'
+            if (project.hasProperty('floodlightGitRepo')) {
+                repoUri = project.property('floodlightGitRepo')
+            }
+            def grgit = Grgit.clone(dir: repo.absolutePath, uri: repoUri, refToCheckout: versionTag)
             grgit.close()
-        } catch (Exception e) {
-            logger.warn("Failed to fetch floodlight from git: {}", e.getMessage())
         }
-    } else {
-        def repoUri = 'https://github.com/kilda/floodlight.git'
-        if (project.hasProperty("floodlightGitRepo")) {
-            repoUri = project.property("floodlightGitRepo")
-        }
-        def grgit = Grgit.clone(dir: repo.absolutePath, uri: repoUri, refToCheckout: versionTag)
-        grgit.close()
     }
 }
 

@@ -27,24 +27,35 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.haflows.HaFlow;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.links.BfdProperties;
 import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
-import org.openkilda.northbound.dto.v2.switches.CreateLagPortDto;
-import org.openkilda.northbound.dto.v2.switches.LagPortDto;
+import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
+import org.openkilda.northbound.dto.v2.switches.LagPortResponse;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto;
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlow;
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingPayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult;
 
 import java.util.Date;
 import java.util.List;
@@ -113,11 +124,15 @@ public interface NorthboundServiceV2 {
 
     SwitchPropertiesDump getAllSwitchProperties();
 
-    List<LagPortDto> getLagLogicalPort(SwitchId switchId);
+    List<LagPortResponse> getLagLogicalPort(SwitchId switchId);
 
-    LagPortDto createLagLogicalPort(SwitchId switchId, CreateLagPortDto payload);
+    LagPortResponse createLagLogicalPort(SwitchId switchId, LagPortRequest payload);
 
-    LagPortDto deleteLagLogicalPort(SwitchId switchId, Integer logicalPortNumber);
+    LagPortResponse updateLagLogicalPort(SwitchId switchId, Integer logicalPortNumber, LagPortRequest payload);
+
+    LagPortResponse deleteLagLogicalPort(SwitchId switchId, Integer logicalPortNumber);
+
+    SwitchFlowsPerPortResponse getSwitchFlows(SwitchId switchId, List<Integer> portIds);
 
     //links
     BfdPropertiesPayload setLinkBfd(TopologyDefinition.Isl isl);
@@ -135,6 +150,7 @@ public interface NorthboundServiceV2 {
 
     BfdPropertiesPayload getLinkBfd(TopologyDefinition.Isl isl);
 
+    //y-flows
     YFlow getYFlow(String yFlowId);
 
     List<YFlow> getAllYFlows();
@@ -148,4 +164,31 @@ public interface NorthboundServiceV2 {
     YFlow deleteYFlow(String yFlowId);
 
     YFlowRerouteResult rerouteYFlow(String yFlowId);
+
+    YFlowPaths getYFlowPaths(String yFlowId);
+
+    YFlowValidationResult validateYFlow(String yFlowId);
+
+    YFlowSyncResult synchronizeYFlow(String yFlowId);
+
+    YFlowPingResult pingYFlow(String yFlowId, YFlowPingPayload payload);
+
+    YFlow swapYFlowPaths(String yFlowId);
+
+    SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId);
+
+    SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId, String include, String exclude);
+
+    //ha-flows
+    HaFlow getHaFlow(String haFlowId);
+
+    List<HaFlow> getAllHaFlows();
+
+    HaFlow addHaFlow(HaFlowCreatePayload request);
+
+    HaFlow updateHaFlow(String haFlowId, HaFlowUpdatePayload request);
+
+    HaFlow partialUpdateHaFlow(String haFlowId, HaFlowPatchPayload request);
+
+    HaFlow deleteHaFlow(String haFlowId);
 }

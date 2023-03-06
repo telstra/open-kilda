@@ -22,7 +22,7 @@ import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.PACKET_
 import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.PORT_STATS_METRIC_GEN_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.SERVER42_STATS_FLOW_RTT_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.SERVER42_STATS_FLOW_RTT_SPOUT;
-import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.STATS_FLOW_CACHE_BOLT;
+import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.STATS_CACHE_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.STATS_FLOW_NOTIFY_SPOUT;
 import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.STATS_GRPC_SPEAKER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.STATS_KILDA_SPEAKER_BOLT;
@@ -40,7 +40,7 @@ import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.stats.bolts.FlowCacheBolt;
+import org.openkilda.wfm.topology.stats.bolts.CacheBolt;
 import org.openkilda.wfm.topology.stats.bolts.SpeakerStatsRouterBolt;
 import org.openkilda.wfm.topology.stats.bolts.StatsRequesterBolt;
 import org.openkilda.wfm.topology.stats.bolts.TickBolt;
@@ -147,46 +147,38 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 STATS_FLOW_NOTIFY_SPOUT.name());
 
         declareBolt(topologyBuilder,
-                new FlowCacheBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID), STATS_FLOW_CACHE_BOLT.name())
-                .shuffleGrouping(STATS_FLOW_NOTIFY_SPOUT.name())
-                .fieldsGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.TO_CACHE_STREAM,
-                        SpeakerStatsRouterBolt.STATS_FIELDS)
+                new CacheBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID), STATS_CACHE_BOLT.name())
+                .allGrouping(STATS_FLOW_NOTIFY_SPOUT.name())
+                .shuffleGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.TO_CACHE_STREAM)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void outgoingStatsBolts(TopologyBuilder topologyBuilder) {
         declareBolt(topologyBuilder,
                 new PortMetricGenBolt(topologyConfig.getMetricPrefix()), PORT_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.PORT_STATS_STREAM,
-                        SpeakerStatsRouterBolt.STATS_WITH_MESSAGE_FIELDS);
+                .shuffleGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.PORT_STATS_STREAM);
         declareBolt(topologyBuilder,
                 new MeterConfigMetricGenBolt(topologyConfig.getMetricPrefix()), METER_CFG_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.METER_CFG_STATS_STREAM,
-                        SpeakerStatsRouterBolt.STATS_WITH_MESSAGE_FIELDS);
+                .shuffleGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.METER_CFG_STATS_STREAM);
         declareBolt(topologyBuilder,
                 new SystemRuleMetricGenBolt(topologyConfig.getMetricPrefix()), SYSTEM_RULE_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.SYSTEM_RULES_STATS_STREAM,
-                        SpeakerStatsRouterBolt.STATS_FIELDS);
+                .shuffleGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.SYSTEM_RULES_STATS_STREAM);
         declareBolt(topologyBuilder,
                 new TableStatsMetricGenBolt(topologyConfig.getMetricPrefix()), TABLE_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.TABLE_STATS_STREAM,
-                        SpeakerStatsRouterBolt.STATS_FIELDS);
+                .shuffleGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.TABLE_STATS_STREAM);
         declareBolt(topologyBuilder,
                 new PacketInOutMetricGenBolt(topologyConfig.getMetricPrefix()),
                 PACKET_IN_OUT_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.PACKET_IN_OUT_STATS_STREAM,
-                        SpeakerStatsRouterBolt.STATS_FIELDS);
+                .shuffleGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.PACKET_IN_OUT_STATS_STREAM);
     }
 
     private void outgoingStatsWithCacheBolts(TopologyBuilder topologyBuilder) {
         declareBolt(topologyBuilder,
                 new FlowMetricGenBolt(topologyConfig.getMetricPrefix()), FLOW_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_FLOW_CACHE_BOLT.name(), FlowCacheBolt.FLOW_STATS_STREAM,
-                        FlowCacheBolt.STATS_WITH_CACHED_FIELDS);
+                .shuffleGrouping(STATS_CACHE_BOLT.name(), CacheBolt.FLOW_STATS_STREAM);
         declareBolt(topologyBuilder,
                 new MeterStatsMetricGenBolt(topologyConfig.getMetricPrefix()), METER_STATS_METRIC_GEN_BOLT.name())
-                .fieldsGrouping(STATS_FLOW_CACHE_BOLT.name(), FlowCacheBolt.METER_STATS_STREAM,
-                        FlowCacheBolt.STATS_WITH_CACHED_FIELDS);
+                .shuffleGrouping(STATS_CACHE_BOLT.name(), CacheBolt.METER_STATS_STREAM);
     }
 
     private void openTsdbBolt(TopologyBuilder topologyBuilder) {
@@ -211,12 +203,12 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
     private void zooKeeperBolt(TopologyBuilder topologyBuilder) {
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
                 getZookeeperConfig(), getBoltInstancesCount(STATS_REQUESTER_BOLT.name(),
-                STATS_OFS_ROUTER_BOLT.name(), SERVER42_STATS_FLOW_RTT_METRIC_GEN.name(), STATS_FLOW_CACHE_BOLT.name()));
+                STATS_OFS_ROUTER_BOLT.name(), SERVER42_STATS_FLOW_RTT_METRIC_GEN.name(), STATS_CACHE_BOLT.name()));
         declareBolt(topologyBuilder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(STATS_REQUESTER_BOLT.name(), StatsRequesterBolt.ZOOKEEPER_STREAM)
                 .allGrouping(STATS_OFS_ROUTER_BOLT.name(), SpeakerStatsRouterBolt.ZOOKEEPER_STREAM)
                 .allGrouping(SERVER42_STATS_FLOW_RTT_METRIC_GEN.name(), FlowRttMetricGenBolt.ZOOKEEPER_STREAM)
-                .allGrouping(STATS_FLOW_CACHE_BOLT.name(), FlowCacheBolt.ZOOKEEPER_STREAM);
+                .allGrouping(STATS_CACHE_BOLT.name(), CacheBolt.ZOOKEEPER_STREAM);
     }
 
     @Override
@@ -244,7 +236,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         TABLE_STATS_METRIC_GEN_BOLT,
         PACKET_IN_OUT_STATS_METRIC_GEN_BOLT,
 
-        STATS_FLOW_CACHE_BOLT,
+        STATS_CACHE_BOLT,
         STATS_FLOW_NOTIFY_SPOUT,
 
         STATS_OPENTSDB_BOLT

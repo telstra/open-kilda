@@ -27,7 +27,7 @@ import org.mapstruct.Mapper;
 public interface PathMapper {
 
     default PathDto mapToPath(Path data) {
-        return new PathDto(data.getBandwidth(), data.getLatency(), data.getNodes());
+        return new PathDto(data.getBandwidth(), data.getLatency(), data.getNodes(), data.getIsBackupPath());
     }
 
     GroupFlowPathPayload mapGroupFlowPathPayload(FlowPathDto data);

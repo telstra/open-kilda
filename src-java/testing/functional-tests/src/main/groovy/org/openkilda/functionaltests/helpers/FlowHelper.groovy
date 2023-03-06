@@ -1,10 +1,13 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.messaging.payload.flow.PathNodePayload
+import org.openkilda.model.SwitchId
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
+import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.SINGLE_TABLE_ID
 import static org.openkilda.testing.Constants.TRANSIT_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -16,7 +19,6 @@ import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.Flow
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -30,10 +32,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
-import org.springframework.web.client.HttpClientErrorException
 
 import java.text.SimpleDateFormat
-
 /**
  * Holds utility methods for manipulating flows.
  */
@@ -131,8 +131,15 @@ class FlowHelper {
     FlowPayload addFlow(FlowPayload flow) {
         log.debug("Adding flow '${flow.id}'")
         def response = northbound.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         return response
+    }
+
+    List<Integer> "get ports that flow uses on switch from path" (String flowId, SwitchId switchId) {
+        def response = northbound.getFlowPath(flowId)
+        def paths = response.forwardPath + response.reversePath + (response.protectedPath as PathNodePayload)
+        return paths.findAll{it != null && it.getSwitchId() == switchId}
+                .inject([].toSet()) {result, i -> result + [i.inputPort, i.outputPort]}.asList()
     }
 
     /**
@@ -143,7 +150,7 @@ class FlowHelper {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
         log.debug("Deleting flow '$flowId'")
         def response = northbound.deleteFlow(flowId)
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             assert !northbound.getFlowStatus(flowId)
             assert northbound.getFlowHistory(flowId).find { it.payload.last().action == DELETE_SUCCESS }
         }
@@ -157,7 +164,7 @@ class FlowHelper {
     FlowPayload updateFlow(String flowId, FlowPayload flow) {
         log.debug("Updating flow '${flowId}'")
         def response = northbound.updateFlow(flowId, flow)
-        Wrappers.wait(PATH_INSTALLATION_TIME) { assert northbound.getFlowStatus(flowId).status == FlowState.UP }
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flowId).status == FlowState.UP }
         return response
     }
 

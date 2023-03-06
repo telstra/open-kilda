@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
@@ -104,15 +105,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                         field   : "pinned",
                         newValue: true
                 ],
-                //https://github.com/telstra/open-kilda/issues/3896
-//                [
-//                        field   : "pathComputationStrategy",
-//                        newValue: PathComputationStrategy.LATENCY.toString().toLowerCase()
-//                ],
-//                [
-//                        field   : "ignoreBandwidth",
-//                        newValue: true
-//                ]
                 [
                         field   : "description",
                         newValue: "updated"
@@ -312,14 +304,12 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The src switch passes switch validation"
         with(northbound.validateSwitch(srcSwitch.dpId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(srcSwitch.dpId, ["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(srcSwitch.dpId, ["missing", "excess", "misconfigured"])
+            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
-        def srcSwitchIsFine = true
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        !srcSwitchIsFine && northbound.synchronizeSwitch(srcSwitch.dpId, true)
     }
 
     @Tidy
@@ -366,24 +356,20 @@ class PartialUpdateSpec extends HealthCheckSpecification {
             it.reverse.pingSuccess
         }
 
-        //issue with excess rules: https://github.com/telstra/open-kilda/issues/4055
-//        and: "The new and old dst switches pass switch validation"
-//        Wrappers.wait(RULES_DELETION_TIME) {
-//            [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
-//                with(northbound.validateSwitch(switchId)) { validation ->
-//                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-//                }
-//            }
-//        }
-//        def dstSwitchesAreFine = true
+        and: "The new and old dst switches pass switch validation"
+        Wrappers.wait(RULES_DELETION_TIME) {
+            [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
+                with(northbound.validateSwitch(switchId)) { validation ->
+                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+                }
+            }
+        }
         def dstSwitchesAreFine = false
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        !dstSwitchesAreFine && dstSwitch && newDstSwitch && [dstSwitch, newDstSwitch]*.dpId.each {
-            northbound.synchronizeSwitch(it, true)
-        }
+        !dstSwitchesAreFine && [dstSwitch, newDstSwitch]*.dpId.each { northbound.synchronizeSwitch(it, true) }
     }
 
     @Tidy
@@ -472,14 +458,12 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The switch passes switch validation"
         with(northbound.validateSwitch(flow.source.switchId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
+            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
-        def switchIsFine = true
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        !switchIsFine && northbound.synchronizeSwitch(flow.source.switchId, true)
     }
 
     @Tidy
@@ -535,14 +519,12 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The switch passes switch validation"
         with(northbound.validateSwitch(flow.source.switchId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(flow.source.switchId, ["missing", "excess", "misconfigured"])
+            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
-        def switchIsFine = true
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        !switchIsFine && northbound.synchronizeSwitch(flow.source.switchId, true)
     }
 
     @Tidy
@@ -565,6 +547,9 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         expect northboundV2.getFlow(flow.flowId), sameBeanAs(flowBeforeUpdate)
                 .ignoring("lastUpdated")
                 .ignoring("diverseWith")
+                .ignoring("latencyLastModifiedTime")
+                .ignoring("forwardPathLatencyNs")
+                .ignoring("reversePathLatencyNs")
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
@@ -599,6 +584,9 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         then: "Flow is left intact"
         expect northboundV2.getFlow(flow.flowId), sameBeanAs(flowBeforeUpdate)
                 .ignoring("lastUpdated")
+                .ignoring("latencyLastModifiedTime")
+                .ignoring("forwardPathLatencyNs")
+                .ignoring("reversePathLatencyNs")
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
@@ -771,7 +759,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(LOW_PRIORITY)
-    @Ignore("https://github.com/telstra/open-kilda/issues/4411")
     def "Able to update vlanId via partialUpdate in case vlanId==0 and innerVlanId!=0"() {
         given: "A default flow"
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")

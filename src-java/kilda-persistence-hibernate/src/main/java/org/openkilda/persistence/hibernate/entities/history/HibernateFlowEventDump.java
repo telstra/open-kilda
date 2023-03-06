@@ -18,9 +18,10 @@ package org.openkilda.persistence.hibernate.entities.history;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.MirrorPointStatus;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.history.FlowEventDump.FlowEventDumpData;
 import org.openkilda.persistence.hibernate.entities.EntityBase;
 import org.openkilda.persistence.hibernate.entities.JsonPayloadBase;
@@ -31,6 +32,7 @@ import lombok.Setter;
 import lombok.experimental.Delegate;
 import org.hibernate.annotations.Type;
 
+import java.util.List;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -107,8 +109,9 @@ public class HibernateFlowEventDump extends EntityBase implements FlowEventDumpD
         private String flowId;
         private long bandwidth;
         private boolean ignoreBandwidth;
-        private Cookie forwardCookie;
-        private Cookie reverseCookie;
+        private boolean strictBandwidth;
+        private FlowSegmentCookie forwardCookie;
+        private FlowSegmentCookie reverseCookie;
 
         private SwitchId sourceSwitch;
         private int sourcePort;
@@ -136,6 +139,9 @@ public class HibernateFlowEventDump extends EntityBase implements FlowEventDumpD
         private FlowEncapsulationType encapsulationType;
         private PathComputationStrategy pathComputationStrategy;
         private Long maxLatency;
+        private Long maxLatencyTier2;
+        private Integer priority;
+        private List<MirrorPointStatus> mirrorPointStatuses;
 
         private SwitchId loopSwitchId;
     }

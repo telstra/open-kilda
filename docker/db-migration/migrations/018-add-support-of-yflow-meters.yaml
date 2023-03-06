@@ -1,0 +1,15 @@
+---
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: siakovenko
+      changes:
+        - tagDatabase:
+            tag: 018-add-support-of-yflow-meters
+  - changeSet:
+      id: remove_flowmeter_path_id_index
+      author: siakovenko
+      changes:
+        - sql: "DROP INDEX flow_meter.path_id IF EXISTS"
+      rollback:
+        - sql: "CREATE INDEX flow_meter.path_id UNIQUE_HASH_INDEX"

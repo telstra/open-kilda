@@ -19,12 +19,15 @@ import org.openkilda.model.Isl;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.model.OnlineStatus;
+import org.openkilda.wfm.topology.network.model.PortDataHolder;
 import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
 
-import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @EqualsAndHashCode(callSuper = true)
 public class PhysicalPort extends AbstractPort {
     private Isl history;
@@ -33,9 +36,19 @@ public class PhysicalPort extends AbstractPort {
         super(endpoint);
     }
 
+    PhysicalPort(Endpoint endpoint, long maxSpeed, long currentSpeed) {
+        super(endpoint, maxSpeed, currentSpeed);
+    }
+
     @Override
     public void portAdd(ISwitchCarrier carrier) {
         carrier.setupPortHandler(getEndpoint(), history);
+    }
+
+    @Override
+    public void portUpdate(ISwitchCarrier carrier) {
+        PortDataHolder portData = new PortDataHolder(getMaxSpeed(), getCurrentSpeed());
+        carrier.updatePortHandler(getEndpoint(), portData);
     }
 
     @Override
@@ -45,12 +58,14 @@ public class PhysicalPort extends AbstractPort {
 
     @Override
     public void updateOnlineStatus(ISwitchCarrier carrier, OnlineStatus onlineStatus) {
-        carrier.setOnlineMode(getEndpoint(), onlineStatus);
+        PortDataHolder portData = new PortDataHolder(getMaxSpeed(), getCurrentSpeed());
+        carrier.setOnlineMode(getEndpoint(), onlineStatus, portData);
     }
 
     @Override
     public void updatePortLinkMode(ISwitchCarrier carrier) {
-        carrier.setPortLinkMode(getEndpoint(), getLinkStatus());
+        PortDataHolder portData = new PortDataHolder(getMaxSpeed(), getCurrentSpeed());
+        carrier.setPortLinkMode(getEndpoint(), getLinkStatus(), portData);
     }
 
     @Override

@@ -15,27 +15,33 @@
 
 package org.openkilda.messaging.info.stats;
 
-import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.MeterId;
-import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.ToString;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * A base for path info messages.
  */
 @Getter
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = false)
-abstract class BaseFlowPathInfo extends InfoData {
+@ToString
+public abstract class BaseFlowPathInfo extends StatsNotification {
     @NonNull String flowId;
-    @NonNull Cookie cookie;
+    String yFlowId;
+    SwitchId yPointSwitchId;
+    @NonNull FlowSegmentCookie cookie;
     MeterId meterId;
     @NonNull List<PathNodePayload> pathNodes;
+    Set<Integer> statVlans;
+    boolean ingressMirror;
+    boolean egressMirror;
 }

@@ -155,6 +155,22 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     }
 
     private void networkToSpeaker(TopologyBuilder topology, TopologyOutput output) {
+        declareKafkaSpoutForAbstractMessage(topology,
+                kafkaTopics.getNetworkControlTopic(), ComponentType.SPEAKER_NETWORK_KAFKA_SPOUT);
+        declareControllerToSpeakerProxy(
+                topology, kafkaTopics.getNetworkControlRegionTopic(),
+                ComponentType.SPEAKER_NETWORK_KAFKA_SPOUT, ComponentType.SPEAKER_NETWORK_REQUEST_BOLT,
+                output.getKafkaHsOutput());
+
+        declareKafkaSpoutForAbstractMessage(topology,
+                makeRegionTopics(kafkaTopics.getNetworkControlResponseRegionTopic()),
+                ComponentType.KILDA_NETWORK_REQUEST_KAFKA_SPOUT);
+        declareSpeakerToControllerProxy(
+                topology, kafkaTopics.getNetworkControlResponseTopic(),
+                ComponentType.KILDA_NETWORK_REQUEST_KAFKA_SPOUT,
+                ComponentType.KILDA_NETWORK_RESPONSE_REPLY_BOLT,
+                output.getKafkaHsOutput());
+
         declareControllerToSpeakerProxy(
                 topology, kafkaTopics.getSpeakerDiscoRegionTopic(), kafkaTopics.getSpeakerDiscoTopic(),
                 ComponentType.SPEAKER_DISCO_KAFKA_SPOUT, ComponentType.SPEAKER_DISCO_REQUEST_BOLT,
@@ -216,6 +232,22 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
     }
 
     private void speakerToSwitchManager(TopologyBuilder topology, TopologyOutput output) {
+        declareKafkaSpoutForAbstractMessage(topology,
+                kafkaTopics.getSpeakerSwitchManagerTopic(), ComponentType.SPEAKER_SWITCH_MANAGER_KAFKA_SPOUT);
+        declareControllerToSpeakerProxy(
+                topology, kafkaTopics.getSpeakerSwitchManagerRegionTopic(),
+                ComponentType.SPEAKER_SWITCH_MANAGER_KAFKA_SPOUT, ComponentType.SPEAKER_SWITCH_MANAGER_REQUEST_BOLT,
+                output.getKafkaHsOutput());
+
+        declareKafkaSpoutForAbstractMessage(topology,
+                makeRegionTopics(kafkaTopics.getSwitchManagerSpeakerRegionTopic()),
+                ComponentType.KILDA_SWITCH_MANAGER_REQUEST_KAFKA_SPOUT);
+        declareSpeakerToControllerProxy(
+                topology, kafkaTopics.getSwitchManagerSpeakerTopic(),
+                ComponentType.KILDA_SWITCH_MANAGER_REQUEST_KAFKA_SPOUT,
+                ComponentType.KILDA_SWITCH_MANAGER_RESPONSE_REPLY_BOLT,
+                output.getKafkaHsOutput());
+
         declareSpeakerToControllerProxy(
                 topology, kafkaTopics.getTopoSwitchManagerRegionTopic(), kafkaTopics.getTopoSwitchManagerTopic(),
                 ComponentType.KILDA_SWITCH_MANAGER_KAFKA_SPOUT, ComponentType.KILDA_SWITCH_MANAGER_REPLY_BOLT,

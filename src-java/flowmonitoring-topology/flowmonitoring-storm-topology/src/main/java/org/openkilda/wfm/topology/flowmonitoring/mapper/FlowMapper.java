@@ -20,13 +20,14 @@ import org.openkilda.messaging.info.stats.FlowRttStatsData;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathSegment;
+import org.openkilda.wfm.share.utils.TimestampHelper;
 import org.openkilda.wfm.topology.flowmonitoring.model.FlowPathLatency;
 import org.openkilda.wfm.topology.flowmonitoring.model.FlowState;
 import org.openkilda.wfm.topology.flowmonitoring.model.Link;
 
+import lombok.NonNull;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.ReportingPolicy;
 import org.mapstruct.factory.Mappers;
 
 import java.util.ArrayList;
@@ -34,22 +35,26 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface FlowMapper {
-    FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
+@Mapper
+public abstract class FlowMapper {
+    public static final FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
 
-    @Mapping(target = "forwardPath", expression = "java(toLinks(flow.getForwardPath().getSegments()))")
-    @Mapping(target = "reversePath", expression = "java(toLinks(flow.getReversePath().getSegments()))")
-    FlowState toFlowState(Flow flow);
+    @Mapping(target = "forwardPath", source = "forwardPath.segments")
+    @Mapping(target = "reversePath", source = "reversePath.segments")
+    @Mapping(target = "forwardPathLatency", ignore = true)
+    @Mapping(target = "reversePathLatency", ignore = true)
+    public abstract FlowState toFlowState(Flow flow);
 
     @Mapping(target = "forwardPath", source = "info.flowPath.forwardPath")
     @Mapping(target = "reversePath", source = "info.flowPath.reversePath")
-    FlowState toFlowState(UpdateFlowCommand info);
+    @Mapping(target = "forwardPathLatency", ignore = true)
+    @Mapping(target = "reversePathLatency", ignore = true)
+    public abstract FlowState toFlowState(UpdateFlowCommand info);
 
     /**
      * Convert flow path representation.
      */
-    default List<Link> toLinks(List<PathSegment> pathSegments) {
+    protected List<Link> toLinks(List<PathSegment> pathSegments) {
         if (pathSegments == null) {
             return Collections.emptyList();
         }
@@ -59,7 +64,7 @@ public interface FlowMapper {
     /**
      * Convert flow path representation.
      */
-    default List<Link> pathNodesToLinks(List<PathNodePayload> pathSegments) {
+    protected List<Link> pathNodesToLinks(List<PathNodePayload> pathSegments) {
         List<Link> links = new ArrayList<>();
         for (int i = 0; i < pathSegments.size() - 1; i++) {
             links.add(Link.builder()
@@ -72,11 +77,15 @@ public interface FlowMapper {
         return links;
     }
 
-    Link toLink(PathSegment pathSegment);
+    public abstract Link toLink(PathSegment pathSegment);
 
-    @Mapping(target = "timestamp", expression = "java(org.openkilda.wfm.share.utils.TimestampHelper"
-            + ".noviflowTimestampToInstant(data.getT1()))")
-    @Mapping(target = "latency", expression = "java(org.openkilda.wfm.share.utils.TimestampHelper"
-            + ".noviflowTimestampsToDuration(data.getT0(), data.getT1()))")
-    FlowPathLatency toFlowPathLatency(FlowRttStatsData data);
+    /**
+     * Convert {@link FlowRttStatsData} to {@link FlowPathLatency}.
+     */
+    public FlowPathLatency toFlowPathLatency(@NonNull FlowRttStatsData data) {
+        FlowPathLatency latency = new FlowPathLatency();
+        latency.setTimestamp(TimestampHelper.noviflowTimestampToInstant(data.getT1()));
+        latency.setLatency(TimestampHelper.noviflowTimestampsToDuration(data.getT0(), data.getT1()));
+        return latency;
+    }
 }

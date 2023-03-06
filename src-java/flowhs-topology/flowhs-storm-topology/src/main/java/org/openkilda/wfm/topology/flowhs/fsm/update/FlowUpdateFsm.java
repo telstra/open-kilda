@@ -16,6 +16,9 @@
 package org.openkilda.wfm.topology.flowhs.fsm.update;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.pce.PathComputer;
@@ -65,33 +68,37 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.actions.ValidateFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.actions.ValidateIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.actions.ValidateNonIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
+import org.openkilda.wfm.topology.flowhs.service.FlowUpdateEventListener;
 import org.openkilda.wfm.topology.flowhs.service.FlowUpdateHubCarrier;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Getter
 @Setter
 @Slf4j
-public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, State, Event, FlowUpdateContext> {
-
-    private final FlowUpdateHubCarrier carrier;
-
+public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, State, Event, FlowUpdateContext,
+        FlowUpdateHubCarrier, FlowUpdateEventListener> {
     private RequestedFlow targetFlow;
 
     private FlowStatus originalFlowStatus;
     private String originalFlowStatusInfo;
     private String originalDiverseFlowGroup;
     private String originalAffinityFlowGroup;
-    private RequestedFlow originalFlow;
     private PathComputationStrategy oldTargetPathComputationStrategy;
 
     private FlowStatus newFlowStatus;
@@ -102,33 +109,10 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     private EndpointUpdate endpointUpdate = EndpointUpdate.NONE;
     private FlowLoopOperation flowLoopOperation = FlowLoopOperation.NONE;
 
-    public FlowUpdateFsm(CommandContext commandContext, FlowUpdateHubCarrier carrier, String flowId) {
-        super(commandContext, flowId);
-        this.carrier = carrier;
-    }
-
-    @Override
-    public void fireNext(FlowUpdateContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        setErrorReason(errorReason);
-        fire(errorEvent);
-    }
-
-    @Override
-    public void setErrorReason(String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: " + errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
+    public FlowUpdateFsm(@NonNull CommandContext commandContext, @NonNull FlowUpdateHubCarrier carrier,
+                         @NonNull String flowId,
+                         @NonNull Collection<FlowUpdateEventListener> eventListeners) {
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, flowId, eventListeners);
     }
 
     @Override
@@ -137,43 +121,30 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     }
 
     @Override
-    public void sendNorthboundResponse(Message message) {
-        carrier.sendNorthboundResponse(message);
-    }
-
-    @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
-    }
-
-    @Override
     protected String getCrudActionName() {
         return "update";
     }
 
     public void sendHubSwapEndpointsResponse(Message message) {
-        carrier.sendHubSwapEndpointsResponse(message);
+        getCarrier().sendHubSwapEndpointsResponse(message);
     }
 
     public static class Factory {
         private final StateMachineBuilder<FlowUpdateFsm, State, Event, FlowUpdateContext> builder;
         private final FlowUpdateHubCarrier carrier;
 
-        public Factory(FlowUpdateHubCarrier carrier, PersistenceManager persistenceManager,
-                       PathComputer pathComputer, FlowResourcesManager resourcesManager,
-                       int pathAllocationRetriesLimit, int pathAllocationRetryDelay, int resourceAllocationRetriesLimit,
-                       int speakerCommandRetriesLimit) {
+        public Factory(@NonNull FlowUpdateHubCarrier carrier, @NonNull Config config,
+                       @NonNull PersistenceManager persistenceManager,
+                       @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager resourcesManager) {
             this.carrier = carrier;
 
-
             builder = StateMachineBuilderFactory.create(FlowUpdateFsm.class, State.class, Event.class,
-                    FlowUpdateContext.class, CommandContext.class, FlowUpdateHubCarrier.class, String.class);
+                    FlowUpdateContext.class, CommandContext.class, FlowUpdateHubCarrier.class, String.class,
+                    Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
             final ReportErrorAction<FlowUpdateFsm, State, Event, FlowUpdateContext>
-                    reportErrorAction = new ReportErrorAction<>();
+                    reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
 
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
@@ -187,8 +158,9 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
 
             builder.transition().from(State.FLOW_UPDATED).to(State.PRIMARY_RESOURCES_ALLOCATED).on(Event.NEXT)
                     .perform(new AllocatePrimaryResourcesAction(persistenceManager,
-                            pathAllocationRetriesLimit, pathAllocationRetryDelay, resourceAllocationRetriesLimit,
-                            pathComputer, resourcesManager, dashboardLogger));
+                            config.getPathAllocationRetriesLimit(), config.getPathAllocationRetryDelay(),
+                            config.getResourceAllocationRetriesLimit(), pathComputer, resourcesManager,
+                            dashboardLogger));
             builder.transitions().from(State.FLOW_UPDATED)
                     .toAmong(State.REVERTING_FLOW, State.REVERTING_FLOW)
                     .onEach(Event.TIMEOUT, Event.ERROR);
@@ -199,8 +171,9 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
             builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.PROTECTED_RESOURCES_ALLOCATED)
                     .on(Event.NEXT)
                     .perform(new AllocateProtectedResourcesAction(persistenceManager,
-                            pathAllocationRetriesLimit, pathAllocationRetryDelay, resourceAllocationRetriesLimit,
-                            pathComputer, resourcesManager, dashboardLogger));
+                            config.getPathAllocationRetriesLimit(), config.getPathAllocationRetryDelay(),
+                            config.getResourceAllocationRetriesLimit(), pathComputer, resourcesManager,
+                            dashboardLogger));
             builder.transitions().from(State.PRIMARY_RESOURCES_ALLOCATED)
                     .toAmong(State.NEW_RULES_REVERTED, State.NEW_RULES_REVERTED, State.REVERTING_ALLOCATED_RESOURCES)
                     .onEach(Event.TIMEOUT, Event.ERROR, Event.NO_PATH_FOUND);
@@ -221,9 +194,9 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .perform(new SkipPathsAndResourcesDeallocationAction(persistenceManager));
 
             builder.internalTransition().within(State.INSTALLING_NON_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedInstallResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.internalTransition().within(State.INSTALLING_NON_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedInstallResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.INSTALLING_NON_INGRESS_RULES).to(State.NON_INGRESS_RULES_INSTALLED)
                     .on(Event.RULES_INSTALLED);
             builder.transitions().from(State.INSTALLING_NON_INGRESS_RULES)
@@ -240,9 +213,9 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .perform(new RevertMirrorPointsSettingAction(persistenceManager));
 
             builder.internalTransition().within(State.VALIDATING_NON_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit));
+                    .perform(new ValidateNonIngressRulesAction(config.getSpeakerCommandRetriesLimit()));
             builder.internalTransition().within(State.VALIDATING_NON_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new ValidateNonIngressRulesAction(speakerCommandRetriesLimit));
+                    .perform(new ValidateNonIngressRulesAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.VALIDATING_NON_INGRESS_RULES).to(State.NON_INGRESS_RULES_VALIDATED)
                     .on(Event.RULES_VALIDATED);
             builder.transitions().from(State.VALIDATING_NON_INGRESS_RULES)
@@ -271,9 +244,9 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .perform(new InstallIngressRulesAction(persistenceManager, resourcesManager));
 
             builder.internalTransition().within(State.INSTALLING_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedInstallResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.internalTransition().within(State.INSTALLING_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedInstallResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.INSTALLING_INGRESS_RULES).to(State.INGRESS_RULES_INSTALLED)
                     .on(Event.RULES_INSTALLED);
             builder.transition().from(State.INSTALLING_INGRESS_RULES).to(State.INGRESS_RULES_VALIDATED)
@@ -290,9 +263,9 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new ValidateIngressRulesAction(speakerCommandRetriesLimit));
+                    .perform(new ValidateIngressRulesAction(config.getSpeakerCommandRetriesLimit()));
             builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new ValidateIngressRulesAction(speakerCommandRetriesLimit));
+                    .perform(new ValidateIngressRulesAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.VALIDATING_INGRESS_RULES).to(State.INGRESS_RULES_VALIDATED)
                     .on(Event.RULES_VALIDATED);
             builder.transitions().from(State.VALIDATING_INGRESS_RULES)
@@ -315,9 +288,9 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.REMOVING_OLD_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedRemoveOrRevertResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.internalTransition().within(State.REMOVING_OLD_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedRemoveOrRevertResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.REMOVING_OLD_RULES).to(State.OLD_RULES_REMOVED)
                     .on(Event.RULES_REMOVED)
                     .perform(new SkipPathsAndResourcesDeallocationAction(persistenceManager));
@@ -354,7 +327,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
             builder.transition().from(State.UPDATING_FLOW_STATUS).to(State.FLOW_STATUS_UPDATED).on(Event.NEXT)
                     .perform(new UpdateFlowStatusAction(persistenceManager, dashboardLogger));
 
-            builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED).on(Event.NEXT);
+            builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.NOTIFY_FLOW_MONITOR).on(Event.NEXT);
             builder.transition().from(State.FLOW_STATUS_UPDATED)
                     .to(State.NOTIFY_FLOW_MONITOR_WITH_ERROR).on(Event.ERROR);
 
@@ -374,9 +347,9 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .perform(new RevertNewRulesAction(persistenceManager, resourcesManager));
 
             builder.internalTransition().within(State.REVERTING_NEW_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedRemoveOrRevertResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.internalTransition().within(State.REVERTING_NEW_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedRemoveOrRevertResponseAction(speakerCommandRetriesLimit));
+                    .perform(new OnReceivedRemoveOrRevertResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.REVERTING_NEW_RULES).to(State.NEW_RULES_REVERTED)
                     .on(Event.RULES_REMOVED)
                     .perform(new SkipPathsAndResourcesDeallocationAction(persistenceManager));
@@ -434,8 +407,34 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public FlowUpdateFsm newInstance(CommandContext commandContext, String flowId) {
-            FlowUpdateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+        public FlowUpdateFsm newInstance(@NonNull String flowId, @NonNull CommandContext commandContext,
+                                         @NonNull Collection<FlowUpdateEventListener> eventListeners) {
+            FlowUpdateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
+                    eventListeners);
+
+            fsm.addTransitionCompleteListener(event ->
+                    log.debug("FlowUpdateFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
+
+            if (fsm.getEventListeners() != null && !fsm.getEventListeners().isEmpty()) {
+                fsm.addTransitionCompleteListener(event -> {
+                    switch (event.getTargetState()) {
+                        case FINISHED:
+                            fsm.getEventListeners().forEach(listener -> listener.onCompleted(fsm.getFlowId()));
+                            break;
+                        case FINISHED_WITH_ERROR:
+                            ErrorType errorType = Optional.ofNullable(fsm.getOperationResultMessage())
+                                    .filter(message -> message instanceof ErrorMessage)
+                                    .map(message -> ((ErrorMessage) message).getData())
+                                    .map(ErrorData::getErrorType).orElse(ErrorType.INTERNAL_ERROR);
+                            fsm.getEventListeners().forEach(listener -> listener.onFailed(fsm.getFlowId(),
+                                    fsm.getErrorReason(), errorType));
+                            break;
+                        default:
+                            // ignore
+                    }
+                });
+            }
+
             MeterRegistryHolder.getRegistry().ifPresent(registry -> {
                 Sample sample = LongTaskTimer.builder("fsm.active_execution")
                         .register(registry)
@@ -552,5 +551,18 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
 
         TIMEOUT,
         ERROR
+    }
+
+    @Value
+    @Builder
+    public static class Config implements Serializable {
+        @Builder.Default
+        int speakerCommandRetriesLimit = 3;
+        @Builder.Default
+        int pathAllocationRetriesLimit = 10;
+        @Builder.Default
+        int pathAllocationRetryDelay = 50;
+        @Builder.Default
+        int resourceAllocationRetriesLimit = 10;
     }
 }

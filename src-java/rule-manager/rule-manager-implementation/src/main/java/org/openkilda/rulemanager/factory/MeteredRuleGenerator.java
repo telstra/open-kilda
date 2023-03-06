@@ -15,6 +15,7 @@
 
 package org.openkilda.rulemanager.factory;
 
+import static org.openkilda.model.SwitchFeature.INACCURATE_METER;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.rulemanager.factory.generator.flow.IngressRuleGenerator.FLOW_METER_STATS;
 
@@ -22,12 +23,16 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.MeterAction;
+
+import java.util.Set;
+import java.util.UUID;
 
 public interface MeteredRuleGenerator extends RuleGenerator {
 
@@ -50,14 +55,17 @@ public interface MeteredRuleGenerator extends RuleGenerator {
 
     /**
      * Build meter command data.
+     * @param uuid command data uuid.
      * @param flowPath target flow path
      * @param config config to be used
      * @param meterId target meter id. NB: it might be different from flow paths reference
      * @param sw target switch
      * @return command data
      */
-    default SpeakerCommandData buildMeter(FlowPath flowPath, RuleManagerConfig config, MeterId meterId, Switch sw) {
-        if (meterId == null || !sw.getFeatures().contains(METERS)) {
+    default SpeakerData buildMeter(UUID uuid, FlowPath flowPath, RuleManagerConfig config, MeterId meterId,
+                                   Switch sw) {
+        Set<SwitchFeature> switchFeatures = sw.getFeatures();
+        if (meterId == null || !switchFeatures.contains(METERS)) {
             return null;
         }
 
@@ -66,14 +74,27 @@ public interface MeteredRuleGenerator extends RuleGenerator {
                 config.getFlowMeterBurstCoefficient(),
                 flowPath.getSrcSwitch().getOfDescriptionManufacturer(),
                 flowPath.getSrcSwitch().getOfDescriptionSoftware());
-
-        return MeterSpeakerCommandData.builder()
+        return MeterSpeakerData.builder()
+                .uuid(uuid)
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .meterId(meterId)
-                .switchId(flowPath.getSrcSwitchId())
+                .switchId(sw.getSwitchId())
                 .rate(flowPath.getBandwidth())
                 .burst(burstSize)
                 .flags(FLOW_METER_STATS)
+                .inaccurate(switchFeatures.contains(INACCURATE_METER))
                 .build();
+    }
+
+    /**
+     * Build meter command data.
+     * @param flowPath target flow path
+     * @param config config to be used
+     * @param meterId target meter id. NB: it might be different from flow paths reference
+     * @param sw target switch
+     * @return command data
+     */
+    default SpeakerData buildMeter(FlowPath flowPath, RuleManagerConfig config, MeterId meterId, Switch sw) {
+        return buildMeter(UUID.randomUUID(), flowPath, config, meterId, sw);
     }
 }

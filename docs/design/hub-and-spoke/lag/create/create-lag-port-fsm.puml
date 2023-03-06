@@ -10,9 +10,14 @@ CREATE_LAG_IN_DB --> GRPC_COMMAND_SEND : next
 CREATE_LAG_IN_DB --> FINISHED_WITH_ERROR : error
 CREATE_LAG_IN_DB : enter / validate LAG port request, create GRPC commands
 
-GRPC_COMMAND_SEND --> FINISHED : lag_installed
+GRPC_COMMAND_SEND --> SPEAKER_COMMAND_SEND : lag_installed
 GRPC_COMMAND_SEND --> FINISHED_WITH_ERROR : error
 GRPC_COMMAND_SEND : enter / send GRPC commands
+
+SPEAKER_COMMAND_SEND --> FINISHED : skip_speaker_commands_installation
+SPEAKER_COMMAND_SEND --> FINISHED : speaker_entities_installed
+SPEAKER_COMMAND_SEND --> FINISHED_WITH_ERROR : error
+SPEAKER_COMMAND_SEND : enter / send speaker commands
 
 FINISHED : enter / send-successful-response
 

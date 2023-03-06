@@ -18,6 +18,8 @@ package org.usermanagement.controller;
 import org.openkilda.auth.context.ServerContext;
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
+import org.openkilda.log.ActivityLogger;
+import org.openkilda.log.constants.ActivityType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +63,9 @@ public class UserController {
 
     @Autowired
     private ServerContext serverContext;
+    
+    @Autowired
+    private ActivityLogger activityLogger;
 
     /**
      * Gets the users by role id.
@@ -264,5 +269,21 @@ public class UserController {
     @RequestMapping(value = "/loggedInUserInfo", method = RequestMethod.GET)
     public UserInfo getLoggedInUserInfo() throws AccessDeniedException {
         return userService.getLoggedInUserInfo();
+    }
+    
+    /**
+     * Unlock user account.
+     *
+     * @param userId the user id
+     * @return the userInfo
+     */
+    @ResponseStatus(HttpStatus.OK)
+    @RequestMapping(value = "/unlock/account/{user_id}", method = RequestMethod.PUT)
+    @Permissions(values = { IConstants.Permission.UM_USER_ACCOUNT_UNLOCK })
+    public Message unlockUserAccount(@PathVariable("user_id") final Long userId) {
+        activityLogger.log(ActivityType.UNLOCK_USER_ACCOUNT, String.valueOf(userId));
+        LOGGER.info("Reset user account. (userId: " + userId + ")");
+        userService.unlockUserAccount(userId);
+        return new Message("User account activated successfully");
     }
 }

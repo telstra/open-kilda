@@ -26,6 +26,7 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.YFlow;
 import org.openkilda.persistence.ferma.frames.converters.Convert;
 import org.openkilda.persistence.ferma.frames.converters.FlowEncapsulationTypeConverter;
 import org.openkilda.persistence.ferma.frames.converters.FlowStatusConverter;
@@ -76,6 +77,7 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     public static final String SRC_ARP_PROPERTY = "detect_src_arp_connected_devices";
     public static final String DST_ARP_PROPERTY = "detect_dst_arp_connected_devices";
     public static final String LOOP_SWITCH_ID_PROPERTY = "loop_switch_id";
+    public static final String VLAN_STATISTICS_PROPERTY = "vlan_statistics";
 
     private Switch srcSwitch;
     private Switch destSwitch;
@@ -369,6 +371,14 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
     public abstract void setLoopSwitchId(SwitchId loopSwitchId);
 
     @Override
+    @Property(VLAN_STATISTICS_PROPERTY)
+    public abstract void setVlanStatistics(Set<Integer> vlanStatistics);
+
+    @Override
+    @Property(VLAN_STATISTICS_PROPERTY)
+    public abstract Set<Integer> getVlanStatistics();
+
+    @Override
     public Switch getSrcSwitch() {
         if (srcSwitch == null) {
             List<? extends SwitchFrame> switchFrames = traverse(v -> v.out(SOURCE_EDGE)
@@ -517,8 +527,36 @@ public abstract class FlowFrame extends KildaBaseVertexFrame implements FlowData
         }
     }
 
+    @Override
+    public String getYFlowId() {
+        List<? extends YSubFlowFrame> subFlowFrames = traverse(v -> v.inE(YSubFlowFrame.FRAME_LABEL))
+                .toListExplicit(YSubFlowFrame.class);
+        if (subFlowFrames.isEmpty()) {
+            return null;
+        }
+        if (subFlowFrames.size() > 1) {
+            throw new IllegalStateException(format("The flow %s has more than one y_subflow references: %s",
+                    getId(), subFlowFrames));
+        }
+        return subFlowFrames.get(0).getYFlowId();
+    }
+
+    @Override
+    public YFlow getYFlow() {
+        List<? extends YSubFlowFrame> subFlowFrames = traverse(v -> v.inE(YSubFlowFrame.FRAME_LABEL))
+                .toListExplicit(YSubFlowFrame.class);
+        if (subFlowFrames.isEmpty()) {
+            return null;
+        }
+        if (subFlowFrames.size() > 1) {
+            throw new IllegalStateException(format("The flow %s has more than one y_subflow references: %s",
+                    getId(), subFlowFrames));
+        }
+        return subFlowFrames.get(0).getYFlow();
+    }
+
     public static Optional<FlowFrame> load(FramedGraph graph, String flowId) {
-        List<? extends FlowFrame> flowFrames = graph.traverse(input -> input.V()
+        List<? extends FlowFrame> flowFrames = graph.traverse(g -> g.V()
                         .hasLabel(FRAME_LABEL)
                         .has(FLOW_ID_PROPERTY, flowId))
                 .toListExplicit(FlowFrame.class);

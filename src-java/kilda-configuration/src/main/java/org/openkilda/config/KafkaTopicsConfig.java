@@ -93,6 +93,40 @@ public interface KafkaTopicsConfig {
     @Default("kilda.speaker.flowhs.priv.region")
     String getFlowHsSpeakerRegionTopic();
 
+    @Key("speaker.switch.manager")
+    @Default("kilda.speaker.switch.manager.storm")
+    String getSpeakerSwitchManagerTopic();
+
+    @Key("speaker.switch.manager.region")
+    @FallbackKey("kafka.speaker.switch.manager.region")
+    @Default("kilda.speaker.switch.manager")
+    String getSpeakerSwitchManagerRegionTopic();
+
+    @Key("speaker.switch.manager.priv")
+    @Default("kilda.speaker.switch.manager.priv")
+    String getSwitchManagerSpeakerTopic();
+
+    @Key("speaker.switch.manager.priv.region")
+    @Default("kilda.speaker.switch.manager.priv.region")
+    String getSwitchManagerSpeakerRegionTopic();
+
+    @Key("speaker.network.control")
+    @Default("kilda.network.control.storm")
+    String getNetworkControlTopic();
+
+    @Key("speaker.network.region")
+    @FallbackKey("kafka.speaker.network.region")
+    @Default("kilda.network.control")
+    String getNetworkControlRegionTopic();
+
+    @Key("speaker.network.control.response.priv")
+    @Default("kilda.speaker.network.control.response.priv")
+    String getNetworkControlResponseTopic();
+
+    @Key("speaker.network.priv.region")
+    @Default("kilda.network.control.response.priv.region")
+    String getNetworkControlResponseRegionTopic();
+
     @Key("speaker.flow.ping")
     @FallbackKey("kafka.speaker.flow.ping")
     @Default("kilda.speaker.flow.ping.storm")
@@ -184,6 +218,10 @@ public interface KafkaTopicsConfig {
     @Key("topo.floodlight.connected.devices.region")
     @Default("kilda.floodlight.connected.devices.priv")
     String getTopoConnectedDevicesRegionTopic();
+
+    @Key("topo.history.storm")
+    @Default("kilda.topo.history.storm.priv")
+    String getTopoHistoryTopic();
 
     // TODO(surabujin): check usage
     @Key("grpc.response")

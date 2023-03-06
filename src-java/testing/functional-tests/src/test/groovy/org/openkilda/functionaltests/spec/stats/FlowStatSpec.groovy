@@ -542,7 +542,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
         def switchPair = topologyHelper.switchPairs.find {
             [it.src, it.dst].every { it.dpId in traffGenSwitches } &&
-                    northbound.getSwitchProperties(it.src.dpId).multiTable
+                    switchHelper.getCachedSwProps(it.src.dpId).multiTable
         } ?: assumeTrue(false, "No suiting switches found")
 
         and: "A flow with updated inner vlan on src endpoint via partial update"

@@ -47,11 +47,13 @@ import { FlowsService } from 'src/app/common/services/flows.service';
     evacuate:boolean=false;
     under_maintenance:boolean=false;
     loadingData = true;
+    isBFDEdit:any=false;
     dataSet:any;
     available_bandwidth:string = '';
     default_max_bandwidth='';
     max_bandwidth :any = '';
     detailDataObservable : any;
+    bfdPropertyData : any;
     src_switch_name: string;
     dst_switch_name: string;	
     graphDataForwardUrl: string;
@@ -78,6 +80,7 @@ import { FlowsService } from 'src/app/common/services/flows.service';
     graphMetrics = [];
     flowGraphMetrics=[];
     autoReloadTimerId = null;
+    bfdPropForm:FormGroup;
     islForm: FormGroup;
     showCostEditing: boolean = false;
     showBandwidthEditing : boolean = false;
@@ -90,6 +93,7 @@ import { FlowsService } from 'src/app/common/services/flows.service';
         targetSwitch:""
         
   }
+ 
 
     @Output() hideToValue: EventEmitter<any> = new EventEmitter();
     newMessageDetail(){
@@ -156,10 +160,8 @@ import { FlowsService } from 'src/app/common/services/flows.service';
       auto_reload_time: ["", Validators.compose([Validators.pattern("[0-9]*")])]
     });
     this.graphMetrics = this.dygraphService.getPortMetricData();
-    this.flowGraphMetrics = this.dygraphService.getFlowMetricData();
-   
-
-    }
+    this.flowGraphMetrics = this.dygraphService.getFlowMetricData();   
+}
 
     getIslDetailData(src_switch,src_port,dst_switch,dst_port){
       this.loaderService.show(MessageObj.loading_isl);
@@ -211,6 +213,26 @@ import { FlowsService } from 'src/app/common/services/flows.service';
             max_bandwidth:[this.max_bandwidth,Validators.min(0)]
             });
           }
+         },error=>{
+           this.toastr.error(MessageObj.no_cost_data_returned,'Error');
+         });
+
+         this.islListService.getLinkBFDProperties(this.src_switch, this.src_port, this.dst_switch, this.dst_port).subscribe((data : any) =>{
+          if(data!= null){
+            this.bfdPropertyData = data; 
+            this.bfdPropForm = this.formBuiler.group({
+              interval_ms: [this.bfdPropertyData.properties['interval_ms'], Validators.min(0)],
+              multiplier: [this.bfdPropertyData.properties['multiplier'],Validators.min(0)]
+              });
+          }
+          else{
+            this.bfdPropertyData = {};
+            this.bfdPropForm = this.formBuiler.group({
+              interval_ms: [0, Validators.min(0)],
+              multiplier:[0,Validators.min(0)]
+              });
+          }
+          
          },error=>{
            this.toastr.error(MessageObj.no_cost_data_returned,'Error');
          });
@@ -677,8 +699,7 @@ get f() {
 
     if (formdata.timezone == "UTC") {
       convertedStartDate = moment(new Date(formdata.fromDate)).add(-60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
-      convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
-      
+      convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");      
     }
 
    
@@ -789,10 +810,10 @@ get f() {
     this.loaderService.hide();
     if(this.filterForm.value.graph_type === 'stackedgraph'){
       this.islDataService.changeIslFlowStackedGraph(this.currentGraphData);
-    this.islDataService.IslFlowStackedGraph.subscribe(message => this.message = message);
+      this.islDataService.IslFlowStackedGraph.subscribe(message => this.message = message);
     }else{
-    this.islDataService.changeIslFlowGraph(this.currentGraphData);
-    this.islDataService.IslFlowGraph.subscribe(message => this.message = message);
+      this.islDataService.changeIslFlowGraph(this.currentGraphData);
+      this.islDataService.IslFlowGraph.subscribe(message => this.message = message);
     }
     
   }
@@ -829,7 +850,6 @@ get f() {
     if (formdata.timezone == "UTC") {
       convertedStartDate = moment(new Date(formdata.fromDate)).add(-60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
       convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
-      
     }
 
 
@@ -966,6 +986,95 @@ get f() {
     });
   }
 
+  editBFDProperties(){
+    this.isBFDEdit = true;
+  }
+
+  updateBFDProperties(){
+    if (this.bfdPropForm.invalid) {
+      this.toastr.error("Please enter valid value for Interval and multiplier.");
+      return;
+    }
+
+    const modalRef = this.modalService.open(ModalconfirmationComponent);
+    modalRef.componentInstance.title = "Confirmation";
+    modalRef.componentInstance.content = 'Are you sure you want to change the BFD Properties';
+
+    modalRef.result.then((response) => {
+      if(response && response == true){
+        this.loaderService.show(MessageObj.updating_bfd_properties);
+        let interval_ms = this.bfdPropForm.value.interval_ms;
+        let multiplier = this.bfdPropForm.value.multiplier;
+        var data = {interval_ms:interval_ms,multiplier:multiplier};
+        this.islListService.updateLinkBFDProperties(data,this.src_switch, this.src_port, this.dst_switch, this.dst_port).subscribe((response: any) => {
+          this.bfdPropertyData = response;
+          this.loaderService.hide();
+          this.toastr.success(MessageObj.updating_bfd_properties_success,'Success');
+          this.isBFDEdit = false;
+        },error => {
+          this.loaderService.hide();
+          this.isBFDEdit = false;
+          if(error.status == '500'){
+            this.toastr.error(error.error['error-message'],'Error! ');
+          }else{
+            this.toastr.error(MessageObj.updating_bfd_properties_error,'Error');
+          }
+        })
+      }
+    });
+  }
+  deleteBFDProperties(){
+    
+    let is2FaEnabled  = localStorage.getItem('is2FaEnabled')
+    var self = this;
+    const modalReff = this.modalService.open(ModalconfirmationComponent);
+    modalReff.componentInstance.title = "Delete BFD Properties";
+    modalReff.componentInstance.content = 'Are you sure you want to perform delete action ?';
+    
+    modalReff.result.then((response) => {
+      if(response && response == true){
+        if(is2FaEnabled == 'true'){
+          const modalRef = this.modalService.open(OtpComponent);
+          modalRef.componentInstance.emitService.subscribe(
+            otp => {
+              
+              if (otp) {
+                this.loaderService.show(MessageObj.delete_bfd_properties);
+                var data = {
+                  src_switch:this.src_switch,
+                  src_port:this.src_port,
+                  dst_switch:this.dst_switch,
+                  dst_port:this.dst_port,
+                  code:otp
+                }
+                this.modalService.dismissAll();
+                this.islListService.deleteLinkBFDProperties(data,response => {
+                  this.toastr.success(MessageObj.BFD_properties_deleted, "Success!");
+                  this.loaderService.hide();             
+                }, error => {
+                  this.loaderService.hide();
+                  var message = (error && error['error-auxiliary-message']) ? error['error-auxiliary-message'] :MessageObj.error_BFD_properties_delete;
+                  this.toastr.error(message, "Error!");
+                })
+              } else {
+                this.toastr.error(MessageObj.otp_not_detected, "Error!");
+              }
+            },
+            error => {
+            }
+          );
+        }else{
+          const modalRef2 = this.modalService.open(ModalComponent);
+          modalRef2.componentInstance.title = "Warning";
+          modalRef2.componentInstance.content = MessageObj.delete_isl_bfd_not_authorised;
+        }        
+      }
+    });
+  }
+
+  cancelEditBFDProperties(){
+    this.isBFDEdit = false;
+  }
   deleteISL(){
     let is2FaEnabled  = localStorage.getItem('is2FaEnabled')
     var self = this;
@@ -978,8 +1087,7 @@ get f() {
         if(is2FaEnabled == 'true'){
           const modalRef = this.modalService.open(OtpComponent);
           modalRef.componentInstance.emitService.subscribe(
-            otp => {
-              
+            otp => {              
               if (otp) {
                 this.loaderService.show(MessageObj.deleting_isl);
                 var data = {

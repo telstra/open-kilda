@@ -15,14 +15,14 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
-import static java.lang.String.format;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.openkilda.model.FlowEndpoint.isVlanIdSet;
 import static org.openkilda.model.FlowEndpoint.makeVlanStack;
+import static org.openkilda.rulemanager.Constants.VXLAN_UDP_SRC;
 import static org.openkilda.rulemanager.utils.Utils.buildPushVxlan;
+import static org.openkilda.rulemanager.utils.Utils.checkAndBuildIngressEndpoint;
 import static org.openkilda.rulemanager.utils.Utils.getOutPort;
-import static org.openkilda.rulemanager.utils.Utils.isFullPortEndpoint;
 
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.FlowEndpoint;
@@ -35,15 +35,14 @@ import org.openkilda.model.cookie.PortColourCookie;
 import org.openkilda.rulemanager.Constants;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.FlowSpeakerCommandData.FlowSpeakerCommandDataBuilder;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfMetadata;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
-import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PopVlanAction;
 import org.openkilda.rulemanager.action.PortOutAction;
@@ -56,6 +55,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import lombok.Builder.Default;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -64,21 +64,21 @@ import java.util.List;
 import java.util.Set;
 
 @SuperBuilder
+@Slf4j
 public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
 
+    /*
+     * This set must contain FlowSideAdapters with src multiTable=true which have same SwitchId and inPort as ingress
+     * endpoint of target flowPath.
+     */
     @Default
-    protected final Set<FlowSideAdapter> overlappingIngressAdapters = new HashSet<>();
+    private final Set<FlowSideAdapter> overlappingIngressAdapters = new HashSet<>();
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
-        List<SpeakerCommandData> result = new ArrayList<>();
-        FlowEndpoint ingressEndpoint = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
-        if (!ingressEndpoint.getSwitchId().equals(sw.getSwitchId())) {
-            throw new IllegalArgumentException(format("Path %s has ingress endpoint %s with switchId %s. But switchId "
-                    + "must be equal to target switchId %s", flowPath.getPathId(), ingressEndpoint,
-                    ingressEndpoint.getSwitchId(), sw.getSwitchId()));
-        }
-        FlowSpeakerCommandData command = buildFlowIngressCommand(sw, ingressEndpoint);
+    public List<SpeakerData> generateCommands(Switch sw) {
+        List<SpeakerData> result = new ArrayList<>();
+        FlowEndpoint ingressEndpoint = checkAndBuildIngressEndpoint(flow, flowPath, sw.getSwitchId());
+        FlowSpeakerData command = buildFlowIngressCommand(sw, ingressEndpoint);
         if (command == null) {
             return Collections.emptyList();
         }
@@ -90,7 +90,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
             result.add(buildCustomerPortSharedCatchCommand(sw, ingressEndpoint));
         }
 
-        SpeakerCommandData meterCommand = buildMeter(flowPath, config, flowPath.getMeterId(), sw);
+        SpeakerData meterCommand = buildMeter(flowPath, config, flowPath.getMeterId(), sw);
         if (meterCommand != null) {
             result.add(meterCommand);
             command.getDependsOn().add(meterCommand.getUuid());
@@ -113,14 +113,14 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
         return true;
     }
 
-    private FlowSpeakerCommandData buildCustomerPortSharedCatchCommand(Switch sw, FlowEndpoint endpoint) {
+    private FlowSpeakerData buildCustomerPortSharedCatchCommand(Switch sw, FlowEndpoint endpoint) {
         PortColourCookie cookie = new PortColourCookie(CookieType.MULTI_TABLE_INGRESS_RULES, endpoint.getPortNumber());
 
         Instructions instructions = Instructions.builder()
                 .goToTable(OfTable.PRE_INGRESS)
                 .build();
 
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(endpoint.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(cookie)
@@ -133,20 +133,21 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
         return builder.build();
     }
 
-    private FlowSpeakerCommandData buildFlowPreIngressCommand(Switch sw, FlowEndpoint endpoint) {
+    private FlowSpeakerData buildFlowPreIngressCommand(Switch sw, FlowEndpoint endpoint) {
         FlowSharedSegmentCookie cookie = FlowSharedSegmentCookie.builder(SharedSegmentType.QINQ_OUTER_VLAN)
                 .portNumber(endpoint.getPortNumber())
                 .vlanId(endpoint.getOuterVlanId())
                 .build();
 
-        RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(endpoint.getOuterVlanId()).build();
+        RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(endpoint.getOuterVlanId())
+                .build(sw.getFeatures());
         Instructions instructions = Instructions.builder()
                 .applyActions(Lists.newArrayList(new PopVlanAction()))
                 .writeMetadata(new OfMetadata(metadata.getValue(), metadata.getMask()))
                 .goToTable(OfTable.INGRESS)
                 .build();
 
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(endpoint.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(cookie)
@@ -155,32 +156,41 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
                 .match(buildPreIngressMatch(endpoint))
                 .instructions(instructions);
 
-        if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
-            builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
-        }
+        // todo add RESET_COUNTERS flag
         return builder.build();
     }
 
-    private FlowSpeakerCommandData buildFlowIngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
+    private FlowSpeakerData buildFlowIngressCommand(Switch sw, FlowEndpoint ingressEndpoint) {
         // TODO should we check if switch supports encapsulation?
         List<Action> actions = new ArrayList<>(buildTransformActions(
                 ingressEndpoint.getInnerVlanId(), sw.getFeatures()));
-        actions.add(new PortOutAction(new PortNumber(getOutPort(flowPath, flow))));
+        actions.add(new PortOutAction(getOutPort(flowPath, flow)));
 
-        FlowSpeakerCommandDataBuilder<?, ?> builder = FlowSpeakerCommandData.builder()
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
                 .switchId(ingressEndpoint.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie())
                 .table(OfTable.INGRESS)
-                .priority(isFullPortEndpoint(ingressEndpoint) ? Constants.Priority.DEFAULT_FLOW_PRIORITY
-                        : Constants.Priority.FLOW_PRIORITY)
-                .match(buildIngressMatch(ingressEndpoint))
+                .priority(getPriority(ingressEndpoint))
+                .match(buildIngressMatch(ingressEndpoint, sw.getFeatures()))
                 .instructions(buildInstructions(sw, actions));
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
             builder.flags(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS));
         }
         return builder.build();
+    }
+
+    private int getPriority(FlowEndpoint ingressEndpoint) {
+        if (isVlanIdSet(ingressEndpoint.getOuterVlanId())) {
+            if (isVlanIdSet(ingressEndpoint.getInnerVlanId())) {
+                return Priority.DOUBLE_VLAN_FLOW_PRIORITY;
+            } else {
+                return Priority.FLOW_PRIORITY;
+            }
+        } else {
+            return Priority.DEFAULT_FLOW_PRIORITY;
+        }
     }
 
     private Instructions buildInstructions(Switch sw, List<Action> actions) {
@@ -190,7 +200,7 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
                 .build();
         addMeterToInstructions(flowPath.getMeterId(), sw, instructions);
         if (flowPath.isOneSwitchFlow()) {
-            RoutingMetadata metadata = RoutingMetadata.builder().oneSwitchFlowFlag(true).build();
+            RoutingMetadata metadata = RoutingMetadata.builder().oneSwitchFlowFlag(true).build(sw.getFeatures());
             instructions.setWriteMetadata(new OfMetadata(metadata.getValue(), metadata.getMask()));
         }
         return instructions;
@@ -203,25 +213,8 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
     }
 
     @VisibleForTesting
-    Set<FieldMatch> buildIngressMatch(FlowEndpoint endpoint) {
-        Set<FieldMatch> match = Sets.newHashSet(
-                FieldMatch.builder().field(Field.IN_PORT).value(endpoint.getPortNumber()).build());
-
-        if (isVlanIdSet(endpoint.getOuterVlanId())) {
-            RoutingMetadata metadata = RoutingMetadata.builder()
-                    .outerVlanId(endpoint.getOuterVlanId())
-                    .build();
-            match.add(FieldMatch.builder()
-                    .field(Field.METADATA)
-                    .value(metadata.getValue())
-                    .mask(metadata.getMask())
-                    .build());
-        }
-
-        if (isVlanIdSet(endpoint.getInnerVlanId())) {
-            match.add(FieldMatch.builder().field(Field.VLAN_VID).value(endpoint.getInnerVlanId()).build());
-        }
-        return match;
+    Set<FieldMatch> buildIngressMatch(FlowEndpoint endpoint, Set<SwitchFeature> switchFeatures) {
+        return Utils.makeIngressMatch(endpoint, true, switchFeatures);
     }
 
     @VisibleForTesting
@@ -235,13 +228,12 @@ public class MultiTableIngressRuleGenerator extends IngressRuleGenerator {
         } else {
             targetStack = new ArrayList<>();
         }
-        // TODO do something with groups
 
         List<Action> transformActions = new ArrayList<>(Utils.makeVlanReplaceActions(currentStack, targetStack));
 
-        if (encapsulation.getType() == VXLAN && !flowPath.isOneSwitchFlow()) {
+        if (encapsulation != null && encapsulation.getType() == VXLAN && !flowPath.isOneSwitchFlow()) {
             transformActions.add(buildPushVxlan(encapsulation.getId(), flowPath.getSrcSwitchId(),
-                    flowPath.getDestSwitchId(), features));
+                    flowPath.getDestSwitchId(), VXLAN_UDP_SRC, features));
         }
         return transformActions;
     }

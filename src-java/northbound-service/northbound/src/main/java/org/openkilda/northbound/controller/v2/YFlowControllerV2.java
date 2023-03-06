@@ -15,8 +15,6 @@
 
 package org.openkilda.northbound.controller.v2;
 
-import static org.openkilda.northbound.config.SwaggerConfig.DRAFT_API_TAG;
-
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.v2.yflows.SubFlowsDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlow;
@@ -24,8 +22,12 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingPayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowPingResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
+import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.northbound.service.YFlowService;
 
 import io.swagger.annotations.Api;
@@ -46,7 +48,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.concurrent.CompletableFuture;
 import javax.validation.Valid;
 
-@Api(tags = {DRAFT_API_TAG})
+@Api
 @RestController
 @RequestMapping("/v2/y-flows")
 public class YFlowControllerV2 extends BaseController {
@@ -116,5 +118,37 @@ public class YFlowControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<YFlowRerouteResult> rerouteYFlow(@PathVariable(name = "y_flow_id") String yFlowId) {
         return flowService.rerouteYFlow(yFlowId);
+    }
+
+    @ApiOperation(value = "Validate Y-flow", response = YFlowValidationResult.class)
+    @PostMapping(path = "/{y_flow_id:.+}/validate")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<YFlowValidationResult> validateYFlow(@PathVariable("y_flow_id") String yFlowId) {
+        return flowService.validateYFlow(yFlowId);
+    }
+
+    @ApiOperation(value = "Synchronize Y-flow", response = YFlowSyncResult.class)
+    @PostMapping(path = "/{y_flow_id:.+}/sync")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<YFlowSyncResult> synchronizeYFlow(@PathVariable("y_flow_id") String yFlowId) {
+        return flowService.synchronizeYFlow(yFlowId);
+    }
+
+    @ApiOperation(
+            value = "Verify flow - using special network packet that is being routed in the same way as client traffic",
+            response = YFlowPingResult.class)
+    @PostMapping(path = "/{y_flow_id}/ping")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<YFlowPingResult> pingYFlow(
+            @RequestBody YFlowPingPayload payload,
+            @PathVariable("y_flow_id") String yFlowId) {
+        return flowService.pingYFlow(yFlowId, payload);
+    }
+
+    @ApiOperation(value = "Swap paths for y-flow with protected path", response = YFlow.class)
+    @PostMapping(path = "/{y_flow_id:.+}/swap")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public CompletableFuture<YFlow> swapYFlowPaths(@PathVariable("y_flow_id") String yFlowId) {
+        return flowService.swapYFlowPaths(yFlowId);
     }
 }

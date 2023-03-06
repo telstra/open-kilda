@@ -56,11 +56,11 @@ import java.util.Optional;
 public class PacketService {
     public static final int FULL_PORT_VLAN = 0;
 
-    private TransactionManager transactionManager;
-    private SwitchRepository switchRepository;
-    private SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
-    private TransitVlanRepository transitVlanRepository;
-    private FlowRepository flowRepository;
+    private final TransactionManager transactionManager;
+    private final SwitchRepository switchRepository;
+    private final SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
+    private final TransitVlanRepository transitVlanRepository;
+    private final FlowRepository flowRepository;
 
     public PacketService(PersistenceManager persistenceManager) {
         transactionManager = persistenceManager.getTransactionManager();
@@ -121,6 +121,26 @@ public class PacketService {
             device.setFlowId(flowRelatedData.flowId);
             device.setSource(flowRelatedData.source);
         });
+    }
+
+    /**
+     * This key is needed to balance load on Packet Bolt. If you see that some packet bolts have high load, and
+     * some have low load, try to extend this key. Maximum extension is equal to
+     * <code>SwitchConnectedDeviceFrame.UNIQUE_INDEX_PROPERTY</code>
+     */
+    public static String createMessageKey(LldpInfoData data) {
+        return String.format("%s_%s_%s_%s_%s_lldp", data.getSwitchId(), data.getPortNumber(), data.getMacAddress(),
+                data.getChassisId(), data.getPortId());
+    }
+
+    /**
+     * This key is needed to balance load on Packet Bolt. If you see that some packet bolts have high load, and
+     * some have low load, try to extend this key. Maximum extension is equal to
+     * <code>SwitchConnectedDeviceFrame.UNIQUE_INDEX_PROPERTY</code>
+     */
+    public static String createMessageKey(ArpInfoData data) {
+        return String.format("%s_%s_%s_%s_arp", data.getSwitchId(), data.getPortNumber(), data.getMacAddress(),
+                data.getIpAddress());
     }
 
     private FlowRelatedData findFlowRelatedData(ConnectedDevicePacketBase data) {

@@ -91,7 +91,7 @@ public class NoviflowController {
     public CompletableFuture<LogicalPort> createLogicalPort(
             @PathVariable("switch_address") String switchAddress,
             @RequestBody LogicalPortDto logicalPortDto) {
-        return grpcService.createLogicalPort(switchAddress, logicalPortDto);
+        return grpcService.createOrUpdateLogicalPort(switchAddress, logicalPortDto);
     }
 
     @ApiOperation(value = "Get switch logical port configuration", response = LogicalPort.class)

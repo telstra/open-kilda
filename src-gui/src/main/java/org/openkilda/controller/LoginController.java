@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -120,7 +121,7 @@ public class LoginController extends BaseController {
                 SecurityContextHolder.getContext().setAuthentication(authenticate);
                 userService.updateLoginDetail(username);
             } else {
-                error = "Invalid email or password";
+                error = "Login failed; Invalid email or password.";
                 LOGGER.warn("Authentication failure for user: '" + username + "'");
                 modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
             }
@@ -155,7 +156,10 @@ public class LoginController extends BaseController {
             }
         } catch (BadCredentialsException e) {
             LOGGER.warn("Authentication failure", e);
-            error = "Invalid email or password";
+            error = e.getMessage();
+            modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
+        } catch (LockedException e) {
+            error = e.getMessage();
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         } catch (Exception e) {
             LOGGER.warn("Authentication failure", e);

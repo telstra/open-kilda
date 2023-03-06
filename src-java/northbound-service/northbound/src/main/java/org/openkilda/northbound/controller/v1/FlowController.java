@@ -289,7 +289,6 @@ public class FlowController extends BaseController {
     @GetMapping(path = "/{flow_id}/validate")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<FlowValidationDto>> validateFlow(@PathVariable("flow_id") String flowId) {
-        logger.debug("Received Flow Validation request with flow {}", flowId);
         return flowService.validateFlow(flowId);
     }
 

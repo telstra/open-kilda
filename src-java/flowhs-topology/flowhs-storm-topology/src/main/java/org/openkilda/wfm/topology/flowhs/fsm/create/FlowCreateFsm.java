@@ -28,38 +28,40 @@ import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
-import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.CompleteFlowCreateAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.EmitIngressRulesVerifyRequestsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.EmitNonIngressRulesVerifyRequestsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.FlowValidateAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotCreatedFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotDeallocatedResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallIngressRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallNonIngressRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.NotifyFlowStatsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnFinishedAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnFinishedWithErrorAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedDeleteResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedInstallResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesAllocationAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesDeallocationAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.RollbackInstalledRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateIngressRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateNonIngressRuleAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.CompleteFlowCreateAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.EmitIngressRulesVerifyRequestsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.EmitNonIngressRulesVerifyRequestsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.FlowValidateAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.HandleNotCreatedFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.HandleNotDeallocatedResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.InstallIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.InstallNonIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.NotifyFlowStatsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.OnFinishedAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.OnFinishedWithErrorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.OnReceivedDeleteResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.OnReceivedInstallResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.ResourcesAllocationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.ResourcesDeallocationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.RollbackInstalledRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.ValidateIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.actions.ValidateNonIngressRuleAction;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
-import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowCreateEventListener;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -68,6 +70,7 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -79,12 +82,13 @@ import java.util.concurrent.TimeUnit;
 @Getter
 @Setter
 @Slf4j
-public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Event, FlowCreateContext> {
+public final class FlowCreateFsm extends FlowProcessingWithHistorySupportFsm<FlowCreateFsm, State, Event,
+        FlowCreateContext, FlowGenericCarrier, FlowCreateEventListener> {
 
-    private final FlowCreateHubCarrier carrier;
+    private final String flowId;
 
     private RequestedFlow targetFlow;
-    private final String flowId;
+    private String sharedBandwidthGroupId;
     private List<FlowResources> flowResources = new ArrayList<>();
     private PathId forwardPathId;
     private PathId reversePathId;
@@ -106,12 +110,11 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
     private int remainRetries;
     private boolean timedOut;
 
-    private String errorReason;
-
-    private FlowCreateFsm(String flowId, CommandContext commandContext, FlowCreateHubCarrier carrier, Config config) {
-        super(commandContext);
+    private FlowCreateFsm(@NonNull CommandContext commandContext, @NonNull FlowGenericCarrier carrier,
+                          @NonNull String flowId,
+                          @NonNull Collection<FlowCreateEventListener> eventListeners, @NonNull Config config) {
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, eventListeners);
         this.flowId = flowId;
-        this.carrier = carrier;
         this.remainRetries = config.getFlowCreationRetriesLimit();
     }
 
@@ -140,11 +143,6 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
         }
     }
 
-    public void fireTimeout() {
-        timedOut = true;
-        fire(Event.TIMEOUT);
-    }
-
     @Override
     protected void afterTransitionCausedException(State fromState, State toState, Event event,
                                                   FlowCreateContext context) {
@@ -155,35 +153,10 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                     errorMessage);
             Message message = new ErrorMessage(error, getCommandContext().getCreateTime(),
                     getCommandContext().getCorrelationId());
-            carrier.sendNorthboundResponse(message);
+            sendNorthboundResponse(message);
         }
 
         fireError(errorMessage);
-    }
-
-    @Override
-    public void fireNext(FlowCreateContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: " + errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
-
-        fire(errorEvent);
-    }
-
-    @Override
-    public void sendNorthboundResponse(Message message) {
-        carrier.sendNorthboundResponse(message);
     }
 
     private void resetState() {
@@ -202,78 +175,24 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
     }
 
     @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
-        // other errors reported inside actions and can be ignored here
-    }
-
-    @Override
     protected String getCrudActionName() {
         return "create";
     }
 
-    public static FlowCreateFsm.Factory factory(PersistenceManager persistenceManager, FlowCreateHubCarrier carrier,
-                                                Config config, FlowResourcesManager resourcesManager,
-                                                PathComputer pathComputer) {
-        return new Factory(persistenceManager, carrier, config, resourcesManager, pathComputer);
-    }
-
-    @Getter
-    public enum State {
-        INITIALIZED(false),
-        FLOW_VALIDATED(false),
-        RESOURCES_ALLOCATED(false),
-        INSTALLING_NON_INGRESS_RULES(true),
-        VALIDATING_NON_INGRESS_RULES(true),
-        INSTALLING_INGRESS_RULES(true),
-        VALIDATING_INGRESS_RULES(true),
-        FINISHED(true),
-
-        REMOVING_RULES(true),
-        VALIDATING_REMOVED_RULES(true),
-        REVERTING(false),
-        RESOURCES_DE_ALLOCATED(false),
-
-        NOTIFY_FLOW_MONITOR(false),
-        NOTIFY_FLOW_MONITOR_WITH_ERROR(false),
-
-        NOTIFY_FLOW_STATS(false),
-
-        _FAILED(false),
-        FINISHED_WITH_ERROR(true);
-
-        boolean blocked;
-
-        State(boolean blocked) {
-            this.blocked = blocked;
-        }
-    }
-
-    public enum Event {
-        NEXT,
-
-        RESPONSE_RECEIVED,
-        SKIP_NON_INGRESS_RULES_INSTALL,
-
-        TIMEOUT,
-        RETRY,
-        ERROR
-    }
-
     public static class Factory {
         private final StateMachineBuilder<FlowCreateFsm, State, Event, FlowCreateContext> builder;
-        private final FlowCreateHubCarrier carrier;
+        private final FlowGenericCarrier carrier;
         private final Config config;
 
-        Factory(PersistenceManager persistenceManager, FlowCreateHubCarrier carrier, Config config,
-                FlowResourcesManager resourcesManager, PathComputer pathComputer) {
-            this.builder = StateMachineBuilderFactory.create(
-                    FlowCreateFsm.class, State.class, Event.class, FlowCreateContext.class,
-                    String.class, CommandContext.class, FlowCreateHubCarrier.class, Config.class);
+        public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+                       @NonNull FlowResourcesManager resourcesManager, @NonNull PathComputer pathComputer,
+                       @NonNull Config config) {
             this.carrier = carrier;
             this.config = config;
+
+            this.builder = StateMachineBuilderFactory.create(FlowCreateFsm.class, State.class, Event.class,
+                    FlowCreateContext.class, CommandContext.class, FlowGenericCarrier.class, String.class,
+                    Collection.class, Config.class);
 
             SpeakerCommandFsm.Builder commandExecutorFsmBuilder =
                     SpeakerCommandFsm.getBuilder(carrier, config.getSpeakerCommandRetriesLimit());
@@ -285,7 +204,7 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
             final RollbackInstalledRulesAction rollbackInstalledRules = new RollbackInstalledRulesAction(
                     commandExecutorFsmBuilder, persistenceManager);
             final ReportErrorAction<FlowCreateFsm, State, Event, FlowCreateContext>
-                    reportErrorAction = new ReportErrorAction<>();
+                    reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
 
             // validate the flow
             builder.transition()
@@ -332,7 +251,7 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
             builder.transition()
                     .from(State.INSTALLING_NON_INGRESS_RULES)
                     .to(State.VALIDATING_NON_INGRESS_RULES)
-                    .on(Event.NEXT)
+                    .on(Event.RULES_INSTALLED)
                     .perform(new EmitNonIngressRulesVerifyRequestsAction(commandExecutorFsmBuilder));
 
             builder.internalTransition()
@@ -343,7 +262,7 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
             builder.transition()
                     .from(State.VALIDATING_NON_INGRESS_RULES)
                     .to(State.NOTIFY_FLOW_STATS)
-                    .on(Event.NEXT);
+                    .on(Event.RULES_VALIDATED);
 
             builder.onEntry(State.NOTIFY_FLOW_STATS)
                     .perform(new NotifyFlowStatsAction(persistenceManager, carrier));
@@ -362,7 +281,7 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
             builder.transition()
                     .from(State.INSTALLING_INGRESS_RULES)
                     .to(State.VALIDATING_INGRESS_RULES)
-                    .on(Event.NEXT)
+                    .on(Event.RULES_INSTALLED)
                     .perform(new EmitIngressRulesVerifyRequestsAction(commandExecutorFsmBuilder));
 
             builder.internalTransition()
@@ -373,7 +292,7 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
             builder.transition()
                     .from(State.VALIDATING_INGRESS_RULES)
                     .to(State.NOTIFY_FLOW_MONITOR)
-                    .on(Event.NEXT)
+                    .on(Event.RULES_VALIDATED)
                     .perform(new CompleteFlowCreateAction(persistenceManager, dashboardLogger));
 
             // error during validation or resource allocation
@@ -427,7 +346,7 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
             builder.transition()
                     .from(State.REMOVING_RULES)
                     .to(State.REVERTING)
-                    .on(Event.NEXT);
+                    .on(Event.RULES_REMOVED);
 
             // resources deallocation
             builder.onEntry(State.REVERTING)
@@ -490,8 +409,30 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public FlowCreateFsm produce(String flowId, CommandContext commandContext) {
-            FlowCreateFsm fsm = builder.newStateMachine(State.INITIALIZED, flowId, commandContext, carrier, config);
+        public FlowCreateFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId,
+                                         @NonNull Collection<FlowCreateEventListener> eventListeners) {
+            FlowCreateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
+                    eventListeners, config);
+
+            fsm.addTransitionCompleteListener(event ->
+                    log.debug("FlowCreateFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
+
+            if (!eventListeners.isEmpty()) {
+                fsm.addTransitionCompleteListener(event -> {
+                    switch (event.getTargetState()) {
+                        case FINISHED:
+                            fsm.notifyEventListeners(listener -> listener.onCompleted(flowId));
+                            break;
+                        case FINISHED_WITH_ERROR:
+                            fsm.notifyEventListeners(listener ->
+                                    listener.onFailed(flowId, fsm.getErrorReason(), ErrorType.INTERNAL_ERROR));
+                            break;
+                        default:
+                            // ignore
+                    }
+                });
+            }
+
             MeterRegistryHolder.getRegistry().ifPresent(registry -> {
                 Sample sample = LongTaskTimer.builder("fsm.active_execution")
                         .register(registry)
@@ -522,5 +463,43 @@ public final class FlowCreateFsm extends NbTrackableFsm<FlowCreateFsm, State, Ev
         int pathAllocationRetriesLimit = 10;
         @Builder.Default
         int pathAllocationRetryDelay = 50;
+    }
+
+    public enum State {
+        INITIALIZED,
+        FLOW_VALIDATED,
+        RESOURCES_ALLOCATED,
+        INSTALLING_NON_INGRESS_RULES,
+        VALIDATING_NON_INGRESS_RULES,
+        INSTALLING_INGRESS_RULES,
+        VALIDATING_INGRESS_RULES,
+        FINISHED,
+
+        REMOVING_RULES,
+        REVERTING,
+        RESOURCES_DE_ALLOCATED,
+
+        NOTIFY_FLOW_MONITOR,
+        NOTIFY_FLOW_MONITOR_WITH_ERROR,
+
+        NOTIFY_FLOW_STATS,
+
+        _FAILED,
+        FINISHED_WITH_ERROR;
+    }
+
+    public enum Event {
+        NEXT,
+
+        RESPONSE_RECEIVED,
+        SKIP_NON_INGRESS_RULES_INSTALL,
+
+        RULES_INSTALLED,
+        RULES_VALIDATED,
+        RULES_REMOVED,
+
+        TIMEOUT,
+        RETRY,
+        ERROR
     }
 }

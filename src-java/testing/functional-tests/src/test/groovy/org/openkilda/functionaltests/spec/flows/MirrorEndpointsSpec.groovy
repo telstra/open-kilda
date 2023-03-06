@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.model.FlowTransitEncapsulation
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeFalse
@@ -136,8 +135,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         and: "Related switches and flow pass validation"
         pathHelper.getInvolvedSwitches(flow.flowId).each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(it.dpId,
-                    ["missing", "misconfigured", "excess"])
+            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         }
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
@@ -160,12 +158,11 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         and: "Original flow rule counter is not increased"
         flowRule.packetCount == findFlowRule(getFlowRules(swPair.src.dpId), mirrorDirection).packetCount
 
-        //https://github.com/telstra/open-kilda/issues/4517
-//        and: "System collects stat for mirror cookie in otsdb"
-//        Wrappers.wait(statsRouterRequestInterval) {
-//            def tags = [flowid: flow.flowId, cookie: mirrorRule.cookie]
-//            assert otsdb.query(genTrafficTime, metricPrefix + "flow.raw.bytes", tags).dps.size() > 0
-//        }
+        and: "System collects stat for mirror cookie in otsdb"
+        Wrappers.wait(statsRouterRequestInterval) {
+            def tags = [flowid: flow.flowId, cookie: mirrorRule.cookie]
+            assert otsdb.query(genTrafficTime, metricPrefix + "flow.raw.bytes", tags).dps.size() > 0
+        }
 
         and: "Traffic is also received at the mirror point (check only if second tg available)"
         if (mirrorTg) {
@@ -197,15 +194,14 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         !fl.getGroupsStats(swPair.src.dpId).group.find { it.groupNumber == groupId }
 
         and: "Src switch and flow pass validation"
-        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(swPair.src.dpId,
-                ["missing", "misconfigured", "excess"])
+        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Src switch pass validation"
-        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(swPair.src.dpId)
+        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty()
         def testDone = true
 
         cleanup:
@@ -244,8 +240,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Mirror point is created and Active"
         and: "Flow and switch pass validation"
-        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(swPair.src.dpId,
-                ["missing", "misconfigured", "excess"])
+        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         when: "Swap flow paths"
@@ -255,8 +250,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         }
 
         then: "Flow and switch both pass validation"
-        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(swPair.src.dpId,
-                ["missing", "misconfigured", "excess"])
+        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "Flow passes main traffic"
@@ -301,8 +295,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         then: "Mirror point is created and Active"
         and: "Related switches and flow pass validation"
         pathHelper.getInvolvedSwitches(flow.flowId).each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(it.dpId,
-                    ["missing", "misconfigured", "excess"])
+            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         }
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
@@ -353,8 +346,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Related switches and flow pass validation"
         pathHelper.getInvolvedSwitches(flow.flowId).each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(it.dpId,
-                    ["missing", "misconfigured", "excess"])
+            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         }
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
@@ -405,8 +397,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Mirror point is created and Active"
         and: "Flow and src switch both pass validation"
-        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(swPair.src.dpId,
-                ["missing", "misconfigured", "excess"])
+        northbound.validateSwitch(swPair.src.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         cleanup:
@@ -445,7 +436,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         database.getMirrorPoints().empty
 
         and: "Related switch pass validation"
-        northbound.validateSwitch(swPair.dst.dpId).verifyRuleSectionsAreEmpty(swPair.dst.dpId)
+        northbound.validateSwitch(swPair.dst.dpId).verifyRuleSectionsAreEmpty()
         def testComplete = true
 
         cleanup:
@@ -572,8 +563,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         })
 
         then: "Flow and affected switch are valid"
-        northbound.validateSwitch(swPair.dst.dpId).verifyRuleSectionsAreEmpty(swPair.dst.dpId,
-                ["missing", "misconfigured", "excess"])
+        northbound.validateSwitch(swPair.dst.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "Mirror rule has updated port/vlan values"
@@ -617,8 +607,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         then: "Mirror point is created and Active"
         and: "Related switches and flow pass validation"
         pathHelper.getInvolvedSwitches(flow.flowId).each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(it.dpId,
-                    ["missing", "misconfigured", "excess"])
+            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         }
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
@@ -664,8 +653,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Mirror point is created, flow and switches are valid"
         pathHelper.getInvolvedSwitches(flow.flowId).each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(it.dpId,
-                    ["missing", "misconfigured", "excess"])
+            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
         }
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
@@ -1036,7 +1024,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         flowHelperV2.createMirrorPoint(flow.flowId, mirrorPoint)
 
         when: "Try to enable connected devices for switch where mirror is created"
-        def originalProps = northbound.getSwitchProperties(swPair.src.dpId)
+        def originalProps = switchHelper.getCachedSwProps(swPair.src.dpId)
         northbound.updateSwitchProperties(swPair.src.dpId, originalProps.jacksonCopy().tap {
             it.switchArp = true
             it.switchLldp = true
@@ -1061,7 +1049,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         given: "A switch with enabled connected devices"
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         def swPair = topologyHelper.switchPairs[0]
-        def originalProps = northbound.getSwitchProperties(swPair.src.dpId)
+        def originalProps = switchHelper.getCachedSwProps(swPair.src.dpId)
         northbound.updateSwitchProperties(swPair.src.dpId, originalProps.jacksonCopy().tap {
             it.switchArp = true
             it.switchLldp = true
@@ -1193,7 +1181,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     }
 
     private SwitchPropertiesDto enableMultiTableIfNeeded(boolean needDevices, SwitchId switchId) {
-        def initialProps = northbound.getSwitchProperties(switchId)
+        def initialProps = switchHelper.getCachedSwProps(switchId)
         if (needDevices && !initialProps.multiTable) {
             def sw = topology.switches.find { it.dpId == switchId }
             switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
@@ -1225,7 +1213,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     @Memoized
     def initialSwPropsCache(SwitchId switchId) {
-        return northbound.getSwitchProperties(switchId)
+        return switchHelper.getCachedSwProps(switchId)
     }
 
     /**
@@ -1264,12 +1252,11 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     List<SwitchPair> getUniqueVxlanSwitchPairs(boolean needTraffgens) {
         getUniqueSwitchPairs({ SwitchPair swP ->
-            def wbCheck = [swP.src, swP.dst].every { !it.wb5164 } //ignore due to issue with vxlan(checksum)
             def vxlanCheck = swP.paths.find {
                 pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) }
             }
             def tgCheck = needTraffgens ? swP.src.traffGens && swP.dst.traffGens : true
-            vxlanCheck && tgCheck && wbCheck
+            vxlanCheck && tgCheck
         })
     }
 

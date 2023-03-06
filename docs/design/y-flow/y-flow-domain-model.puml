@@ -1,0 +1,77 @@
+@startuml
+
+title Y-Flow Domain Model
+
+class YFlow {
+    yflow_id : String
+
+    status : FlowStatus
+
+    shared_endpoint : SharedEndpoint
+
+    maximum_bandwidth : long
+    path_computation_strategy : PathComputationStrategy
+    encapsulation_type : FlowEncapsulationType
+    max_latency : Long
+    max_latency_tier2 : Long
+    ignore_bandwidth : boolean
+    periodic_pings : boolean
+    pinned : boolean
+    priority : Integer
+    strict_bandwidth : boolean
+    description : String
+    allocate_protected_path : boolean
+
+    ypoint : SwitchId
+    protected_path_ypoint : SwitchId
+
+    meter_id : MeterId
+    protected_path_meter_id : MeterId
+    shared_endpoint_meter_id : MeterId
+    __
+    getSubFlows(): Set<YSubFlow>
+    setSubFlows(Set<YSubFlow> subFlows)
+}
+
+class SharedEndpoint {
+    switch_id : SwitchId
+    port_number
+}
+
+class YSubFlow {
+    yflow_id : String
+    subflow_id : String
+
+    shared_endpoint_vlan : int
+    shared_endpoint_inner_vlan : int
+
+    endpoint_switch_id : SwitchId
+    endpoint_port : int
+    endpoint_vlan : int
+    endpoint_inner_vlan : int
+
+    __
+    getYFlow(): YFlow
+    getFlow(): Flow
+}
+
+class Flow {
+    flow_id
+    ...
+    --
+    getYFlowId()
+}
+
+class FlowMeter {
+    meter_id
+    switch_id
+    flow_id
+    path_id = null
+}
+
+YFlow --> SharedEndpoint : by shared_endpoint
+YFlow <--> FlowMeter : by \nflow_id == yflow_id\nand\nby XXX_meter_id + XXX_ypoint
+YSubFlow --> YFlow : by\nyflow_id
+YSubFlow --> Flow : by\nsub_flow_id
+
+@enduml

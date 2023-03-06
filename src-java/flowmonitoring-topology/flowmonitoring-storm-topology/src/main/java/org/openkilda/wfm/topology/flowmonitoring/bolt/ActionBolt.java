@@ -16,8 +16,11 @@
 package org.openkilda.wfm.topology.flowmonitoring.bolt;
 
 import static org.openkilda.wfm.share.bolt.KafkaEncoder.FIELD_ID_PAYLOAD;
+import static org.openkilda.wfm.share.bolt.MonotonicClock.FIELD_ID_TICK_IDENTIFIER;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_HS_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_REMOVE_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_STATS_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_DIRECTION_FIELD;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_ID_FIELD;
@@ -26,6 +29,7 @@ import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt.CO
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.flow.FlowSyncRequest;
 import org.openkilda.messaging.info.flow.UpdateFlowCommand;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.server42.messaging.FlowDirection;
@@ -47,22 +51,26 @@ import java.util.Collections;
 
 public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
 
-    private Duration timeout;
-    private float threshold;
+    private final Duration timeout;
+    private final float threshold;
+    private final int shardCount;
+    private int currentShardNumber;
     private transient ActionService actionService;
 
     public ActionBolt(
             PersistenceManager persistenceManager, Duration timeout, float threshold,
-            String lifeCycleEventSourceComponent) {
+            String lifeCycleEventSourceComponent, int shardCount) {
         super(persistenceManager, lifeCycleEventSourceComponent);
         this.timeout = timeout;
         this.threshold = threshold;
+        this.currentShardNumber = 0;
+        this.shardCount = shardCount;
     }
 
     @Override
     protected void init() {
         super.init();
-        actionService = new ActionService(this, persistenceManager, Clock.systemUTC(), timeout, threshold);
+        actionService = new ActionService(this, persistenceManager, Clock.systemUTC(), timeout, threshold, shardCount);
     }
 
     @Override
@@ -91,7 +99,11 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
         }
 
         if (ComponentId.TICK_BOLT.name().equals(input.getSourceComponent())) {
-            actionService.processTick();
+            TickBolt.TickId tickId = pullValue(input, FIELD_ID_TICK_IDENTIFIER, TickBolt.TickId.class);
+            if (TickBolt.TickId.SLA_CHECK.equals(tickId)) {
+                actionService.processTick(currentShardNumber);
+                currentShardNumber = (currentShardNumber + 1) % shardCount;
+            }
         } else {
             unhandledInput(input);
         }
@@ -106,21 +118,29 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
+        declarer.declareStream(FLOW_HS_STREAM_ID.name(), new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
+        declarer.declareStream(FLOW_STATS_STREAM_ID.name(),
+                new Fields(FLOW_ID_FIELD, FLOW_DIRECTION_FIELD, LATENCY_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
                 ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 
     @Override
     public void sendFlowSyncRequest(String flowId) {
-        FlowRerouteRequest request = new FlowRerouteRequest(flowId, true, false, false, Collections.emptySet(),
-                "Flow latency become healthy", false);
-        emit(getCurrentTuple(), new Values(request, getCommandContext()));
+        FlowSyncRequest request = new FlowSyncRequest(flowId);
+        emit(FLOW_HS_STREAM_ID.name(), getCurrentTuple(), new Values(request, getCommandContext()));
     }
 
     @Override
     public void sendFlowRerouteRequest(String flowId) {
-        FlowRerouteRequest request = new FlowRerouteRequest(flowId, false, false, false, Collections.emptySet(),
+        FlowRerouteRequest request = new FlowRerouteRequest(flowId, false, false, Collections.emptySet(),
                 "Flow latency become unhealthy", false);
         emit(getCurrentTuple(), new Values(request, getCommandContext()));
+    }
+
+    @Override
+    public void persistFlowStats(String flowId, String direction, long latency) {
+        emit(FLOW_STATS_STREAM_ID.name(), getCurrentTuple(), new Values(flowId, direction, latency,
+                getCommandContext()));
     }
 }

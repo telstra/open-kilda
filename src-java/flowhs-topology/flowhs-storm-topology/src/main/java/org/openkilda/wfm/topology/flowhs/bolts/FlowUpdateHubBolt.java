@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.bolts;
 
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER;
-import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_HISTORY_BOLT;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_METRICS_BOLT;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_RESPONSE_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_PING_SENDER;
@@ -27,7 +27,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.UPDATE_HUB
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
@@ -50,13 +50,14 @@ import org.openkilda.server42.control.messaging.flowrtt.DeactivateFlowMonitoring
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.history.bolt.HistoryBolt;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
+import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowUpdateHubCarrier;
@@ -65,13 +66,13 @@ import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
-
     private final FlowUpdateConfig config;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
@@ -81,8 +82,9 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
 
     private LifecycleEvent deferredShutdownEvent;
 
-    public FlowUpdateHubBolt(FlowUpdateConfig config, PersistenceManager persistenceManager,
-                             PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
+    public FlowUpdateHubBolt(@NonNull FlowUpdateConfig config, @NonNull PersistenceManager persistenceManager,
+                             @NonNull PathComputerConfig pathComputerConfig,
+                             @NonNull FlowResourcesConfig flowResourcesConfig) {
         super(persistenceManager, config);
 
         this.config = config;
@@ -124,17 +126,21 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         Object payload = input.getValueByField(FIELD_ID_PAYLOAD);
-        if (payload instanceof FlowRequest) {
-            FlowRequest flowRequest = (FlowRequest) payload;
-            service.handleUpdateRequest(currentKey, pullContext(input), flowRequest);
-        } else if (payload instanceof CreateFlowLoopRequest) {
-            CreateFlowLoopRequest flowLoopRequest = (CreateFlowLoopRequest) payload;
-            service.handleCreateFlowLoopRequest(currentKey, pullContext(input), flowLoopRequest);
-        } else if (payload instanceof DeleteFlowLoopRequest) {
-            DeleteFlowLoopRequest flowLoopRequest = (DeleteFlowLoopRequest) payload;
-            service.handleDeleteFlowLoopRequest(currentKey, pullContext(input), flowLoopRequest);
-        } else {
-            unhandledInput(input);
+        try {
+            if (payload instanceof FlowRequest) {
+                FlowRequest flowRequest = (FlowRequest) payload;
+                service.handleUpdateRequest(currentKey, pullContext(input), flowRequest);
+            } else if (payload instanceof CreateFlowLoopRequest) {
+                CreateFlowLoopRequest flowLoopRequest = (CreateFlowLoopRequest) payload;
+                service.handleCreateFlowLoopRequest(currentKey, pullContext(input), flowLoopRequest);
+            } else if (payload instanceof DeleteFlowLoopRequest) {
+                DeleteFlowLoopRequest flowLoopRequest = (DeleteFlowLoopRequest) payload;
+                service.handleDeleteFlowLoopRequest(currentKey, pullContext(input), flowLoopRequest);
+            } else {
+                unhandledInput(input);
+            }
+        } catch (DuplicateKeyException e) {
+            log.error("Failed to handle a request with key {}. {}", currentKey, e.getMessage());
         }
     }
 
@@ -143,13 +149,21 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
         String operationKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         currentKey = KeyProvider.getParentKey(operationKey);
         SpeakerFlowSegmentResponse flowResponse = (SpeakerFlowSegmentResponse) input.getValueByField(FIELD_ID_PAYLOAD);
-        service.handleAsyncResponse(currentKey, flowResponse);
+        try {
+            service.handleAsyncResponse(currentKey, flowResponse);
+        } catch (UnknownKeyException e) {
+            log.warn("Received a response with unknown key {}.", currentKey);
+        }
     }
 
     @Override
     public void onTimeout(String key, Tuple tuple) {
         currentKey = key;
-        service.handleTimeout(key);
+        try {
+            service.handleTimeout(key);
+        } catch (UnknownKeyException e) {
+            log.warn("Failed to handle a timeout event for unknown key {}.", currentKey);
+        }
     }
 
     @Override
@@ -161,7 +175,7 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
-    public void sendActivateFlowMonitoring(RequestedFlow flow) {
+    public void sendActivateFlowMonitoring(@NonNull RequestedFlow flow) {
         ActivateFlowMonitoringInfoData payload = RequestedFlowMapper.INSTANCE.toActivateFlowMonitoringInfoData(flow);
 
         Message message = new InfoMessage(payload, getCommandContext().getCreateTime(),
@@ -183,7 +197,7 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
-    public void sendNotifyFlowMonitor(CommandData flowCommand) {
+    public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
         String correlationId = getCommandContext().getCorrelationId();
         Message message = new CommandMessage(flowCommand, System.currentTimeMillis(), correlationId);
 
@@ -192,7 +206,7 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
-    public void sendNotifyFlowStats(UpdateFlowPathInfo flowPathInfo) {
+    public void sendNotifyFlowStats(@NonNull UpdateFlowPathInfo flowPathInfo) {
         Message message = new InfoMessage(flowPathInfo, System.currentTimeMillis(),
                 getCommandContext().getCorrelationId());
 
@@ -201,7 +215,7 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
-    public void sendNotifyFlowStats(RemoveFlowPathInfo flowPathInfo) {
+    public void sendNotifyFlowStats(@NonNull RemoveFlowPathInfo flowPathInfo) {
         Message message = new InfoMessage(flowPathInfo, System.currentTimeMillis(),
                 getCommandContext().getCorrelationId());
 
@@ -210,7 +224,7 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
-    public void sendSpeakerRequest(FlowSegmentRequest command) {
+    public void sendSpeakerRequest(@NonNull SpeakerRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
 
         Values values = new Values(commandKey, command);
@@ -218,20 +232,22 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
     }
 
     @Override
-    public void sendNorthboundResponse(Message message) {
+    public void sendNorthboundResponse(@NonNull Message message) {
         emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
     }
 
     @Override
-    public void sendHubSwapEndpointsResponse(Message message) {
+    public void sendHubSwapEndpointsResponse(@NonNull Message message) {
         emitWithContext(Stream.UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB.name(), getCurrentTuple(),
                 new Values(KeyProvider.getParentKey(currentKey), message));
     }
 
     @Override
-    public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
-        emit(Stream.HUB_TO_HISTORY_BOLT.name(), getCurrentTuple(), HistoryBolt.newInputTuple(
-                historyHolder, getCommandContext()));
+    public void sendHistoryUpdate(@NonNull FlowHistoryHolder historyHolder) {
+        InfoMessage message = new InfoMessage(historyHolder, getCommandContext().getCreateTime(),
+                getCommandContext().getCorrelationId());
+        emitWithContext(Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(historyHolder.getTaskId(), message));
     }
 
     @Override
@@ -252,7 +268,7 @@ public class FlowUpdateHubBolt extends HubBolt implements FlowUpdateHubCarrier {
         declarer.declareStream(HUB_TO_SPEAKER_WORKER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(UPDATE_HUB_TO_SWAP_ENDPOINTS_HUB.name(), MessageKafkaTranslator.STREAM_FIELDS);
-        declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), HistoryBolt.INPUT_FIELDS);
+        declarer.declareStream(HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_PING_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(ZkStreams.ZK.toString(),

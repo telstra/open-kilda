@@ -17,12 +17,14 @@ package org.openkilda.persistence.ferma.repositories;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPath.FlowPathData;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.YFlow;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
@@ -40,6 +42,8 @@ import org.openkilda.persistence.tx.TransactionManager;
 import com.syncleus.ferma.FramedGraph;
 import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
+import org.apache.tinkerpop.gremlin.structure.Column;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -79,6 +84,49 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
     }
 
     @Override
+    public Map<PathId, FlowPath> findByIds(Set<PathId> pathIds) {
+        Set<String> graphPathIds = pathIds.stream()
+                .map(PathIdConverter.INSTANCE::toGraphProperty)
+                .collect(Collectors.toSet());
+        List<? extends FlowPathFrame> flowPathFrames = framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowPathFrame.FRAME_LABEL)
+                .has(FlowPathFrame.PATH_ID_PROPERTY, P.within(graphPathIds)))
+                .toListExplicit(FlowPathFrame.class);
+        return flowPathFrames.stream()
+                .map(FlowPath::new)
+                .collect(Collectors.toMap(FlowPath::getPathId, Function.identity()));
+    }
+
+    @Override
+    public Map<PathId, Flow> findFlowsByPathIds(Set<PathId> pathIds) {
+        Set<String> graphPathIds = pathIds.stream()
+                .map(PathIdConverter.INSTANCE::toGraphProperty)
+                .collect(Collectors.toSet());
+        List<? extends FlowPathFrame> flowPathFrames = framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowPathFrame.FRAME_LABEL)
+                .has(FlowPathFrame.PATH_ID_PROPERTY, P.within(graphPathIds)))
+                .toListExplicit(FlowPathFrame.class);
+        return flowPathFrames.stream()
+                .map(FlowPath::new)
+                .collect(Collectors.toMap(FlowPath::getPathId, FlowPath::getFlow));
+    }
+
+    @Override
+    public Map<PathId, YFlow> findYFlowsByPathIds(Set<PathId> pathIds) {
+        Set<String> graphPathIds = pathIds.stream()
+                .map(PathIdConverter.INSTANCE::toGraphProperty)
+                .collect(Collectors.toSet());
+        List<? extends FlowPathFrame> flowPathFrames = framedGraph().traverse(g -> g.V()
+                        .hasLabel(FlowPathFrame.FRAME_LABEL)
+                        .has(FlowPathFrame.PATH_ID_PROPERTY, P.within(graphPathIds)))
+                .toListExplicit(FlowPathFrame.class);
+        return flowPathFrames.stream()
+                .map(FlowPath::new)
+                .filter(flowPath -> flowPath.getFlow().getYFlow() != null)
+                .collect(Collectors.toMap(FlowPath::getPathId, flowPath -> flowPath.getFlow().getYFlow()));
+    }
+
+    @Override
     public Optional<FlowPath> findByFlowIdAndCookie(String flowId, FlowSegmentCookie cookie) {
         List<? extends FlowPathFrame> flowPathFrames = framedGraph().traverse(g -> g.V()
                 .hasLabel(FlowPathFrame.FRAME_LABEL)
@@ -89,6 +137,29 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
             throw new PersistenceException(format("Found more that 1 FlowPath entity by (%s, %s)", flowId, cookie));
         }
         return flowPathFrames.isEmpty() ? Optional.empty() : Optional.of(flowPathFrames.get(0)).map(FlowPath::new);
+    }
+
+    @Override
+    public Optional<FlowPath> findByCookie(FlowSegmentCookie cookie) {
+        List<? extends FlowPathFrame> flowPathFrames = framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowPathFrame.FRAME_LABEL)
+                .has(FlowPathFrame.COOKIE_PROPERTY, FlowSegmentCookieConverter.INSTANCE.toGraphProperty(cookie)))
+                .toListExplicit(FlowPathFrame.class);
+        if (flowPathFrames.size() > 1) {
+            throw new PersistenceException(format("Found more that 1 FlowPath entity by %s", cookie));
+        }
+        return flowPathFrames.isEmpty() ? Optional.empty() : Optional.of(flowPathFrames.get(0)).map(FlowPath::new);
+    }
+
+    @Override
+    public Collection<PathId> findPathIdsBySharedBandwidthGroupId(String sharedBandwidthGroupId) {
+        return framedGraph().traverse(g -> g.V()
+                        .hasLabel(FlowPathFrame.FRAME_LABEL)
+                        .has(FlowPathFrame.SHARED_BANDWIDTH_GROUP_ID_PROPERTY, sharedBandwidthGroupId)
+                        .values(FlowPathFrame.PATH_ID_PROPERTY))
+                .getRawTraversal().toStream()
+                .map(pathId -> PathIdConverter.INSTANCE.toEntityAttribute((String) pathId))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -336,7 +407,13 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
                 .has(PathSegmentFrame.SRC_PORT_PROPERTY, srcPort)
                 .has(PathSegmentFrame.DST_PORT_PROPERTY, dstPort)
                 .has(PathSegmentFrame.IGNORE_BANDWIDTH_PROPERTY, false)
-                .values(PathSegmentFrame.BANDWIDTH_PROPERTY)
+                .choose(__.has(PathSegmentFrame.SHARED_BANDWIDTH_GROUP_ID_PROPERTY),
+                        __.group()
+                                .by(PathSegmentFrame.SHARED_BANDWIDTH_GROUP_ID_PROPERTY)
+                                .by(__.values(PathSegmentFrame.BANDWIDTH_PROPERTY).max())
+                                .select(Column.values)
+                                .unfold(),
+                        __.values(PathSegmentFrame.BANDWIDTH_PROPERTY))
                 .sum())
                 .getRawTraversal()) {
             return traversal.tryNext()

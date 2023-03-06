@@ -25,11 +25,12 @@ import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.EndpointUpdate;
@@ -45,13 +46,16 @@ import org.apache.storm.shade.com.google.common.base.Objects;
 import java.util.Optional;
 
 @Slf4j
-public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+public class UpdateFlowAction extends
+        NbTrackableWithHistorySupportAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final SwitchRepository switchRepository;
+    private final YFlowRepository yFlowRepository;
 
     public UpdateFlowAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        switchRepository = repositoryFactory.createSwitchRepository();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.yFlowRepository = repositoryFactory.createYFlowRepository();
     }
 
     @Override
@@ -112,11 +116,13 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
             if (targetFlow.getDiverseFlowId().isEmpty()) {
                 flow.setDiverseGroupId(null);
             } else {
-                flow.setDiverseGroupId(getOrCreateDiverseFlowGroupId(targetFlow.getDiverseFlowId()));
+                flow.setDiverseGroupId(getOrCreateFlowDiverseGroup(targetFlow.getDiverseFlowId()));
             }
         } else if (targetFlow.isAllocateProtectedPath()) {
             if (flow.getDiverseGroupId() == null) {
-                flow.setDiverseGroupId(getOrCreateDiverseFlowGroupId(flow.getFlowId()));
+                flow.setDiverseGroupId(flowRepository.getOrCreateDiverseFlowGroupId(flow.getFlowId())
+                        .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                                format("Diverse flow %s not found", flow.getFlowId()))));
             }
         }
 
@@ -189,11 +195,20 @@ public class UpdateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Ev
         return targetFlow;
     }
 
-    private String getOrCreateDiverseFlowGroupId(String flowId) throws FlowProcessingException {
-        log.debug("Getting flow diverse group for flow with id {}", flowId);
-        return flowRepository.getOrCreateDiverseFlowGroupId(flowId)
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                        format("Flow %s not found", flowId)));
+    private String getOrCreateFlowDiverseGroup(String diverseFlowId) throws FlowProcessingException {
+        log.debug("Getting flow diverse group for flow with id {}", diverseFlowId);
+        Optional<String> groupId;
+        if (yFlowRepository.exists(diverseFlowId)) {
+            groupId = yFlowRepository.getOrCreateDiverseYFlowGroupId(diverseFlowId);
+        } else if (yFlowRepository.isSubFlow(diverseFlowId)) {
+            groupId = flowRepository.findById(diverseFlowId)
+                    .map(Flow::getYFlowId)
+                    .flatMap(yFlowRepository::getOrCreateDiverseYFlowGroupId);
+        } else {
+            groupId = flowRepository.getOrCreateDiverseFlowGroupId(diverseFlowId);
+        }
+        return groupId.orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                format("Diverse flow %s not found", diverseFlowId)));
     }
 
     private String getOrCreateAffinityFlowGroupId(String flowId) throws FlowProcessingException {

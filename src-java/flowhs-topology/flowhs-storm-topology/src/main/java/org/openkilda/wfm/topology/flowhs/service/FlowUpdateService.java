@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.messaging.Message;
@@ -27,52 +29,52 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Config;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
+import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
+import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingService;
 
-import com.google.common.annotations.VisibleForTesting;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collections;
 import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
-public class FlowUpdateService {
-    @VisibleForTesting
-    final Map<String, FlowUpdateFsm> fsms = new HashMap<>();
-
+public class FlowUpdateService extends FlowProcessingService<FlowUpdateFsm, Event, FlowUpdateContext,
+        FlowUpdateHubCarrier, FlowProcessingFsmRegister<FlowUpdateFsm>, FlowUpdateEventListener> {
     private final FlowUpdateFsm.Factory fsmFactory;
-    private final FsmExecutor<FlowUpdateFsm, State, Event, FlowUpdateContext> fsmExecutor
-            = new FsmExecutor<>(Event.NEXT);
-
-    private final FlowUpdateHubCarrier carrier;
-    private final FlowRepository flowRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
 
-    private boolean active;
-
-    public FlowUpdateService(FlowUpdateHubCarrier carrier, PersistenceManager persistenceManager,
-                             PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
+    public FlowUpdateService(@NonNull FlowUpdateHubCarrier carrier, @NonNull PersistenceManager persistenceManager,
+                             @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager flowResourcesManager,
                              int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                              int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
-        this.carrier = carrier;
+        super(new FlowProcessingFsmRegister<>(), new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        flowRepository = repositoryFactory.createFlowRepository();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
-        fsmFactory = new FlowUpdateFsm.Factory(carrier, persistenceManager, pathComputer, flowResourcesManager,
-                pathAllocationRetriesLimit, pathAllocationRetryDelay, resourceAllocationRetriesLimit,
-                speakerCommandRetriesLimit);
+
+        Config fsmConfig = Config.builder()
+                .pathAllocationRetriesLimit(pathAllocationRetriesLimit)
+                .pathAllocationRetryDelay(pathAllocationRetryDelay)
+                .resourceAllocationRetriesLimit(resourceAllocationRetriesLimit)
+                .speakerCommandRetriesLimit(speakerCommandRetriesLimit)
+                .build();
+        fsmFactory = new FlowUpdateFsm.Factory(carrier, fsmConfig, persistenceManager, pathComputer,
+                flowResourcesManager);
     }
 
     /**
@@ -81,9 +83,70 @@ public class FlowUpdateService {
      * @param key command identifier.
      * @param request request data.
      */
+    public void handleUpdateRequest(@NonNull String key, @NonNull CommandContext commandContext,
+                                    @NonNull FlowRequest request)
+            throws DuplicateKeyException {
+        if (yFlowRepository.isSubFlow(request.getFlowId())) {
+            sendForbiddenSubFlowOperationToNorthbound(request.getFlowId(), commandContext);
+            cancelProcessing(key);
+            return;
+        }
 
-    public void handleUpdateRequest(String key, CommandContext commandContext, FlowRequest request) {
-        handleRequest(key, commandContext, request);
+        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
+        startFlowUpdating(key, commandContext, requestedFlow,
+                request.isDoNotRevert(), request.getBulkUpdateFlowIds(), requestedFlow.getFlowId());
+    }
+
+    /**
+     * Start flow updating without reverting for the provided information.
+     */
+    public void startFlowUpdating(@NonNull CommandContext commandContext, @NonNull RequestedFlow request,
+                                  @NonNull String sharedBandwidthGroupId) {
+        try {
+            startFlowUpdating(request.getFlowId(), commandContext, request, true, Collections.emptySet(),
+                    sharedBandwidthGroupId);
+        } catch (DuplicateKeyException e) {
+            throw new FlowProcessingException(ErrorType.INTERNAL_ERROR,
+                    format("Failed to initiate flow updating for %s / %s: %s", request.getFlowId(), e.getKey(),
+                            e.getMessage()));
+        }
+    }
+
+    private void startFlowUpdating(String key, CommandContext commandContext, RequestedFlow request,
+                                   boolean doNotRevert, Set<String> bulkUpdateFlowIds, String sharedBandwidthGroupId)
+            throws DuplicateKeyException {
+        String flowId = request.getFlowId();
+        log.debug("Handling flow update request with key {} and flow ID: {}", key, request.getFlowId());
+
+        if (fsmRegister.hasRegisteredFsmWithKey(key)) {
+            throw new DuplicateKeyException(key, "There's another active FSM with the same key");
+        }
+
+        if (fsmRegister.hasRegisteredFsmWithFlowId(flowId)) {
+            sendErrorResponseToNorthbound(ErrorType.REQUEST_INVALID, "Could not update flow",
+                    format("Flow %s is updating now", flowId), commandContext);
+            log.error("Attempt to create a FSM with key {}, while there's another active FSM for the same flowId {}.",
+                    key, flowId);
+            cancelProcessing(key);
+            return;
+        }
+
+        FlowUpdateFsm fsm = fsmFactory.newInstance(request.getFlowId(), commandContext, eventListeners);
+        fsm.setSharedBandwidthGroupId(sharedBandwidthGroupId);
+        fsmRegister.registerFsm(key, fsm);
+
+        if (request.getFlowEncapsulationType() == null) {
+            request.setFlowEncapsulationType(kildaConfigurationRepository.getOrDefault()
+                    .getFlowEncapsulationType());
+        }
+        FlowUpdateContext context = FlowUpdateContext.builder()
+                .targetFlow(request)
+                .doNotRevert(doNotRevert)
+                .bulkUpdateFlowIds(bulkUpdateFlowIds)
+                .build();
+        fsmExecutor.fire(fsm, Event.NEXT, context);
+
+        removeIfFinished(fsm, key);
     }
 
     /**
@@ -91,13 +154,11 @@ public class FlowUpdateService {
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
+    public void handleAsyncResponse(@NonNull String key, @NonNull SpeakerFlowSegmentResponse flowResponse)
+            throws UnknownKeyException {
         log.debug("Received flow command response {}", flowResponse);
-        FlowUpdateFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            log.warn("Failed to find a FSM: received response with key {} for non pending FSM", key);
-            return;
-        }
+        FlowUpdateFsm fsm = fsmRegister.getFsmByKey(key)
+                .orElseThrow(() -> new UnknownKeyException(key));
 
         FlowUpdateContext context = FlowUpdateContext.builder()
                 .speakerFlowResponse(flowResponse)
@@ -113,21 +174,39 @@ public class FlowUpdateService {
     }
 
     /**
+     * Handles async response from worker.
+     * Used if the command identifier is unknown, so FSM is identified by the flow Id.
+     */
+    public void handleAsyncResponseByFlowId(@NonNull String flowId, @NonNull SpeakerFlowSegmentResponse flowResponse)
+            throws UnknownKeyException {
+        String commandKey = fsmRegister.getKeyByFlowId(flowId)
+                .orElseThrow(() -> new UnknownKeyException(flowId));
+        handleAsyncResponse(commandKey, flowResponse);
+    }
+
+    /**
      * Handles timeout case.
      *
      * @param key command identifier.
      */
-    public void handleTimeout(String key) {
+    public void handleTimeout(@NonNull String key) throws UnknownKeyException {
         log.debug("Handling timeout for {}", key);
-        FlowUpdateFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            log.warn("Failed to find a FSM: timeout event for non pending FSM with key {}", key);
-            return;
-        }
+        FlowUpdateFsm fsm = fsmRegister.getFsmByKey(key)
+                .orElseThrow(() -> new UnknownKeyException(key));
 
-        fsmExecutor.fire(fsm, Event.TIMEOUT, null);
+        fsmExecutor.fire(fsm, Event.TIMEOUT);
 
         removeIfFinished(fsm, key);
+    }
+
+    /**
+     * Handles timeout case.
+     * Used if the command identifier is unknown, so FSM is identified by the flow Id.
+     */
+    public void handleTimeoutByFlowId(@NonNull String flowId) throws UnknownKeyException {
+        String commandKey = fsmRegister.getKeyByFlowId(flowId)
+                .orElseThrow(() -> new UnknownKeyException(flowId));
+        handleTimeout(commandKey);
     }
 
     /**
@@ -135,14 +214,20 @@ public class FlowUpdateService {
      *
      * @param request request to handle.
      */
-    public void handleCreateFlowLoopRequest(String key, CommandContext commandContext,
-                                            CreateFlowLoopRequest request) {
+    public void handleCreateFlowLoopRequest(@NonNull String key, @NonNull CommandContext commandContext,
+                                            @NonNull CreateFlowLoopRequest request) throws DuplicateKeyException {
+        if (yFlowRepository.isSubFlow(request.getFlowId())) {
+            sendForbiddenSubFlowOperationToNorthbound(request.getFlowId(), commandContext);
+            cancelProcessing(key);
+            return;
+        }
+
         Optional<Flow> flow = flowRepository.findById(request.getFlowId());
         if (flow.isPresent()) {
             FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(flow.get());
             if (flowRequest.getLoopSwitchId() == null || flowRequest.getLoopSwitchId().equals(request.getSwitchId())) {
                 flowRequest.setLoopSwitchId(request.getSwitchId());
-                handleRequest(key, commandContext, flowRequest);
+                handleUpdateRequest(key, commandContext, flowRequest);
             } else {
                 carrier.sendNorthboundResponse(buildFlowAlreadyLoopedErrorMessage(flowRequest, commandContext));
             }
@@ -156,42 +241,22 @@ public class FlowUpdateService {
      *
      * @param request request to handle.
      */
-    public void handleDeleteFlowLoopRequest(String key, CommandContext commandContext,
-                                            DeleteFlowLoopRequest request) {
+    public void handleDeleteFlowLoopRequest(@NonNull String key, @NonNull CommandContext commandContext,
+                                            @NonNull DeleteFlowLoopRequest request) throws DuplicateKeyException {
+        if (yFlowRepository.isSubFlow(request.getFlowId())) {
+            sendForbiddenSubFlowOperationToNorthbound(request.getFlowId(), commandContext);
+            cancelProcessing(key);
+            return;
+        }
+
         Optional<Flow> flow = flowRepository.findById(request.getFlowId());
         if (flow.isPresent()) {
             FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(flow.get());
             flowRequest.setLoopSwitchId(null);
-            handleRequest(key, commandContext, flowRequest);
+            handleUpdateRequest(key, commandContext, flowRequest);
         } else {
             carrier.sendNorthboundResponse(buildFlowNotFoundErrorMessage(request.getFlowId(), commandContext));
         }
-    }
-
-    private void handleRequest(String key, CommandContext commandContext, FlowRequest request) {
-        log.debug("Handling flow update request with key {} and flow ID: {}", key, request.getFlowId());
-
-        if (fsms.containsKey(key)) {
-            log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
-            return;
-        }
-
-        FlowUpdateFsm fsm = fsmFactory.newInstance(commandContext, request.getFlowId());
-        fsms.put(key, fsm);
-
-        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
-        if (requestedFlow.getFlowEncapsulationType() == null) {
-            requestedFlow.setFlowEncapsulationType(kildaConfigurationRepository.getOrDefault()
-                    .getFlowEncapsulationType());
-        }
-        FlowUpdateContext context = FlowUpdateContext.builder()
-                .targetFlow(requestedFlow)
-                .bulkUpdateFlowIds(request.getBulkUpdateFlowIds())
-                .doNotRevert(request.isDoNotRevert())
-                .build();
-        fsmExecutor.fire(fsm, Event.NEXT, context);
-
-        removeIfFinished(fsm, key);
     }
 
     private Message buildFlowNotFoundErrorMessage(String flowId, CommandContext commandContext) {
@@ -210,31 +275,8 @@ public class FlowUpdateService {
     private void removeIfFinished(FlowUpdateFsm fsm, String key) {
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
-            fsms.remove(key);
-
-            carrier.cancelTimeoutCallback(key);
-
-            if (!active && fsms.isEmpty()) {
-                carrier.sendInactive();
-            }
+            fsmRegister.unregisterFsm(key);
+            cancelProcessing(key);
         }
-    }
-
-    /**
-     * Handles deactivate command.
-     */
-    public boolean deactivate() {
-        active = false;
-        if (fsms.isEmpty()) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Handles activate command.
-     */
-    public void activate() {
-        active = true;
     }
 }

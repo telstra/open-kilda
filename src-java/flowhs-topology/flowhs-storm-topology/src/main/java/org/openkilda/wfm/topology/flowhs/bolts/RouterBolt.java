@@ -23,7 +23,21 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_PATH_SWAP_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_REROUTE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_SYNC_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_UPDATE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_VALIDATION_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_CREATE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_DELETE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_READ;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_UPDATE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_CREATE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_DELETE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_PATH_SWAP_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_READ;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_REROUTE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_SYNC_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_UPDATE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_VALIDATION_HUB;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KEY;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
@@ -37,7 +51,25 @@ import org.openkilda.messaging.command.flow.FlowMirrorPointDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.flow.FlowSyncRequest;
+import org.openkilda.messaging.command.flow.FlowValidationRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
+import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
+import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
+import org.openkilda.messaging.command.haflow.HaFlowReadRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRequest;
+import org.openkilda.messaging.command.haflow.HaFlowsDumpRequest;
+import org.openkilda.messaging.command.yflow.SubFlowsReadRequest;
+import org.openkilda.messaging.command.yflow.YFlowDeleteRequest;
+import org.openkilda.messaging.command.yflow.YFlowPartialUpdateRequest;
+import org.openkilda.messaging.command.yflow.YFlowPathSwapRequest;
+import org.openkilda.messaging.command.yflow.YFlowPathsReadRequest;
+import org.openkilda.messaging.command.yflow.YFlowReadRequest;
+import org.openkilda.messaging.command.yflow.YFlowRequest;
+import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
+import org.openkilda.messaging.command.yflow.YFlowSyncRequest;
+import org.openkilda.messaging.command.yflow.YFlowValidationRequest;
+import org.openkilda.messaging.command.yflow.YFlowsDumpRequest;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
@@ -53,6 +85,7 @@ import org.apache.storm.tuple.Values;
 public class RouterBolt extends AbstractBolt {
 
     public static final String FLOW_ID_FIELD = "flow-id";
+
     private static final Fields STREAM_FIELDS =
             new Fields(FIELD_ID_KEY, FLOW_ID_FIELD, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
@@ -102,6 +135,8 @@ public class RouterBolt extends AbstractBolt {
                         key, input.getMessageId());
                 Values values = new Values(key, deleteRequest.getFlowId(), data);
                 emitWithContext(ROUTER_TO_FLOW_DELETE_HUB.name(), input, values);
+            } else if (data instanceof FlowSyncRequest) {
+                routeFlowSyncRequest(input, (FlowSyncRequest) data, key);
             } else if (data instanceof FlowPathSwapRequest) {
                 FlowPathSwapRequest pathSwapRequest = (FlowPathSwapRequest) data;
                 log.debug("Received a path swap request {} with key {}. MessageId {}", pathSwapRequest.getFlowId(),
@@ -132,10 +167,112 @@ public class RouterBolt extends AbstractBolt {
                 FlowMirrorPointDeleteRequest request = (FlowMirrorPointDeleteRequest) data;
                 emitWithContext(ROUTER_TO_FLOW_DELETE_MIRROR_POINT_HUB.name(),
                         input, new Values(key, request.getFlowId(), data));
+            } else if (data instanceof FlowValidationRequest) {
+                log.debug("Received a flow validation request with key {}. MessageId {}",
+                        key, input.getMessageId());
+                FlowValidationRequest request = (FlowValidationRequest) data;
+                emitWithContext(ROUTER_TO_FLOW_VALIDATION_HUB.name(), input,
+                        new Values(key, request.getFlowId(), data));
+            } else if (data instanceof YFlowRequest) {
+                YFlowRequest request = (YFlowRequest) data;
+                log.debug("Received request {} with key {}", request, key);
+                Values values = new Values(key, request.getYFlowId(), request);
+                switch (request.getType()) {
+                    case CREATE:
+                        emitWithContext(ROUTER_TO_YFLOW_CREATE_HUB.name(), input, values);
+                        break;
+                    case UPDATE:
+                        emitWithContext(ROUTER_TO_YFLOW_UPDATE_HUB.name(), input, values);
+                        break;
+                    default:
+                        throw new UnsupportedOperationException(format("Y-flow operation %s is not supported",
+                                request.getType()));
+                }
+            } else if (data instanceof YFlowPartialUpdateRequest) {
+                YFlowPartialUpdateRequest request = (YFlowPartialUpdateRequest) data;
+                log.debug("Received a y-flow partial update request {} with key {}", request, key);
+                emitWithContext(ROUTER_TO_YFLOW_UPDATE_HUB.name(), input, new Values(key, request.getYFlowId(), data));
+            } else if (data instanceof YFlowRerouteRequest) {
+                YFlowRerouteRequest request = (YFlowRerouteRequest) data;
+                log.debug("Received a y-flow reroute request {} with key {}", data, key);
+                emitWithContext(ROUTER_TO_YFLOW_REROUTE_HUB.name(), input, new Values(key, request.getYFlowId(), data));
+            } else if (data instanceof YFlowDeleteRequest) {
+                YFlowDeleteRequest request = (YFlowDeleteRequest) data;
+                log.debug("Received a y-flow delete request {} with key {}", request, key);
+                emitWithContext(ROUTER_TO_YFLOW_DELETE_HUB.name(), input, new Values(key, request.getYFlowId(), data));
+            } else if (data instanceof YFlowsDumpRequest) {
+                log.debug("Received a y-flow dump request {} with key {}", data, key);
+                emitWithContext(ROUTER_TO_YFLOW_READ.name(), input, new Values(key, data));
+            } else if (data instanceof YFlowReadRequest) {
+                log.debug("Received a y-flow read request {} with key {}", data, key);
+                emitWithContext(ROUTER_TO_YFLOW_READ.name(), input, new Values(key, data));
+            } else if (data instanceof YFlowPathsReadRequest) {
+                log.debug("Received a y-flow read path request {} with key {}", data, key);
+                emitWithContext(ROUTER_TO_YFLOW_READ.name(), input, new Values(key, data));
+            } else if (data instanceof SubFlowsReadRequest) {
+                log.debug("Received a y-flow sub-flows request {} with key {}", data, key);
+                emitWithContext(ROUTER_TO_YFLOW_READ.name(), input, new Values(key, data));
+            } else if (data instanceof YFlowValidationRequest) {
+                YFlowValidationRequest request = (YFlowValidationRequest) data;
+                log.debug("Received a y-flow validation request {} with key {}", request, key);
+                emitWithContext(ROUTER_TO_YFLOW_VALIDATION_HUB.name(), input,
+                        new Values(key, request.getYFlowId(), data));
+            } else if (data instanceof YFlowSyncRequest) {
+                routeYflowSyncRequest(input, (YFlowSyncRequest) data, key);
+            } else if (data instanceof YFlowPathSwapRequest) {
+                YFlowPathSwapRequest request = (YFlowPathSwapRequest) data;
+                log.debug("Received a y-flow path swap request {} with key {}", request, key);
+                emitWithContext(ROUTER_TO_YFLOW_PATH_SWAP_HUB.name(), input, new Values(key, request.getYFlowId(),
+                        data));
+            } else if (data instanceof HaFlowRequest) {
+                HaFlowRequest request = (HaFlowRequest) data;
+                log.debug("Received ha-flow request {} with key {}", request, key);
+                Values values = new Values(key, request.getHaFlowId(), request);
+                switch (request.getType()) {
+                    case CREATE:
+                        emitWithContext(ROUTER_TO_HA_FLOW_CREATE_HUB.name(), input, values);
+                        break;
+                    case UPDATE:
+                        emitWithContext(ROUTER_TO_HA_FLOW_UPDATE_HUB.name(), input, values);
+                        break;
+                    default:
+                        throw new UnsupportedOperationException(format("HA-flow operation %s is not supported",
+                                request.getType()));
+                }
+            } else if (data instanceof HaFlowPartialUpdateRequest) {
+                HaFlowPartialUpdateRequest request = (HaFlowPartialUpdateRequest) data;
+                log.debug("Received a ha-flow partial update request {} with key {}", request, key);
+                emitWithContext(ROUTER_TO_HA_FLOW_UPDATE_HUB.name(), input,
+                        new Values(key, request.getHaFlowId(), data));
+            } else if (data instanceof HaFlowDeleteRequest) {
+                HaFlowDeleteRequest request = (HaFlowDeleteRequest) data;
+                log.debug("Received a ha-flow delete request {} with key {}", request, key);
+                emitWithContext(ROUTER_TO_HA_FLOW_DELETE_HUB.name(), input,
+                        new Values(key, request.getHaFlowId(), data));
+            } else if (data instanceof HaFlowsDumpRequest) {
+                log.debug("Received a ha-flow dump request {} with key {}", data, key);
+                emitWithContext(ROUTER_TO_HA_FLOW_READ.name(), input, new Values(key, data));
+            } else if (data instanceof HaFlowReadRequest) {
+                log.debug("Received a ha-flow read request {} with key {}", data, key);
+                emitWithContext(ROUTER_TO_HA_FLOW_READ.name(), input, new Values(key, data));
             } else {
                 unhandledInput(input);
             }
         }
+    }
+
+    private void routeFlowSyncRequest(Tuple input, FlowSyncRequest request, String key) {
+        log.debug("Received a flow sync request {} with key {} (MessageId={})",
+                request.getFlowId(), key, input.getMessageId());
+        Values values = new Values(key, request.getFlowId(), request, getCommandContext());
+        emit(ROUTER_TO_FLOW_SYNC_HUB.name(), input, values);
+    }
+
+    private void routeYflowSyncRequest(Tuple input, YFlowSyncRequest request, String key) {
+        log.debug("Received an y-flow sync request {} with key {} (MessageId={})",
+                request.getYFlowId(), key, input.getMessageId());
+        Values values = new Values(key, request.getYFlowId(), request, getCommandContext());
+        emit(ROUTER_TO_YFLOW_SYNC_HUB.name(), input, values);
     }
 
     @Override
@@ -147,7 +284,23 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(ROUTER_TO_FLOW_PATH_SWAP_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_FLOW_CREATE_MIRROR_POINT_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_FLOW_DELETE_MIRROR_POINT_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_FLOW_SYNC_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_FLOW_SWAP_ENDPOINTS_HUB.name(),
+                new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
+        declarer.declareStream(ROUTER_TO_FLOW_VALIDATION_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_YFLOW_CREATE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_YFLOW_UPDATE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_YFLOW_REROUTE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_YFLOW_DELETE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_YFLOW_SYNC_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_YFLOW_READ.name(),
+                new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
+        declarer.declareStream(ROUTER_TO_YFLOW_VALIDATION_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_YFLOW_PATH_SWAP_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_HA_FLOW_CREATE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_HA_FLOW_UPDATE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_HA_FLOW_DELETE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_HA_FLOW_READ.name(),
                 new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
         declarer.declareStream(ZkStreams.ZK.toString(),
                 new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));

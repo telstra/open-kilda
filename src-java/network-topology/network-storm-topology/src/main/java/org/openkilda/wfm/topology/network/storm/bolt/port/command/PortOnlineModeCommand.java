@@ -17,18 +17,21 @@ package org.openkilda.wfm.topology.network.storm.bolt.port.command;
 
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.OnlineStatus;
+import org.openkilda.wfm.topology.network.model.PortDataHolder;
 import org.openkilda.wfm.topology.network.storm.bolt.port.PortHandler;
 
 public class PortOnlineModeCommand extends PortCommand {
     private final OnlineStatus onlineStatus;
+    private final PortDataHolder portData;
 
-    public PortOnlineModeCommand(Endpoint endpoint, OnlineStatus onlineStatus) {
+    public PortOnlineModeCommand(Endpoint endpoint, OnlineStatus onlineStatus, PortDataHolder portData) {
         super(endpoint);
         this.onlineStatus = onlineStatus;
+        this.portData = portData;
     }
 
     @Override
     public void apply(PortHandler handler) {
-        handler.processUpdateOnlineMode(getEndpoint(), onlineStatus);
+        handler.processUpdateOnlineMode(getEndpoint(), onlineStatus, portData);
     }
 }

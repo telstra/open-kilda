@@ -15,27 +15,12 @@
 
 package org.openkilda.persistence.orientdb.repositories;
 
-import static java.lang.String.format;
-
-import org.openkilda.model.PathSegment;
-import org.openkilda.persistence.ferma.frames.IslFrame;
-import org.openkilda.persistence.ferma.frames.PathSegmentFrame;
-import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
-import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.ferma.repositories.FermaPathSegmentRepository;
 import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 
-import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tinkerpop.gremlin.orientdb.OrientGraph;
-import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResult;
-import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
-
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * OrientDB implementation of {@link PathSegmentRepository}.
@@ -51,6 +36,7 @@ public class OrientDbPathSegmentRepository extends FermaPathSegmentRepository {
         this.graphSupplier = graphSupplier;
     }
 
+    /*TODO: this need to be reimplemented to work with PathSegmentFrame.SHARED_BANDWIDTH_GROUP_ID_PROPERTY
     @Override
     public Optional<Long> addSegmentAndUpdateIslAvailableBandwidth(PathSegment segment) {
         Map params = ImmutableMap.builder()
@@ -126,5 +112,5 @@ public class OrientDbPathSegmentRepository extends FermaPathSegmentRepository {
                 return Optional.empty();
             }
         }
-    }
+    }*/
 }

@@ -17,7 +17,6 @@ package org.openkilda.messaging.model;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
-import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowStatusDetails;
 import org.openkilda.model.PathComputationStrategy;
@@ -25,6 +24,8 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
@@ -188,6 +189,9 @@ public class FlowDto implements Serializable {
     @JsonProperty("diverse_with")
     private Set<String> diverseWith;
 
+    @JsonProperty("diverse_with_y_flows")
+    private Set<String> diverseWithYFlows;
+
     @JsonProperty("affinity_with")
     private String affinityWith;
 
@@ -205,6 +209,13 @@ public class FlowDto implements Serializable {
 
     @JsonProperty("latency_last_modified_time")
     private Instant latencyLastModifiedTime;
+
+    @JsonProperty("y_flow_id")
+    @JsonInclude(Include.NON_NULL)
+    private String yFlowId;
+
+    @JsonProperty("vlan_statistics")
+    private Set<Integer> vlanStatistics;
 
     public FlowDto() {
     }
@@ -247,6 +258,8 @@ public class FlowDto implements Serializable {
      * @param forwardLatency            forward path latency nanoseconds
      * @param reverseLatency            reverse path latency nanoseconds
      * @param latencyLastModifiedTime   latency fields last modified time
+     * @param yFlowId                   the y-flow ID in the case of sub-flow
+     * @param vlanStatistics            flow vlan statistics
      */
     @JsonCreator
     @Builder(toBuilder = true)
@@ -283,12 +296,15 @@ public class FlowDto implements Serializable {
                    @JsonProperty("target_path_computation_strategy")
                                PathComputationStrategy targetPathComputationStrategy,
                    @JsonProperty("diverse_with") Set<String> diverseWith,
+                   @JsonProperty("diverse_with_y_flows") Set<String> diverseWithYFlows,
                    @JsonProperty("affinity_with") String affinityWith,
                    @JsonProperty("loop_switch_id") SwitchId loopSwitchId,
                    @JsonProperty("mirror_point_statuses") List<MirrorPointStatusDto> mirrorPointStatuses,
                    @JsonProperty("forward_latency") Long forwardLatency,
                    @JsonProperty("reverse_latency") Long reverseLatency,
-                   @JsonProperty("latency_last_modified_time") Instant latencyLastModifiedTime) {
+                   @JsonProperty("latency_last_modified_time") Instant latencyLastModifiedTime,
+                   @JsonProperty("y_flow_id") @JsonInclude(Include.NON_NULL) String yFlowId,
+                   @JsonProperty("vlan_statistics") Set<Integer> vlanStatistics) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
@@ -321,94 +337,15 @@ public class FlowDto implements Serializable {
         this.pathComputationStrategy = pathComputationStrategy;
         this.targetPathComputationStrategy = targetPathComputationStrategy;
         this.diverseWith = diverseWith;
+        this.diverseWithYFlows = diverseWithYFlows;
         this.affinityWith = affinityWith;
         this.loopSwitchId = loopSwitchId;
         this.mirrorPointStatuses = mirrorPointStatuses;
         this.forwardLatency = forwardLatency;
         this.reverseLatency = reverseLatency;
         this.latencyLastModifiedTime = latencyLastModifiedTime;
-    }
-
-    /**
-     * Instance constructor.
-     *
-     * @param flowId            flow id
-     * @param bandwidth         bandwidth
-     * @param ignoreBandwidth   ignore bandwidth flag
-     * @param description       description
-     * @param sourceSwitch      source switch
-     * @param sourcePort        source port
-     * @param sourceVlan        source vlan id
-     * @param destinationSwitch destination switch
-     * @param destinationPort   destination port
-     * @param destinationVlan   destination vlan id
-     * @param pinned            pinned flag
-     * @param detectConnectedDevices detect connected devices flags
-     */
-    public FlowDto(String flowId,
-                   long bandwidth,
-                   boolean ignoreBandwidth,
-                   String description,
-                   SwitchId sourceSwitch, int sourcePort, int sourceVlan,
-                   SwitchId destinationSwitch, int destinationPort, int destinationVlan, boolean pinned,
-                   DetectConnectedDevicesDto detectConnectedDevices) {
-        this(flowId,
-                bandwidth,
-                ignoreBandwidth,
-                false,
-                false,
-                false,
-                0,
-                description,
-                null, null,
-                sourceSwitch,
-                destinationSwitch,
-                sourcePort,
-                destinationPort,
-                sourceVlan,
-                destinationVlan, 0, 0,
-                null, 0, null, null, null, null, null, null, pinned, null, detectConnectedDevices, null, null, null,
-                null, null, null, null, null, null);
-    }
-
-    public FlowDto(FlowPayload input) {
-        this(input.getId(),
-                input.getMaximumBandwidth(),
-                input.isIgnoreBandwidth(),
-                false,
-                input.isPeriodicPings(),
-                input.isAllocateProtectedPath(),
-                0,
-                input.getDescription(),
-                null, null,
-                input.getSource().getDatapath(),
-                input.getDestination().getDatapath(),
-                input.getSource().getPortNumber(),
-                input.getDestination().getPortNumber(),
-                input.getSource().getVlanId(),
-                input.getDestination().getVlanId(),
-                input.getSource().getInnerVlanId(),
-                input.getDestination().getInnerVlanId(),
-                null, 0, null, null, null,
-                input.getMaxLatency(),
-                null,
-                input.getPriority(),
-                input.isPinned(),
-                input.getEncapsulationType() != null ? FlowEncapsulationType.valueOf(
-                        input.getEncapsulationType().toUpperCase()) : null,
-                new DetectConnectedDevicesDto(
-                        input.getSource().getDetectConnectedDevices().isLldp(),
-                        input.getSource().getDetectConnectedDevices().isArp(),
-                        input.getDestination().getDetectConnectedDevices().isLldp(),
-                        input.getDestination().getDetectConnectedDevices().isArp()),
-                input.getPathComputationStrategy() != null ? PathComputationStrategy.valueOf(
-                        input.getPathComputationStrategy().toUpperCase()) : null, null, null,
-                null, null, null, null, null, null);
-    }
-
-    @JsonIgnore
-    public long getFlagglessCookie() {
-        return cookie & MASK_COOKIE_FLAGS;
+        this.yFlowId = yFlowId;
+        this.vlanStatistics = vlanStatistics;
     }
 
     /**

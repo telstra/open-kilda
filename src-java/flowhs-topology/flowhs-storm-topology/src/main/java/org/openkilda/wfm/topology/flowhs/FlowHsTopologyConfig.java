@@ -20,6 +20,8 @@ import org.openkilda.wfm.topology.AbstractTopologyConfig;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
+import javax.validation.constraints.Min;
+
 public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     default String getKafkaFlowHsTopic() {
         return getKafkaTopics().getFlowHsTopic();
@@ -27,6 +29,10 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
 
     default String getKafkaSpeakerFlowTopic() {
         return getKafkaTopics().getSpeakerFlowHsTopic();
+    }
+
+    default String getKafkaSpeakerTopic() {
+        return getKafkaTopics().getSpeakerTopic();
     }
 
     default String getKafkaNorthboundTopic() {
@@ -43,6 +49,10 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
 
     default String getKafkaPingTopic() {
         return getKafkaTopics().getPingTopic();
+    }
+
+    default String getKafkaHistoryTopic() {
+        return getKafkaTopics().getTopoHistoryTopic();
     }
 
     default String getKafkaFlowHsServer42StormNotifyTopic() {
@@ -73,9 +83,9 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("30")
     int getCreateHubTimeoutSeconds();
 
-    @Key("flow.create.speaker.timeout.seconds")
+    @Key("flow.speaker.timeout.seconds")
     @Default("10")
-    int getCreateSpeakerTimeoutSeconds();
+    int getSpeakerTimeoutSeconds();
 
     @Key("flow.create.speaker.command.retries")
     @Default("3")
@@ -93,10 +103,6 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("30")
     int getSwapEndpointsHubTimeoutSeconds();
 
-    @Key("flow.update.speaker.timeout.seconds")
-    @Default("10")
-    int getUpdateSpeakerTimeoutSeconds();
-
     @Key("flow.update.speaker.command.retries")
     @Default("3")
     int getUpdateSpeakerCommandRetries();
@@ -105,21 +111,25 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("30")
     int getRerouteHubTimeoutSeconds();
 
-    @Key("flow.reroute.speaker.timeout.seconds")
-    @Default("10")
-    int getRerouteSpeakerTimeoutSeconds();
-
     @Key("flow.reroute.speaker.command.retries")
     @Default("3")
     int getRerouteSpeakerCommandRetries();
 
+    @Key("flow.sync.hub.timeout.seconds")
+    @Default("30")
+    int getSyncHubTimeoutSeconds();
+
+    @Key("flow.sync.speaker.timeout.seconds")
+    @Default("10")
+    int getSyncSpeakerTimeoutSeconds();
+
+    @Key("flow.sync.speaker.command.retries")
+    @Default("3")
+    int getSyncSpeakerCommandRetries();
+
     @Key("flow.delete.hub.timeout.seconds")
     @Default("30")
     int getDeleteHubTimeoutSeconds();
-
-    @Key("flow.delete.speaker.timeout.seconds")
-    @Default("10")
-    int getDeleteSpeakerTimeoutSeconds();
 
     @Key("flow.delete.speaker.command.retries")
     @Default("3")
@@ -129,10 +139,6 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("30")
     int getPathSwapHubTimeoutSeconds();
 
-    @Key("flow.pathswap.speaker.timeout.seconds")
-    @Default("10")
-    int getPathSwapSpeakerTimeoutSeconds();
-
     @Key("flow.pathswap.speaker.command.retries")
     @Default("3")
     int getPathSwapSpeakerCommandRetries();
@@ -140,10 +146,6 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Key("flow.create.mirror.point.hub.timeout.seconds")
     @Default("30")
     int getCreateMirrorPointHubTimeoutSeconds();
-
-    @Key("flow.create.mirror.point.speaker.timeout.seconds")
-    @Default("10")
-    int getCreateMirrorPointSpeakerTimeoutSeconds();
 
     @Key("flow.create.mirror.point.speaker.command.retries")
     @Default("3")
@@ -153,11 +155,53 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("30")
     int getDeleteMirrorPointHubTimeoutSeconds();
 
-    @Key("flow.delete.mirror.point.speaker.timeout.seconds")
-    @Default("10")
-    int getDeleteMirrorPointSpeakerTimeoutSeconds();
-
     @Key("flow.delete.mirror.point.speaker.command.retries")
     @Default("3")
     int getDeleteMirrorPointSpeakerCommandRetries();
+
+    @Key("flow.validation.hub.timeout.seconds")
+    @Default("30")
+    int getValidationHubTimeoutSeconds();
+
+    @Key("flow.validation.speaker.timeout.seconds")
+    @Default("10")
+    int getValidationSpeakerTimeoutSeconds();
+
+    @Key("y_flow.create.speaker.command.retries")
+    @Default("3")
+    int getYFlowCreateSpeakerCommandRetriesLimit();
+
+    @Key("y_flow.delete.speaker.command.retries")
+    @Default("3")
+    int getYFlowDeleteSpeakerCommandRetriesLimit();
+
+    @Key("y_flow.read.retries")
+    @Default("3")
+    int getYFlowReadRetriesLimit();
+
+    @Key("y_flow.read.retry.delay.ms")
+    @Default("100")
+    int getYFlowReadRetryDelayMillis();
+
+    @Key("y_flow.validation.speaker.timeout.seconds")
+    @Default("10")
+    int getYFlowValidationSpeakerTimeoutSeconds();
+
+    @Key("y_flow.pathswap.hub.timeout.seconds")
+    @Default("30")
+    int getYFlowPathSwapHubTimeoutSeconds();
+
+    @Key("y_flow.pathswap.speaker.command.retries")
+    @Default("3")
+    int getYFlowPathSwapSpeakerCommandRetriesLimit();
+
+
+    @Key("burst.coefficient")
+    @Default("1.05")
+    double getFlowMeterBurstCoefficient();
+
+    @Key("min.burst.size.in.kbits")
+    @Default("1024")
+    @Min(0)
+    long getFlowMeterMinBurstSizeInKbits();
 }

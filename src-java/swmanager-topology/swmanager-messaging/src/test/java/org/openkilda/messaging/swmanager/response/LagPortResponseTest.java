@@ -18,7 +18,7 @@ package org.openkilda.messaging.swmanager.response;
 import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.info.InfoMessage;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -38,6 +38,6 @@ public class LagPortResponseTest {
     }
 
     public static LagPortResponse makeResponse() {
-        return new LagPortResponse(1, Lists.newArrayList(1, 2, 3));
+        return new LagPortResponse(1, Sets.newHashSet(1, 2, 3), false);
     }
 }

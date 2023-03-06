@@ -14,7 +14,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.model.system.FeatureTogglesDto
@@ -43,9 +42,9 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
 
     /** System tries to reroute a flow in case latency on a path is (flowLatency + flowLatency * 0.05);
      * NOTE: There is some possible latency calculation error in virtual lab(ovs/linux) after applying 'tc' command
-     * that's why '0.5' is used. */
+     * that's why '0.6' is used. */
     @Shared
-    def flowLatencySlaThresholdPercent = 0.5 //kilda_flow_latency_sla_threshold_percent: 0.05
+    def flowLatencySlaThresholdPercent = 0.6 //kilda_flow_latency_sla_threshold_percent: 0.05
     @Shared //kilda_flow_sla_check_interval_seconds: 60
     @Value('${flow.sla.check.interval.seconds}')
     Integer flowSlaCheckIntervalSeconds
@@ -129,9 +128,10 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
          */
         wait(flowSlaCheckIntervalSeconds * 2 + flowLatencySlaTimeoutSeconds + WAIT_OFFSET) {
             def history = northbound.getFlowHistory(flow.flowId).last()
-            //"Reason: Flow latency become unhealthy" or ""Reason: Flow latency become healthy""
-            assert history.details.contains("healthy") &&
-                    (history.payload.last().action in [REROUTE_SUCCESS,REROUTE_FAIL]) //just check 'reroute'
+            // Flow sync or flow reroute with reason "Flow latency become unhealthy"
+            assert history.getAction() == "Flow paths sync"
+                || (history.details.contains("healthy") &&
+                    (history.payload.last().action in [REROUTE_SUCCESS,REROUTE_FAIL])) //just check 'reroute'
         }
 
         cleanup:

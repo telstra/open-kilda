@@ -50,19 +50,32 @@ RUN GNUPGHOME="$(mktemp -d)"
 
 # Download JDBC libraries and plugins
 
-ADD --chown=liquibase:liquibase https://repo1.maven.org/maven2/com/orientechnologies/orientdb-jdbc/3.0.34/orientdb-jdbc-3.0.34-all.jar /liquibase/lib/orientdb-jdbc-3.0.34-all.jar
-#ADD --chown=liquibase:liquibase https://dl.bintray.com/till-krullmann/tools/org/unbroken-dome/liquibase-orientdb/liquibase-orientdb/0.3.0/liquibase-orientdb-0.3.0.jar /liquibase/lib/liquibase-orientdb-0.3.0.jar
-COPY --chown=liquibase:liquibase lib/liquibase-orientdb-0.3.0.jar /liquibase/lib/liquibase-orientdb-0.3.0.jar
+RUN set -x \
+  && mkdir -p /liquibase/lib/ \
+  && wget -O /liquibase/lib/orientdb-jdbc-3.0.34-all.jar \
+             "https://repo1.maven.org/maven2/com/orientechnologies/orientdb-jdbc/3.0.34/orientdb-jdbc-3.0.34-all.jar"  \
+  # && wget -O /liquibase/lib/liquibase-orientdb-0.3.0.jar \
+  #            "https://dl.bintray.com/till-krullmann/tools/org/unbroken-dome/liquibase-orientdb/liquibase-orientdb/0.3.0/liquibase-orientdb-0.3.0.jar"  \
+  # black magic satisfying dependencies of `liquibase-orientdb-0.3.0.jar`
+  && wget -O /liquibase/lib/commons-lang3-3.6.jar \
+             "https://repo1.maven.org/maven2/org/apache/commons/commons-lang3/3.6/commons-lang3-3.6.jar" \
+  && wget -O /liquibase/lib/commons-beanutils-1.9.2.jar \
+             "https://repo1.maven.org/maven2/commons-beanutils/commons-beanutils/1.9.2/commons-beanutils-1.9.2.jar" \
+  && wget -O /liquibase/lib/guava-23.3-jre.jar \
+             "https://repo1.maven.org/maven2/com/google/guava/guava/23.3-jre/guava-23.3-jre.jar" \
+  && wget -O /liquibase/lib/validation-api-1.1.0.Final.jar \
+             "https://repo1.maven.org/maven2/javax/validation/validation-api/1.1.0.Final/validation-api-1.1.0.Final.jar" \
+  && wget -O /liquibase/lib/hibernate-validator-5.2.4.Final.jar \
+             "https://repo1.maven.org/maven2/org/hibernate/hibernate-validator/5.2.4.Final/hibernate-validator-5.2.4.Final.jar" \
+  && wget -O /liquibase/lib/jackson-databind-2.6.7.jar \
+             "https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.6.7/jackson-databind-2.6.7.jar" \
+  && wget -O /liquibase/lib/jboss-logging-3.2.1.Final.jar \
+             "https://repo1.maven.org/maven2/org/jboss/logging/jboss-logging/3.2.1.Final/jboss-logging-3.2.1.Final.jar" \
+  && wget -O /liquibase/lib/classmate-1.1.0.jar \
+             "https://repo1.maven.org/maven2/com/fasterxml/classmate/1.1.0/classmate-1.1.0.jar" \
+  && chown -R liquibase:liquibase /liquibase/lib/
 
-# black magic satisfying dependencies of `liquibase-orientdb-0.3.0.jar`
-ADD --chown=liquibase:liquibase https://repo1.maven.org/maven2/org/apache/commons/commons-lang3/3.6/commons-lang3-3.6.jar /liquibase/lib/commons-lang3-3.6.jar
-ADD --chown=liquibase:liquibase https://repo1.maven.org/maven2/commons-beanutils/commons-beanutils/1.9.2/commons-beanutils-1.9.2.jar /liquibase/lib/commons-beanutils-1.9.2.jar
-ADD --chown=liquibase:liquibase https://repo1.maven.org/maven2/com/google/guava/guava/23.3-jre/guava-23.3-jre.jar /liquibase/lib/guava-23.3-jre.jar
-ADD --chown=liquibase:liquibase https://repo1.maven.org/maven2/javax/validation/validation-api/1.1.0.Final/validation-api-1.1.0.Final.jar /liquibase/lib/validation-api-1.1.0.Final.jar
-ADD --chown=liquibase:liquibase https://repo1.maven.org/maven2/org/hibernate/hibernate-validator/5.2.4.Final/hibernate-validator-5.2.4.Final.jar /liquibase/lib/hibernate-validator-5.2.4.Final.jar
-ADD --chown=liquibase:liquibase https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.6.7/jackson-databind-2.6.7.jar /liquibase/lib/jackson-databind-2.6.7.jar
-ADD --chown=liquibase:liquibase https://repo1.maven.org/maven2/org/jboss/logging/jboss-logging/3.2.1.Final/jboss-logging-3.2.1.Final.jar /liquibase/lib/jboss-logging-3.2.1.Final.jar
-ADD --chown=liquibase:liquibase https://repo1.maven.org/maven2/com/fasterxml/classmate/1.1.0/classmate-1.1.0.jar /liquibase/lib/classmate-1.1.0.jar
+COPY --chown=liquibase:liquibase lib/liquibase-orientdb-0.3.0.jar /liquibase/lib/liquibase-orientdb-0.3.0.jar
 
 ENV KILDA_ORIENTDB_USER=kilda
 ENV KILDA_ORIENTDB_PASSWORD=kilda

@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.share.mappers;
 
+import static java.lang.String.format;
+
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -22,6 +24,7 @@ import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.NetworkEndpoint;
 import org.openkilda.model.PathSegment;
 
 import org.mapstruct.Mapper;
@@ -62,47 +65,85 @@ public abstract class FlowPathMapper {
     }
 
     /**
-     * Convert {@link FlowPath} to {@link PathNodePayload}.
+     * Convert path's {@link PathSegment} to {@link PathInfoData}.
      */
-    public List<PathNodePayload> mapToPathNodes(FlowPath flowPath) {
-        List<PathNodePayload> resultList = new ArrayList<>();
-
-        Flow flow = flowPath.getFlow();
-        FlowEndpoint ingress = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
-        FlowEndpoint egress = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
-
-        List<PathSegment> pathSegments = flowPath.getSegments();
-        Iterator<PathSegment> leftIter = pathSegments.iterator();
-        Iterator<PathSegment> rightIter = pathSegments.iterator();
-        if (! rightIter.hasNext()) {
-            resultList.add(new PathNodePayload(
-                    flowPath.getSrcSwitchId(), ingress.getPortNumber(), egress.getPortNumber()));
-        } else {
-            PathSegment left;
-            PathSegment right = rightIter.next();
-
-            resultList.add(new PathNodePayload(ingress.getSwitchId(), ingress.getPortNumber(), right.getSrcPort()));
-            while (rightIter.hasNext()) {
-                left = leftIter.next();
-                right = rightIter.next();
-                resultList.add(new PathNodePayload(
-                        left.getDestSwitchId(), left.getDestPort(), right.getSrcPort()));
-            }
-            resultList.add(new PathNodePayload(egress.getSwitchId(), right.getDestPort(), egress.getPortNumber()));
+    public PathInfoData map(List<PathSegment> pathSegments) {
+        PathInfoData result = new PathInfoData();
+        int seqId = 0;
+        List<PathNode> nodes = new ArrayList<>();
+        for (PathSegment pathSegment : pathSegments) {
+            nodes.add(new PathNode(pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
+                    seqId++, pathSegment.getLatency()));
+            nodes.add(new PathNode(pathSegment.getDestSwitchId(), pathSegment.getDestPort(),
+                    seqId++));
         }
 
-        return resultList;
+        result.setPath(nodes);
+        return result;
     }
 
     /**
      * Convert {@link FlowPath} to {@link PathNodePayload}.
      */
     public List<PathNodePayload> mapToPathNodes(Flow flow, FlowPath flowPath) {
-        boolean forward = flow.isForward(flowPath);
-        int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
-        int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
+        FlowEndpoint ingress = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        FlowEndpoint egress = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
 
-        return mapToPathNodes(flowPath, inPort, outPort);
+        List<PathSegment> pathSegments = flowPath.getSegments();
+        return mapToPathNodes(ingress, pathSegments, egress);
+    }
+
+    /**
+     * Convert {@link FlowPath} to {@link PathNodePayload}.
+     */
+    public List<PathNodePayload> mapToPathNodes(NetworkEndpoint ingress, List<PathSegment> pathSegments,
+                                                NetworkEndpoint egress) {
+        List<PathNodePayload> resultList = new ArrayList<>();
+
+        Iterator<PathSegment> leftIter = pathSegments.iterator();
+        Iterator<PathSegment> rightIter = pathSegments.iterator();
+        if (!rightIter.hasNext()) {
+            if (ingress != null && egress != null) {
+                resultList.add(new PathNodePayload(
+                        ingress.getSwitchId(), ingress.getPortNumber(), egress.getPortNumber()));
+            }
+        } else {
+            PathSegment left;
+            PathSegment right = rightIter.next();
+
+            if (ingress != null) {
+                if (!ingress.getSwitchId().equals(right.getSrcSwitchId())) {
+                    throw new IllegalArgumentException(format("Provided ingress and path segments are not consistent: "
+                            + "%s and %s have different switches", ingress.getSwitchId(), right));
+                }
+                resultList.add(new PathNodePayload(ingress.getSwitchId(), ingress.getPortNumber(), right.getSrcPort()));
+            } else {
+                // The case of the same dest port, but different src port.
+                resultList.add(new PathNodePayload(right.getSrcSwitchId(), null, right.getSrcPort()));
+            }
+            while (rightIter.hasNext()) {
+                left = leftIter.next();
+                right = rightIter.next();
+                if (!left.getDestSwitchId().equals(right.getSrcSwitchId())) {
+                    throw new IllegalArgumentException(format("Provided path segments are not consistent: "
+                            + "%s and %s have different switches", left, right));
+                }
+                resultList.add(new PathNodePayload(
+                        left.getDestSwitchId(), left.getDestPort(), right.getSrcPort()));
+            }
+            if (egress != null) {
+                if (!egress.getSwitchId().equals(right.getDestSwitchId())) {
+                    throw new IllegalArgumentException(format("Provided egress and path segments are not consistent: "
+                            + "%s and %s have different switches", egress.getSwitchId(), right));
+                }
+                resultList.add(new PathNodePayload(egress.getSwitchId(), right.getDestPort(), egress.getPortNumber()));
+            } else {
+                // The case of the same src port, but different dest port.
+                resultList.add(new PathNodePayload(right.getDestSwitchId(), right.getDestPort(), null));
+            }
+        }
+
+        return resultList;
     }
 
     /**

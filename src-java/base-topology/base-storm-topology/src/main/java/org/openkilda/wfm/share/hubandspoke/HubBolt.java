@@ -22,6 +22,7 @@ import org.openkilda.persistence.PersistenceManager;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.experimental.SuperBuilder;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
@@ -86,7 +87,7 @@ public abstract class HubBolt extends CoordinatedBolt {
         super.declareOutputFields(declarer);
     }
 
-    @Builder
+    @SuperBuilder
     @Getter
     @AllArgsConstructor
     public static class Config implements Serializable {

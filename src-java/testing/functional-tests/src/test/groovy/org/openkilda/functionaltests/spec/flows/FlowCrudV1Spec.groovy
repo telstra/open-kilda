@@ -9,9 +9,9 @@ import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -19,27 +19,25 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandMessage
-import org.openkilda.messaging.command.flow.BaseInstallFlow
-import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest
-import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.OutputVlanType
+import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
+import org.openkilda.rulemanager.MeterFlag
+import org.openkilda.rulemanager.MeterSpeakerData
+import org.openkilda.rulemanager.OfVersion
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
+import com.google.common.collect.Sets
 import groovy.util.logging.Slf4j
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -67,7 +65,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
-    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}") @Shared
+    @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}") @Shared
     String speakerTopic
 
     @Autowired @Shared
@@ -530,9 +528,9 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         error.statusCode == HttpStatus.NOT_FOUND
         def errorDetails = error.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "Not enough bandwidth or no path found. Failed to find path with " +
-                "requested bandwidth=$flow.maximumBandwidth: Switch ${isolatedSwitch.dpId.toString()} doesn't have " +
-                "links with enough bandwidth"
+        errorDetails.errorDescription == "Not enough bandwidth or no path found."+
+                " Switch ${isolatedSwitch.dpId.toString()} doesn't have links with enough bandwidth, " +
+                "Failed to find path with requested bandwidth=$flow.maximumBandwidth"
 
         cleanup:
         !error && flowHelper.deleteFlow(flow.id)
@@ -596,9 +594,9 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         and: "All related switches have no discrepancies in rules"
         switches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyMeterSectionsAreEmpty(it.dpId, ["excess", "misconfigured", "missing"])
-            validation.verifyRuleSectionsAreEmpty(it.dpId, ["excess", "missing"])
-            def swProps = northbound.getSwitchProperties(it.dpId)
+            validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
+            validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
+            def swProps = switchHelper.getCachedSwProps(it.dpId)
             def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
             if (swProps.multiTable && swProps.server42FlowRtt) {
@@ -829,7 +827,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2576")
     @Tidy
     @Tags(VIRTUAL)
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
@@ -843,8 +840,8 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $sw.dpId not found"
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Could not create flow"
 
         cleanup: "Activate the switch and reset costs"
         blockData && switchHelper.reviveSwitch(sw, blockData, true)
@@ -866,10 +863,14 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
                 .meterEntries*.meterId).take(amountOfExcessMeters)
         excessMeterIds.each { meterId ->
             producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
-                    new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, null, sw.dpId,
-                            5, 6, 5, 0, meterId, FlowEncapsulationType.TRANSIT_VLAN,
-                            OutputVlanType.REPLACE, fakeBandwidth, meterId, sw.dpId, false, false, false, null))
-                    .toJson())).get()
+                    MeterSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .meterId(new MeterId(meterId))
+                        .rate(fakeBandwidth)
+                        .burst(fakeBandwidth)
+                        .flags(Sets.newHashSet(MeterFlag.PKTPS, MeterFlag.BURST, MeterFlag.STATS))
+                        .build()).toJson())).get()
         }
         producer.close()
 
@@ -896,8 +897,8 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
          excess meters should NOT be just allocated to the created flow
          they should be recreated(burst size should be recalculated) */
         def validateSwitchInfo = northbound.validateSwitch(sw.dpId)
-        validateSwitchInfo.verifyRuleSectionsAreEmpty(sw.dpId, ["missing", "excess"])
-        validateSwitchInfo.verifyMeterSectionsAreEmpty(sw.dpId, ["missing", "misconfigured", "excess"])
+        validateSwitchInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
+        validateSwitchInfo.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
         validateSwitchInfo.meters.proper.size() == amountOfFlows * 2 // one flow creates two meters
 
         cleanup: "Delete the flows and excess meters"
@@ -1156,10 +1157,5 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
                         }
                 ]
         ]
-    }
-
-    private static Message buildMessage(final BaseInstallFlow commandData) {
-        InstallFlowForSwitchManagerRequest data = new InstallFlowForSwitchManagerRequest(commandData)
-        return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
     }
 }

@@ -16,450 +16,142 @@
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import static java.lang.String.format;
-import static java.util.stream.Collectors.toList;
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVER_42_FLOW_RTT_INGRESS;
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT;
 
-import org.openkilda.adapter.FlowSideAdapter;
-import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.messaging.info.rule.FlowApplyActions;
-import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.info.rule.FlowSetFieldAction;
-import org.openkilda.messaging.info.rule.GroupBucket;
-import org.openkilda.messaging.info.rule.GroupEntry;
-import org.openkilda.messaging.info.switches.GroupInfoEntry;
-import org.openkilda.messaging.info.switches.GroupInfoEntry.BucketEntry;
-import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
-import org.openkilda.messaging.info.switches.LogicalPortMisconfiguredInfoEntry;
 import org.openkilda.messaging.info.switches.LogicalPortType;
-import org.openkilda.messaging.info.switches.MeterInfoEntry;
-import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
+import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2.GroupInfoEntryV2Builder;
+import org.openkilda.messaging.info.switches.v2.LogicalPortInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.MeterInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.MisconfiguredInfo;
+import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2.FieldMatch;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowEndpoint;
-import org.openkilda.model.FlowMirrorPath;
-import org.openkilda.model.FlowMirrorPoints;
+import org.openkilda.model.FlowMeter;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.Meter;
-import org.openkilda.model.MirrorGroup;
+import org.openkilda.model.MeterId;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.CookieBase;
-import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
-import org.openkilda.model.cookie.FlowSharedSegmentCookie;
-import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
+import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
-import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
-import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
+import org.openkilda.persistence.repositories.YFlowRepository;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
+import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.SpeakerData;
+import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
+import org.openkilda.wfm.topology.switchmanager.mappers.GroupEntryConverter;
 import org.openkilda.wfm.topology.switchmanager.mappers.LogicalPortMapper;
-import org.openkilda.wfm.topology.switchmanager.mappers.MeterEntryMapper;
-import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
+import org.openkilda.wfm.topology.switchmanager.mappers.MeterEntryConverter;
+import org.openkilda.wfm.topology.switchmanager.mappers.RuleEntryConverter;
+import org.openkilda.wfm.topology.switchmanager.model.v2.RuleKey;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateGroupsResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateLogicalPortsResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateMetersResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateRulesResultV2;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class ValidationServiceImpl implements ValidationService {
-    private static final String VLAN_VID_SET_ACTION = "vlan_vid";
-
-    private final FlowPathRepository flowPathRepository;
+    private final PersistenceManager persistenceManager;
     private final SwitchRepository switchRepository;
-    private final SwitchPropertiesRepository switchPropertiesRepository;
-    private final KildaFeatureTogglesRepository featureTogglesRepository;
-    private final MirrorGroupRepository mirrorGroupRepository;
-    private final FlowMirrorPointsRepository flowMirrorPointsRepository;
-    private final FlowResourcesManager flowResourcesManager;
     private final LagLogicalPortRepository lagLogicalPortRepository;
-    private final long flowMeterMinBurstSizeInKbits;
-    private final double flowMeterBurstCoefficient;
+    private final FlowMeterRepository flowMeterRepository;
+    private final FlowPathRepository flowPathRepository;
+    private final FlowRepository flowRepository;
+    private final YFlowRepository yFlowRepository;
 
-    public ValidationServiceImpl(PersistenceManager persistenceManager, SwitchManagerTopologyConfig topologyConfig,
-                                 FlowResourcesConfig flowResourcesConfig) {
-        this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
-        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
-        this.featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
-        this.mirrorGroupRepository = persistenceManager.getRepositoryFactory().createMirrorGroupRepository();
-        this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
-        this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
-        this.flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
-        this.lagLogicalPortRepository = persistenceManager.getRepositoryFactory().createLagLogicalPortRepository();
-        this.flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
+    private final MirrorGroupRepository mirrorGroupRepository;
+    private final RuleManager ruleManager;
+
+    public ValidationServiceImpl(PersistenceManager persistenceManager, RuleManager ruleManager) {
+        this.persistenceManager = persistenceManager;
+        this.ruleManager = ruleManager;
+
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.lagLogicalPortRepository = repositoryFactory.createLagLogicalPortRepository();
+        this.flowMeterRepository = repositoryFactory.createFlowMeterRepository();
+        this.flowPathRepository = repositoryFactory.createFlowPathRepository();
+        this.flowRepository = repositoryFactory.createFlowRepository();
+        this.yFlowRepository = repositoryFactory.createYFlowRepository();
+        this.mirrorGroupRepository = repositoryFactory.createMirrorGroupRepository();
     }
 
     @Override
-    public ValidateRulesResult validateRules(SwitchId switchId, List<FlowEntry> presentRules,
-                                             List<FlowEntry> expectedDefaultRules) {
+    public List<SpeakerData> buildExpectedEntities(SwitchId switchId) {
+        Set<PathId> flowPathIds = flowPathRepository.findBySegmentSwitch(switchId).stream()
+                .filter(fp -> fp.getStatus() != FlowPathStatus.IN_PROGRESS)
+                .map(FlowPath::getPathId)
+                .collect(Collectors.toSet());
+        flowPathIds.addAll(flowPathRepository.findByEndpointSwitch(switchId).stream()
+                .filter(fp -> fp.getStatus() != FlowPathStatus.IN_PROGRESS)
+                .map(FlowPath::getPathId)
+                .collect(Collectors.toSet()));
+        PersistenceDataAdapter dataAdapter = PersistenceDataAdapter.builder()
+                .persistenceManager(persistenceManager)
+                .switchIds(Collections.singleton(switchId))
+                .pathIds(flowPathIds)
+                .keepMultitableForFlow(true)
+                .build();
+        return ruleManager.buildRulesForSwitch(switchId, dataAdapter);
+    }
+
+    @Override
+    public ValidateRulesResultV2 validateRules(SwitchId switchId, List<FlowSpeakerData> presentRules,
+                                               List<FlowSpeakerData> expectedRules, boolean includeFlowInfo) {
         log.debug("Validating rules on switch {}", switchId);
 
-        Set<Long> expectedCookies = getExpectedFlowRules(switchId);
-        return makeRulesResponse(expectedCookies, presentRules, expectedDefaultRules, switchId);
-    }
+        Set<RuleInfoEntryV2> missingRules = new HashSet<>();
+        Set<RuleInfoEntryV2> properRules = new HashSet<>();
+        Set<RuleInfoEntryV2> excessRules = new HashSet<>();
+        Set<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules = new HashSet<>();
 
-    private Set<Long> getExpectedServer42IngressCookies(SwitchId switchId, Collection<FlowPath> paths) {
-        return paths.stream()
-                .filter(path -> switchId.equals(path.getSrcSwitch().getSwitchId()))
-                .filter(path -> !path.isOneSwitchFlow())
-                .map(FlowPath::getCookie)
-                .map(FlowSegmentCookie::toBuilder)
-                .map(builder -> builder.type(CookieType.SERVER_42_FLOW_RTT_INGRESS))
-                .map(FlowSegmentCookieBuilder::build)
-                .map(CookieBase::getValue)
-                .collect(Collectors.toSet());
-    }
+        Map<RuleKey, RuleInfoEntryV2> expectedRulesMap = convertRules(expectedRules);
+        Map<RuleKey, RuleInfoEntryV2> actualRulesMap = convertRules(presentRules);
 
-    private Set<Long> getExpectedMirrorPointsCookies(SwitchId switchId, Collection<FlowPath> paths) {
-        Set<Long> cookies = new HashSet<>();
-        paths.forEach(path -> {
-            path.getFlowMirrorPointsSet().stream()
-                    .filter(mirrorPoints -> switchId.equals(mirrorPoints.getMirrorSwitchId()))
-                    .forEach(mirrorPoints -> {
-                        Collection<FlowMirrorPath> flowMirrorPaths = mirrorPoints.getMirrorPaths();
-                        if (!flowMirrorPaths.isEmpty()) {
-                            cookies.add(path.getCookie().toBuilder().mirror(true).build().getValue());
-                        }
-                    });
-        });
-        return cookies;
-    }
-
-    @Override
-    public ValidateGroupsResult validateGroups(SwitchId switchId, List<GroupEntry> groupEntries) {
-        Collection<MirrorGroup> expected = mirrorGroupRepository.findBySwitchId(switchId);
-        Set<GroupInfoEntry> expectedGroups = expected
-                .stream()
-                .map(group -> buildGroupInfoEntryFromDatabase(switchId, group.getGroupId()))
-                .collect(Collectors.toSet());
-
-        Set<GroupInfoEntry> presentGroups = groupEntries.stream()
-                .filter(group -> group.getGroupId() >= GroupId.MIN_FLOW_GROUP_ID.getValue()) // exclude default group
-                .map(this::buildGroupInfoEntryFromSpeaker)
-                .collect(Collectors.toSet());
-
-        Set<Integer> presentGroupsIds = presentGroups.stream()
-                .map(GroupInfoEntry::getGroupId)
-                .collect(Collectors.toSet());
-
-        Set<GroupInfoEntry> missingGroups = new HashSet<>();
-        expectedGroups.stream()
-                .filter(entry -> !presentGroupsIds.contains(entry.getGroupId()))
-                .forEach(missingGroups::add);
-        if (!missingGroups.isEmpty() && log.isErrorEnabled()) {
-            log.error("On switch {} the following groups are missed: {}", switchId,
-                    missingGroups.stream().map(x -> Integer.toString(x.getGroupId()))
-                            .collect(Collectors.joining(", ", "[", "]")));
-        }
-        Set<GroupInfoEntry> properGroups = new HashSet<>(expectedGroups);
-        properGroups.retainAll(presentGroups);
-
-        Set<Integer> expectedGroupsIds = expectedGroups.stream()
-                .map(GroupInfoEntry::getGroupId)
-                .collect(Collectors.toSet());
-
-        Set<GroupInfoEntry> excessGroups = new HashSet<>();
-        presentGroups.stream()
-                .filter(entry -> !expectedGroupsIds.contains(entry.getGroupId()))
-                .forEach(excessGroups::add);
-        if (!excessGroups.isEmpty() && log.isWarnEnabled()) {
-            log.warn("On switch {} the following groups are excessive: {}", switchId,
-                    excessGroups.stream().map(x -> Integer.toString(x.getGroupId()))
-                            .collect(Collectors.joining(", ", "[", "]")));
-        }
-
-        Set<GroupInfoEntry> misconfiguredGroups = calculateMisconfiguredGroups(expectedGroups, presentGroups);
-
-        return new ValidateGroupsResult(
-                ImmutableList.copyOf(missingGroups),
-                ImmutableList.copyOf(properGroups),
-                ImmutableList.copyOf(excessGroups),
-                ImmutableList.copyOf(misconfiguredGroups));
-    }
-
-    @Override
-    public ValidateLogicalPortsResult validateLogicalPorts(SwitchId switchId, List<LogicalPort> presentLogicalPorts) {
-        Map<Integer, LogicalPortInfoEntry> expectedPorts = lagLogicalPortRepository.findBySwitchId(switchId).stream()
-                .map(LogicalPortMapper.INSTANCE::map)
-                .peek(port -> Collections.sort(port.getPhysicalPorts()))
-                .collect(Collectors.toMap(LogicalPortInfoEntry::getLogicalPortNumber, Function.identity()));
-
-        Map<Integer, LogicalPortInfoEntry> actualPorts = presentLogicalPorts.stream()
-                .map(LogicalPortMapper.INSTANCE::map)
-                .peek(port -> Collections.sort(port.getPhysicalPorts()))
-                .collect(Collectors.toMap(LogicalPortInfoEntry::getLogicalPortNumber, Function.identity()));
-
-        List<LogicalPortInfoEntry> properPorts = new ArrayList<>();
-        List<LogicalPortInfoEntry> missingPorts = new ArrayList<>();
-        List<LogicalPortInfoEntry> excessPorts = new ArrayList<>();
-        List<LogicalPortInfoEntry> misconfiguredPorts = new ArrayList<>();
-
-        for (Entry<Integer, LogicalPortInfoEntry> entry : expectedPorts.entrySet()) {
-            int portNumber = entry.getKey();
-            LogicalPortInfoEntry expected = entry.getValue();
-
-            if (actualPorts.containsKey(portNumber)) {
-                LogicalPortInfoEntry actual = actualPorts.get(portNumber);
-                if (actual.equals(expected)) {
-                    properPorts.add(actual);
-                } else {
-                    misconfiguredPorts.add(calculateMisconfiguredLogicalPort(expected, actual));
-                }
-            } else {
-                missingPorts.add(expected);
-            }
-        }
-
-        for (Entry<Integer, LogicalPortInfoEntry> entry : actualPorts.entrySet()) {
-            if (LogicalPortType.BFD.equals(entry.getValue().getType())) {
-                // At this moment we do not validate BFD ports, so Kilda wouldn't include BFD ports into excess list
-                continue;
-            }
-            if (!expectedPorts.containsKey(entry.getKey())) {
-                excessPorts.add(entry.getValue());
-            }
-        }
-
-        return new ValidateLogicalPortsResult(
-                ImmutableList.copyOf(properPorts),
-                ImmutableList.copyOf(missingPorts),
-                ImmutableList.copyOf(excessPorts),
-                ImmutableList.copyOf(misconfiguredPorts));
-    }
-
-    private Set<GroupInfoEntry> calculateMisconfiguredGroups(Set<GroupInfoEntry> expected, Set<GroupInfoEntry> actual) {
-        Set<GroupInfoEntry> misconfiguredGroups = new HashSet<>();
-
-        Map<Integer, GroupInfoEntry> actualEntries = actual.stream()
-                .collect(Collectors.toMap(GroupInfoEntry::getGroupId, entry -> entry));
-        for (GroupInfoEntry expectedEntry : expected) {
-            GroupInfoEntry actualEntry = actualEntries.get(expectedEntry.getGroupId());
-
-            if (actualEntry == null || actualEntry.equals(expectedEntry)) {
-                continue;
-            }
-
-            List<BucketEntry> missingData = new ArrayList<>(expectedEntry.getGroupBuckets());
-            missingData.removeAll(actualEntry.getGroupBuckets());
-
-            List<BucketEntry> excessData = new ArrayList<>(actualEntry.getGroupBuckets());
-            excessData.removeAll(expectedEntry.getGroupBuckets());
-
-            misconfiguredGroups.add(actualEntry.toBuilder()
-                    .missingGroupBuckets(missingData)
-                    .excessGroupBuckets(excessData)
-                    .build());
-        }
-
-        return misconfiguredGroups;
-    }
-
-    @VisibleForTesting
-    LogicalPortInfoEntry calculateMisconfiguredLogicalPort(
-            LogicalPortInfoEntry expectedPort, LogicalPortInfoEntry actualPort) {
-        LogicalPortMisconfiguredInfoEntry expected = new LogicalPortMisconfiguredInfoEntry();
-        LogicalPortMisconfiguredInfoEntry actual = new LogicalPortMisconfiguredInfoEntry();
-
-        if (!Objects.equals(expectedPort.getType(), actualPort.getType())) {
-            expected.setType(expectedPort.getType());
-            actual.setType(actualPort.getType());
-        }
-
-        // compare, ignoring order
-        if (!CollectionUtils.isEqualCollection(expectedPort.getPhysicalPorts(), actualPort.getPhysicalPorts())) {
-            expected.setPhysicalPorts(expectedPort.getPhysicalPorts());
-            actual.setPhysicalPorts(actualPort.getPhysicalPorts());
-        }
-
-        return LogicalPortInfoEntry.builder()
-                .logicalPortNumber(actualPort.getLogicalPortNumber())
-                .type(actualPort.getType())
-                .physicalPorts(actualPort.getPhysicalPorts())
-                .expected(expected)
-                .actual(actual)
-                .build();
-    }
-
-    private GroupInfoEntry buildGroupInfoEntryFromDatabase(SwitchId switchId, GroupId groupId) {
-        GroupInfoEntry groupInfoEntry = null;
-        FlowMirrorPoints flowMirrorPoints = flowMirrorPointsRepository.findByGroupId(groupId).orElse(null);
-
-        if (flowMirrorPoints != null) {
-            List<BucketEntry> bucketEntries = new ArrayList<>();
-            bucketEntries.add(buildMainBucket(switchId, flowMirrorPoints.getFlowPath()));
-            bucketEntries.addAll(flowMirrorPoints.getMirrorPaths().stream()
-                    .map(mirrorPath -> new BucketEntry(
-                            mirrorPath.getEgressPort(), mirrorPath.getEgressOuterVlan(), null))
-                    .collect(Collectors.toList()));
-
-            bucketEntries.sort(this::comparePortVlanEntry);
-            groupInfoEntry = GroupInfoEntry.builder()
-                    .groupId(flowMirrorPoints.getMirrorGroupId().intValue())
-                    .groupBuckets(bucketEntries)
-                    .build();
-        } else {
-            log.error("Excess database mirror group resource with group id: {}", groupId);
-        }
-
-        return groupInfoEntry;
-    }
-
-    private BucketEntry buildMainBucket(SwitchId switchId, FlowPath flowPath) {
-        Flow flow = flowPath.getFlow();
-        int port;
-        Integer vlan = null;
-        Integer vni = null;
-        if (flow.isOneSwitchFlow()) {
-            if (flowPath.isForward()) {
-                port = flow.getDestPort();
-            } else {
-                port = flow.getSrcPort();
-            }
-            return new BucketEntry(port, vlan, vni);
-        }
-        EncapsulationResources encapsulationResources = getEncapsulationResources(
-                flowPath, flow);
-        if (switchId.equals(flowPath.getSrcSwitchId())) {
-            port = flowPath.getSegments().get(0).getSrcPort();
-            switch (encapsulationResources.getEncapsulationType()) {
-                case TRANSIT_VLAN:
-                    vlan = encapsulationResources.getTransitEncapsulationId();
-                    break;
-                case VXLAN:
-                    vni = encapsulationResources.getTransitEncapsulationId();
-                    break;
-                default:
-                    throw new IllegalStateException(
-                            format("Unexpected encapsulation type for flow %s", flow.getFlowId()));
-            }
-        } else  if (flowPath.isForward()) {
-            port = flow.getDestPort();
-        } else {
-            port = flow.getSrcPort();
-        }
-
-        return new BucketEntry(port, vlan, vni);
-    }
-
-    private EncapsulationResources getEncapsulationResources(FlowPath flowPath, Flow flow) {
-        return flowResourcesManager.getEncapsulationResources(flowPath.getPathId(),
-                flow.getOppositePathId(flowPath.getPathId())
-                        .orElseThrow(() -> new IllegalStateException(
-                                format("Flow %s does not have reverse path for %s",
-                                        flow.getFlowId(), flowPath.getPathId()))),
-                flow.getEncapsulationType())
-                .orElseThrow(() -> new IllegalStateException(
-                        format("Encapsulation resources are not found for path %s", flowPath)));
-    }
-
-    private GroupInfoEntry buildGroupInfoEntryFromSpeaker(GroupEntry group) {
-        List<BucketEntry> portVlanEntries = new ArrayList<>();
-        for (GroupBucket bucket : group.getBuckets()) {
-            FlowApplyActions actions = bucket.getApplyActions();
-            if (actions == null || !NumberUtils.isParsable(actions.getFlowOutput())) {
-                continue;
-            }
-            int bucketPort = NumberUtils.toInt(actions.getFlowOutput());
-
-            Integer bucketVlan = null;
-            if (actions.getSetFieldActions() != null
-                    && actions.getSetFieldActions().size() == 1) {
-                FlowSetFieldAction setFieldAction = actions.getSetFieldActions().get(0);
-                if (VLAN_VID_SET_ACTION.equals(setFieldAction.getFieldName())) {
-                    bucketVlan = NumberUtils.toInt(setFieldAction.getFieldValue());
-                }
-            }
-
-            Integer bucketVni = null;
-            if (actions.getPushVxlan() != null) {
-                bucketVni = NumberUtils.toInt(actions.getPushVxlan());
-            }
-            portVlanEntries.add(new BucketEntry(bucketPort, bucketVlan, bucketVni));
-        }
-        portVlanEntries.sort(this::comparePortVlanEntry);
-
-        return GroupInfoEntry.builder()
-                .groupId(group.getGroupId())
-                .groupBuckets(portVlanEntries)
-                .build();
-    }
-
-    private int comparePortVlanEntry(BucketEntry portVlanEntryA, BucketEntry portVlanEntryB) {
-        if (Objects.equals(portVlanEntryA.getPort(), portVlanEntryB.getPort())) {
-            return compareInteger(portVlanEntryA.getVlan(), portVlanEntryB.getVlan());
-        }
-        return compareInteger(portVlanEntryA.getPort(), portVlanEntryB.getPort());
-    }
-
-    private int compareInteger(Integer value1, Integer value2) {
-        if (value1 == null && value2 == null) {
-            return 0;
-        }
-        if (value1 == null) {
-            return -1;
-        }
-        if (value2 == null) {
-            return 1;
-        }
-        return Integer.compare(value1, value2);
-    }
-
-    private ValidateRulesResult makeRulesResponse(Set<Long> expectedCookies, List<FlowEntry> presentRules,
-                                                  List<FlowEntry> expectedDefaultRules, SwitchId switchId) {
-        Set<Long> presentCookies = presentRules.stream()
-                .map(FlowEntry::getCookie)
-                .filter(cookie -> !Cookie.isDefaultRule(cookie))
-                .collect(Collectors.toSet());
-
-        Set<Long> missingRules = new HashSet<>(expectedCookies);
-        missingRules.removeAll(presentCookies);
-
-        Set<Long> properRules = new HashSet<>(expectedCookies);
-        properRules.retainAll(presentCookies);
-
-        Set<Long> excessRules = new HashSet<>(presentCookies);
-        excessRules.removeAll(expectedCookies);
-
-        Set<Long> misconfiguredRules = new HashSet<>();
-
-        validateDefaultRules(presentRules, expectedDefaultRules, missingRules, properRules, excessRules,
-                misconfiguredRules);
+        processRulesValidation(switchId, missingRules, properRules, excessRules, misconfiguredRules, expectedRulesMap,
+                actualRulesMap, includeFlowInfo);
 
         if (!missingRules.isEmpty() && log.isErrorEnabled()) {
             log.error("On switch {} the following rules are missed: {}", switchId,
@@ -471,64 +163,520 @@ public class ValidationServiceImpl implements ValidationService {
                     cookiesIntoLogRepresentation(excessRules));
         }
 
-        return new ValidateRulesResult(
-                ImmutableSet.copyOf(missingRules),
-                ImmutableSet.copyOf(properRules),
-                ImmutableSet.copyOf(excessRules),
-                ImmutableSet.copyOf(misconfiguredRules));
+        return new ValidateRulesResultV2(
+                missingRules.isEmpty() && misconfiguredRules.isEmpty() && excessRules.isEmpty(),
+                ImmutableList.copyOf(missingRules),
+                ImmutableList.copyOf(properRules),
+                ImmutableList.copyOf(excessRules),
+                ImmutableList.copyOf(misconfiguredRules));
     }
 
-    private void validateDefaultRules(List<FlowEntry> presentRules, List<FlowEntry> expectedDefaultRules,
-                                      Set<Long> missingRules, Set<Long> properRules, Set<Long> excessRules,
-                                      Set<Long> misconfiguredRules) {
-        List<FlowEntry> presentDefaultRules = presentRules.stream()
-                .filter(rule -> Cookie.isDefaultRule(rule.getCookie()))
-                .collect(toList());
+    @Override
+    public ValidateGroupsResultV2 validateGroups(SwitchId switchId, List<GroupSpeakerData> groupEntries,
+                                                 List<GroupSpeakerData> expectedGroupSpeakerData,
+                                                 boolean includeFlowInfo) {
+        log.debug("Validating groups on a switch {}", switchId);
 
-        expectedDefaultRules.forEach(expectedDefaultRule -> {
-            List<FlowEntry> defaultRule = presentDefaultRules.stream()
-                    .filter(rule -> rule.getCookie() == expectedDefaultRule.getCookie())
-                    .collect(toList());
+        List<GroupInfoEntryV2> expectedGroups = convertGroups(expectedGroupSpeakerData);
+        List<GroupInfoEntryV2> presentGroups = convertGroups(groupEntries);
 
-            if (defaultRule.isEmpty()) {
-                missingRules.add(expectedDefaultRule.getCookie());
+        List<GroupInfoEntryV2> missingGroups = new ArrayList<>();
+        List<GroupInfoEntryV2> properGroups = new ArrayList<>();
+        List<GroupInfoEntryV2> excessGroups = new ArrayList<>();
+        List<MisconfiguredInfo<GroupInfoEntryV2>> misconfiguredGroups = new ArrayList<>();
+
+        processGroupsValidation(switchId, presentGroups, expectedGroups, missingGroups, properGroups, excessGroups,
+                misconfiguredGroups, includeFlowInfo);
+
+        if (!excessGroups.isEmpty() && log.isWarnEnabled()) {
+            log.warn("On switch {} the following groups are excessive: {}", switchId,
+                    excessGroups.stream().map(x -> Integer.toString(x.getGroupId()))
+                            .collect(Collectors.joining(", ", "[", "]")));
+        }
+
+        if (!missingGroups.isEmpty() && log.isErrorEnabled()) {
+            log.error("On switch {} the following groups are missed: {}", switchId,
+                    missingGroups.stream().map(x -> Integer.toString(x.getGroupId()))
+                            .collect(Collectors.joining(", ", "[", "]")));
+        }
+
+        if (!misconfiguredGroups.isEmpty() && log.isWarnEnabled()) {
+            log.warn("On switch {} the following groups are misconfigured: {}", switchId,
+                    misconfiguredGroups.stream().map(MisconfiguredInfo::getId)
+                            .collect(Collectors.joining(", ", "[", "]")));
+        }
+
+        return new ValidateGroupsResultV2(
+                missingGroups.isEmpty() && excessGroups.isEmpty() && misconfiguredGroups.isEmpty(),
+                ImmutableList.copyOf(missingGroups),
+                ImmutableList.copyOf(properGroups),
+                ImmutableList.copyOf(excessGroups),
+                ImmutableList.copyOf(misconfiguredGroups));
+    }
+
+    @Override
+    public ValidateLogicalPortsResultV2 validateLogicalPorts(SwitchId switchId, List<LogicalPort> presentLogicalPorts) {
+        log.debug("Validating logical ports on a switch {}", switchId);
+
+        Map<Integer, LogicalPortInfoEntryV2> expectedPorts = lagLogicalPortRepository.findBySwitchId(switchId).stream()
+                .map(LogicalPortMapper.INSTANCE::map)
+                .peek(port -> Collections.sort(port.getPhysicalPorts()))
+                .collect(Collectors.toMap(LogicalPortInfoEntryV2::getLogicalPortNumber, Function.identity()));
+
+        Map<Integer, LogicalPortInfoEntryV2> actualPorts = presentLogicalPorts.stream()
+                .map(LogicalPortMapper.INSTANCE::map)
+                .peek(port -> Collections.sort(port.getPhysicalPorts()))
+                .collect(Collectors.toMap(LogicalPortInfoEntryV2::getLogicalPortNumber, Function.identity()));
+
+        List<LogicalPortInfoEntryV2> properPorts = new ArrayList<>();
+        List<LogicalPortInfoEntryV2> missingPorts = new ArrayList<>();
+        List<LogicalPortInfoEntryV2> excessPorts = new ArrayList<>();
+        List<MisconfiguredInfo<LogicalPortInfoEntryV2>> misconfiguredPorts = new ArrayList<>();
+
+        processLogicalPortValidation(actualPorts, expectedPorts, missingPorts, properPorts, excessPorts,
+                misconfiguredPorts);
+
+        if (!excessPorts.isEmpty() && log.isWarnEnabled()) {
+            log.warn("On switch {} the following logical ports are excessive: {}", switchId,
+                    excessPorts.stream().map(x -> Integer.toString(x.getLogicalPortNumber()))
+                            .collect(Collectors.joining(", ", "[", "]")));
+        }
+
+        if (!missingPorts.isEmpty() && log.isErrorEnabled()) {
+            log.error("On switch {} the following logical ports are missed: {}", switchId,
+                    missingPorts.stream().map(x -> Integer.toString(x.getLogicalPortNumber()))
+                            .collect(Collectors.joining(", ", "[", "]")));
+        }
+
+        if (!misconfiguredPorts.isEmpty() && log.isWarnEnabled()) {
+            log.warn("On switch {} the following logical ports are misconfigured: {}", switchId,
+                    misconfiguredPorts.stream().map(MisconfiguredInfo::getId)
+                            .collect(Collectors.joining(", ", "[", "]")));
+        }
+
+        return new ValidateLogicalPortsResultV2(
+                missingPorts.isEmpty() && excessPorts.isEmpty() && misconfiguredPorts.isEmpty(),
+                ImmutableList.copyOf(missingPorts),
+                ImmutableList.copyOf(properPorts),
+                ImmutableList.copyOf(excessPorts),
+                ImmutableList.copyOf(misconfiguredPorts),
+                "");
+    }
+
+    @Override
+    public ValidateMetersResultV2 validateMeters(
+            SwitchId switchId, List<MeterSpeakerData> presentMeters, List<MeterSpeakerData> expectedMeterSpeakerData,
+            boolean includeAllFlowInfo, boolean includeMeterFlowInfo) {
+        log.debug("Validating meters on a switch {}", switchId);
+
+        Switch sw = switchRepository.findById(switchId)
+                .orElseThrow(() -> new SwitchNotFoundException(switchId));
+        boolean isESwitch = Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
+
+        List<MeterInfoEntryV2> actualMeters = convertMeters(presentMeters);
+        List<MeterInfoEntryV2> expectedMeters = convertMeters(expectedMeterSpeakerData);
+
+        List<MeterInfoEntryV2> missingMeters = new ArrayList<>();
+        List<MeterInfoEntryV2> properMeters = new ArrayList<>();
+        List<MeterInfoEntryV2> excessMeters = new ArrayList<>();
+        List<MisconfiguredInfo<MeterInfoEntryV2>> misconfiguredMeters = new ArrayList<>();
+
+        processMeterValidation(switchId, isESwitch, actualMeters, expectedMeters, missingMeters, properMeters,
+                excessMeters, misconfiguredMeters, includeAllFlowInfo, includeMeterFlowInfo);
+
+        if (!missingMeters.isEmpty() && log.isErrorEnabled()) {
+            log.error("On switch {} the following meters are missed: {}", switchId,
+                    metersIntoLogRepresentation(missingMeters));
+        }
+
+        if (!excessMeters.isEmpty() && log.isWarnEnabled()) {
+            log.warn("On switch {} the following meters are excessive: {}", switchId,
+                    metersIntoLogRepresentation(excessMeters));
+        }
+
+        if (!misconfiguredMeters.isEmpty() && log.isWarnEnabled()) {
+            for (MisconfiguredInfo<MeterInfoEntryV2> meter : misconfiguredMeters) {
+                log.warn("On switch {} meter {} is misconfigured: {}", switchId, meter.getId(),
+                        getMisconfiguredMeterDifferenceAsString(meter.getExpected(), meter.getDiscrepancies()));
+            }
+        }
+
+        return new ValidateMetersResultV2(
+                missingMeters.isEmpty() && misconfiguredMeters.isEmpty() && excessMeters.isEmpty(),
+                missingMeters, properMeters, excessMeters, misconfiguredMeters);
+    }
+
+    private void processGroupsValidation(SwitchId switchId, List<GroupInfoEntryV2> presentGroups,
+                                         List<GroupInfoEntryV2> expectedGroups, List<GroupInfoEntryV2> missingGroups,
+                                         List<GroupInfoEntryV2> properGroups, List<GroupInfoEntryV2> excessGroups,
+                                         List<MisconfiguredInfo<GroupInfoEntryV2>> misconfiguredGroups,
+                                         boolean includeFlowInfo) {
+        Map<Integer, GroupInfoEntryV2> presentGroupMap = presentGroups.stream()
+                .collect(Collectors.toMap(GroupInfoEntryV2::getGroupId, Function.identity()));
+
+        for (GroupInfoEntryV2 expectedGroup : expectedGroups) {
+            GroupInfoEntryV2 presentedGroup = presentGroupMap.get(expectedGroup.getGroupId());
+
+            if (presentedGroup == null) {
+                missingGroups.add(expectedGroup);
+                continue;
+            }
+
+            if (CollectionUtils.isEqualCollection(expectedGroup.getBuckets(), presentedGroup.getBuckets())) {
+                properGroups.add(presentedGroup);
             } else {
-                if (defaultRule.contains(expectedDefaultRule)) {
-                    properRules.add(expectedDefaultRule.getCookie());
+                misconfiguredGroups.add(calculateMisconfiguredGroup(expectedGroup, presentedGroup));
+            }
+        }
+
+        Set<Integer> expectedGroupIds = expectedGroups.stream()
+                .map(GroupInfoEntryV2::getGroupId)
+                .collect(Collectors.toSet());
+
+        for (GroupInfoEntryV2 groupEntry : presentGroups) {
+            if (!expectedGroupIds.contains(groupEntry.getGroupId())) {
+                excessGroups.add(groupEntry);
+            }
+        }
+
+        excessGroups.sort(Comparator.comparing(GroupInfoEntryV2::getGroupId));
+        missingGroups.sort(Comparator.comparing(GroupInfoEntryV2::getGroupId));
+        misconfiguredGroups.sort(Comparator.comparing(MisconfiguredInfo::getId));
+        properGroups.sort(Comparator.comparing(GroupInfoEntryV2::getGroupId));
+
+        if (includeFlowInfo) {
+            concatStreams(missingGroups.stream(), properGroups.stream(),
+                    misconfiguredGroups.stream().map(MisconfiguredInfo::getExpected))
+                    .forEach(group -> addGroupFlowInfo(switchId, group));
+        }
+    }
+
+    private void processRulesValidation(SwitchId switchId, Set<RuleInfoEntryV2> missingRules,
+                                        Set<RuleInfoEntryV2> properRules, Set<RuleInfoEntryV2> excessRules,
+                                        Set<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules,
+                                        Map<RuleKey, RuleInfoEntryV2> expectedRules,
+                                        Map<RuleKey, RuleInfoEntryV2> actualRules,
+                                        boolean includeFlowInfo) {
+
+        expectedRules.keySet().forEach(expectedRuleKey -> {
+
+            RuleInfoEntryV2 expectedRuleValue = expectedRules.get(expectedRuleKey);
+            RuleInfoEntryV2 actualRuleValue = actualRules.get(expectedRuleKey);
+
+            if (actualRuleValue == null) {
+                missingRules.add(expectedRuleValue);
+            } else {
+                if (expectedRuleValue.equals(actualRuleValue)) {
+                    properRules.add(expectedRuleValue);
                 } else {
-                    log.info("Misconfigured rule: {} : expected : {}", defaultRule, expectedDefaultRule);
-                    misconfiguredRules.add(expectedDefaultRule.getCookie());
-                }
-
-                if (defaultRule.size() > 1) {
-                    log.info("Misconfigured rule: {} : expected : {}", defaultRule, expectedDefaultRule);
-                    misconfiguredRules.add(expectedDefaultRule.getCookie());
+                    log.info("On switch {} rule {} is misconfigured. Actual: {} : expected : {}",
+                            switchId, actualRuleValue.getCookie(), actualRuleValue, expectedRuleValue);
+                    misconfiguredRules.add(calculateMisconfiguredRule(expectedRuleValue, actualRuleValue));
                 }
             }
         });
 
-        presentDefaultRules.forEach(presentDefaultRule -> {
-            List<FlowEntry> defaultRule = expectedDefaultRules.stream()
-                    .filter(rule -> rule.getCookie() == presentDefaultRule.getCookie())
-                    .collect(toList());
-
-            if (defaultRule.isEmpty()) {
-                excessRules.add(presentDefaultRule.getCookie());
+        actualRules.keySet().forEach(actualRuleKey -> {
+            if (!expectedRules.containsKey(actualRuleKey)) {
+                excessRules.add(actualRules.get(actualRuleKey));
             }
         });
+
+        if (includeFlowInfo) {
+            concatStreams(missingRules.stream(), properRules.stream(),
+                    misconfiguredRules.stream().map(MisconfiguredInfo::getExpected))
+                    .forEach(this::addFlowInfo);
+        }
     }
 
-    private static String cookiesIntoLogRepresentation(Collection<Long> rules) {
-        return rules.stream().map(Cookie::toString).collect(Collectors.joining(", ", "[", "]"));
+    private void processMeterValidation(
+            SwitchId switchId, boolean isESwitch, List<MeterInfoEntryV2> presentMeters,
+            List<MeterInfoEntryV2> expectedMeters, List<MeterInfoEntryV2> missingMeters,
+            List<MeterInfoEntryV2> properMeters, List<MeterInfoEntryV2> excessMeters,
+            List<MisconfiguredInfo<MeterInfoEntryV2>> misconfiguredMeters, boolean includeAllFlowInfo,
+            boolean includeMeterFlowInfo) {
+
+        Map<Long, MeterInfoEntryV2> presentMeterMap = presentMeters.stream()
+                .collect(Collectors.toMap(MeterInfoEntryV2::getMeterId, Function.identity()));
+
+        for (MeterInfoEntryV2 expectedMeter : expectedMeters) {
+            MeterInfoEntryV2 presentedMeter = presentMeterMap.get(expectedMeter.getMeterId());
+
+            if (presentedMeter == null) {
+                missingMeters.add(expectedMeter);
+                continue;
+            }
+            if (Meter.equalsRate(presentedMeter.getRate(), expectedMeter.getRate(), isESwitch)
+                    && Meter.equalsBurstSize(presentedMeter.getBurstSize(), expectedMeter.getBurstSize(), isESwitch)
+                    && flagsAreEqual(presentedMeter.getFlags(), expectedMeter.getFlags())) {
+
+                properMeters.add(presentedMeter);
+            } else {
+                misconfiguredMeters.add(calculateMisconfiguredMeter(isESwitch, expectedMeter, presentedMeter));
+            }
+        }
+
+        Set<Long> expectedMeterIds = expectedMeters.stream()
+                .map(MeterInfoEntryV2::getMeterId)
+                .collect(Collectors.toSet());
+
+        for (MeterInfoEntryV2 meterEntry : presentMeters) {
+            if (!expectedMeterIds.contains(meterEntry.getMeterId())) {
+                excessMeters.add(meterEntry);
+            }
+        }
+
+        excessMeters.sort(Comparator.comparing(MeterInfoEntryV2::getMeterId));
+        missingMeters.sort(Comparator.comparing(MeterInfoEntryV2::getMeterId));
+        misconfiguredMeters.sort(Comparator.comparing(MisconfiguredInfo::getId));
+        properMeters.sort(Comparator.comparing(MeterInfoEntryV2::getMeterId));
+
+        if (includeAllFlowInfo || includeMeterFlowInfo) {
+            concatStreams(missingMeters.stream(), properMeters.stream(),
+                    misconfiguredMeters.stream().map(MisconfiguredInfo::getExpected))
+                    .forEach(meter -> addMeterFlowInfo(switchId, meter, includeAllFlowInfo));
+        }
     }
 
-    private static String metersIntoLogRepresentation(Collection<MeterInfoEntry> meters) {
-        return meters.stream().map(MeterInfoEntry::getMeterId).map(String::valueOf)
+    private void processLogicalPortValidation(Map<Integer, LogicalPortInfoEntryV2> actualPorts,
+                                              Map<Integer, LogicalPortInfoEntryV2> expectedPorts,
+                                              List<LogicalPortInfoEntryV2> missingPorts,
+                                              List<LogicalPortInfoEntryV2> properPorts,
+                                              List<LogicalPortInfoEntryV2> excessPorts,
+                                              List<MisconfiguredInfo<LogicalPortInfoEntryV2>> misconfiguredPorts) {
+
+        for (Entry<Integer, LogicalPortInfoEntryV2> entry : expectedPorts.entrySet()) {
+            int portNumber = entry.getKey();
+            LogicalPortInfoEntryV2 expected = entry.getValue();
+
+            if (actualPorts.containsKey(portNumber)) {
+                LogicalPortInfoEntryV2 actual = actualPorts.get(portNumber);
+                if (actual.equals(expected)) {
+                    properPorts.add(actual);
+                } else {
+                    misconfiguredPorts.add(calculateMisconfiguredLogicalPort(expected, actual));
+                }
+            } else {
+                missingPorts.add(expected);
+            }
+        }
+
+        for (Entry<Integer, LogicalPortInfoEntryV2> entry : actualPorts.entrySet()) {
+            if (LogicalPortType.BFD.equals(entry.getValue().getType())) {
+                // At this moment we do not validate BFD ports, so Kilda wouldn't include BFD ports into excess list
+                continue;
+            }
+            if (!expectedPorts.containsKey(entry.getKey())) {
+                excessPorts.add(entry.getValue());
+            }
+        }
+    }
+
+    private List<GroupInfoEntryV2> convertGroups(List<GroupSpeakerData> groupEntries) {
+        return groupEntries.stream()
+                .map(GroupEntryConverter.INSTANCE::toGroupEntry)
+                .collect(Collectors.toList());
+    }
+
+    private List<MeterInfoEntryV2> convertMeters(List<MeterSpeakerData> meterSpeakerData) {
+        return meterSpeakerData.stream()
+                .map(MeterEntryConverter.INSTANCE::toMeterEntry)
+                .collect(Collectors.toList());
+    }
+
+
+    private Map<RuleKey, RuleInfoEntryV2> convertRules(List<FlowSpeakerData> flowSpeakerData) {
+        Map<RuleKey, RuleInfoEntryV2> rules = new HashMap<>();
+
+        for (FlowSpeakerData rule : flowSpeakerData) {
+            RuleInfoEntryV2 ruleInfo = RuleEntryConverter.INSTANCE.toRuleEntry(rule);
+            RuleKey ruleKey = RuleKey.builder()
+                    .priority(ruleInfo.getPriority())
+                    .match(ruleInfo.getMatch())
+                    .tableId(ruleInfo.getTableId())
+                    .build();
+
+            rules.put(ruleKey, ruleInfo);
+        }
+        return rules;
+    }
+
+    private void addFlowInfo(RuleInfoEntryV2 rule) {
+        long longCookie = rule.getCookie();
+        FlowSegmentCookie segmentCookie = new FlowSegmentCookie(longCookie);
+        CookieBase.CookieType type = segmentCookie.getType();
+
+        if ((type == SERVICE_OR_FLOW_SEGMENT || type == SERVER_42_FLOW_RTT_INGRESS)
+                && segmentCookie.getDirection() != FlowPathDirection.UNDEFINED) {
+            FlowSegmentCookie pureCookie = FlowSegmentCookie.builder()
+                    .direction(segmentCookie.getDirection())
+                    .flowEffectiveId(segmentCookie.getFlowEffectiveId())
+                    .type(SERVICE_OR_FLOW_SEGMENT)
+                    .build();
+
+            flowPathRepository.findByCookie(pureCookie).ifPresent(flowPath -> {
+                rule.setFlowPathId(flowPath.getPathId().getId());
+
+                Flow flow = flowPath.getFlow();
+                rule.setYFlowId(flow.getYFlowId());
+                rule.setFlowId(flow.getFlowId());
+            });
+        }
+    }
+
+    private void addMeterFlowInfo(SwitchId switchId, MeterInfoEntryV2 meterEntry, boolean includeAllFlowInfo) {
+        Optional<FlowMeter> flowMeter = flowMeterRepository.findById(switchId, new MeterId(meterEntry.getMeterId()));
+        if (!flowMeter.isPresent()) {
+            return;
+        }
+        String id = flowMeter.get().getFlowId(); // Can be flow ID or Y-flow ID
+        // TODO(nrydanov): Probably, it will slow down performance.
+        // Maybe we should cache data from this repositories.
+        if (flowRepository.exists(id)) {
+            meterEntry.setFlowId(id);
+        }
+        if (includeAllFlowInfo && yFlowRepository.exists(id)) {
+            meterEntry.setYFlowId(id);
+        }
+        if (flowMeter.get().getPathId() != null) {
+            flowPathRepository.findById(flowMeter.get().getPathId())
+                    .ifPresent(path -> {
+                        meterEntry.setCookie(path.getCookie().getValue());
+                        if (includeAllFlowInfo) {
+                            meterEntry.setFlowPathId(path.getPathId().getId());
+                        }
+                    });
+        }
+    }
+
+    private void addGroupFlowInfo(SwitchId switchId, GroupInfoEntryV2 groupEntry) {
+        mirrorGroupRepository.findByGroupIdAndSwitchId(new GroupId(groupEntry.getGroupId()), switchId)
+                .ifPresent(mirrorGroup -> {
+                    String id = mirrorGroup.getFlowId();
+                    groupEntry.setFlowId(id);
+                    String pathId = mirrorGroup.getPathId().getId();
+                    groupEntry.setFlowPathId(pathId);
+                });
+    }
+
+    private MisconfiguredInfo<GroupInfoEntryV2> calculateMisconfiguredGroup(
+            GroupInfoEntryV2 expected, GroupInfoEntryV2 actual) {
+
+        GroupInfoEntryV2Builder discrepancies = GroupInfoEntryV2.builder();
+
+        if (!CollectionUtils.isEqualCollection(expected.getBuckets(), actual.getBuckets())) {
+            discrepancies.buckets(actual.getBuckets());
+        }
+
+        return MisconfiguredInfo.<GroupInfoEntryV2>builder()
+                .id(expected.getGroupId().toString())
+                .expected(expected)
+                .discrepancies(discrepancies.build())
+                .build();
+    }
+
+    @VisibleForTesting
+    MisconfiguredInfo<LogicalPortInfoEntryV2> calculateMisconfiguredLogicalPort(LogicalPortInfoEntryV2 expectedPort,
+                                                                                LogicalPortInfoEntryV2 actualPort) {
+
+        LogicalPortInfoEntryV2.LogicalPortInfoEntryV2Builder discrepancies = LogicalPortInfoEntryV2.builder();
+
+        if (!Objects.equals(expectedPort.getType(), actualPort.getType())) {
+            discrepancies.type(actualPort.getType());
+        }
+
+        // compare, ignoring order
+        if (!CollectionUtils.isEqualCollection(expectedPort.getPhysicalPorts(), actualPort.getPhysicalPorts())) {
+            discrepancies.physicalPorts(actualPort.getPhysicalPorts());
+        }
+
+        return MisconfiguredInfo.<LogicalPortInfoEntryV2>builder()
+                .id(expectedPort.getLogicalPortNumber().toString())
+                .expected(expectedPort)
+                .discrepancies(discrepancies.build())
+                .build();
+    }
+
+    private MisconfiguredInfo<MeterInfoEntryV2> calculateMisconfiguredMeter(
+            boolean isESwitch, MeterInfoEntryV2 expectedMeter, MeterInfoEntryV2 actualMeter) {
+        MeterInfoEntryV2.MeterInfoEntryV2Builder discrepancies = MeterInfoEntryV2.builder();
+
+        if (!Meter.equalsRate(actualMeter.getRate(), expectedMeter.getRate(), isESwitch)) {
+            discrepancies.rate(actualMeter.getRate());
+        }
+        if (!Meter.equalsBurstSize(actualMeter.getBurstSize(), expectedMeter.getBurstSize(), isESwitch)) {
+            discrepancies.burstSize(actualMeter.getBurstSize());
+        }
+        if (!Sets.newHashSet(actualMeter.getFlags()).equals(Sets.newHashSet(expectedMeter.getFlags()))) {
+            discrepancies.flags(actualMeter.getFlags());
+        }
+
+        return MisconfiguredInfo.<MeterInfoEntryV2>builder()
+                .id(expectedMeter.getMeterId().toString())
+                .expected(expectedMeter)
+                .discrepancies(discrepancies.build())
+                .build();
+    }
+
+    private MisconfiguredInfo<RuleInfoEntryV2> calculateMisconfiguredRule(RuleInfoEntryV2 expected,
+                                                                          RuleInfoEntryV2 actual) {
+        RuleInfoEntryV2.RuleInfoEntryV2Builder discrepancies = RuleInfoEntryV2.builder();
+
+        if (!expected.getCookie().equals(actual.getCookie())) {
+            discrepancies.cookie(actual.getCookie());
+        }
+        if (!expected.getPriority().equals(actual.getPriority())) {
+            discrepancies.priority(actual.getPriority());
+        }
+        if (!expected.getTableId().equals(actual.getTableId())) {
+            discrepancies.tableId(actual.getTableId());
+        }
+        if (!expected.getMatch().equals(actual.getMatch())) {
+            discrepancies.match(actual.getMatch());
+        }
+        if (!flagsAreEqual(expected.getFlags(), actual.getFlags())) {
+            discrepancies.flags(actual.getFlags());
+        }
+        if (!expected.getInstructions().equals(actual.getInstructions())) {
+            discrepancies.instructions(actual.getInstructions());
+        }
+
+        return MisconfiguredInfo.<RuleInfoEntryV2>builder()
+                .id(buildRuleId(expected)) // tableId + priority + match
+                .expected(expected)
+                .discrepancies(discrepancies.build())
+                .build();
+    }
+
+    private String buildRuleId(RuleInfoEntryV2 expected) {
+        StringBuilder id = new StringBuilder(format("tableId=%s,priority=%s", expected.getTableId(),
+                expected.getPriority()));
+        List<String> sortedMatchFields = expected.getMatch().keySet().stream()
+                .sorted(String::compareTo)
+                .collect(Collectors.toList());
+
+        for (String field : sortedMatchFields) {
+            FieldMatch match = expected.getMatch().get(field);
+            id.append(format(",%s:value=%s", field, match.getValue()));
+            if (match.getMask() != null) {
+                id.append(format(",mask=%s", match.getMask()));
+            }
+        }
+
+        return id.toString();
+    }
+
+    private static String cookiesIntoLogRepresentation(Collection<RuleInfoEntryV2> rules) {
+        return rules.stream().map(r -> Cookie.toString(r.getCookie())).collect(Collectors.joining(", ", "[", "]"));
+    }
+
+    private static String metersIntoLogRepresentation(Collection<MeterInfoEntryV2> meters) {
+        return meters.stream().map(MeterInfoEntryV2::getMeterId).map(String::valueOf)
                 .collect(Collectors.joining(", ", "[", "]"));
     }
 
     private static String getMisconfiguredMeterDifferenceAsString(
-            MeterMisconfiguredInfoEntry expected, MeterMisconfiguredInfoEntry actual) {
+            MeterInfoEntryV2 expected, MeterInfoEntryV2 actual) {
         List<String> difference = new ArrayList<>();
         // All non-null fields in MeterMisconfiguredInfoEntry are misconfigured.
         if (expected.getRate() != null || actual.getRate() != null) {
@@ -540,247 +688,19 @@ public class ValidationServiceImpl implements ValidationService {
         }
         if (expected.getFlags() != null || actual.getFlags() != null) {
             difference.add(format("expected flags=%s, actual flags=%s",
-                    Arrays.toString(expected.getFlags()), Arrays.toString(actual.getFlags())));
+                    expected.getFlags(), actual.getFlags()));
         }
         return String.join(", ", difference);
     }
 
-    @Override
-    public ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
-                                               List<MeterEntry> expectedDefaultMeters) {
-        log.debug("Validating meters on switch {}", switchId);
+    private static boolean flagsAreEqual(List<String> present, List<String> expected) {
+        Set<String> left = Sets.newHashSet(present);
+        Set<String> right = Sets.newHashSet(expected);
 
-        Switch sw = switchRepository.findById(switchId)
-                .orElseThrow(() -> new SwitchNotFoundException(switchId));
-        boolean isESwitch = Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
-
-        List<SimpleMeterEntry> expectedMeters = expectedDefaultMeters.stream()
-                .map(MeterEntryMapper.INSTANCE::map)
-                .collect(toList());
-
-        Collection<FlowPath> paths = flowPathRepository.findBySrcSwitch(switchId).stream()
-                .filter(flowPath -> flowPath.getStatus() != FlowPathStatus.IN_PROGRESS)
-                .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
-                .collect(Collectors.toList());
-
-        if (!paths.isEmpty()) {
-            expectedMeters.addAll(getExpectedFlowMeters(paths));
-        }
-
-        ValidateMetersResult result = comparePresentedAndExpectedMeters(isESwitch, presentMeters, expectedMeters);
-
-        if (!result.getMissingMeters().isEmpty() && log.isErrorEnabled()) {
-            log.error("On switch {} the following meters are missed: {}", switchId,
-                    metersIntoLogRepresentation(result.getMissingMeters()));
-        }
-
-        if (!result.getExcessMeters().isEmpty() && log.isWarnEnabled()) {
-            log.warn("On switch {} the following meters are excessive: {}", switchId,
-                    metersIntoLogRepresentation(result.getExcessMeters()));
-        }
-
-        if (!result.getMisconfiguredMeters().isEmpty() && log.isWarnEnabled()) {
-            for (MeterInfoEntry meter : result.getMisconfiguredMeters()) {
-                log.warn("On switch {} meter {} is misconfigured: {}", switchId, meter.getMeterId(),
-                        getMisconfiguredMeterDifferenceAsString(meter.getExpected(), meter.getActual()));
-            }
-        }
-        return result;
+        return left.size() == right.size() && left.containsAll(right);
     }
 
-    private Set<Long> getExpectedFlowRules(SwitchId switchId) {
-        Set<Long> result = new HashSet<>();
-
-        // collect transit segments
-        flowPathRepository.findBySegmentDestSwitch(switchId).stream()
-                .filter(flowPath -> flowPath.getStatus() != FlowPathStatus.IN_PROGRESS)
-                .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
-                .map(FlowPath::getCookie)
-                .map(Cookie::getValue)
-                .forEach(result::add);
-
-        SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
-                .orElseThrow(() -> new InconsistentDataException(switchId, "switch properties not found"));
-        boolean server42FlowRtt = switchProperties.isServer42FlowRtt()
-                && featureTogglesRepository.getOrDefault().getServer42FlowRtt();
-
-        // collect termination segments
-        Collection<FlowPath> affectedPaths = flowPathRepository.findByEndpointSwitch(switchId).stream()
-                .filter(flowPath -> flowPath.getStatus() != FlowPathStatus.IN_PROGRESS)
-                .filter(path -> path.getFlow().isActualPathId(path.getPathId()))
-                .collect(Collectors.toList());
-        for (FlowPath path : affectedPaths) {
-            Flow flow = path.getFlow();
-
-            result.add(path.getCookie().getValue());
-
-            // shared outer vlan match rule
-            FlowSideAdapter ingress = FlowSideAdapter.makeIngressAdapter(flow, path);
-            FlowEndpoint endpoint = ingress.getEndpoint();
-            if (path.isSrcWithMultiTable()
-                    && switchId.equals(endpoint.getSwitchId())
-                    && FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())
-                    && ingress.isPrimaryEgressPath(path.getPathId())) {
-                result.add(FlowSharedSegmentCookie.builder(SharedSegmentType.QINQ_OUTER_VLAN)
-                        .portNumber(endpoint.getPortNumber())
-                        .vlanId(endpoint.getOuterVlanId())
-                        .build().getValue());
-
-                if (server42FlowRtt && !flow.isOneSwitchFlow()) {
-                    result.add(FlowSharedSegmentCookie.builder(SharedSegmentType.SERVER42_QINQ_OUTER_VLAN)
-                            .portNumber(switchProperties.getServer42Port())
-                            .vlanId(endpoint.getOuterVlanId())
-                            .build()
-                            .getValue());
-                }
-            }
-            if (switchId.equals(flow.getLoopSwitchId()) && !path.isProtected()) {
-                result.add(path.getCookie().toBuilder().looped(true).build().getValue());
-            }
-        }
-
-        if (server42FlowRtt) {
-            result.addAll(getExpectedServer42IngressCookies(switchId, affectedPaths));
-        }
-        result.addAll(getExpectedMirrorPointsCookies(switchId, affectedPaths));
-        return result;
-    }
-
-    private ValidateMetersResult comparePresentedAndExpectedMeters(
-            boolean isESwitch, List<MeterEntry> presentMeters, List<SimpleMeterEntry> expectedMeters) {
-        Map<Long, MeterEntry> presentMeterMap = presentMeters.stream()
-                .collect(Collectors.toMap(MeterEntry::getMeterId, Function.identity()));
-
-        List<MeterInfoEntry> missingMeters = new ArrayList<>();
-        List<MeterInfoEntry> misconfiguredMeters = new ArrayList<>();
-        List<MeterInfoEntry> properMeters = new ArrayList<>();
-
-        for (SimpleMeterEntry expectedMeter : expectedMeters) {
-            MeterEntry presentedMeter = presentMeterMap.get(expectedMeter.getMeterId());
-
-            if (presentedMeter == null) {
-                missingMeters.add(makeMissingMeterEntry(expectedMeter));
-                continue;
-            }
-
-            if (Meter.equalsRate(presentedMeter.getRate(), expectedMeter.getRate(), isESwitch)
-                    && Meter.equalsBurstSize(presentedMeter.getBurstSize(), expectedMeter.getBurstSize(), isESwitch)
-                    && flagsAreEqual(presentedMeter.getFlags(), expectedMeter.getFlags())) {
-
-                properMeters.add(makeProperMeterEntry(
-                        expectedMeter.getFlowId(), expectedMeter.getCookie(), presentedMeter));
-            } else {
-                misconfiguredMeters.add(makeMisconfiguredMeterEntry(presentedMeter, expectedMeter, isESwitch));
-            }
-        }
-
-        List<MeterInfoEntry> excessMeters = getExcessMeters(presentMeters, expectedMeters);
-        return new ValidateMetersResult(missingMeters, misconfiguredMeters, properMeters, excessMeters);
-    }
-
-    private boolean flagsAreEqual(String[] present, Set<String> expected) {
-        Set<String> actual = Sets.newHashSet(present);
-
-        return actual.size() == expected.size() && actual.containsAll(expected);
-    }
-
-    private List<MeterInfoEntry> getExcessMeters(List<MeterEntry> presented, List<SimpleMeterEntry> expected) {
-        List<MeterInfoEntry> excessMeters = new ArrayList<>();
-
-        Set<Long> expectedMeterIds = expected.stream()
-                .map(SimpleMeterEntry::getMeterId)
-                .collect(Collectors.toSet());
-
-        for (MeterEntry meterEntry : presented) {
-            if (!expectedMeterIds.contains(meterEntry.getMeterId())) {
-                excessMeters.add(makeExcessMeterEntry(meterEntry));
-            }
-        }
-        return excessMeters;
-    }
-
-    private List<SimpleMeterEntry> getExpectedFlowMeters(Collection<FlowPath> unfilteredPaths) {
-        List<SimpleMeterEntry> expectedMeters = new ArrayList<>();
-
-        Collection<FlowPath> paths = unfilteredPaths.stream()
-                .filter(path -> path.getMeterId() != null)
-                .collect(Collectors.toList());
-
-        for (FlowPath path : paths) {
-            long calculatedBurstSize = Meter.calculateBurstSize(path.getBandwidth(), flowMeterMinBurstSizeInKbits,
-                    flowMeterBurstCoefficient, path.getSrcSwitch().getDescription());
-
-            SimpleMeterEntry expectedMeter = SimpleMeterEntry.builder()
-                    .flowId(path.getFlow().getFlowId())
-                    .meterId(path.getMeterId().getValue())
-                    .cookie(path.getCookie().getValue())
-                    .rate(path.getBandwidth())
-                    .burstSize(calculatedBurstSize)
-                    .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()))
-                    .build();
-            expectedMeters.add(expectedMeter);
-        }
-        return expectedMeters;
-    }
-
-    private MeterInfoEntry makeMissingMeterEntry(SimpleMeterEntry meter) {
-        return MeterInfoEntry.builder()
-                .meterId(meter.getMeterId())
-                .cookie(meter.getCookie())
-                .flowId(meter.getFlowId())
-                .rate(meter.getRate())
-                .burstSize(meter.getBurstSize())
-                .flags(meter.getFlags().toArray(new String[0]))
-                .build();
-    }
-
-    private MeterInfoEntry makeProperMeterEntry(String flowId, Long cookie, MeterEntry meter) {
-        return MeterInfoEntry.builder()
-                .meterId(meter.getMeterId())
-                .cookie(cookie)
-                .flowId(flowId)
-                .rate(meter.getRate())
-                .burstSize(meter.getBurstSize())
-                .flags(meter.getFlags())
-                .build();
-    }
-
-    private MeterInfoEntry makeExcessMeterEntry(MeterEntry meter) {
-        return MeterInfoEntry.builder()
-                .meterId(meter.getMeterId())
-                .rate(meter.getRate())
-                .burstSize(meter.getBurstSize())
-                .flags(meter.getFlags())
-                .build();
-    }
-
-    private MeterInfoEntry makeMisconfiguredMeterEntry(MeterEntry actualMeter, SimpleMeterEntry expectedMeter,
-                                                       boolean isESwitch) {
-        MeterMisconfiguredInfoEntry actual = new MeterMisconfiguredInfoEntry();
-        MeterMisconfiguredInfoEntry expected = new MeterMisconfiguredInfoEntry();
-
-        if (!Meter.equalsRate(actualMeter.getRate(), expectedMeter.getRate(), isESwitch)) {
-            actual.setRate(actualMeter.getRate());
-            expected.setRate(expectedMeter.getRate());
-        }
-        if (!Meter.equalsBurstSize(actualMeter.getBurstSize(), expectedMeter.getBurstSize(), isESwitch)) {
-            actual.setBurstSize(actualMeter.getBurstSize());
-            expected.setBurstSize(expectedMeter.getBurstSize());
-        }
-        if (!Sets.newHashSet(actualMeter.getFlags()).equals(expectedMeter.getFlags())) {
-            actual.setFlags(actualMeter.getFlags());
-            expected.setFlags(expectedMeter.getFlags().toArray(new String[0]));
-        }
-
-        return MeterInfoEntry.builder()
-                .meterId(actualMeter.getMeterId())
-                .cookie(expectedMeter.getCookie())
-                .flowId(expectedMeter.getFlowId())
-                .rate(actualMeter.getRate())
-                .burstSize(actualMeter.getBurstSize())
-                .flags(actualMeter.getFlags())
-                .actual(actual)
-                .expected(expected)
-                .build();
+    private static <T> Stream<T> concatStreams(Stream<T> stream1, Stream<T> stream2, Stream<T> stream3) {
+        return Stream.concat(Stream.concat(stream1, stream2), stream3);
     }
 }

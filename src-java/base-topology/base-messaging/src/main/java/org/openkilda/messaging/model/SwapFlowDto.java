@@ -50,6 +50,12 @@ public class SwapFlowDto implements Serializable {
     @JsonProperty("dst_vlan")
     private int destinationVlan;
 
+    @JsonProperty("src_inner_vlan")
+    private int sourceInnerVlan;
+
+    @JsonProperty("dst_inner_vlan")
+    private int destinationInnerVlan;
+
     /**
      * Constructs a dto for swap flow endpoints.
      *
@@ -57,9 +63,11 @@ public class SwapFlowDto implements Serializable {
      * @param sourceSwitch a source switch id.
      * @param sourcePort a source port number.
      * @param sourceVlan a source vlan number.
+     * @param sourceInnerVlan a source inner vlan number.
      * @param destinationSwitch a destination switch id.
      * @param destinationPort a destination port number.
      * @param destinationVlan a destination vlan number.
+     * @param destinationInnerVlan a destination inner vlan number.
      */
     @JsonCreator
     @Builder(toBuilder = true)
@@ -69,7 +77,9 @@ public class SwapFlowDto implements Serializable {
                        @JsonProperty("src_vlan") int sourceVlan,
                        @JsonProperty("dst_switch") SwitchId destinationSwitch,
                        @JsonProperty("dst_port") int destinationPort,
-                       @JsonProperty("dst_vlan") int destinationVlan) {
+                       @JsonProperty("dst_vlan") int destinationVlan,
+                       @JsonProperty("dst_inner_vlan") int destinationInnerVlan,
+                       @JsonProperty("src_inner_vlan") int sourceInnerVlan) {
         this.flowId = flowId;
         this.sourceSwitch = sourceSwitch;
         this.sourcePort = sourcePort;
@@ -77,5 +87,7 @@ public class SwapFlowDto implements Serializable {
         this.destinationSwitch = destinationSwitch;
         this.destinationPort = destinationPort;
         this.destinationVlan = destinationVlan;
+        this.destinationInnerVlan = destinationInnerVlan;
+        this.sourceInnerVlan = sourceInnerVlan;
     }
 }

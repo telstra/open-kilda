@@ -18,6 +18,8 @@ package org.openkilda.rulemanager.factory.generator.service;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
+import static org.openkilda.rulemanager.Constants.DISCOVERY_PACKET_UDP_PORT;
+import static org.openkilda.rulemanager.Constants.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.rulemanager.Constants.Priority.DISCOVERY_RULE_PRIORITY;
 import static org.openkilda.rulemanager.OfTable.INPUT;
 
@@ -28,8 +30,8 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.GroupSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
@@ -38,13 +40,15 @@ import org.openkilda.rulemanager.ProtoConstants.Mask;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.GroupAction;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.group.Bucket;
 import org.openkilda.rulemanager.group.GroupType;
+import org.openkilda.rulemanager.group.WatchGroup;
+import org.openkilda.rulemanager.group.WatchPort;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
@@ -57,33 +61,30 @@ import java.util.Set;
 
 public class BroadCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator {
 
-    public static final int DISCOVERY_PACKET_UDP_PORT = 61231;
-    public static final int LATENCY_PACKET_UDP_PORT = 61232;
-
     @Builder
     public BroadCastDiscoveryRuleGenerator(RuleManagerConfig config) {
         super(config);
     }
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
-        List<SpeakerCommandData> commands = new ArrayList<>();
+    public List<SpeakerData> generateCommands(Switch sw) {
+        List<SpeakerData> commands = new ArrayList<>();
         List<Action> actions = new ArrayList<>();
         Instructions instructions = Instructions.builder()
                 .applyActions(actions)
                 .build();
-        FlowSpeakerCommandData flowCommand = buildRule(sw, instructions);
+        FlowSpeakerData flowCommand = buildRule(sw, instructions);
         commands.add(flowCommand);
 
         MeterId meterId = createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE);
-        SpeakerCommandData meterCommand = generateMeterCommandForServiceRule(sw, meterId,
+        SpeakerData meterCommand = generateMeterCommandForServiceRule(sw, meterId,
                 config.getBroadcastRateLimit(), config.getSystemMeterBurstSizeInPackets(), config.getDiscoPacketSize());
         if (meterCommand != null) {
             commands.add(meterCommand);
             addMeterToInstructions(meterId, sw, instructions);
         }
 
-        GroupSpeakerCommandData groupCommand = null;
+        GroupSpeakerData groupCommand = null;
         if (sw.getFeatures().contains(SwitchFeature.GROUP_PACKET_OUT_CONTROLLER)) {
             groupCommand = getRoundTripLatencyGroup(sw);
             actions.add(new GroupAction(groupCommand.getGroupId()));
@@ -102,8 +103,8 @@ public class BroadCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator
         return commands;
     }
 
-    private FlowSpeakerCommandData buildRule(Switch sw, Instructions instructions) {
-        return FlowSpeakerCommandData.builder()
+    private FlowSpeakerData buildRule(Switch sw, Instructions instructions) {
+        return FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(new Cookie(VERIFICATION_BROADCAST_RULE_COOKIE))
@@ -125,7 +126,7 @@ public class BroadCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator
                 .mask(Mask.NO_MASK)
                 .build());
         if (sw.getFeatures().contains(MATCH_UDP_PORT)) {
-            match.add(FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP_IP_PROTO).build());
+            match.add(FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP).build());
             match.add(FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.IPv4).build());
             match.add(FieldMatch.builder().field(Field.UDP_DST).value(DISCOVERY_PACKET_UDP_PORT).build());
         }
@@ -133,21 +134,25 @@ public class BroadCastDiscoveryRuleGenerator extends MeteredServiceRuleGenerator
         return match;
     }
 
-    private static GroupSpeakerCommandData getRoundTripLatencyGroup(Switch sw) {
+    private static GroupSpeakerData getRoundTripLatencyGroup(Switch sw) {
         List<Bucket> buckets = new ArrayList<>();
         buckets.add(Bucket.builder()
                 .writeActions(Sets.newHashSet(
                         // todo: remove useless set ETH_DST action
                         actionSetDstMac(sw.getSwitchId().toLong()),
                         new PortOutAction(new PortNumber(SpecialPortType.CONTROLLER))))
+                .watchGroup(WatchGroup.ANY)
+                .watchPort(WatchPort.ANY)
                 .build());
         buckets.add(Bucket.builder()
                 .writeActions(Sets.newHashSet(
                         SetFieldAction.builder().field(Field.UDP_DST).value(LATENCY_PACKET_UDP_PORT).build(),
                         new PortOutAction(new PortNumber(SpecialPortType.IN_PORT))))
+                .watchGroup(WatchGroup.ANY)
+                .watchPort(WatchPort.ANY)
                 .build());
 
-        return GroupSpeakerCommandData.builder()
+        return GroupSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .groupId(GroupId.ROUND_TRIP_LATENCY_GROUP_ID)

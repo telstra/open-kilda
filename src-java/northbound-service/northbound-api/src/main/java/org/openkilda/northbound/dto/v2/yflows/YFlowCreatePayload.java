@@ -15,6 +15,9 @@
 
 package org.openkilda.northbound.dto.v2.yflows;
 
+import org.openkilda.northbound.dto.utils.Constraints;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
@@ -22,25 +25,24 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
-import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.PositiveOrZero;
 
 @Data
 @Builder
 @AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowCreatePayload {
+    @JsonProperty("y_flow_id")
+    String yFlowId;
     YFlowSharedEndpoint sharedEndpoint;
 
-    @PositiveOrZero(message = "maximumBandwidth can't be negative")
+    @PositiveOrZero(message = Constraints.NEGATIVE_MAXIMUM_BANDWIDTH_MESSAGE)
     long maximumBandwidth;
-    @NotBlank(message = "pathComputationStrategy should be provided")
     String pathComputationStrategy;
-    @NotBlank(message = "encapsulationType should be provided")
     String encapsulationType;
-    @PositiveOrZero(message = "maxLatency can't be negative")
+    @PositiveOrZero(message = Constraints.NEGATIVE_MAX_LATENCY_MESSAGE)
     Long maxLatency;
-    @PositiveOrZero(message = "maxLatencyTier2 can't be negative")
+    @PositiveOrZero(message = Constraints.NEGATIVE_MAX_LATENCY_TIER_2_MESSAGE)
     Long maxLatencyTier2;
     boolean ignoreBandwidth;
     boolean periodicPings;
@@ -49,6 +51,7 @@ public class YFlowCreatePayload {
     boolean strictBandwidth;
     String description;
     boolean allocateProtectedPath;
+    String diverseFlowId;
 
     List<SubFlowUpdatePayload> subFlows;
 }

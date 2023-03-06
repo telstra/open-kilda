@@ -36,14 +36,13 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.rulemanager.Constants;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
-import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PopVlanAction;
@@ -90,10 +89,11 @@ public class EgressRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, INNER_VLAN_ID);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID).build(),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions);
@@ -105,7 +105,7 @@ public class EgressRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
@@ -119,7 +119,7 @@ public class EgressRuleGeneratorTest {
         Flow flow = buildFlow(path, VLAN_ENCAPSULATION.getId(), 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
@@ -133,9 +133,10 @@ public class EgressRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, VLAN_ENCAPSULATION.getId());
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions);
@@ -147,7 +148,7 @@ public class EgressRuleGeneratorTest {
         Flow flow = buildFlow(path, 0, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVlanAction(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
@@ -161,7 +162,7 @@ public class EgressRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
@@ -175,7 +176,7 @@ public class EgressRuleGeneratorTest {
         Flow flow = buildFlow(path, VLAN_ENCAPSULATION.getId(), 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
@@ -188,7 +189,7 @@ public class EgressRuleGeneratorTest {
         Flow flow = buildFlow(path, 0, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVlanAction(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
@@ -202,11 +203,13 @@ public class EgressRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, INNER_VLAN_ID);
         EgressRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                PushVlanAction.builder().vlanId((short) INNER_VLAN_ID).build(),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions);
@@ -218,10 +221,11 @@ public class EgressRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions);
@@ -233,7 +237,7 @@ public class EgressRuleGeneratorTest {
         Flow flow = buildFlow(path, 0, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
@@ -247,10 +251,11 @@ public class EgressRuleGeneratorTest {
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                PushVlanAction.builder().vlanId((short) OUTER_VLAN_ID).build(),
+                new PushVlanAction(),
+                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
         assertEgressCommands(commands, OfTable.INPUT, VXLAN_ENCAPSULATION, expectedApplyActions);
@@ -262,7 +267,7 @@ public class EgressRuleGeneratorTest {
         Flow flow = buildFlow(path, 0, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
-        List<SpeakerCommandData> commands = generator.generateCommands(SWITCH_2);
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
@@ -270,11 +275,11 @@ public class EgressRuleGeneratorTest {
         assertEgressCommands(commands, OfTable.INPUT, VXLAN_ENCAPSULATION, expectedApplyActions);
     }
 
-    private void assertEgressCommands(List<SpeakerCommandData> commands, OfTable table,
+    private void assertEgressCommands(List<SpeakerData> commands, OfTable table,
                                       FlowTransitEncapsulation encapsulation, List<Action> expectedApplyActions) {
         assertEquals(1, commands.size());
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertEquals(SWITCH_2.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(SWITCH_2.getOfVersion(), flowCommandData.getOfVersion().toString());
         assertTrue(flowCommandData.getDependsOn().isEmpty());
@@ -296,7 +301,7 @@ public class EgressRuleGeneratorTest {
                 .applyActions(expectedApplyActions)
                 .build();
         assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
+        assertTrue(flowCommandData.getFlags().isEmpty());
     }
 
     @Test
@@ -334,7 +339,7 @@ public class EgressRuleGeneratorTest {
         return Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(port).build(),
                 FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.IPv4).build(),
-                FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP_IP_PROTO).build(),
+                FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP).build(),
                 FieldMatch.builder().field(Field.UDP_DST).value(Constants.VXLAN_UDP_DST).build(),
                 FieldMatch.builder().field(Field.NOVIFLOW_TUNNEL_ID).value(vni).build());
     }

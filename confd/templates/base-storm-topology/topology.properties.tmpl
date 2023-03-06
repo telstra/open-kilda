@@ -42,6 +42,9 @@ port.up.down.throttling.delay.seconds.cool.down = {{ getv "/kilda_port_up_down_t
 port.antiflap.stats.dumping.interval.seconds = 60
 
 lag.port.offset = {{ getv "/kilda_lag_port_offset" }}
+lag.port.max.number = {{ getv "/kilda_lag_port_max_number" }}
+lag.port.pool.chunks.count = 10
+lag.port.pool.cache.size = 128
 bfd.port.offset = {{ getv "/kilda_bfd_port_offset" }}
 bfd.port.max.number = {{ getv "/kilda_bfd_port_max_number" }}
 
@@ -110,6 +113,7 @@ local.execution.time = 3000
 #######
 # Path computation engine
 pce.network.strategy = {{ getv "/kilda_pce_network_strategy" }}
+pce.max.path.count = {{ getv "/kilda_pce_max_path_count" }}
 #######
 # cost strategy params
 # value added to path weight for each isl used in the same diversity group
@@ -143,24 +147,36 @@ latency.discovery.interval.multiplier = {{ getv "/kilda_latency_discovery_interv
 flow.path.allocation.retries = 10
 flow.path.allocation.retry.delay = 50
 flow.create.hub.timeout.seconds = 30
-flow.create.speaker.timeout.seconds = 10
+flow.speaker.timeout.seconds = 10
 flow.create.speaker.command.retries = {{ getv "/kilda_flow_create_command_retries" }}
 flow.create.hub.retries = {{ getv "/kilda_flow_create_hub_retries" }}
 flow.update.hub.timeout.seconds = 30
-flow.update.speaker.timeout.seconds = 10
 flow.update.speaker.command.retries = 3
 flow.reroute.hub.timeout.seconds = 30
-flow.reroute.speaker.timeout.seconds = 10
 flow.reroute.speaker.command.retries = 3
 flow.delete.hub.timeout.seconds = 30
-flow.delete.speaker.timeout.seconds = 10
 flow.delete.speaker.command.retries = 3
 
 blue.green.mode = {{ getv "/kilda_blue_green_mode" "blue" }}
 
 # flow-monitoring topology
+#
+# flow.sla.check.shard.count parameter is needed to distribute load of Flow SLA
+# check operation. Instead of checking of all flows ones in flow.sla.check.interval.seconds
+# flows will be checked by chunks. That is why parameter flow.sla.check.interval.seconds
+# must be divisible by flow.sla.check.shard.count
 flow.sla.check.interval.seconds = {{ getv "/kilda_flow_sla_check_interval_seconds" }}
+flow.sla.check.shard.count = {{ getv "/kilda_flow_sla_check_shard_count" }}
 flow.rtt.stats.expiration.seconds = {{ getv "/kilda_flow_rtt_stats_expiration_seconds" }}
 isl.rtt.latency.expiration.seconds = {{ getv "/kilda_isl_rtt_latency_expiration_seconds" }}
 flow.latency.sla.timeout.seconds = {{ getv "/kilda_flow_latency_sla_timeout_seconds" }}
 flow.latency.sla.threshold.percent = {{ getv "/kilda_flow_latency_sla_threshold_percent" }}
+
+# rule-manager
+flow-ping-magic-src-mac-address = {{ getv "/kilda_floodlight_flow_ping_magic_src_mac_address" }}
+discovery-bcast-packet-dst = {{ getv "/kilda_floodlight_broadcast_mac_address" }}
+server42-isl-rtt-magic-mac-address = {{ getv "/kilda_floodlight_server42_isl_rtt_magic_mac_address" }}
+
+# swmanager
+swmanager.of.commands.batch.size = {{ getv "/kilda_swmanager_of_commands_batch_size" }}
+swmanager.kafka.chunked.messages.size = {{ getv "/kilda_swmanager_kafka_chunked_messages_size" }}

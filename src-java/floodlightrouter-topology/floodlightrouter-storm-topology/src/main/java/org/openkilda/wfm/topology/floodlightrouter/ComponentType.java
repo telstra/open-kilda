@@ -17,6 +17,8 @@ package org.openkilda.wfm.topology.floodlightrouter;
 
 public final class ComponentType {
     public static final String KILDA_FLOW_HS_REPLY_BOLT = "KILDA_FLOW_HS_REPLY_BOLT";
+    public static final String KILDA_SWITCH_MANAGER_RESPONSE_REPLY_BOLT = "KILDA_SWITCH_MANAGER_RESPONSE_REPLY_BOLT";
+    public static final String KILDA_NETWORK_RESPONSE_REPLY_BOLT = "KILDA_NETWORK_RESPONSE_REPLY_BOLT";
     public static final String KILDA_PING_REPLY_BOLT = "KILDA_PING_REPLY_BOLT";
     public static final String NORTHBOUND_REPLY_BOLT = "NORTHBOUND_REPLY_BOLT";
     public static final String KILDA_SWITCH_MANAGER_REPLY_BOLT = "KILDA_SWITCH_MANAGER_REPLY_BOLT";
@@ -28,12 +30,18 @@ public final class ComponentType {
     public static final String KILDA_TOPO_DISCO_BOLT = "KILDA_TOPO_DISCO_BOLT";
 
     public static final String SPEAKER_FLOW_REQUEST_BOLT = "KILDA_FLOW_REQUEST_BOLT";
+    public static final String SPEAKER_SWITCH_MANAGER_REQUEST_BOLT = "KILDA_SWITCH_MANAGER_REQUEST_BOLT";
+    public static final String SPEAKER_NETWORK_REQUEST_BOLT = "KILDA_NETWORK_REQUEST_BOLT";
     public static final String SPEAKER_REQUEST_BOLT = "SPEAKER_REQUEST_BOLT";
     public static final String SPEAKER_DISCO_REQUEST_BOLT = "SPEAKER_DISCO_REQUEST_BOLT";
 
     public static final String SPEAKER_KAFKA_SPOUT = "ROUTER_SPEAKER_KAFKA_SPOUT";
     public static final String KILDA_FLOW_HS_KAFKA_SPOUT = "KILDA_FLOW_HS_KAFKA_SPOUT";
+    public static final String KILDA_SWITCH_MANAGER_REQUEST_KAFKA_SPOUT = "KILDA_SWITCH_MANAGER_REQUEST_KAFKA_SPOUT";
+    public static final String KILDA_NETWORK_REQUEST_KAFKA_SPOUT = "KILDA_NETWORK_REQUEST_KAFKA_SPOUT";
     public static final String SPEAKER_FLOW_HS_KAFKA_SPOUT = "ROUTER_SPEAKER_FLOW_HS_KAFKA_SPOUT";
+    public static final String SPEAKER_SWITCH_MANAGER_KAFKA_SPOUT = "ROUTER_SPEAKER_SW_MANAGER_KAFKA_SPOUT";
+    public static final String SPEAKER_NETWORK_KAFKA_SPOUT = "ROUTER_SPEAKER_NETWORK_KAFKA_SPOUT";
     public static final String SPEAKER_PING_KAFKA_SPOUT = "SPEAKER_PING_KAFKA_SPOUT";
     public static final String KILDA_PING_KAFKA_SPOUT = "KILDA_PING_KAFKA_SPOUT";
     public static final String KILDA_STATS_KAFKA_SPOUT = "KILDA_STATS_KAFKA_SPOUT";

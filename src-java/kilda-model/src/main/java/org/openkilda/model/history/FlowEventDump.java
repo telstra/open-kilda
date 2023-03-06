@@ -19,9 +19,10 @@ import org.openkilda.model.CompositeDataEntity;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.MirrorPointStatus;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.BeanSerializer;
@@ -39,6 +40,7 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -88,6 +90,7 @@ public class FlowEventDump implements CompositeDataEntity<FlowEventDump.FlowEven
                 .append(getType(), that.getType())
                 .append(getBandwidth(), that.getBandwidth())
                 .append(isIgnoreBandwidth(), that.isIgnoreBandwidth())
+                .append(isStrictBandwidth(), that.isStrictBandwidth())
                 .append(getForwardCookie(), that.getForwardCookie())
                 .append(getReverseCookie(), that.getReverseCookie())
                 .append(getSourceSwitch(), that.getSourceSwitch())
@@ -113,18 +116,22 @@ public class FlowEventDump implements CompositeDataEntity<FlowEventDump.FlowEven
                 .append(getPathComputationStrategy(), that.getPathComputationStrategy())
                 .append(getMaxLatency(), that.getMaxLatency())
                 .append(getLoopSwitchId(), that.getLoopSwitchId())
+                .append(getMaxLatencyTier2(), that.getMaxLatencyTier2())
+                .append(getPriority(), that.getPriority())
+                .append(getMirrorPointStatuses(), that.getMirrorPointStatuses())
                 .isEquals();
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(getTaskId(), getFlowId(), getType(), getBandwidth(), isIgnoreBandwidth(),
-                getForwardCookie(), getReverseCookie(), getSourceSwitch(), getDestinationSwitch(),
+                isStrictBandwidth(), getForwardCookie(), getReverseCookie(), getSourceSwitch(), getDestinationSwitch(),
                 getSourcePort(), getDestinationPort(), getSourceVlan(), getDestinationVlan(),
                 getSourceInnerVlan(), getDestinationInnerVlan(), getForwardMeterId(), getReverseMeterId(),
                 getDiverseGroupId(), getAffinityGroupId(), getForwardPath(), getReversePath(), getForwardStatus(),
                 getReverseStatus(), isAllocateProtectedPath(), isPinned(), isPeriodicPings(), getEncapsulationType(),
-                getPathComputationStrategy(), getMaxLatency(), getLoopSwitchId());
+                getPathComputationStrategy(), getMaxLatency(), getLoopSwitchId(), getMaxLatencyTier2(), getPriority(),
+                getMirrorPointStatuses());
     }
 
     /**
@@ -151,13 +158,13 @@ public class FlowEventDump implements CompositeDataEntity<FlowEventDump.FlowEven
 
         void setIgnoreBandwidth(boolean ignoreBandwidth);
 
-        Cookie getForwardCookie();
+        FlowSegmentCookie getForwardCookie();
 
-        void setForwardCookie(Cookie forwardCookie);
+        void setForwardCookie(FlowSegmentCookie forwardCookie);
 
-        Cookie getReverseCookie();
+        FlowSegmentCookie getReverseCookie();
 
-        void setReverseCookie(Cookie reverseCookie);
+        void setReverseCookie(FlowSegmentCookie reverseCookie);
 
         SwitchId getSourceSwitch();
 
@@ -247,9 +254,26 @@ public class FlowEventDump implements CompositeDataEntity<FlowEventDump.FlowEven
 
         void setMaxLatency(Long maxLatency);
 
+        Long getMaxLatencyTier2();
+
+        void setMaxLatencyTier2(Long maxLatencyTier2);
+
+        Integer getPriority();
+
+        void setPriority(Integer priority);
+
+        List<MirrorPointStatus> getMirrorPointStatuses();
+
+        void setMirrorPointStatuses(List<MirrorPointStatus> mirrorPointStatuses);
+
+        boolean isStrictBandwidth();
+
+        void setStrictBandwidth(boolean ignoreBandwidth);
+
         SwitchId getLoopSwitchId();
 
         void setLoopSwitchId(SwitchId switchId);
+
     }
 
     /**
@@ -264,8 +288,9 @@ public class FlowEventDump implements CompositeDataEntity<FlowEventDump.FlowEven
         String type;
         long bandwidth;
         boolean ignoreBandwidth;
-        Cookie forwardCookie;
-        Cookie reverseCookie;
+        boolean strictBandwidth;
+        FlowSegmentCookie forwardCookie;
+        FlowSegmentCookie reverseCookie;
         SwitchId sourceSwitch;
         SwitchId destinationSwitch;
         int sourcePort;
@@ -288,7 +313,10 @@ public class FlowEventDump implements CompositeDataEntity<FlowEventDump.FlowEven
         FlowEncapsulationType encapsulationType;
         PathComputationStrategy pathComputationStrategy;
         Long maxLatency;
+        Long maxLatencyTier2;
         SwitchId loopSwitchId;
+        Integer priority;
+        List<MirrorPointStatus> mirrorPointStatuses;
 
         @Override
         public Boolean isAllocateProtectedPath() {

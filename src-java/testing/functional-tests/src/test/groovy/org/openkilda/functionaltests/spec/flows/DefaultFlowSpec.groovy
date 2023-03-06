@@ -44,7 +44,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
  "MultiTable mode should be supported by the src and dst switches")
 
         Map<SwitchId, SwitchPropertiesDto> initSwProps = [srcSwitch, dstSwitch, newDstSwitch].collectEntries {
-            [(it): northbound.getSwitchProperties(it.dpId)]
+            [(it): switchHelper.getCachedSwProps(it.dpId)]
         }
         initSwProps.each { sw, swProps ->
             switchHelper.updateSwitchProperties(sw, swProps.jacksonCopy().tap {
@@ -52,7 +52,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
             })
         }
 
-        def bandwidth = 100
+        def bandwidth = 1000
         def vlanFlow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         vlanFlow.maximumBandwidth = bandwidth
         flowHelperV2.addFlow(vlanFlow)
@@ -88,7 +88,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
 
         and: "System allows traffic on the default flow"
         def examDefaultFlow = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
-                flowHelperV2.toV1(defaultFlow), 1000, 5
+                flowHelperV2.toV1(defaultFlow), bandwidth, 5
         )
         withPool {
             [examDefaultFlow.forward, examDefaultFlow.reverse].eachParallel { direction ->
@@ -100,7 +100,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
 
         and: "System allows traffic on the QinQ flow"
         def examQinqFlow = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
-                flowHelperV2.toV1(qinqFlow), 1000, 5
+                flowHelperV2.toV1(qinqFlow), bandwidth, 5
         )
         withPool {
             [examQinqFlow.forward, examQinqFlow.reverse].eachParallel { direction ->

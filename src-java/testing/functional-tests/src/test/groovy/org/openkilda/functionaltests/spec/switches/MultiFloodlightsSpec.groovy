@@ -79,20 +79,20 @@ class MultiFloodlightsSpec extends HealthCheckSpecification {
         def knockout2 = lockKeeper.knockoutSwitch(sw, [flHelper.filterRegionsByMode(sw.regions, RW)[0]])
         cleanupActions << { lockKeeper.reviveSwitch(sw, knockout2) }
 
-        and: "Try getting switch rules"
+        then: "Switch is marked as inactive"
+        wait(WAIT_OFFSET) {
+            northbound.getSwitch(sw.dpId).state == DEACTIVATED
+        }
+
+        when: "Try getting switch rules"
         northbound.getSwitchRules(sw.dpId)
 
-        then: "Switch is not found"
+        then: "Human readable error is returned"
         def e = thrown(HttpClientErrorException)
         e.statusCode == HttpStatus.NOT_FOUND
         verifyAll(e.responseBodyAsString.to(MessageError)) {
             errorMessage == "Switch $sw.dpId was not found"
             errorDescription == "The switch was not found when requesting a rules dump."
-        }
-
-        and: "Switch is marked as inactive"
-        wait(WAIT_OFFSET) {
-            northbound.getSwitch(sw.dpId).state == DEACTIVATED
         }
 
         when: "Broken region restores connection to kafka"

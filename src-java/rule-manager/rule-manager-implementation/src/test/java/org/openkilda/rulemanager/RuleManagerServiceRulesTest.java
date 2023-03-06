@@ -19,25 +19,63 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.openkilda.rulemanager.Utils.LAG_PORTS;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
 import static org.openkilda.rulemanager.Utils.buildSwitchProperties;
 
+import org.openkilda.model.KildaFeatureToggles;
+import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.SwitchProperties.RttState;
+import org.openkilda.rulemanager.adapter.InMemoryDataAdapter;
 import org.openkilda.rulemanager.factory.RuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.BfdCatchRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.BroadCastDiscoveryRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.DropDiscoveryLoopRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.TableDefaultRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.TablePassThroughDefaultRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.UniCastDiscoveryRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.UnicastVerificationVxlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.arp.ArpIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.arp.ArpInputPreDropRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressOneSwitchRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressVxlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.arp.ArpTransitRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lacp.DropSlowProtocolsLoopRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lacp.LacpReplyRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lldp.LldpIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lldp.LldpInputPreDropRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressOneSwitchRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressVxlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lldp.LldpTransitRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.noviflow.RoundTripLatencyRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42FlowRttOutputVlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42FlowRttOutputVxlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42FlowRttTurningRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42FlowRttVxlanTurningRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42IslRttInputRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42IslRttOutputRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.server42.Server42IslRttTurningRuleGenerator;
 
+import com.google.common.collect.Sets;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class RuleManagerServiceRulesTest {
 
     private RuleManagerImpl ruleManager;
+    public static final int ISL_PORT = 1;
 
     @Before
     public void setup() {
@@ -54,27 +92,149 @@ public class RuleManagerServiceRulesTest {
     @Test
     public void shouldUseCorrectServiceRuleGeneratorsForSwitchInSingleTableMode() {
         Switch sw = buildSwitch("OF_13", Collections.emptySet());
+        SwitchId switchId = sw.getSwitchId();
         SwitchProperties switchProperties = buildSwitchProperties(sw, false);
 
-        List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(switchProperties);
+        List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
+                switchId, buildAdapter(switchId, switchProperties, new HashSet<>(), false, LAG_PORTS));
 
-        assertEquals(3, generators.size());
+        assertEquals(10, generators.size());
         assertTrue(generators.stream().anyMatch(g -> g instanceof TableDefaultRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof DropDiscoveryLoopRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof BfdCatchRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof RoundTripLatencyRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof UnicastVerificationVxlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof DropSlowProtocolsLoopRuleGenerator));
+        assertEquals(2, generators.stream().filter(g -> g instanceof LacpReplyRuleGenerator).count());
     }
 
     @Test
     public void shouldUseCorrectServiceRuleGeneratorsForSwitchInMultiTableMode() {
         Switch sw = buildSwitch("OF_13", Collections.emptySet());
+        SwitchId switchId = sw.getSwitchId();
         SwitchProperties switchProperties = buildSwitchProperties(sw, true);
 
-        List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(switchProperties);
+        List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
+                switchId, buildAdapter(switchId, switchProperties, new HashSet<>(), false, LAG_PORTS));
 
-        assertEquals(6, generators.size());
+        assertEquals(21, generators.size());
+        assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof DropDiscoveryLoopRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof BfdCatchRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof RoundTripLatencyRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof UnicastVerificationVxlanRuleGenerator));
+
+        assertEquals(4, generators.stream().filter(g -> g instanceof TableDefaultRuleGenerator).count());
+        assertEquals(2, generators.stream().filter(g -> g instanceof TablePassThroughDefaultRuleGenerator).count());
+        assertEquals(1, generators.stream().filter(g -> g instanceof DropSlowProtocolsLoopRuleGenerator).count());
+        assertEquals(2, generators.stream().filter(g -> g instanceof LacpReplyRuleGenerator).count());
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressVxlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressOneSwitchRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressVxlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressOneSwitchRuleGenerator));
+    }
+
+    @Test
+    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInMultiTableModeWithSwitchArpAndLldp() {
+        Switch sw = buildSwitch("OF_13", Collections.emptySet());
+        SwitchId switchId = sw.getSwitchId();
+        SwitchProperties switchProperties = buildSwitchProperties(sw, true, true, true);
+
+        List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
+                switchId, buildAdapter(switchId, switchProperties, new HashSet<>(), false, null));
+
+        assertEquals(24, generators.size());
         assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
 
         assertEquals(4, generators.stream().filter(g -> g instanceof TableDefaultRuleGenerator).count());
+        assertEquals(2, generators.stream().filter(g -> g instanceof TablePassThroughDefaultRuleGenerator).count());
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressVxlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressOneSwitchRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressVxlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressOneSwitchRuleGenerator));
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpTransitRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpInputPreDropRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpIngressRuleGenerator));
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpTransitRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpInputPreDropRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpIngressRuleGenerator));
+    }
+
+    @Test
+    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInMultiTableModeWithAllRules() {
+        Switch sw = buildSwitch("OF_13", Collections.emptySet());
+        SwitchId switchId = sw.getSwitchId();
+        SwitchProperties switchProperties = buildSwitchProperties(sw, true, true, true, true, RttState.ENABLED);
+
+        List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
+                switchId, buildAdapter(switchId, switchProperties, Sets.newHashSet(ISL_PORT), true, LAG_PORTS));
+
+        assertEquals(37, generators.size());
+        assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
+
+        assertEquals(4, generators.stream().filter(g -> g instanceof TableDefaultRuleGenerator).count());
+        assertEquals(2, generators.stream().filter(g -> g instanceof TablePassThroughDefaultRuleGenerator).count());
+
+        assertEquals(4, generators.stream().filter(g -> g instanceof TableDefaultRuleGenerator).count());
+        assertEquals(2, generators.stream().filter(g -> g instanceof TablePassThroughDefaultRuleGenerator).count());
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressVxlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressOneSwitchRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressVxlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressOneSwitchRuleGenerator));
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpTransitRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpInputPreDropRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpIngressRuleGenerator));
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpTransitRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpInputPreDropRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpIngressRuleGenerator));
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42FlowRttTurningRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42FlowRttVxlanTurningRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42FlowRttOutputVlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42FlowRttOutputVxlanRuleGenerator));
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42IslRttInputRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42IslRttTurningRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42IslRttOutputRuleGenerator));
+    }
+
+    private DataAdapter buildAdapter(
+            SwitchId switchId, SwitchProperties switchProperties, Set<Integer> islPorts, boolean server42,
+            List<LagLogicalPort> lagLogicalPorts) {
+        Map<SwitchId, SwitchProperties> switchPropertiesMap = new HashMap<>();
+        switchPropertiesMap.put(switchId, switchProperties);
+        Map<SwitchId, Set<Integer>> islMap = new HashMap<>();
+        islMap.putIfAbsent(switchId, islPorts);
+        Map<SwitchId, List<LagLogicalPort>> lagMap = new HashMap<>();
+        if (lagLogicalPorts != null) {
+            lagMap.put(switchId, lagLogicalPorts);
+        }
+        return InMemoryDataAdapter.builder()
+                .switchProperties(switchPropertiesMap)
+                .switchIslPorts(islMap)
+                .featureToggles(KildaFeatureToggles.builder()
+                        .server42FlowRtt(server42)
+                        .server42IslRtt(server42)
+                        .build())
+                .switchLagPorts(lagMap)
+                .build();
     }
 }

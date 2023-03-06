@@ -70,6 +70,7 @@ import org.apache.commons.collections4.map.LazyMap;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,8 +83,8 @@ import java.util.function.Supplier;
  * A base for action classes that allocate resources for flow paths.
  */
 @Slf4j
-public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm<T, S, E, C>, S, E, C> extends
-        NbTrackableAction<T, S, E, C> {
+public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C> extends
+        NbTrackableWithHistorySupportAction<T, S, E, C> {
     private final int pathAllocationRetriesLimit;
     private final int pathAllocationRetryDelay;
     private final int resourceAllocationRetriesLimit;
@@ -95,11 +96,11 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     protected final FlowPathBuilder flowPathBuilder;
     protected final FlowOperationsDashboardLogger dashboardLogger;
 
-    public BaseResourceAllocationAction(PersistenceManager persistenceManager,
-                                        int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
-                                        int resourceAllocationRetriesLimit,
-                                        PathComputer pathComputer, FlowResourcesManager resourcesManager,
-                                        FlowOperationsDashboardLogger dashboardLogger) {
+    protected BaseResourceAllocationAction(PersistenceManager persistenceManager,
+                                           int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
+                                           int resourceAllocationRetriesLimit,
+                                           PathComputer pathComputer, FlowResourcesManager resourcesManager,
+                                           FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
         this.pathAllocationRetriesLimit = pathAllocationRetriesLimit;
         this.pathAllocationRetryDelay = pathAllocationRetryDelay;
@@ -140,27 +141,33 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             stateMachine.saveActionToHistory(errorMessage);
             stateMachine.fireNoPathFound(errorMessage);
 
-            Message message = buildErrorMessage(stateMachine, ErrorType.NOT_FOUND,
-                    getGenericErrorMessage(), errorMessage);
+            ErrorType errorType = ErrorType.NOT_FOUND;
+            Message message = stateMachine.buildErrorMessage(errorType, getGenericErrorMessage(), errorMessage);
             stateMachine.setOperationResultMessage(message);
+
+            stateMachine.notifyEventListenersOnError(errorType, errorMessage);
             return Optional.of(message);
         } catch (RecoverableException ex) {
             String errorMessage = format("Failed to find a path. %s", ex.getMessage());
             stateMachine.saveActionToHistory(errorMessage);
             stateMachine.fireError(errorMessage);
 
-            Message message = buildErrorMessage(stateMachine, ErrorType.INTERNAL_ERROR,
-                    getGenericErrorMessage(), errorMessage);
+            ErrorType errorType = ErrorType.INTERNAL_ERROR;
+            Message message = stateMachine.buildErrorMessage(errorType, getGenericErrorMessage(), errorMessage);
             stateMachine.setOperationResultMessage(message);
+
+            stateMachine.notifyEventListenersOnError(errorType, errorMessage);
             return Optional.of(message);
         } catch (ResourceAllocationException ex) {
             String errorMessage = format("Failed to allocate flow resources. %s", ex.getMessage());
             stateMachine.saveErrorToHistory(errorMessage, ex);
             stateMachine.fireError(errorMessage);
 
-            Message message = buildErrorMessage(stateMachine, ErrorType.INTERNAL_ERROR,
-                    getGenericErrorMessage(), errorMessage);
+            ErrorType errorType = ErrorType.INTERNAL_ERROR;
+            Message message = stateMachine.buildErrorMessage(errorType, getGenericErrorMessage(), errorMessage);
             stateMachine.setOperationResultMessage(message);
+
+            stateMachine.notifyEventListenersOnError(errorType, errorMessage);
             return Optional.of(message);
         }
     }
@@ -213,7 +220,9 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     protected GetPathsResult allocatePathPair(Flow flow, PathId newForwardPathId, PathId newReversePathId,
                                               boolean forceToIgnoreBandwidth, List<PathId> pathsToReuseBandwidth,
                                               FlowPathPair oldPaths, boolean allowOldPaths,
-                                              Predicate<GetPathsResult> whetherCreatePathSegments)
+                                              String sharedBandwidthGroupId,
+                                              Predicate<GetPathsResult> whetherCreatePathSegments,
+                                              boolean isProtected)
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         // Lazy initialisable map with reused bandwidth...
         Supplier<Map<IslEndpoints, Long>> reuseBandwidthPerIsl = Suppliers.memoize(() -> {
@@ -252,24 +261,26 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                 if (forceToIgnoreBandwidth) {
                     boolean originalIgnoreBandwidth = flow.isIgnoreBandwidth();
                     flow.setIgnoreBandwidth(true);
-                    potentialPath = pathComputer.getPath(flow);
+                    potentialPath = pathComputer.getPath(flow, Collections.emptyList(), isProtected);
                     flow.setIgnoreBandwidth(originalIgnoreBandwidth);
                 } else {
-                    potentialPath = pathComputer.getPath(flow, pathsToReuseBandwidth);
+                    potentialPath = pathComputer.getPath(flow, pathsToReuseBandwidth, isProtected);
                 }
 
                 boolean newPathFound = isNotSamePath(potentialPath, oldPaths);
                 if (allowOldPaths || newPathFound) {
-                    if (!newPathFound) {
-                        log.debug("Found the same path for flow {}. Proceed with recreating it", flow.getFlowId());
-                    }
+                    boolean createFoundPath = whetherCreatePathSegments.test(potentialPath);
+                    log.debug("Found {} path for flow {}. {} (re-)creating it", newPathFound ? "a new" : "the same",
+                            flow.getFlowId(), createFoundPath ? "Proceed with" : "Skip");
 
-                    if (whetherCreatePathSegments.test(potentialPath)) {
+                    if (createFoundPath) {
                         boolean ignoreBandwidth = forceToIgnoreBandwidth || flow.isIgnoreBandwidth();
                         List<PathSegment> forwardSegments = flowPathBuilder.buildPathSegments(newForwardPathId,
-                                potentialPath.getForward(), flow.getBandwidth(), ignoreBandwidth);
+                                potentialPath.getForward(), flow.getBandwidth(), ignoreBandwidth,
+                                sharedBandwidthGroupId);
                         List<PathSegment> reverseSegments = flowPathBuilder.buildPathSegments(newReversePathId,
-                                potentialPath.getReverse(), flow.getBandwidth(), ignoreBandwidth);
+                                potentialPath.getReverse(), flow.getBandwidth(), ignoreBandwidth,
+                                sharedBandwidthGroupId);
 
                         transactionManager.doInTransaction(() -> {
                             createPathSegments(forwardSegments, reuseBandwidthPerIsl);
@@ -278,6 +289,8 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                     }
 
                     return potentialPath;
+                } else {
+                    log.debug("Found the same path for flow {}, but not allowed", flow.getFlowId());
                 }
                 return null;
             });
@@ -326,7 +339,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     }
 
     protected FlowPathPair createFlowPathPair(String flowId, FlowResources flowResources, GetPathsResult pathPair,
-                                              boolean forceToIgnoreBandwidth) {
+                                              boolean forceToIgnoreBandwidth, String sharedBandwidthGroupId) {
         FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
                 .flowEffectiveId(flowResources.getUnmaskedCookie());
 
@@ -340,7 +353,8 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             FlowPath newForwardPath = flowPathBuilder.buildFlowPath(
                     flow, flowResources.getForward(), forward.getLatency(),
                     forward.getSrcSwitchId(), forward.getDestSwitchId(), forwardSegments,
-                    cookieBuilder.direction(FlowPathDirection.FORWARD).build(), forceToIgnoreBandwidth);
+                    cookieBuilder.direction(FlowPathDirection.FORWARD).build(), forceToIgnoreBandwidth,
+                    sharedBandwidthGroupId);
             newForwardPath.setStatus(FlowPathStatus.IN_PROGRESS);
 
             Path reverse = pathPair.getReverse();
@@ -349,7 +363,8 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
             FlowPath newReversePath = flowPathBuilder.buildFlowPath(
                     flow, flowResources.getReverse(), reverse.getLatency(),
                     reverse.getSrcSwitchId(), reverse.getDestSwitchId(), reverseSegments,
-                    cookieBuilder.direction(FlowPathDirection.REVERSE).build(), forceToIgnoreBandwidth);
+                    cookieBuilder.direction(FlowPathDirection.REVERSE).build(), forceToIgnoreBandwidth,
+                    sharedBandwidthGroupId);
             newReversePath.setStatus(FlowPathStatus.IN_PROGRESS);
 
             log.debug("Persisting the paths {}/{}", newForwardPath, newReversePath);

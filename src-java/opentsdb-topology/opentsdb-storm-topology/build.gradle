@@ -9,14 +9,14 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 description = 'OpenTSDB Storm Topology'
 dependencies {
     implementation project(':base-storm-topology')
-    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
+    runtimeOnly project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     implementation project(':kilda-reporting')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
     implementation project(':blue-green')
 
-    runtimeClasspath 'org.yaml:snakeyaml:1.15'
-    runtimeClasspath 'commons-logging:commons-logging:1.2'
+    runtimeOnly 'org.yaml:snakeyaml:1.30'
+    runtimeOnly 'commons-logging:commons-logging:1.2'
     implementation('org.apache.storm:storm-opentsdb:1.2.1') {
         exclude group: 'org.apache.httpcomponents', module: 'httpclient'
         // This conflicts with jcl-over-slf4j

@@ -4,12 +4,12 @@ plugins {
 
 configurations {
     // This conflicts with spring-boot-starter-log4j2
-    compile.exclude module: 'spring-boot-starter-logging'
+    implementation.exclude module: 'spring-boot-starter-logging'
 }
 
 description = 'GRPC service'
 dependencies {
-    implementation(platform('org.springframework:spring-framework-bom:5.2.13.RELEASE'))
+    implementation(platform('org.springframework:spring-framework-bom:5.2.19.RELEASE'))
     implementation(platform('org.springframework.boot:spring-boot-dependencies:2.2.13.RELEASE'))
 
     implementation project(':grpc-api')
@@ -73,7 +73,7 @@ dependencies {
 
 compileJava {
     options.compilerArgs = [
-            "-Amapstruct.defaultComponentModel=spring"
+            '-Amapstruct.defaultComponentModel=spring'
     ]
 }
 

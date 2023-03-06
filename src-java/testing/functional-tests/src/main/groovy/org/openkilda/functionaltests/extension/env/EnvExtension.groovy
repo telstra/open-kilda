@@ -20,6 +20,7 @@ import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.TopologyPool
 
 import groovy.util.logging.Slf4j
@@ -47,6 +48,9 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
 
     @Autowired @Qualifier("northboundServiceImpl")
     NorthboundService northbound
+
+    @Autowired @Qualifier("northboundServiceV2Impl")
+    NorthboundServiceV2 northboundV2
 
     @Autowired @Qualifier("islandNb")
     NorthboundService islandNorthbound
@@ -102,9 +106,13 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                 .collectGrpcStats(true)
                 .server42FlowRtt(true)
                 .server42IslRtt(true)
+                .modifyYFlowEnabled(true)
+                .syncSwitchOnConnect(true)
                 .build()
         northbound.toggleFeature(features)
         log.info("Deleting all flows")
+        northboundV2.getAllYFlows().each { northboundV2.deleteYFlow(it.getYFlowId()) }
+        northboundV2.getAllHaFlows().each { northboundV2.deleteHaFlow(it.getHaFlowId()) }
         northbound.deleteAllFlows()
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getAllFlows().empty }
         labService.flushLabs()

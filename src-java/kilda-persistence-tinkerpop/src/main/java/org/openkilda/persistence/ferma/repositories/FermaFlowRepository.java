@@ -15,6 +15,8 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.has;
+
 import org.openkilda.model.Flow;
 import org.openkilda.model.Flow.FlowData;
 import org.openkilda.model.FlowFilter;
@@ -26,6 +28,7 @@ import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowFrame;
 import org.openkilda.persistence.ferma.frames.FlowPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
+import org.openkilda.persistence.ferma.frames.PathSegmentFrame;
 import org.openkilda.persistence.ferma.frames.converters.FlowStatusConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -40,20 +43,28 @@ import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Ferma implementation of {@link FlowRepository}.
  */
 @Slf4j
 public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, FlowFrame> implements FlowRepository {
+    private static final String PATH_SEGMENT_ALIAS = "path_segment_alias";
+    private static final String FLOWS_ALIAS = "flows_alias";
+
     protected final FlowPathRepository flowPathRepository;
 
     public FermaFlowRepository(
@@ -96,12 +107,7 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public Optional<Flow> findById(String flowId) {
-        List<? extends FlowFrame> flowFrames = framedGraph().traverse(g -> g.V()
-                .hasLabel(FlowFrame.FRAME_LABEL)
-                .has(FlowFrame.FLOW_ID_PROPERTY, flowId))
-                .toListExplicit(FlowFrame.class);
-        return flowFrames.isEmpty() ? Optional.empty() : Optional.of(flowFrames.get(0))
-                .map(Flow::new);
+        return FlowFrame.load(framedGraph(), flowId).map(Flow::new);
     }
 
     @Override
@@ -408,12 +414,13 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     @Override
     public Optional<String> getOrCreateDiverseFlowGroupId(String flowId) {
         return getTransactionManager().doInTransaction(() -> findById(flowId)
-                .map(diverseFlow -> {
-                    if (diverseFlow.getDiverseGroupId() == null) {
-                        String groupId = UUID.randomUUID().toString();
-                        diverseFlow.setDiverseGroupId(groupId);
+                .map(flow -> {
+                    String groupId = flow.getDiverseGroupId();
+                    if (groupId == null) {
+                        groupId = UUID.randomUUID().toString();
+                        flow.setDiverseGroupId(groupId);
                     }
-                    return diverseFlow.getDiverseGroupId();
+                    return groupId;
                 }));
     }
 
@@ -444,13 +451,20 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
 
     @Override
     public void updateDiverseFlowGroupId(@NonNull String flowId, String diverseGroupId) {
-        getTransactionManager().doInTransaction(() ->
-                framedGraph().traverse(g -> g.V()
-                                .hasLabel(FlowFrame.FRAME_LABEL)
-                                .has(FlowFrame.FLOW_ID_PROPERTY, flowId))
-                        .toListExplicit(FlowFrame.class)
-                        .forEach(flowFrame -> {
-                            flowFrame.setDiverseGroupId(diverseGroupId);
+        getTransactionManager().doInTransaction(() -> findById(flowId)
+                        .ifPresent(flow -> {
+                            String diverseFlowId;
+                            if (flow.getAffinityGroupId() != null) {
+                                diverseFlowId = flow.getAffinityGroupId();
+                            } else {
+                                diverseFlowId = flow.getFlowId();
+                            }
+
+                            framedGraph().traverse(g -> g.V()
+                                            .hasLabel(FlowFrame.FRAME_LABEL)
+                                            .has(FlowFrame.FLOW_ID_PROPERTY, diverseFlowId))
+                                    .toListExplicit(FlowFrame.class)
+                                    .forEach(flowFrame -> flowFrame.setDiverseGroupId(diverseGroupId));
                         }));
     }
 
@@ -591,6 +605,36 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     }
 
     @Override
+    public Map<Integer, Collection<Flow>> findSwitchFlowsByPort(SwitchId switchId, Collection<Integer> ports) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<Integer, Collection<Flow>> portToFlowMap = collectToPortToFlowTreeMap(
+                    framedGraph().traverse(g -> g.V()
+                            .hasLabel(PathSegmentFrame.FRAME_LABEL)
+                            .or(
+                                    has(PathSegmentFrame.SRC_SWITCH_ID_PROPERTY, switchId.toString()),
+                                    has(PathSegmentFrame.DST_SWITCH_ID_PROPERTY, switchId.toString()))
+                            .as(PATH_SEGMENT_ALIAS)
+                            .in(FlowPathFrame.OWNS_SEGMENTS_EDGE)
+                            .in(FlowFrame.OWNS_PATHS_EDGE)
+                            .hasLabel(FlowFrame.FRAME_LABEL)
+                            .as(FLOWS_ALIAS)
+                            .select(PATH_SEGMENT_ALIAS, FLOWS_ALIAS)
+                    ).getRawTraversal().toList().stream().map(Map.class::cast),
+                    PathSegmentFrame.SRC_PORT_PROPERTY, PathSegmentFrame.DST_PORT_PROPERTY);
+
+            addFlowEndPoints(switchId, portToFlowMap);
+
+            portToFlowMap.entrySet().removeIf(e -> (ports != null && !ports.contains(e.getKey())));
+
+            return portToFlowMap;
+        } catch (ClassCastException | NumberFormatException e) {
+            log.error("An exception in findSwitchFlowsByPort: {}", e.getMessage());
+            throw e;
+        }
+    }
+
+    @Override
     protected FlowFrame doAdd(FlowData data) {
         FlowFrame frame = KildaBaseVertexFrame.addNewFramedVertex(framedGraph(), FlowFrame.FRAME_LABEL,
                 FlowFrame.class);
@@ -618,5 +662,49 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     @Override
     protected FlowData doDetach(Flow entity, FlowFrame frame) {
         return Flow.FlowCloner.INSTANCE.deepCopy(frame, entity);
+    }
+
+    private void addFlowEndPoints(final SwitchId switchId, Map<Integer, Collection<Flow>> target) {
+        List<Flow> flowsOnSwitch = framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowFrame.FRAME_LABEL)
+                .or(
+                        has(FlowFrame.SRC_SWITCH_ID_PROPERTY, switchId.toString()),
+                        has(FlowFrame.DST_SWITCH_ID_PROPERTY, switchId.toString())))
+                .toListExplicit(FlowFrame.class)
+                .stream()
+                .map(Flow::new)
+                .collect(Collectors.toList());
+
+        flowsOnSwitch.stream().filter(f -> switchId.equals(f.getSrcSwitchId()))
+                .forEach(f -> target.merge(f.getSrcPort(),
+                        Collections.singletonList(f),
+                        this::combineDistinctToOrderedCollection));
+
+        flowsOnSwitch.stream().filter(f -> switchId.equals(f.getDestSwitchId()))
+                .forEach(f -> target.merge(f.getDestPort(),
+                        Collections.singletonList(f),
+                        this::combineDistinctToOrderedCollection));
+    }
+
+    private <T extends Flow> Collection<T> combineDistinctToOrderedCollection(Collection<T> c1, Collection<T> c2) {
+        return Stream.of(c1, c2).flatMap(Collection::stream)
+                .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(Flow::getFlowId))));
+    }
+
+    private Map<Integer, Collection<Flow>> collectToPortToFlowTreeMap(Stream<Map<String, Vertex>> aliasToVertexMap,
+                                                               String... properties) {
+        final Map<Integer, Collection<Flow>> portToFlowIdMap = new TreeMap<>();
+
+        aliasToVertexMap.forEach(e -> {
+            for (String property : properties) {
+                portToFlowIdMap.merge(Integer.valueOf(e.get(PATH_SEGMENT_ALIAS)
+                                .property(property).value().toString()),
+                        Collections.singleton(new Flow(
+                                framedGraph().frameElement(e.get(FLOWS_ALIAS), FlowFrame.class))),
+                        this::combineDistinctToOrderedCollection);
+            }
+        });
+
+        return portToFlowIdMap;
     }
 }

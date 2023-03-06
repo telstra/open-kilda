@@ -34,7 +34,7 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
     def "Switch and rule validation can properly detect default rules to 'proper' section (#sw.hwSwString #propsDescr)"(
             Map swProps, Switch sw, String propsDescr) {
         given: "Clean switch without customer flows and with the given switchProps"
-        def originalProps = northbound.getSwitchProperties(sw.dpId)
+        def originalProps = switchHelper.getCachedSwProps(sw.dpId)
         northbound.updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap({
             it.multiTable = swProps.multiTable
             it.switchLldp = swProps.switchLldp

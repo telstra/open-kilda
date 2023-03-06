@@ -25,6 +25,7 @@ import java.util.Objects;
 public class MacAddress implements Serializable {
     private static final long serialVersionUID = 5506319046146663699L;
     private static final String MAC_ADDRESS_REGEXP = "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$";
+    public static final MacAddress SLOW_PROTOCOLS = new MacAddress("01:80:C2:00:00:02");
 
     String address;
 
@@ -36,6 +37,10 @@ public class MacAddress implements Serializable {
         } else {
             throw new IllegalArgumentException(String.format("'%s' is not a valid Mac Address", address));
         }
+    }
+
+    public long toLong() {
+        return Long.parseUnsignedLong(address.replaceAll("[:]", ""), 16);
     }
 
     @JsonValue

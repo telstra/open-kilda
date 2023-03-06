@@ -17,6 +17,8 @@ package org.openkilda.northbound.dto.v2.yflows;
 
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -25,11 +27,13 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Set;
 
 @Data
 @Builder
 @AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
+@JsonInclude(Include.NON_NULL)
 public class YFlow {
     @JsonProperty("y_flow_id")
     String yFlowId;
@@ -48,11 +52,16 @@ public class YFlow {
     Integer priority;
     boolean strictBandwidth;
     String description;
+    boolean allocateProtectedPath;
 
     @JsonProperty("y_point")
     SwitchId yPoint;
     @JsonProperty("protected_path_y_point")
     SwitchId protectedPathYPoint;
+
+    Set<String> diverseWithFlows;
+    @JsonProperty("diverse_with_y_flows")
+    Set<String> diverseWithYFlows;
 
     List<SubFlow> subFlows;
 

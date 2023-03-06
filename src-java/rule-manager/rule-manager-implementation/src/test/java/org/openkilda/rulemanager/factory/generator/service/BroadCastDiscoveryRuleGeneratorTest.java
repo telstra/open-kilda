@@ -27,13 +27,13 @@ import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
+import static org.openkilda.rulemanager.Constants.DISCOVERY_PACKET_UDP_PORT;
+import static org.openkilda.rulemanager.Constants.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.rulemanager.Constants.Priority.DISCOVERY_RULE_PRIORITY;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
 import static org.openkilda.rulemanager.Utils.getActionByType;
 import static org.openkilda.rulemanager.Utils.getCommand;
 import static org.openkilda.rulemanager.Utils.getMatchByField;
-import static org.openkilda.rulemanager.factory.generator.service.BroadCastDiscoveryRuleGenerator.DISCOVERY_PACKET_UDP_PORT;
-import static org.openkilda.rulemanager.factory.generator.service.BroadCastDiscoveryRuleGenerator.LATENCY_PACKET_UDP_PORT;
 
 import org.openkilda.model.GroupId;
 import org.openkilda.model.Meter;
@@ -42,18 +42,18 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.Field;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
-import org.openkilda.rulemanager.GroupSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.MeterFlag;
-import org.openkilda.rulemanager.MeterSpeakerCommandData;
+import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.Mask;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.GroupAction;
 import org.openkilda.rulemanager.action.MeterAction;
@@ -93,15 +93,15 @@ public class BroadCastDiscoveryRuleGeneratorTest {
     @Test
     public void shouldBuildCorrectRuleWithMeterAndGroupForOf13() {
         sw = buildSwitch("OF_13", Sets.newHashSet(METERS, GROUP_PACKET_OUT_CONTROLLER, MATCH_UDP_PORT, PKTPS_FLAG));
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(3, commands.size());
         commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
         commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
-        MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommandData = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
+        MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
+        GroupSpeakerData groupCommandData = getCommand(GroupSpeakerData.class, commands);
 
         assertEquals(2, flowCommandData.getDependsOn().size());
         assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
@@ -128,15 +128,15 @@ public class BroadCastDiscoveryRuleGeneratorTest {
     @Test
     public void shouldBuildCorrectRuleWithMeterAndGroupForOf15() {
         sw = buildSwitch("OF_15", Sets.newHashSet(METERS, GROUP_PACKET_OUT_CONTROLLER, MATCH_UDP_PORT, PKTPS_FLAG));
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(3, commands.size());
         commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
         commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
-        MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommandData = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
+        MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
+        GroupSpeakerData groupCommandData = getCommand(GroupSpeakerData.class, commands);
 
         assertEquals(2, flowCommandData.getDependsOn().size());
         assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
@@ -173,14 +173,14 @@ public class BroadCastDiscoveryRuleGeneratorTest {
     @Test
     public void shouldBuildCorrectRuleWithMeterAndWithoutGroupForOf13() {
         sw = buildSwitch("OF_13", Sets.newHashSet(METERS, MATCH_UDP_PORT, PKTPS_FLAG));
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(2, commands.size());
         commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
         commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
-        MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
+        MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
         assertEquals(1, flowCommandData.getDependsOn().size());
         assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
@@ -211,14 +211,14 @@ public class BroadCastDiscoveryRuleGeneratorTest {
     @Test
     public void shouldBuildCorrectRuleWithGroupAndWithoutMeterForOf13() {
         sw = buildSwitch("OF_13", Sets.newHashSet(GROUP_PACKET_OUT_CONTROLLER, MATCH_UDP_PORT, PKTPS_FLAG));
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(2, commands.size());
         commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
         commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommandData = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
+        GroupSpeakerData groupCommandData = getCommand(GroupSpeakerData.class, commands);
 
         assertEquals(1, flowCommandData.getDependsOn().size());
         assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
@@ -247,13 +247,13 @@ public class BroadCastDiscoveryRuleGeneratorTest {
     @Test
     public void shouldBuildCorrectRuleWithoutMeterAndGroupForOf13() {
         sw = buildSwitch("OF_13", Sets.newHashSet(MATCH_UDP_PORT, PKTPS_FLAG));
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(1, commands.size());
         commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
         commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
 
         assertTrue(flowCommandData.getDependsOn().isEmpty());
 
@@ -280,15 +280,15 @@ public class BroadCastDiscoveryRuleGeneratorTest {
     @Test
     public void shouldBuildCorrectRuleWithoutUpdDstMatchForOf13() {
         sw = buildSwitch("OF_13", Sets.newHashSet(METERS, GROUP_PACKET_OUT_CONTROLLER, PKTPS_FLAG));
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(3, commands.size());
         commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
         commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
-        MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommandData = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
+        MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
+        GroupSpeakerData groupCommandData = getCommand(GroupSpeakerData.class, commands);
 
         assertEquals(2, flowCommandData.getDependsOn().size());
         assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
@@ -315,15 +315,15 @@ public class BroadCastDiscoveryRuleGeneratorTest {
     @Test
     public void shouldBuildCorrectRuleWithMeterInBytesForOf13() {
         sw = buildSwitch("OF_13", Sets.newHashSet(METERS, GROUP_PACKET_OUT_CONTROLLER, MATCH_UDP_PORT));
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(3, commands.size());
         commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
         commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
-        MeterSpeakerCommandData meterCommandData = getCommand(MeterSpeakerCommandData.class, commands);
-        GroupSpeakerCommandData groupCommandData = getCommand(GroupSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
+        MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
+        GroupSpeakerData groupCommandData = getCommand(GroupSpeakerData.class, commands);
 
         assertEquals(2, flowCommandData.getDependsOn().size());
         assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
@@ -355,7 +355,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         checkGroupCommand(groupCommandData);
     }
 
-    private void checkFlowCommandBaseProperties(FlowSpeakerCommandData flowCommandData) {
+    private void checkFlowCommandBaseProperties(FlowSpeakerData flowCommandData) {
         assertEquals(new Cookie(VERIFICATION_BROADCAST_RULE_COOKIE), flowCommandData.getCookie());
         assertEquals(OfTable.INPUT, flowCommandData.getTable());
         assertEquals(DISCOVERY_RULE_PRIORITY, flowCommandData.getPriority());
@@ -370,7 +370,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
 
     private void checkUpdDstMatch(Set<FieldMatch> match) {
         FieldMatch ipProtoMatch = getMatchByField(Field.IP_PROTO, match);
-        assertEquals(IpProto.UDP_IP_PROTO, ipProtoMatch.getValue());
+        assertEquals(IpProto.UDP, ipProtoMatch.getValue());
         assertFalse(ipProtoMatch.isMasked());
 
         FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, match);
@@ -398,7 +398,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         assertEquals(groupAction.getGroupId(), groupId);
     }
 
-    private void checkMeterCommand(MeterSpeakerCommandData meterCommandData) {
+    private void checkMeterCommand(MeterSpeakerData meterCommandData) {
         assertEquals(createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE), meterCommandData.getMeterId());
         assertEquals(config.getBroadcastRateLimit(), meterCommandData.getRate());
         assertEquals(config.getSystemMeterBurstSizeInPackets(), meterCommandData.getBurst());
@@ -407,7 +407,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
                 .containsAll(meterCommandData.getFlags()));
     }
 
-    private void checkGroupCommand(GroupSpeakerCommandData groupCommandData) {
+    private void checkGroupCommand(GroupSpeakerData groupCommandData) {
         assertEquals(GroupId.ROUND_TRIP_LATENCY_GROUP_ID, groupCommandData.getGroupId());
         assertEquals(GroupType.ALL, groupCommandData.getType());
         List<Bucket> buckets = groupCommandData.getBuckets();

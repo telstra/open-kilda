@@ -15,31 +15,23 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
-import org.openkilda.messaging.Message;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
+import org.openkilda.messaging.info.stats.StatsNotification;
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
+import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
+import org.openkilda.wfm.topology.flowhs.service.common.LifecycleEventCarrier;
+import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
 
-public interface FlowGenericCarrier {
-    /**
-     * Sends response to northbound component.
-     */
-    void sendNorthboundResponse(Message message);
-
+public interface FlowGenericCarrier extends NorthboundResponseCarrier, HistoryUpdateCarrier, LifecycleEventCarrier {
     /**
      * Sends commands to speaker.
      * @param command command to be executed.
      */
-    void sendSpeakerRequest(FlowSegmentRequest command);
-
-    /**
-     * Sends main events to history bolt.
-     */
-    void sendHistoryUpdate(FlowHistoryHolder historyHolder);
+    void sendSpeakerRequest(SpeakerRequest command);
 
     /**
      * Sends update on periodic ping status for the flow.
@@ -60,8 +52,6 @@ public interface FlowGenericCarrier {
      */
     default void sendDeactivateFlowMonitoring(String flow, SwitchId srcSwitchId, SwitchId dstSwitchId) {}
 
-    void sendInactive();
-
     /**
      * Sends UpdateFlowInfo to flow-monitoring topology.
      * @param flowInfo message to send
@@ -79,4 +69,6 @@ public interface FlowGenericCarrier {
      * @param flowPathInfo message to send
      */
     default void sendNotifyFlowStats(RemoveFlowPathInfo flowPathInfo) {}
+
+    default void sendStatsNotification(StatsNotification notification) {}
 }

@@ -1,7 +1,30 @@
 <div id="storeSetting">
         <div class="row">
-            <div class="col-md-12">
-                <h6 class="card-title card-custom-title">SESSION SETTINGS</h6>
+             <!--- switch name setting-->
+             <div class="col-md-12">
+                <h6 class="card-title card-custom-title">SWITCH NAME SETTINGS</h6>
+                <div _ngcontent-c14="" class="card">
+                    <div _ngcontent-c14="" class="card-body">
+                        <div class="col-sm-9">
+                        <form [formGroup]="switchNameSourceForm" class="form-horizontal">
+                              <div class="form-group row">
+                                    <label for="session_timeout" class="col-sm-3 mt-2">Switch Name Source <span class="mandatory-text text-danger">*</span></label>
+                                    <select class="form-control col-sm-3 ml-3" formControlName="switch_name_source">
+                                        <option *ngFor="let item of switchNameSourceTypes" value="{{item}}">{{item}}</option>
+                                    </select> 
+                                    <div class="col-sm-3 ml-3">
+                                             <button *ngIf="isSwitchNameSourcEdit" type="button" (click)="saveSwitchNameSource()" class="btn kilda_btn">Save</button> &nbsp;
+                                            <button *ngIf="isSwitchNameSourcEdit" type="button" class="btn kilda_btn" (click)="cancelSwitchNameSource()">Cancel</button> &nbsp;
+                                            <button *ngIf="!isSwitchNameSourcEdit" type="button" class="btn kilda_btn" (click)="editSwitchNameSource()">Edit</button> &nbsp;
+                                    </div>
+                                </div>
+                         </form>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            <div class="col-md-12 mt-3">
+                <h6 class="card-title card-custom-title">USER SETTINGS</h6>
                 <div _ngcontent-c14="" class="card">
                     <div _ngcontent-c14="" class="card-body">
                         <div class="col-sm-9">
@@ -18,31 +41,40 @@
                                 </div>
                          </form>
                         </div>
-                        </div>
-                    </div>
-                </div>
-                <!--- switch name setting-->
-                <div class="col-md-12 mt-1">
-                    <h6 class="card-title card-custom-title">SWITCH NAME SETTINGS</h6>
-                    <div _ngcontent-c14="" class="card">
-                        <div _ngcontent-c14="" class="card-body">
-                            <div class="col-sm-9">
-                            <form [formGroup]="switchNameSourceForm" class="form-horizontal">
+                        <!---login time setting  -->
+                        <div class="col-sm-9">
+                            <form [formGroup]="loginAttemptForm" class="form-horizontal">
                                   <div class="form-group row">
-                                        <label for="session_timeout" class="col-sm-3 mt-2">Switch Name Source <span class="mandatory-text text-danger">*</span></label>
-                                        <select class="form-control col-sm-3 ml-3" formControlName="switch_name_source">
-                                            <option *ngFor="let item of switchNameSourceTypes" value="{{item}}">{{item}}</option>
-                                        </select> 
+                                        <label for="session_timeout" class="col-sm-3 mt-2">Login Attempt Allowed <span class="mandatory-text text-danger">*</span></label>
+                                        <input min="5" class="form-control col-sm-3 ml-3" type="number" formControlName="login_attempt" placeholder="Login Attempt e.g.: 5" required/>
+                                    
                                         <div class="col-sm-3 ml-3">
-                                                 <button *ngIf="isSwitchNameSourcEdit" type="button" (click)="saveSwitchNameSource()" class="btn kilda_btn">Save</button> &nbsp;
-                                                <button *ngIf="isSwitchNameSourcEdit" type="button" class="btn kilda_btn" (click)="cancelSwitchNameSource()">Cancel</button> &nbsp;
-                                                <button *ngIf="!isSwitchNameSourcEdit" type="button" class="btn kilda_btn" (click)="editSwitchNameSource()">Edit</button> &nbsp;
+                                                 <button *ngIf="isloginAttemptEdit" type="button" (click)="saveLoginAttemptSetting()" class="btn kilda_btn">Save</button> &nbsp;
+                                                <button *ngIf="isloginAttemptEdit" type="button" class="btn kilda_btn" (click)="cancelLoginAttemptSetting()">Cancel</button> &nbsp;
+                                                <button *ngIf="!isloginAttemptEdit" type="button" class="btn kilda_btn" (click)="editLoginAttemptSetting()">Edit</button> &nbsp;
                                         </div>
                                     </div>
                              </form>
                             </div>
+                        <!-- user unblock setting -->
+                        <div class="col-sm-9">
+                            <form [formGroup]="userUnlockForm" class="form-horizontal">
+                                  <div class="form-group row">
+                                        <label for="session_timeout" class="col-sm-3 mt-2">User Unlock Time(Seconds) <span class="mandatory-text text-danger">*</span></label>
+                                        <input min="5" class="form-control col-sm-3 ml-3" type="number" formControlName="user_unlock_time" placeholder="User Unlock Time e.g.: 60" required/>
+                                    
+                                        <div class="col-sm-3 ml-3">
+                                                 <button *ngIf="isUserUnlockEdit" type="button" (click)="saveUserUnlockTimeSetting()" class="btn kilda_btn">Save</button> &nbsp;
+                                                <button *ngIf="isUserUnlockEdit" type="button" class="btn kilda_btn" (click)="cancelUserUnlockTimeSetting()">Cancel</button> &nbsp;
+                                                <button *ngIf="!isUserUnlockEdit" type="button" class="btn kilda_btn" (click)="editUserUnlockTimeSetting()">Edit</button> &nbsp;
+                                        </div>
+                                    </div>
+                             </form>
                             </div>
+                        
                         </div>
                     </div>
+                </div>
+
             </div>
  </div>

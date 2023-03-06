@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import static java.util.Collections.singleton;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -25,7 +26,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
+import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
+import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -41,6 +47,9 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YFlow.SharedEndpoint;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.Path;
@@ -54,6 +63,8 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -74,8 +85,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.stream.Collectors;
 
-public abstract class AbstractFlowTest extends InMemoryGraphBasedTest {
+public abstract class AbstractFlowTest<T> extends InMemoryGraphBasedTest {
     protected static final SwitchId SWITCH_SOURCE = new SwitchId(1);
     protected static final SwitchId SWITCH_DEST = new SwitchId(2);
     protected static final SwitchId SWITCH_TRANSIT = new SwitchId(3L);
@@ -115,7 +127,7 @@ public abstract class AbstractFlowTest extends InMemoryGraphBasedTest {
     @Mock
     PathComputer pathComputer;
 
-    final Queue<FlowSegmentRequest> requests = new ArrayDeque<>();
+    protected final Queue<T> requests = new ArrayDeque<>();
     final Map<SwitchId, Map<Cookie, FlowSegmentRequest>> installedSegments = new HashMap<>();
 
     @Before
@@ -150,28 +162,59 @@ public abstract class AbstractFlowTest extends InMemoryGraphBasedTest {
         }
     }
 
-    protected SpeakerFlowSegmentResponse buildSpeakerResponse(FlowSegmentRequest flowRequest) {
-        return SpeakerFlowSegmentResponse.builder()
-                        .messageContext(flowRequest.getMessageContext())
-                        .commandId(flowRequest.getCommandId())
-                        .metadata(flowRequest.getMetadata())
-                        .switchId(flowRequest.getSwitchId())
-                        .success(true)
-                        .build();
-    }
-
-    Answer getSpeakerCommandsAnswer() {
+    protected Answer<T> buildSpeakerRequestAnswer() {
         return invocation -> {
-            FlowSegmentRequest request = invocation.getArgument(0);
+            T request = invocation.getArgument(0);
             requests.offer(request);
 
-            if (request.isInstallRequest()) {
-                installedSegments.computeIfAbsent(request.getSwitchId(), ignore -> new HashMap<>())
-                        .put(request.getCookie(), request);
+            if (request instanceof FlowSegmentRequest) {
+                FlowSegmentRequest flowSegmentRequest = (FlowSegmentRequest) request;
+                if (flowSegmentRequest.isInstallRequest()) {
+                    installedSegments.computeIfAbsent(flowSegmentRequest.getSwitchId(), ignore -> new HashMap<>())
+                            .put(flowSegmentRequest.getCookie(), flowSegmentRequest);
+                }
             }
 
             return request;
         };
+    }
+
+    protected SpeakerFlowSegmentResponse buildSpeakerResponse(FlowSegmentRequest flowRequest) {
+        return SpeakerFlowSegmentResponse.builder()
+                .messageContext(flowRequest.getMessageContext())
+                .commandId(flowRequest.getCommandId())
+                .metadata(flowRequest.getMetadata())
+                .switchId(flowRequest.getSwitchId())
+                .success(true)
+                .build();
+    }
+
+    protected SpeakerCommandResponse buildSuccessfulYFlowSpeakerResponse(BaseSpeakerCommandsRequest request) {
+        return SpeakerCommandResponse.builder()
+                .messageContext(request.getMessageContext())
+                .commandId(request.getCommandId())
+                .switchId(request.getSwitchId())
+                .success(true)
+                .failedCommandIds(new HashMap<>())
+                .build();
+    }
+
+    protected SpeakerCommandResponse buildErrorYFlowSpeakerResponse(BaseSpeakerCommandsRequest request) {
+        return SpeakerCommandResponse.builder()
+                .messageContext(request.getMessageContext())
+                .commandId(request.getCommandId())
+                .switchId(request.getSwitchId())
+                .success(false)
+                .failedCommandIds(request.getCommands().stream().map(command -> {
+                    if (command instanceof FlowCommand) {
+                        return ((FlowCommand) command).getData();
+                    }
+                    if (command instanceof MeterCommand) {
+                        return ((MeterCommand) command).getData();
+                    }
+                    return ((GroupCommand) command).getData();
+                }).collect(Collectors.toMap(SpeakerData::getUuid, error -> "Switch is unavailable")))
+                .build();
     }
 
     SpeakerFlowSegmentResponse buildResponseOnVerifyRequest(FlowSegmentRequest request) {
@@ -395,5 +438,26 @@ public abstract class AbstractFlowTest extends InMemoryGraphBasedTest {
     protected Flow makeFlowArgumentMatch(String flowId) {
         return MockitoHamcrest.argThat(
                 Matchers.hasProperty("flowId", is(flowId)));
+    }
+
+    protected void createTestYFlowForSubFlow(Flow subFlow) {
+        YFlow yFlow = YFlow.builder()
+                .yFlowId("test_y_flow")
+                .sharedEndpoint(new SharedEndpoint(subFlow.getSrcSwitchId(),
+                        subFlow.getSrcPort()))
+                .status(FlowStatus.UP)
+                .build();
+        yFlow.setSubFlows(singleton(YSubFlow.builder()
+                .sharedEndpointVlan(subFlow.getSrcVlan())
+                .sharedEndpointInnerVlan(subFlow.getSrcInnerVlan())
+                .endpointSwitchId(subFlow.getDestSwitchId())
+                .endpointPort(subFlow.getDestPort())
+                .endpointVlan(subFlow.getDestVlan())
+                .endpointInnerVlan(subFlow.getDestInnerVlan())
+                .flow(subFlow)
+                .yFlow(yFlow)
+                .build()));
+        YFlowRepository yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
+        yFlowRepository.add(yFlow);
     }
 }

@@ -1,0 +1,79 @@
+@startuml
+title Y-Flow FSM Error handling and retries
+
+boundary Northbound
+box "Flow HS Topology" #LightGreen
+    participant YFlowCreateHub
+    participant YFlowCreateService
+    participant YFlowCreateFSM
+    participant FlowCreateService
+    participant FlowCreateFSM
+    participant SpeakerWorker
+end box
+
+alt "Error happens before sub-flow created"
+Northbound -> YFlowCreateHub : YFlowUpdateRequest
+activate YFlowCreateHub
+YFlowCreateHub -> YFlowCreateService : handleRequest(...)
+deactivate YFlowCreateHub
+activate YFlowCreateService
+YFlowCreateService -> YFlowCreateFSM : create an FSM
+deactivate YFlowCreateService
+activate YFlowCreateFSM
+YFlowCreateFSM -> YFlowCreateFSM : Error happened
+YFlowCreateFSM -> YFlowCreateFSM : rollback
+YFlowCreateFSM -> YFlowCreateService : notify about the rollback
+deactivate YFlowCreateFSM
+end
+
+
+alt "Error happens on sub-flow creation"
+Northbound -> YFlowCreateHub : YFlowUpdateRequest
+activate YFlowCreateHub
+YFlowCreateHub -> YFlowCreateService : handleRequest(...)
+deactivate YFlowCreateHub
+activate YFlowCreateService
+YFlowCreateService -> YFlowCreateFSM : create an FSM
+deactivate YFlowCreateService
+activate YFlowCreateFSM
+YFlowCreateFSM -> FlowCreateService : Initiate the flow creation
+deactivate YFlowCreateFSM
+activate FlowCreateService
+FlowCreateService -> FlowCreateFSM : create an FSM
+deactivate FlowCreateService
+activate FlowCreateFSM
+FlowCreateFSM -> FlowCreateFSM : Error happened
+FlowCreateFSM -> YFlowCreateService : notify about error : no path found
+deactivate FlowCreateFSM
+YFlowCreateService -> FlowCreateService : Retry
+activate FlowCreateService
+FlowCreateService -> FlowCreateFSM : create an FSM
+deactivate FlowCreateService
+activate FlowCreateFSM
+FlowCreateFSM -> FlowCreateFSM : Error happened
+FlowCreateFSM -> YFlowCreateService : notify about error : no path found
+deactivate FlowCreateFSM
+YFlowCreateService -> FlowCreateService : Cancel all sub-flow FSMs
+activate FlowCreateService
+FlowCreateService -> FlowCreateFSM : fire "CANCEL" event on the FSMs
+deactivate FlowCreateService
+activate FlowCreateFSM
+FlowCreateFSM -> FlowCreateFSM : rollback
+FlowCreateFSM -> YFlowCreateService : notify about the rollback
+deactivate FlowCreateFSM
+YFlowCreateService -> FlowDeleteService : Remove already created sub-flows
+activate FlowDeleteService
+FlowDeleteService -> FlowDeleteFSM : fire "CANCEL" event on the FSMs
+deactivate FlowDeleteService
+activate FlowDeleteFSM
+FlowDeleteFSM -> FlowDeleteFSM : delete the flow
+FlowDeleteFSM -> YFlowCreateService : notify on deleted flow
+deactivate FlowDeleteFSM
+YFlowCreateService -> YFlowCreateFSM : fire "CANCEL" event
+activate YFlowCreateFSM
+YFlowCreateFSM -> YFlowCreateFSM : rollback
+YFlowCreateFSM -> YFlowCreateService : notify about the rollback
+deactivate YFlowCreateFSM
+end
+
+@enduml

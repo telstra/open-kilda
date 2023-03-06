@@ -10,14 +10,15 @@ description = 'Stats Storm Topology'
 dependencies {
     implementation project(':stats-messaging')
     implementation project(':base-storm-topology')
-    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
+    runtimeOnly project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     implementation project(':kilda-reporting')
     implementation project(':floodlight-api')
     implementation project(':grpc-api')
     implementation project(':blue-green')
-    runtimeClasspath project(':kilda-persistence-orientdb')
-    runtimeClasspath project(':kilda-persistence-hibernate')
+    implementation project(':rule-manager-implementation')
+    runtimeOnly project(':kilda-persistence-orientdb')
+    runtimeOnly project(':kilda-persistence-hibernate')
     aspect project(':kilda-persistence-api')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
 

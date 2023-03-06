@@ -15,27 +15,27 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create;
 
-import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
-import org.openkilda.messaging.Message;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithSpeakerCommandsFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.EmitRemoveRulesRequestsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.EmitUpdateRulesRequestsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.EmitVerifyRulesRequestsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.HandleNotCompletedCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.HandleNotDeallocatedFlowMirrorPathResourceAction;
+import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.NotifyFlowStatsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.OnReceivedInstallResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.OnReceivedValidateResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.PostFlowMirrorPathDeallocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.PostFlowMirrorPathInstallationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.PostResourceAllocationAction;
@@ -43,25 +43,25 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.Resource
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.RevertFlowMirrorPathAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.ValidateRequestAction;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlowMirrorPoint;
-import org.openkilda.wfm.topology.flowhs.service.FlowMirrorPointCreateHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
 @Slf4j
-public final class FlowMirrorPointCreateFsm
-        extends FlowPathSwappingFsm<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> {
-
-    private final FlowMirrorPointCreateHubCarrier carrier;
+public final class FlowMirrorPointCreateFsm extends FlowProcessingWithSpeakerCommandsFsm<
+        FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext, FlowGenericCarrier,
+        FlowProcessingEventListener> {
 
     private RequestedFlowMirrorPoint requestedFlowMirrorPoint;
 
@@ -74,53 +74,11 @@ public final class FlowMirrorPointCreateFsm
     private boolean rulesInstalled = false;
     private boolean addNewGroup = false;
 
-    private final Map<UUID, FlowSegmentRequestFactory> commands = new HashMap<>();
+    private final List<SpeakerData> revertCommands = new ArrayList<>();
 
-    public FlowMirrorPointCreateFsm(CommandContext commandContext, FlowMirrorPointCreateHubCarrier carrier,
-                                    String flowId) {
-        super(commandContext, flowId);
-        this.carrier = carrier;
-    }
-
-    @Override
-    public void fireNext(FlowMirrorPointCreateContext context) {
-        fire(Event.NEXT, context);
-    }
-
-    @Override
-    public void fireError(String errorReason) {
-        fireError(Event.ERROR, errorReason);
-    }
-
-    private void fireError(Event errorEvent, String errorReason) {
-        setErrorReason(errorReason);
-        fire(errorEvent);
-    }
-
-    @Override
-    public void setErrorReason(String errorReason) {
-        if (this.errorReason != null) {
-            log.error("Subsequent error fired: " + errorReason);
-        } else {
-            this.errorReason = errorReason;
-        }
-    }
-
-    @Override
-    public void fireNoPathFound(String errorReason) {
-        fireError(Event.NO_PATH_FOUND, errorReason);
-    }
-
-    @Override
-    public void sendNorthboundResponse(Message message) {
-        carrier.sendNorthboundResponse(message);
-    }
-
-    @Override
-    public void reportError(Event event) {
-        if (Event.TIMEOUT == event) {
-            reportGlobalTimeout();
-        }
+    public FlowMirrorPointCreateFsm(@NonNull CommandContext commandContext,
+                                    @NonNull FlowGenericCarrier carrier, @NonNull String flowId) {
+        super(Event.NEXT, Event.ERROR, commandContext, carrier, flowId);
     }
 
     @Override
@@ -130,16 +88,16 @@ public final class FlowMirrorPointCreateFsm
 
     public static class Factory {
         private final StateMachineBuilder<FlowMirrorPointCreateFsm, State, Event, FlowMirrorPointCreateContext> builder;
-        private final FlowMirrorPointCreateHubCarrier carrier;
+        private final FlowGenericCarrier carrier;
 
-        public Factory(FlowMirrorPointCreateHubCarrier carrier, PersistenceManager persistenceManager,
-                       PathComputer pathComputer, FlowResourcesManager resourcesManager,
-                       int pathAllocationRetriesLimit, int pathAllocationRetryDelay, int resourceAllocationRetriesLimit,
-                       int speakerCommandRetriesLimit) {
+        public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+                       @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager resourcesManager,
+                       @NonNull RuleManager ruleManager, int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
+                       int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(FlowMirrorPointCreateFsm.class, State.class, Event.class,
-                    FlowMirrorPointCreateContext.class, CommandContext.class, FlowMirrorPointCreateHubCarrier.class,
+                    FlowMirrorPointCreateContext.class, CommandContext.class, FlowGenericCarrier.class,
                     String.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
@@ -151,7 +109,7 @@ public final class FlowMirrorPointCreateFsm
             builder.transition().from(State.FLOW_VALIDATED).to(State.ALLOCATING_RESOURCES).on(Event.NEXT)
                     .perform(new ResourceAllocationAction(persistenceManager,
                             pathAllocationRetriesLimit, pathAllocationRetryDelay, resourceAllocationRetriesLimit,
-                            pathComputer, resourcesManager, dashboardLogger));
+                            pathComputer, resourcesManager));
             builder.transitions().from(State.FLOW_VALIDATED)
                     .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
                     .onEach(Event.TIMEOUT, Event.ERROR);
@@ -165,34 +123,21 @@ public final class FlowMirrorPointCreateFsm
 
             builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.INSTALLING_RULES)
                     .on(Event.NEXT)
-                    .perform(new EmitUpdateRulesRequestsAction(persistenceManager, resourcesManager));
+                    .perform(new EmitUpdateRulesRequestsAction(persistenceManager, ruleManager));
             builder.transitions().from(State.RESOURCE_ALLOCATION_COMPLETED)
                     .toAmong(State.FLOW_MIRROR_PATH_ALLOCATION_REVERTED, State.FLOW_MIRROR_PATH_ALLOCATION_REVERTED)
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.INSTALLING_RULES).on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
-            builder.internalTransition().within(State.INSTALLING_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
-            builder.transition().from(State.INSTALLING_RULES).to(State.VALIDATING_RULES)
+            builder.transition().from(State.INSTALLING_RULES).to(State.NOTIFY_FLOW_STATS)
                     .on(Event.RULES_UPDATED)
-                    .perform(new EmitVerifyRulesRequestsAction());
+                    .perform(new NotifyFlowStatsAction(persistenceManager));
             builder.transitions().from(State.INSTALLING_RULES)
                     .toAmong(State.REVERTING_FLOW_MIRROR_PATH_RESOURCES, State.REVERTING_FLOW_MIRROR_PATH_RESOURCES)
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
-            builder.internalTransition().within(State.VALIDATING_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedValidateResponseAction(speakerCommandRetriesLimit));
-            builder.internalTransition().within(State.VALIDATING_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new OnReceivedValidateResponseAction(speakerCommandRetriesLimit));
-            builder.transition().from(State.VALIDATING_RULES).to(State.RULES_VALIDATED)
-                    .on(Event.RULES_VALIDATED);
-            builder.transitions().from(State.VALIDATING_RULES)
-                    .toAmong(State.REVERTING_FLOW_MIRROR_PATH_RESOURCES, State.REVERTING_FLOW_MIRROR_PATH_RESOURCES,
-                             State.REVERTING_FLOW_MIRROR_PATH_RESOURCES)
-                    .onEach(Event.TIMEOUT, Event.MISSING_RULE_FOUND, Event.ERROR);
-
-            builder.transitions().from(State.RULES_VALIDATED)
+            builder.transitions().from(State.NOTIFY_FLOW_STATS)
                     .toAmong(State.MIRROR_PATH_INSTALLATION_COMPLETED, State.MIRROR_PATH_INSTALLATION_COMPLETED)
                     .onEach(Event.NEXT, Event.ERROR)
                     .perform(new PostFlowMirrorPathInstallationAction(persistenceManager));
@@ -202,7 +147,8 @@ public final class FlowMirrorPointCreateFsm
                     .to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
 
             builder.onEntry(State.REVERTING_FLOW_MIRROR_PATH_RESOURCES)
-                    .perform(new RevertFlowMirrorPathAllocationAction(persistenceManager, resourcesManager));
+                    .perform(new RevertFlowMirrorPathAllocationAction(
+                            persistenceManager, resourcesManager, ruleManager));
             builder.transitions().from(State.REVERTING_FLOW_MIRROR_PATH_RESOURCES)
                     .toAmong(State.FLOW_MIRROR_PATH_ALLOCATION_REVERTED, State.FLOW_MIRROR_PATH_ALLOCATION_REVERTED)
                     .onEach(Event.NEXT, Event.ERROR);
@@ -216,10 +162,8 @@ public final class FlowMirrorPointCreateFsm
                     .perform(new HandleNotDeallocatedFlowMirrorPathResourceAction());
 
             builder.onEntry(State.REMOVE_GROUP)
-                    .perform(new EmitUpdateRulesRequestsAction(persistenceManager, resourcesManager));
+                    .perform(new EmitRemoveRulesRequestsAction(persistenceManager, ruleManager));
             builder.internalTransition().within(State.REMOVE_GROUP).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
-            builder.internalTransition().within(State.REMOVE_GROUP).on(Event.ERROR_RECEIVED)
                     .perform(new OnReceivedInstallResponseAction(speakerCommandRetriesLimit));
             builder.transition().from(State.REMOVE_GROUP).to(State.GROUP_REMOVED)
                     .on(Event.RULES_UPDATED);
@@ -243,7 +187,7 @@ public final class FlowMirrorPointCreateFsm
                     .addEntryAction(new OnFinishedWithErrorAction(persistenceManager, dashboardLogger));
         }
 
-        public FlowMirrorPointCreateFsm newInstance(CommandContext commandContext, String flowId) {
+        public FlowMirrorPointCreateFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId) {
             return builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
         }
     }
@@ -255,9 +199,8 @@ public final class FlowMirrorPointCreateFsm
         RESOURCE_ALLOCATION_COMPLETED,
 
         INSTALLING_RULES,
-        VALIDATING_RULES,
-        RULES_VALIDATED,
 
+        NOTIFY_FLOW_STATS,
         MIRROR_PATH_INSTALLATION_COMPLETED,
 
         FINISHED,
@@ -279,11 +222,7 @@ public final class FlowMirrorPointCreateFsm
         NO_PATH_FOUND,
 
         RESPONSE_RECEIVED,
-        ERROR_RECEIVED,
-
         RULES_UPDATED,
-        RULES_VALIDATED,
-        MISSING_RULE_FOUND,
 
         TIMEOUT,
         ERROR,

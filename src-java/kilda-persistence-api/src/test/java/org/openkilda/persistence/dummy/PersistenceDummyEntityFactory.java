@@ -27,6 +27,7 @@ import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
@@ -50,6 +51,7 @@ import lombok.Getter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -123,8 +125,8 @@ public class PersistenceDummyEntityFactory {
      */
     public Isl fetchOrCreateIsl(IslEndpoint source, IslEndpoint dest) {
         return islRepository.findByEndpoints(
-                source.getSwitchId(), source.getPortNumber(),
-                dest.getSwitchId(), dest.getPortNumber())
+                        source.getSwitchId(), source.getPortNumber(),
+                        dest.getSwitchId(), dest.getPortNumber())
                 .orElseGet(() -> makeIsl(source, dest));
     }
 
@@ -134,6 +136,13 @@ public class PersistenceDummyEntityFactory {
     public Switch makeSwitch(SwitchId switchId) {
         Switch sw = switchDefaults.fill(Switch.builder())
                 .switchId(switchId)
+                .ofVersion("OF_13")
+                .features(new HashSet<SwitchFeature>() {{
+                        add(SwitchFeature.METERS);
+                        add(SwitchFeature.GROUPS);
+                    }})
+                .ofDescriptionManufacturer("manufacturer")
+                .ofDescriptionSoftware("software")
                 .build();
         switchRepository.add(sw);
 
@@ -161,28 +170,90 @@ public class PersistenceDummyEntityFactory {
         return isl;
     }
 
+    public Flow makeMainAffinityFlow(FlowEndpoint source, FlowEndpoint dest, IslDirectionalReference... trace) {
+        String flowId = idProvider.provideFlowId();
+        return makeFlow(flowId, source, dest, flowId, Arrays.asList(trace));
+    }
+
     public Flow makeFlow(FlowEndpoint source, FlowEndpoint dest, IslDirectionalReference... trace) {
-        return makeFlow(source, dest, Arrays.asList(trace));
+        return makeFlow(source, dest, null, trace);
+    }
+
+    public Flow makeFlow(FlowEndpoint source, FlowEndpoint dest, String affinityGroupId,
+                         IslDirectionalReference... trace) {
+        return makeFlow(idProvider.provideFlowId(), source, dest, affinityGroupId, Arrays.asList(trace));
     }
 
     /**
      * Create {@link Flow} object.
      */
-    public Flow makeFlow(FlowEndpoint source, FlowEndpoint dest, List<IslDirectionalReference> pathHint) {
+    public Flow makeFlow(String flowId, FlowEndpoint source, FlowEndpoint dest, String affinityGroupId,
+                         List<IslDirectionalReference> pathHint) {
         Flow flow = flowDefaults.fill(Flow.builder())
-                .flowId(idProvider.provideFlowId())
+                .flowId(flowId)
                 .srcSwitch(fetchOrCreateSwitch(source.getSwitchId()))
                 .srcPort(source.getPortNumber())
                 .srcVlan(source.getOuterVlanId())
                 .destSwitch(fetchOrCreateSwitch(dest.getSwitchId()))
                 .destPort(dest.getPortNumber())
                 .destVlan(dest.getOuterVlanId())
+                .affinityGroupId(affinityGroupId)
                 .build();
         return txManager.doInTransaction(() -> {
             makeFlowPathPair(flow, source, dest, pathHint);
             if (flow.isAllocateProtectedPath()) {
                 makeFlowPathPair(flow, source, dest, pathHint, Collections.singletonList("protected"));
             }
+            flowRepository.add(flow);
+            allocateFlowBandwidth(flow);
+            flowRepository.detach(flow);
+            return flow;
+        });
+    }
+
+    public Flow makeMainAffinityFlowWithProtectedPath(FlowEndpoint source, FlowEndpoint dest,
+                                                      List<IslDirectionalReference> pathHint,
+                                                      List<IslDirectionalReference> protectedPathHint) {
+        String flowId = idProvider.provideFlowId();
+        return makeFlowWithProtectedPath(flowId, source, dest, flowId, pathHint, protectedPathHint);
+    }
+
+    public Flow makeFlowWithProtectedPath(FlowEndpoint source, FlowEndpoint dest,
+                                          List<IslDirectionalReference> pathHint,
+                                          List<IslDirectionalReference> protectedPathHint) {
+        return makeFlowWithProtectedPath(idProvider.provideFlowId(), source, dest, null, pathHint, protectedPathHint);
+    }
+
+    public Flow makeFlowWithProtectedPath(FlowEndpoint source, FlowEndpoint dest, String affinityGroupId,
+                                          List<IslDirectionalReference> pathHint,
+                                          List<IslDirectionalReference> protectedPathHint) {
+        return makeFlowWithProtectedPath(
+                idProvider.provideFlowId(), source, dest, affinityGroupId, pathHint, protectedPathHint);
+    }
+
+    /**
+     * Create {@link Flow} object with protected paths.
+     */
+    public Flow makeFlowWithProtectedPath(String flowId, FlowEndpoint source, FlowEndpoint dest, String affinityGroupId,
+                                          List<IslDirectionalReference> pathHint,
+                                          List<IslDirectionalReference> protectedPathHint) {
+        Flow flow = flowDefaults.fill(Flow.builder())
+                .flowId(flowId)
+                .srcSwitch(fetchOrCreateSwitch(source.getSwitchId()))
+                .srcPort(source.getPortNumber())
+                .srcVlan(source.getOuterVlanId())
+                .destSwitch(fetchOrCreateSwitch(dest.getSwitchId()))
+                .destPort(dest.getPortNumber())
+                .destVlan(dest.getOuterVlanId())
+                .allocateProtectedPath(true)
+                .affinityGroupId(affinityGroupId)
+                .build();
+        return txManager.doInTransaction(() -> {
+            makeFlowPathPair(flow, source, dest, protectedPathHint, Collections.singletonList("protected"));
+            // Push recently created paths as protected
+            flow.setProtectedForwardPath(flow.getForwardPath());
+            flow.setProtectedReversePath(flow.getReversePath());
+            makeFlowPathPair(flow, source, dest, pathHint);
             flowRepository.add(flow);
             allocateFlowBandwidth(flow);
             flowRepository.detach(flow);
@@ -275,12 +346,12 @@ public class PersistenceDummyEntityFactory {
                     .build());
         }
 
-        if (first != null && ! sourceSwitchId.equals(first.getSourceEndpoint().getSwitchId())) {
+        if (first != null && !sourceSwitchId.equals(first.getSourceEndpoint().getSwitchId())) {
             throw new IllegalArgumentException(String.format(
                     "Flow's trace do not start on flow endpoint (a-end switch %s, first path's hint entry %s)",
                     sourceSwitchId, first));
         }
-        if (last != null && ! destSwitchId.equals(last.getDestEndpoint().getSwitchId())) {
+        if (last != null && !destSwitchId.equals(last.getDestEndpoint().getSwitchId())) {
             throw new IllegalArgumentException(String.format(
                     "Flow's trace do not end on flow endpoint (z-end switch %s, last path's hint entry %s)",
                     destSwitchId, last));
@@ -298,7 +369,10 @@ public class PersistenceDummyEntityFactory {
         return flowCookie;
     }
 
-    private FlowMeter makeFlowMeter(SwitchId swId, String flowId, PathId pathId) {
+    /**
+     * Create {@link FlowMeter} object.
+     */
+    public FlowMeter makeFlowMeter(SwitchId swId, String flowId, PathId pathId) {
         FlowMeter meter = FlowMeter.builder()
                 .switchId(swId)
                 .meterId(idProvider.provideMeterId(swId))

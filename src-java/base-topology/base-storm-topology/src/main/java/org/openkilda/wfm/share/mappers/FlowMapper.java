@@ -50,7 +50,7 @@ import java.util.function.Supplier;
 /**
  * Convert {@link Flow} to {@link FlowDto} and back.
  */
-@Mapper(uses = {FlowPathMapper.class, DetectConnectedDevicesMapper.class}, imports = {FlowStatusDetails.class})
+@Mapper(uses = {FlowPathMapper.class, DetectConnectedDevicesMapper.class})
 public abstract class FlowMapper {
 
     public static final FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
@@ -61,40 +61,41 @@ public abstract class FlowMapper {
     @Mapping(source = "destPort", target = "destinationPort")
     @Mapping(source = "destVlan", target = "destinationVlan")
     @Mapping(source = "destInnerVlan", target = "destinationInnerVlan")
-    @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitchId())")
-    @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitchId())")
+    @Mapping(source = "srcSwitchId", target = "sourceSwitch")
+    @Mapping(source = "destSwitchId", target = "destinationSwitch")
     @Mapping(source = "status", target = "state")
     @Mapping(source = "timeModify", target = "lastUpdated")
     @Mapping(source = "timeCreate", target = "createdTime")
-    @Mapping(target = "flowStatusDetails",
-            expression = "java(flow.isAllocateProtectedPath() ? "
-                    + "new FlowStatusDetails(flow.getMainFlowPrioritizedPathsStatus(), "
-                    + "flow.getProtectedFlowPrioritizedPathsStatus()) : null)")
+    @Mapping(target = "flowStatusDetails", source = "flow")
     @Mapping(target = "cookie", ignore = true)
     @Mapping(target = "meterId", ignore = true)
     @Mapping(target = "transitEncapsulationId", ignore = true)
     @Mapping(target = "diverseWith", ignore = true)
+    @Mapping(target = "diverseWithYFlows", ignore = true)
     @Mapping(source = "affinityGroupId", target = "affinityWith")
     @Mapping(target = "mirrorPointStatuses", ignore = true)
     @Mapping(target = "forwardLatency", ignore = true)
     @Mapping(target = "reverseLatency", ignore = true)
     @Mapping(target = "latencyLastModifiedTime", ignore = true)
+    @Mapping(target = "yFlowId", source = "YFlowId")
     public abstract FlowDto map(Flow flow);
 
     /**
      * Convert {@link Flow} to {@link FlowDto} with diverse flow ids and mirror paths.
      */
-    public FlowDto map(Flow flow, Set<String> diverseWith, List<FlowMirrorPath> flowMirrorPaths) {
-        return map(flow, diverseWith, flowMirrorPaths, FlowStats.EMPTY);
+    public FlowDto map(Flow flow, Set<String> diverseWith, Set<String> diverseWithYFlows,
+                       List<FlowMirrorPath> flowMirrorPaths) {
+        return map(flow, diverseWith, diverseWithYFlows, flowMirrorPaths, FlowStats.EMPTY);
     }
 
     /**
      * Convert {@link Flow} to {@link FlowDto} with diverse flow ids, mirror paths and flow properties.
      */
-    public FlowDto map(Flow flow, Set<String> diverseWith, List<FlowMirrorPath> flowMirrorPaths,
-                       FlowStats flowStats) {
+    public FlowDto map(Flow flow, Set<String> diverseWith, Set<String> diverseWithYFlows,
+                       List<FlowMirrorPath> flowMirrorPaths, FlowStats flowStats) {
         FlowDto flowDto = map(flow);
         flowDto.setDiverseWith(diverseWith);
+        flowDto.setDiverseWithYFlows(diverseWithYFlows);
         flowDto.setMirrorPointStatuses(map(flowMirrorPaths));
         flowDto.setForwardLatency(flowStats.getForwardLatency());
         flowDto.setReverseLatency(flowStats.getReverseLatency());
@@ -271,6 +272,17 @@ public abstract class FlowMapper {
                 .pathId(new PathId(UUID.randomUUID().toString()))
                 .meterId(flowDto.getMeterId() != null ? new MeterId(flowDto.getMeterId()) : null)
                 .build();
+    }
+
+    /**
+     * Extract {@link FlowStatusDetails} from {@link Flow}.
+     */
+    public FlowStatusDetails buildStatusDetails(Flow flow) {
+        if (flow != null && flow.isAllocateProtectedPath()) {
+            return new FlowStatusDetails(
+                    flow.getMainFlowPrioritizedPathsStatus(), flow.getProtectedFlowPrioritizedPathsStatus());
+        }
+        return null;
     }
 
     /**

@@ -45,9 +45,23 @@ public interface FlowMonitoringTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoRerouteTopic();
     }
 
+    default String getKafkaTopoFlowHsTopic() {
+        return getKafkaTopics().getFlowHsTopic();
+    }
+
     @Key("flow.sla.check.interval.seconds")
     @Default("30")
     int getFlowSlaCheckIntervalSeconds();
+
+    /*
+     * flow.sla.check.shard.count parameter is needed to distribute load of Flow SLA
+     * check operation. Instead of checking of all flows ones in flow.sla.check.interval.seconds
+     * flows will be checked by chunks. That is why parameter flow.sla.check.interval.seconds
+     * must be divisible by flow.sla.check.shard.count
+     */
+    @Key("flow.sla.check.shard.count")
+    @Default("10")
+    int getFlowSlaCheckShardCount();
 
     @Key("flow.rtt.stats.expiration.seconds")
     @Default("3")

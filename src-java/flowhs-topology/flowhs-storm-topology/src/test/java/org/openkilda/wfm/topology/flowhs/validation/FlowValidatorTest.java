@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.validation;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
@@ -34,18 +35,23 @@ import org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.validation.FlowValidator.EndpointDescriptor;
 
-import com.google.common.collect.Sets;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.HashSet;
+import java.util.Set;
 
 public class FlowValidatorTest {
     public static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     public static final SwitchId SWITCH_ID_2 = new SwitchId(2);
     public static final int PORT_1 = 10;
+    public static final int VLAN_1 = 11;
+    public static final int VLAN_2 = 12;
+    public static final int STATS_VLAN_TOO_LOW = FlowValidator.STATS_VLAN_LOWER_BOUND - 1;
+    public static final int STATS_VLAN_TOO_HIGH = FlowValidator.STATS_VLAN_UPPER_BOUND + 1;
     public static final EndpointDescriptor SRC_ENDPOINT = EndpointDescriptor.makeSource(
             FlowEndpoint.builder().switchId(SWITCH_ID_1).portNumber(PORT_1).build());
+    public static final String FLOW_1 = "firstFlow";
 
     public static FlowValidator flowValidator;
 
@@ -65,7 +71,7 @@ public class FlowValidatorTest {
     @Test(expected = InvalidFlowException.class)
     public void shouldFailOnSwapWhenEqualsEndpointsOnFirstFlow() throws InvalidFlowException {
         RequestedFlow firstFlow = RequestedFlow.builder()
-                .flowId("firstFlow")
+                .flowId(FLOW_1)
                 .srcSwitch(SWITCH_ID_1)
                 .srcPort(10)
                 .srcVlan(11)
@@ -88,7 +94,7 @@ public class FlowValidatorTest {
     @Test(expected = InvalidFlowException.class)
     public void shouldFailOnSwapWhenEqualsEndpointsOnSecondFlow() throws InvalidFlowException {
         RequestedFlow firstFlow = RequestedFlow.builder()
-                .flowId("firstFlow")
+                .flowId(FLOW_1)
                 .srcSwitch(SWITCH_ID_2)
                 .srcPort(10)
                 .srcVlan(11)
@@ -114,7 +120,7 @@ public class FlowValidatorTest {
     @Test(expected = InvalidFlowException.class)
     public void shouldFailOnSwapWhenEqualsEndpointsOnFirstAndSecondFlow() throws InvalidFlowException {
         RequestedFlow firstFlow = RequestedFlow.builder()
-                .flowId("firstFlow")
+                .flowId(FLOW_1)
                 .srcSwitch(SWITCH_ID_1)
                 .srcPort(10)
                 .srcVlan(11)
@@ -141,7 +147,7 @@ public class FlowValidatorTest {
     @Test
     public void shouldNotFailOnSwapWhenDifferentEndpointsOnFirstAndSecondFlow() throws InvalidFlowException {
         RequestedFlow firstFlow = RequestedFlow.builder()
-                .flowId("firstFlow")
+                .flowId(FLOW_1)
                 .srcSwitch(SWITCH_ID_1)
                 .srcPort(10)
                 .srcVlan(11)
@@ -166,20 +172,57 @@ public class FlowValidatorTest {
     }
 
     @Test
-    public void shouldNotFailOnCreateSingleTaggedFlowOnWbSeries()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        RequestedFlow flow = RequestedFlow.builder()
-                .flowId("firstFlow")
-                .srcSwitch(SWITCH_ID_1)
-                .srcPort(10)
-                .srcInnerVlan(11)
-                .destSwitch(SWITCH_ID_2)
-                .destPort(12)
-                .destInnerVlan(13)
-                .detectConnectedDevices(new DetectConnectedDevices())
-                .build();
+    public void shouldNotFailOnSpecifiedDestOuterVlansAndVlanStatistics() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(0, VLAN_1, newHashSet(235));
+        flowValidator.checkFlowForCorrectOuterVlansWithVlanStatistics(flow);
+    }
 
-        flowValidator.validateQinQonWB(flow);
+    @Test
+    public void shouldNotFailOnSpecifiedSrcOuterVlansAndVlanStatistics() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, 0, newHashSet(235));
+        flowValidator.checkFlowForCorrectOuterVlansWithVlanStatistics(flow);
+    }
+
+    @Test
+    public void shouldNotFailOnSpecifiedBothOuterVlansAndEmptyVlanStatistics() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, new HashSet<>());
+        flowValidator.checkFlowForCorrectOuterVlansWithVlanStatistics(flow);
+    }
+
+    @Test
+    public void shouldNotFailOnSpecifiedBothOuterVlansAndNullVlanStatistics() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, null);
+        flowValidator.checkFlowForCorrectOuterVlansWithVlanStatistics(flow);
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void shouldFailOnSpecifiedBothOuterVlansAndVlanStatistics() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, newHashSet(235));
+        flowValidator.checkFlowForCorrectOuterVlansWithVlanStatistics(flow);
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void failOnTooLowVlanStatisticsTest() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, newHashSet(STATS_VLAN_TOO_LOW));
+        flowValidator.checkFlowForVlanStatisticsInCorrectRange(flow);
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void failOnTooHighVlanStatisticsTest() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, newHashSet(STATS_VLAN_TOO_HIGH));
+        flowValidator.checkFlowForVlanStatisticsInCorrectRange(flow);
+    }
+
+    @Test
+    public void nullVlanStatisticsTest() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, null);
+        flowValidator.checkFlowForVlanStatisticsInCorrectRange(flow);
+    }
+
+    @Test
+    public void emptyVlanStatisticsTest() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, newHashSet());
+        flowValidator.checkFlowForVlanStatisticsInCorrectRange(flow);
     }
 
     @Test(expected = InvalidFlowException.class)
@@ -201,7 +244,7 @@ public class FlowValidatorTest {
     @Test(expected = InvalidFlowException.class)
     public void checkForEncapsulationTypeRequirementDifferentTypeTest() throws InvalidFlowException {
         SwitchProperties properties = SwitchProperties.builder()
-                .supportedTransitEncapsulation(Sets.newHashSet(VXLAN))
+                .supportedTransitEncapsulation(newHashSet(VXLAN))
                 .build();
         flowValidator.checkForEncapsulationTypeRequirement(SRC_ENDPOINT, properties, TRANSIT_VLAN);
     }
@@ -209,8 +252,61 @@ public class FlowValidatorTest {
     @Test
     public void checkForEncapsulationTypeRequirementCorrectTypeTest() throws InvalidFlowException {
         SwitchProperties properties = SwitchProperties.builder()
-                .supportedTransitEncapsulation(Sets.newHashSet(VXLAN, TRANSIT_VLAN))
+                .supportedTransitEncapsulation(newHashSet(VXLAN, TRANSIT_VLAN))
                 .build();
         flowValidator.checkForEncapsulationTypeRequirement(SRC_ENDPOINT, properties, TRANSIT_VLAN);
+    }
+
+    private RequestedFlow getTestRequestWithMaxLatencyAndMaxLatencyTier2(Long maxLatency, Long maxLatencyTier2) {
+        return RequestedFlow.builder()
+                .flowId(FLOW_1)
+                .maxLatency(maxLatency)
+                .maxLatencyTier2(maxLatencyTier2)
+                .srcSwitch(SWITCH_ID_1)
+                .srcPort(10)
+                .srcVlan(11)
+                .destSwitch(SWITCH_ID_2)
+                .destPort(12)
+                .destVlan(13)
+                .detectConnectedDevices(new DetectConnectedDevices())
+                .build();
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void shouldFailIfMaxLatencyTier2HigherThanMaxLatency() throws InvalidFlowException {
+        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2((long) 1000, (long) 500);
+        flowValidator.checkMaxLatency(flow);
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void shouldFailIfMaxLatencyTier2butMaxLatencyIsNull() throws InvalidFlowException {
+        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, (long) 500);
+        flowValidator.checkMaxLatency(flow);
+    }
+
+    @Test
+    public void shouldNotFailIfMaxLatencyTier2andMaxLatencyAreNull() throws InvalidFlowException {
+        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, null);
+        flowValidator.checkMaxLatency(flow);
+    }
+
+    @Test
+    public void shouldNotFailIfMaxLatencyTier2andMaxLatencyAreEqual() throws InvalidFlowException {
+        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(500L, 500L);
+        flowValidator.checkMaxLatency(flow);
+    }
+
+    private static RequestedFlow buildFlow(int srcVlan, int dstVlan, Set<Integer> statVlans) {
+        return RequestedFlow.builder()
+                .flowId(FLOW_1)
+                .srcSwitch(SWITCH_ID_1)
+                .srcPort(PORT_1)
+                .srcVlan(srcVlan)
+                .destSwitch(SWITCH_ID_2)
+                .destPort(PORT_1)
+                .destVlan(dstVlan)
+                .detectConnectedDevices(new DetectConnectedDevices())
+                .vlanStatistics(statVlans)
+                .build();
     }
 }

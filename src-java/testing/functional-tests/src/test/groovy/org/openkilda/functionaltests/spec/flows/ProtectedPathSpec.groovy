@@ -183,14 +183,14 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def createdCookiesDstSw = northbound.getSwitchRules(switchPair.dst.dpId).flowEntries.findAll {
             !new Cookie(it.cookie).serviceFlag
         }*.cookie
-        def srcSwProps = northbound.getSwitchProperties(switchPair.src.dpId)
+        def srcSwProps = switchHelper.getCachedSwProps(switchPair.src.dpId)
         def amountOfserver42Rules = srcSwProps.server42FlowRtt ? 1 : 0
         def amountOfFlowRulesSrcSw = srcSwProps.multiTable ? (3 + amountOfserver42Rules) : (2 + amountOfserver42Rules)
         if (srcSwProps.multiTable && srcSwProps.server42FlowRtt && flow.source.vlanId) {
             amountOfFlowRulesSrcSw += 1
         }
         assert createdCookiesSrcSw.size() == amountOfFlowRulesSrcSw
-        def dstSwProps = northbound.getSwitchProperties(switchPair.dst.dpId)
+        def dstSwProps = switchHelper.getCachedSwProps(switchPair.dst.dpId)
         def amountOfserver42RulesDstSw = dstSwProps.server42FlowRtt ? 1 : 0
         def amountOfFlowRulesDstSw = dstSwProps.multiTable ? (3 + amountOfserver42RulesDstSw) : (2 + amountOfserver42RulesDstSw)
         if (dstSwProps.multiTable && dstSwProps.server42FlowRtt && flow.destination.vlanId) {
@@ -271,12 +271,12 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 def switchValidateInfo = northbound.validateSwitch(switchId)
                 if(switchValidateInfo.meters) {
                     assert switchValidateInfo.meters.proper.findAll({dto -> !isDefaultMeter(dto)}).size() == 1
-                    switchValidateInfo.verifyMeterSectionsAreEmpty(switchId, ["missing", "misconfigured", "excess"])
+                    switchValidateInfo.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
                 }
                 assert switchValidateInfo.rules.proper.findAll { def cookie = new Cookie(it)
                     !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT }.size() ==
                         (switchId == switchPair.src.dpId) ? amountOfFlowRulesSrcSw + 1 : amountOfFlowRulesDstSw + 1
-                switchValidateInfo.verifyRuleSectionsAreEmpty(switchId, ["missing", "excess"])
+                switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
             }
         }
 
@@ -294,8 +294,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 } else {
                     def switchValidateInfo = northbound.validateSwitch(switchId)
                     assert switchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules
-                    switchValidateInfo.verifyRuleSectionsAreEmpty(switchId, ["missing", "excess"])
-                    switchValidateInfo.verifyMeterSectionsAreEmpty(switchId)
+                    switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
+                    switchValidateInfo.verifyMeterSectionsAreEmpty()
                 }
             }
         }
@@ -450,7 +450,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 status == FlowState.DEGRADED.toString()
                 flowStatusDetails.mainFlowPathStatus == "Up"
                 flowStatusDetails.protectedFlowPathStatus == "Down"
-                statusInfo.startsWith("Not enough bandwidth or no path found. Failed to find path with requested bandwidth=$flow.maximumBandwidth")
+                statusInfo == "Not enough bandwidth or no path found. Switch ${switchPair.getSrc().getDpId()} \
+doesn't have links with enough bandwidth, Failed to find path with requested bandwidth=$flow.maximumBandwidth"
             }
         }
 
@@ -892,7 +893,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 it.state == IslChangeType.FAILED
             }.size() == broughtDownPorts.size() * 2
         }
-
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = true })
 

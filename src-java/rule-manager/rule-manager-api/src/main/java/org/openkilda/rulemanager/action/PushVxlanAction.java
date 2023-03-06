@@ -21,6 +21,10 @@ import static org.openkilda.rulemanager.action.ActionType.PUSH_VXLAN_OVS;
 import org.openkilda.model.IPv4Address;
 import org.openkilda.model.MacAddress;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.collect.Sets;
 import lombok.Builder;
@@ -32,6 +36,7 @@ import java.util.Set;
 @Value
 @JsonSerialize
 @Builder
+@JsonNaming(SnakeCaseStrategy.class)
 public class PushVxlanAction implements Action {
     private static final Set<ActionType> VALID_TYPES = Sets.newHashSet(PUSH_VXLAN_NOVIFLOW, PUSH_VXLAN_OVS);
 
@@ -45,8 +50,14 @@ public class PushVxlanAction implements Action {
     int udpSrc;
 
     @Builder
-    public PushVxlanAction(@NonNull ActionType type, int vni, MacAddress srcMacAddress, MacAddress dstMacAddress,
-                           IPv4Address srcIpv4Address, IPv4Address dstIpv4Address, int udpSrc) {
+    @JsonCreator
+    public PushVxlanAction(@JsonProperty("type") @NonNull ActionType type,
+                           @JsonProperty("vni") int vni,
+                           @JsonProperty("src_mac_address") MacAddress srcMacAddress,
+                           @JsonProperty("dst_mac_address") MacAddress dstMacAddress,
+                           @JsonProperty("src_ipv4_address") IPv4Address srcIpv4Address,
+                           @JsonProperty("dst_ipv4_address") IPv4Address dstIpv4Address,
+                           @JsonProperty("udp_src") int udpSrc) {
         if (!VALID_TYPES.contains(type)) {
             throw new IllegalArgumentException(
                     String.format("Type %s is invalid. Valid types: %s", type, VALID_TYPES));

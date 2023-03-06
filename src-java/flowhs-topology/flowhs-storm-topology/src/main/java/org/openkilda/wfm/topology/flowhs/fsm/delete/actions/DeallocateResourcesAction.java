@@ -20,7 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -31,7 +31,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Collection;
 
 @Slf4j
-public class DeallocateResourcesAction extends FlowProcessingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
+public class DeallocateResourcesAction extends
+        FlowProcessingWithHistorySupportAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     private final FlowResourcesManager resourcesManager;
 
     public DeallocateResourcesAction(PersistenceManager persistenceManager,

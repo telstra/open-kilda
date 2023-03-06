@@ -15,15 +15,22 @@
 
 package org.openkilda.messaging.payload.history;
 
+import org.openkilda.messaging.model.MirrorPointStatusDto;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class FlowDumpPayload {
     private String type;
 
@@ -31,9 +38,15 @@ public class FlowDumpPayload {
 
     private boolean ignoreBandwidth;
 
+    private boolean strictBandwidth;
+
     private long forwardCookie;
 
+    private String forwardCookieHex;
+
     private long reverseCookie;
+
+    private String reverseCookieHex;
 
     private String sourceSwitch;
 
@@ -79,5 +92,12 @@ public class FlowDumpPayload {
 
     private long maxLatency;
 
+    private Long maxLatencyTier2;
+
+    private Integer priority;
+
     private SwitchId loopSwitchId;
+
+    private List<MirrorPointStatusDto> mirrorPointStatuses;
+
 }

@@ -2,10 +2,10 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
@@ -74,11 +74,9 @@ class SwapEndpointSpec extends HealthCheckSpecification {
             [it.source.datapath, it.destination.datapath].collect { findSw(it) }
         }.unique()
         validateSwitches(involvedSwitches)
-        def isSwitchValid = true
 
         cleanup: "Delete flows"
         flows.each { it && flowHelper.deleteFlow(it.id) }
-        !isSwitchValid && involvedSwitches.each { northbound.synchronizeSwitch(it.dpId, true) }
 
         where:
         data << [
@@ -245,14 +243,9 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(data.switchPairs[0])
         validateSwitches(data.switchPairs[1])
-        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [data.flow1, data.flow2].each { it && flowHelper.deleteFlow(it.id) }
-        if (!isSwitchValid) {
-            [data.switchPairs[0].src.dpId, data.switchPairs[0].dst.dpId, data.switchPairs[1].src.dpId, data.switchPairs[1].dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
-        }
 
         where:
         data << [{
@@ -313,14 +306,9 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(data.switchPairs[0])
         validateSwitches(data.switchPairs[1])
-        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [data.flow1, data.flow2].each { it && flowHelper.deleteFlow(it.id) }
-        if (!isSwitchValid) {
-            [data.switchPairs[0].src.dpId, data.switchPairs[0].dst.dpId, data.switchPairs[1].src.dpId, data.switchPairs[1].dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
-        }
 
         where:
         data << [{
@@ -388,14 +376,9 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(switchPairs[0])
         validateSwitches(switchPairs[1])
-        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        if (!isSwitchValid) {
-            [switchPairs[0].src.dpId, switchPairs[0].dst.dpId, switchPairs[1].src.dpId, switchPairs[1].dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
-        }
 
         where:
         endpointsPart << ["vlans", "ports", "switches"]
@@ -439,14 +422,9 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
-        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        if (!isSwitchValid) {
-            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
-        }
 
         where:
         endpointsPart << ["vlans", "ports", "switches"]
@@ -486,14 +464,9 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
-        def isSwitchValid = true
 
         cleanup: "Delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        if (!isSwitchValid) {
-            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
-        }
 
         where:
         data << [{
@@ -810,6 +783,7 @@ switches"() {
         def flow1Isl = pathHelper.getInvolvedIsls(flow1Path)[0]
         def flow1IslMaxBw = islUtils.getIslInfo(flow1Isl).get().maxBandwidth
         northbound.updateFlow(flow1.id, flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         and: "Break all alternative paths for the first flow"
         def altPaths = flow1SwitchPair.paths.findAll { it != flow1Path }
@@ -903,6 +877,7 @@ switches"() {
         def flow1Isl = pathHelper.getInvolvedIsls(flow1Path)[0]
         def flow1IslMaxBw = islUtils.getIslInfo(flow1Isl).get().maxBandwidth
         northbound.updateFlow(flow1.id, flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         and: "Break all alternative paths for the first flow"
         def altPaths = flow1SwitchPair.paths.findAll { it != flow1Path }
@@ -971,7 +946,6 @@ switches"() {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/3627")
     @Tags(LOW_PRIORITY)
     def "Able to swap endpoints for two flows when not enough bandwidth on ISL and ignore_bandwidth=true"() {
         setup: "Create two flows with different source and the same destination switches"
@@ -986,14 +960,15 @@ switches"() {
         def flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair)
         def flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1)
 
-        flowHelper.addFlow(flow1)
-        flowHelper.addFlow(flow2.tap { it.ignoreBandwidth = true })
+        flowHelper.addFlow(flow1.tap { it.ignoreBandwidth = true })
+        flowHelper.addFlow(flow2)
 
         and: "Update the first flow so that it consumes all bandwidth on the link"
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
         def flow1Isl = pathHelper.getInvolvedIsls(flow1Path)[0]
         def flow1IslMaxBw = islUtils.getIslInfo(flow1Isl).get().maxBandwidth
         northbound.updateFlow(flow1.id, flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         and: "Break all alternative paths for the first flow"
         def altPaths = flow1SwitchPair.paths.findAll { it != flow1Path }
@@ -1298,7 +1273,7 @@ switches"() {
     }
 
     @Tidy
-    @Tags(HARDWARE)
+    @Tags(LOW_PRIORITY)
     def "Able to swap endpoints (#data.description) for two vxlan flows with the same source and destination switches"() {
         given: "Two flows with the same source and destination switches"
         flow1.encapsulationType = FlowEncapsulationType.VXLAN
@@ -1345,7 +1320,7 @@ switches"() {
                      flow2Dst = flow1.destination
                  }].collect { iterationData ->
             def switchPair = getTopologyHelper().getAllNeighboringSwitchPairs().find {
-                it.src.noviflow && !it.src.wb5164 && it.dst.noviflow && !it.dst.wb5164
+                [it.src, it.dst].every { switchHelper.isVxlanEnabled(it.dpId) }
             }
             def flow1 = getFirstFlow(switchPair, switchPair)
             def flow2 = getSecondFlow(switchPair, switchPair, flow1)
@@ -1357,7 +1332,6 @@ switches"() {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/4409")
     def "Able to swap endpoints (#data.description) for two qinq flows with the same source and destination switches"() {
         given: "Two flows with the same source and destination switches"
         flow1.source.innerVlanId = 300
@@ -1494,8 +1468,8 @@ switches"() {
         then: "Related switch have no rule anomalies"
         switches.each {
             def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty(it.dpId)
-            validation.verifyMeterSectionsAreEmpty(it.dpId)
+            validation.verifyRuleSectionsAreEmpty()
+            validation.verifyMeterSectionsAreEmpty()
         }
         def isSwitchValid = true
 
@@ -1601,11 +1575,6 @@ switches"() {
         }
     }
 
-    def cleanup() {
-        //workaround #4003. Should be removed after #4003 is fixed
-        topology.activeSwitches.each { northbound.synchronizeSwitch(it.dpId, true) }
-    }
-
     void verifyEndpoints(response, FlowEndpointPayload flow1SrcExpected, FlowEndpointPayload flow1DstExpected,
                          FlowEndpointPayload flow2SrcExpected, FlowEndpointPayload flow2DstExpected) {
         verifyEndpoints(response, flowHelper.toFlowEndpointV2(flow1SrcExpected),
@@ -1656,9 +1625,9 @@ switches"() {
             switches.each {
                 if (it.ofVersion == "OF_13") {
                     def validationResult = northbound.validateSwitch(it.dpId)
-                    //below verification should also include 'excess' after #4003 is fixed
-                    validationResult.verifyRuleSectionsAreEmpty(it.dpId, ["missing"])
-                    validationResult.verifyMeterSectionsAreEmpty(it.dpId, ["missing", "misconfigured", "excess"])
+                    //below verification should also include 'misconfigured' after #4708 is fixed
+                    validationResult.verifyRuleSectionsAreEmpty(["missing", "excess"])
+                    validationResult.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
                 } else {
                     def validationResult = northbound.validateSwitchRules(it.dpId)
                     assert validationResult.missingRules.size() == 0

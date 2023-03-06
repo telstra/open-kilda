@@ -1,0 +1,32 @@
+@startuml
+
+title OpenKilda Domain Model
+
+class Flow {
+    flow_id
+}
+
+class FlowPath {
+    path_id
+
+    flow_id
+
+    **shared_bandwidth_group_id**
+}
+
+Flow <-down-> FlowPath
+
+class PathSegment {
+    path_id
+
+    **shared_bandwidth_group_id**
+}
+
+FlowPath -down-> PathSegment
+
+class Isl {
+}
+
+PathSegment -down-> Isl
+
+@enduml

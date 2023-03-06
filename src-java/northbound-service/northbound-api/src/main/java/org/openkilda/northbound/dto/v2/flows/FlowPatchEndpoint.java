@@ -20,12 +20,14 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowPatchEndpoint {
     private SwitchId switchId;

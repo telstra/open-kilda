@@ -25,9 +25,9 @@ import static org.openkilda.rulemanager.Utils.getCommand;
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.cookie.Cookie;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.OfTable;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 
 import org.junit.Test;
 
@@ -43,11 +43,11 @@ public class TableDefaultRuleGeneratorTest {
                 .cookie(new Cookie(DROP_RULE_COOKIE))
                 .ofTable(OfTable.INPUT)
                 .build();
-        List<SpeakerCommandData> commands = generator.generateCommands(sw);
+        List<SpeakerData> commands = generator.generateCommands(sw);
 
         assertEquals(1, commands.size());
 
-        FlowSpeakerCommandData flowCommandData = getCommand(FlowSpeakerCommandData.class, commands);
+        FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
         assertTrue(flowCommandData.getDependsOn().isEmpty());
@@ -56,7 +56,11 @@ public class TableDefaultRuleGeneratorTest {
         assertEquals(OfTable.INPUT, flowCommandData.getTable());
         assertEquals(MINIMAL_POSITIVE_PRIORITY, flowCommandData.getPriority());
 
-        assertNull(flowCommandData.getMatch());
-        assertNull(flowCommandData.getInstructions());
+        assertTrue(flowCommandData.getMatch().isEmpty());
+        assertNull(flowCommandData.getInstructions().getApplyActions());
+        assertNull(flowCommandData.getInstructions().getGoToTable());
+        assertNull(flowCommandData.getInstructions().getGoToMeter());
+        assertNull(flowCommandData.getInstructions().getWriteActions());
+        assertNull(flowCommandData.getInstructions().getWriteMetadata());
     }
 }

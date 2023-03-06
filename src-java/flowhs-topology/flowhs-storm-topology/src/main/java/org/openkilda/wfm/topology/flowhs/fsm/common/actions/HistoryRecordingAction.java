@@ -15,26 +15,18 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
-import static java.lang.String.format;
-
-import org.openkilda.wfm.topology.flowhs.fsm.common.WithHistorySupportFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
-public abstract class HistoryRecordingAction<T extends WithHistorySupportFsm<T, S, E, C>, S, E, C>
-        extends AnonymousAction<T, S, E, C> {
-    @Override
-    public final void execute(S from, S to, E event, C context, T stateMachine) {
-        try {
-            perform(from, to, event, context, stateMachine);
-        } catch (Exception ex) {
-            String errorMessage = format("%s failed: %s", getClass().getSimpleName(), ex.getMessage());
-            stateMachine.saveErrorToHistory(errorMessage, ex);
-            stateMachine.fireError(errorMessage);
-        }
-    }
+public abstract class HistoryRecordingAction<T extends FlowProcessingWithHistorySupportFsm<T, S, E, C, ?, ?>, S, E, C>
+        extends FlowProcessingAction<T, S, E, C> {
 
-    protected abstract void perform(S from, S to, E event, C context, T stateMachine);
+    @Override
+    protected void handleError(T stateMachine, String errorMessage, Exception ex) {
+        super.handleError(stateMachine, errorMessage, ex);
+
+        stateMachine.saveErrorToHistory(errorMessage, ex);
+    }
 }

@@ -147,8 +147,8 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         assumeTrue(topology.activeTraffGens.size() >= 2,
 "There should be at least two active traffgens for test execution")
 
-        def src = topology.activeTraffGens[0].switchConnected
-        def dst = topology.activeTraffGens[1].switchConnected
+        def src = topology.activeSwitches.find { it.traffGens }
+        def dst = (topology.activeSwitches - src).find { it.traffGens }
         //first adjust costs to use the longest possible path between switches
         List<List<PathNode>> allPaths = database.getPaths(src.dpId, dst.dpId)*.path
         def longestPath = allPaths.max { it.size() }
@@ -266,8 +266,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
             switchHelper.isVxlanEnabled(it.dpId)
         }*.dpId ?: assumeTrue(false, "Should be at least two active traffgens connected to NoviFlow switches")
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            //Forbid QinQ flows for WB-series switches #4408
-            [swP.src, swP.dst].every { !it.wb5164 } && allTraffgenSwitchIds.contains(swP.src.dpId) &&
+            allTraffgenSwitchIds.contains(swP.src.dpId) &&
                     allTraffgenSwitchIds.contains(swP.dst.dpId) &&
                     swP.paths.findAll { path ->
                         pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }

@@ -1,6 +1,6 @@
 plugins {
     id 'java-base'
-    id 'org.ajoberstar.grgit' version '4.1.0' apply false
+    id 'org.ajoberstar.grgit' version '4.1.1' apply false
 }
 
 group = 'org.projectfloodlight'
@@ -28,25 +28,28 @@ repositories {
 }
 
 task cloneLoxigenRepo {
-    def repo = file('loxigen')
-    outputs.dir(repo)
+    outputs.dir('loxigen')
+    outputs.upToDateWhen { false }
 
-    if (repo.exists()) {
-        try {
-            def grgit = Grgit.open(currentDir: repo.absolutePath)
-            grgit.checkout(branch: 'STABLE')
-            grgit.pull(rebase: false)
+    doLast {
+        def repo = file('loxigen')
+        if (repo.exists() && repo.list()) {
+            try {
+                def grgit = Grgit.open(currentDir: repo.absolutePath)
+                grgit.checkout(branch: 'STABLE')
+                grgit.pull(rebase: false)
+                grgit.close()
+            } catch (Exception e) {
+                throw new GradleException("Failed to fetch loxigen from git: $e.message")
+            }
+        } else {
+            def repoUri = 'https://github.com/kilda/loxigen.git'
+            if (project.hasProperty('loxigenGitRepo')) {
+                repoUri = project.property('loxigenGitRepo')
+            }
+            def grgit = Grgit.clone(dir: repo.absolutePath, uri: repoUri, refToCheckout: 'STABLE')
             grgit.close()
-        } catch (Exception e) {
-            logger.warn("Failed to fetch loxigen from git: {}", e.getMessage())
         }
-    } else {
-        def repoUri = 'https://github.com/kilda/loxigen.git'
-        if (project.hasProperty("loxigenGitRepo")) {
-            repoUri = project.property("loxigenGitRepo")
-        }
-        def grgit = Grgit.clone(dir: repo.absolutePath, uri: repoUri, refToCheckout: 'STABLE')
-        grgit.close()
     }
 }
 
@@ -57,7 +60,9 @@ task cleanSources(type: Exec) {
 clean.dependsOn(cleanSources)
 
 task generateSources(type: Exec, dependsOn: cloneLoxigenRepo) {
+    inputs.dir('loxigen/java_gen/pre-written')
     outputs.dir('loxigen/loxi_output/openflowj')
+
     workingDir 'loxigen'
     commandLine 'make', 'java'
 }

@@ -16,10 +16,22 @@
 
 package org.openkilda.rulemanager;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Value;
 
 @Value
+@JsonNaming(SnakeCaseStrategy.class)
 public class OfMetadata {
     long value;
     long mask;
+
+    @JsonCreator
+    public OfMetadata(@JsonProperty("value") long value,
+                      @JsonProperty("mask") long mask) {
+        this.value = value;
+        this.mask = mask;
+    }
 }

@@ -1,0 +1,55 @@
+@startuml
+title Service isl rules installation
+
+box "Network topology" #LightBlue
+participant NetworkIslService
+participant carrier
+participant IslRuleService
+participant RuleManager
+participant SpeakerRulesWorker
+end box
+control speaker.topic
+control network.speaker.topic
+participant Floodlight
+
+== Install service isl rules ==
+
+NetworkIslService -> carrier : SpeakerRulesIslInstallCommand
+carrier -> IslRuleService : SpeakerRulesIslInstallCommand
+IslRuleService -> RuleManager : create isl service rules
+RuleManager -> IslRuleService : SpeakerData
+activate IslRuleService
+IslRuleService -> IslRuleService : form InstallSpeakerCommandsRequest
+IslRuleService -> carrier : InstallSpeakerCommandsRequest
+deactivate IslRuleService
+carrier -> SpeakerRulesWorker : InstallSpeakerCommandsRequest
+SpeakerRulesWorker -> speaker.topic : InstallSpeakerCommandsRequest
+speaker.topic -> Floodlight : InstallSpeakerCommandsRequest
+Floodlight -> network.speaker.topic : SpeakerCommandResponse
+network.speaker.topic -> SpeakerRulesWorker
+SpeakerRulesWorker -> carrier : SpeakerCommandResponse
+carrier -> IslRuleService : SpeakerCommandResponse
+IslRuleService -> carrier : IslDefaultRuleCreatedCommand
+carrier -> NetworkIslService : IslDefaultRuleCreatedCommand
+
+== Delete service isl rules ==
+
+NetworkIslService -> carrier : SpeakerRulesIslRemoveCommand
+carrier -> IslRuleService : SpeakerRulesIslRemoveCommand
+IslRuleService -> RuleManager : create isl service rules
+RuleManager -> IslRuleService : SpeakerData
+activate IslRuleService
+IslRuleService -> IslRuleService : form DeleteSpeakerCommandsRequest
+IslRuleService -> carrier : DeleteSpeakerCommandsRequest
+deactivate IslRuleService
+carrier -> SpeakerRulesWorker : DeleteSpeakerCommandsRequest
+SpeakerRulesWorker -> speaker.topic : DeleteSpeakerCommandsRequest
+speaker.topic -> Floodlight : DeleteSpeakerCommandsRequest
+Floodlight -> network.speaker.topic : SpeakerCommandResponse
+network.speaker.topic -> SpeakerRulesWorker
+SpeakerRulesWorker -> carrier : SpeakerCommandResponse
+carrier -> IslRuleService : SpeakerCommandResponse
+IslRuleService -> carrier : IslDefaultRuleRemovedommand
+carrier -> NetworkIslService : IslDefaultRuleRemovedCommand
+
+@enduml

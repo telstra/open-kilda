@@ -35,12 +35,14 @@ import java.util.UUID;
 public class PingContext implements Serializable {
     public enum Kinds {
         PERIODIC,
-        ON_DEMAND
+        ON_DEMAND,
+        ON_DEMAND_Y_FLOW
     }
 
     private Kinds kind;
     private GroupId group;
 
+    private String yFlowId;
     private Flow flow;
     private FlowTransitEncapsulation transitEncapsulation;
     private FlowDirection direction;

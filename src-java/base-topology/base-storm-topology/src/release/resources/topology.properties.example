@@ -41,9 +41,12 @@ port.up.down.throttling.delay.seconds.warm.up = 5
 port.up.down.throttling.delay.seconds.cool.down = 10
 port.antiflap.stats.dumping.interval.seconds = 60
 
+lag.port.offset = 2000
+lag.port.max.number = 2999
+lag.port.pool.chunks.count = 10
+lag.port.pool.cache.size = 128
 bfd.port.offset = 1000
 bfd.port.max.number = 1999
-lag.port.offset = 2000
 
 persistence.implementation.default = orientdb
 persistence.implementation.area.history = orientdb
@@ -118,19 +121,18 @@ latency.discovery.interval.multiplier = 3
 flow.path.allocation.retries = 10
 flow.path.allocation.retry.delay = 50
 flow.create.hub.timeout.seconds = 30
-flow.create.speaker.timeout.seconds = 10
+flow.speaker.timeout.seconds = 10
 flow.create.speaker.command.retries = 3
 flow.create.hub.retries = 3
 flow.update.hub.timeout.seconds = 30
-flow.update.speaker.timeout.seconds = 10
 flow.update.speaker.command.retries = 3
 flow.reroute.hub.timeout.seconds = 30
-flow.reroute.speaker.timeout.seconds = 10
 flow.reroute.speaker.command.retries = 3
 flow.delete.hub.timeout.seconds = 30
-flow.delete.speaker.timeout.seconds = 10
 flow.delete.speaker.command.retries = 3
 
 server42.control.rtt.sync.interval.seconds = 60
 
 blue.green.mode = blue
+
+swmanager.of.commands.batch.size = 500

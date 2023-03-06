@@ -32,6 +32,8 @@ import java.io.Serializable;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonTypeInfo(use = Id.NAME, property = "clazz")
 @JsonSubTypes({
+        @Type(value = FlowInProgressError.class,
+                name = "org.openkilda.messaging.info.reroute.error.FlowInProgressError"),
         @Type(value = RerouteInProgressError.class,
                 name = "org.openkilda.messaging.info.reroute.error.RerouteInProgressError"),
         @Type(value = SpeakerRequestError.class,

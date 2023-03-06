@@ -15,7 +15,10 @@
 
 package org.openkilda.messaging.command.yflow;
 
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowStatus;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
@@ -23,19 +26,21 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 @Data
-@JsonNaming(value = SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class YFlowDto implements Serializable {
     private static final long serialVersionUID = 1L;
 
     String yFlowId;
-    String status;
+    FlowStatus status;
     FlowEndpoint sharedEndpoint;
     long maximumBandwidth;
-    String pathComputationStrategy;
-    String encapsulationType;
+    PathComputationStrategy pathComputationStrategy;
+    FlowEncapsulationType encapsulationType;
     Long maxLatency;
     Long maxLatencyTier2;
     boolean ignoreBandwidth;
@@ -44,9 +49,12 @@ public class YFlowDto implements Serializable {
     Integer priority;
     boolean strictBandwidth;
     String description;
+    boolean allocateProtectedPath;
     SwitchId yPoint;
     SwitchId protectedPathYPoint;
+    Set<String> diverseWithFlows;
+    Set<String> diverseWithYFlows;
     List<SubFlowDto> subFlows;
-    String timeCreate;
-    String timeUpdate;
+    Instant timeCreate;
+    Instant timeUpdate;
 }

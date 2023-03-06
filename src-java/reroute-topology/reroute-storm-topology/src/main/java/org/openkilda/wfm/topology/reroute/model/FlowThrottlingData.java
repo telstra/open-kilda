@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -40,12 +40,14 @@ public class FlowThrottlingData implements Serializable {
     private PathComputationStrategy pathComputationStrategy;
     private long bandwidth;
     private int retryCounter;
+    private boolean yFlow;
 
     @Builder
     public FlowThrottlingData(String correlationId, Integer priority, Instant timeCreate,
                               Set<IslEndpoint> affectedIsl, boolean force, boolean ignoreBandwidth,
                               boolean strictBandwidth, boolean effectivelyDown, String reason,
-                              PathComputationStrategy pathComputationStrategy, long bandwidth, int retryCounter) {
+                              PathComputationStrategy pathComputationStrategy, long bandwidth, int retryCounter,
+                              boolean yFlow) {
         this.correlationId = correlationId;
         this.priority = priority;
         this.timeCreate = timeCreate;
@@ -61,6 +63,7 @@ public class FlowThrottlingData implements Serializable {
         this.pathComputationStrategy = pathComputationStrategy;
         this.bandwidth = bandwidth;
         this.retryCounter = retryCounter;
+        this.yFlow = yFlow;
     }
 
     public void increaseRetryCounter() {

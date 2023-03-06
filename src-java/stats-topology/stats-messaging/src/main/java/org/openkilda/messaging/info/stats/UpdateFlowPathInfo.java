@@ -17,7 +17,8 @@ package org.openkilda.messaging.info.stats;
 
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.MeterId;
-import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -25,9 +26,11 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
+import lombok.ToString;
 import lombok.Value;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Represents update path info.
@@ -35,14 +38,20 @@ import java.util.List;
 @Value
 @EqualsAndHashCode(callSuper = true)
 @JsonNaming(value = SnakeCaseStrategy.class)
+@ToString(callSuper = true)
 public class UpdateFlowPathInfo extends BaseFlowPathInfo {
     private static final long serialVersionUID = 1L;
 
     @JsonCreator
     public UpdateFlowPathInfo(@NonNull @JsonProperty("flow_id") String flowId,
-                              @NonNull @JsonProperty("cookie") Cookie cookie,
+                              @JsonProperty("yflow_id") String yFlowId,
+                              @JsonProperty("ypoint_switch_id") SwitchId yPointSwitchId,
+                              @NonNull @JsonProperty("cookie") FlowSegmentCookie cookie,
                               @JsonProperty("meter_id") MeterId meterId,
-                              @NonNull @JsonProperty("path_nodes") List<PathNodePayload> pathNodes) {
-        super(flowId, cookie, meterId, pathNodes);
+                              @NonNull @JsonProperty("path_nodes") List<PathNodePayload> pathNodes,
+                              @JsonProperty("stat_vlans") Set<Integer> statVlans,
+                              @JsonProperty("ingress_mirror") boolean ingressMirror,
+                              @JsonProperty("egress_mirror") boolean egressMirror) {
+        super(flowId, yFlowId, yPointSwitchId, cookie, meterId, pathNodes, statVlans, ingressMirror, egressMirror);
     }
 }

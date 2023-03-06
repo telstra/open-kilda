@@ -18,10 +18,11 @@ package org.openkilda.rulemanager.factory.generator.service;
 import org.openkilda.model.Switch;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.Constants.Priority;
-import org.openkilda.rulemanager.FlowSpeakerCommandData;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
-import org.openkilda.rulemanager.SpeakerCommandData;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.factory.RuleGenerator;
 
 import lombok.Builder;
@@ -36,16 +37,17 @@ public class TableDefaultRuleGenerator implements RuleGenerator {
     private OfTable ofTable;
 
     @Override
-    public List<SpeakerCommandData> generateCommands(Switch sw) {
+    public List<SpeakerData> generateCommands(Switch sw) {
         OfVersion ofVersion = OfVersion.of(sw.getOfVersion());
 
-        SpeakerCommandData command = FlowSpeakerCommandData.builder()
+        SpeakerData command = FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(ofVersion)
                 .cookie(cookie)
                 .table(ofTable)
                 // todo move to priority 0
                 .priority(Priority.MINIMAL_POSITIVE_PRIORITY)
+                .instructions(Instructions.builder().build())
                 .build();
         return Collections.singletonList(command);
     }

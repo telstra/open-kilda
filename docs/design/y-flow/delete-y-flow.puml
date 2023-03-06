@@ -1,0 +1,70 @@
+@startuml
+title Delete y-flow
+
+boundary Northbound
+box "Flow HS Topology" #LightGreen
+    participant YFlowDeleteHub
+    participant FlowDeleteService1 as "FlowDeleteService + FSM 1"
+    participant FlowDeleteService2 as "FlowDeleteService + FSM 2"
+    participant FlowResourcesManager
+    participant RuleManager
+    participant SpeakerWorker
+end box
+database OrientDB
+
+Northbound -> YFlowDeleteHub : YFlowDeleteRequest
+activate YFlowDeleteHub
+YFlowDeleteHub -> OrientDB : Update y-flow status to lock it
+alt Y-flow is already locked
+    Northbound <- YFlowDeleteHub : Y-flow deletion error
+end
+
+Northbound <- YFlowDeleteHub : Y-flow deletion is in progress
+
+== Sub-flow deletion ==
+YFlowDeleteHub -> FlowDeleteService1 : Initiate the flow deletion
+activate FlowDeleteService1
+YFlowDeleteHub -> FlowDeleteService2 : Initiate the flow deletion
+deactivate YFlowDeleteHub
+activate FlowDeleteService2
+
+FlowDeleteService1 -> SpeakerWorker : Send remove rules command
+deactivate FlowDeleteService1
+FlowDeleteService1 <- SpeakerWorker
+activate FlowDeleteService1
+FlowDeleteService2 -> SpeakerWorker : Send remove rules command
+deactivate FlowDeleteService2
+FlowDeleteService2 <- SpeakerWorker
+activate FlowDeleteService2
+
+FlowDeleteService1 -> OrientDB : Update ISLs available bandwidth
+FlowDeleteService2 -> OrientDB : Update ISLs available bandwidth
+
+FlowDeleteService1 -> FlowResourcesManager : Deallocate resources for sub-flow paths
+FlowDeleteService2 -> FlowResourcesManager : Deallocate resources for sub-flow paths
+
+FlowDeleteService1 -> OrientDB : Remove sub-flow entities
+FlowDeleteService2 -> OrientDB : Remove sub-flow entities
+
+YFlowDeleteHub <- FlowDeleteService1 : Callback: deletion completed
+deactivate FlowDeleteService1
+activate YFlowDeleteHub
+YFlowDeleteHub <- FlowDeleteService2 : Callback: deletion completed
+deactivate FlowDeleteService2
+
+YFlowDeleteHub -> SpeakerWorker : Send remove the y-point & shared endpoint meters
+deactivate YFlowDeleteHub
+YFlowDeleteHub <- SpeakerWorker
+activate YFlowDeleteHub
+
+YFlowDeleteHub -> FlowResourcesManager : Deallocate the y-point & shared endpoint meter
+activate FlowResourcesManager
+YFlowDeleteHub <- FlowResourcesManager
+deactivate FlowResourcesManager
+
+== Completing ==
+YFlowDeleteHub -> OrientDB : Remove y-flow entities
+
+deactivate YFlowDeleteHub
+
+@enduml

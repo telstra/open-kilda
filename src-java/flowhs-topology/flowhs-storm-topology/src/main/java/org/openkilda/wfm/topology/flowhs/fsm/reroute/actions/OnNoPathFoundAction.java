@@ -20,7 +20,7 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -29,7 +29,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
+public class OnNoPathFoundAction extends
+        FlowProcessingWithHistorySupportAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
     private final boolean primaryPathNotFound;
 
@@ -70,7 +71,7 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
                     && stateMachine.getNewProtectedForwardPath() == null
                     && stateMachine.getNewProtectedReversePath() == null) {
                 if (flow.getProtectedForwardPathId() == null && flow.getProtectedReversePathId() == null) {
-                    log.debug("Skip marking flow path statuses as inactive: flow {} doesn't have protected paths",
+                    log.debug("Skip marking flow path statuses as inactive: flow {} doesn't have a protected paths",
                             flowId);
                 } else {
                     log.debug("Set the flow path status of {}/{} to inactive",

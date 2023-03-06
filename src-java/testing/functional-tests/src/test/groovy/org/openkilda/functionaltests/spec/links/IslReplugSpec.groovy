@@ -92,7 +92,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         and: "The src and dst switches of the isl pass switch validation"
         [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
             with(northbound.validateSwitch(swId)) { validationResponse ->
-                validationResponse.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
             }
         }
 
@@ -160,7 +160,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
                 with(northbound.validateSwitch(swId)) { validationResponse ->
-                    validationResponse.verifyRuleSectionsAreEmpty(swId, ["missing", "excess", "misconfigured"])
+                    validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
                 }
             }
         }
@@ -266,7 +266,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/3780")
+    @Ignore("https://github.com/telstra/open-kilda/issues/5099")
     def "User is able to replug ISL with enabled BFD, receive new ISL, enable bfd on it and replug back"() {
         given: "An ISL with BFD and ability to replug"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort &&

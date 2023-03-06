@@ -294,7 +294,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
 
         flowRepository.add(flow);
 
-        GetPathsResult path2 = pathComputer.getPath(flow, flow.getPathIds());
+        GetPathsResult path2 = pathComputer.getPath(flow, flow.getPathIds(), false);
         assertEquals(diversePath, path2);
     }
 
@@ -311,5 +311,10 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
     @Test
     public void affinityPathShouldPreferIslsUsedByMainPath() throws Exception {
         affinityPathShouldPreferIslsUsedByMainPath(PathComputationStrategy.COST);
+    }
+
+    @Test
+    public void affinityOvercomeDiversity() throws Exception {
+        affinityOvercomeDiversity(PathComputationStrategy.COST);
     }
 }

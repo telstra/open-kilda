@@ -15,14 +15,22 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
-import org.openkilda.wfm.topology.flowhs.fsm.common.WithHistorySupportFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
-public class ReportErrorAction<T extends WithHistorySupportFsm<T, S, E, C>, S, E, C>
+public class ReportErrorAction<T extends FlowProcessingWithHistorySupportFsm<T, S, E, C, ?, ?>, S, E, C>
         extends AnonymousAction<T, S, E, C> {
+    private final E timeoutEvent;
+
+    public ReportErrorAction(E timeoutEvent) {
+        this.timeoutEvent = timeoutEvent;
+    }
+
     @Override
     public void execute(S from, S to, E event, C context, T stateMachine) {
-        stateMachine.reportError(event);
+        if (timeoutEvent == event) {
+            stateMachine.saveGlobalTimeoutToHistory();
+        }
     }
 }

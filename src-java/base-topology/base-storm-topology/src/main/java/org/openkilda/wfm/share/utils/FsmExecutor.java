@@ -35,6 +35,11 @@ public class FsmExecutor<T extends AbstractStateMachine<T, S, E, C>, S, E, C> {
         return fsm;
     }
 
+    public T fire(T fsm, E event) {
+        fire(fsm, event, null);
+        return fsm;
+    }
+
     private void skipIntermediateStates(T fsm, C context) {
         S originState = null;
         S finalState = fsm.getCurrentState();

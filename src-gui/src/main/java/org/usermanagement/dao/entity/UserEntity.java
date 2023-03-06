@@ -68,6 +68,15 @@ public class UserEntity extends BaseEntity implements Serializable {
 
     @Column(name = "LOGOUT_TIME", nullable = true)
     private Date logoutTime;
+    
+    @Column(name = "FAILED_LOGIN_TIME")
+    private Date failedLoginTime;
+    
+    @Column(name = "FAILED_LOGIN_COUNT")
+    private Integer failedLoginCount;
+    
+    @Column(name = "UNLOCK_TIME")
+    private Integer unlockTime;
 
     @Column(name = "ACTIVE_FLAG")
     private String activeFlag;
@@ -119,6 +128,40 @@ public class UserEntity extends BaseEntity implements Serializable {
         this.roles = roles;
     }
     
+    /**
+     * Gets the failed login count.
+     *
+     * @return the failed login count
+    */
+    public Integer getFailedLoginCount() {
+        return failedLoginCount;
+    }
+
+    /**
+     * Sets the failed login count.
+     *
+     * @param failedLoginCount the failed login count
+     */
+    public void setFailedLoginCount(Integer failedLoginCount) {
+        this.failedLoginCount = failedLoginCount;
+    }
+
+    public Date getFailedLoginTime() {
+        return failedLoginTime;
+    }
+
+    public void setFailedLoginTime(Date failedLoginTime) {
+        this.failedLoginTime = failedLoginTime;
+    }
+
+    public Integer getUnlockTime() {
+        return unlockTime;
+    }
+
+    public void setUnlockTime(Integer unlockTime) {
+        this.unlockTime = unlockTime;
+    }
+
     /**
      * Gets the user id.
      *

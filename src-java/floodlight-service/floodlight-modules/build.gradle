@@ -12,11 +12,13 @@ dependencies {
     implementation project(':kilda-model')
     implementation project(':kilda-reporting')
     implementation project(':blue-green')
+    implementation project(':rule-manager-api')
     testImplementation project(':kilda-utils:stubs')
 
     implementation('org.projectfloodlight:openflowj')
     compileOnly('org.projectfloodlight:floodlight')
     testImplementation('org.projectfloodlight:floodlight')
+    testImplementation 'org.mockito:mockito-junit-jupiter'
 
     implementation('org.apache.kafka:kafka_2.11') {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
@@ -25,8 +27,8 @@ dependencies {
     implementation 'commons-codec:commons-codec'
     implementation 'org.apache.commons:commons-collections4'
     implementation 'com.auth0:java-jwt:3.2.0'
-    implementation 'org.bouncycastle:bcprov-jdk15on:1.68'
-    implementation 'org.apache.maven:maven-artifact:3.6.0'
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
+    implementation 'org.apache.maven:maven-artifact:3.8.1'
 
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
@@ -41,7 +43,8 @@ dependencies {
     implementation 'org.hibernate.validator:hibernate-validator'
     implementation 'org.glassfish:javax.el'
     implementation 'com.google.guava:guava'
-    implementation 'org.restlet.jse:org.restlet:2.3.12'
+    implementation 'org.restlet.jse:org.restlet:2.3.2'
+
     compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
     implementation 'args4j:args4j'
 
@@ -53,11 +56,12 @@ dependencies {
     testRuntimeOnly 'ch.qos.logback:logback-classic:1.2.3'
     testRuntimeOnly 'ch.qos.logback:logback-core:1.2.3'
 
-    testImplementation 'junit:junit'
-    testImplementation 'org.easymock:easymock:4.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.easymock:easymock:4.3'
     testImplementation 'org.hamcrest:hamcrest-library'
     testImplementation 'io.netty:netty-all'
-    testRuntimeOnly 'org.python:jython-standalone:2.5.2'
+    testRuntimeOnly 'org.python:jython-standalone:2.7.2'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -67,7 +71,7 @@ dependencies {
 
 repositories {
     maven {
-        url 'https://maven.restlet.com'
+        url 'https://maven.restlet.talend.com'
     }
 }
 

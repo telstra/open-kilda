@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: vshakirova
+      changes:
+        - tagDatabase:
+            tag: 022-add-port-class
+
+  - changeSet:
+      id: add_port_class
+      author: vshakirova
+      changes:
+        - sql: "CREATE CLASS port IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY port.switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY port.port_no IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY port.curr_speed IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY port.max_speed IF NOT EXISTS LONG"
+        - sql: "CREATE INDEX port.switch_id IF NOT EXISTS NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX port_unique on port (switch_id, port_no) UNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DELETE VERTEX port"
+        - sql: "DROP CLASS port IF EXISTS"

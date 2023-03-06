@@ -56,6 +56,8 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
 
     def deleteAllFlows() {
         log.info("Deleting all flows")
+        northboundV2.getAllYFlows().each { northboundV2.deleteYFlow(it.getYFlowId()) }
+        northboundV2.getAllHaFlows().each { northboundV2.deleteHaFlow(it.getHaFlowId()) }
         northbound.deleteAllFlows()
     }
 

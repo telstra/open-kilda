@@ -28,8 +28,10 @@ import org.openkilda.integration.model.response.ConfiguredPort;
 import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.integration.source.store.SwitchStoreService;
 import org.openkilda.integration.source.store.dto.InventorySwitch;
+import org.openkilda.model.BfdProperties;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkBfdProperties;
 import org.openkilda.model.LinkMaxBandwidth;
 import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkProps;
@@ -595,6 +597,19 @@ public class SwitchService {
 
     public SwitchInfo updateSwitchLocation(String switchId, SwitchLocation switchLocation) {
         return switchIntegrationService.updateSwitchLocation(switchId, switchLocation);
+    }
+
+    public LinkBfdProperties getLinkBfdProperties(String srcSwitch, String srcPort, String dstSwitch, String dstPort) {
+        return switchIntegrationService.getLinkBfdProperties(srcSwitch, srcPort, dstSwitch, dstPort);
+    }
+
+    public LinkBfdProperties updateLinkBfdProperties(String srcSwitch, String srcPort, String dstSwitch, 
+            String dstPort, BfdProperties properties) {
+        return switchIntegrationService.updateLinkBfdProperties(srcSwitch, srcPort, dstSwitch, dstPort, properties);
+    }
+
+    public String deleteLinkBfd(String srcSwitch, String srcPort, String dstSwitch, String dstPort) {
+        return switchIntegrationService.deleteLinkBfd(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
 }

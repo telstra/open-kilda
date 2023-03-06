@@ -27,7 +27,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
@@ -42,7 +42,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Optional;
 
 @Slf4j
-public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+public class ValidateFlowAction extends
+        NbTrackableWithHistorySupportAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final KildaFeatureTogglesRepository featureTogglesRepository;
     private final FlowValidator flowValidator;
     private final FlowOperationsDashboardLogger dashboardLogger;
@@ -65,7 +66,8 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
         dashboardLogger.onFlowUpdate(flowId,
                 targetFlow.getSrcSwitch(), targetFlow.getSrcPort(), targetFlow.getSrcVlan(),
                 targetFlow.getDestSwitch(), targetFlow.getDestPort(), targetFlow.getDestVlan(),
-                diverseFlowId, targetFlow.getBandwidth());
+                diverseFlowId, targetFlow.getBandwidth(), targetFlow.getPathComputationStrategy(),
+                targetFlow.getMaxLatency(), targetFlow.getMaxLatencyTier2());
 
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getUpdateFlowEnabled();
         if (!isOperationAllowed) {
@@ -101,14 +103,6 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
         }
 
         transactionManager.doInTransaction(() -> {
-            if (diverseFlowId != null && !diverseFlowId.isEmpty()) {
-                Flow diverseFlow = getFlow(diverseFlowId);
-                if (diverseFlow.isOneSwitchFlow()) {
-                    throw new FlowProcessingException(ErrorType.PARAMETERS_INVALID,
-                            "Couldn't create diverse group with one-switch flow");
-                }
-            }
-
             Flow foundFlow = getFlow(flowId);
             if (foundFlow.getStatus() == FlowStatus.IN_PROGRESS && stateMachine.getBulkUpdateFlowIds().isEmpty()) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
@@ -132,5 +126,14 @@ public class ValidateFlowAction extends NbTrackableAction<FlowUpdateFsm, State, 
     @Override
     protected String getGenericErrorMessage() {
         return "Could not update flow";
+    }
+
+    @Override
+    protected void handleError(FlowUpdateFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed validation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
+
     }
 }

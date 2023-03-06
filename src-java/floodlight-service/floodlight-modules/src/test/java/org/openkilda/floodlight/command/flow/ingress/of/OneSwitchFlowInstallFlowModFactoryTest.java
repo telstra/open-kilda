@@ -41,6 +41,7 @@ import org.projectfloodlight.openflow.types.U64;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -253,7 +254,7 @@ abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFact
         UUID commandId = UUID.randomUUID();
         return new OneSwitchFlowInstallCommand(
                 new MessageContext(commandId.toString()), commandId, makeMetadata(), endpoint, meterConfig,
-                egressEndpoint, RulesContext.builder().build(), null);
+                egressEndpoint, RulesContext.builder().build(), null, new HashSet<>());
     }
 
     abstract FlowSegmentMetadata makeMetadata();

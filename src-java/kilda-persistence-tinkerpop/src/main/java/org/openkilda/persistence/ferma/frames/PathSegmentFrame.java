@@ -43,6 +43,7 @@ public abstract class PathSegmentFrame extends KildaBaseVertexFrame implements P
     public static final String SEQ_ID_PROPERTY = "seq_id";
     public static final String LATENCY_PROPERTY = "latency";
     public static final String FAILED_PROPERTY = "failed";
+    public static final String SHARED_BANDWIDTH_GROUP_ID_PROPERTY = "shared_bw_group_id";
 
     private Switch srcSwitch;
     private Switch destSwitch;
@@ -157,19 +158,31 @@ public abstract class PathSegmentFrame extends KildaBaseVertexFrame implements P
 
     @Override
     @Property(SRC_W_MULTI_TABLE_PROPERTY)
+    @Deprecated
     public abstract boolean isSrcWithMultiTable();
 
     @Override
     @Property(SRC_W_MULTI_TABLE_PROPERTY)
+    @Deprecated
     public abstract void setSrcWithMultiTable(boolean srcWithMultiTable);
 
     @Override
     @Property(DST_W_MULTI_TABLE_PROPERTY)
+    @Deprecated
     public abstract boolean isDestWithMultiTable();
 
     @Override
     @Property(DST_W_MULTI_TABLE_PROPERTY)
+    @Deprecated
     public abstract void setDestWithMultiTable(boolean destWithMultiTable);
+
+    @Override
+    @Property(SHARED_BANDWIDTH_GROUP_ID_PROPERTY)
+    public abstract String getSharedBandwidthGroupId();
+
+    @Override
+    @Property(SHARED_BANDWIDTH_GROUP_ID_PROPERTY)
+    public abstract void setSharedBandwidthGroupId(String sharedBandwidthGroupId);
 
     public static PathSegmentFrame create(FramedGraph framedGraph, PathSegmentData data) {
         PathSegmentFrame frame = KildaBaseVertexFrame.addNewFramedVertex(framedGraph, FRAME_LABEL,

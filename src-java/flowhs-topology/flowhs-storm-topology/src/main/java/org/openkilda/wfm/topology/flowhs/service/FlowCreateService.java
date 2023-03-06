@@ -15,42 +15,44 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.command.flow.FlowRequest;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Config;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
+import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
+import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingService;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Slf4j
-public class FlowCreateService {
-
-    private final Map<String, FlowCreateFsm> fsms = new HashMap<>();
-
+public class FlowCreateService extends FlowProcessingService<FlowCreateFsm, Event, FlowCreateContext,
+        FlowGenericCarrier, FlowProcessingFsmRegister<FlowCreateFsm>, FlowCreateEventListener> {
     private final FlowCreateFsm.Factory fsmFactory;
-    private final FlowCreateHubCarrier carrier;
     private final KildaConfigurationRepository kildaConfigurationRepository;
-    private boolean active;
 
-    public FlowCreateService(FlowCreateHubCarrier carrier, PersistenceManager persistenceManager,
-                             PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
+    public FlowCreateService(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+                             @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager flowResourcesManager,
                              int genericRetriesLimit, int pathAllocationRetriesLimit,
                              int pathAllocationRetryDelay, int speakerCommandRetriesLimit) {
-        this.carrier = carrier;
-
+        super(new FlowProcessingFsmRegister<>(), new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
 
@@ -60,27 +62,56 @@ public class FlowCreateService {
                 .pathAllocationRetryDelay(pathAllocationRetryDelay)
                 .speakerCommandRetriesLimit(speakerCommandRetriesLimit)
                 .build();
-        fsmFactory = FlowCreateFsm.factory(persistenceManager, carrier, fsmConfig, flowResourcesManager, pathComputer);
+        fsmFactory = new FlowCreateFsm.Factory(carrier, persistenceManager, flowResourcesManager, pathComputer,
+                fsmConfig);
     }
 
     /**
      * Handles request for flow creation.
      *
-     * @param key     command identifier.
+     * @param key command identifier.
      * @param request request data.
      */
-    public void handleRequest(String key, CommandContext commandContext, FlowRequest request) {
-        log.debug("Handling flow create request with key {} and flow ID: {}", key, request.getFlowId());
+    public void handleRequest(@NonNull String key, @NonNull CommandContext commandContext, @NonNull FlowRequest request)
+            throws DuplicateKeyException {
+        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
+        startFlowCreation(key, commandContext, requestedFlow, requestedFlow.getFlowId());
+    }
 
-        if (fsms.containsKey(key)) {
-            log.error("Attempt to create a FSM with key {}, while there's another active FSM with the same key.", key);
-            return;
+    /**
+     * Start flow creation for the provided information.
+     */
+    public void startFlowCreation(@NonNull CommandContext commandContext, @NonNull RequestedFlow requestedFlow,
+                                  String sharedBandwidthGroupId) {
+        try {
+            startFlowCreation(requestedFlow.getFlowId(), commandContext, requestedFlow, sharedBandwidthGroupId);
+        } catch (DuplicateKeyException e) {
+            throw new FlowProcessingException(ErrorType.INTERNAL_ERROR,
+                    format("Failed to initiate flow creation for %s / %s: %s", requestedFlow.getFlowId(), e.getKey(),
+                            e.getMessage()));
+        }
+    }
+
+    private void startFlowCreation(String key, CommandContext commandContext, RequestedFlow requestedFlow,
+                                   String sharedBandwidthGroupId)
+            throws DuplicateKeyException {
+        String flowId = requestedFlow.getFlowId();
+        log.debug("Handling flow create request with key {} and flow ID: {}", key, flowId);
+
+        if (fsmRegister.hasRegisteredFsmWithKey(key)) {
+            throw new DuplicateKeyException(key, "There's another active FSM with the same key");
+        }
+        if (fsmRegister.hasRegisteredFsmWithFlowId(flowId)) {
+            sendErrorResponseToNorthbound(ErrorType.ALREADY_EXISTS, "Could not create flow",
+                    format("Flow %s is already creating now", flowId), commandContext);
+            cancelProcessing(key);
+            throw new DuplicateKeyException(key, "There's another active FSM for the same flowId " + flowId);
         }
 
-        FlowCreateFsm fsm = fsmFactory.produce(request.getFlowId(), commandContext);
-        fsms.put(key, fsm);
+        FlowCreateFsm fsm = fsmFactory.newInstance(commandContext, flowId, eventListeners);
+        fsm.setSharedBandwidthGroupId(sharedBandwidthGroupId);
+        fsmRegister.registerFsm(key, fsm);
 
-        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
         if (requestedFlow.getFlowEncapsulationType() == null) {
             requestedFlow.setFlowEncapsulationType(
                     kildaConfigurationRepository.getOrDefault().getFlowEncapsulationType());
@@ -92,9 +123,9 @@ public class FlowCreateService {
         FlowCreateContext context = FlowCreateContext.builder()
                 .targetFlow(requestedFlow)
                 .build();
-        fsm.setTargetFlow(requestedFlow);
-        fsm.start();
-        processNext(fsm, context);
+        fsm.start(context);
+        fsmExecutor.fire(fsm, Event.NEXT, context);
+
         removeIfFinished(fsm, key);
     }
 
@@ -103,21 +134,29 @@ public class FlowCreateService {
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
+    public void handleAsyncResponse(@NonNull String key, @NonNull SpeakerFlowSegmentResponse flowResponse)
+            throws UnknownKeyException {
         log.debug("Received flow command response {}", flowResponse);
-        FlowCreateFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            log.warn("Failed to find a FSM: received response with key {} for non pending FSM", key);
-            return;
-        }
+        FlowCreateFsm fsm = fsmRegister.getFsmByKey(key)
+                .orElseThrow(() -> new UnknownKeyException(key));
 
         FlowCreateContext context = FlowCreateContext.builder()
                 .speakerFlowResponse(flowResponse)
                 .build();
-        fsm.fire(Event.RESPONSE_RECEIVED, context);
+        fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
 
-        processNext(fsm, null);
         removeIfFinished(fsm, key);
+    }
+
+    /**
+     * Handles async response from worker.
+     * Used if the command identifier is unknown, so FSM is identified by the flow Id.
+     */
+    public void handleAsyncResponseByFlowId(@NonNull String flowId, @NonNull SpeakerFlowSegmentResponse flowResponse)
+            throws UnknownKeyException {
+        String commandKey = fsmRegister.getKeyByFlowId(flowId)
+                .orElseThrow(() -> new UnknownKeyException(flowId));
+        handleAsyncResponse(commandKey, flowResponse);
     }
 
     /**
@@ -125,51 +164,32 @@ public class FlowCreateService {
      *
      * @param key command identifier.
      */
-    public void handleTimeout(String key) {
+    public void handleTimeout(@NonNull String key) throws UnknownKeyException {
         log.debug("Handling timeout for {}", key);
-        FlowCreateFsm fsm = fsms.get(key);
-        if (fsm == null) {
-            log.warn("Failed to find a FSM: timeout event for non pending FSM with key {}", key);
-            return;
-        }
+        FlowCreateFsm fsm = fsmRegister.getFsmByKey(key)
+                .orElseThrow(() -> new UnknownKeyException(key));
 
-        fsm.fireTimeout();
+        fsm.setTimedOut(true);
+        fsmExecutor.fire(fsm, Event.TIMEOUT);
+
         removeIfFinished(fsm, key);
     }
 
-    private void processNext(FlowCreateFsm fsm, FlowCreateContext context) {
-        while (!fsm.getCurrentState().isBlocked()) {
-            fsm.fireNext(context);
-        }
+    /**
+     * Handles timeout case.
+     * Used if the command identifier is unknown, so FSM is identified by the flow Id.
+     */
+    public void handleTimeoutByFlowId(@NonNull String flowId) throws UnknownKeyException {
+        String commandKey = fsmRegister.getKeyByFlowId(flowId)
+                .orElseThrow(() -> new UnknownKeyException(flowId));
+        handleTimeout(commandKey);
     }
 
     private void removeIfFinished(FlowCreateFsm fsm, String key) {
         if (fsm.isTerminated()) {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
-            fsms.remove(key);
-
-            carrier.cancelTimeoutCallback(key);
-            if (!active && fsms.isEmpty()) {
-                carrier.sendInactive();
-            }
+            fsmRegister.unregisterFsm(key);
+            cancelProcessing(key);
         }
-    }
-
-    /**
-     * Handles deactivate command.
-     */
-    public boolean deactivate() {
-        active = false;
-        if (fsms.isEmpty()) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Handles activate command.
-     */
-    public void activate() {
-        active = true;
     }
 }

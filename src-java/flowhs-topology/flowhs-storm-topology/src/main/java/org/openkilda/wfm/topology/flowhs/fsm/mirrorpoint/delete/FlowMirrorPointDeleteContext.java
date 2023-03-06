@@ -15,21 +15,19 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete;
 
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 @Data
-@EqualsAndHashCode(callSuper = true)
-public class FlowMirrorPointDeleteContext extends FlowContext {
+public class FlowMirrorPointDeleteContext {
+    SpeakerCommandResponse speakerResponse;
     private String flowMirrorPointId;
 
     @Builder
-    public FlowMirrorPointDeleteContext(SpeakerFlowSegmentResponse speakerFlowResponse, String flowMirrorPointId) {
-        super(speakerFlowResponse);
+    public FlowMirrorPointDeleteContext(SpeakerCommandResponse speakerResponse, String flowMirrorPointId) {
+        this.speakerResponse = speakerResponse;
         this.flowMirrorPointId = flowMirrorPointId;
     }
 }

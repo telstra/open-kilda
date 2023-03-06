@@ -19,7 +19,10 @@ import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public interface LagLogicalPortRepository extends Repository<LagLogicalPort> {
     Collection<LagLogicalPort> findAll();
@@ -27,4 +30,8 @@ public interface LagLogicalPortRepository extends Repository<LagLogicalPort> {
     Collection<LagLogicalPort> findBySwitchId(SwitchId switchId);
 
     Optional<LagLogicalPort> findBySwitchIdAndPortNumber(SwitchId switchId, int portNumber);
+
+    Optional<Integer> findUnassignedPortInRange(SwitchId switchId, int portFirst, int portLast);
+
+    Map<SwitchId, List<LagLogicalPort>> findBySwitchIds(Set<SwitchId> switchIds);
 }

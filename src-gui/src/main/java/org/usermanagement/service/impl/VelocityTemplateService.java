@@ -51,6 +51,7 @@ public class VelocityTemplateService implements TemplateService {
         templates.put(Template.ACCOUNT_PASSWORD, "ui/templates/mail/accountPassword.vm");
         templates.put(Template.RESET_2FA, "ui/templates/mail/reset2fa.vm");
         templates.put(Template.CHANGE_PASSWORD, "ui/templates/mail/changePassword.vm");
+        templates.put(Template.ACCOUNT_BLOCK, "ui/templates/mail/accountBlock.vm");
 
     }
 

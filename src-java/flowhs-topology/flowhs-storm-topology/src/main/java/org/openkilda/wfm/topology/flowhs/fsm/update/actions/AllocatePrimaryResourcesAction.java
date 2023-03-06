@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
 import org.openkilda.pce.GetPathsResult;
@@ -78,7 +79,8 @@ public class AllocatePrimaryResourcesAction extends
 
         log.debug("Finding a new primary path for flow {}", flowId);
         GetPathsResult allocatedPaths = allocatePathPair(tmpFlow, newForwardPathId, newReversePathId,
-                false, pathIdsToReuse, oldPaths, true, path -> true);
+                false, pathIdsToReuse, oldPaths, true,
+                stateMachine.getSharedBandwidthGroupId(), path -> true, false);
         if (allocatedPaths == null) {
             throw new ResourceAllocationException("Unable to allocate a path");
         }
@@ -91,7 +93,8 @@ public class AllocatePrimaryResourcesAction extends
         FlowResources flowResources = allocateFlowResources(tmpFlow, newForwardPathId, newReversePathId);
         stateMachine.setNewPrimaryResources(flowResources);
 
-        FlowPathPair createdPaths = createFlowPathPair(flowId, flowResources, allocatedPaths, false);
+        FlowPathPair createdPaths = createFlowPathPair(flowId, flowResources, allocatedPaths, false,
+                stateMachine.getSharedBandwidthGroupId());
         log.debug("New primary path has been created: {}", createdPaths);
 
         setMirrorPointsToNewPath(oldPaths.getForwardPathId(), newForwardPathId);
@@ -110,5 +113,13 @@ public class AllocatePrimaryResourcesAction extends
     @Override
     protected String getGenericErrorMessage() {
         return "Could not update flow";
+    }
+
+    @Override
+    protected void handleError(FlowUpdateFsm stateMachine, Exception ex, ErrorType errorType, boolean logTraceback) {
+        super.handleError(stateMachine, ex, errorType, logTraceback);
+
+        // Notify about failed allocation.
+        stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
     }
 }

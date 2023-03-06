@@ -25,16 +25,15 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
-import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-public class NotifyFlowMonitorAction<T extends FlowProcessingFsm<T, S, E, C>, S, E, C>
-        extends FlowProcessingAction<T, S, E, C> {
-
+public class NotifyFlowMonitorAction<T extends FlowProcessingWithHistorySupportFsm<T, S, E, C, ?, ?>, S, E, C>
+        extends FlowProcessingWithHistorySupportAction<T, S, E, C> {
     private FlowGenericCarrier carrier;
 
     public NotifyFlowMonitorAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {

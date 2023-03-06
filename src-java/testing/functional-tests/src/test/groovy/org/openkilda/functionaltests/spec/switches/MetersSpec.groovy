@@ -313,7 +313,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         def srcSwitchRules = northbound.getSwitchRules(flow.source.switchId).flowEntries.findAll { !Cookie.isDefaultRule(it.cookie) }
         def dstSwitchRules = northbound.getSwitchRules(flow.destination.switchId).flowEntries.findAll { !Cookie.isDefaultRule(it.cookie) }
 
-        if (northbound.getSwitchProperties(flow.source.switchId).multiTable) {
+        if (switchHelper.getCachedSwProps(flow.source.switchId).multiTable) {
             def srcSwIngressFlowRules = srcSwitchRules.findAll { it.match.inPort == flow.source.portNumber.toString() }
             assert srcSwIngressFlowRules.size() == 2 //shared + simple ingress
             def srcSwIngressSharedRule = srcSwIngressFlowRules.find {
@@ -330,7 +330,7 @@ meters in flow rules at all (#data.flowType flow)"() {
             assert srcSwFlowMeters[0].meterId == srcSwFlowIngressRule.instructions.goToMeter
         }
 
-        if (northbound.getSwitchProperties(flow.destination.switchId).multiTable) {
+        if (switchHelper.getCachedSwProps(flow.destination.switchId).multiTable) {
             def dstSwIngressFlowRules = dstSwitchRules.findAll { it.match.inPort == flow.destination.portNumber.toString() }
             assert dstSwIngressFlowRules.size() == 2 //shared + simple ingress
             def dstSwIngressSharedRule = dstSwIngressFlowRules.find {

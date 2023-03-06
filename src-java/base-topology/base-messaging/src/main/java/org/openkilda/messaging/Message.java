@@ -23,6 +23,8 @@ import static org.openkilda.messaging.Utils.TIMESTAMP;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Class represents high level view of every message used by any service.
@@ -47,6 +49,25 @@ public class Message extends BaseMessage {
     @JsonProperty(DESTINATION)
     protected Destination destination;
 
+    @Getter
+    @Setter
+    @JsonProperty("cookie")
+    protected MessageCookie cookie;
+
+    /**
+     * Instance constructor.
+     *
+     * @param timestamp     message timestamp
+     * @param correlationId message correlation id
+     */
+    public Message(final long timestamp, final String correlationId) {
+        this(timestamp, correlationId, null);
+    }
+
+    public Message(final long timestamp, final String correlationId, MessageCookie cookie) {
+        this(timestamp, correlationId, null, cookie);
+    }
+
     /**
      * Instance constructor.
      *
@@ -57,21 +78,12 @@ public class Message extends BaseMessage {
     @JsonCreator
     public Message(@JsonProperty(TIMESTAMP) final long timestamp,
                    @JsonProperty(CORRELATION_ID) final String correlationId,
-                   @JsonProperty(DESTINATION) final Destination destination) {
+                   @JsonProperty(DESTINATION) final Destination destination,
+                   @JsonProperty("cookie") MessageCookie cookie) {
         super(timestamp);
         this.correlationId = correlationId;
         this.destination = destination;
-    }
-
-    /**
-     * Instance constructor.
-     *
-     * @param timestamp     message timestamp
-     * @param correlationId message correlation id
-     */
-    public Message(final long timestamp, final String correlationId) {
-        super(timestamp);
-        this.correlationId = correlationId;
+        this.cookie = cookie;
     }
 
     /**
@@ -109,6 +121,7 @@ public class Message extends BaseMessage {
         return toStringHelper(this)
                 .add(TIMESTAMP, timestamp)
                 .add(CORRELATION_ID, correlationId)
+                .add("cookie", cookie)
                 .add(DESTINATION, destination)
                 .toString();
     }

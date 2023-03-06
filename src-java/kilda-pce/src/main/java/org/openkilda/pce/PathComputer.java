@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
@@ -38,10 +39,10 @@ public interface PathComputer {
      * only.
      *
      * @param flow the {@link Flow} instance
-     * @return {@link PathPair} instances
+     * @return {@link GetPathsResult} instance
      */
     default GetPathsResult getPath(Flow flow) throws UnroutableFlowException, RecoverableException {
-        return getPath(flow, Collections.emptyList());
+        return getPath(flow, Collections.emptyList(), false);
     }
 
     /**
@@ -50,9 +51,9 @@ public interface PathComputer {
      * @param flow the {@link Flow} instance.
      * @param reusePathsResources    allow already allocated path resources (bandwidth)
      *                               be reused in new path computation.
-     * @return {@link PathPair} instances
+     * @return {@link GetPathsResult} instance
      */
-    GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources)
+    GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources, boolean isProtected)
             throws UnroutableFlowException, RecoverableException;
 
     /**
@@ -69,4 +70,9 @@ public interface PathComputer {
                          FlowEncapsulationType flowEncapsulationType, PathComputationStrategy pathComputationStrategy,
                          Duration maxLatency, Duration maxLatencyTier2)
             throws RecoverableException, UnroutableFlowException;
+
+    /**
+     * Finds the Y-point from the provided flow paths.
+     */
+    SwitchId getIntersectionPoint(SwitchId sharedSwitchId, FlowPath... flowPaths);
 }

@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.bolts;
 
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER;
-import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_HISTORY_BOLT;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_METRICS_BOLT;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_RESPONSE_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_PING_SENDER;
@@ -26,7 +26,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_STA
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
-import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
@@ -41,26 +41,27 @@ import org.openkilda.server42.control.messaging.flowrtt.DeactivateFlowMonitoring
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.history.bolt.HistoryBolt;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
-import org.openkilda.wfm.topology.flowhs.service.FlowDeleteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.service.FlowDeleteService;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
-
+public class FlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
     private final FlowDeleteConfig config;
     private final FlowResourcesConfig flowResourcesConfig;
 
@@ -69,8 +70,8 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
 
     private LifecycleEvent deferredShutdownEvent;
 
-    public FlowDeleteHubBolt(FlowDeleteConfig config, PersistenceManager persistenceManager,
-                             FlowResourcesConfig flowResourcesConfig) {
+    public FlowDeleteHubBolt(@NonNull FlowDeleteConfig config, @NonNull PersistenceManager persistenceManager,
+                             @NonNull FlowResourcesConfig flowResourcesConfig) {
         super(persistenceManager, config);
 
         this.config = config;
@@ -100,12 +101,15 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
         service.activate();
     }
 
-
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = pullKey(input);
         FlowDeleteRequest request = pullValue(input, FIELD_ID_PAYLOAD, FlowDeleteRequest.class);
-        service.handleRequest(currentKey, pullContext(input), request.getFlowId());
+        try {
+            service.handleRequest(currentKey, getCommandContext(), request.getFlowId());
+        } catch (DuplicateKeyException e) {
+            log.error("Failed to handle a request with key {}. {}", currentKey, e.getMessage());
+        }
     }
 
     @Override
@@ -113,17 +117,25 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
         String operationKey = pullKey(input);
         currentKey = KeyProvider.getParentKey(operationKey);
         SpeakerFlowSegmentResponse flowResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerFlowSegmentResponse.class);
-        service.handleAsyncResponse(currentKey, flowResponse);
+        try {
+            service.handleAsyncResponse(currentKey, flowResponse);
+        } catch (UnknownKeyException e) {
+            log.warn("Received a response with unknown key {}.", currentKey);
+        }
     }
 
     @Override
     public void onTimeout(String key, Tuple tuple) {
         currentKey = key;
-        service.handleTimeout(key);
+        try {
+            service.handleTimeout(key);
+        } catch (UnknownKeyException e) {
+            log.warn("Failed to handle a timeout event for unknown key {}.", currentKey);
+        }
     }
 
     @Override
-    public void sendSpeakerRequest(FlowSegmentRequest command) {
+    public void sendSpeakerRequest(@NonNull SpeakerRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
 
         Values values = new Values(commandKey, command);
@@ -131,14 +143,16 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
     }
 
     @Override
-    public void sendNorthboundResponse(Message message) {
+    public void sendNorthboundResponse(@NonNull Message message) {
         emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
     }
 
     @Override
-    public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
-        emit(Stream.HUB_TO_HISTORY_BOLT.name(), getCurrentTuple(), HistoryBolt.newInputTuple(
-                historyHolder, getCommandContext()));
+    public void sendHistoryUpdate(@NonNull FlowHistoryHolder historyHolder) {
+        InfoMessage message = new InfoMessage(historyHolder, getCommandContext().getCreateTime(),
+                getCommandContext().getCorrelationId());
+        emitWithContext(Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(historyHolder.getTaskId(), message));
     }
 
     @Override
@@ -173,7 +187,7 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
     }
 
     @Override
-    public void sendNotifyFlowMonitor(CommandData flowCommand) {
+    public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
         String correlationId = getCommandContext().getCorrelationId();
         Message message = new CommandMessage(flowCommand, System.currentTimeMillis(), correlationId);
 
@@ -182,7 +196,7 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
     }
 
     @Override
-    public void sendNotifyFlowStats(RemoveFlowPathInfo flowPathInfo) {
+    public void sendNotifyFlowStats(@NonNull RemoveFlowPathInfo flowPathInfo) {
         Message message = new InfoMessage(flowPathInfo, System.currentTimeMillis(),
                 getCommandContext().getCorrelationId());
 
@@ -196,7 +210,7 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
 
         declarer.declareStream(HUB_TO_SPEAKER_WORKER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
-        declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), HistoryBolt.INPUT_FIELDS);
+        declarer.declareStream(HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_PING_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_SERVER42_CONTROL_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(ZkStreams.ZK.toString(),
@@ -210,7 +224,7 @@ public class FlowDeleteHubBolt extends HubBolt implements FlowDeleteHubCarrier {
         private int speakerCommandRetriesLimit;
 
         @Builder(builderMethodName = "flowDeleteBuilder", builderClassName = "flowDeleteBuild")
-        public FlowDeleteConfig(String requestSenderComponent, String workerComponent,  String lifeCycleEventComponent,
+        public FlowDeleteConfig(String requestSenderComponent, String workerComponent, String lifeCycleEventComponent,
                                 int timeoutMs, boolean autoAck,
                                 int speakerCommandRetriesLimit) {
             super(requestSenderComponent, workerComponent, lifeCycleEventComponent, timeoutMs, autoAck);

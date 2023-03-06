@@ -15,7 +15,7 @@ class GenerateTopologyConfig extends BaseSpecification {
 
     def "Generate 'topology.yaml' file based on currently discovered topology"() {
         when: "Build topology config based on existing switches and ISLs"
-        def topo = topologyHelper.readCurrentTopology()
+        def topo = topologyHelper.readCurrentTopology(true)
 
         then: "Able to serialize and save it to 'target'"
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory().configure(Feature.USE_NATIVE_OBJECT_ID, false))

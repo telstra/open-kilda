@@ -19,6 +19,7 @@ import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsContext;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm.Event;
@@ -28,13 +29,13 @@ import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
-public class UpdateRequestAction extends AnonymousAction<FlowSwapEndpointsFsm, State, Event, FlowSwapEndpointsContext> {
+public class UpdateRequestAction extends
+        FlowProcessingAction<FlowSwapEndpointsFsm, State, Event, FlowSwapEndpointsContext> {
 
     @Override
-    public void execute(State from, State to, Event event, FlowSwapEndpointsContext context,
+    protected void perform(State from, State to, Event event, FlowSwapEndpointsContext context,
                         FlowSwapEndpointsFsm stateMachine) {
         Flow firstOriginalFlow = stateMachine.getFirstOriginalFlow();
         Flow secondOriginalFlow = stateMachine.getSecondOriginalFlow();
@@ -50,9 +51,11 @@ public class UpdateRequestAction extends AnonymousAction<FlowSwapEndpointsFsm, S
                                    FlowSwapEndpointsFsm stateMachine) {
         FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(flow);
         flowRequest.setSource(
-                new FlowEndpoint(targetFlow.getSrcSwitch(), targetFlow.getSrcPort(), targetFlow.getSrcVlan()));
+                new FlowEndpoint(targetFlow.getSrcSwitch(), targetFlow.getSrcPort(), targetFlow.getSrcVlan(),
+                        targetFlow.getSrcInnerVlan()));
         flowRequest.setDestination(
-                new FlowEndpoint(targetFlow.getDestSwitch(), targetFlow.getDestPort(), targetFlow.getDestVlan()));
+                new FlowEndpoint(targetFlow.getDestSwitch(), targetFlow.getDestPort(), targetFlow.getDestVlan(),
+                        targetFlow.getDestInnerVlan()));
 
         if (flow.getLoopSwitchId() != null) {
             boolean flowLoopedOnSrc = flow.getLoopSwitchId().equals(flow.getSrcSwitchId());

@@ -31,7 +31,7 @@ public class FlowPathSwapRequest extends CommandData {
     private static final long serialVersionUID = 1L;
 
     @JsonProperty("flow_id")
-    protected String flowId;
+    String flowId;
 
     @JsonCreator
     public FlowPathSwapRequest(@NonNull @JsonProperty("flow_id") String flowId) {

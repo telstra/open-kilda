@@ -57,6 +57,7 @@ import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -350,6 +351,34 @@ public abstract class IngressFlowModFactory {
     }
 
     /**
+     * .
+     */
+    public List<OFFlowMod> makeVlanStatsFlowMessage() {
+        List<OFFlowMod> messages = new ArrayList<>();
+        if (!command.getEndpoint().isFullPort() || command.getStatVlans() == null) {
+            return messages;
+        }
+
+        for (Integer statVlan : command.getStatVlans()) {
+            FlowSegmentCookie cookie = new FlowSegmentCookie(command.getCookie().getValue()).toBuilder()
+                    .type(CookieType.VLAN_STATS_PRE_INGRESS)
+                    .statsVlan(statVlan)
+                    .build();
+
+            messages.add(flowModBuilderFactory
+                    .makeBuilder(of, TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID), -10)
+                    .setMatch(of.buildMatch()
+                            .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
+                            .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(statVlan))
+                            .build())
+                    .setCookie(U64.of(cookie.getValue()))
+                    .setInstructions(makeIngressVlanStatsInstructions())
+                    .build());
+        }
+        return messages;
+    }
+
+    /**
      * Make ingress flow loop rule to match all port traffic and route it back to port from where it came.
      */
     public OFFlowMod makeDefaultPortIngressFlowLoopMessage() {
@@ -471,4 +500,6 @@ public abstract class IngressFlowModFactory {
     protected abstract List<OFInstruction> makeIngressFlowLoopInstructions(FlowEndpoint endpoint);
 
     protected abstract List<OFInstruction> makeOuterVlanMatchInstructions();
+
+    protected abstract List<OFInstruction> makeIngressVlanStatsInstructions();
 }

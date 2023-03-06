@@ -21,7 +21,6 @@ import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.nbtopology.request.BfdPropertiesReadRequest;
 import org.openkilda.messaging.nbtopology.request.BfdPropertiesWriteRequest;
 import org.openkilda.messaging.nbtopology.response.BfdPropertiesResponse;
-import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.links.LinkDto;
 import org.openkilda.northbound.dto.v1.links.PathDto;
 import org.openkilda.northbound.dto.v2.links.BfdPropertiesByEndpoint;
@@ -31,10 +30,9 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
-import java.time.Duration;
 import java.util.Arrays;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {KildaTypeMapper.class, TimeMapper.class})
 public abstract class LinkMapper {
     public abstract PathDto map(PathNode data);
 
@@ -88,22 +86,4 @@ public abstract class LinkMapper {
 
     @Mapping(target = "path", ignore = true)
     protected abstract void generatedMap(@MappingTarget LinkDto target, IslInfoData source);
-
-    public Duration mapMillis(long millis) {
-        return Duration.ofMillis(millis);
-    }
-
-    /**
-     * Convert {@link Duration} into {@link long}.
-     */
-    public long mapMillis(Duration millis) {
-        if (millis == null) {
-            return 0;
-        }
-        return millis.toMillis();
-    }
-
-    public String toSwithId(SwitchId switchId) {
-        return switchId.toString();
-    }
 }

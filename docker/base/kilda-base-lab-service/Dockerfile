@@ -42,7 +42,7 @@ RUN apt update \
     && pip3 install wheel==0.34.2 \
     && pip3 install tox==3.14.4 \
     && cd /root \
-    && wget https://github.com/timofei-durakov/ovs/archive/refs/tags/${OVS_VERSION}.tar.gz \
+    && wget https://github.com/kilda/ovs/archive/refs/tags/${OVS_VERSION}.tar.gz \
     && tar -xvf ${OVS_VERSION}.tar.gz \
     && cd ovs-${OVS_VERSION} \
     && ./boot.sh \

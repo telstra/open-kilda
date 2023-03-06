@@ -16,18 +16,18 @@
 package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
+import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
-public class NotifyFlowStatsAction
-        extends FlowProcessingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
-
+public class NotifyFlowStatsAction extends
+        FlowProcessingWithHistorySupportAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
     private FlowGenericCarrier carrier;
 
     public NotifyFlowStatsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {
@@ -39,9 +39,11 @@ public class NotifyFlowStatsAction
     protected void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
         flowPathRepository.findByFlowId(flowId).forEach(flowPath -> {
+            Flow flow = flowPath.getFlow();
             RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
-                    flowPath.getFlowId(), flowPath.getCookie(), flowPath.getMeterId(),
-                    FlowPathMapper.INSTANCE.mapToPathNodes(flowPath));
+                    flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), flowPath.getCookie(),
+                    flowPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath),
+                    flow.getVlanStatistics(), flowPath.hasIngressMirror(), flowPath.hasEgressMirror());
             carrier.sendNotifyFlowStats(pathInfo);
         });
     }
