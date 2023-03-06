@@ -60,8 +60,12 @@ public class LogicalPortsValidationEntryV2 implements Serializable {
         builder.proper(joinLists(nonNullEntries.stream().map(LogicalPortsValidationEntryV2::getProper)));
         builder.missing(joinLists(nonNullEntries.stream().map(LogicalPortsValidationEntryV2::getMissing)));
         builder.misconfigured(joinLists(nonNullEntries.stream().map(LogicalPortsValidationEntryV2::getMisconfigured)));
-        nonNullEntries.stream().filter(e -> StringUtils.isNoneBlank(e.error)).findFirst()
-                .map(LogicalPortsValidationEntryV2::getError).ifPresent(builder::error);
+        if (nonNullEntries.stream().map(e -> e.error).distinct().count() > 1) {
+            builder.error(nonNullEntries.stream().map(e -> e.error)
+                    .distinct().collect(Collectors.joining(",")));
+        } else {
+            nonNullEntries.stream().map(e -> e.error).filter(Objects::nonNull).findFirst().ifPresent(builder::error);
+        }
         return builder.build();
     }
 
