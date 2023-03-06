@@ -65,6 +65,12 @@ import java.util.stream.Collectors;
  */
 public class FlowValidator {
 
+    @VisibleForTesting
+    static final int STATS_VLAN_LOWER_BOUND = 1;
+
+    @VisibleForTesting
+    static final int STATS_VLAN_UPPER_BOUND = 4094;
+
     private final FlowRepository flowRepository;
     private final YFlowRepository yFlowRepository;
     private final SwitchRepository switchRepository;
@@ -144,6 +150,7 @@ public class FlowValidator {
         checkOneSwitchFlowConflict(source, destination);
         checkSwitchesExistsAndActive(flow.getSrcSwitch(), flow.getDestSwitch());
         checkFlowForCorrectOuterVlansWithVlanStatistics(flow);
+        checkFlowForVlanStatisticsInCorrectRange(flow);
 
         for (EndpointDescriptor descriptor : new EndpointDescriptor[]{
                 EndpointDescriptor.makeSource(source),
@@ -178,6 +185,27 @@ public class FlowValidator {
         if (flow.getSrcVlan() != 0 && flow.getDestVlan() != 0) {
             throw new InvalidFlowException("To collect vlan statistics you need to set source or destination "
                     + "vlan_id to zero", ErrorType.PARAMETERS_INVALID);
+        }
+    }
+
+    @VisibleForTesting
+    void checkFlowForVlanStatisticsInCorrectRange(RequestedFlow flow) throws InvalidFlowException {
+        Set<Integer> vlanStatistics = flow.getVlanStatistics();
+
+        if (vlanStatistics == null || vlanStatistics.isEmpty()) {
+            return;
+        }
+
+        boolean isAnyVlanOutsideOfBounds = vlanStatistics.stream()
+                .anyMatch(it -> it < STATS_VLAN_LOWER_BOUND || it > STATS_VLAN_UPPER_BOUND);
+
+        if (isAnyVlanOutsideOfBounds) {
+            throw new InvalidFlowException(
+                    format(
+                            "To collect vlan statistics, the vlan IDs must be from %d up to %d",
+                            STATS_VLAN_LOWER_BOUND,
+                            STATS_VLAN_UPPER_BOUND),
+                    ErrorType.PARAMETERS_INVALID);
         }
     }
 
