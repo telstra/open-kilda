@@ -64,5 +64,4 @@ public abstract class PathValidationDataMapper {
                 .pathSegments(segments)
                 .build();
     }
-
 }

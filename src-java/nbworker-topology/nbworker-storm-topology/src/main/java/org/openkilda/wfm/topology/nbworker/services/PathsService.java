@@ -149,5 +149,4 @@ public class PathsService {
                 PathValidationDataMapper.INSTANCE.toPathValidationData(request.getPathValidationPayload())
         ));
     }
-
 }

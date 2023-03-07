@@ -346,7 +346,6 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         }
     }
 
-
     private void createIsl(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort, int cost, long latency,
                            int bandwidth) {
         createOneWayIsl(srcSwitch, srcPort, dstSwitch, dstPort, cost, latency, bandwidth);
@@ -375,5 +374,4 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
                 .supportedTransitEncapsulation(Sets.newHashSet(encapsulation))
                 .build());
     }
-
 }

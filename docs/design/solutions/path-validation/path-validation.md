@@ -8,7 +8,7 @@ path computation strategy, and other.
 
 ## Implementation details
 The validation of a path is done for each segment and each validation type individually. This way, the validation
-collects all errors on the path and returns them all in a single response. The response is concise amd formed 
+collects all errors on the path and returns them all in a single response. The response is concise and formed 
 in human-readable format.
 
 There is no locking of resources for this path and, therefore, no guarantee that it will be possible to create this flow 
