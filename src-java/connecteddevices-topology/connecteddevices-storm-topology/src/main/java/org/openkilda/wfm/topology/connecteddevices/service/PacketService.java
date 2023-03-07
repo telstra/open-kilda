@@ -18,8 +18,8 @@ package org.openkilda.wfm.topology.connecteddevices.service;
 import static java.lang.String.format;
 import static org.openkilda.model.ConnectedDeviceType.ARP;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
-import static org.openkilda.model.SwitchConnectedDevice.createUniqueArpIndex;
-import static org.openkilda.model.SwitchConnectedDevice.createUniqueLldpIndex;
+import static org.openkilda.model.SwitchConnectedDevice.buildUniqueArpIndex;
+import static org.openkilda.model.SwitchConnectedDevice.buildUniqueLldpIndex;
 import static org.openkilda.model.cookie.Cookie.ARP_INGRESS_COOKIE;
 import static org.openkilda.model.cookie.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_COOKIE;
@@ -87,7 +87,7 @@ public class PacketService {
             return;
         }
 
-        String uniqueIndex = createLldpUniqueIndex(data, flowRelatedData.getOriginalVlan());
+        String uniqueIndex = buildLldpUniqueIndex(data, flowRelatedData.getOriginalVlan());
         SwitchConnectedDevice device = Optional.ofNullable(switchConnectedDeviceCache.get(uniqueIndex))
                 .orElseGet(() -> switchConnectedDeviceRepository.findLldpByUniqueIndex(uniqueIndex).orElse(null));
 
@@ -117,7 +117,7 @@ public class PacketService {
             return;
         }
 
-        String uniqueIndex = createArpUniqueIndex(data, flowRelatedData.getOriginalVlan());
+        String uniqueIndex = buildArpUniqueIndex(data, flowRelatedData.getOriginalVlan());
         SwitchConnectedDevice device = Optional.ofNullable(switchConnectedDeviceCache.get(uniqueIndex))
                 .orElseGet(() -> switchConnectedDeviceRepository.findArpByUniqueIndex(uniqueIndex).orElse(null));
 
@@ -298,14 +298,14 @@ public class PacketService {
     }
 
     @VisibleForTesting
-    String createLldpUniqueIndex(LldpInfoData data, int vlan) {
-        return createUniqueLldpIndex(data.getSwitchId(), data.getPortNumber(), vlan, data.getMacAddress(),
+    String buildLldpUniqueIndex(LldpInfoData data, int vlan) {
+        return buildUniqueLldpIndex(data.getSwitchId(), data.getPortNumber(), vlan, data.getMacAddress(),
                 data.getChassisId(), data.getPortId());
     }
 
     @VisibleForTesting
-    String createArpUniqueIndex(ArpInfoData data, int vlan) {
-        return createUniqueArpIndex(data.getSwitchId(), data.getPortNumber(), vlan, data.getMacAddress(),
+    String buildArpUniqueIndex(ArpInfoData data, int vlan) {
+        return buildUniqueArpIndex(data.getSwitchId(), data.getPortNumber(), vlan, data.getMacAddress(),
                 data.getIpAddress());
     }
 
@@ -418,7 +418,7 @@ public class PacketService {
                 .source(flowRelatedData.getSource())
                 .build();
         switchConnectedDeviceRepository.add(connectedDevice);
-        switchConnectedDeviceCache.put(createLldpUniqueIndex(data, vlan), connectedDevice);
+        switchConnectedDeviceCache.put(buildLldpUniqueIndex(data, vlan), connectedDevice);
     }
 
     private void createArpDevice(ArpInfoData data, FlowRelatedData flowRelatedData) {
@@ -445,7 +445,7 @@ public class PacketService {
                 .source(flowRelatedData.getSource())
                 .build();
         switchConnectedDeviceRepository.add(connectedDevice);
-        switchConnectedDeviceCache.put(createArpUniqueIndex(data, vlan), connectedDevice);
+        switchConnectedDeviceCache.put(buildArpUniqueIndex(data, vlan), connectedDevice);
     }
 
     private String getPacketName(ConnectedDevicePacketBase data) {

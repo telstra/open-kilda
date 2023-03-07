@@ -16,8 +16,8 @@
 package org.openkilda.persistence.ferma.frames;
 
 import static java.lang.String.format;
-import static org.openkilda.model.SwitchConnectedDevice.createUniqueArpIndex;
-import static org.openkilda.model.SwitchConnectedDevice.createUniqueLldpIndex;
+import static org.openkilda.model.SwitchConnectedDevice.buildUniqueArpIndex;
+import static org.openkilda.model.SwitchConnectedDevice.buildUniqueLldpIndex;
 
 import org.openkilda.model.ConnectedDeviceType;
 import org.openkilda.model.Switch;
@@ -97,11 +97,11 @@ public abstract class SwitchConnectedDeviceFrame extends KildaBaseVertexFrame im
             String newUniqueIndex;
             switch (getType()) {
                 case LLDP:
-                    newUniqueIndex = createUniqueLldpIndex(getSwitchId(), getPortNumber(), getVlan(), getMacAddress(),
+                    newUniqueIndex = buildUniqueLldpIndex(getSwitchId(), getPortNumber(), getVlan(), getMacAddress(),
                             getChassisId(), getPortId());
                     break;
                 case ARP:
-                    newUniqueIndex = createUniqueArpIndex(
+                    newUniqueIndex = buildUniqueArpIndex(
                             getSwitchId(), getPortNumber(), getVlan(), getMacAddress(), getIpAddress());
                     break;
                 default:

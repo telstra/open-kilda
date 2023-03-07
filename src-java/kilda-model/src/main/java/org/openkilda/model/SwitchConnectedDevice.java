@@ -84,12 +84,12 @@ public class SwitchConnectedDevice implements CompositeDataEntity<SwitchConnecte
         this.data = data;
     }
 
-    public static String createUniqueLldpIndex(
+    public static String buildUniqueLldpIndex(
             SwitchId switchId, int portNumber, int vlan, String macAddress, String chassisId, String portId) {
         return String.format("%s_%s_%s_%s_%s_%s_%s", switchId, portNumber, LLDP, vlan, macAddress, chassisId, portId);
     }
 
-    public static String createUniqueArpIndex(
+    public static String buildUniqueArpIndex(
             SwitchId switchId, int portNumber, int vlan, String macAddress, String ipAddress) {
         return String.format("%s_%s_%s_%s_%s_%s", switchId, portNumber, ARP, vlan, macAddress, ipAddress);
     }
