@@ -61,13 +61,12 @@ public class PathsService {
     private final IslRepository islRepository;
     private final FlowRepository flowRepository;
 
-    public PathsService(RepositoryFactory repositoryFactory, PathComputerConfig pathComputerConfig,
-                        IslRepository islRepository, FlowRepository flowRepository) {
+    public PathsService(RepositoryFactory repositoryFactory, PathComputerConfig pathComputerConfig) {
         switchRepository = repositoryFactory.createSwitchRepository();
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
-        this.islRepository = islRepository;
-        this.flowRepository = flowRepository;
+        this.islRepository = repositoryFactory.createIslRepository();
+        this.flowRepository = repositoryFactory.createFlowRepository();
         PathComputerFactory pathComputerFactory = new PathComputerFactory(
                 pathComputerConfig, new AvailableNetworkFactory(pathComputerConfig, repositoryFactory));
         pathComputer = pathComputerFactory.getPathComputer();

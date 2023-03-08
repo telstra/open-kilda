@@ -84,8 +84,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
         PathComputerConfig pathComputerConfig = new PropertiesBasedConfigurationProvider()
                 .getConfiguration(PathComputerConfig.class);
-        pathsService = new PathsService(repositoryFactory, pathComputerConfig, islRepository,
-                repositoryFactory.createFlowRepository());
+        pathsService = new PathsService(repositoryFactory, pathComputerConfig);
     }
 
     @Before

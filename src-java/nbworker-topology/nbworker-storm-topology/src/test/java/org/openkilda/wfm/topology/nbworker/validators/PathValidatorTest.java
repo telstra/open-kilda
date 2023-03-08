@@ -83,8 +83,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         flowRepository = repositoryFactory.createFlowRepository();
         PathComputerConfig pathComputerConfig = new PropertiesBasedConfigurationProvider()
                 .getConfiguration(PathComputerConfig.class);
-        pathsService = new PathsService(repositoryFactory, pathComputerConfig, islRepository,
-                repositoryFactory.createFlowRepository());
+        pathsService = new PathsService(repositoryFactory, pathComputerConfig);
     }
 
 
