@@ -64,7 +64,7 @@ public class LogicalPortsValidationEntryV2 implements Serializable {
             builder.error(errorList.stream()
                     .map(e -> Objects.isNull(e) ? "There is an error while splitting and joining entities" : e)
                     .collect(Collectors.joining(",")));
-        }else {
+        } else {
             errorList.stream().filter(Objects::nonNull).findFirst().ifPresent(builder::error);
         }
         return builder.build();
