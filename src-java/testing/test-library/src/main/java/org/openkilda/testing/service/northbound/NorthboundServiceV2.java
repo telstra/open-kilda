@@ -16,6 +16,7 @@
 package org.openkilda.testing.service.northbound;
 
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.openkilda.messaging.payload.network.PathValidationPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
@@ -27,6 +28,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.flows.PathValidateResponse;
 import org.openkilda.northbound.dto.v2.links.BfdProperties;
 import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
@@ -171,4 +173,7 @@ public interface NorthboundServiceV2 {
     SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId);
 
     SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId, String include, String exclude);
+
+    //network
+    PathValidateResponse checkPath(PathValidationPayload pathValidationPayload);
 }
