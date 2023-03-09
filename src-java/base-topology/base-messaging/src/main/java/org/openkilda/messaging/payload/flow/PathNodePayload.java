@@ -17,9 +17,11 @@ package org.openkilda.messaging.payload.flow;
 
 import org.openkilda.model.SwitchId;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Value;
 
 import java.io.Serializable;
@@ -28,36 +30,15 @@ import java.io.Serializable;
  * Flow path node NB representation class.
  */
 @Value
+@Builder
+@AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
 public class PathNodePayload implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /**
-     * Switch id.
-     */
-    @JsonProperty("switch_id")
-    private SwitchId switchId;
-
-    /**
-     * Input port number.
-     */
-    @JsonProperty("input_port")
-    private Integer inputPort;
-
-    /**
-     * Output port number.
-     */
-    @JsonProperty("output_port")
-    private Integer outputPort;
-
-    @JsonCreator
-    public PathNodePayload(
-            @JsonProperty("switch_id") SwitchId switchId,
-            @JsonProperty("input_port") Integer inputPort,
-            @JsonProperty("output_port") Integer outputPort) {
-        this.switchId = switchId;
-        this.inputPort = inputPort;
-        this.outputPort = outputPort;
-    }
+    SwitchId switchId;
+    Integer inputPort;
+    Integer outputPort;
 }

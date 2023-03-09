@@ -26,9 +26,20 @@ import org.mapstruct.Mapper;
 @Mapper(componentModel = "spring")
 public interface PathMapper {
 
+    /**
+     * Maps a Path object to a more user-friendly representation.
+     * @param data Path object
+     * @return a Path representation that is supposed to be used as JSON payload in NB API
+     */
     default PathDto mapToPath(Path data) {
+        PathDto protectedPath = data.getProtectedPath() == null ? null : mapToPath(data.getProtectedPath());
+
+        if (data.getProtectedPath() != null && data.getProtectedPath().getProtectedPath() != null) {
+            throw new IllegalStateException("A protected path to some path cannot have its own protected path.");
+        }
+
         return new PathDto(data.getBandwidth(), data.getLatency(), data.getNodes(), data.getIsBackupPath(),
-                data.getIsProtectedPathAvailable());
+                protectedPath);
     }
 
     GroupFlowPathPayload mapGroupFlowPathPayload(FlowPathDto data);

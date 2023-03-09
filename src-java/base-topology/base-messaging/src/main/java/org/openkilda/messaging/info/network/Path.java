@@ -18,40 +18,25 @@ package org.openkilda.messaging.info.network;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Value;
 
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.List;
 
+@Value
+@Builder
+@AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Data
+@JsonNaming(value = SnakeCaseStrategy.class)
 public class Path implements Serializable {
-    @JsonProperty("bandwidth")
-    private Long bandwidth;
-
-    @JsonProperty("latency")
-    private Duration latency;
-
-    @JsonProperty("nodes")
-    private List<PathNodePayload> nodes;
-
-    @JsonProperty("is_backup_path")
-    private Boolean isBackupPath;
-
-    @JsonProperty("is_protected_path_available")
-    private Boolean isProtectedPathAvailable;
-
-    public Path(@JsonProperty("bandwidth") Long bandwidth,
-                @JsonProperty("latency") Duration latency,
-                @JsonProperty("nodes") List<PathNodePayload> nodes,
-                @JsonProperty("is_backup_path") Boolean isBackupPath,
-                @JsonProperty("is_protected_path_available") Boolean isProtectedPathAvailable) {
-        this.bandwidth = bandwidth;
-        this.latency = latency;
-        this.nodes = nodes;
-        this.isBackupPath = isBackupPath;
-        this.isProtectedPathAvailable = isProtectedPathAvailable;
-    }
+    Long bandwidth;
+    Duration latency;
+    List<PathNodePayload> nodes;
+    Boolean isBackupPath;
+    Path protectedPath;
 }

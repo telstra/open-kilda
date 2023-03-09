@@ -8,6 +8,10 @@ dependencies {
     implementation 'com.google.guava:guava'
     implementation 'org.apache.commons:commons-lang3'
 
+    implementation 'org.mapstruct:mapstruct'
+    implementation 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'org.mapstruct:mapstruct-processor'
+
     implementation 'org.slf4j:slf4j-api'
     testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
 

@@ -18,8 +18,10 @@ package org.openkilda.wfm.topology.nbworker.services;
 import org.openkilda.messaging.info.network.PathsInfoData;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.PathComputationStrategy;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
@@ -31,6 +33,7 @@ import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.pce.mapper.PathSegmentMapper;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -95,8 +98,8 @@ public class PathsService {
      * @param maxPathCount find no more than this number of paths
      * @return a list of paths.
      * @throws RecoverableException an exception from path computer
-     * @throws SwitchNotFoundException an exception from path computer
-     * @throws UnroutableFlowException an exception from path computer
+     * @throws SwitchNotFoundException an exception from PCE
+     * @throws UnroutableFlowException an exception from PCE
      */
     public List<PathsInfoData> getPathsWithProtectedPathAvailability(
             SwitchId srcSwitchId, SwitchId dstSwitchId, FlowEncapsulationType requestEncapsulationType,
@@ -115,8 +118,7 @@ public class PathsService {
                             .latency(path.getLatency())
                             .srcSwitchId(path.getSrcSwitchId())
                             .destSwitchId(path.getDestSwitchId())
-                            // TODO add necessary parameters to Path and refactor this
-                            .isProtectedPathAvailable(isProtectedPathAvailableFor(path, requestEncapsulationType,
+                            .protectedPath(getProtectedPath(path, requestEncapsulationType,
                                     requestPathComputationStrategy, maxLatency, maxLatencyTier2))
                             .build())
                 .map(PathMapper.INSTANCE::map)
@@ -124,8 +126,24 @@ public class PathsService {
                 .collect(Collectors.toList());
     }
 
-    private boolean isProtectedPathAvailableFor(Path path, FlowEncapsulationType encapsulationType,
-            PathComputationStrategy pathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2) {
+    private Path getProtectedPath(Path path, FlowEncapsulationType encapsulationType,
+                                  PathComputationStrategy pathComputationStrategy,
+                                  Duration maxLatency, Duration maxLatencyTier2) {
+        Flow flow = createVirtualFlow(path, encapsulationType, pathComputationStrategy, maxLatency, maxLatencyTier2);
+
+        try {
+            GetPathsResult pathsResult = pathComputer.getPath(flow, Collections.emptyList(), true);
+            return pathsResult.getForward() == null ? null : pathsResult.getForward();
+        } catch (RecoverableException | UnroutableFlowException e) {
+            return null;
+        }
+    }
+
+    private Flow createVirtualFlow(Path path,
+                                   FlowEncapsulationType encapsulationType,
+                                   PathComputationStrategy pathComputationStrategy,
+                                   Duration maxLatency,
+                                   Duration maxLatencyTier2) {
         Flow flow = Flow.builder()
                 .description("A virtual flow for computing a protected path to this flow")
                 .flowId("")
@@ -138,12 +156,26 @@ public class PathsService {
                 .maxLatencyTier2(maxLatencyTier2.toNanos())
                 .pathComputationStrategy(pathComputationStrategy)
                 .build();
-        try {
-            GetPathsResult pathsResult = pathComputer.getPath(flow, Collections.emptyList(), true);
-            return pathsResult.getForward() != null && pathsResult.getReverse() != null;
-        } catch (RecoverableException | UnroutableFlowException e) {
-            return false;
-        }
+
+        flow.setForwardPath(FlowPath.builder()
+                .pathId(new PathId("A virtual forward flow path for computing a protected path"))
+                .latency(path.getLatency())
+                .bandwidth(path.getMinAvailableBandwidth())
+                .srcSwitch(Switch.builder().switchId(path.getSrcSwitchId()).build())
+                .destSwitch(Switch.builder().switchId(path.getDestSwitchId()).build())
+                .segments(PathSegmentMapper.INSTANCE.toPathSegmentList(path.getSegments()))
+                .build());
+
+        flow.setReversePath(FlowPath.builder()
+                .pathId(new PathId("A virtual reverse flow path for computing a protected path"))
+                .latency(path.getLatency())
+                .bandwidth(path.getMinAvailableBandwidth())
+                .srcSwitch(Switch.builder().switchId(path.getDestSwitchId()).build())
+                .destSwitch(Switch.builder().switchId(path.getSrcSwitchId()).build())
+                .segments(PathSegmentMapper.INSTANCE.toPathSegmentList(path.getSegments()))
+                .build());
+
+        return flow;
     }
 
     private List<Path> validateInputAndGetPaths(

@@ -84,7 +84,7 @@ public class PathsBolt extends PersistenceOperationsBolt {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch properties not found.");
         } catch (UnroutableFlowException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(),
-                    String.format("Couldn't found any path from switch '%s' to switch '%s'.",
+                    String.format("Couldn't find any path from switch '%s' to switch '%s'.",
                             request.getSrcSwitchId(), request.getDstSwitchId()));
         }
     }

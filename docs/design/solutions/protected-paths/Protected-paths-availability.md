@@ -14,12 +14,14 @@ A-------5----B----1--------C
 ```
 Suppose we want to know whether it is possible to create a flow between A and C with a protected path. The answer 
 depends on the specific parameters of the flow. If we say that the flow path cost must be at most 3, then PCE will find
-only one path A-D-C, which cannot have a protected path in this topology. If the cost is at most 6, then PCE will find 
+only one path A-D-C, which cannot have a protected path in this topology. If the cost is at most 11, then PCE will find 
 4 paths: A-B-C and A-D-C could have protected paths, while A-D-B-C and A-B-D-C could not.   
 
 ## Proposal
-Extend `network/paths` API so that each found path contains a field saying whether there is at least one possible path 
-that is fully diverse from the given one. To enable this option, in V2 API, there will be a field in the request body 
+Extend `network/paths` API so that each found path contains a field containing an object representing a protected path.
+If a response doesn't contain any path, it means that PCE cannot find a protected path in the given context. Or, in other 
+words, if a field with a protected path is empty, it is not possible to create a flow with a protected path.
+To enable this option, in V2 API, there will be a field in the request body 
 (other optional parameters are omitted):
 ```json
 {
@@ -43,7 +45,20 @@ OpenKilda will find all paths between the given switches and return the response
       "latency": 0,
       "latency_ms": 0,
       "latency_ns": 0,
-      "is_protected_path_available": true,
+      "protected_path": {
+        "bandwidth": 0,
+        "is_backup_path": true,
+        "latency": 0,
+        "latency_ms": 0,
+        "latency_ns": 0,
+        "nodes": [
+          {
+            "input_port": 0,
+            "output_port": 0,
+            "switch_id": "string"
+          }
+        ]
+      },
       "nodes": [
         {
           "input_port": 0,
@@ -55,8 +70,13 @@ OpenKilda will find all paths between the given switches and return the response
   ]
 }
 ```
-The field `is_protected_path_available` is true iff there is at least one diverse path for the given path. 
-The implementation will reuse the existing code in that finds paths and the availability check of the protected path is
-done reusing PCE capabilities.
-Since there are no any locking and resource allocation. This API cannot guarantee that it will be possible to create 
-a flow with the protected path in the future.
+The field `protected_path` contains the best protected path in the given context, or an empty object if PCE is unable 
+to find any protected path.
+The implementation of this feature will reuse the existing code that finds paths, so that it is future compatible 
+with the changes in PCE or get paths functionality.
+Since there are no any locking and resource allocation, this API cannot guarantee that it will be possible to create 
+a flow with the particular protected path in the future.
+
+### Backward compatibility and consistency
+When a user don't use the new parameter ```protected=true```, then the response doesn't contain any new fields from this 
+feature.  

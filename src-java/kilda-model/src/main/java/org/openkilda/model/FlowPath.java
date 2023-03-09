@@ -351,7 +351,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    static final class FlowPathDataImpl implements FlowPathData, Serializable {
+    public static final class FlowPathDataImpl implements FlowPathData, Serializable {
         private static final long serialVersionUID = 1L;
         @NonNull PathId pathId;
         @NonNull Switch srcSwitch;
@@ -372,7 +372,8 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         @Builder.Default
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
-        @NonNull List<PathSegment> segments = new ArrayList<>();
+        @NonNull
+        List<PathSegment> segments = new ArrayList<>();
         Set<FlowApplication> applications;
 
         @Setter(AccessLevel.NONE)
@@ -393,6 +394,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         boolean destWithMultiTable;
         String sharedBandwidthGroupId;
 
+        @Override
         public void setPathId(PathId pathId) {
             this.pathId = pathId;
 

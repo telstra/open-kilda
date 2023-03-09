@@ -17,9 +17,10 @@ package org.openkilda.messaging.payload.network;
 
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Value;
 
 import java.time.Duration;
@@ -27,48 +28,20 @@ import java.util.List;
 
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
+@AllArgsConstructor
 public class PathDto {
-    @JsonProperty("bandwidth")
-    private Long bandwidth;
-
-    @JsonProperty("latency")
-    private Long latency;
-
-    @JsonProperty("latency_ns")
-    private Long latencyNs;
-
-    @JsonProperty("latency_ms")
-    private Long latencyMs;
-
-    @JsonProperty("nodes")
-    private List<PathNodePayload> nodes;
-
-    @JsonProperty("is_backup_path")
-    private Boolean isBackupPath;
-
-    @JsonProperty("is_protected_path_available")
-    private Boolean isProtectedPathAvailable;
+    Long bandwidth;
+    Long latency;
+    Long latencyNs;
+    Long latencyMs;
+    List<PathNodePayload> nodes;
+    Boolean isBackupPath;
+    PathDto protectedPath;
 
     public PathDto(Long bandwidth, Duration latency, List<PathNodePayload> nodes, Boolean isBackupPath,
-                   Boolean isProtectedPathAvailable) {
+                   PathDto protectedPath) {
         this(bandwidth, latency.toNanos(), latency.toNanos(), latency.toMillis(), nodes, isBackupPath,
-                isProtectedPathAvailable);
-    }
-
-    @JsonCreator
-    public PathDto(@JsonProperty("bandwidth") Long bandwidth,
-                   @JsonProperty("latency") Long latency,
-                   @JsonProperty("latency_ns") Long latencyNs,
-                   @JsonProperty("latency_ms") Long latencyMs,
-                   @JsonProperty("nodes") List<PathNodePayload> nodes,
-                   @JsonProperty("is_backup_path") Boolean isBackupPath,
-                   @JsonProperty("is_protected_path_available") Boolean isProtectedPathAvailable) {
-        this.bandwidth = bandwidth;
-        this.latency = latency;
-        this.latencyNs = latencyNs;
-        this.latencyMs = latencyMs;
-        this.nodes = nodes;
-        this.isBackupPath = isBackupPath;
-        this.isProtectedPathAvailable = isProtectedPathAvailable;
+                protectedPath);
     }
 }

@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertNotNull;
 import static junit.framework.TestCase.assertTrue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -292,7 +293,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void findNPathsWithProtectedAvailabilityTest()
+    public void findNPathsWithProtectedPathIfAvailableTest()
             throws UnroutableFlowException, SwitchNotFoundException, RecoverableException {
         kildaConfigurationRepository.find().ifPresent(config -> {
             config.setFlowEncapsulationType(VXLAN);
@@ -302,7 +303,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
                 SWITCH_ID_1, SWITCH_ID_2, VXLAN, COST, Duration.ofMillis(10L), Duration.ofMillis(11L), 1);
 
         assertFalse(paths.isEmpty());
-        assertTrue(paths.get(0).getPath().getIsProtectedPathAvailable());
+        assertNotNull(paths.get(0).getPath().getProtectedPath());
     }
 
     @Test
@@ -318,7 +319,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
 
         assertFalse(paths.isEmpty());
         //TODO it always finds a protected path, because it doesn't discard the current path
-        assertTrue(paths.get(0).getPath().getIsProtectedPathAvailable());
+        assertNotNull(paths.get(0).getPath().getProtectedPath());
     }
 
     private void assertMaxLatencyPaths(List<PathsInfoData> paths, Duration maxLatency, long expectedCount,
