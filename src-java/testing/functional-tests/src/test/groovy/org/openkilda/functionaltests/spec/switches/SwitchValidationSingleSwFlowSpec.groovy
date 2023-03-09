@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.messaging.model.FlowDirectionType
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -166,7 +168,10 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         and: "Flow validation shows discrepancies"
         def flowValidateResponse = northbound.validateFlow(flow.flowId)
-        flowValidateResponse.each { direction ->
+        def expectedRulesCount = [
+                flowHelperV2.getFlowRulesCountBySwitch(flow, true, 1),
+                flowHelperV2.getFlowRulesCountBySwitch(flow, false, 1)]
+        flowValidateResponse.eachWithIndex { direction, i ->
             assert direction.discrepancies.size() == 2
 
             def rate = direction.discrepancies[0]
@@ -180,7 +185,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchHelper.verifyBurstSizeIsCorrect(sw, newBurstSize, burst.expectedValue.toLong())
             switchHelper.verifyBurstSizeIsCorrect(sw, burstSize, burst.actualValue.toLong())
 
-            assert direction.flowRulesTotal == 1
+            assert direction.flowRulesTotal == ((FlowDirectionType.FORWARD.toString() == direction.direction) ?
+                    expectedRulesCount[0] : expectedRulesCount[1])
             assert direction.switchRulesTotal == amountOfRules
             assert direction.flowMetersTotal == 1
             assert direction.switchMetersTotal == amountOfMeters + amountOfFlowMeters
@@ -461,22 +467,22 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
                         .instructions(Instructions.builder().build())
                         .build()).toJson())).get()
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage([
-                        FlowSpeakerData.builder()
-                                .switchId(sw.dpId)
-                                .ofVersion(OfVersion.of(sw.ofVersion))
-                                .cookie(new Cookie(3L))
-                                .table(OfTable.INPUT)
-                                .priority(100)
-                                .instructions(Instructions.builder().build())
-                                .build(),
-                        MeterSpeakerData.builder()
-                                .switchId(sw.dpId)
-                                .ofVersion(OfVersion.of(sw.ofVersion))
-                                .meterId(new MeterId(excessMeterId))
-                                .rate(fakeBandwidth)
-                                .burst(burstSize)
-                                .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
-                                .build()]).toJson())).get()
+                FlowSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .cookie(new Cookie(3L))
+                        .table(OfTable.INPUT)
+                        .priority(100)
+                        .instructions(Instructions.builder().build())
+                        .build(),
+                MeterSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .meterId(new MeterId(excessMeterId))
+                        .rate(fakeBandwidth)
+                        .burst(burstSize)
+                        .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
+                        .build()]).toJson())).get()
 
         then: "System detects created rules/meter as excess rules"
         //excess egress/ingress/transit rules are not added yet
@@ -568,7 +574,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             it.verifyRuleSectionsAreEmpty(["missing", "excess"])
             it.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex"])
             it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
-            def properMeters = it.meters.proper.findAll({dto -> !isDefaultMeter(dto)})
+            def properMeters = it.meters.proper.findAll({ dto -> !isDefaultMeter(dto) })
             properMeters.size() == 2
         }
 
@@ -633,10 +639,9 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     }
 
     void verifyRateIsCorrect(Switch sw, Long expected, Long actual) {
-        if(sw.isWb5164()) {
+        if (sw.isWb5164()) {
             assert Math.abs(expected - actual) <= expected * 0.01
-        }
-        else {
+        } else {
             assert expected == actual
         }
     }

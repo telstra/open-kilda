@@ -16,6 +16,7 @@
 package org.openkilda.messaging.info.flow;
 
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.FlowDirectionType;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -32,6 +33,7 @@ import java.util.List;
 public class FlowValidationResponse extends InfoData {
 
     String flowId;
+    FlowDirectionType direction;
     Boolean asExpected;
     List<Long> pktCounts;
     List<Long> byteCounts;

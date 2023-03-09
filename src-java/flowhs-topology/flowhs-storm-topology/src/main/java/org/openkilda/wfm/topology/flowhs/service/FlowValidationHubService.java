@@ -21,19 +21,18 @@ import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.flow.FlowValidationRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.meter.SwitchMeterEntries;
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
+import org.openkilda.messaging.info.group.GroupDumpResponse;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.FlowValidationFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.validation.FlowValidationFsm.Config;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.FlowValidationFsm.Event;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
 import org.openkilda.wfm.topology.flowhs.service.common.FsmBasedProcessingService;
@@ -51,16 +50,11 @@ public class FlowValidationHubService extends FsmBasedProcessingService<FlowVali
 
     public FlowValidationHubService(@NonNull FlowValidationHubCarrier carrier,
                                     @NonNull PersistenceManager persistenceManager,
-                                    @NonNull FlowResourcesManager flowResourcesManager,
-                                    long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
+                                    @NonNull RuleManager ruleManager) {
         super(new FlowProcessingFsmRegister<>(), new FsmExecutor<>(Event.NEXT));
         this.carrier = carrier;
 
-        Config fsmConfig = Config.builder()
-                .flowMeterMinBurstSizeInKbits(flowMeterMinBurstSizeInKbits)
-                .flowMeterBurstCoefficient(flowMeterBurstCoefficient)
-                .build();
-        fsmFactory = new FlowValidationFsm.Factory(carrier, persistenceManager, flowResourcesManager, fsmConfig);
+        fsmFactory = new FlowValidationFsm.Factory(carrier, persistenceManager, ruleManager);
     }
 
     /**
@@ -112,18 +106,19 @@ public class FlowValidationHubService extends FsmBasedProcessingService<FlowVali
         FlowValidationFsm fsm = fsmRegister.getFsmByKey(key)
                 .orElseThrow(() -> new UnknownKeyException(key));
 
-        if (data instanceof SwitchFlowEntries) {
+        if (data instanceof FlowDumpResponse) {
             fsmExecutor.fire(fsm, Event.RULES_RECEIVED, data);
-        } else if (data instanceof SwitchMeterEntries) {
+        } else if (data instanceof MeterDumpResponse) {
             fsmExecutor.fire(fsm, Event.METERS_RECEIVED, data);
         } else if (data instanceof SwitchMeterUnsupported) {
             SwitchMeterUnsupported meterUnsupported = (SwitchMeterUnsupported) data;
             log.info("Key: {}; Meters unsupported for switch '{};", key, meterUnsupported.getSwitchId());
-            fsmExecutor.fire(fsm, Event.METERS_RECEIVED, SwitchMeterEntries.builder()
-                    .switchId(meterUnsupported.getSwitchId())
-                    .meterEntries(Collections.emptyList())
-                    .build());
-        } else if (data instanceof SwitchGroupEntries) {
+            fsmExecutor.fire(fsm, Event.METERS_RECEIVED,
+                    MeterDumpResponse.builder()
+                            .switchId(meterUnsupported.getSwitchId())
+                            .meterSpeakerData(Collections.emptyList())
+                            .build());
+        } else if (data instanceof GroupDumpResponse) {
             fsmExecutor.fire(fsm, Event.GROUPS_RECEIVED, data);
         } else if (data instanceof ErrorData) {
             fsmExecutor.fire(fsm, Event.ERROR, data);
@@ -155,7 +150,8 @@ public class FlowValidationHubService extends FsmBasedProcessingService<FlowVali
         FlowValidationFsm fsm = fsmRegister.getFsmByKey(key)
                 .orElseThrow(() -> new UnknownKeyException(key));
 
-        ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT, "Flow validation failed by timeout",
+        ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT,
+                "Flow validation failed by timeout",
                 "Error in FlowValidationHubService");
         fsmExecutor.fire(fsm, Event.ERROR, errorData);
 

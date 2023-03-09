@@ -85,9 +85,7 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.info.rule.GroupEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.messaging.info.stats.PortStatusData;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
@@ -277,122 +275,50 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private void doDumpGroupsForSwitchManagerRequest(CommandMessage message) {
-        SwitchId switchId = ((DumpGroupsForSwitchManagerRequest) message.getData()).getSwitchId();
-        dumpRuleMangerGroupsRequest(switchId, buildSenderToSwitchManager(message));
-    }
-
-    private void doDumpGroupsForFlowHsRequest(CommandMessage message) {
-        SwitchId switchId = ((DumpGroupsForFlowHsRequest) message.getData()).getSwitchId();
-        dumpGroupsRequest(switchId, buildSenderToFlowHs(message));
-    }
-
-    private void dumpGroupsRequest(SwitchId switchId, java.util.function.Consumer<MessageData> sender) {
-        try {
-            logger.debug("Loading installed groups for switch {}", switchId);
-
-            List<OFGroupDescStatsEntry> ofGroupDescStatsEntries = context.getSwitchManager()
-                    .dumpGroups(DatapathId.of(switchId.toLong()));
-
-            List<GroupEntry> groups = ofGroupDescStatsEntries.stream()
-                    .map(OfFlowStatsMapper.INSTANCE::toFlowGroupEntry)
-                    .collect(Collectors.toList());
-
-            SwitchGroupEntries response = SwitchGroupEntries.builder()
-                    .switchId(switchId)
-                    .groupEntries(groups)
-                    .build();
-            sender.accept(response);
-        } catch (SwitchOperationException e) {
-            logger.error("Dumping of groups on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
-            ErrorData errorData = anError(ErrorType.NOT_FOUND)
-                    .withMessage(e.getMessage())
-                    .withDescription("The switch was not found when requesting a groups dump.")
-                    .buildData();
-            sender.accept(errorData);
-        }
-    }
-
-    private void dumpRuleMangerGroupsRequest(SwitchId switchId, java.util.function.Consumer<MessageData> sender) {
-        try {
-            logger.debug("Loading installed groups for switch {}", switchId);
-
-            List<OFGroupDescStatsEntry> ofGroupDescStatsEntries = context.getSwitchManager()
-                    .dumpGroups(DatapathId.of(switchId.toLong()));
-
-            List<GroupSpeakerData> groups = ofGroupDescStatsEntries.stream()
-                    .map(group -> OfGroupConverter.INSTANCE.convertToGroupSpeakerData(group, switchId))
-                    .collect(Collectors.toList());
-
-            GroupDumpResponse response = GroupDumpResponse.builder()
-                    .groupSpeakerData(groups)
-                    .build();
-            sender.accept(response);
-        } catch (SwitchOperationException e) {
-            logger.error("Dumping of groups on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
-            ErrorData errorData = anError(ErrorType.NOT_FOUND)
-                    .withMessage(e.getMessage())
-                    .withDescription("The switch was not found when requesting a groups dump.")
-                    .buildData();
-            sender.accept(errorData);
-        }
-    }
-
     private void doDumpRulesRequest(CommandMessage message) {
-        processDumpRulesRequest(((DumpRulesRequest) message.getData()).getSwitchId(), buildSenderToNorthbound(message));
+        processDumpRulesRequest(((DumpRulesRequest) message.getData()).getSwitchId(),
+                buildSenderToNorthbound(message), message);
     }
 
     private void doDumpRulesForSwitchManagerRequest(CommandMessage message) {
-        processDumpRuleManagerRulesRequest(((DumpRulesForSwitchManagerRequest) message.getData()).getSwitchId(),
-                buildSenderToSwitchManager(message));
+        processDumpRulesRequest(((DumpRulesForSwitchManagerRequest) message.getData()).getSwitchId(),
+                buildSenderToSwitchManager(message), message);
     }
 
     private void doDumpRulesForFlowHsRequest(CommandMessage message) {
         processDumpRulesRequest(((DumpRulesForFlowHsRequest) message.getData()).getSwitchId(),
-                buildSenderToFlowHs(message));
+                buildSenderToFlowHs(message), message);
     }
 
-    private void processDumpRulesRequest(SwitchId switchId, java.util.function.Consumer<MessageData> sender) {
+    private void processDumpRulesRequest(SwitchId switchId, java.util.function.Consumer<MessageData> sender,
+                                         CommandMessage commandMessage) {
         try {
             logger.debug("Loading installed rules for switch {}", switchId);
-
             List<OFFlowStatsEntry> flowEntries =
                     context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId.toLong()));
-            List<FlowEntry> flows = flowEntries.stream()
-                    .map(OfFlowStatsMapper.INSTANCE::toFlowEntry)
-                    .collect(Collectors.toList());
 
-            SwitchFlowEntries response = SwitchFlowEntries.builder()
-                    .switchId(switchId)
-                    .flowEntries(flows)
-                    .build();
-            sender.accept(response);
+            if (commandMessage.getData() instanceof DumpRulesRequest) {
+                List<FlowEntry> flows = flowEntries.stream()
+                        .map(OfFlowStatsMapper.INSTANCE::toFlowEntry)
+                        .collect(Collectors.toList());
+
+                SwitchFlowEntries response = SwitchFlowEntries.builder()
+                        .switchId(switchId)
+                        .flowEntries(flows)
+                        .build();
+                sender.accept(response);
+            } else {
+                List<FlowSpeakerData> flows = flowEntries.stream()
+                        .map(entry -> OfFlowConverter.INSTANCE.convertToFlowSpeakerData(entry, switchId))
+                        .collect(Collectors.toList());
+
+                FlowDumpResponse response = FlowDumpResponse.builder()
+                        .switchId(switchId)
+                        .flowSpeakerData(flows)
+                        .build();
+                sender.accept(response);
+            }
         } catch (SwitchOperationException e) {
-            logger.error("Dumping of rules on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
-            ErrorData errorData = anError(ErrorType.NOT_FOUND)
-                    .withMessage(e.getMessage())
-                    .withDescription("The switch was not found when requesting a rules dump.")
-                    .buildData();
-            sender.accept(errorData);
-        }
-    }
-
-    private void processDumpRuleManagerRulesRequest(SwitchId switchId,
-                                                    java.util.function.Consumer<MessageData> sender) {
-        try {
-            logger.debug("Loading installed rules for switch {}", switchId);
-
-            List<OFFlowStatsEntry> flowEntries =
-                    context.getSwitchManager().dumpFlowTable(DatapathId.of(switchId.toLong()));
-            List<FlowSpeakerData> flows = flowEntries.stream()
-                    .map(entry -> OfFlowConverter.INSTANCE.convertToFlowSpeakerData(entry, switchId))
-                    .collect(Collectors.toList());
-
-            FlowDumpResponse response = FlowDumpResponse.builder()
-                    .flowSpeakerData(flows)
-                    .build();
-            sender.accept(response);
-        } catch (SwitchNotFoundException e) {
             logger.error("Dumping of rules on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
             ErrorData errorData = anError(ErrorType.NOT_FOUND)
                     .withMessage(e.getMessage())
@@ -410,7 +336,7 @@ class RecordHandler implements Runnable {
             Map<DatapathId, IOFSwitch> allSwitchMap = context.getSwitchManager().getAllSwitchMap(true);
             for (Map.Entry<DatapathId, IOFSwitch> entry : allSwitchMap.entrySet()) {
                 SwitchId switchId = new SwitchId(entry.getKey().toString());
-                if (! scope.contains(switchId)) {
+                if (!scope.contains(switchId)) {
                     continue;
                 }
 
@@ -575,17 +501,108 @@ class RecordHandler implements Runnable {
 
     private void doDumpMetersRequest(CommandMessage message) {
         DumpMetersRequest request = (DumpMetersRequest) message.getData();
-        dumpMeters(request.getSwitchId(), buildSenderToNorthbound(message));
+        dumpMeters(request.getSwitchId(), buildSenderToNorthbound(message), message);
     }
 
     private void doDumpMetersForSwitchManagerRequest(CommandMessage message) {
         DumpMetersForSwitchManagerRequest request = (DumpMetersForSwitchManagerRequest) message.getData();
-        dumpRuleManagerMeters(request.getSwitchId(), buildSenderToSwitchManager(message));
+        dumpMeters(request.getSwitchId(), buildSenderToSwitchManager(message), message);
     }
 
     private void doDumpMetersForFlowHsRequest(CommandMessage message) {
         DumpMetersForFlowHsRequest request = (DumpMetersForFlowHsRequest) message.getData();
-        dumpMeters(request.getSwitchId(), buildSenderToFlowHs(message));
+        dumpMeters(request.getSwitchId(), buildSenderToFlowHs(message), message);
+    }
+
+    private void dumpMeters(SwitchId switchId,
+                            java.util.function.Consumer<MessageData> sender,
+                            CommandMessage message) {
+        try {
+            logger.debug("Get all meters for switch {}", switchId);
+            ISwitchManager switchManager = context.getSwitchManager();
+            List<OFMeterConfig> meterEntries = switchManager.dumpMeters(DatapathId.of(switchId.toLong()));
+            if (message.getData() instanceof DumpMetersRequest) {
+                List<MeterEntry> meters = meterEntries.stream()
+                        .map(OfMeterConverter::toMeterEntry)
+                        .collect(Collectors.toList());
+
+                SwitchMeterEntries response = SwitchMeterEntries.builder()
+                        .switchId(switchId)
+                        .meterEntries(meters)
+                        .build();
+                sender.accept(response);
+            } else {
+                IOFSwitch iofSwitch = switchManager.lookupSwitch(DatapathId.of(switchId.toLong()));
+                boolean inaccurate = featureDetectorService.detectSwitch(iofSwitch)
+                        .contains(SwitchFeature.INACCURATE_METER);
+                List<MeterSpeakerData> meters = meterEntries.stream()
+                        .map(entry -> org.openkilda.floodlight.converter.rulemanager.OfMeterConverter.INSTANCE
+                                .convertToMeterSpeakerData(entry, inaccurate, switchId))
+                        .collect(Collectors.toList());
+
+                MeterDumpResponse response = MeterDumpResponse.builder()
+                        .switchId(switchId)
+                        .meterSpeakerData(meters)
+                        .build();
+                sender.accept(response);
+            }
+
+        } catch (UnsupportedSwitchOperationException e) {
+            logger.info("Meters not supported: {}", switchId);
+            sender.accept(new SwitchMeterUnsupported(switchId));
+        } catch (SwitchNotFoundException e) {
+            logger.info("Dumping switch meters is unsuccessful. Switch {} not found", switchId);
+            ErrorData errorData = anError(ErrorType.NOT_FOUND)
+                    .withMessage(e.getMessage())
+                    .withDescription(switchId.toString())
+                    .buildData();
+            sender.accept(errorData);
+        } catch (SwitchOperationException e) {
+            logger.error("Dumping of meters on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
+            ErrorData errorData = anError(ErrorType.NOT_FOUND)
+                    .withMessage(e.getMessage())
+                    .withDescription(
+                            String.format("The switch was not found when requesting a meters dump. %s", switchId))
+                    .buildData();
+            sender.accept(errorData);
+        }
+    }
+
+    private void doDumpGroupsForSwitchManagerRequest(CommandMessage message) {
+        SwitchId switchId = ((DumpGroupsForSwitchManagerRequest) message.getData()).getSwitchId();
+        dumpGroupsRequest(switchId, buildSenderToSwitchManager(message));
+    }
+
+    private void doDumpGroupsForFlowHsRequest(CommandMessage message) {
+        SwitchId switchId = ((DumpGroupsForFlowHsRequest) message.getData()).getSwitchId();
+        dumpGroupsRequest(switchId, buildSenderToFlowHs(message));
+    }
+
+    private void dumpGroupsRequest(SwitchId switchId, java.util.function.Consumer<MessageData> sender) {
+        try {
+            logger.debug("Loading installed groups for switch {}", switchId);
+
+            List<OFGroupDescStatsEntry> ofGroupDescStatsEntries = context.getSwitchManager()
+                    .dumpGroups(DatapathId.of(switchId.toLong()));
+
+            List<GroupSpeakerData> groups = ofGroupDescStatsEntries.stream()
+                    .map(group -> OfGroupConverter.INSTANCE.convertToGroupSpeakerData(group, switchId))
+                    .collect(Collectors.toList());
+
+            GroupDumpResponse response = GroupDumpResponse.builder()
+                    .switchId(switchId)
+                    .groupSpeakerData(groups)
+                    .build();
+            sender.accept(response);
+        } catch (SwitchOperationException e) {
+            logger.error("Dumping of groups on switch '{}' was unsuccessful: {}", switchId, e.getMessage());
+            ErrorData errorData = anError(ErrorType.NOT_FOUND)
+                    .withMessage(e.getMessage())
+                    .withDescription(
+                            String.format("The switch was not found when requesting a groups dump. %s", switchId))
+                    .buildData();
+            sender.accept(errorData);
+        }
     }
 
     private java.util.function.Consumer<MessageData> buildSenderToSwitchManager(Message message) {
@@ -632,78 +649,6 @@ class RecordHandler implements Runnable {
             producerService.sendMessageAndTrack(context.getKafkaSpeakerFlowHsTopic(),
                     message.getCorrelationId(), result);
         };
-    }
-
-    private void dumpMeters(SwitchId switchId, java.util.function.Consumer<MessageData> sender) {
-        try {
-            logger.debug("Get all meters for switch {}", switchId);
-            ISwitchManager switchManager = context.getSwitchManager();
-            List<OFMeterConfig> meterEntries = switchManager.dumpMeters(DatapathId.of(switchId.toLong()));
-            List<MeterEntry> meters = meterEntries.stream()
-                    .map(OfMeterConverter::toMeterEntry)
-                    .collect(Collectors.toList());
-
-            SwitchMeterEntries response = SwitchMeterEntries.builder()
-                    .switchId(switchId)
-                    .meterEntries(meters)
-                    .build();
-            sender.accept(response);
-        } catch (UnsupportedSwitchOperationException e) {
-            logger.info("Meters not supported: {}", switchId);
-            sender.accept(new SwitchMeterUnsupported(switchId));
-        } catch (SwitchNotFoundException e) {
-            logger.info("Dumping switch meters is unsuccessful. Switch {} not found", switchId);
-            ErrorData errorData = anError(ErrorType.NOT_FOUND)
-                    .withMessage(e.getMessage())
-                    .withDescription(switchId.toString())
-                    .buildData();
-            sender.accept(errorData);
-        } catch (SwitchOperationException e) {
-            logger.error("Unable to dump meters", e);
-            ErrorData errorData = anError(ErrorType.NOT_FOUND)
-                    .withMessage(e.getMessage())
-                    .withDescription("Unable to dump meters")
-                    .buildData();
-            sender.accept(errorData);
-        }
-    }
-
-    private void dumpRuleManagerMeters(SwitchId switchId, java.util.function.Consumer<MessageData> sender) {
-        try {
-            logger.debug("Get all meters for switch {}", switchId);
-            ISwitchManager switchManager = context.getSwitchManager();
-            DatapathId datapathId = DatapathId.of(switchId.toLong());
-            List<OFMeterConfig> meterEntries = switchManager.dumpMeters(datapathId);
-            IOFSwitch iofSwitch = switchManager.lookupSwitch(datapathId);
-            boolean inaccurate = featureDetectorService.detectSwitch(iofSwitch)
-                    .contains(SwitchFeature.INACCURATE_METER);
-            List<MeterSpeakerData> meters = meterEntries.stream()
-                    .map(entry -> org.openkilda.floodlight.converter.rulemanager.OfMeterConverter.INSTANCE
-                            .convertToMeterSpeakerData(entry, inaccurate))
-                    .collect(Collectors.toList());
-
-            MeterDumpResponse response = MeterDumpResponse.builder()
-                    .meterSpeakerData(meters)
-                    .build();
-            sender.accept(response);
-        } catch (UnsupportedSwitchOperationException e) {
-            logger.info("Meters not supported: {}", switchId);
-            sender.accept(new SwitchMeterUnsupported(switchId));
-        } catch (SwitchNotFoundException e) {
-            logger.info("Dumping switch meters is unsuccessful. Switch {} not found", switchId);
-            ErrorData errorData = anError(ErrorType.NOT_FOUND)
-                    .withMessage(e.getMessage())
-                    .withDescription(switchId.toString())
-                    .buildData();
-            sender.accept(errorData);
-        } catch (SwitchOperationException e) {
-            logger.error("Unable to dump meters", e);
-            ErrorData errorData = anError(ErrorType.NOT_FOUND)
-                    .withMessage(e.getMessage())
-                    .withDescription("Unable to dump meters")
-                    .buildData();
-            sender.accept(errorData);
-        }
     }
 
     private void doModifyMeterRequest(CommandMessage message) {

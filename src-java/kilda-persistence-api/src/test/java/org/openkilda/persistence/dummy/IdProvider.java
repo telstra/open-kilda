@@ -29,8 +29,8 @@ class IdProvider {
     private long flowEffectiveIdCounter = 0;
     private long pathCounter = 0;
 
-    private int transitVlanCounter = 0;
-    private int transitVxLanCounter = 0;
+    private int transitVlanCounter = 1;
+    private int transitVxLanCounter = 1;
 
     private Map<SwitchId, Integer> meterCounters = new HashMap<>();
 

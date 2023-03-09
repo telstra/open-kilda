@@ -15,31 +15,45 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.validation;
 
-import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.FlowApplyActions;
-import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.info.rule.FlowInstructions;
-import org.openkilda.messaging.info.rule.FlowMatchField;
-import org.openkilda.messaging.info.rule.FlowSetFieldAction;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchGroupEntries;
+import static org.openkilda.rulemanager.action.ActionType.PUSH_VXLAN_NOVIFLOW;
+
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
+import org.openkilda.messaging.info.group.GroupDumpResponse;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
+import org.openkilda.rulemanager.Field;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.Instructions;
+import org.openkilda.rulemanager.MeterFlag;
+import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.OfVersion;
+import org.openkilda.rulemanager.ProtoConstants.PortNumber;
+import org.openkilda.rulemanager.SpeakerData;
+import org.openkilda.rulemanager.action.Action;
+import org.openkilda.rulemanager.action.PortOutAction;
+import org.openkilda.rulemanager.action.PushVxlanAction;
+import org.openkilda.rulemanager.action.SetFieldAction;
+import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import lombok.NonNull;
 
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public final class SwitchFlowEntriesBuilder {
     public static final long MIN_BURST_SIZE_IN_KBITS = 1024;
@@ -52,13 +66,13 @@ public final class SwitchFlowEntriesBuilder {
     }
 
     /**
-     * Construct a list of {@link SwitchFlowEntries} that corresponds to the builder's flow.
+     * Construct a list of {@link FlowDumpResponse} that corresponds to the builder's flow.
      */
-    public List<SwitchFlowEntries> getSwitchFlowEntries(int forwardTransitEncapId,
-                                                        int reverseTransitEncapId,
-                                                        Integer forwardProtectedTransitEncapId,
-                                                        Integer reverseProtectedTransitEncapId) {
-        List<SwitchFlowEntries> switchEntries = new ArrayList<>();
+    public List<FlowDumpResponse> getSwitchFlowEntries(int forwardTransitEncapId,
+                                                       int reverseTransitEncapId,
+                                                       Integer forwardProtectedTransitEncapId,
+                                                       Integer reverseProtectedTransitEncapId) {
+        List<FlowDumpResponse> flowDumpResponses = new ArrayList<>();
 
         boolean isVxlan = flow.getEncapsulationType() == FlowEncapsulationType.VXLAN;
         FlowPath forwardPath = flow.getForwardPath();
@@ -77,19 +91,20 @@ public final class SwitchFlowEntriesBuilder {
             throw new IllegalArgumentException("One-switch flows are unsupported");
         }
         PathSegment firstSegment = forwardSegments.get(0);
-        switchEntries.add(buildSwitchFlowEntries(flow.getSrcSwitchId(),
-                getFlowEntry(forwardCookie, flow.getSrcPort(), flow.getSrcVlan(), null,
+        flowDumpResponses.add(buildSwitchFlowEntries(flow.getSrcSwitchId(),
+                getFlowEntry(forwardCookie, flow.getSrcSwitchId(), flow.getSrcPort(), flow.getSrcVlan(), null,
                         firstSegment.getSrcPort(), isVxlan ? null : forwardTransitEncapId,
                         isVxlan ? forwardTransitEncapId : null,
                         forwardPath.getMeterId().getValue()),
-                getFlowEntry(reverseCookie, firstSegment.getSrcPort(), isVxlan ? null : reverseTransitEncapId,
+                getFlowEntry(reverseCookie, flow.getSrcSwitchId(), firstSegment.getSrcPort(),
+                        isVxlan ? null : reverseTransitEncapId,
                         isVxlan ? reverseTransitEncapId : null,
                         flow.getSrcPort(), flow.getSrcVlan(), null, null)));
         if (protectedForwardPath.isPresent()) {
             List<PathSegment> protectedForwardSegments = protectedForwardPath.get().getSegments();
             PathSegment firstProtectedSegment = protectedForwardSegments.get(0);
-            switchEntries.add(buildSwitchFlowEntries(flow.getSrcSwitchId(),
-                    getFlowEntry(protectedReverseCookie, firstProtectedSegment.getSrcPort(),
+            flowDumpResponses.add(buildSwitchFlowEntries(flow.getSrcSwitchId(),
+                    getFlowEntry(protectedReverseCookie, flow.getSrcSwitchId(), firstProtectedSegment.getSrcPort(),
                             isVxlan ? null : reverseProtectedTransitEncapId,
                             isVxlan ? reverseProtectedTransitEncapId : null,
                             flow.getSrcPort(), flow.getSrcVlan(), null, null)));
@@ -99,11 +114,13 @@ public final class SwitchFlowEntriesBuilder {
             PathSegment nsegment = forwardSegments.get(i);
             PathSegment n1segment = forwardSegments.get(i + 1);
 
-            switchEntries.add(buildSwitchFlowEntries(nsegment.getDestSwitchId(),
-                    getFlowEntry(forwardCookie, nsegment.getDestPort(), isVxlan ? null : forwardTransitEncapId,
+            flowDumpResponses.add(buildSwitchFlowEntries(nsegment.getDestSwitchId(),
+                    getFlowEntry(forwardCookie, nsegment.getDestSwitchId(), nsegment.getDestPort(),
+                            isVxlan ? null : forwardTransitEncapId,
                             isVxlan ? forwardTransitEncapId : null,
                             n1segment.getSrcPort(), null, null, null),
-                    getFlowEntry(reverseCookie, n1segment.getSrcPort(), isVxlan ? null : reverseTransitEncapId,
+                    getFlowEntry(reverseCookie, nsegment.getDestSwitchId(), n1segment.getSrcPort(),
+                            isVxlan ? null : reverseTransitEncapId,
                             isVxlan ? reverseTransitEncapId : null,
                             nsegment.getDestPort(), null, null, null)));
         }
@@ -114,12 +131,12 @@ public final class SwitchFlowEntriesBuilder {
                 PathSegment nsegment = forwardProtectedSegments.get(i);
                 PathSegment n1segment = forwardProtectedSegments.get(i + 1);
 
-                switchEntries.add(buildSwitchFlowEntries(nsegment.getDestSwitchId(),
-                        getFlowEntry(protectedForwardCookie, nsegment.getDestPort(),
+                flowDumpResponses.add(buildSwitchFlowEntries(nsegment.getDestSwitchId(),
+                        getFlowEntry(protectedForwardCookie, nsegment.getDestSwitchId(), nsegment.getDestPort(),
                                 isVxlan ? null : forwardProtectedTransitEncapId,
                                 isVxlan ? forwardProtectedTransitEncapId : null,
                                 n1segment.getSrcPort(), null, null, null),
-                        getFlowEntry(protectedReverseCookie, n1segment.getSrcPort(),
+                        getFlowEntry(protectedReverseCookie, nsegment.getDestSwitchId(), n1segment.getSrcPort(),
                                 isVxlan ? null : reverseProtectedTransitEncapId,
                                 isVxlan ? reverseProtectedTransitEncapId : null,
                                 nsegment.getDestPort(), null, null, null)));
@@ -127,82 +144,92 @@ public final class SwitchFlowEntriesBuilder {
         }
 
         PathSegment lastSegment = forwardSegments.get(forwardSegments.size() - 1);
-        switchEntries.add(buildSwitchFlowEntries(flow.getDestSwitchId(),
-                getFlowEntry(forwardCookie, lastSegment.getDestPort(), isVxlan ? null : forwardTransitEncapId,
+        flowDumpResponses.add(buildSwitchFlowEntries(flow.getDestSwitchId(),
+                getFlowEntry(forwardCookie, flow.getDestSwitchId(), lastSegment.getDestPort(),
+                        isVxlan ? null : forwardTransitEncapId,
                         isVxlan ? forwardTransitEncapId : null,
                         flow.getDestPort(), flow.getDestVlan(), null, null),
-                getFlowEntry(reverseCookie, flow.getDestPort(), flow.getDestVlan(), null,
-                        lastSegment.getDestPort(), isVxlan ? null : reverseTransitEncapId,
+                getFlowEntry(reverseCookie, flow.getDestSwitchId(), flow.getDestPort(), flow.getDestVlan(),
+                        null, lastSegment.getDestPort(), isVxlan ? null : reverseTransitEncapId,
                         isVxlan ? reverseTransitEncapId : null,
                         reversePath.getMeterId().getValue())));
 
         if (protectedForwardPath.isPresent()) {
             List<PathSegment> forwardProtectedSegments = protectedForwardPath.get().getSegments();
             PathSegment lastProtectedSegment = forwardProtectedSegments.get(forwardProtectedSegments.size() - 1);
-            switchEntries.add(buildSwitchFlowEntries(flow.getDestSwitchId(),
-                    getFlowEntry(protectedForwardCookie, lastProtectedSegment.getDestPort(),
+            flowDumpResponses.add(buildSwitchFlowEntries(flow.getDestSwitchId(),
+                    getFlowEntry(protectedForwardCookie, flow.getDestSwitchId(), lastProtectedSegment.getDestPort(),
                             isVxlan ? null : forwardProtectedTransitEncapId,
                             isVxlan ? forwardProtectedTransitEncapId : null,
                             flow.getDestPort(), flow.getDestVlan(), null, null)));
         }
 
-        return switchEntries;
+        return flowDumpResponses;
     }
 
     /**
-     * Construct a list of {@link SwitchMeterEntries} that corresponds to the builder's flow.
+     * Construct a list of {@link MeterDumpResponse} that corresponds to the builder's flow.
      */
-    public List<SwitchMeterEntries> getSwitchMeterEntries() {
-        List<SwitchMeterEntries> switchMeterEntries = new ArrayList<>();
+    public List<MeterDumpResponse> getSwitchMeterEntries() {
+        List<MeterDumpResponse> switchMeterEntries = new ArrayList<>();
 
         FlowPath forwardPath = flow.getForwardPath();
-        switchMeterEntries.add(SwitchMeterEntries.builder()
+        switchMeterEntries.add(MeterDumpResponse.builder()
                 .switchId(flow.getSrcSwitchId())
-                .meterEntries(Collections.singletonList(MeterEntry.builder()
-                        .meterId(forwardPath.getMeterId().getValue())
+                .meterSpeakerData(Collections.singletonList(MeterSpeakerData.builder()
+                        .switchId(flow.getSrcSwitchId())
+                        .meterId(forwardPath.getMeterId())
                         .rate(forwardPath.getBandwidth())
-                        .burstSize(Meter.calculateBurstSize(forwardPath.getBandwidth(),
+
+                        .burst(Meter.calculateBurstSize(forwardPath.getBandwidth(),
                                 MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
-                        .flags(Meter.getMeterKbpsFlags())
+                        .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                                .collect(Collectors.toSet()))
                         .build()))
                 .build());
 
         FlowPath reversePath = flow.getReversePath();
-        switchMeterEntries.add(SwitchMeterEntries.builder()
+        switchMeterEntries.add(MeterDumpResponse.builder()
                 .switchId(flow.getDestSwitchId())
-                .meterEntries(Collections.singletonList(MeterEntry.builder()
-                        .meterId(reversePath.getMeterId().getValue())
+                .meterSpeakerData(Collections.singletonList(MeterSpeakerData.builder()
+                        .switchId(flow.getDestSwitchId())
+                        .meterId(reversePath.getMeterId())
                         .rate(reversePath.getBandwidth())
-                        .burstSize(Meter.calculateBurstSize(reversePath.getBandwidth(),
+                        .burst(Meter.calculateBurstSize(reversePath.getBandwidth(),
                                 MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
-                        .flags(Meter.getMeterKbpsFlags())
+                        .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                                .collect(Collectors.toSet()))
                         .build()))
                 .build());
 
         FlowPath protectedForwardPath = flow.getProtectedForwardPath();
         if (protectedForwardPath != null) {
-            switchMeterEntries.add(SwitchMeterEntries.builder()
+            switchMeterEntries.add(MeterDumpResponse.builder()
                     .switchId(flow.getSrcSwitchId())
-                    .meterEntries(Collections.singletonList(MeterEntry.builder()
-                            .meterId(protectedForwardPath.getMeterId().getValue())
+                    .meterSpeakerData(Collections.singletonList(MeterSpeakerData.builder()
+                            .switchId(flow.getSrcSwitchId())
+                            .meterId(protectedForwardPath.getMeterId())
                             .rate(protectedForwardPath.getBandwidth())
-                            .burstSize(Meter.calculateBurstSize(protectedForwardPath.getBandwidth(),
+                            .burst(Meter.calculateBurstSize(protectedForwardPath.getBandwidth(),
                                     MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
-                            .flags(Meter.getMeterKbpsFlags())
+                            .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                                    .collect(Collectors.toSet()))
                             .build()))
                     .build());
         }
 
         FlowPath protectedReversePath = flow.getProtectedReversePath();
         if (protectedReversePath != null) {
-            switchMeterEntries.add(SwitchMeterEntries.builder()
+            switchMeterEntries.add(MeterDumpResponse.builder()
                     .switchId(flow.getDestSwitchId())
-                    .meterEntries(Collections.singletonList(MeterEntry.builder()
-                            .meterId(protectedReversePath.getMeterId().getValue())
+                    .meterSpeakerData(Collections.singletonList(MeterSpeakerData.builder()
+                            .switchId(flow.getDestSwitchId())
+                            .meterId(protectedReversePath.getMeterId())
                             .rate(protectedReversePath.getBandwidth())
-                            .burstSize(Meter.calculateBurstSize(protectedReversePath.getBandwidth(),
+                            .burst(Meter.calculateBurstSize(protectedReversePath.getBandwidth(),
                                     MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
-                            .flags(Meter.getMeterKbpsFlags())
+                            .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                                    .collect(Collectors.toSet()))
                             .build()))
                     .build());
         }
@@ -210,51 +237,68 @@ public final class SwitchFlowEntriesBuilder {
         return switchMeterEntries;
     }
 
-    private SwitchFlowEntries buildSwitchFlowEntries(SwitchId switchId, FlowEntry... flowEntries) {
-        return SwitchFlowEntries.builder()
-                .switchId(switchId)
-                .flowEntries(Lists.newArrayList(flowEntries))
+    private FlowDumpResponse buildSwitchFlowEntries(SwitchId switchId, FlowSpeakerData... flowEntries) {
+        return FlowDumpResponse.builder()
+                .flowSpeakerData(Lists.newArrayList(flowEntries))
+                .switchId(Arrays.stream(flowEntries).findFirst().map(SpeakerData::getSwitchId).orElse(null))
                 .build();
     }
 
     /**
      * Build a flow entry for provided data.
      */
-    public static FlowEntry getFlowEntry(long cookie, int srcPort, Integer inVlan, Integer inVxlan, int dstPort,
-                                         Integer outVlan, Integer outVxlan, Long meterId) {
-        Collection<FlowSetFieldAction> flowSetFieldActions = outVlan != null
-                ? Lists.newArrayList(FlowSetFieldAction.builder().fieldName("vlan_vid")
-                .fieldValue(String.valueOf(outVlan)).build()) : Lists.newArrayList();
+    public static FlowSpeakerData getFlowEntry(long cookie, SwitchId switchId, int srcPort, Integer inVlan,
+                                               Integer inVxlan, int dstPort,
+                                               Integer outVlan, Integer outVxlan, Long meterId) {
 
-        return FlowEntry.builder()
-                .cookie(cookie)
+        Set<FieldMatch> fieldMatchSet = new HashSet<>();
+        fieldMatchSet.add(FieldMatch.builder().field(Field.IN_PORT).value(srcPort).build());
+        if (inVlan != null) {
+            fieldMatchSet.add(FieldMatch.builder().field(Field.VLAN_VID).value(inVlan).build());
+        }
+        if (inVxlan != null) {
+            fieldMatchSet.add(FieldMatch.builder().field(Field.NOVIFLOW_TUNNEL_ID).value(inVxlan).build());
+        }
+
+        List<Action> actions = new ArrayList<>();
+        if (outVlan != null) {
+            actions.add(SetFieldAction.builder()
+                    .field(Field.VLAN_VID)
+                    .value(outVlan)
+                    .build());
+        }
+
+        actions.add(new PortOutAction(new PortNumber(dstPort)));
+        if (outVxlan != null) {
+            actions.add(PushVxlanAction.builder().vni(outVxlan).type(PUSH_VXLAN_NOVIFLOW).build());
+        }
+
+        Instructions instructions = Instructions.builder()
+                .applyActions(actions)
+                .build();
+        if (meterId != null) {
+            instructions.setGoToMeter(new MeterId(meterId));
+        }
+
+        return FlowSpeakerData.builder()
+                .switchId(switchId)
+                .cookie(new Cookie(cookie))
                 .packetCount(7)
                 .byteCount(480)
-                .version("OF_13")
-                .match(FlowMatchField.builder()
-                        .inPort(String.valueOf(srcPort))
-                        .vlanVid(inVlan != null ? String.valueOf(inVlan) : null)
-                        .tunnelId(inVxlan != null ? String.valueOf(inVxlan) : null)
-                        .build())
-                .instructions(FlowInstructions.builder()
-                        .applyActions(FlowApplyActions.builder()
-                                .flowOutput(String.valueOf(dstPort))
-                                .setFieldActions(flowSetFieldActions)
-                                .pushVxlan(outVxlan != null ? String.valueOf(outVxlan) : null)
-                                .build())
-                        .goToMeter(meterId)
-                        .build())
+                .ofVersion(OfVersion.OF_13)
+                .match(fieldMatchSet)
+                .instructions(instructions)
                 .build();
     }
 
     /**
-     * Construct a list of {@link SwitchGroupEntries} that corresponds to the builder's flow.
+     * Construct a list of {@link GroupDumpResponse} that corresponds to the builder's flow.
      */
-    public List<SwitchGroupEntries> getSwitchGroupEntries() {
-        List<SwitchGroupEntries> switchGroupEntries = new ArrayList<>();
-        switchGroupEntries.add(SwitchGroupEntries.builder()
+    public List<GroupDumpResponse> getSwitchGroupEntries() {
+        List<GroupDumpResponse> switchGroupEntries = new ArrayList<>();
+        switchGroupEntries.add(GroupDumpResponse.builder()
                 .switchId(flow.getSrcSwitchId())
-                .groupEntries(Collections.emptyList()
+                .groupSpeakerData(Collections.emptyList()
                     /*Lists.newArrayList(GroupEntry.builder()
                     .groupId(FLOW_GROUP_ID_A)
                     .buckets(Lists.newArrayList(new GroupBucket(0, FlowApplyActions.builder()
@@ -272,9 +316,9 @@ public final class SwitchFlowEntriesBuilder {
                     .build())*/)
                 .build());
 
-        switchGroupEntries.add(SwitchGroupEntries.builder()
+        switchGroupEntries.add(GroupDumpResponse.builder()
                 .switchId(flow.getDestSwitchId())
-                .groupEntries(Collections.emptyList())
+                .groupSpeakerData(Collections.emptyList())
                 .build());
 
         return switchGroupEntries;

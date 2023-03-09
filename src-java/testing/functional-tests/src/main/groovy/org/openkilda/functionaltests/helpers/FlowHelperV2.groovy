@@ -65,7 +65,7 @@ class FlowHelperV2 {
      * @param existingFlows returned flow is guaranteed not to be in conflict with these flows
      */
     FlowRequestV2 randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
-            List<FlowRequestV2> existingFlows = []) {
+                             List<FlowRequestV2> existingFlows = []) {
         if (srcSwitch.dpId == dstSwitch.dpId) {
             return singleSwitchFlow(srcSwitch, useTraffgenPorts, existingFlows)
         } else {
@@ -74,12 +74,12 @@ class FlowHelperV2 {
     }
 
     FlowRequestV2 randomFlow(SwitchPair switchPair, boolean useTraffgenPorts = true,
-            List<FlowRequestV2> existingFlows = []) {
+                             List<FlowRequestV2> existingFlows = []) {
         randomFlow(switchPair.src, switchPair.dst, useTraffgenPorts, existingFlows)
     }
 
     FlowRequestV2 randomMultiSwitchFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
-            List<FlowRequestV2> existingFlows = []) {
+                                        List<FlowRequestV2> existingFlows = []) {
         Wrappers.retry(3, 0) {
             def newFlow = FlowRequestV2.builder()
                     .flowId(generateFlowId())
@@ -106,7 +106,7 @@ class FlowHelperV2 {
      * examination certain switch should have at least 2 traffgens connected to different ports.
      */
     FlowRequestV2 singleSwitchFlow(Switch sw, boolean useTraffgenPorts = true,
-            List<FlowRequestV2> existingFlows = []) {
+                                   List<FlowRequestV2> existingFlows = []) {
         Wrappers.retry(3, 0) {
             def srcEndpoint = getFlowEndpoint(sw, [], useTraffgenPorts)
             def dstEndpoint = getFlowEndpoint(sw, [srcEndpoint.portNumber], useTraffgenPorts)
@@ -143,12 +143,12 @@ class FlowHelperV2 {
             dstEndpoint.vlanId--
         }
         return FlowRequestV2.builder()
-                            .flowId(generateFlowId())
-                            .source(srcEndpoint)
-                            .destination(dstEndpoint)
-                            .maximumBandwidth(500)
-                            .description(generateDescription())
-                            .build()
+                .flowId(generateFlowId())
+                .source(srcEndpoint)
+                .destination(dstEndpoint)
+                .maximumBandwidth(500)
+                .description(generateDescription())
+                .build()
     }
 
     /**
@@ -259,19 +259,19 @@ class FlowHelperV2 {
 
     static FlowPayload toV1(FlowRequestV2 flow) {
         FlowPayload.builder()
-                   .id(flow.flowId)
-                   .description(flow.description)
-                   .maximumBandwidth(flow.maximumBandwidth)
-                   .ignoreBandwidth(flow.ignoreBandwidth)
-                   .allocateProtectedPath(flow.allocateProtectedPath)
-                   .periodicPings(flow.periodicPings)
-                   .encapsulationType(flow.encapsulationType)
-                   .maxLatency(flow.maxLatency)
-                   .pinned(flow.pinned)
-                   .priority(flow.priority)
-                   .source(toV1(flow.source))
-                   .destination(toV1(flow.destination))
-                   .build()
+                .id(flow.flowId)
+                .description(flow.description)
+                .maximumBandwidth(flow.maximumBandwidth)
+                .ignoreBandwidth(flow.ignoreBandwidth)
+                .allocateProtectedPath(flow.allocateProtectedPath)
+                .periodicPings(flow.periodicPings)
+                .encapsulationType(flow.encapsulationType)
+                .maxLatency(flow.maxLatency)
+                .pinned(flow.pinned)
+                .priority(flow.priority)
+                .source(toV1(flow.source))
+                .destination(toV1(flow.destination))
+                .build()
     }
 
     static FlowEndpointPayload toV1(FlowEndpointV2 ep) {
@@ -281,19 +281,19 @@ class FlowHelperV2 {
 
     static FlowRequestV2 toV2(FlowPayload flow) {
         FlowRequestV2.builder()
-                     .flowId(flow.id)
-                     .description(flow.description)
-                     .maximumBandwidth(flow.maximumBandwidth)
-                     .ignoreBandwidth(flow.ignoreBandwidth)
-                     .allocateProtectedPath(flow.allocateProtectedPath)
-                     .periodicPings(flow.periodicPings)
-                     .encapsulationType(flow.encapsulationType)
-                     .maxLatency(flow.maxLatency)
-                     .pinned(flow.pinned)
-                     .priority(flow.priority)
-                     .source(toV2(flow.source))
-                     .destination(toV2(flow.destination))
-                     .build()
+                .flowId(flow.id)
+                .description(flow.description)
+                .maximumBandwidth(flow.maximumBandwidth)
+                .ignoreBandwidth(flow.ignoreBandwidth)
+                .allocateProtectedPath(flow.allocateProtectedPath)
+                .periodicPings(flow.periodicPings)
+                .encapsulationType(flow.encapsulationType)
+                .maxLatency(flow.maxLatency)
+                .pinned(flow.pinned)
+                .priority(flow.priority)
+                .source(toV2(flow.source))
+                .destination(toV2(flow.destination))
+                .build()
     }
 
     static FlowRequestV2 toV2(FlowCreatePayload flow) {
@@ -304,11 +304,11 @@ class FlowHelperV2 {
 
     static FlowEndpointV2 toV2(FlowEndpointPayload ep) {
         FlowEndpointV2.builder()
-                      .switchId(ep.getSwitchDpId())
-                      .portNumber(ep.getPortId())
-                      .vlanId(ep.getVlanId())
-                      .detectConnectedDevices(toV2(ep.detectConnectedDevices))
-                      .build()
+                .switchId(ep.getSwitchDpId())
+                .portNumber(ep.getPortId())
+                .vlanId(ep.getVlanId())
+                .detectConnectedDevices(toV2(ep.detectConnectedDevices))
+                .build()
     }
 
     static DetectConnectedDevicesV2 toV2(DetectConnectedDevicesPayload payload) {
@@ -317,21 +317,62 @@ class FlowHelperV2 {
 
     static FlowRequestV2 toRequest(FlowResponseV2 flow) {
         return FlowRequestV2.builder()
-                            .flowId(flow.flowId)
-                            .source(flow.source)
-                            .destination(flow.destination)
-                            .maximumBandwidth(flow.maximumBandwidth)
-                            .ignoreBandwidth(flow.ignoreBandwidth)
-                            .periodicPings(flow.periodicPings)
-                            .description(flow.description)
-                            .maxLatency(flow.maxLatency)
-                            .maxLatencyTier2(flow.maxLatencyTier2)
-                            .priority(flow.priority)
-                            .pinned(flow.pinned)
-                            .allocateProtectedPath(flow.allocateProtectedPath)
-                            .encapsulationType(flow.encapsulationType)
-                            .pathComputationStrategy(flow.pathComputationStrategy)
-                            .build()
+                .flowId(flow.flowId)
+                .source(flow.source)
+                .destination(flow.destination)
+                .maximumBandwidth(flow.maximumBandwidth)
+                .ignoreBandwidth(flow.ignoreBandwidth)
+                .periodicPings(flow.periodicPings)
+                .description(flow.description)
+                .maxLatency(flow.maxLatency)
+                .maxLatencyTier2(flow.maxLatencyTier2)
+                .priority(flow.priority)
+                .pinned(flow.pinned)
+                .allocateProtectedPath(flow.allocateProtectedPath)
+                .encapsulationType(flow.encapsulationType)
+                .pathComputationStrategy(flow.pathComputationStrategy)
+                .build()
+    }
+
+    int getFlowRulesCountBySwitch(FlowResponseV2 flow, boolean isForward, int involvedSwitchesCount) {
+        def endpoint = isForward ? flow.source : flow.destination
+        def swProps = northbound.getSwitchProperties(endpoint.getSwitchId())
+        def featureToggles = northbound.getFeatureToggles()
+        int count = involvedSwitchesCount-1;
+        def server42 = swProps.server42FlowRtt && featureToggles.server42FlowRtt
+                && flow.source.switchId != flow.destination.switchId
+
+        if (swProps.multiTable) {
+            count++ // customer input rule
+
+            if (endpoint.vlanId != 0) {
+                count++; // pre ingress rule
+            }
+            count++ // multi table ingress rule
+
+            if (server42) {
+                if (endpoint.vlanId != 0) {
+                    count++ //shared server42 rule
+                }
+                count++ // ingress server42 rule
+                count++ // server42 input rule
+            }
+
+            if (swProps.switchLldp || endpoint.detectConnectedDevices.lldp) {
+                count++  // lldp rule
+            }
+            if (swProps.switchArp || endpoint.detectConnectedDevices.arp) {
+                count++ // arp rule
+            }
+
+        } else { // single table
+            if (server42) {
+                count++;  // server42 ingress rule
+            }
+
+            count++; // single table ingress rule
+        }
+        return count
     }
 
     /**

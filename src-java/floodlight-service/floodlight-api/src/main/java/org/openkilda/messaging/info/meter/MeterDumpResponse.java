@@ -20,10 +20,13 @@ import static org.openkilda.messaging.Utils.joinLists;
 import org.openkilda.messaging.Chunkable;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.SpeakerData;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
@@ -33,21 +36,19 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Value
+@Builder
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
+@JsonNaming(value = SnakeCaseStrategy.class)
 public class MeterDumpResponse extends InfoData implements Chunkable<MeterDumpResponse> {
-    @JsonProperty("meter_speaker_data")
-    List<MeterSpeakerData> meterSpeakerData;
 
-    @JsonCreator
-    @Builder
-    public MeterDumpResponse(@JsonProperty("meter_speaker_data") List<MeterSpeakerData> meterSpeakerData) {
-        this.meterSpeakerData = meterSpeakerData;
-    }
+    List<MeterSpeakerData> meterSpeakerData;
+    SwitchId switchId;
 
     @Override
     public List<MeterDumpResponse> split(int chunkSize) {
         return Utils.split(meterSpeakerData, chunkSize).stream()
-                .map(MeterDumpResponse::new)
+                .map(meterSpeakerDataList -> new MeterDumpResponse(meterSpeakerDataList, switchId))
                 .collect(Collectors.toList());
     }
 
@@ -58,8 +59,11 @@ public class MeterDumpResponse extends InfoData implements Chunkable<MeterDumpRe
         if (dataList == null) {
             return null;
         }
+        SwitchId swId = dataList.stream().flatMap(meterDumpResponse -> meterDumpResponse.getMeterSpeakerData().stream())
+                .map(SpeakerData::getSwitchId).findFirst().orElse(null);
+
         return new MeterDumpResponse(joinLists(dataList.stream()
                 .filter(Objects::nonNull)
-                .map(MeterDumpResponse::getMeterSpeakerData)));
+                .map(MeterDumpResponse::getMeterSpeakerData)), swId);
     }
 }
