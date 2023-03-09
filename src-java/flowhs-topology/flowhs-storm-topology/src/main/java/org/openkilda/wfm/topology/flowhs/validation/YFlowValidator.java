@@ -20,6 +20,8 @@ import static java.lang.String.format;
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
+import org.openkilda.messaging.validation.ValidatorUtils;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -155,7 +157,8 @@ public class YFlowValidator {
     }
 
     private void checkMaxLatency(YFlowRequest yFlowRequest) throws InvalidFlowException {
-        ValidatorUtils.maxLatencyValidator(yFlowRequest.getMaxLatency(), yFlowRequest.getMaxLatencyTier2());
+        ValidatorUtils.validateMaxLatencyAndLatencyTier(yFlowRequest.getMaxLatency(),
+                yFlowRequest.getMaxLatencyTier2());
     }
     
     private void validateSubFlows(Collection<RequestedFlow> flows)
