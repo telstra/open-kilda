@@ -48,7 +48,7 @@ public class Path implements Serializable {
 
     boolean isBackupPath;
 
-    Boolean isProtectedPathAvailable;
+    Path protectedPath;
 
     @Value
     @Builder(toBuilder = true)

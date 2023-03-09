@@ -28,7 +28,7 @@ public interface PathMapper {
 
     default PathDto mapToPath(Path data) {
         return new PathDto(data.getBandwidth(), data.getLatency(), data.getNodes(), data.getIsBackupPath(),
-                data.getIsProtectedPathAvailable());
+                data.getProtectedPath());
     }
 
     GroupFlowPathPayload mapGroupFlowPathPayload(FlowPathDto data);

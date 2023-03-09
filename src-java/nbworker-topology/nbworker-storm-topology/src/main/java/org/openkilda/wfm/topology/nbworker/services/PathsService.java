@@ -116,16 +116,17 @@ public class PathsService {
                             .srcSwitchId(path.getSrcSwitchId())
                             .destSwitchId(path.getDestSwitchId())
                             // TODO add necessary parameters to Path and refactor this
-                            .isProtectedPathAvailable(isProtectedPathAvailableFor(path, requestEncapsulationType,
-                                    requestPathComputationStrategy, maxLatency, maxLatencyTier2))
+                            .protectedPath(getProtectedPathAvailableFor(path, requestEncapsulationType,
+                                    requestPathComputationStrategy, maxLatency, maxLatencyTier2).getForward())
                             .build())
                 .map(PathMapper.INSTANCE::map)
                 .map(path -> PathsInfoData.builder().path(path).build())
                 .collect(Collectors.toList());
     }
 
-    private boolean isProtectedPathAvailableFor(Path path, FlowEncapsulationType encapsulationType,
-            PathComputationStrategy pathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2) {
+    private GetPathsResult getProtectedPathAvailableFor(Path path, FlowEncapsulationType encapsulationType,
+                                                        PathComputationStrategy pathComputationStrategy,
+                                                        Duration maxLatency, Duration maxLatencyTier2) {
         Flow flow = Flow.builder()
                 .description("A virtual flow for computing a protected path to this flow")
                 .flowId("")
@@ -139,10 +140,9 @@ public class PathsService {
                 .pathComputationStrategy(pathComputationStrategy)
                 .build();
         try {
-            GetPathsResult pathsResult = pathComputer.getPath(flow, Collections.emptyList(), true);
-            return pathsResult.getForward() != null && pathsResult.getReverse() != null;
+            return pathComputer.getPath(flow, Collections.emptyList(), true);
         } catch (RecoverableException | UnroutableFlowException e) {
-            return false;
+            return GetPathsResult.builder().build();
         }
     }
 
