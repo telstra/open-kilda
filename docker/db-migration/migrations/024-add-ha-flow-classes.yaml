@@ -1,0 +1,89 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: snikitin
+      changes:
+        - tagDatabase:
+            tag: 024-add-ha-flow-classes
+  - changeSet:
+      id: ha_flow_class
+      author: snikitin
+      changes:
+        - sql: "CREATE CLASS ha_flow IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY ha_flow.ha_flow_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow.shared_endpoint_switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow.shared_endpoint_port IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY ha_flow.shared_endpoint_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY ha_flow.shared_endpoint_inner_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY ha_flow.allocate_protected_path IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY ha_flow.maximum_bandwidth IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY ha_flow.ignore_bandwidth IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY ha_flow.strict_bandwidth IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY ha_flow.description IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow.periodic_pings IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY ha_flow.encapsulation_type IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow.status IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow.max_latency IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY ha_flow.max_latency_tier2 IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY ha_flow.pinned IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY ha_flow.priority IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY ha_flow.path_computation_strategy IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow.forward_path_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow.reverse_path_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow.protected_forward_path_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow.protected_reverse_path_id IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX ha_flow.ha_flow_id UNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP CLASS ha_flow"
+  - changeSet:
+      id: ha_subflow_class
+      author: snikitin
+      changes:
+        - sql: "CREATE CLASS ha_subflow IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY ha_subflow.ha_flow_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_subflow.subflow_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_subflow.status IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_subflow.endpoint_switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_subflow.endpoint_port IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY ha_subflow.endpoint_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY ha_subflow.endpoint_inner_vlan IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY ha_subflow.description IF NOT EXISTS INTEGER"
+        - sql: "CREATE INDEX ha_subflow.subflow_id UNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP CLASS ha_subflow"
+  - changeSet:
+      id: ha_flow_path_class
+      author: snikitin
+      changes:
+        - sql: "CREATE CLASS ha_flow_path IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY ha_flow_path.ha_path_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow_path.ha_flow_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow_path.shared_switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow_path.y_point_switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow_path.cookie IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY ha_flow_path.y_point_meter_id IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY ha_flow_path.shared_point_meter_id IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY ha_flow_path.y_point_group_id IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY ha_flow_path.ignore_bandwidth IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY ha_flow_path.bandwidth IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY ha_flow_path.status IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow_path.shared_bw_group_id IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX ha_flow_path.ha_path_id UNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX ha_flow_path.ha_flow_id NOTUNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP CLASS ha_flow_path"
+  - changeSet:
+      id: ha_sub_flow_edge_class
+      author: snikitin
+      changes:
+        - sql: "CREATE CLASS ha_subflow_edge IF NOT EXISTS EXTENDS E"
+        - sql: "CREATE PROPERTY ha_subflow_edge.ha_flow_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_subflow_edge.ha_flow_path_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_subflow_edge.ha_subflow_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_subflow_edge.endpoint_switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_subflow_edge.meter_id IF NOT EXISTS LONG"
+        - sql: "CREATE INDEX ha_subflow_edge.ha_flow_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX ha_subflow_edge.ha_subflow_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX ha_subflow_edge.ha_flow_path_id NOTUNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP CLASS ha_subflow_edge"

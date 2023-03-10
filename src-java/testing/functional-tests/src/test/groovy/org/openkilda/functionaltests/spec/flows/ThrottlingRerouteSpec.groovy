@@ -44,7 +44,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(SMOKE)
-    @Ignore("unstable")
+    //    unignored. Tests needs supervision next builds
     def "Reroute is not performed while new reroutes are being issued"() {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
         /* Here we will pick only short flows that consist of 2 switches, so that we can maximize amount of unique

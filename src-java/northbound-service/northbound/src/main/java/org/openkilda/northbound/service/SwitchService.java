@@ -43,11 +43,13 @@ import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
 import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -246,6 +248,17 @@ public interface SwitchService {
      * @return list of flows that goes through a particular switch.
      */
     CompletableFuture<List<FlowPayload>> getFlowsForSwitch(SwitchId switchId, Integer port);
+
+    /**
+     * Retrieves a mapping of flows per port for the given switch. If ports are given, returns the output with these
+     * ports only, otherwise returns the output with all ports that have at least one flow going through it.
+     *
+     * @param switchId the switch id
+     * @param ports Optional. Filters the output to contain information about these ports only.
+     * @return a response containing the information about mapping port->[flow]
+     */
+    CompletableFuture<SwitchFlowsPerPortResponse> getFlowsPerPortForSwitch(SwitchId switchId,
+                                                                           Collection<Integer> ports);
 
     /**
      * Get switch properties.

@@ -1,29 +1,29 @@
 # Get flow history
 ## The idea
-We should be able to get list of the flow operations with timestamps. 
-This information should also include description of the flow actions during the flow operation.
+We should be able to get a list of the flow operations with timestamps. 
+This information should also include a description of the flow actions during the flow operation.
 
 ## Sequence diagram
 ![Get flow history](flow-history-get.png "Get flow history sequence diagram")
 
 ## API
-Northbound provides following endpoints for getting flow history:
+Northbound provides the following endpoints for getting flow history:
 
 #### Getting all the flow history:
 `GET /flows/:flow_id/history`
 with request params:
-* `flow_id` - Flow ID
-* `time_from` - Start time to search for flow history (default: 0 (1 January 1970 00:00:00)).
-* `time_to` - End time to search flow history (default: now).
-* `max_count` - Number of records viewed (default: 100).
+* `flow_id`: Flow ID
+* `time_from`: Start time to search for flow history (default: 0 (1 January 1970 00:00:00)).
+* `time_to`: End time to search flow history (default: now).
+* `max_count`: Number of records viewed (default: 100).
 
-Example of a response to the request:
-```
+An example of a response:
+```json
 [{
   "clazz": "org.openkilda.messaging.payload.history.FlowHistoryEntry",
   "flow_id": "flow_id",
   "timestamp": 1612898925,
-  "timestamp_iso": 2021-02-09T19:28:45Z,
+  "timestamp_iso": "2021-02-09T19:28:45Z",
   "actor": "AUTO",
   "action": "Flow rerouting",
   "task_id": "40eb352b-8f1e-41a1-8da0-953820e92c12 : 1612898884095",
@@ -31,31 +31,31 @@ Example of a response to the request:
   "payload": [
     {
       "timestamp": 1612898925,
-      "timestamp_iso": 2021-02-09T19:28:45Z,
+      "timestamp_iso": "2021-02-09T19:28:45Z",
       "action": "Started flow validation",
       "details": null
     },
     {
       "timestamp": 1612898926,
-      "timestamp_iso": 2021-02-09T19:28:46Z,
+      "timestamp_iso": "2021-02-09T19:28:46Z",
       "action": "Flow was validated successfully",
       "details": null
     },
     {
       "timestamp": 1612898927,
-      "timestamp_iso": 2021-02-09T19:28:47Z,
+      "timestamp_iso": "2021-02-09T19:28:47Z",
       "action": "Found the same primary path. Skipped creating of it",
       "details": null
     },
     {
       "timestamp": 1612898927,
-      "timestamp_iso": 2021-02-09T19:28:47Z,
+      "timestamp_iso": "2021-02-09T19:28:47Z",
       "action": "The flow status was reverted to UP",
       "details": null
     },
     {
       "timestamp": 1612898927,
-      "timestamp_iso": 2021-02-09T19:28:47Z,
+      "timestamp_iso": "2021-02-09T19:28:47Z",
       "action": "Failed to reroute the flow",
       "details": "Reroute is unsuccessful. Couldn't find new path(s)"
     }
@@ -64,16 +64,16 @@ Example of a response to the request:
 }]
 ```
 
-#### Getting all the flow status timestamps:
+#### Getting all flow statuses with timestamps:
 `GET /flows/:flow_id/history/statuses`
 with request params:
-* `flow_id` - Flow ID
-* `time_from` - Start time to search for flow status timestamps (default: 0 (1 January 1970 00:00:00)).
-* `time_to` - End time to search flow status timestamps (default: now).
-* `max_count` - Number of records viewed (default: 100).
+* `flow_id`: Flow ID
+* `time_from`: Start time to search for flow status timestamps (default: 0 (1 January 1970 00:00:00)).
+* `time_to`: End time to search flow status timestamps (default: now).
+* `max_count`: Number of records viewed (default: 100).
 
-Example of response to the request:
-```
+An example of a response:
+```json
 {
   "history_statuses": [
     {
