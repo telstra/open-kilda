@@ -24,7 +24,7 @@ import org.openkilda.northbound.service.NetworkService;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -49,7 +49,7 @@ public class NetworkControllerV2 {
      * @param pathValidationPayload a payload with a path and additional flow parameters provided by a user
      * @return either a successful response or the list of errors
      */
-    @GetMapping(path = "/path/check")
+    @PostMapping(path = "/path/check")
     @ApiOperation(value = "Validates that a given path complies with the chosen strategy and the network availability")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<PathValidateResponse> validateCustomFlowPath(

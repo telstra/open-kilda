@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.nbworker.validators;
 
 import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH;
-import static org.openkilda.model.PathComputationStrategy.LATENCY;
 import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 
 import org.openkilda.messaging.info.network.PathValidationResult;
@@ -33,22 +32,24 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.collect.Sets;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -56,13 +57,14 @@ import java.util.stream.Collectors;
 
 public class PathValidator {
 
-    public static final String LATENCY = "latency";
-    public static final String LATENCY_TIER_2 = "latency tier 2";
+    private static final String LATENCY = "latency";
+    private static final String LATENCY_TIER_2 = "latency tier 2";
     private final IslRepository islRepository;
     private final FlowRepository flowRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
-
     private final SwitchRepository switchRepository;
+    private Map<IslEndpoints, Optional<Isl>> islCache;
+    private Map<SwitchId, Optional<Switch>> switchCache;
 
     public PathValidator(IslRepository islRepository,
                          FlowRepository flowRepository,
@@ -84,13 +86,16 @@ public class PathValidator {
      * @return a response object containing the validation result and errors if any
      */
     public PathValidationResult validatePath(PathValidationData pathValidationData) {
+        initCache();
         Set<String> result = pathValidationData.getPathSegments().stream()
                 .map(segment -> executeValidations(
-                        new InputData(pathValidationData, segment),
-                        new RepositoryData(islRepository, flowRepository, switchPropertiesRepository, switchRepository),
-                        getValidations(pathValidationData)))
+                        InputData.of(pathValidationData, segment),
+                        getPerSegmentValidations(pathValidationData)))
                 .flatMap(Set::stream)
                 .collect(Collectors.toSet());
+
+        result.addAll(executeValidations(InputData.of(pathValidationData),
+                getPerPathValidations(pathValidationData)));
 
         return PathValidationResult.builder()
                 .isValid(result.isEmpty())
@@ -98,21 +103,46 @@ public class PathValidator {
                 .build();
     }
 
+    private void initCache() {
+        islCache = new HashMap<>();
+        switchCache = new HashMap<>();
+    }
+
+    private Optional<Isl> findIslByEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId destSwitchId, int destPort) {
+        IslEndpoints endpoints = new IslEndpoints(srcSwitchId.toString(), srcPort, destSwitchId.toString(), destPort);
+        if (!islCache.containsKey(endpoints)) {
+            islCache.put(endpoints,
+                    islRepository.findByEndpoints(srcSwitchId, srcPort, destSwitchId, destPort));
+        }
+        return islCache.get(endpoints);
+    }
+
+    private Map<SwitchId, Switch> findSwitchesByIds(Set<SwitchId> switchIds) {
+        Map<SwitchId, Switch> result = new HashMap<>();
+        switchIds.forEach(s -> {
+            if (!switchCache.containsKey(s)) {
+                switchCache.put(s, switchRepository.findById(s));
+            }
+            if (switchCache.get(s).isPresent()) {
+                result.put(s, switchCache.get(s).get());
+            }
+        });
+
+        return result;
+    }
+
     private Set<String> executeValidations(InputData inputData,
-                                           RepositoryData repositoryData,
-                                           List<BiFunction<InputData, RepositoryData, Set<String>>> validations) {
+                                           List<Function<InputData, Set<String>>> validations) {
 
         return validations.stream()
-                .map(f -> f.apply(inputData, repositoryData))
+                .map(f -> f.apply(inputData))
                 .flatMap(Set::stream)
                 .collect(Collectors.toSet());
     }
 
-    private List<BiFunction<InputData, RepositoryData, Set<String>>> getValidations(
+    private List<Function<InputData, Set<String>>> getPerPathValidations(
             PathValidationData pathValidationData) {
-        List<BiFunction<InputData, RepositoryData, Set<String>>> validationFunctions = new LinkedList<>();
-
-        validationFunctions.add(this::validateForwardAndReverseLinks);
+        List<Function<InputData, Set<String>>> validationFunctions = new LinkedList<>();
 
         if (isLatencyValidationRequired(pathValidationData)) {
             validationFunctions.add(this::validateLatency);
@@ -121,6 +151,15 @@ public class PathValidator {
         if (isLatencyTier2ValidationRequired(pathValidationData)) {
             validationFunctions.add(this::validateLatencyTier2);
         }
+
+        return validationFunctions;
+    }
+
+    private List<Function<InputData, Set<String>>> getPerSegmentValidations(
+            PathValidationData pathValidationData) {
+        List<Function<InputData, Set<String>>> validationFunctions = new LinkedList<>();
+
+        validationFunctions.add(this::validateForwardAndReverseLinks);
 
         if (isBandwidthValidationRequired(pathValidationData)) {
             validationFunctions.add(this::validateBandwidth);
@@ -168,8 +207,8 @@ public class PathValidator {
                 || pathValidationData.getPathComputationStrategy() == MAX_LATENCY);
     }
 
-    private Set<String> validateForwardAndReverseLinks(InputData inputData, RepositoryData repositoryData) {
-        Map<SwitchId, Switch> switchMap = repositoryData.getSwitchRepository().findByIds(
+    private Set<String> validateForwardAndReverseLinks(InputData inputData) {
+        Map<SwitchId, Switch> switchMap = findSwitchesByIds(
                 Sets.newHashSet(inputData.getSegment().getSrcSwitchId(), inputData.getSegment().getDestSwitchId()));
         Set<String> errors = Sets.newHashSet();
         if (!switchMap.containsKey(inputData.getSegment().getSrcSwitchId())) {
@@ -182,37 +221,37 @@ public class PathValidator {
             return errors;
         }
 
-        errors.addAll(validateForwardLink(inputData, repositoryData));
-        errors.addAll(validateReverseLink(inputData, repositoryData));
+        errors.addAll(validateForwardLink(inputData));
+        errors.addAll(validateReverseLink(inputData));
 
         return errors;
     }
 
-    private Set<String> validateForwardLink(InputData inputData, RepositoryData repositoryData) {
+    private Set<String> validateForwardLink(InputData inputData) {
         return validateLink(
                 inputData.getSegment().getSrcSwitchId(),
                 inputData.getSegment().getSrcPort(),
                 inputData.getSegment().getDestSwitchId(),
                 inputData.getSegment().getDestPort(),
-                repositoryData, inputData,
+                inputData,
                 this::getNoForwardIslError, this::getForwardIslNotActiveError);
     }
 
-    private Set<String> validateReverseLink(InputData inputData, RepositoryData repositoryData) {
+    private Set<String> validateReverseLink(InputData inputData) {
         return validateLink(
                 inputData.getSegment().getDestSwitchId(),
                 inputData.getSegment().getDestPort(),
                 inputData.getSegment().getSrcSwitchId(),
                 inputData.getSegment().getSrcPort(),
-                repositoryData, inputData,
+                inputData,
                 this::getNoReverseIslError, this::getReverseIslNotActiveError);
     }
 
     private Set<String> validateLink(SwitchId srcSwitchId, int srcPort, SwitchId destSwitchId, int destPort,
-                                                       RepositoryData repositoryData, InputData inputData,
+                                                       InputData inputData,
                                                        Function<InputData, String> noLinkErrorProducer,
                                                        Function<InputData, String> linkNotActiveErrorProducer) {
-        Optional<Isl> isl = getIslByEndPoints(srcSwitchId, srcPort, destSwitchId, destPort, repositoryData);
+        Optional<Isl> isl = getIslByEndPoints(srcSwitchId, srcPort, destSwitchId, destPort);
         Set<String> errors = Sets.newHashSet();
         if (!isl.isPresent()) {
             errors.add(noLinkErrorProducer.apply(inputData));
@@ -224,33 +263,32 @@ public class PathValidator {
         return errors;
     }
 
-    private Optional<Isl> getIslByEndPoints(SwitchId srcSwitchId, int srcPort, SwitchId destSwitchId, int destPort,
-                                            RepositoryData repositoryData) {
-        return repositoryData.getIslRepository().findByEndpoints(srcSwitchId, srcPort, destSwitchId, destPort);
+    private Optional<Isl> getIslByEndPoints(SwitchId srcSwitchId, int srcPort, SwitchId destSwitchId, int destPort) {
+        return findIslByEndpoints(srcSwitchId, srcPort, destSwitchId, destPort);
     }
 
-    private Optional<Isl> getForwardIslOfSegmentData(PathSegmentValidationData data, RepositoryData repositoryData) {
-        return repositoryData.getIslRepository().findByEndpoints(
+    private Optional<Isl> getForwardIslOfSegmentData(PathSegmentValidationData data) {
+        return findIslByEndpoints(
                 data.getSrcSwitchId(), data.getSrcPort(),
                 data.getDestSwitchId(), data.getDestPort());
     }
 
-    private Optional<Isl> getReverseIslOfSegmentData(PathSegmentValidationData data, RepositoryData repositoryData) {
-        return repositoryData.getIslRepository().findByEndpoints(
+    private Optional<Isl> getReverseIslOfSegmentData(PathSegmentValidationData data) {
+        return findIslByEndpoints(
                 data.getDestSwitchId(), data.getDestPort(),
                 data.getSrcSwitchId(), data.getSrcPort());
     }
 
-    private Set<String> validateBandwidth(InputData inputData, RepositoryData repositoryData) {
-        Optional<Isl> forward = getForwardIslOfSegmentData(inputData.getSegment(), repositoryData);
-        Optional<Isl> reverse = getReverseIslOfSegmentData(inputData.getSegment(), repositoryData);
+    private Set<String> validateBandwidth(InputData inputData) {
+        Optional<Isl> forward = getForwardIslOfSegmentData(inputData.getSegment());
+        Optional<Isl> reverse = getReverseIslOfSegmentData(inputData.getSegment());
 
         Set<String> errors = Sets.newHashSet();
         if (!forward.isPresent()) {
             errors.add(getNoForwardIslError(inputData));
         }
         if (!reverse.isPresent()) {
-            errors.add(getNoForwardIslError(inputData));
+            errors.add(getNoReverseIslError(inputData));
         }
         if (!errors.isEmpty()) {
             return errors;
@@ -310,7 +348,7 @@ public class PathValidator {
         return isl.getAvailableBandwidth();
     }
 
-    private Set<String> validateEncapsulationType(InputData inputData, RepositoryData repositoryData) {
+    private Set<String> validateEncapsulationType(InputData inputData) {
         Set<String> errors = Sets.newHashSet();
         Map<SwitchId, SwitchProperties> switchPropertiesMap = switchPropertiesRepository.findBySwitchIds(
                 Sets.newHashSet(inputData.getPath().getSrcSwitchId(), inputData.getPath().getDestSwitchId()));
@@ -336,8 +374,8 @@ public class PathValidator {
         return errors;
     }
 
-    private Set<String> validateDiverseWithFlow(InputData inputData, RepositoryData repositoryData) {
-        if (!repositoryData.getIslRepository().findByEndpoints(inputData.getSegment().getSrcSwitchId(),
+    private Set<String> validateDiverseWithFlow(InputData inputData) {
+        if (!findIslByEndpoints(inputData.getSegment().getSrcSwitchId(),
                 inputData.getSegment().getSrcPort(),
                 inputData.getSegment().getDestSwitchId(),
                 inputData.getSegment().getDestPort()).isPresent()) {
@@ -362,67 +400,93 @@ public class PathValidator {
         return Collections.emptySet();
     }
 
-    private Set<String> validateLatencyTier2(InputData inputData, RepositoryData repositoryData) {
-        return validateLatency(inputData, repositoryData, inputData.getPath()::getLatencyTier2, LATENCY_TIER_2);
+    private Set<String> validateLatencyTier2(InputData inputData) {
+        return validateLatency(inputData, inputData.getPath()::getLatencyTier2, LATENCY_TIER_2);
     }
 
-    private Set<String> validateLatency(InputData inputData, RepositoryData repositoryData) {
-        return validateLatency(inputData, repositoryData, inputData.getPath()::getLatency, LATENCY);
+    private Set<String> validateLatency(InputData inputData) {
+        return validateLatency(inputData, inputData.getPath()::getLatency, LATENCY);
     }
 
-    private Set<String> validateLatency(InputData inputData, RepositoryData repositoryData,
-                                        Supplier<Duration> inputLatency, String latencyType) {
-        Optional<Isl> forward = getForwardIslOfSegmentData(inputData.getSegment(), repositoryData);
-        Optional<Isl> reverse = getReverseIslOfSegmentData(inputData.getSegment(), repositoryData);
+    private Set<String> validateLatency(InputData inputData, Supplier<Duration> inputLatency, String latencyType) {
+        Optional<Duration> actualForwardDuration = getForwardPathLatency(inputData);
+        Optional<Duration> actualReverseDuration = getReversePathLatency(inputData);
 
         Set<String> errors = Sets.newHashSet();
-        if (!forward.isPresent()) {
-            errors.add(getNoForwardIslError(inputData));
+        if (!actualForwardDuration.isPresent()) {
+            errors.add(getNoLinkOnPath());
         }
-        if (!reverse.isPresent()) {
-            errors.add(getNoReverseIslError(inputData));
+        if (!actualReverseDuration.isPresent()) {
+            errors.add(getNoLinkOnPath());
         }
         if (!errors.isEmpty()) {
             return errors;
         }
 
-        Duration actualLatency = Duration.ofNanos(forward.get().getLatency());
+        Duration actualLatency = actualForwardDuration.get();
         if (actualLatency.compareTo(inputLatency.get()) > 0) {
             errors.add(getForwardLatencyErrorMessage(inputData, inputLatency.get(), latencyType, actualLatency));
         }
-        Duration actualReverseLatency = Duration.ofNanos(reverse.get().getLatency());
+        Duration actualReverseLatency = actualReverseDuration.get();
         if (actualReverseLatency.compareTo(inputLatency.get()) > 0) {
             errors.add(getReverseLatencyErrorMessage(inputData, inputLatency.get(), latencyType, actualReverseLatency));
         }
         return errors;
     }
 
+    private Optional<Duration> getPathLatency(InputData inputData,
+                                              Function<PathSegmentValidationData, Optional<Isl>> getIslfunction) {
+        try {
+            return Optional.of(Duration.ofNanos(inputData.getPath().getPathSegments().stream()
+                    .filter(s -> s.getDestPort() != null
+                            && s.getDestSwitchId() != null
+                            && s.getSrcSwitchId() != null
+                            && s.getSrcPort() != null)
+                    .map(getIslfunction)
+                    .map(isl -> isl.orElseThrow(() -> new IllegalArgumentException(
+                            "Cannot calculate latency because there is no link on this path segment")))
+                    .map(Isl::getLatency)
+                    .mapToLong(Long::longValue)
+                    .sum()));
+        } catch (IllegalArgumentException e) {
+            return Optional.empty();
+        }
+    }
+
+    private Optional<Duration> getForwardPathLatency(InputData inputData) {
+        return getPathLatency(inputData, s ->
+                getIslByEndPoints(s.getSrcSwitchId(), s.getSrcPort(), s.getDestSwitchId(), s.getDestPort()));
+    }
+
+    private Optional<Duration> getReversePathLatency(InputData inputData) {
+        return getPathLatency(inputData, s ->
+                getIslByEndPoints(s.getDestSwitchId(), s.getDestPort(), s.getSrcSwitchId(), s.getSrcPort()));
+    }
+
     private String getForwardLatencyErrorMessage(InputData data, Duration expectedLatency, String latencyType,
                                                  Duration actualLatency) {
         return String.format(
-                "Requested %s is too low between end points: switch %s port %d and switch"
-                        + " %s port %d. Requested %d ms, but the link supports %d ms",
+                "Requested %s is too low on the path between: switch %s and switch %s. "
+                        + "Requested %d ms, but the sum on the path is %d ms.",
                 latencyType,
-                data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort(),
-                data.getSegment().getDestSwitchId(), data.getSegment().getDestPort(),
+                data.getPath().getSrcSwitchId(), data.getPath().getDestSwitchId(),
                 expectedLatency.toMillis(), actualLatency.toMillis());
     }
 
     private String getReverseLatencyErrorMessage(InputData data, Duration expectedLatency, String latencyType,
                                                  Duration actualLatency) {
         return String.format(
-                "Requested %s is too low between end points: switch %s port %d and switch"
-                        + " %s port %d. Requested %d ms, but the link supports %d ms",
+                "Requested %s is too low on the path between: switch %s and switch %s. "
+                        + "Requested %d ms, but the sum on the path is %d ms.",
                 latencyType,
-                data.getSegment().getDestSwitchId(), data.getSegment().getDestPort(),
-                data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort(),
+                data.getPath().getDestSwitchId(), data.getPath().getSrcSwitchId(),
                 expectedLatency.toMillis(), actualLatency.toMillis());
     }
 
     private String getForwardBandwidthErrorMessage(InputData data, long actualBandwidth) {
         return String.format(
                 "There is not enough bandwidth between end points: switch %s port %d and switch %s port %d"
-                        + " (forward path). Requested bandwidth %d, but the link supports %d",
+                        + " (forward path). Requested bandwidth %d, but the link supports %d.",
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort(),
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort(),
                 data.getPath().getBandwidth(), actualBandwidth);
@@ -431,83 +495,86 @@ public class PathValidator {
     private String getReverseBandwidthErrorMessage(InputData data, long actualBandwidth) {
         return String.format(
                 "There is not enough bandwidth between end points: switch %s port %d and switch %s port %d"
-                        + " (reverse path). Requested bandwidth %d, but the link supports %d",
+                        + " (reverse path). Requested bandwidth %d, but the link supports %d.",
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort(),
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort(),
                 data.getPath().getBandwidth(), actualBandwidth);
     }
 
+    private String getNoLinkOnPath() {
+        return "Path latency cannot be calculated because there is no link at least at one path segment.";
+    }
+
     private String getNoForwardIslError(InputData data) {
         return String.format(
-                "There is no ISL between end points: switch %s port %d and switch %s port %d",
+                "There is no ISL between end points: switch %s port %d and switch %s port %d.",
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort(),
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort());
     }
 
     private String getNoReverseIslError(InputData data) {
         return String.format(
-                "There is no ISL between end points: switch %s port %d and switch %s port %d",
+                "There is no ISL between end points: switch %s port %d and switch %s port %d.",
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort(),
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort());
     }
 
     private String getForwardIslNotActiveError(InputData data) {
         return String.format(
-                "The ISL is not in ACTIVE state between end points: switch %s port %d and switch %s port %d",
+                "The ISL is not in ACTIVE state between end points: switch %s port %d and switch %s port %d.",
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort(),
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort());
     }
 
     private String getReverseIslNotActiveError(InputData data) {
         return String.format(
-                "The ISL is not in ACTIVE state between end points: switch %s port %d and switch %s port %d",
+                "The ISL is not in ACTIVE state between end points: switch %s port %d and switch %s port %d.",
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort(),
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort());
     }
 
     private String getNoDiverseFlowFoundError(InputData data) {
-        return String.format("Could not find the diverse flow with ID %s", data.getPath().getDiverseWithFlow());
+        return String.format("Could not find the diverse flow with ID %s.", data.getPath().getDiverseWithFlow());
     }
 
     private String getNotDiverseSegmentError(InputData data) {
         return String.format("The following segment intersects with the flow %s: source switch %s port %d and "
-                        + "destination switch %s port %d",
+                        + "destination switch %s port %d.",
                 data.getPath().getDiverseWithFlow(),
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort(),
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort());
     }
 
     private String getSrcSwitchNotFoundError(InputData data) {
-        return String.format("The following switch has not been found: %s", data.getSegment().getSrcSwitchId());
+        return String.format("The following switch has not been found: %s.", data.getSegment().getSrcSwitchId());
     }
 
     private String getDestSwitchNotFoundError(InputData data) {
-        return String.format("The following switch has not been found: %s", data.getSegment().getDestSwitchId());
+        return String.format("The following switch has not been found: %s.", data.getSegment().getDestSwitchId());
     }
 
     private String getSrcSwitchDoesNotSupportEncapsulationTypeError(InputData data) {
-        return String.format("The switch %s doesn't support the encapsulation type %s",
+        return String.format("The switch %s doesn't support the encapsulation type %s.",
                 data.getSegment().getSrcSwitchId(), data.getPath().getFlowEncapsulationType());
     }
 
     private String getDestSwitchDoesNotSupportEncapsulationTypeError(InputData data) {
-        return String.format("The switch %s doesn't support the encapsulation type %s",
+        return String.format("The switch %s doesn't support the encapsulation type %s.",
                 data.getSegment().getDestSwitchId(), data.getPath().getFlowEncapsulationType());
     }
 
     @Getter
-    @AllArgsConstructor
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
     private static class InputData {
         PathValidationData path;
         PathValidationData.PathSegmentValidationData segment;
-    }
 
-    @Getter
-    @AllArgsConstructor
-    private static class RepositoryData {
-        IslRepository islRepository;
-        FlowRepository flowRepository;
-        SwitchPropertiesRepository switchPropertiesRepository;
-        SwitchRepository switchRepository;
+        public static InputData of(PathValidationData pathValidationData) {
+            return new InputData(pathValidationData, null);
+        }
+
+        public static InputData of(PathValidationData path, PathSegmentValidationData segment) {
+            return new InputData(path, segment);
+        }
     }
 }
