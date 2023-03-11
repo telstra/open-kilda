@@ -41,6 +41,7 @@ import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
+import org.openkilda.pce.PathToCheck;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.FailReason;
@@ -55,6 +56,9 @@ import org.openkilda.pce.model.PathWeight.Penalty;
 import org.openkilda.pce.model.WeightFunction;
 
 import com.google.common.annotations.VisibleForTesting;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
@@ -96,15 +100,15 @@ public class InMemoryPathComputer implements PathComputer {
             throws UnroutableFlowException, RecoverableException {
         AvailableNetwork network = availableNetworkFactory.getAvailableNetwork(flow, reusePathsResources);
 
-        return getPath(network, flow, flow.getPathComputationStrategy(), isProtected);
+        return getPath(network, new RequestedPath(flow), flow.getPathComputationStrategy(), isProtected);
     }
 
-    private GetPathsResult getPath(AvailableNetwork network, Flow flow,
+    private GetPathsResult getPath(AvailableNetwork network, RequestedPath requestedPath,
                                    PathComputationStrategy strategy, boolean isProtected)
             throws UnroutableFlowException {
-        if (flow.isOneSwitchFlow()) {
+        if (requestedPath.isOneSwitch()) {
             log.info("No path computation for one-switch flow");
-            SwitchId singleSwitchId = flow.getSrcSwitchId();
+            SwitchId singleSwitchId = requestedPath.getSrcSwitchId();
             FindOneDirectionPathResult pathResult = FindOneDirectionPathResult.builder()
                     .foundPath(emptyList()).backUpPathComputationWayUsed(false).build();
             return GetPathsResult.builder()
@@ -117,54 +121,55 @@ public class InMemoryPathComputer implements PathComputer {
         WeightFunction weightFunction = getWeightFunctionByStrategy(strategy, isProtected);
         FindPathResult findPathResult;
         try {
-            findPathResult = findPathInNetwork(flow, network, weightFunction, strategy);
+            findPathResult = findPathInNetwork(requestedPath, network, weightFunction, strategy);
         } catch (UnroutableFlowException e) {
             String bandwidthMessage = "";
-            if (flow.getBandwidth() > 0) {
+            if (requestedPath.getBandwidth() > 0) {
                 bandwidthMessage = format(", %s=%s", FailReasonType.MAX_BANDWIDTH,
-                        flow.isIgnoreBandwidth() ? " ignored" : flow.getBandwidth());
+                        requestedPath.isIgnoreBandwidth() ? " ignored" : requestedPath.getBandwidth());
             }
-            throw new UnroutableFlowException(e.getMessage().concat(bandwidthMessage), e, flow.getFlowId(),
-                    flow.isIgnoreBandwidth());
+            throw new UnroutableFlowException(e.getMessage().concat(bandwidthMessage), e, requestedPath.getName(),
+                    requestedPath.isIgnoreBandwidth());
         }
 
-        return convertToGetPathsResult(flow.getSrcSwitchId(), flow.getDestSwitchId(), findPathResult,
-                strategy, flow.getPathComputationStrategy());
+        return convertToGetPathsResult(requestedPath.getSrcSwitchId(), requestedPath.getDstSwitchId(), findPathResult,
+                strategy, requestedPath.getPathComputationStrategy());
     }
 
-    private FindPathResult findPathInNetwork(Flow flow, AvailableNetwork network,
+    private FindPathResult findPathInNetwork(RequestedPath requestedPath, AvailableNetwork network,
                                              WeightFunction weightFunction,
                                              PathComputationStrategy strategy)
             throws UnroutableFlowException {
 
         if (MAX_LATENCY.equals(strategy)
-                && (flow.getMaxLatency() == null || flow.getMaxLatency() == 0)) {
+                && (requestedPath.getMaxLatency() == null || requestedPath.getMaxLatency() == 0)) {
             strategy = LATENCY;
         }
 
         switch (strategy) {
             case COST:
             case COST_AND_AVAILABLE_BANDWIDTH:
-                return pathFinder.findPathWithMinWeight(network, flow.getSrcSwitchId(),
-                        flow.getDestSwitchId(), weightFunction);
+                return pathFinder.findPathWithMinWeight(network, requestedPath.getSrcSwitchId(),
+                        requestedPath.getDstSwitchId(), weightFunction);
             case LATENCY:
-                long maxLatency = flow.getMaxLatency() == null || flow.getMaxLatency() == 0
-                        ? Long.MAX_VALUE : flow.getMaxLatency();
-                long maxLatencyTier2 = flow.getMaxLatencyTier2() == null || flow.getMaxLatencyTier2() == 0
-                        ? Long.MAX_VALUE : flow.getMaxLatencyTier2();
+                long maxLatency = requestedPath.getMaxLatency() == null || requestedPath.getMaxLatency() == 0
+                        ? Long.MAX_VALUE : requestedPath.getMaxLatency();
+                long maxLatencyTier2 = requestedPath.getMaxLatencyTier2() == null
+                        || requestedPath.getMaxLatencyTier2() == 0
+                        ? Long.MAX_VALUE : requestedPath.getMaxLatencyTier2();
                 if (maxLatencyTier2 < maxLatency) {
                     log.warn("Bad flow params found: maxLatencyTier2 ({}) should be greater than maxLatency ({}). "
                                     + "Put maxLatencyTier2 = maxLatency during path calculation.",
-                            flow.getMaxLatencyTier2(), flow.getMaxLatency());
+                            requestedPath.getMaxLatencyTier2(), requestedPath.getMaxLatency());
                     maxLatencyTier2 = maxLatency;
                 }
-                return pathFinder.findPathWithMinWeightAndLatencyLimits(network, flow.getSrcSwitchId(),
-                        flow.getDestSwitchId(), weightFunction, maxLatency, maxLatencyTier2);
+                return pathFinder.findPathWithMinWeightAndLatencyLimits(network, requestedPath.getSrcSwitchId(),
+                        requestedPath.getDstSwitchId(), weightFunction, maxLatency, maxLatencyTier2);
             case MAX_LATENCY:
                 try {
-                    return pathFinder.findPathWithWeightCloseToMaxWeight(network, flow.getSrcSwitchId(),
-                            flow.getDestSwitchId(), weightFunction, flow.getMaxLatency(),
-                            Optional.ofNullable(flow.getMaxLatencyTier2()).orElse(0L));
+                    return pathFinder.findPathWithWeightCloseToMaxWeight(network, requestedPath.getSrcSwitchId(),
+                            requestedPath.getDstSwitchId(), weightFunction, requestedPath.getMaxLatency(),
+                            Optional.ofNullable(requestedPath.getMaxLatencyTier2()).orElse(0L));
                 } catch (UnroutableFlowException e) {
                     if (e.getFailReason() == null
                             || !e.getFailReason().containsKey(FailReasonType.MAX_WEIGHT_EXCEEDED)) {
@@ -176,11 +181,11 @@ public class InMemoryPathComputer implements PathComputer {
                     String failLatencyReason;
                     if (actualLatency == null) {
                         failLatencyReason = format("Requested path must have latency %sms or lower",
-                                TimeUnit.NANOSECONDS.toMillis(flow.getMaxLatency()));
+                                TimeUnit.NANOSECONDS.toMillis(requestedPath.getMaxLatency()));
                     } else {
                         failLatencyReason = format("Requested path must have latency %sms or lower, "
                                         + "but best path has latency %sms",
-                                TimeUnit.NANOSECONDS.toMillis(flow.getMaxLatency()),
+                                TimeUnit.NANOSECONDS.toMillis(requestedPath.getMaxLatency()),
                                 TimeUnit.NANOSECONDS.toMillis(actualLatency));
                     }
                     reasons.put(FailReasonType.LATENCY_LIMIT, new FailReason(FailReasonType.LATENCY_LIMIT,
@@ -462,6 +467,13 @@ public class InMemoryPathComputer implements PathComputer {
         return ypoint;
     }
 
+    @Override
+    public GetPathsResult checkPath(PathToCheck pathToCheck, Collection<PathId> reusePathsResources)
+            throws UnroutableFlowException, RecoverableException {
+        AvailableNetwork network = availableNetworkFactory.getAvailableNetwork(pathToCheck, reusePathsResources);
+        return getPath(network, new RequestedPath(pathToCheck), pathToCheck.getStrategy(), false);
+    }
+
     @VisibleForTesting
     List<LinkedList<SwitchId>> convertFlowPathsToSwitchLists(SwitchId sharedSwitchId, FlowPath... flowPaths) {
         List<LinkedList<SwitchId>> paths = new ArrayList<>();
@@ -490,5 +502,34 @@ public class InMemoryPathComputer implements PathComputer {
         }
 
         return paths;
+    }
+
+    @Data
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    private static class RequestedPath {
+        SwitchId srcSwitchId;
+        SwitchId dstSwitchId;
+        long bandwidth;
+        boolean ignoreBandwidth;
+        PathComputationStrategy pathComputationStrategy;
+        Long maxLatency;
+        Long maxLatencyTier2;
+        String name;
+
+        RequestedPath(Flow flow) {
+            this(flow.getSrcSwitchId(), flow.getDestSwitchId(), flow.getBandwidth(), flow.isIgnoreBandwidth(),
+                    flow.getPathComputationStrategy(), flow.getMaxLatency(), flow.getMaxLatencyTier2(),
+                    flow.getFlowId());
+        }
+
+        RequestedPath(PathToCheck path) {
+            this(path.getSrcSwitchId(), path.getDestSwitchId(), path.getMinAvailableBandwidth(),
+                    path.getMinAvailableBandwidth() == 0, path.getStrategy(), path.getLatency(),
+                    path.getLatencyTier2(), "Test path"); //TODO add name
+        }
+
+        public boolean isOneSwitch() {
+            return srcSwitchId.equals(dstSwitchId);
+        }
     }
 }

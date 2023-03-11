@@ -15,10 +15,19 @@
 
 package org.openkilda.pce;
 
+import static java.lang.String.format;
+
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
+import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
+import org.openkilda.model.SwitchStatus;
+import org.openkilda.pce.Path.Segment;
 import org.openkilda.pce.exception.RecoverableException;
+import org.openkilda.pce.exception.ValidationException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.pce.model.Edge;
 import org.openkilda.pce.model.Node;
@@ -27,11 +36,15 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslImmutableView;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.map.LazyMap;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -44,19 +57,23 @@ import java.util.stream.Collectors;
 public class AvailableNetworkFactory {
     private PathComputerConfig config;
     private IslRepository islRepository;
-    private FlowPathRepository flowPathRepository;
+    private final FlowPathRepository flowPathRepository;
+    private final SwitchRepository switchRepository;
+    private final SwitchPropertiesRepository switchPropertiesRepository;
 
     public AvailableNetworkFactory(PathComputerConfig config, RepositoryFactory repositoryFactory) {
         this.config = config;
         this.islRepository = repositoryFactory.createIslRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
     }
 
     /**
      * Gets a {@link AvailableNetwork}.
      *
-     * @param flow                      the flow, for which {@link AvailableNetwork} is constructing.
-     * @param reusePathsResources       reuse resources already allocated by {@param reusePathsResources} paths.
+     * @param flow the flow, for which {@link AvailableNetwork} is constructing.
+     * @param reusePathsResources reuse resources already allocated by {@param reusePathsResources} paths.
      * @return {@link AvailableNetwork} instance.
      */
     public AvailableNetwork getAvailableNetwork(Flow flow, Collection<PathId> reusePathsResources)
@@ -71,7 +88,7 @@ public class AvailableNetworkFactory {
                 if (flow.getYFlowId() != null) {
                     reusePaths.addAll(flowPathRepository.findPathIdsBySharedBandwidthGroupId(flow.getYFlowId()));
                 }
-                reuseResources(reusePaths, flow, network);
+                reuseResources(reusePaths, flow.getBandwidth(), flow.getEncapsulationType(), network);
             }
         } catch (PersistenceException e) {
             throw new RecoverableException("An error from the database", e);
@@ -116,7 +133,87 @@ public class AvailableNetworkFactory {
         return network;
     }
 
-    private void reuseResources(Collection<PathId> reusePathsResources, Flow flow, AvailableNetwork network) {
+    /**
+     * Checks path.
+     */
+    public AvailableNetwork getAvailableNetwork(PathToCheck pathToCheck, Collection<PathId> reusePathsResources)
+            throws RecoverableException {
+        AvailableNetwork network = new AvailableNetwork();
+        LazyMap<SwitchId, Switch> switchMap = LazyMap.lazyMap(new HashMap<>(), switchId ->
+                switchRepository.findById(switchId)
+                        .orElseThrow(() -> new ValidationException(
+                                format("Switch %s doesn't exist", switchId))));
+
+        LazyMap<SwitchId, SwitchProperties> switchPropertiesMap = LazyMap.lazyMap(new HashMap<>(), switchId ->
+                switchPropertiesRepository.findBySwitchId(switchId)
+                        .orElseThrow(() -> new ValidationException(
+                                format("Switch %s has no switch properties", switchId))));
+        List<IslImmutableView> dbIsls = new ArrayList<>();
+        try {
+            for (Segment segment : pathToCheck.getSegments()) {
+                for (SwitchId switchId : new SwitchId[]{segment.getSrcSwitchId(), segment.getDestSwitchId()}) {
+                    if (!SwitchStatus.ACTIVE.equals(switchMap.get(segment.getSrcSwitchId()).getStatus())) {
+                        throw new ValidationException(format("Switch %s is not active", switchId));
+                    }
+                    if (switchPropertiesMap.get(switchId).getSupportedTransitEncapsulation()
+                            .contains(pathToCheck.getEncapsulationType())) {
+                        throw new ValidationException("Unsupported encapsulation"); //TODO add message
+                    }
+                }
+                dbIsls.add(islRepository.findByEndpointsImmutable(
+                                segment.getSrcSwitchId(), segment.getSrcPort(),
+                                segment.getDestSwitchId(), segment.getDestPort())
+                        .orElseThrow(() -> new ValidationException("Isl doesn't exist"))); //TODO add message
+                dbIsls.add(islRepository.findByEndpointsImmutable(
+                                segment.getDestSwitchId(), segment.getDestPort(),
+                                segment.getSrcSwitchId(), segment.getSrcPort())
+                        .orElseThrow(() -> new ValidationException("Isl doesn't exist"))); //TODO add message
+            }
+
+            if (pathToCheck.getMinAvailableBandwidth() != 0) {
+                for (IslImmutableView isl : dbIsls) {
+                    if (isl.getAvailableBandwidth() < pathToCheck.getMinAvailableBandwidth()) {
+                        throw new ValidationException("Not enough bandwidth"); //TODO message
+                    }
+                }
+            }
+
+            dbIsls.forEach(link -> addIslAsEdge(link, network));
+
+            if (pathToCheck.getMinAvailableBandwidth() != 0) {
+                Set<PathId> reusePaths = new HashSet<>(reusePathsResources);
+                reuseResources(reusePaths, pathToCheck.getMinAvailableBandwidth(), pathToCheck.getEncapsulationType(),
+                        network);
+            }
+        } catch (PersistenceException e) {
+            throw new RecoverableException("An error from the database", e);
+        }
+
+        if (pathToCheck.getDiverseGroupId() != null) {
+            log.info("Filling AvailableNetwork diverse weights for group with id {}", pathToCheck.getDiverseGroupId());
+
+            Collection<PathId> flowPaths = flowPathRepository.findPathIdsByFlowDiverseGroupId(
+                    pathToCheck.getDiverseGroupId());
+            if (!reusePathsResources.isEmpty()) {
+                flowPaths = flowPaths.stream()
+                        .filter(s -> !reusePathsResources.contains(s))
+                        .collect(Collectors.toList());
+            }
+
+            flowPaths.forEach(pathId ->
+                    flowPathRepository.findById(pathId)
+                            .ifPresent(flowPath -> {
+                                network.processDiversitySegments(flowPath.getSegments(), pathToCheck);
+                                network.processDiversitySegmentsWithPop(flowPath.getSegments());
+                            }));
+        }
+
+        return network;
+    }
+
+    private void reuseResources(
+            Collection<PathId> reusePathsResources, long bandwidth, FlowEncapsulationType encapsulationType,
+            AvailableNetwork network) {
         reusePathsResources.stream()
                 .filter(pathId -> flowPathRepository.findById(pathId)
                         .map(path -> !path.isIgnoreBandwidth())
@@ -124,7 +221,7 @@ public class AvailableNetworkFactory {
                 .forEach(pathId -> {
                     // ISLs occupied by the flow (take the bandwidth already occupied by the flow into account).
                     islRepository.findActiveByPathAndBandwidthAndEncapsulationType(
-                                    pathId, flow.getBandwidth(), flow.getEncapsulationType())
+                                    pathId, bandwidth, encapsulationType)
                             .forEach(link -> addIslAsEdge(link, network));
                 });
     }

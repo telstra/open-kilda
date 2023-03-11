@@ -185,6 +185,12 @@ public class FermaIslRepository extends FermaGenericRepository<Isl, IslData, Isl
     }
 
     @Override
+    public Optional<IslImmutableView> findByEndpointsImmutable(
+            SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort) {
+        return findIsl(srcSwitchId, srcPort, dstSwitchId, dstPort).map(isl -> new IslViewImpl(isl, islConfig));
+    }
+
+    @Override
     public Collection<Isl> findByPathIds(List<PathId> pathIds) {
         List<String> pathIdAsStr = pathIds.stream()
                 .map(PathIdConverter.INSTANCE::toGraphProperty)

@@ -75,4 +75,7 @@ public interface PathComputer {
      * Finds the Y-point from the provided flow paths.
      */
     SwitchId getIntersectionPoint(SwitchId sharedSwitchId, FlowPath... flowPaths);
+
+    GetPathsResult checkPath(PathToCheck pathToCheck, Collection<PathId> reusePathsResources)
+            throws UnroutableFlowException, RecoverableException;
 }

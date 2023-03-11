@@ -45,6 +45,9 @@ public interface IslRepository extends Repository<Isl> {
 
     Optional<Isl> findByEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
 
+    Optional<IslImmutableView> findByEndpointsImmutable(
+            SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
+
     Collection<Isl> findByPathIds(List<PathId> pathIds);
 
     /**
