@@ -15,9 +15,6 @@
 
 package org.openkilda.wfm.topology.nbworker.validators;
 
-import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH;
-import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
-
 import org.openkilda.messaging.info.network.PathValidationResult;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -40,11 +37,12 @@ import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.apache.commons.collections4.map.LazyMap;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.storm.shade.com.google.common.collect.Maps;
 
 import java.time.Duration;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -86,7 +84,6 @@ public class PathValidator {
      * @return a response object containing the validation result and errors if any
      */
     public PathValidationResult validatePath(PathValidationData pathValidationData) {
-        initCache();
         Set<String> result = pathValidationData.getPathSegments().stream()
                 .map(segment -> executeValidations(
                         InputData.of(pathValidationData, segment),
@@ -103,32 +100,25 @@ public class PathValidator {
                 .build();
     }
 
-    private void initCache() {
-        islCache = new HashMap<>();
-        switchCache = new HashMap<>();
-    }
-
     private Optional<Isl> findIslByEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId destSwitchId, int destPort) {
-        IslEndpoints endpoints = new IslEndpoints(srcSwitchId.toString(), srcPort, destSwitchId.toString(), destPort);
-        if (!islCache.containsKey(endpoints)) {
-            islCache.put(endpoints,
-                    islRepository.findByEndpoints(srcSwitchId, srcPort, destSwitchId, destPort));
+        if (islCache == null) {
+            islCache = LazyMap.lazyMap(Maps.newHashMap(), endpoints -> islRepository.findByEndpoints(
+                    new SwitchId(endpoints.getSrcSwitch()), endpoints.getSrcPort(),
+                    new SwitchId(endpoints.getDestSwitch()), endpoints.getDestPort()));
         }
-        return islCache.get(endpoints);
+        return islCache.get(new IslEndpoints(srcSwitchId.toString(), srcPort, destSwitchId.toString(), destPort));
     }
 
     private Map<SwitchId, Switch> findSwitchesByIds(Set<SwitchId> switchIds) {
-        Map<SwitchId, Switch> result = new HashMap<>();
-        switchIds.forEach(s -> {
-            if (!switchCache.containsKey(s)) {
-                switchCache.put(s, switchRepository.findById(s));
-            }
-            if (switchCache.get(s).isPresent()) {
-                result.put(s, switchCache.get(s).get());
-            }
-        });
+        if (switchCache == null) {
+            switchCache = LazyMap.lazyMap(Maps.newHashMap(), switchRepository::findById);
+        }
 
-        return result;
+        return switchIds.stream()
+                .map(switchCache::get)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toMap(Switch::getSwitchId, Function.identity()));
     }
 
     private Set<String> executeValidations(InputData inputData,
@@ -186,17 +176,14 @@ public class PathValidator {
 
     private boolean isBandwidthValidationRequired(PathValidationData pathValidationData) {
         return pathValidationData.getBandwidth() != null
-                && pathValidationData.getBandwidth() != 0
-                && (pathValidationData.getPathComputationStrategy() == null
-                || pathValidationData.getPathComputationStrategy() == COST_AND_AVAILABLE_BANDWIDTH);
+                && pathValidationData.getBandwidth() != 0;
     }
 
     private boolean isLatencyTier2ValidationRequired(PathValidationData pathValidationData) {
         return pathValidationData.getLatencyTier2() != null
                 && !pathValidationData.getLatencyTier2().isZero()
-                && (pathValidationData.getPathComputationStrategy() == null
-                || pathValidationData.getPathComputationStrategy() == PathComputationStrategy.LATENCY
-                || pathValidationData.getPathComputationStrategy() == MAX_LATENCY);
+                && (pathValidationData.getPathComputationStrategy() == PathComputationStrategy.LATENCY
+                || pathValidationData.getPathComputationStrategy() == PathComputationStrategy.MAX_LATENCY);
     }
 
     private boolean isLatencyValidationRequired(PathValidationData pathValidationData) {
@@ -204,7 +191,7 @@ public class PathValidator {
                 && !pathValidationData.getLatency().isZero()
                 && (pathValidationData.getPathComputationStrategy() == null
                 || pathValidationData.getPathComputationStrategy() == PathComputationStrategy.LATENCY
-                || pathValidationData.getPathComputationStrategy() == MAX_LATENCY);
+                || pathValidationData.getPathComputationStrategy() == PathComputationStrategy.MAX_LATENCY);
     }
 
     private Set<String> validateForwardAndReverseLinks(InputData inputData) {
