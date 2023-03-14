@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.SubFlowSharedEndpointEncapsulation;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
+import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;

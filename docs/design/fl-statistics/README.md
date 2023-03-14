@@ -1,26 +1,26 @@
 # FL Statistics
 
 ## Goals
-- Ability to take statistics from switches more often
+- Ability to gather statistics from switches more often
 - Scale up numbers of switches
 
 ## The idea
 Make a separate dedicated FL instance for statistics.
 
 ## Implementation
-There is two FL instances: Management and Statistics.
-- FL Statistics (here and after FL Stats) must only collect statistics from the switches.
-- FL Management (here and after FL Mgmt) do the other work and can collect statistics as well in case when the
-switch does not connect to FL Statistics.
+There are two FL instances: Management and Statistics.
+- FL Statistics (FL Stats) must only collect statistics from the switches.
+- FL Management (FL Mgmt) do the other work and can collect statistics as well in the case when a
+switch is not connected to FL Stats.
 
-The new topology "StatisticsRouter" was added between "Statistics" topology and "Router"
-topology. Statistics router receive a request from "Statistics" topology and make two
-separate requests for FL Mgmt and FL Stats. It puts exclude switch list into request to 
-FL Mgmt for avoid double statistics collection.
+A new topology "StatisticsRouter" was added between the "Statistics" topology and "Router"
+topology. Statistics router receives a request from "Statistics" topology and makes two
+separate requests for FL Mgmt and FL Stats. It puts exclude switch list into the request to 
+FL Mgmt to avoid double statistics collection.
 
-Also Statistics router sends request to FL Stats for list of connected switches. Excluding 
-rules will be based on this list. FL Stats respond the list with "controllerId". This 
-allow us to have multiple FL Stats instances.
+Additionally, the Statistics router sends a request to FL Stats for keeping a list of connected switches. Excluding 
+rules will be based on this list. A FL Stats response with the list of connected switches contains the "controllerId". 
+This allows us to have multiple FL Stats instances.
 
 ### Kafka topics participate in statistics collection.
 ![kafka-topics](./fl_statistics_kafka_topics.png)

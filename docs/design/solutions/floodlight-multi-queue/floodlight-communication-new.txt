@@ -1,5 +1,5 @@
 @startuml
-title Floodlight Kilda Modules communication diagram (New)
+title Floodlight OpenKilda Modules communication diagram (New)
 
 participant OFEventWFMTopology
 control kilda.speaker.disco
