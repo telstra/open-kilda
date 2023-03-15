@@ -1322,6 +1322,44 @@ class FlowCrudSpec extends HealthCheckSpecification {
         !error && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
+    def "Unable to update flow with incorrect id in request body"() {
+        given:"A flow"
+        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
+        flowHelperV2.addFlow(flow)
+
+        when: "Try to update flow with incorrect flow id in request body"
+        northboundV2.updateFlow(flow.flowId, flow.tap {flowId = "new_flow_id"})
+
+        then: "Bad Request response is returned"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.BAD_REQUEST
+        def errorDetails = error.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "flow_id from body and from path are different"
+
+        cleanup:
+        !error && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    def "Unable to update flow with incorrect id in request path"() {
+        given:"A flow"
+        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
+        flowHelperV2.addFlow(flow)
+
+        when: "Try to update flow with incorrect flow id in request path"
+        northboundV2.updateFlow("new_flow_id", flow.tap {maximumBandwidth = maximumBandwidth+1})
+
+        then: "Bad Request response is returned"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.BAD_REQUEST
+        def errorDetails = error.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "flow_id from body and from path are different"
+
+        cleanup:
+        !error && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
     @Shared
     def errorDescription = { String operation, FlowRequestV2 flow, String endpoint, FlowRequestV2 conflictingFlow,
                              String conflictingEndpoint ->
