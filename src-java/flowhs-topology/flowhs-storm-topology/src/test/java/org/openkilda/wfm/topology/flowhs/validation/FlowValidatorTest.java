@@ -321,21 +321,6 @@ public class FlowValidatorTest {
         flowValidator.checkDiverseFlow(flow);
     }
 
-    private RequestedFlow getTestRequestWithMaxLatencyAndMaxLatencyTier2(Long maxLatency, Long maxLatencyTier2) {
-        return RequestedFlow.builder()
-                .flowId(FLOW_1)
-                .maxLatency(maxLatency)
-                .maxLatencyTier2(maxLatencyTier2)
-                .srcSwitch(SWITCH_ID_1)
-                .srcPort(10)
-                .srcVlan(11)
-                .destSwitch(SWITCH_ID_2)
-                .destPort(12)
-                .destVlan(13)
-                .detectConnectedDevices(new DetectConnectedDevices())
-                .build();
-    }
-
     @Test(expected = InvalidFlowException.class)
     public void failIfMaxLatencyTier2HigherThanMaxLatency() throws InvalidFlowException {
         RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2((long) 1000, (long) 500);
@@ -358,6 +343,21 @@ public class FlowValidatorTest {
     public void doesntFailIfMaxLatencyTier2andMaxLatencyAreEqual() throws InvalidFlowException {
         RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(500L, 500L);
         flowValidator.checkMaxLatencyTier(flow);
+    }
+
+    private RequestedFlow getTestRequestWithMaxLatencyAndMaxLatencyTier2(Long maxLatency, Long maxLatencyTier2) {
+        return RequestedFlow.builder()
+                .flowId(FLOW_1)
+                .maxLatency(maxLatency)
+                .maxLatencyTier2(maxLatencyTier2)
+                .srcSwitch(SWITCH_ID_1)
+                .srcPort(10)
+                .srcVlan(11)
+                .destSwitch(SWITCH_ID_2)
+                .destPort(12)
+                .destVlan(13)
+                .detectConnectedDevices(new DetectConnectedDevices())
+                .build();
     }
 
     private RequestedFlow buildFlow(int srcVlan, int dstVlan, Set<Integer> statVlans) {
