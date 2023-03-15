@@ -1323,6 +1323,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags([LOW_PRIORITY])
     def "Unable to update flow with incorrect id in request body"() {
         given:"A flow"
         def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
@@ -1342,6 +1343,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags([LOW_PRIORITY])
     def "Unable to update flow with incorrect id in request path"() {
         given:"A flow"
         def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
