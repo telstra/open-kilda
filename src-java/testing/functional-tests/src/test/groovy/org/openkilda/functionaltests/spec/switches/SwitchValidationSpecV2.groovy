@@ -1,10 +1,17 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.helpers.DockerHelper
+import org.openkilda.functionaltests.helpers.model.ContainerName
+import spock.lang.Shared
+import spock.lang.Unroll
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
@@ -65,6 +72,9 @@ class SwitchValidationSpecV2 extends HealthCheckSpecification {
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
+    @Value('${docker.host}')
+    @Shared
+    String dockerHost
 
     @Tidy
     def "Able to validate and sync a terminating switch with proper rules and meters"() {
@@ -1006,6 +1016,42 @@ misconfigured"
         where:
         include << ["METERS", "METERS|GROUPS", "METERS|GROUPS|RULES"]
         sectionsToVerifyPresence << [["meters"], ["meters", "groups"], ["meters", "groups", "rules"]]
+    }
+
+    @Unroll
+    @Tidy
+    @Tags([VIRTUAL, LOW_PRIORITY])
+    def "Able to validate switch using #apiVersion API when GRPC is down"() {
+        given: "Random switch without LAG feature enabled"
+        def aSwitch = topology.getSwitches().find {
+            !database.getSwitch(it.getDpId()).getFeatures().contains(SwitchFeature.LAG)
+        }
+
+        and: "GRPC container is down"
+        def dockerHelper = new DockerHelper(dockerHost)
+        def grpcContainerId = dockerHelper.getContainerId(ContainerName.GRPC)
+        dockerHelper.pauseContainer(grpcContainerId)
+
+        and: "Switch has a new feature artificially added directly to DB"
+        def originalFeatures = database.getSwitch(aSwitch.getDpId()).getFeatures() as Set
+        def newFeatures = originalFeatures + SwitchFeature.LAG
+        database.setSwitchFeatures(aSwitch.getDpId(), newFeatures)
+
+        when: "Validate switch"
+        def validationResult = iface.validateSwitch(aSwitch.getDpId())
+
+        then: "Validation is successful"
+        validationResult.getLogicalPorts().getError() ==
+                "Timeout for waiting response on DumpLogicalPortsRequest() Details: Error in SpeakerWorkerService"
+
+        cleanup:
+        dockerHelper.resumeContainer(grpcContainerId)
+        database.setSwitchFeatures(aSwitch.getDpId(), originalFeatures)
+
+        where:
+        apiVersion  | iface
+        "V2"        | northboundV2
+        "V1"        | northbound
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {

@@ -1,8 +1,8 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.openkilda.functionaltests.helpers.model.ContainerName.WFM
+
 import com.spotify.docker.client.DockerClient
-import com.spotify.docker.client.DockerClient.ListContainersParam
-import com.spotify.docker.client.messages.Container
 import com.spotify.docker.client.messages.ContainerConfig
 import groovy.util.logging.Slf4j
 
@@ -10,7 +10,6 @@ import java.util.concurrent.TimeUnit
 
 @Slf4j
 class WfmManipulator {
-    private static final String WFM_CONTAINER_NAME = "/wfm"
     /* Storm topologies require some time to fully roll after booting.
      * TODO(rtretiak): find a more reliable way to wait for the H-hour
      * Not respecting this wait may lead to subsequent tests instability
@@ -19,14 +18,12 @@ class WfmManipulator {
 
     DockerClient dockerClient
     DockerHelper dockerHelper
-    Container wfmContainer
+    String wfmContainerId
 
     WfmManipulator(String dockerHost) {
         dockerHelper = new DockerHelper(dockerHost)
         dockerClient = dockerHelper.dockerClient
-        wfmContainer = dockerClient.listContainers(ListContainersParam.allContainers()).find {
-            it.names().contains(WFM_CONTAINER_NAME)
-        }
+        wfmContainerId = dockerHelper."get container by name"(WFM).id()
     }
 
     /**
@@ -35,9 +32,9 @@ class WfmManipulator {
      */
     def restartWfm(boolean wait = true) {
         log.warn "Restarting wfm"
-        dockerHelper.restartContainer(wfmContainer.id())
+        dockerHelper.restartContainer(wfmContainerId)
         if (wait) {
-            dockerHelper.waitContainer(wfmContainer.id())
+            dockerHelper.waitContainer(wfmContainerId)
             TimeUnit.SECONDS.sleep(WFM_WARMUP_SECONDS)
         }
     }
@@ -57,7 +54,7 @@ class WfmManipulator {
         def container
         def image
         try {
-            image = dockerClient.commitContainer(wfmContainer.id(), "kilda/testing", null,
+            image = dockerClient.commitContainer(wfmContainerId, "kilda/testing", null,
                     ContainerConfig.builder()
                                    .cmd(['/bin/bash', '-c',
                                          "PATH=\${PATH}:/opt/storm/bin;make -C /app $action-$topologyName".toString()])
