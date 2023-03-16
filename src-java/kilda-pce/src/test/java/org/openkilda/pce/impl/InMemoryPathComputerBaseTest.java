@@ -77,7 +77,6 @@ import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
@@ -123,12 +122,12 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     }
 
     /**
-     * See how it works with a large network. It takes a while to create the network .. therefore @Ignore so that it
-     * doesn't slow down unit tests.
+     * See how it works with a large network.
      */
     @Test
-    @Ignore
-    public void shouldFindOverLargeIslands() throws RecoverableException, UnroutableFlowException {
+    public void findPathOverLargeIslands() throws RecoverableException, UnroutableFlowException {
+        final int expectedPathForwardSegmentSize = 139;
+
         createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "08:", 1);
 
         for (int i = 0; i < 50; i++) {
@@ -164,8 +163,9 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
                 new BestWeightAndShortestPathFinder(200), config);
         GetPathsResult path = pathComputer.getPath(f1);
+
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(278));
+        assertEquals(expectedPathForwardSegmentSize, path.getForward().getSegments().size());
 
         Switch srcSwitch2 = getSwitchById("08:01");
         Switch destSwitch2 = getSwitchById("11:04");
