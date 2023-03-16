@@ -528,7 +528,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         error.statusCode == HttpStatus.NOT_FOUND
         def errorDetails = error.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "Not enough bandwidth or no path found. : Switch "+
+        errorDetails.errorDescription == "Not enough bandwidth or no path found. Switch "+
                 "${isolatedSwitch.dpId.toString()} doesn't have " +
                 "links with enough bandwidth, Failed to find path with " +
                 "requested bandwidth=$flow.maximumBandwidth"
