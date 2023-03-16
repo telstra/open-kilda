@@ -99,6 +99,7 @@ public abstract class IslMapper {
                 .actualStatus(map(islInfoData.getActualState()))
                 .roundTripStatus(map(islInfoData.getRoundTripStatus()))
                 .cost(islInfoData.getCost())
+                .description(islInfoData.getDescription())
                 .underMaintenance(islInfoData.isUnderMaintenance())
                 .bfdSessionStatus(map(islInfoData.getBfdSessionStatus()));
 

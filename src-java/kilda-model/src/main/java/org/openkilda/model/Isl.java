@@ -75,7 +75,7 @@ public class Isl implements CompositeDataEntity<Isl.IslData> {
                long availableBandwidth, IslStatus status, IslStatus actualStatus, IslStatus roundTripStatus,
                IslDownReason downReason,
                boolean underMaintenance, Duration bfdInterval, short bfdMultiplier,
-               BfdSessionStatus bfdSessionStatus, Instant timeUnstable) {
+               BfdSessionStatus bfdSessionStatus, Instant timeUnstable, String description) {
         data = IslDataImpl.builder().srcSwitch(srcSwitch).destSwitch(destSwitch).srcPort(srcPort).destPort(destPort)
                 .latency(latency).speed(speed).cost(cost).maxBandwidth(maxBandwidth)
                 .defaultMaxBandwidth(defaultMaxBandwidth).availableBandwidth(availableBandwidth)
@@ -83,7 +83,7 @@ public class Isl implements CompositeDataEntity<Isl.IslData> {
                 .downReason(downReason)
                 .underMaintenance(underMaintenance)
                 .bfdInterval(bfdInterval).bfdMultiplier(bfdMultiplier).bfdSessionStatus(bfdSessionStatus)
-                .timeUnstable(timeUnstable).build();
+                .timeUnstable(timeUnstable).description(description).build();
     }
 
     public Isl(@NonNull IslData data) {
@@ -133,6 +133,7 @@ public class Isl implements CompositeDataEntity<Isl.IslData> {
                 .append(getBfdMultiplier(), that.getBfdMultiplier())
                 .append(getBfdSessionStatus(), that.getBfdSessionStatus())
                 .append(getTimeUnstable(), that.getTimeUnstable())
+                .append(getDescription(), that.getDescription())
                 .isEquals();
     }
 
