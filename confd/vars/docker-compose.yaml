@@ -15,3 +15,20 @@ no_server42_server: true
 #no_server42_server_stub: true
 #no_server42_storm_stub: true
 single_orientdb: true
+
+# Topologies
+#no_floodlight_router_topology: true
+#no_network_topology: true
+#no_port_state_topology: true
+#no_swmanager_topology: true
+#no_flowhs_topology: true
+#no_nbworker_topology: true
+#no_reroute_topology: true
+#no_stats_topology: true
+#no_opentsdb_topology: true
+#no_isl_latency_topology: true
+#no_server42_control_topology: true
+#no_flow_monitoring_topology: true
+#no_history_topology: true
+#no_ping_topology: true
+#no_connected_devices_topology: true

@@ -1,4 +1,4 @@
-# Migration of Kilda data from Neo4j to OrientDB
+# Migration of OpenKilda data from Neo4j to OrientDB
 
 ## Prerequisites
 - Neo4j with installed APOC library (https://neo4j.com/labs/apoc/) version 3.3.0.4 or higher. 
@@ -14,7 +14,7 @@ Here's the command to check the version:
     apoc.export.file.enabled=true
     ```
 - OrientDB 3.0.x in a single node or clustered configuration. See https://orientdb.com/docs/3.0.x/.
-- A blank database in OrientDB to import data into. Initialize it with Kilda schema - see https://github.com/telstra/open-kilda/blob/develop/docker/orientdb/init/create-db-with-schema.osql.
+- A blank database in OrientDB to import data into. Initialize it with OpenKilda schema - see https://github.com/telstra/open-kilda/blob/develop/docker/orientdb/init/create-db-with-schema.osql.
 - The OrientDB database has *"admin"* user with allowed permissions for all resources except "database.bypassRestricted".
 - The OrientDB database has *"kilda"* user with default *"writer"* role permissions, plus: UPDATE on "database.cluster.internal", 
 ALL on "database.schema", READ on "database.systemclusters". See https://github.com/telstra/open-kilda/blob/develop/docker/orientdb/init/create-db-with-schema.osql.
@@ -24,8 +24,8 @@ ALL on "database.schema", READ on "database.systemclusters". See https://github.
 The command ":plugin use tinkerpop.orientdb". See https://orientdb.com/docs/3.0.x/tinkerpop3/OrientDB-TinkerPop3.html
   
 ## Migration steps
-1. Dump Kilda data via Northbound for further validation.
-2. Stop Kilda.
+1. Dump OpenKilda data via Northbound for further validation.
+2. Stop OpenKilda.
 3. Export from Neo4j to GraphML. See https://neo4j.com/labs/apoc/4.0/export/graphml/
 	```
     CALL apoc.export.graphml.query("MATCH (n) WHERE NOT labels(n) IN [['flow_event'],['flow_history'],['flow_dump'],['port_history']] OPTIONAL MATCH (n)-[l]-() RETURN n, l", "kilda_exported_data.graphml", {useTypes: true})
@@ -48,7 +48,7 @@ The command ":plugin use tinkerpop.orientdb". See https://orientdb.com/docs/3.0.
     orientdb {db=database}> LOAD SCRIPT /path/to/scripts/disable-indexes.osql
     ```
 
-7. Import the result GraphML with Kilda data (**without history!**) into OrientDB:
+7. Import the result GraphML with OpenKilda data (**without history!**) into OrientDB:
     ```
     /path/to/orientdb-tp3-3.0.x/bin/gremlin.sh
     ```
@@ -78,14 +78,14 @@ The command ":plugin use tinkerpop.orientdb". See https://orientdb.com/docs/3.0.
     orientdb {db=database}> LOAD SCRIPT /path/to/scripts/reenable-indexes.osql
     ```
 
-10. Deploy and start the new version of Kilda.
-11. Dump Kilda data via Northbound, validate it with the previously taken dump.
-12. Prepare the exported GraphML with Kilda history to be imported into "shadow" classes:
+10. Deploy and start the new version of OpenKilda.
+11. Dump OpenKilda data via Northbound, validate it with the previously taken dump.
+12. Prepare the exported GraphML with OpenKilda history to be imported into "shadow" classes:
     ```
     /path/to/scripts/prepare-history-graphml.sh /path/to/graphml/kilda_exported_history.graphml
     /path/to/scripts/preprocess-graphml.sh /path/to/graphml/kilda_exported_history.graphml
     ```
-13. Import the result GraphML with Kilda history into OrientDB:
+13. Import the result GraphML with OpenKilda history into OrientDB:
     ```
     /path/to/orientdb-tp3-3.0.x/bin/gremlin.sh
     ```
@@ -108,9 +108,9 @@ Done.
 ## Revert migration steps
 
 The following steps can be used to migrate the data back from OrientDB to Neo4j. This may be required if rollback
-is to be performed after Kilda run on OrientDB backend and made changed into the data. 
+is to be performed after OpenKilda run on OrientDB backend and made changed into the data. 
 
-1. Stop Kilda 
+1. Stop OpenKilda 
 2. Export from OrientDB to GraphML:
 
     In the case of larger databases, you may need to allow usage of more heap memory. Proper amount of heap should be 

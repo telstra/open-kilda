@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This file introduces the design for flow management (create, read, update, deleted) within Kilda.
+This file introduces the design for flow management (create, read, update, deleted) within OpenKilda.
 
 The Flow CRUD use case focuses on the (mostly) user-initiated management of flows. There are 
 separate use cases for flow health checks, flow re-routing (ie network path failure, cost 

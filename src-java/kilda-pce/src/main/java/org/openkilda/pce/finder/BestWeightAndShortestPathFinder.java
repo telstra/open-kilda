@@ -425,7 +425,8 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                 }
                 if (current.allowedDepth <= 0) {
                     reasons.put(FailReasonType.ALLOWED_DEPTH_EXCEEDED,
-                            new FailReason(FailReasonType.ALLOWED_DEPTH_EXCEEDED));
+                            new FailReason(FailReasonType.ALLOWED_DEPTH_EXCEEDED,
+                                    format("Max allowed depth is %d", allowedDepth)));
                 }
                 destinationFound = true; //to no add the reason
                 continue;
@@ -573,7 +574,8 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
             if (current.allowedDepth <= 0 || current.parentWeight.getBaseWeight() >= maxWeight) {
                 if (current.allowedDepth <= 0) {
                     reasons.put(FailReasonType.ALLOWED_DEPTH_EXCEEDED,
-                            new FailReason(FailReasonType.ALLOWED_DEPTH_EXCEEDED));
+                            new FailReason(FailReasonType.ALLOWED_DEPTH_EXCEEDED,
+                                    format("Max allowed depth is %d", allowedDepth)));
                 } else if (!reasons.containsKey(FailReasonType.MAX_WEIGHT_EXCEEDED)) {
                     reasons.put(FailReasonType.MAX_WEIGHT_EXCEEDED,
                             new FailReason(FailReasonType.MAX_WEIGHT_EXCEEDED));

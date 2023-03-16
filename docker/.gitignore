@@ -6,3 +6,4 @@ lab-service/log.json
 lock-keeper/README.md
 lock-keeper/*.py
 grpc-stub/*.py
+kafka/kafka-conf/server.properties

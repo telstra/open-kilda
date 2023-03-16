@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 
+import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
@@ -47,6 +48,8 @@ public class FlowValidatorTest {
     public static final int PORT_1 = 10;
     public static final int VLAN_1 = 11;
     public static final int VLAN_2 = 12;
+    public static final int STATS_VLAN_TOO_LOW = FlowValidator.STATS_VLAN_LOWER_BOUND - 1;
+    public static final int STATS_VLAN_TOO_HIGH = FlowValidator.STATS_VLAN_UPPER_BOUND + 1;
     public static final EndpointDescriptor SRC_ENDPOINT = EndpointDescriptor.makeSource(
             FlowEndpoint.builder().switchId(SWITCH_ID_1).portNumber(PORT_1).build());
     public static final String FLOW_1 = "firstFlow";
@@ -200,6 +203,30 @@ public class FlowValidatorTest {
     }
 
     @Test(expected = InvalidFlowException.class)
+    public void failOnTooLowVlanStatisticsTest() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, newHashSet(STATS_VLAN_TOO_LOW));
+        flowValidator.checkFlowForVlanStatisticsInCorrectRange(flow);
+    }
+
+    @Test(expected = InvalidFlowException.class)
+    public void failOnTooHighVlanStatisticsTest() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, newHashSet(STATS_VLAN_TOO_HIGH));
+        flowValidator.checkFlowForVlanStatisticsInCorrectRange(flow);
+    }
+
+    @Test
+    public void nullVlanStatisticsTest() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, null);
+        flowValidator.checkFlowForVlanStatisticsInCorrectRange(flow);
+    }
+
+    @Test
+    public void emptyVlanStatisticsTest() throws InvalidFlowException {
+        RequestedFlow flow = buildFlow(VLAN_1, VLAN_2, newHashSet());
+        flowValidator.checkFlowForVlanStatisticsInCorrectRange(flow);
+    }
+
+    @Test(expected = InvalidFlowException.class)
     public void checkForEncapsulationTypeRequirementNullTypesTest() throws InvalidFlowException {
         SwitchProperties properties = SwitchProperties.builder()
                 .supportedTransitEncapsulation(null)
@@ -249,25 +276,25 @@ public class FlowValidatorTest {
     @Test(expected = InvalidFlowException.class)
     public void shouldFailIfMaxLatencyTier2HigherThanMaxLatency() throws InvalidFlowException {
         RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2((long) 1000, (long) 500);
-        flowValidator.checkMaxLatency(flow);
+        flowValidator.checkMaxLatencyTier(flow);
     }
 
     @Test(expected = InvalidFlowException.class)
     public void shouldFailIfMaxLatencyTier2butMaxLatencyIsNull() throws InvalidFlowException {
         RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, (long) 500);
-        flowValidator.checkMaxLatency(flow);
+        flowValidator.checkMaxLatencyTier(flow);
     }
 
     @Test
     public void shouldNotFailIfMaxLatencyTier2andMaxLatencyAreNull() throws InvalidFlowException {
         RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, null);
-        flowValidator.checkMaxLatency(flow);
+        flowValidator.checkMaxLatencyTier(flow);
     }
 
     @Test
     public void shouldNotFailIfMaxLatencyTier2andMaxLatencyAreEqual() throws InvalidFlowException {
         RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(500L, 500L);
-        flowValidator.checkMaxLatency(flow);
+        flowValidator.checkMaxLatencyTier(flow);
     }
 
     private static RequestedFlow buildFlow(int srcVlan, int dstVlan, Set<Integer> statVlans) {

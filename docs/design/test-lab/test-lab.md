@@ -1,11 +1,10 @@
 # Test lab
 
 ## Goals
-Run functional and acceptance tests on hardware and virtual
-environment without code change.
+Run functional and acceptance tests on hardware and virtual environment without a code change.
 
 ## The idea
-Create abstract API layer for hardware and virtual environment.
+Create an abstract API layer for hardware and virtual environment.
 
 ## Diagrams
 

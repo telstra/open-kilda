@@ -150,7 +150,7 @@ public class YFlowServiceImpl implements YFlowService {
             flowRequest = flowMapper.toYFlowUpdateRequest(yFlowId, updatePayload);
         } catch (IllegalArgumentException e) {
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
-                    e.getMessage(), "Can not parse arguments of the create y-flow request");
+                    e.getMessage(), "Can not parse arguments of the update y-flow request");
         }
 
         CommandMessage command = new CommandMessage(flowRequest, System.currentTimeMillis(), correlationId);

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+
 import org.openkilda.functionaltests.exception.ExpectedHttpClientErrorException
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.model.PathComputationStrategy
@@ -398,7 +399,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         error.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = error.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "It is not allowed to create one-switch flow for the same ports and vlans"
+        errorDetails.errorDescription == "It is not allowed to create one-switch flow for the same ports and VLANs"
 
         cleanup:
         !error && flowHelperV2.deleteFlow(flow.flowId)
@@ -582,14 +583,14 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
+        Wrappers.silent{flow && flowHelperV2.deleteFlow(flow.flowId)}
     }
 
     @Tidy
     def "Unable to create a flow with #problem"() {
         given: "A flow with #problem"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def flow = flowHelperV2.randomFlow(switchPair, false)
         flow = update(flow)
         when: "Try to create a flow"
         flowHelperV2.addFlow(flow)
@@ -614,7 +615,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         return flowToSpoil}|
                 new ExpectedHttpClientErrorException(HttpStatus.NOT_FOUND,
                         ~/Latency limit: Requested path must have latency ${
-                            IMPOSSIBLY_LOW_LATENCY}ms or lower, but best path has latency \d+ms/)
+                            IMPOSSIBLY_LOW_LATENCY}ms or lower/)
 
     }
 
@@ -1320,6 +1321,28 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         cleanup:
         !error && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    @Tags(LOW_PRIORITY)
+    def "Unable to update to a flow with maxLatencyTier2 higher as maxLatency)"() {
+        given: "A flow"
+        def swPair = topologyHelper.getRandomSwitchPair()
+        def flow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow)
+
+        when: "Try to update the flow"
+        flow.maxLatency = 2
+        flow.maxLatencyTier2 = flow.maxLatency - 1
+        northboundV2.updateFlow(flow.flowId, flow)
+
+        then: "Bad Request response is returned"
+        def expectedException = new ExpectedHttpClientErrorException(HttpStatus.BAD_REQUEST, ~/The maxLatency \dms is higher than maxLatencyTier2 \dms/)
+        def actualException = thrown(HttpClientErrorException)
+        expectedException.equals(actualException)
+
+        cleanup: "Remove the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Shared

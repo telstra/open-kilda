@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
@@ -36,7 +37,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointC
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlowMirrorPoint;
 import org.openkilda.wfm.topology.flowhs.validation.FlowValidator;
-import org.openkilda.wfm.topology.flowhs.validation.InvalidFlowException;
 import org.openkilda.wfm.topology.flowhs.validation.UnavailableFlowEndpointException;
 
 import lombok.extern.slf4j.Slf4j;
