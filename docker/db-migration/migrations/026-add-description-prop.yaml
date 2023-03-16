@@ -4,7 +4,7 @@ databaseChangeLog:
       author: dstudeny
       changes:
         - tagDatabase:
-            tag: 025-add-description-prop
+            tag: 026-add-description-prop
 
   - changeSet:
       id: add_description_prop
