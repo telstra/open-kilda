@@ -404,7 +404,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         error.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = error.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "It is not allowed to create one-switch flow for the same ports and vlans"
+        errorDetails.errorDescription == "It is not allowed to create one-switch flow for the same ports and VLANs"
 
         cleanup:
         !error && flowHelperV2.deleteFlow(flow.flowId)
@@ -1332,7 +1332,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "Able to #method with empty VLAN stats and non-zero VLANs (#5063)"() {
+    def "Able to #method update with empty VLAN stats and non-zero VLANs (#5063)"() {
         given: "A flow with non empty vlans stats and with src and dst vlans set to '0'"
         def switches = topologyHelper.getSwitchPairs().shuffled().first()
         def flowRequest = flowHelperV2.randomFlow(switches, false).tap {
@@ -1374,6 +1374,28 @@ class FlowCrudSpec extends HealthCheckSpecification {
             })
 
         }
+    }
+
+    @Tidy
+    @Tags(LOW_PRIORITY)
+    def "Unable to update to a flow with maxLatencyTier2 higher as maxLatency)"() {
+        given: "A flow"
+        def swPair = topologyHelper.getRandomSwitchPair()
+        def flow = flowHelperV2.randomFlow(swPair)
+        flowHelperV2.addFlow(flow)
+
+        when: "Try to update the flow"
+        flow.maxLatency = 2
+        flow.maxLatencyTier2 = flow.maxLatency - 1
+        northboundV2.updateFlow(flow.flowId, flow)
+
+        then: "Bad Request response is returned"
+        def expectedException = new ExpectedHttpClientErrorException(HttpStatus.BAD_REQUEST, ~/The maxLatency \dms is higher than maxLatencyTier2 \dms/)
+        def actualException = thrown(HttpClientErrorException)
+        expectedException.equals(actualException)
+
+        cleanup: "Remove the flow"
+        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Shared

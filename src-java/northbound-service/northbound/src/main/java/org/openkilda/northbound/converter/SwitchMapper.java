@@ -57,6 +57,7 @@ import org.openkilda.messaging.model.SwitchAvailabilityEntry;
 import org.openkilda.messaging.model.SwitchLocation;
 import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.messaging.model.ValidationFilter;
+import org.openkilda.messaging.nbtopology.response.GetFlowsPerPortForSwitchResponse;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
@@ -103,21 +104,27 @@ import org.openkilda.northbound.dto.v2.switches.RulesValidationDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectEntry;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring", uses = {
         FlowMapper.class, KildaTypeMapper.class, TimeMapper.class, FlowEncapsulationTypeMapper.class})
 public abstract class SwitchMapper {
+
+    @Autowired
+    private FlowMapper flowMapper;
 
     @Mapping(source = "ofDescriptionManufacturer", target = "manufacturer")
     @Mapping(source = "ofDescriptionHardware", target = "hardware")
@@ -502,4 +509,16 @@ public abstract class SwitchMapper {
     public abstract SetFieldActionDto toSetFieldActionDto(SetFieldActionEntry data);
 
     public abstract SwapFieldActionDto toSwapFieldActionDto(SwapFieldActionEntry data);
+
+    /**
+     * Converts a nbtopology response to V2 API response.
+     * @param data nbtopology response object
+     * @return V2 API response object
+     * */
+    public SwitchFlowsPerPortResponse toSwitchFlowsPerPortResponseV2Api(GetFlowsPerPortForSwitchResponse data) {
+        return new SwitchFlowsPerPortResponse(data.getFlowsByPorts().entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue()
+                        .stream()
+                        .map(flowMapper::toFlowResponseV2).collect(Collectors.toList()))));
+    }
 }
