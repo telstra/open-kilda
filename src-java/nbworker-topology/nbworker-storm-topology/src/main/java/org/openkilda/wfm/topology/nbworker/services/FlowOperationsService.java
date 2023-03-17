@@ -317,7 +317,8 @@ public class FlowOperationsService {
         FlowPathDtoBuilder builder = this.toFlowPathDtoBuilder(flow)
                 .primaryPathCorrespondStat(primaryPathCorrespondStat)
                 .segmentsStats(
-                        intersectionComputer.getAnotherFlowOverlappingStats(flow.getForwardPathId(), flow.getReversePathId()));
+                        intersectionComputer.getAnotherFlowOverlappingStats(flow.getForwardPathId(),
+                                flow.getReversePathId()));
         if (flow.isAllocateProtectedPath()) {
             builder.protectedPath(FlowProtectedPathDto.builder()
                     .forwardPath(buildPathFromFlow(flow, flow.getProtectedForwardPath()))

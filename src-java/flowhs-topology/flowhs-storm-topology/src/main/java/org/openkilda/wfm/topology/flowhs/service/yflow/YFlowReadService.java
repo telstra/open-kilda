@@ -162,7 +162,8 @@ public class YFlowReadService {
                         IntersectionComputer protectedIntersectionComputer = new IntersectionComputer(
                                 flow.getFlowId(), flow.getProtectedForwardPathId(), flow.getProtectedReversePathId(),
                                 flowPathsInDiverseGroup);
-                        protectedDtoBuilder.segmentsStats(protectedIntersectionComputer.getTargetFlowOverlappingStats());
+                        protectedDtoBuilder.segmentsStats(
+                                protectedIntersectionComputer.getTargetFlowOverlappingStats());
 
                         flowsInDiverseGroup.stream()
                                 .map(diverseFlow ->
@@ -243,7 +244,8 @@ public class YFlowReadService {
         FlowPathDto.FlowPathDtoBuilder builder = buildFlowPathDto(flow)
                 .primaryPathCorrespondStat(primaryPathCorrespondStat)
                 .segmentsStats(
-                        intersectionComputer.getAnotherFlowOverlappingStats(flow.getForwardPathId(), flow.getReversePathId()));
+                        intersectionComputer.getAnotherFlowOverlappingStats(flow.getForwardPathId(),
+                                flow.getReversePathId()));
         if (flow.isAllocateProtectedPath()) {
             FlowProtectedPathDto.FlowProtectedPathDtoBuilder protectedPathBuilder = buildFlowProtectedPathDto(flow)
                     .segmentsStats(
