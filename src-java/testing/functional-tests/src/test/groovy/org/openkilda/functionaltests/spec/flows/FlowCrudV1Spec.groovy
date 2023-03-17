@@ -386,7 +386,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         error.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = error.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "It is not allowed to create one-switch flow for the same ports and vlans"
+        errorDetails.errorDescription == "It is not allowed to create one-switch flow for the same ports and VLANs"
 
         cleanup:
         !error && flowHelper.deleteFlow(flow.id)
@@ -528,10 +528,10 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         error.statusCode == HttpStatus.NOT_FOUND
         def errorDetails = error.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "Not enough bandwidth or no path found. Failed to find path with " +
-                "requested bandwidth=$flow.maximumBandwidth: Switch ${isolatedSwitch.dpId.toString()} doesn't have " +
-                "links with enough bandwidth"
-
+        errorDetails.errorDescription == "Not enough bandwidth or no path found. Switch "+
+                "${isolatedSwitch.dpId.toString()} doesn't have " +
+                "links with enough bandwidth, Failed to find path with " +
+                "requested bandwidth=$flow.maximumBandwidth"
         cleanup:
         !error && flowHelper.deleteFlow(flow.id)
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
