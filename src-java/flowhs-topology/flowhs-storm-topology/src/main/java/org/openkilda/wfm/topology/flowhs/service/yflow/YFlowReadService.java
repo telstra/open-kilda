@@ -147,7 +147,7 @@ public class YFlowReadService {
                     IntersectionComputer primaryIntersectionComputer = new IntersectionComputer(
                             flow.getFlowId(), flow.getForwardPathId(), flow.getReversePathId(),
                             flowPathsInDiverseGroup);
-                    pathDtoBuilder.segmentsStats(primaryIntersectionComputer.getOverlappingStats());
+                    pathDtoBuilder.segmentsStats(primaryIntersectionComputer.getTargetFlowOverlappingStats());
 
                     Collection<Flow> flowsInDiverseGroup = flowRepository.findByDiverseGroupId(diverseGroupId).stream()
                             .filter(f -> !flow.getFlowId().equals(f.getFlowId()))
@@ -162,7 +162,7 @@ public class YFlowReadService {
                         IntersectionComputer protectedIntersectionComputer = new IntersectionComputer(
                                 flow.getFlowId(), flow.getProtectedForwardPathId(), flow.getProtectedReversePathId(),
                                 flowPathsInDiverseGroup);
-                        protectedDtoBuilder.segmentsStats(protectedIntersectionComputer.getOverlappingStats());
+                        protectedDtoBuilder.segmentsStats(protectedIntersectionComputer.getTargetFlowOverlappingStats());
 
                         flowsInDiverseGroup.stream()
                                 .map(diverseFlow ->
@@ -243,11 +243,11 @@ public class YFlowReadService {
         FlowPathDto.FlowPathDtoBuilder builder = buildFlowPathDto(flow)
                 .primaryPathCorrespondStat(primaryPathCorrespondStat)
                 .segmentsStats(
-                        intersectionComputer.getOverlappingStats(flow.getForwardPathId(), flow.getReversePathId()));
+                        intersectionComputer.getAnotherFlowOverlappingStats(flow.getForwardPathId(), flow.getReversePathId()));
         if (flow.isAllocateProtectedPath()) {
             FlowProtectedPathDto.FlowProtectedPathDtoBuilder protectedPathBuilder = buildFlowProtectedPathDto(flow)
                     .segmentsStats(
-                            intersectionComputer.getOverlappingStats(
+                            intersectionComputer.getAnotherFlowOverlappingStats(
                                     flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()));
             builder.protectedPath(protectedPathBuilder.build());
         }

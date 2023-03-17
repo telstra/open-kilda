@@ -277,7 +277,7 @@ public class FlowOperationsService {
 
             // target flow primary path
             FlowPathDtoBuilder targetFlowDtoBuilder = this.toFlowPathDtoBuilder(flow)
-                    .segmentsStats(primaryIntersectionComputer.getOverlappingStats());
+                    .segmentsStats(primaryIntersectionComputer.getTargetFlowOverlappingStats());
 
             // other flows in the group
             List<FlowPathDto> payloads = flowsInGroup.stream()
@@ -295,7 +295,7 @@ public class FlowOperationsService {
                         .forwardPath(buildPathFromFlow(flow, flow.getProtectedForwardPath()))
                         .reversePath(buildPathFromFlow(flow, flow.getProtectedReversePath()))
                         .segmentsStats(
-                                protectedIntersectionComputer.getOverlappingStats())
+                                protectedIntersectionComputer.getTargetFlowOverlappingStats())
                         .build());
 
                 // other flows in the group
@@ -317,13 +317,13 @@ public class FlowOperationsService {
         FlowPathDtoBuilder builder = this.toFlowPathDtoBuilder(flow)
                 .primaryPathCorrespondStat(primaryPathCorrespondStat)
                 .segmentsStats(
-                        intersectionComputer.getOverlappingStats(flow.getForwardPathId(), flow.getReversePathId()));
+                        intersectionComputer.getAnotherFlowOverlappingStats(flow.getForwardPathId(), flow.getReversePathId()));
         if (flow.isAllocateProtectedPath()) {
             builder.protectedPath(FlowProtectedPathDto.builder()
                     .forwardPath(buildPathFromFlow(flow, flow.getProtectedForwardPath()))
                     .reversePath(buildPathFromFlow(flow, flow.getProtectedReversePath()))
                     .segmentsStats(
-                            intersectionComputer.getOverlappingStats(
+                            intersectionComputer.getAnotherFlowOverlappingStats(
                                     flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()))
                     .build());
         }
