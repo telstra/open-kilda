@@ -17,14 +17,14 @@ package org.openkilda.persistence.ferma.frames;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath.HaFlowPathData;
-import org.openkilda.model.HaSubFlowEdge;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
-import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
@@ -42,20 +42,19 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.Edge;
-import org.apache.tinkerpop.gremlin.structure.Element;
 
 import java.util.Collection;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
 public abstract class HaFlowPathFrame extends KildaBaseVertexFrame implements HaFlowPathData {
     public static final String FRAME_LABEL = "ha_flow_path";
-    public static final String OWNS_SEGMENTS_EDGE = "owns";
+    public static final String OWNS_PATH_EDGE = "owns";
+    public static final String HAS_HA_SUB_FLOW_EDGE = "has";
     public static final String HA_PATH_ID_PROPERTY = "ha_path_id";
     public static final String HA_FLOW_ID_PROPERTY = "ha_flow_id";
     public static final String SHARED_SWITCH_ID_PROPERTY = "shared_switch_id";
@@ -67,12 +66,11 @@ public abstract class HaFlowPathFrame extends KildaBaseVertexFrame implements Ha
     public static final String IGNORE_BANDWIDTH_PROPERTY = "ignore_bandwidth";
     public static final String BANDWIDTH_PROPERTY = "bandwidth";
     public static final String STATUS_PROPERTY = "status";
-    public static final String SHARED_BANDWIDTH_GROUP_ID_PROPERTY = "shared_bw_group_id";
 
     private Switch sharedSwitch;
     private HaFlow haFlow;
-    private List<PathSegment> segments;
-    private Set<HaSubFlowEdge> subFlowEdges;
+    private List<FlowPath> subPaths;
+    private List<HaSubFlow> subFlows;
 
     @Override
     @Property(HA_PATH_ID_PROPERTY)
@@ -170,14 +168,6 @@ public abstract class HaFlowPathFrame extends KildaBaseVertexFrame implements Ha
     public abstract void setStatus(FlowPathStatus status);
 
     @Override
-    @Property(SHARED_BANDWIDTH_GROUP_ID_PROPERTY)
-    public abstract String getSharedBandwidthGroupId();
-
-    @Override
-    @Property(SHARED_BANDWIDTH_GROUP_ID_PROPERTY)
-    public abstract void setSharedBandwidthGroupId(String sharedBandwidthGroupId);
-
-    @Override
     public Switch getSharedSwitch() {
         if (sharedSwitch == null) {
             sharedSwitch = SwitchFrame.load(getGraph(), getProperty(SHARED_SWITCH_ID_PROPERTY))
@@ -194,70 +184,76 @@ public abstract class HaFlowPathFrame extends KildaBaseVertexFrame implements Ha
     }
 
     @Override
-    public List<PathSegment> getSegments() {
-        if (segments == null) {
-            segments = traverse(v -> v.out(HaFlowPathFrame.OWNS_SEGMENTS_EDGE)
-                    .hasLabel(PathSegmentFrame.FRAME_LABEL))
-                    .toListExplicit(PathSegmentFrame.class).stream()
-                    .map(PathSegment::new)
-                    .sorted(Comparator.comparingInt(PathSegment::getSeqId))
+    public List<FlowPath> getSubPaths() {
+        if (subPaths == null) {
+            subPaths = traverse(v -> v.out(HaFlowPathFrame.OWNS_PATH_EDGE)
+                    .hasLabel(FlowPathFrame.FRAME_LABEL))
+                    .toListExplicit(FlowPathFrame.class).stream()
+                    .map(FlowPath::new)
                     .collect(Collectors.toList());
         }
-        return segments;
+        return subPaths;
     }
 
     @Override
-    public void setSegments(List<PathSegment> segments) {
-        getElement().edges(Direction.OUT, HaFlowPathFrame.OWNS_SEGMENTS_EDGE)
-                .forEachRemaining(edge -> {
-                    edge.inVertex().remove();
-                    edge.remove();
-                });
-
-        PathId pathId = getHaPathId();
-        for (int idx = 0; idx < segments.size(); idx++) {
-            PathSegment segment = segments.get(idx);
-            PathSegment.PathSegmentData data = segment.getData();
-            data.setPathId(pathId);
-            data.setSeqId(idx);
-
-            PathSegmentFrame frame;
-            if (data instanceof PathSegmentFrame) {
-                frame = (PathSegmentFrame) data;
+    public void setSubPaths(Collection<FlowPath> subPaths) {
+        for (FlowPath path : subPaths) {
+            FlowPath.FlowPathData data = path.getData();
+            FlowPathFrame frame;
+            if (data instanceof FlowPathFrame) {
+                frame = (FlowPathFrame) data;
                 // Unlink the path from the previous owner.
-                frame.getElement().edges(Direction.IN, HaFlowPathFrame.OWNS_SEGMENTS_EDGE)
+                frame.getElement().edges(Direction.IN, HaFlowPathFrame.OWNS_PATH_EDGE)
                         .forEachRemaining(Edge::remove);
             } else {
-                frame = PathSegmentFrame.create(getGraph(), data);
+                // We intentionally don't allow to add transient entities.
+                // A path must be added via corresponding repository first.
+                throw new IllegalArgumentException("Unable to link to transient flow path " + path);
             }
-            linkOut(frame, HaFlowPathFrame.OWNS_SEGMENTS_EDGE);
+            frame.setProperty(FlowPathFrame.HA_PATH_ID_PROPERTY,
+                    PathIdConverter.INSTANCE.toGraphProperty(getHaPathId()));
+            linkOut(frame, HaFlowPathFrame.OWNS_PATH_EDGE);
         }
 
         // force to reload
-        this.segments = null;
+        this.subPaths = null;
     }
 
     @Override
-    public Set<HaSubFlowEdge> getHaSubFlowEdges() {
-        if (subFlowEdges == null) {
-            subFlowEdges = traverse(v -> v.outE(HaSubFlowEdgeFrame.FRAME_LABEL))
-                    .toListExplicit(HaSubFlowEdgeFrame.class).stream()
-                    .map(HaSubFlowEdge::new)
-                    .collect(Collectors.toSet());
+    public List<HaSubFlow> getHaSubFlows() {
+        if (subFlows == null) {
+            subFlows = traverse(v -> v.out(HaFlowPathFrame.HAS_HA_SUB_FLOW_EDGE)
+                    .hasLabel(HaSubFlowFrame.FRAME_LABEL))
+                    .toListExplicit(HaSubFlowFrame.class).stream()
+                    .map(HaSubFlow::new)
+                    .collect(Collectors.toList());
         }
-        return subFlowEdges;
+        return Collections.unmodifiableList(subFlows);
     }
 
     @Override
-    public void setHaSubFlowEdges(Collection<HaSubFlowEdge> haSubFlowEdges) {
-        getElement().edges(Direction.OUT, HaSubFlowEdgeFrame.FRAME_LABEL)
-                .forEachRemaining(Element::remove);
+    public void setHaSubFlows(Collection<HaSubFlow> haSubFlows) {
+        getElement().edges(Direction.OUT, HaFlowPathFrame.HAS_HA_SUB_FLOW_EDGE)
+                .forEachRemaining(edge -> {
+                    if (HaSubFlowFrame.FRAME_LABEL.equals(edge.inVertex().label())) {
+                        edge.remove();
+                    }
+                });
 
-        haSubFlowEdges.forEach(edge -> edge.setData(HaSubFlowEdgeFrame.create(
-                getGraph(), edge.getData(), getHaPathId())));
+        for (HaSubFlow subFlow : haSubFlows) {
+            HaSubFlow.HaSubFlowData data = subFlow.getData();
+            if (data instanceof HaSubFlowFrame) {
+                linkOut((HaSubFlowFrame) data, HaFlowPathFrame.HAS_HA_SUB_FLOW_EDGE);
+            } else {
+                // We intentionally don't allow to add transient entities.
+                // A path must be added via corresponding repository first.
+                throw new IllegalArgumentException("Unable to link to transient sub flow " + subFlow);
+            }
+
+        }
 
         // force to reload
-        this.subFlowEdges = null;
+        this.subFlows = null;
     }
 
     @Override

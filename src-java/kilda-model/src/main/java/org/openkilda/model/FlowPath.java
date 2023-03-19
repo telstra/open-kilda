@@ -88,13 +88,13 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                     long latency, long bandwidth,
                     boolean ignoreBandwidth, FlowPathStatus status, List<PathSegment> segments,
                     Set<FlowApplication> applications, boolean srcWithMultiTable, boolean destWithMultiTable,
-                    String sharedBandwidthGroupId) {
+                    String sharedBandwidthGroupId, HaFlowPath haFlowPath) {
         data = FlowPathDataImpl.builder().pathId(pathId).srcSwitch(srcSwitch).destSwitch(destSwitch)
                 .cookie(cookie).meterId(meterId).ingressMirrorGroupId(ingressMirrorGroupId)
                 .latency(latency).bandwidth(bandwidth)
                 .ignoreBandwidth(ignoreBandwidth).status(status)
                 .applications(applications).srcWithMultiTable(srcWithMultiTable).destWithMultiTable(destWithMultiTable)
-                .sharedBandwidthGroupId(sharedBandwidthGroupId)
+                .sharedBandwidthGroupId(sharedBandwidthGroupId).haFlowPath(haFlowPath)
                 .build();
         // The reference is used to link path segments back to the path. See {@link #setSegments(List)}.
         ((FlowPathDataImpl) data).flowPath = this;
@@ -222,6 +222,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                 .append(getSrcSwitchId(), that.getSrcSwitchId())
                 .append(getDestSwitchId(), that.getDestSwitchId())
                 .append(getFlowId(), that.getFlowId())
+                .append(getHaFlowPathId(), that.getHaFlowPathId())
                 .append(getCookie(), that.getCookie())
                 .append(getMeterId(), that.getMeterId())
                 .append(getIngressMirrorGroupId(), that.getIngressMirrorGroupId())
@@ -267,6 +268,14 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         String getFlowId();
 
         Flow getFlow();
+
+        PathId getHaFlowPathId();
+
+        HaFlowPath getHaFlowPath();
+
+        String getHaSubFlowId();
+
+        HaSubFlow getHaSubFlow();
 
         FlowSegmentCookie getCookie();
 
@@ -360,6 +369,14 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
         Flow flow;
+        @Setter(AccessLevel.NONE)
+        @ToString.Exclude
+        @EqualsAndHashCode.Exclude
+        HaFlowPath haFlowPath;
+        @Setter(AccessLevel.NONE)
+        @ToString.Exclude
+        @EqualsAndHashCode.Exclude
+        HaSubFlow haSubFlow;
         FlowSegmentCookie cookie;
         MeterId meterId;
         GroupId ingressMirrorGroupId;
@@ -404,6 +421,16 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         @Override
         public String getFlowId() {
             return flow != null ? flow.getFlowId() : null;
+        }
+
+        @Override
+        public PathId getHaFlowPathId() {
+            return haFlowPath != null ? haFlowPath.getHaPathId() : null;
+        }
+
+        @Override
+        public String getHaSubFlowId() {
+            return haSubFlow != null ? haSubFlow.getHaSubFlowId() : null;
         }
 
         @Override

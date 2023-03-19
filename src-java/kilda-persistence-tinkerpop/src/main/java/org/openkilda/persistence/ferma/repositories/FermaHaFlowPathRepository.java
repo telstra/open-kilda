@@ -19,10 +19,9 @@ import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaFlowPath.HaFlowPathData;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
+import org.openkilda.persistence.ferma.frames.FlowPathFrame;
 import org.openkilda.persistence.ferma.frames.HaFlowPathFrame;
-import org.openkilda.persistence.ferma.frames.HaSubFlowEdgeFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
-import org.openkilda.persistence.ferma.frames.PathSegmentFrame;
 import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 
@@ -77,9 +76,9 @@ public class FermaHaFlowPathRepository extends FermaGenericRepository<HaFlowPath
 
         return transactionManager.doInTransaction(() ->
                 findById(haFlowPathId)
-                        .map(flow -> {
-                            remove(flow);
-                            return flow;
+                        .map(path -> {
+                            remove(path);
+                            return path;
                         }));
     }
 
@@ -87,22 +86,17 @@ public class FermaHaFlowPathRepository extends FermaGenericRepository<HaFlowPath
     protected HaFlowPathFrame doAdd(HaFlowPathData data) {
         HaFlowPathFrame frame = KildaBaseVertexFrame.addNewFramedVertex(framedGraph(), HaFlowPathFrame.FRAME_LABEL,
                 HaFlowPathFrame.class);
-        HaFlowPath.HaFlowPathCloner.INSTANCE.copyWithoutHaSubFlowEdges(data, frame);
-        frame.setHaSubFlowEdges(data.getHaSubFlowEdges());
+        HaFlowPath.HaFlowPathCloner.INSTANCE.copyWithoutHaSubFlows(data, frame);
+        frame.setHaSubFlows(data.getHaSubFlows());
         return frame;
     }
 
     @Override
     protected void doRemove(HaFlowPathFrame frame) {
-        frame.getSegments().forEach(pathSegment -> {
-            if (pathSegment.getData() instanceof PathSegmentFrame) {
+        frame.getSubPaths().forEach(subPath -> {
+            if (subPath.getData() instanceof FlowPathFrame) {
                 // No need to call the PathSegment repository, as segments already detached along with the path.
-                ((PathSegmentFrame) pathSegment.getData()).remove();
-            }
-        });
-        frame.getHaSubFlowEdges().forEach(subFlowEdge -> {
-            if (subFlowEdge.getData() instanceof HaSubFlowEdgeFrame) {
-                ((HaSubFlowEdgeFrame) subFlowEdge.getData()).remove();
+                ((FlowPathFrame) subPath.getData()).remove();
             }
         });
         frame.remove();
@@ -110,6 +104,6 @@ public class FermaHaFlowPathRepository extends FermaGenericRepository<HaFlowPath
 
     @Override
     protected HaFlowPathData doDetach(HaFlowPath entity, HaFlowPathFrame frame) {
-        return HaFlowPath.HaFlowPathCloner.INSTANCE.deepCopy(frame, entity.getHaFlow(), entity);
+        return HaFlowPath.HaFlowPathCloner.INSTANCE.deepCopy(frame, entity.getHaFlow());
     }
 }
