@@ -271,13 +271,13 @@ public class FlowValidatorTest {
 
     @Test(expected = InvalidFlowException.class)
     public void failIfMaxLatencyTier2HigherThanMaxLatencyTest() throws InvalidFlowException {
-        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2((long) 1000, (long) 500);
+        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(1000L, 500L);
         flowValidator.checkMaxLatencyTier(flow);
     }
 
     @Test(expected = InvalidFlowException.class)
     public void failIfMaxLatencyTier2butMaxLatencyIsNullTest() throws InvalidFlowException {
-        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, (long) 500);
+        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, 500L);
         flowValidator.checkMaxLatencyTier(flow);
     }
 
@@ -323,13 +323,13 @@ public class FlowValidatorTest {
 
     @Test(expected = InvalidFlowException.class)
     public void failIfMaxLatencyTier2HigherThanMaxLatency() throws InvalidFlowException {
-        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2((long) 1000, (long) 500);
+        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(1000L, 500L);
         flowValidator.checkMaxLatencyTier(flow);
     }
 
     @Test(expected = InvalidFlowException.class)
     public void failIfMaxLatencyTier2butMaxLatencyIsNull() throws InvalidFlowException {
-        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, (long) 500);
+        RequestedFlow flow = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, 500L);
         flowValidator.checkMaxLatencyTier(flow);
     }
 

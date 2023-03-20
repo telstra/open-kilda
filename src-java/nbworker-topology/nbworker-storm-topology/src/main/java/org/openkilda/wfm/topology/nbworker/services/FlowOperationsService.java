@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -277,7 +277,7 @@ public class FlowOperationsService {
 
             // target flow primary path
             FlowPathDtoBuilder targetFlowDtoBuilder = this.toFlowPathDtoBuilder(flow)
-                    .segmentsStats(primaryIntersectionComputer.getTargetFlowOverlappingStats());
+                    .segmentsStats(primaryIntersectionComputer.getOverlappingStats());
 
             // other flows in the group
             List<FlowPathDto> payloads = flowsInGroup.stream()
@@ -295,7 +295,7 @@ public class FlowOperationsService {
                         .forwardPath(buildPathFromFlow(flow, flow.getProtectedForwardPath()))
                         .reversePath(buildPathFromFlow(flow, flow.getProtectedReversePath()))
                         .segmentsStats(
-                                protectedIntersectionComputer.getTargetFlowOverlappingStats())
+                                protectedIntersectionComputer.getOverlappingStats())
                         .build());
 
                 // other flows in the group
@@ -317,14 +317,14 @@ public class FlowOperationsService {
         FlowPathDtoBuilder builder = this.toFlowPathDtoBuilder(flow)
                 .primaryPathCorrespondStat(primaryPathCorrespondStat)
                 .segmentsStats(
-                        intersectionComputer.getAnotherFlowOverlappingStats(flow.getForwardPathId(),
+                        intersectionComputer.getOverlappingStats(flow.getForwardPathId(),
                                 flow.getReversePathId()));
         if (flow.isAllocateProtectedPath()) {
             builder.protectedPath(FlowProtectedPathDto.builder()
                     .forwardPath(buildPathFromFlow(flow, flow.getProtectedForwardPath()))
                     .reversePath(buildPathFromFlow(flow, flow.getProtectedReversePath()))
                     .segmentsStats(
-                            intersectionComputer.getAnotherFlowOverlappingStats(
+                            intersectionComputer.getOverlappingStats(
                                     flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()))
                     .build());
         }

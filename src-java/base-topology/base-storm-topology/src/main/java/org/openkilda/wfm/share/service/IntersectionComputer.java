@@ -72,7 +72,7 @@ public class IntersectionComputer {
      *
      * @return {@link OverlappingSegmentsStats} instance.
      */
-    public OverlappingSegmentsStats getTargetFlowOverlappingStats() {
+    public OverlappingSegmentsStats getOverlappingStats() {
         return computeIntersectionCounters(
                 otherEdges.values().stream().flatMap(Collection::stream).collect(Collectors.toSet()),
                 otherSwitches.values().stream().flatMap(Collection::stream).collect(Collectors.toSet())
@@ -84,12 +84,12 @@ public class IntersectionComputer {
      *
      * @return {@link OverlappingSegmentsStats} instance.
      */
-    public OverlappingSegmentsStats getAnotherFlowOverlappingStats(PathId forwardPathId, PathId reversePathId) {
+    public OverlappingSegmentsStats getOverlappingStats(PathId forwardPathId, PathId reversePathId) {
         Set<Edge> edges = new HashSet<>(otherEdges.getOrDefault(forwardPathId, Collections.emptySet()));
         edges.addAll(otherEdges.getOrDefault(reversePathId, Collections.emptySet()));
         Set<SwitchId> switches = new HashSet<>(otherSwitches.getOrDefault(forwardPathId, Collections.emptySet()));
         switches.addAll(otherSwitches.getOrDefault(reversePathId, Collections.emptySet()));
-        return computeAnotherFlowIntersectionCounters(edges, switches);
+        return computeIntersectionCounters(edges, switches);
     }
 
     /**
@@ -199,17 +199,11 @@ public class IntersectionComputer {
                 percent(switchesOverlap, targetPathSwitches.size()));
     }
 
-    private OverlappingSegmentsStats computeAnotherFlowIntersectionCounters(Set<Edge> edges, Set<SwitchId> switches) {
-        int edgesOverlap = Sets.intersection(edges, targetPathEdges).size();
-        int switchesOverlap = Sets.intersection(switches, targetPathSwitches).size();
-        return new OverlappingSegmentsStats(edgesOverlap,
-                switchesOverlap,
-                percent(edgesOverlap, edges.size()),
-                percent(switchesOverlap, switches.size()));
-    }
-
-    private int percent(int n, int from) {
-        return (int) ((n * 100.0f) / from);
+    private int percent(int overlap, int total) {
+        if (total != 0) {
+            return (int) ((overlap * 100.0d) / total);
+        }
+        return 0;
     }
 
     private static List<PathSegment> getLongestIntersectionOfSegments(List<Iterator<PathSegment>> pathSegments) {
