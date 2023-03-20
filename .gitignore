@@ -16,6 +16,3 @@
 
 /generated.mk
 /docker-compose.yaml
-
-docker/wfm/app/Makefile
-docker/wfm/Dockerfile
