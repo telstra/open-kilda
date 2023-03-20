@@ -7,7 +7,6 @@
 
 ### Improvements:
 -  [#5127](https://github.com/telstra/open-kilda/pull/5127) Fixing low priority test on updated error description [**tests**]
--  [#5093](https://github.com/telstra/open-kilda/pull/5093) Added ability to turn off storm topologies run [**configuration**]
 -  [#5108](https://github.com/telstra/open-kilda/pull/5108) Improve performance of SwitchConnectedDevices storing (Issue: [#5051](https://github.com/telstra/open-kilda/issues/5051))
 -  [#5065](https://github.com/telstra/open-kilda/pull/5065) #5042: Quick fix to update flow creation errors in low priority tests (Issue: [#5042](https://github.com/telstra/open-kilda/issues/5042)) [**tests**]
 -  [#5116](https://github.com/telstra/open-kilda/pull/5116) Updated test in YFlowCreateSpec which failed on HW environment [**tests**]
