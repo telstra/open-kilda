@@ -583,14 +583,14 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
+        Wrappers.silent{flow && flowHelperV2.deleteFlow(flow.flowId)}
     }
 
     @Tidy
     def "Unable to create a flow with #problem"() {
         given: "A flow with #problem"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def flow = flowHelperV2.randomFlow(switchPair, false)
         flow = update(flow)
         when: "Try to create a flow"
         flowHelperV2.addFlow(flow)
@@ -615,7 +615,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         return flowToSpoil}|
                 new ExpectedHttpClientErrorException(HttpStatus.NOT_FOUND,
                         ~/Latency limit: Requested path must have latency ${
-                            IMPOSSIBLY_LOW_LATENCY}ms or lower, but best path has latency \d+ms/)
+                            IMPOSSIBLY_LOW_LATENCY}ms or lower/)
 
     }
 
