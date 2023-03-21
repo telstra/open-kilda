@@ -84,13 +84,11 @@ isls:
     src_port: 1
     dst_switch: ofsw2
     dst_port: 4
-    max_bandwidth: 40000000
 
   - src_switch: ofsw1
     src_port: 2
     dst_switch: ofsw7
     dst_port: 15
-    max_bandwidth: 40000000
 
   - src_switch: ofsw3
     src_port: 2
@@ -99,49 +97,41 @@ isls:
     a_switch:
       in_port: 54
       out_port: 50
-    max_bandwidth: 40000000
 
   - src_switch: ofsw3
     src_port: 1
     dst_switch: ofsw2
     dst_port: 3
-    max_bandwidth: 36000000
 
   - src_switch: ofsw4
     src_port: 1
     dst_switch: ofsw2
     dst_port: 2
-    max_bandwidth: 40000000
 
   - src_switch: ofsw8
     src_port: 1
     dst_switch: ofsw2
     dst_port: 5
-    max_bandwidth: 40000000
 
   - src_switch: ofsw4
     src_port: 4
     dst_switch: ofsw3
     dst_port: 4
-    max_bandwidth: 40000000
 
   - src_switch: ofsw7
     src_port: 19
     dst_switch: ofsw2
     dst_port: 6
-    max_bandwidth: 900000
 
   - src_switch: ofsw3
     src_port: 5
     dst_switch: ofsw9
     dst_port: 32
-    max_bandwidth: 9000000
 
   - src_switch: ofsw7
     src_port: 49
     dst_switch: ofsw9
     dst_port: 48
-    max_bandwidth: 9000000
     a_switch:
       in_port: 7
       out_port: 8
@@ -150,56 +140,47 @@ isls:
     src_port: 51
     dst_switch: ofsw8
     dst_port: 47
-    max_bandwidth: 9000000
 
   - src_switch: ofsw7
     src_port: 50
     dst_switch: ofsw8
     dst_port: 7
-    max_bandwidth: 9000000
 
   - src_switch: ofsw3
     src_port: 6
     dst_switch: ofsw8
     dst_port: 16
-    max_bandwidth: 9000000
 
   - src_switch: ofsw8
     src_port: 49
     dst_switch: ofsw9
     dst_port: 52
-    max_bandwidth: 36000000
     a_switch:
       in_port: 51
       out_port: 52
 
   - src_switch: ofsw8
     src_port: 40
-    max_bandwidth: 36000000
     a_switch:
       in_port: 40
 
   - src_switch: ofsw9
     src_port: 47
-    max_bandwidth: 36000000
     a_switch:
       in_port: 47
 
   - src_switch: ofsw9
     src_port: 38
-    max_bandwidth: 36000000
     a_switch:
       in_port: 34
 
   - src_switch: ofsw9
     src_port: 37
-    max_bandwidth: 36000000
     a_switch:
       in_port: 33
 
   - src_switch: ofsw9
     src_port: 15
-    max_bandwidth: 36000000
     a_switch:
       in_port: 20
 
