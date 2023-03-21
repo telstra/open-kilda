@@ -20,6 +20,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
@@ -30,6 +31,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface Database {
 
@@ -62,6 +64,8 @@ public interface Database {
     Switch getSwitch(SwitchId switchId);
 
     void setSwitchStatus(SwitchId switchId, SwitchStatus swStatus);
+
+    void setSwitchFeatures(SwitchId switchId, Set<SwitchFeature> switchFeatures);
 
     List<PathInfoData> getPaths(SwitchId src, SwitchId dst);
 
