@@ -70,6 +70,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     final static Integer IMPOSSIBLY_LOW_LATENCY = 1
     final static Long IMPOSSIBLY_HIGH_BANDWIDTH = Long.MAX_VALUE
+    final static FlowStatistics FLOW_STATISTICS_CAUSING_ERROR =
+            new FlowStatistics([[4095, 0].shuffled().first(), 2001] as Set)
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
@@ -588,14 +590,14 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
+        Wrappers.silent{flow && flowHelperV2.deleteFlow(flow.flowId)}
     }
 
     @Tidy
     def "Unable to create a flow with #problem"() {
         given: "A flow with #problem"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def flow = flowHelperV2.randomFlow(switchPair, false)
         flow = update(flow)
         when: "Try to create a flow"
         flowHelperV2.addFlow(flow)
@@ -622,26 +624,58 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 }                                                                                          |
                 new ExpectedHttpClientErrorException(HttpStatus.NOT_FOUND,
                         ~/Latency limit: Requested path must have latency ${
-                            IMPOSSIBLY_LOW_LATENCY}ms or lower, but best path has latency \d+ms/)
-
+                            IMPOSSIBLY_LOW_LATENCY}ms or lower/)
+        "invalid statistics vlan number" |
+                { FlowRequestV2 flowToSpoil ->
+                    flowToSpoil.setStatistics(FLOW_STATISTICS_CAUSING_ERROR)
+                    def source = flowToSpoil.getSource()
+                    source.setVlanId(0)
+                    flowToSpoil.setSource(source)
+                    return flowToSpoil
+                }                                                                                          |
+                new ExpectedHttpClientErrorException(HttpStatus.BAD_REQUEST,
+                        ~/To collect vlan statistics, the vlan IDs must be from 1 up to 4094/)
     }
 
     @Tidy
+    @Tags([LOW_PRIORITY])
     def "Unable to update to a flow with unavailable bandwidth"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
+        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(srcSwitch, dstSwitch))
         def expectedException = new ExpectedHttpClientErrorException(HttpStatus.NOT_FOUND,
                 ~/Not enough bandwidth or no path found. Switch ${srcSwitch.dpId.toString()
                 } doesn't have links with enough bandwidth, Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
 
         when: "Try to update the flow "
-        def flowInfo = northboundV2.getFlow(flow.flowId)
-        flowInfo = flowInfo.tap { it.maximumBandwidth = IMPOSSIBLY_HIGH_BANDWIDTH }
-        northboundV2.updateFlow(flowInfo.flowId,
-                flowHelperV2.toRequest(flowInfo))
+        northboundV2.updateFlow(flow.getFlowId(),
+                flowHelperV2.toRequest(flow.tap { it.maximumBandwidth = IMPOSSIBLY_HIGH_BANDWIDTH }))
+
+        then: "Flow is not updated"
+        def actualException = thrown(HttpClientErrorException)
+        expectedException.equals(actualException)
+
+        cleanup: "Remove the flow"
+        Wrappers.silent { flowHelperV2.deleteFlow(flow.flowId) }
+    }
+
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "Unable to partially update to a flow with statistics vlan set to 0 or above 4094"() {
+        given: "A flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flowRequest = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowRequest.destination.vlanId = 0
+        def flow = flowHelperV2.addFlow(flowRequest)
+        def expectedException = new ExpectedHttpClientErrorException(HttpStatus.BAD_REQUEST,
+                ~/To collect vlan statistics, the vlan IDs must be from 1 up to 4094/)
+
+
+        when: "Try to partially update the flow"
+        def partialUpdateRequest =
+        northboundV2.partialUpdate(flow.getFlowId(),
+                new FlowPatchV2().tap {it.statistics = FLOW_STATISTICS_CAUSING_ERROR})
 
         then: "Flow is not updated"
         def actualException = thrown(HttpClientErrorException)

@@ -239,8 +239,8 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowResponsePayload> updateFlow(final FlowUpdatePayload request) {
-        log.info("API request: Update flow request for flow {}", request);
+    public CompletableFuture<FlowResponsePayload> updateFlow(final String flowId, final FlowUpdatePayload request) {
+        log.info("API request: Update flow request for flow {}: {}", flowId, request);
 
         final String correlationId = RequestCorrelationId.getId();
         FlowRequest updateRequest;
@@ -252,6 +252,7 @@ public class FlowServiceImpl implements FlowService {
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the update flow request");
         }
+        validateFlowId(updateRequest.getFlowId(), flowId, correlationId);
 
         CommandMessage command = new CommandMessage(updateRequest,
                 System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -263,8 +264,8 @@ public class FlowServiceImpl implements FlowService {
     }
 
     @Override
-    public CompletableFuture<FlowResponseV2> updateFlow(FlowRequestV2 request) {
-        log.info("API request: Processing flow update: {}", request);
+    public CompletableFuture<FlowResponseV2> updateFlow(final String flowId, FlowRequestV2 request) {
+        log.info("API request: Update flow request for flow {}: {}", flowId, request);
 
         final String correlationId = RequestCorrelationId.getId();
         FlowRequest updateRequest;
@@ -276,6 +277,7 @@ public class FlowServiceImpl implements FlowService {
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the update flow request");
         }
+        validateFlowId(updateRequest.getFlowId(), flowId, correlationId);
 
         CommandMessage command = new CommandMessage(updateRequest,
                 System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -860,5 +862,13 @@ public class FlowServiceImpl implements FlowService {
                         .map(FlowResponse::getPayload)
                         .map(encoder)
                         .collect(Collectors.toList()));
+    }
+
+    private void validateFlowId(String requestFlowId, String pathFlowId, String correlationId) {
+        if (!requestFlowId.equals(pathFlowId)) {
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    "flow_id from body and from path are different",
+                    format("Body flow_id: %s, path flow_id: %s", requestFlowId, pathFlowId));
+        }
     }
 }

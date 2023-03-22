@@ -97,11 +97,55 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     }
 
     @Test
+    public void createFlowWithTransitSwitchesAndNoMaxBandwidth()
+            throws UnroutableFlowException, RecoverableException, DuplicateKeyException {
+        // given
+        YFlowRequest request = buildYFlowRequest("test_successful_yflow",
+                "test_flow_1",
+                "test_flow_2")
+                .build();
+        request.setMaximumBandwidth(0);
+
+        preparePathComputation("test_flow_1", buildFirstSubFlowPathPair());
+        preparePathComputation("test_flow_2", buildSecondSubFlowPathPair());
+        prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT);
+
+        // when
+        processRequestAndSpeakerCommands(request);
+        // then
+        verifyNorthboundSuccessResponse(yFlowCreateHubCarrier, YFlowResponse.class);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.UP);
+        verifyAffinity(request.getYFlowId());
+    }
+
+    @Test
     public void shouldCreateFlowWithProtectedPath() throws Exception {
         // given
         YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
                 .allocateProtectedPath(true)
                 .build();
+        preparePathComputation("test_flow_1", buildFirstSubFlowPathPair(), buildFirstSubFlowProtectedPathPair());
+        preparePathComputation("test_flow_2", buildSecondSubFlowPathPair(), buildSecondSubFlowProtectedPathPair());
+        prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT, SWITCH_TRANSIT);
+        prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_ALT_TRANSIT,
+                SWITCH_ALT_TRANSIT);
+
+        // when
+        processRequestAndSpeakerCommands(request);
+        // then
+        verifyNorthboundSuccessResponse(yFlowCreateHubCarrier, YFlowResponse.class);
+        verifyYFlowAndSubFlowStatus(request.getYFlowId(), FlowStatus.UP);
+        verifyAffinity(request.getYFlowId());
+    }
+
+    @Test
+    public void shouldCreateFlowWithProtectedPathAndNoMaxBandwidth() throws Exception {
+        // given
+        YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
+                .allocateProtectedPath(true)
+                .build();
+        request.setMaximumBandwidth(0);
+
         preparePathComputation("test_flow_1", buildFirstSubFlowPathPair(), buildFirstSubFlowProtectedPathPair());
         preparePathComputation("test_flow_2", buildSecondSubFlowPathPair(), buildSecondSubFlowProtectedPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT, SWITCH_TRANSIT);
