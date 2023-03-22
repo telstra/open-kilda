@@ -16,6 +16,8 @@ control millions of flows, and provide sub-second network telemetry. OpenKilda p
 - REST API and GUI to configure and manage OpenKilda capabilities;
 - and more!
 
+You can find OpenKIlda high level design [here](docs/design/kilda-high-level-design/design.md).
+
 ## Important notes
 
 ### Deprecation
