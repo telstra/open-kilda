@@ -18,6 +18,7 @@ package org.openkilda.wfm.share.flow.resources;
 import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowCookie;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowMeter;
 import org.openkilda.model.GroupId;
@@ -29,6 +30,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
+import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.tx.TransactionManager;
@@ -36,6 +38,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanPool;
 import org.openkilda.wfm.share.flow.resources.vxlan.VxlanPool;
 import org.openkilda.wfm.share.utils.PoolManager;
+import org.openkilda.wfm.share.utils.PoolManager.PoolConfig;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -53,9 +56,10 @@ public class FlowResourcesManager {
     private static final int MAX_ALLOCATION_ATTEMPTS = 5;
 
     private final TransactionManager transactionManager;
+    private final FlowCookieRepository flowCookieRepository;
     private final FlowMeterRepository flowMeterRepository;
 
-    private final CookiePool cookiePool;
+    private final PoolManager<FlowCookie> cookiePool;
     private final MirrorGroupIdPool mirrorGroupIdPool;
 
     private final LRUMap<SwitchId, PoolManager<FlowMeter>> meterIdPools;
@@ -68,9 +72,13 @@ public class FlowResourcesManager {
 
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowMeterRepository = repositoryFactory.createFlowMeterRepository();
+        flowCookieRepository = repositoryFactory.createFlowCookieRepository();
 
-        this.cookiePool = new CookiePool(persistenceManager, config.getMinFlowCookie(), config.getMaxFlowCookie(),
-                POOL_SIZE);
+        PoolConfig cookiePoolConfig = new PoolConfig(
+                config.getMinFlowCookie(), config.getMaxFlowCookie(),
+                (config.getMaxFlowCookie() - config.getMinFlowCookie()) / POOL_SIZE);
+        cookiePool = new PoolManager<>(
+                cookiePoolConfig, new FlowCookieEntityAdapter(flowCookieRepository, cookiePoolConfig));
 
         meterIdPools = new LRUMap<>(config.getPoolsCacheSizeMeterId());
         meterIdPoolConfig = new PoolManager.PoolConfig(
@@ -140,8 +148,9 @@ public class FlowResourcesManager {
                     encapsulationResourcesProvider.allocate(flow, reversePathId, forwardPathId));
         }
 
+        FlowCookie flowCookie = allocateFlowCookie(flow.getFlowId());
         return FlowResources.builder()
-                .unmaskedCookie(cookiePool.allocate(flow.getFlowId()))
+                .unmaskedCookie(flowCookie.getUnmaskedCookie())
                 .forward(forward.build())
                 .reverse(reverse.build())
                 .build();
@@ -169,7 +178,7 @@ public class FlowResourcesManager {
         log.debug("Deallocate flow resources for path {}, cookie: {}.", pathId, unmaskedCookie);
 
         transactionManager.doInTransaction(() -> {
-            cookiePool.deallocate(unmaskedCookie);
+            deallocateCookieTransaction(unmaskedCookie);
             deallocatePathMeter(pathId);
 
             EncapsulationResourcesProvider encapsulationResourcesProvider =
@@ -187,7 +196,7 @@ public class FlowResourcesManager {
         log.debug("Deallocate flow resources {}.", resources);
 
         transactionManager.doInTransaction(() -> {
-            cookiePool.deallocate(resources.getUnmaskedCookie());
+            deallocateCookieTransaction(resources.getUnmaskedCookie());
 
             Stream.of(resources.getForward(), resources.getReverse())
                     .forEach(path -> {
@@ -238,10 +247,17 @@ public class FlowResourcesManager {
      */
     public long getAllocatedCookie(String flowId) throws ResourceAllocationException {
         try {
-            return cookiePool.allocate(flowId);
+            FlowCookie flowCookie = allocateFlowCookie(flowId);
+            return flowCookie.getUnmaskedCookie();
         } catch (ResourceNotAvailableException ex) {
             throw new ResourceAllocationException("Unable to allocate cookie", ex);
         }
+    }
+
+    private FlowCookie allocateFlowCookie(String flowId) {
+        FlowCookie flowCookie = newFlowCookie(flowId);
+        flowCookieRepository.add(flowCookie);
+        return flowCookie;
     }
 
     /**
@@ -249,7 +265,15 @@ public class FlowResourcesManager {
      */
     public void deallocateCookie(long unmaskedCookie) {
         log.debug("Deallocate cookie: {}.", unmaskedCookie);
-        cookiePool.deallocate(unmaskedCookie);
+        transactionManager.doInTransaction(() -> deallocateCookieTransaction(unmaskedCookie));
+    }
+
+    private void deallocateCookieTransaction(long value) {
+        flowCookieRepository.findByCookie(value)
+                .ifPresent(entity -> cookiePool.deallocate(() -> {
+                    flowCookieRepository.remove(entity);
+                    return entity.getUnmaskedCookie();
+                }));
     }
 
     /**
@@ -294,6 +318,13 @@ public class FlowResourcesManager {
                     flowMeterRepository.remove(entity);
                     return entity.getMeterId().getValue();
                 });
+    }
+
+    private FlowCookie newFlowCookie(String flowId) {
+        return cookiePool.allocate(entityId -> FlowCookie.builder()
+                .unmaskedCookie(entityId)
+                .flowId(flowId)
+                .build());
     }
 
     private FlowMeter newFlowMeter(SwitchId switchId, String flowId) {
