@@ -114,7 +114,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         e.statusCode == HttpStatus.NOT_FOUND
         def errorDetails = e.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription.startsWith("Not enough bandwidth or no path found. Failed to find path")
+        errorDetails.errorDescription.startsWith("Not enough bandwidth or no path found. Can't find a path")
 
         cleanup:
         !e && flowHelperV2.deleteFlow(flow.flowId)
@@ -338,7 +338,7 @@ but satisfies max_latency_tier2"
         e.statusCode == HttpStatus.NOT_FOUND
         def errorDetails = e.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription.startsWith("Not enough bandwidth or no path found. Failed to find path")
+        errorDetails.errorDescription.startsWith("Not enough bandwidth or no path found. Can't find a path")
 
         cleanup:
         !e && flowHelperV2.deleteFlow(flow.flowId)

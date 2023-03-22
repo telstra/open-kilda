@@ -13,7 +13,7 @@ This causes the following issues:
 - Under heavy load there's a risk to lose messages which are fetched and scheduled, but not processed yet. E.g. JVM may crash or be killed.
 
 ## Solution overview
-The reactor thread in Floodlight Kilda Modules should not acknowledge and schedule more messages than the thread pool can immediately process:
+The reactor thread in Floodlight OpenKilda Modules should not acknowledge and schedule more messages than the thread pool can immediately process:
 - The execution thread pool has no in-memory queue.
 - Every message fetched from Kafka topic is to be acknowledged only when an execution thread for it is allocated.
 

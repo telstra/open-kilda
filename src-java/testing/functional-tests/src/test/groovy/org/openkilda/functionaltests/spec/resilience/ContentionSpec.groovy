@@ -46,7 +46,7 @@ class ContentionSpec extends BaseSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/3411")
+    @Ignore("https://github.com/telstra/open-kilda/issues/3934")
     def "Parallel flow crud requests properly allocate/deallocate bandwidth resources"() {
         when: "Create multiple flows on the same ISLs concurrently"
         def flowsAmount = 20
@@ -89,7 +89,6 @@ class ContentionSpec extends BaseSpecification {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/4711")
     def "Reroute can be simultaneously performed with sync rules requests, removeExcess=#removeExcess"() {
         given: "A flow with reroute potential"
         def switches = topologyHelper.getNotNeighboringSwitchPair()

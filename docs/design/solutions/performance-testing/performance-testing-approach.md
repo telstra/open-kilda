@@ -1,4 +1,4 @@
-# Kilda performance testing
+# OpenKilda performance testing
 
 ## Overview
 This doc describes the approach and toolset for performance testing of OpenKilda.

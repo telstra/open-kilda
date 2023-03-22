@@ -1,4 +1,4 @@
-# Kilda configuration in the Database
+# OpenKilda configuration in the Database
 
 ## The idea
 Add ability to create or update kilda configuration in the Database.

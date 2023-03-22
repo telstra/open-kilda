@@ -28,7 +28,6 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
 import org.openkilda.model.YFlow.SharedEndpoint;
 import org.openkilda.model.YSubFlow;
@@ -49,16 +48,6 @@ public class FermaYFlowRepositoryTest extends InMemoryGraphBasedTest {
     static final String FLOW_ID_1 = "test_flow_1";
     static final String FLOW_ID_2 = "test_flow_2";
     static final String FLOW_ID_3 = "test_flow_3";
-    static final SwitchId SWITCH_ID_1 = new SwitchId(1);
-    static final SwitchId SWITCH_ID_2 = new SwitchId(2);
-    static final SwitchId SWITCH_ID_3 = new SwitchId(3);
-    static final int PORT_1 = 1;
-    static final int PORT_2 = 2;
-    static final int PORT_3 = 3;
-    static final int PORT_4 = 4;
-    public static final int VLAN_1 = 3;
-    public static final int VLAN_2 = 4;
-    public static final int VLAN_3 = 5;
 
     FlowRepository flowRepository;
     YFlowRepository yFlowRepository;

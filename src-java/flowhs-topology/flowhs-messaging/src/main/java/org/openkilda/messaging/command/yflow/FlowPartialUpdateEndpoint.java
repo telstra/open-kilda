@@ -19,6 +19,7 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
@@ -26,6 +27,7 @@ import java.io.Serializable;
 
 @Data
 @Builder
+@AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowPartialUpdateEndpoint implements Serializable {
     private static final long serialVersionUID = 1L;
