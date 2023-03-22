@@ -22,7 +22,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-public abstract class FlowControllerBase extends BaseController {
+public abstract class BaseFlowController extends BaseController {
     protected void verifyRequest(FlowRequestV2 request) {
         exposeBodyValidationResults(Stream.concat(
                 verifyFlowEndpoint(request.getSource(), "source"),
@@ -42,3 +42,4 @@ public abstract class FlowControllerBase extends BaseController {
         return Optional.empty();
     }
 }
+

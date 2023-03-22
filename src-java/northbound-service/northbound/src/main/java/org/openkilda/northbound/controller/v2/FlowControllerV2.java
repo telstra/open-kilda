@@ -18,7 +18,7 @@ package org.openkilda.northbound.controller.v2;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
-import org.openkilda.northbound.controller.FlowControllerBase;
+import org.openkilda.northbound.controller.BaseFlowController;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
@@ -57,7 +57,7 @@ import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/v2/flows")
-public class FlowControllerV2 extends FlowControllerBase {
+public class FlowControllerV2 extends BaseFlowController {
     private static final int DEFAULT_MAX_HISTORY_RECORD_COUNT = 100;
 
     @Autowired
@@ -103,7 +103,7 @@ public class FlowControllerV2 extends FlowControllerBase {
     /**
      * Gets flow.
      *
-     * @param flowId        flow id
+     * @param flowId flow id
      * @return flow
      */
     @ApiOperation(value = "Gets flow", response = FlowResponseV2.class)
@@ -129,7 +129,7 @@ public class FlowControllerV2 extends FlowControllerBase {
     /**
      * Gets flow status.
      *
-     * @param flowId        flow id
+     * @param flowId flow id
      * @return list of flow
      */
     @ApiOperation(value = "Gets flow status", response = FlowIdStatusPayload.class)
@@ -152,8 +152,8 @@ public class FlowControllerV2 extends FlowControllerBase {
     /**
      * Updates existing flow params.
      *
-     * @param flowPatchDto  flow parameters for update
-     * @param flowId        flow id
+     * @param flowPatchDto flow parameters for update
+     * @param flowId flow id
      * @return flow
      */
     @ApiOperation(value = "Updates flow", response = FlowResponseV2.class)
@@ -281,3 +281,4 @@ public class FlowControllerV2 extends FlowControllerBase {
         return flowService.getFlowMirrorPoints(flowId);
     }
 }
+

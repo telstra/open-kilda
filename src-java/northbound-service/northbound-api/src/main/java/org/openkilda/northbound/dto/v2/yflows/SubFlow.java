@@ -38,4 +38,9 @@ public class SubFlow {
 
     String timeCreate;
     String timeUpdate;
+
+    public static String formatSubFlowId(int idx, String flowId) {
+        return String.format("%d:%s:", idx, flowId);
+    }
 }
+

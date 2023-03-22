@@ -15,8 +15,9 @@
 
 package org.openkilda.northbound.controller.v2;
 
-import org.openkilda.northbound.controller.FlowControllerBase;
+import org.openkilda.northbound.controller.BaseFlowController;
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint;
+import org.openkilda.northbound.dto.v2.yflows.SubFlow;
 import org.openkilda.northbound.dto.v2.yflows.SubFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.yflows.SubFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.SubFlowsDump;
@@ -60,7 +61,7 @@ import javax.validation.Valid;
 @Api
 @RestController
 @RequestMapping("/v2/y-flows")
-public class YFlowControllerV2 extends FlowControllerBase {
+public class YFlowControllerV2 extends BaseFlowController {
     @Autowired
     private YFlowService flowService;
 
@@ -195,7 +196,7 @@ public class YFlowControllerV2 extends FlowControllerBase {
     }
 
     private Stream<Optional<String>> verifySubFlowVlanIds(int idx, SubFlowUpdatePayload subFlow) {
-        String subId = formatSubFlowId(idx, subFlow.getFlowId());
+        String subId = SubFlow.formatSubFlowId(idx, subFlow.getFlowId());
         YFlowSharedEndpointEncapsulation sharedEndpoint = subFlow.getSharedEndpoint();
         String sharedEndpointReference = subId + "shared";
         return Stream.concat(
@@ -209,7 +210,7 @@ public class YFlowControllerV2 extends FlowControllerBase {
     }
 
     private Stream<Optional<String>> verifySubFlowVlanIds(int idx, SubFlowPatchPayload subFlow) {
-        String subId = formatSubFlowId(idx, subFlow.getFlowId());
+        String subId = SubFlow.formatSubFlowId(idx, subFlow.getFlowId());
 
         Stream<Optional<String>> endpointChecks = Stream.empty();
         FlowPatchEndpoint endpoint = subFlow.getEndpoint();
@@ -233,13 +234,7 @@ public class YFlowControllerV2 extends FlowControllerBase {
     }
 
     private Optional<String> verifyOptionalEndpointVlanId(String endpoint, String field, Integer value) {
-        if (value != null) {
-            return verifyEndpointVlanId(endpoint, field, value);
-        }
-        return Optional.empty();
-    }
-
-    private String formatSubFlowId(int idx, String flowId) {
-        return String.format("%d:%s:", idx, flowId);
+        return value != null ? verifyEndpointVlanId(endpoint, field, value) : Optional.empty();
     }
 }
+
