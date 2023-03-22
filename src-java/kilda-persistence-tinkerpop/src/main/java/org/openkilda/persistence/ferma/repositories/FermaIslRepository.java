@@ -51,6 +51,7 @@ import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
 import org.apache.tinkerpop.gremlin.structure.Edge;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -381,14 +382,24 @@ public class FermaIslRepository extends FermaGenericRepository<Isl, IslData, Isl
     protected Set<String> findActiveSwitchesWithSupportEncapsulationType(FlowEncapsulationType flowEncapsulationType) {
         String flowEncapType = FlowEncapsulationTypeConverter.INSTANCE.toGraphProperty(flowEncapsulationType);
 
-        return framedGraph().traverse(g -> g.V()
-                .hasLabel(SwitchFrame.FRAME_LABEL)
-                .has(SwitchFrame.STATUS_PROPERTY, SwitchStatusConverter.INSTANCE.toGraphProperty(SwitchStatus.ACTIVE))
-                .where(__.out(SwitchPropertiesFrame.HAS_BY_EDGE)
-                        .hasLabel(SwitchPropertiesFrame.FRAME_LABEL)
-                        .values(SwitchPropertiesFrame.SUPPORTED_TRANSIT_ENCAPSULATION_PROPERTY).unfold()
-                        .is(flowEncapType))
-                .values(SwitchFrame.SWITCH_ID_PROPERTY))
+        return framedGraph().traverse(g -> {
+            GraphTraversal<Vertex, Vertex> t = g.V()
+                    .hasLabel(SwitchFrame.FRAME_LABEL)
+                    .has(SwitchFrame.STATUS_PROPERTY,
+                            SwitchStatusConverter.INSTANCE.toGraphProperty(SwitchStatus.ACTIVE));
+            if (flowEncapType != null) {
+                t = t.where(__.or(
+                        __.out(SwitchPropertiesFrame.HAS_BY_EDGE)
+                                .hasLabel(SwitchPropertiesFrame.FRAME_LABEL)
+                                .values(SwitchPropertiesFrame.SUPPORTED_TRANSIT_ENCAPSULATION_PROPERTY).unfold()
+                                .is(flowEncapType.toUpperCase()),
+                        __.out(SwitchPropertiesFrame.HAS_BY_EDGE)
+                                .hasLabel(SwitchPropertiesFrame.FRAME_LABEL)
+                                .values(SwitchPropertiesFrame.SUPPORTED_TRANSIT_ENCAPSULATION_PROPERTY).unfold()
+                                .is(flowEncapType.toLowerCase())));
+            }
+            return t.values(SwitchFrame.SWITCH_ID_PROPERTY);
+        })
                 .getRawTraversal().toStream()
                 .map(s -> (String) s)
                 .collect(toSet());

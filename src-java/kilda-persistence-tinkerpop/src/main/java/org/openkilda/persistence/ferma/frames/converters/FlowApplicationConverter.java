@@ -36,6 +36,6 @@ public class FlowApplicationConverter implements AttributeConverter<FlowApplicat
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
-        return FlowApplication.valueOf(value);
+        return FlowApplication.valueOf(value.toUpperCase());
     }
 }
