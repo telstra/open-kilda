@@ -142,7 +142,8 @@ public class PathsService {
         PathValidator pathValidator = new PathValidator(islRepository,
                 flowRepository,
                 switchPropertiesRepository,
-                switchRepository);
+                switchRepository,
+                kildaConfigurationRepository.getOrDefault());
 
         return Collections.singletonList(pathValidator.validatePath(
                 PathValidationDataMapper.INSTANCE.toPathValidationData(request.getPathValidationPayload())

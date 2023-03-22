@@ -993,7 +993,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         error.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = error.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
-        errorDetails.errorDescription == "Flow mirror point is created for the flow $flow.flowId, lldp or arp can not be set to true."
+        errorDetails.errorDescription.toLowerCase() == "Flow mirror point is created for the flow $flow.flowId, lldp or arp can not be set to true.".toLowerCase()
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)

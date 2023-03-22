@@ -130,8 +130,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         //update involved switches after update
         involvedSwitches.addAll(pathHelper.getInvolvedYSwitches(yFlow.YFlowId))
         involvedSwitches.unique { it.dpId }
-        def ignores = ["subFlows.timeUpdate", "subFlows.status", "timeUpdate", "status",
-                       "subFlows.description" /* https://github.com/telstra/open-kilda/issues/4984 */]
+        def ignores = ["subFlows.timeUpdate", "subFlows.status", "timeUpdate", "status"]
 
         then: "Requested updates are reflected in the response and in 'get' API"
         expect updateResponse, sameBeanAs(yFlow, ignores)

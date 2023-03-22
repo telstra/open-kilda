@@ -18,7 +18,7 @@ package org.openkilda.northbound.controller;
 import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.config.SecurityConfig;
 import org.openkilda.northbound.config.WebConfig;
-import org.openkilda.northbound.controller.v1.TestMessageMock;
+import org.openkilda.northbound.controller.mock.TestMessageMock;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.TestCorrelationIdFactory;

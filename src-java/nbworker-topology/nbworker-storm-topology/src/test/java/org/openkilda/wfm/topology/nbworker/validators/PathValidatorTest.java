@@ -19,6 +19,7 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
+import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.openkilda.model.PathComputationStrategy.COST;
 import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH;
 import static org.openkilda.model.PathComputationStrategy.LATENCY;
@@ -34,6 +35,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
@@ -66,6 +68,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     private static final SwitchId SWITCH_ID_2 = new SwitchId(2);
     private static final SwitchId SWITCH_ID_3 = new SwitchId(3);
+    private static final SwitchId SWITCH_ID_4 = new SwitchId(4);
     private static SwitchRepository switchRepository;
     private static SwitchPropertiesRepository switchPropertiesRepository;
     private static IslRepository islRepository;
@@ -84,8 +87,9 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         PathComputerConfig pathComputerConfig = new PropertiesBasedConfigurationProvider()
                 .getConfiguration(PathComputerConfig.class);
         pathsService = new PathsService(repositoryFactory, pathComputerConfig);
+        KildaConfiguration kildaConfiguration = repositoryFactory.createKildaConfigurationRepository().getOrDefault();
+        kildaConfiguration.setFlowEncapsulationType(TRANSIT_VLAN);
     }
-
 
     @Before
     public void createTestTopology() {
@@ -93,11 +97,13 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
             Switch switch0 = Switch.builder().switchId(SWITCH_ID_0).status(SwitchStatus.ACTIVE).build();
             Switch switchA = Switch.builder().switchId(SWITCH_ID_1).status(SwitchStatus.ACTIVE).build();
             Switch switchB = Switch.builder().switchId(SWITCH_ID_2).status(SwitchStatus.ACTIVE).build();
+            Switch switchC = Switch.builder().switchId(SWITCH_ID_4).status(SwitchStatus.ACTIVE).build();
             Switch switchTransit = Switch.builder().switchId(SWITCH_ID_3).status(SwitchStatus.ACTIVE).build();
 
             switchRepository.add(switch0);
             switchRepository.add(switchA);
             switchRepository.add(switchB);
+            switchRepository.add(switchC);
             switchRepository.add(switchTransit);
 
             switchPropertiesRepository.add(SwitchProperties.builder()
@@ -115,6 +121,10 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
             switchPropertiesRepository.add(SwitchProperties.builder()
                     .switchObj(switchTransit)
                     .supportedTransitEncapsulation(Sets.newHashSet(TRANSIT_VLAN))
+                    .build());
+            switchPropertiesRepository.add(SwitchProperties.builder()
+                    .switchObj(switchC)
+                    .supportedTransitEncapsulation(Sets.newHashSet(VXLAN))
                     .build());
 
             createOneWayIsl(switchA, 6, switchTransit, 6, 10, 2_000_000, 10_000, IslStatus.ACTIVE);
@@ -222,7 +232,9 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         Set<String> actualErrorMessages = Sets.newHashSet(responses.get(0).getErrors());
         Set<String> expectedErrorMessages = Sets.newHashSet(
                 "The following switch has not been found: 00:00:00:00:01:01:01:01.",
+                "The following switch properties have not been found: 00:00:00:00:01:01:01:01.",
                 "The following switch has not been found: 00:00:00:00:01:01:01:02.",
+                "The following switch properties have not been found: 00:00:00:00:01:01:01:02.",
                 "There is no ISL between end points: switch 00:00:00:00:01:01:01:01 port 6"
                         + " and switch 00:00:00:00:01:01:01:02 port 6.",
                 "There is no ISL between end points: switch 00:00:00:00:01:01:01:02 port 6"
@@ -342,6 +354,30 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
     }
 
     @Test
+    public void whenNoEncapsulationTypeInRequest_useDefaultEncapsulationType_validatePathReturnsErrorResponseTest() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_4, 6, 7));
+
+        PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .nodes(nodes)
+                .build());
+        List<PathValidationResult> responses = pathsService.validatePath(request);
+
+        assertFalse(responses.isEmpty());
+        assertFalse(responses.get(0).getIsValid());
+        assertFalse(responses.get(0).getErrors().isEmpty());
+        Set<String> expectedErrors = Sets.newHashSet(
+                "The switch 00:00:00:00:00:00:00:04 doesn't support the encapsulation type TRANSIT_VLAN.",
+                "There is no ISL between end points: switch 00:00:00:00:00:00:00:01 port 6 and switch "
+                        + "00:00:00:00:00:00:00:04 port 6.",
+                "There is no ISL between end points: switch 00:00:00:00:00:00:00:04 port 6 and switch "
+                        + "00:00:00:00:00:00:00:01 port 6.");
+        Set<String> actualErrors = Sets.newHashSet(responses.get(0).getErrors());
+        assertEquals(expectedErrors, actualErrors);
+    }
+
+    @Test
     public void whenNoLinkBetweenSwitches_validatePathReturnsErrorResponseTest() {
         List<PathNodePayload> nodes = new LinkedList<>();
         nodes.add(new PathNodePayload(SWITCH_ID_1, null, 1));
@@ -378,6 +414,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .bandwidth(0L)
                 .latencyMs(1L)
                 .latencyTier2ms(0L)
+                .pathComputationStrategy(LATENCY)
                 .build());
         List<PathValidationResult> responses = pathsService.validatePath(request);
 
@@ -469,6 +506,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .bandwidth(1000000L)
                 .latencyMs(1L)
                 .latencyTier2ms(0L)
+                .pathComputationStrategy(LATENCY)
                 .build());
         List<PathValidationResult> responses = pathsService.validatePath(request);
 
@@ -478,9 +516,10 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
         assertEquals("There must be 7 errors in total: 2 not enough bandwidth (forward and reverse paths), "
                         + "2 link is not present, 2 latency, and 1 switch is not found",
-                6, responses.get(0).getErrors().size());
+                7, responses.get(0).getErrors().size());
         Set<String> expectedErrorMessages = Sets.newHashSet(
                 "The following switch has not been found: 00:00:00:00:00:00:00:ff.",
+                "The following switch properties have not been found: 00:00:00:00:00:00:00:ff.",
                 "There is not enough bandwidth between end points: switch 00:00:00:00:00:00:00:03"
                 + " port 6 and switch 00:00:00:00:00:00:00:01 port 6 (reverse path). Requested bandwidth 1000000,"
                 + " but the link supports 10000.",
@@ -530,6 +569,24 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .latencyMs(10L)
                 .latencyTier2ms(0L)
                 .pathComputationStrategy(COST)
+                .build());
+        List<PathValidationResult> responses = pathsService.validatePath(request);
+
+        assertFalse(responses.isEmpty());
+        assertTrue(responses.get(0).getIsValid());
+    }
+
+    @Test
+    public void whenNoPathComputationStrategyInRequest_ignoreLatencyAnd_validatePathReturnsSuccessResponseTest() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .nodes(nodes)
+                .bandwidth(0L)
+                .latencyMs(0L)
+                .latencyTier2ms(0L)
                 .build());
         List<PathValidationResult> responses = pathsService.validatePath(request);
 

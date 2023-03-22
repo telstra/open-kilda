@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,24 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.validation;
+package org.openkilda.persistence.repositories;
 
-import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.HaFlow;
 
-import lombok.Getter;
+import java.util.Collection;
+import java.util.Optional;
 
-@Getter
-public class InvalidFlowException extends Exception {
+public interface HaFlowRepository extends Repository<HaFlow> {
+    Collection<HaFlow> findAll();
 
-    private final ErrorType type;
+    boolean exists(String haFlowId);
 
-    public InvalidFlowException(String message, ErrorType type) {
-        super(message);
-        this.type = type;
-    }
+    Optional<HaFlow> findById(String haFlowId);
 
-    public InvalidFlowException(String message, Throwable cause, ErrorType type) {
-        super(message, cause);
-        this.type = type;
-    }
+    Optional<HaFlow> remove(String haFlowId);
 }

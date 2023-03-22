@@ -17,9 +17,11 @@ package org.openkilda.wfm.topology.nbworker.validators;
 
 import org.openkilda.messaging.info.network.PathValidationResult;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.PathValidationData;
@@ -61,17 +63,19 @@ public class PathValidator {
     private final FlowRepository flowRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final SwitchRepository switchRepository;
+    private final KildaConfiguration kildaConfiguration;
     private Map<IslEndpoints, Optional<Isl>> islCache;
     private Map<SwitchId, Optional<Switch>> switchCache;
 
     public PathValidator(IslRepository islRepository,
                          FlowRepository flowRepository,
                          SwitchPropertiesRepository switchPropertiesRepository,
-                         SwitchRepository switchRepository) {
+                         SwitchRepository switchRepository, KildaConfiguration kildaConfiguration) {
         this.islRepository = islRepository;
         this.flowRepository = flowRepository;
         this.switchPropertiesRepository = switchPropertiesRepository;
         this.switchRepository = switchRepository;
+        this.kildaConfiguration = kildaConfiguration;
     }
 
     /**
@@ -167,7 +171,7 @@ public class PathValidator {
     }
 
     private boolean isEncapsulationTypeValidationRequired(PathValidationData pathValidationData) {
-        return pathValidationData.getFlowEncapsulationType() != null;
+        return getOrDefaultFlowEncapsulationType(pathValidationData) != null;
     }
 
     private boolean isDiverseWithFlowValidationRequired(PathValidationData pathValidationData) {
@@ -182,16 +186,15 @@ public class PathValidator {
     private boolean isLatencyTier2ValidationRequired(PathValidationData pathValidationData) {
         return pathValidationData.getLatencyTier2() != null
                 && !pathValidationData.getLatencyTier2().isZero()
-                && (pathValidationData.getPathComputationStrategy() == PathComputationStrategy.LATENCY
-                || pathValidationData.getPathComputationStrategy() == PathComputationStrategy.MAX_LATENCY);
+                && (getOrDefaultPathComputationStrategy(pathValidationData) == PathComputationStrategy.LATENCY
+                || getOrDefaultPathComputationStrategy(pathValidationData) == PathComputationStrategy.MAX_LATENCY);
     }
 
     private boolean isLatencyValidationRequired(PathValidationData pathValidationData) {
         return pathValidationData.getLatency() != null
                 && !pathValidationData.getLatency().isZero()
-                && (pathValidationData.getPathComputationStrategy() == null
-                || pathValidationData.getPathComputationStrategy() == PathComputationStrategy.LATENCY
-                || pathValidationData.getPathComputationStrategy() == PathComputationStrategy.MAX_LATENCY);
+                && (getOrDefaultPathComputationStrategy(pathValidationData) == PathComputationStrategy.LATENCY
+                || getOrDefaultPathComputationStrategy(pathValidationData) == PathComputationStrategy.MAX_LATENCY);
     }
 
     private Set<String> validateForwardAndReverseLinks(InputData inputData) {
@@ -338,23 +341,23 @@ public class PathValidator {
     private Set<String> validateEncapsulationType(InputData inputData) {
         Set<String> errors = Sets.newHashSet();
         Map<SwitchId, SwitchProperties> switchPropertiesMap = switchPropertiesRepository.findBySwitchIds(
-                Sets.newHashSet(inputData.getPath().getSrcSwitchId(), inputData.getPath().getDestSwitchId()));
+                Sets.newHashSet(inputData.getSegment().getSrcSwitchId(), inputData.getSegment().getDestSwitchId()));
 
-        if (!switchPropertiesMap.containsKey(inputData.getPath().getSrcSwitchId())) {
-            errors.add(getSrcSwitchNotFoundError(inputData));
+        if (!switchPropertiesMap.containsKey(inputData.getSegment().getSrcSwitchId())) {
+            errors.add(getSrcSwitchPropertiesNotFoundError(inputData));
         } else {
-            if (!switchPropertiesMap.get(inputData.getPath().getSrcSwitchId()).getSupportedTransitEncapsulation()
-                    .contains(inputData.getPath().getFlowEncapsulationType())) {
+            if (!switchPropertiesMap.get(inputData.getSegment().getSrcSwitchId()).getSupportedTransitEncapsulation()
+                    .contains(getOrDefaultFlowEncapsulationType(inputData))) {
                 errors.add(getSrcSwitchDoesNotSupportEncapsulationTypeError(inputData));
             }
         }
 
-        if (!switchPropertiesMap.containsKey(inputData.getPath().getDestSwitchId())) {
-            errors.add(getDestSwitchNotFoundError(inputData));
+        if (!switchPropertiesMap.containsKey(inputData.getSegment().getDestSwitchId())) {
+            errors.add(getDestSwitchPropertiesNotFoundError(inputData));
         } else {
-            if (!switchPropertiesMap.get(inputData.getPath().getDestSwitchId()).getSupportedTransitEncapsulation()
-                    .contains(inputData.getPath().getFlowEncapsulationType())) {
-                errors.add(getDestSwitchDoesNotSupportEncapsulationTypeError(inputData));
+            if (!switchPropertiesMap.get(inputData.getSegment().getDestSwitchId()).getSupportedTransitEncapsulation()
+                    .contains(getOrDefaultFlowEncapsulationType(inputData))) {
+                errors.add(getDestSwitchDoesNotSupportEncapsulationTypeError((inputData)));
             }
         }
 
@@ -540,14 +543,44 @@ public class PathValidator {
         return String.format("The following switch has not been found: %s.", data.getSegment().getDestSwitchId());
     }
 
+    private String getSrcSwitchPropertiesNotFoundError(InputData data) {
+        return String.format("The following switch properties have not been found: %s.",
+                data.getSegment().getSrcSwitchId());
+    }
+
+    private String getDestSwitchPropertiesNotFoundError(InputData data) {
+        return String.format("The following switch properties have not been found: %s.",
+                data.getSegment().getDestSwitchId());
+    }
+
     private String getSrcSwitchDoesNotSupportEncapsulationTypeError(InputData data) {
         return String.format("The switch %s doesn't support the encapsulation type %s.",
-                data.getSegment().getSrcSwitchId(), data.getPath().getFlowEncapsulationType());
+                data.getSegment().getSrcSwitchId(), getOrDefaultFlowEncapsulationType(data));
     }
 
     private String getDestSwitchDoesNotSupportEncapsulationTypeError(InputData data) {
         return String.format("The switch %s doesn't support the encapsulation type %s.",
-                data.getSegment().getDestSwitchId(), data.getPath().getFlowEncapsulationType());
+                data.getSegment().getDestSwitchId(), getOrDefaultFlowEncapsulationType(data));
+    }
+
+    private PathComputationStrategy getOrDefaultPathComputationStrategy(PathValidationData pathValidationData) {
+        return pathValidationData.getPathComputationStrategy() != null
+                ? pathValidationData.getPathComputationStrategy() :
+                kildaConfiguration.getPathComputationStrategy();
+    }
+
+    private FlowEncapsulationType getOrDefaultFlowEncapsulationType(PathValidationData pathValidationData) {
+        return getOrDefaultFlowEncapsulationType(pathValidationData.getFlowEncapsulationType());
+    }
+
+    private FlowEncapsulationType getOrDefaultFlowEncapsulationType(InputData inputData) {
+        return getOrDefaultFlowEncapsulationType(inputData.getPath().getFlowEncapsulationType());
+    }
+
+    private FlowEncapsulationType getOrDefaultFlowEncapsulationType(FlowEncapsulationType requestedType) {
+        return requestedType != null
+                ? requestedType
+                : kildaConfiguration.getFlowEncapsulationType();
     }
 
     @Getter
