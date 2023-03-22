@@ -2,55 +2,54 @@
 
 ## Current implementation
 
-In current implementation we measure latency from Switch A to Switch B by discovery packets.
+In the current implementation, we measure latency from Switch A to Switch B using discovery packets.
 ![Current latency implementation](current_discovery.png "Current latency implementation")
 
 ## Round trip latency design with NoviFlow switches
 
 The new way to measure round trip latency:
 
-1) Send a discovery as a packet_out to switch A
-2) Switch A put a timestamp t1 to the discovery packet and send it to switch B
+1) Send a discovery packet as a packet_out to switch A.
+2) Switch A puts a timestamp t1 to the discovery packet and sends it to Switch B.
 3) Switch B receives the discovery packet and copies it. 
-After copying we got two packets - P1 (for discovery) and P2 (for round trip latency).
-Switch B has different actions for where two copies: 
-    * P1 will be send to the controller
-    * P2 will be modified (UDP port will be changed) and send back to switch A (via group table)
-4) Switch A receives his own message, add a timestamp t2 to it and send it to a controller.
-5) Controller use the discovery packet from Switch B for ISL discovery purposes and store ISL in DB (without latency).
-6) Controller use the discovery packet from Switch A for a roundtrip latency (t2-t1) measurement purposes:
-    * Save ISL latency in DB
-    * Send latency stats to OTSDB 
+After copying, we got two packets: P1 (for discovery) and P2 (for round trip latency).
+Switch B has different actions for these two copies: 
+    * P1 will be sent to the controller,
+    * P2 will be modified (UDP port will be changed) and send back to Switch A (via group table).
+4) Switch A receives his own message, adds a timestamp t2 to it, and sends it to the controller.
+5) The controller uses the discovery packet from Switch B for ISL discovery purposes and stores ISL in DB (without latency).
+6) The controller uses the discovery packet from Switch A for a round trip latency (t2-t1) measurement purposes:
+    * Saves ISL latency in DB,
+    * Sends latency stats to OTSDB. 
 
 ![Round trip latency design](new_discovery_noviflow_with_groups_support.png "Round trip latency design")
 
-## Round trip latency design with NOT NoviFlow switch
+## Round trip latency design with non-NoviFlow switch
 
-Not NoviFlow switches can't store timestamps so the old way of latency measuring will be used for them.
-![Round trip latency design for NOW noviflow switches](new_discovery_not_noviflow.png "Round trip latency design for NOT noviflow switches")
+Non-NoviFlow switches can't store timestamps, so the old way of latency measuring will be used for them.
+![Round trip latency design for non-NoviFlow switches](new_discovery_not_noviflow.png "Round trip latency design for non-NoviFlow switches")
 
 ## One way latency VS round trip latency
 
 How to determine which latency must be used?
 There are 2 common cases:
-1. We got round trip latency and one way latency.
-2. We got only one way latency
+1. We got round trip latency and one-way latency.
+2. We got only one way latency.
 
-Round trip latency is more prioritised so we will use one way latency only if there is no round trip latency data.
-Ways of determination of RTL availability are different for Neo4j and for OpenTSDB.
+Round trip latency is more prioritised, so we will use one-way latency only if there is no round trip latency data.
+There are different ways of determining the RTL availability for Neo4j and for OpenTSDB.
 
 ### Storing latency in Neo4j Database
 
-We can't update isl latency on each received latency packet. It's high load for Neo4j.
+We can't update ISL latency on each received latency packet. It's high load for Neo4j.
 So we will collect latency for some period of time and update average latency in DB periodically. 
 Two new config options were introduced for that purpose:
 
 * `latency.update.interval` interval of sending new latency into DB
 * `latency.update.time.range` interval of collecting latency to calculate average latency
 
-At the moment of sending latency to DB we are checking RTL and one way latency records.
-RTL records will be chosen if even one RTL record is still valid.
-One way latency records will be chosen otherwise.
+At the moment of sending latency to DB, we are checking RTL and one-way latency records.
+RTL records will be chosen if at least one RTL record is still valid. Otherwise, one-way latency records will be chosen.
 
 Here is a timeline of latency processing for Neo4j:
 
@@ -58,16 +57,16 @@ Here is a timeline of latency processing for Neo4j:
 
 ### OpenTSDB metrics
 
-We send RTL metrics immediately. If we got RTL record one way latency metric will be ignored. 
+We send RTL metrics immediately. If we got RTL record one-way latency, the metric will be ignored. 
 
-If there is no RTL metrics we will start to collect one way records
-and start to wait for some time. Collected batch of one way metrics will be sent to OpenTSDB after timeout.
-All following one way records will be sent immediately.
+If there are no RTL metrics, we will start to collect one-way records and start to wait for some time.
+A batch of collected one-way metrics will be sent to OpenTSDB after timeout.
+All following one-way records will be sent immediately.
 
-New config option was introduce for this purpose:
+A new config option was introduced for this purpose:
 `latency.discovery.interval.multiplier`
 
-To get time of awaiting you need to multiply discovery interval on this config option.
+To get time of awaiting you need to multiply a discovery interval by this config option.
 
 Here is a timeline of latency processing for OpenTSDB:
 
@@ -75,10 +74,10 @@ Here is a timeline of latency processing for OpenTSDB:
 
 ## New OpenFlow rule and group
 
-New openflow group copies discovery packets and sends one copy to controller
+A new openflow group copies discovery packets and sends one copy to the controller
 and the other copy back to sender switch.
 
-Group description:
+The group description:
 
 ```
 [GROUP_ENTRY1]
@@ -110,7 +109,7 @@ Group description:
                     port = in_port
 ```
 
-New default rule catches packets and sends them to controller:
+A new default rule catches packets and sends them to the controller:
 
 ```
 [FLOW_ID5]
@@ -140,14 +139,14 @@ New default rule catches packets and sends them to controller:
 
 ```
 
-There are some technical problems with creating of this rule from CLI:
+There are some technical problems with creation of this rule from CLI:
 
 `set config flow tableid 1 command add priority 31770 matchfields eth_dst eth_src eth_type
  ip_proto udp_dst valuesmasks XX:XX:XX:XX:XX:XX YY:YY:YY:YY:YY:YY 0x800 17 61232
  instruction apply_actions action copy_field nbits 64 srcoffset 0 dstoffset 640
  srcfield expmatchfield rx_timestamp dstfield expmatchfield 8 action output port ctrl`
 
-## Structure of discovery packet
+## The structure of a discovery packet
 
 Two new LLDP TVL fields will be added to discovery packet to store T0 and T1 timestamps.
 New discovery packet structure:
@@ -210,7 +209,7 @@ New discovery packet structure:
 +-+-+-+
 ```
 
-**NOTE:** This structure was generated be script from file `generate_packet_structure.sh`
+**NOTE:** This structure was generated by the script from the file [generate_packet_structure.sh](./generate_packet_structure.sh).
 
 ##### TVL Packet Types
 

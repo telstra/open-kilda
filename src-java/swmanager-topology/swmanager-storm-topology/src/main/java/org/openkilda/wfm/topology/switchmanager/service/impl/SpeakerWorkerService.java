@@ -21,6 +21,8 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.switches.DumpGroupsForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -28,7 +30,8 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowDumpResponse;
-import org.openkilda.messaging.info.flow.SingleFlowDumpResponse;
+import org.openkilda.messaging.info.group.GroupDumpResponse;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.switchmanager.service.SpeakerCommandCarrier;
 
@@ -148,14 +151,25 @@ public class SpeakerWorkerService {
 
         if (pending != null && pending.getPayload() != null) {
             if (pending.getPayload() instanceof DumpRulesForSwitchManagerRequest) {
-                FlowDumpResponse entries = new FlowDumpResponse(
-                        messages.stream()
-                                .map(InfoMessage::getData)
-                                .map(SingleFlowDumpResponse.class::cast)
-                                .map(SingleFlowDumpResponse::getFlowSpeakerData)
-                                .collect(Collectors.toList()));
-                InfoMessage response = new InfoMessage(entries, key, pending.getCookie());
-                carrier.sendResponse(key, response);
+                List<FlowDumpResponse> responses = messages.stream()
+                        .map(InfoMessage::getData)
+                        .map(FlowDumpResponse.class::cast)
+                        .collect(Collectors.toList());
+                carrier.sendResponse(key, new InfoMessage(FlowDumpResponse.unite(responses), key, pending.getCookie()));
+            } else if (pending.getPayload() instanceof DumpMetersForSwitchManagerRequest) {
+                List<MeterDumpResponse> responses = messages.stream()
+                        .map(InfoMessage::getData)
+                        .map(MeterDumpResponse.class::cast)
+                        .collect(Collectors.toList());
+                carrier.sendResponse(key, new InfoMessage(
+                        MeterDumpResponse.unite(responses), key, pending.getCookie()));
+            } else if (pending.getPayload() instanceof DumpGroupsForSwitchManagerRequest) {
+                List<GroupDumpResponse> responses = messages.stream()
+                        .map(InfoMessage::getData)
+                        .map(GroupDumpResponse.class::cast)
+                        .collect(Collectors.toList());
+                carrier.sendResponse(key, new InfoMessage(
+                        GroupDumpResponse.unite(responses), key, pending.getCookie()));
             } else {
                 log.error("Unknown request payload for chunked response. Request contest: {}, key: {}, "
                         + "chunked data: {}", pending, key, messages);

@@ -23,6 +23,7 @@ import org.openkilda.messaging.command.yflow.SubFlowPartialUpdateDto;
 import org.openkilda.messaging.command.yflow.SubFlowSharedEndpointEncapsulation;
 import org.openkilda.messaging.command.yflow.YFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowPartialUpdateRequest;
+import org.openkilda.messaging.command.yflow.YFlowPartialUpdateSharedEndpoint;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.info.flow.SubFlowPingPayload;
 import org.openkilda.messaging.info.flow.UniSubFlowPingPayload;
@@ -118,6 +119,7 @@ public class YFlowMapperTest {
         assertEquals(request.getDescription(), result.getDescription());
         assertEquals(request.isAllocateProtectedPath(), result.isAllocateProtectedPath());
         assertEquals(request.getDiverseFlowId(), result.getDiverseFlowId());
+        assertSharedEndpoint(request.getSharedEndpoint(), result.getSharedEndpoint());
 
         assertEquals(2, result.getSubFlows().size());
         assertSubFlow(request.getSubFlows().get(0), result.getSubFlows().get(0));
@@ -158,6 +160,7 @@ public class YFlowMapperTest {
         assertEquals(request.getDescription(), result.getDescription());
         assertEquals(request.isAllocateProtectedPath(), result.isAllocateProtectedPath());
         assertEquals(request.getDiverseFlowId(), result.getDiverseFlowId());
+        assertSharedEndpoint(request.getSharedEndpoint(), result.getSharedEndpoint());
 
         assertEquals(2, result.getSubFlows().size());
         assertSubFlow(request.getSubFlows().get(0), result.getSubFlows().get(0));
@@ -194,6 +197,7 @@ public class YFlowMapperTest {
         assertEquals(request.getDescription(), result.getDescription());
         assertEquals(request.getAllocateProtectedPath(), result.getAllocateProtectedPath());
         assertEquals(request.getDiverseFlowId(), result.getDiverseFlowId());
+        assertSharedEndpoint(request.getSharedEndpoint(), result.getSharedEndpoint());
 
         assertEquals(2, result.getSubFlows().size());
         assertSubFlow(request.getSubFlows().get(0), result.getSubFlows().get(0));
@@ -217,6 +221,7 @@ public class YFlowMapperTest {
         response.setStrictBandwidth(false);
         response.setDescription(DESC_1);
         response.setAllocateProtectedPath(true);
+        response.setYPoint(SWITCH_ID_2);
         response.setProtectedPathYPoint(SWITCH_ID_3);
         response.setDiverseWithFlows(Sets.newHashSet(FLOW_3));
         response.setSubFlows(Lists.newArrayList(
@@ -252,6 +257,8 @@ public class YFlowMapperTest {
         assertEquals(response.isStrictBandwidth(), result.isStrictBandwidth());
         assertEquals(response.getDescription(), result.getDescription());
         assertEquals(response.isAllocateProtectedPath(), result.isAllocateProtectedPath());
+        assertEquals(response.getYPoint(), result.getYPoint());
+        assertEquals(response.getProtectedPathYPoint(), result.getProtectedPathYPoint());
         assertEquals(response.getDiverseWithFlows(), result.getDiverseWithFlows());
 
         assertEquals(2, result.getSubFlows().size());
@@ -335,6 +342,16 @@ public class YFlowMapperTest {
         assertEquals(expected.getEndpoint().getInnerVlanId(), actual.getEndpoint().getInnerVlanId());
         assertEquals(expected.getSharedEndpoint().getVlanId(), actual.getSharedEndpoint().getVlanId());
         assertEquals(expected.getSharedEndpoint().getInnerVlanId(), actual.getSharedEndpoint().getInnerVlanId());
+    }
+
+    private void assertSharedEndpoint(YFlowSharedEndpoint expected, FlowEndpoint actual) {
+        assertEquals(expected.getSwitchId(), actual.getSwitchId());
+        assertEquals(expected.getPortNumber(), actual.getPortNumber().intValue());
+    }
+
+    private void assertSharedEndpoint(YFlowPatchSharedEndpoint expected, YFlowPartialUpdateSharedEndpoint actual) {
+        assertEquals(expected.getSwitchId(), actual.getSwitchId());
+        assertEquals(expected.getPortNumber(), actual.getPortNumber());
     }
 
     @TestConfiguration

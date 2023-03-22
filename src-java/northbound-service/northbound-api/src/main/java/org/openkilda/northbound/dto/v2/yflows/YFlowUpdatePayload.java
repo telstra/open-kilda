@@ -45,3 +45,4 @@ public class YFlowUpdatePayload extends YFlowCreateUpdatePayloadBase {
                 allocateProtectedPath, diverseFlowId, subFlows);
     }
 }
+

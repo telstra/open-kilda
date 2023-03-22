@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@ package org.openkilda.wfm.share.service;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats;
@@ -36,7 +34,6 @@ import org.junit.Test;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class IntersectionComputerTest {
     private static final SwitchId SWITCH_ID_A = new SwitchId("00:00:00:00:00:00:00:0A");
@@ -72,7 +69,7 @@ public class IntersectionComputerTest {
     }
 
     @Test
-    public void noGroupIntersections() {
+    public void noGroupIntersectionsTest() {
         List<FlowPath> paths = getFlowPaths();
 
         IntersectionComputer computer = new IntersectionComputer(FLOW_ID, PATH_ID, PATH_ID_REVERSE, paths);
@@ -82,7 +79,7 @@ public class IntersectionComputerTest {
     }
 
     @Test
-    public void noGroupIntersectionsInOneFlow() {
+    public void noGroupIntersectionsInOneFlowTest() {
         List<FlowPath> paths = getFlowPaths();
         paths.addAll(getFlowPaths(NEW_PATH_ID, NEW_PATH_ID_REVERSE, flow));
 
@@ -93,7 +90,7 @@ public class IntersectionComputerTest {
     }
 
     @Test
-    public void shouldNoIntersections() {
+    public void noIntersectionsTest() {
         List<FlowPath> paths = getFlowPaths();
 
         FlowPath path = FlowPath.builder()
@@ -122,7 +119,7 @@ public class IntersectionComputerTest {
     }
 
     @Test
-    public void shouldNotIntersectPathInSameFlow() {
+    public void doesntIntersectPathInSameFlowTest() {
         List<FlowPath> paths = getFlowPaths();
 
         FlowPath newPath = FlowPath.builder()
@@ -142,7 +139,7 @@ public class IntersectionComputerTest {
     }
 
     @Test
-    public void shouldNotFailIfNoSegments() {
+    public void doesntFailIfNoSegmentsTest() {
         IntersectionComputer computer = new IntersectionComputer(FLOW_ID, PATH_ID, PATH_ID_REVERSE,
                 Collections.emptyList());
         OverlappingSegmentsStats stats = computer.getOverlappingStats(NEW_PATH_ID, NEW_PATH_ID_REVERSE);
@@ -151,7 +148,7 @@ public class IntersectionComputerTest {
     }
 
     @Test
-    public void shouldNotFailIfNoIntersectionSegments() {
+    public void doesntFailIfNoIntersectionSegmentsTest() {
         List<FlowPath> paths = getFlowPaths();
 
         IntersectionComputer computer = new IntersectionComputer(FLOW_ID, PATH_ID, PATH_ID_REVERSE, paths);
@@ -161,7 +158,7 @@ public class IntersectionComputerTest {
     }
 
     @Test
-    public void switchIntersectionByPathId() {
+    public void switchIntersectionByPathIdTest() {
         List<FlowPath> paths = getFlowPaths();
 
         FlowPath newPath = FlowPath.builder()
@@ -181,7 +178,7 @@ public class IntersectionComputerTest {
     }
 
     @Test
-    public void partialIntersection() {
+    public void partialIntersectionTest() {
         List<FlowPath> paths = getFlowPaths();
 
         FlowPath newPath = FlowPath.builder()
@@ -201,7 +198,27 @@ public class IntersectionComputerTest {
     }
 
     @Test
-    public void fullIntersection() {
+    public void anotherPathPartialIntersectionTest() {
+        List<FlowPath> paths = getFlowPaths();
+
+        FlowPath newPath = FlowPath.builder()
+                .pathId(NEW_PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_A))
+                .destSwitch(makeSwitch(SWITCH_ID_B))
+                .segments(Lists.newArrayList(
+                        buildPathSegment(NEW_PATH_ID, SWITCH_ID_A, SWITCH_ID_B, 1, 1)))
+                .build();
+        flow2.addPaths(newPath);
+        paths.add(newPath);
+
+        IntersectionComputer computer = new IntersectionComputer(FLOW_ID, PATH_ID, PATH_ID_REVERSE, paths);
+        OverlappingSegmentsStats stats = computer.getOverlappingStats(NEW_PATH_ID, NEW_PATH_ID_REVERSE);
+
+        assertEquals(new OverlappingSegmentsStats(1, 2, 50, 66), stats);
+    }
+
+    @Test
+    public void fullIntersectionTest() {
         List<FlowPath> paths = getFlowPaths();
         paths.addAll(getFlowPaths(NEW_PATH_ID, NEW_PATH_ID_REVERSE, flow2));
 
@@ -212,29 +229,7 @@ public class IntersectionComputerTest {
     }
 
     @Test
-    public void isProtectedPathOverlapsPositive() {
-        List<FlowPath> paths = getFlowPaths(PATH_ID, PATH_ID_REVERSE, flow);
-
-        List<PathSegment> primarySegments = getFlowPathSegments(paths);
-        List<PathSegment> protectedSegmets = Collections.singletonList(
-                buildPathSegment(PATH_ID, SWITCH_ID_A, SWITCH_ID_B, 1, 1));
-
-        assertTrue(IntersectionComputer.isProtectedPathOverlaps(primarySegments, protectedSegmets));
-    }
-
-    @Test
-    public void isProtectedPathOverlapsNegative() {
-        List<FlowPath> paths = getFlowPaths(PATH_ID, PATH_ID_REVERSE, flow);
-
-        List<PathSegment> primarySegments = getFlowPathSegments(paths);
-        List<PathSegment> protectedSegmets = Collections.singletonList(
-                buildPathSegment(PATH_ID, SWITCH_ID_A, SWITCH_ID_C, 3, 3));
-
-        assertFalse(IntersectionComputer.isProtectedPathOverlaps(primarySegments, protectedSegmets));
-    }
-
-    @Test
-    public void shouldCalculateSharedPathWithSingleSegment() {
+    public void calculateSharedPathWithSingleSegmentTest() {
         FlowPath firstPath = FlowPath.builder()
                 .pathId(PATH_ID)
                 .srcSwitch(makeSwitch(SWITCH_ID_A))
@@ -263,7 +258,7 @@ public class IntersectionComputerTest {
     }
 
     @Test
-    public void shouldCalculateSharedPathWithNoSegments() {
+    public void calculateSharedPathWithNoSegmentsTest() {
         FlowPath firstPath = FlowPath.builder()
                 .pathId(PATH_ID)
                 .srcSwitch(makeSwitch(SWITCH_ID_A))
@@ -289,7 +284,7 @@ public class IntersectionComputerTest {
     }
 
     @Test
-    public void shouldCalculateSharedPathAsFullPath() {
+    public void calculateSharedPathAsFullPathTest() {
         FlowPath firstPath = FlowPath.builder()
                 .pathId(PATH_ID)
                 .srcSwitch(makeSwitch(SWITCH_ID_A))
@@ -320,7 +315,7 @@ public class IntersectionComputerTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void failCalculateSharedPathForOnePath() {
+    public void failCalculateSharedPathForOnePathTest() {
         FlowPath firstPath = FlowPath.builder()
                 .pathId(PATH_ID)
                 .srcSwitch(makeSwitch(SWITCH_ID_A))
@@ -329,12 +324,12 @@ public class IntersectionComputerTest {
                         buildPathSegment(NEW_PATH_ID, SWITCH_ID_A, SWITCH_ID_B, 1, 1),
                         buildPathSegment(NEW_PATH_ID, SWITCH_ID_B, SWITCH_ID_C, 2, 2)))
                 .build();
-        IntersectionComputer.calculatePathIntersectionFromSource(asList(firstPath));
+        IntersectionComputer.calculatePathIntersectionFromSource(Collections.singletonList(firstPath));
         fail();
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void failCalculateSharedPathForDifferentSources() {
+    public void failCalculateSharedPathForDifferentSourcesTest() {
         FlowPath firstPath = FlowPath.builder()
                 .pathId(PATH_ID)
                 .srcSwitch(makeSwitch(SWITCH_ID_A))
@@ -356,10 +351,70 @@ public class IntersectionComputerTest {
         fail();
     }
 
-    private List<PathSegment> getFlowPathSegments(List<FlowPath> paths) {
-        return paths.stream()
-                .flatMap(e -> e.getSegments().stream())
-                .collect(Collectors.toList());
+    @Test
+    public void oneSwitchIntersectionTest() {
+        List<FlowPath> paths = getFlowPaths();
+        FlowPath newPath = FlowPath.builder()
+                .pathId(NEW_PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_A))
+                .destSwitch(makeSwitch(SWITCH_ID_A))
+                .build();
+        flow2.addPaths(newPath);
+        paths.add(newPath);
+
+        IntersectionComputer computer = new IntersectionComputer(FLOW_ID, PATH_ID, PATH_ID_REVERSE, paths);
+        OverlappingSegmentsStats stats = computer.getOverlappingStats();
+
+        assertEquals(new OverlappingSegmentsStats(0, 1, 0, 33), stats);
+    }
+
+    @Test
+    public void oneSwitchAsAnotherFlowIntersectionTest() {
+        List<FlowPath> paths = getFlowPaths();
+        FlowPath newPath = FlowPath.builder()
+                .pathId(NEW_PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_A))
+                .destSwitch(makeSwitch(SWITCH_ID_A))
+                .build();
+        flow2.addPaths(newPath);
+        paths.add(newPath);
+
+        IntersectionComputer computer = new IntersectionComputer(FLOW_ID, PATH_ID, PATH_ID_REVERSE, paths);
+        OverlappingSegmentsStats stats = computer.getOverlappingStats(NEW_PATH_ID, NEW_PATH_ID_REVERSE);
+
+        assertEquals(new OverlappingSegmentsStats(0, 1, 0, 33), stats);
+    }
+
+    @Test
+    public void twoOneSwitchesIntersectionTest() {
+        Flow firstFlow = new TestFlowBuilder(FLOW_ID)
+                .srcSwitch(Switch.builder().switchId(SWITCH_ID_A).build())
+                .destSwitch(Switch.builder().switchId(SWITCH_ID_A).build())
+                .build();
+        Flow secondFlow = new TestFlowBuilder(FLOW_ID2)
+                .srcSwitch(Switch.builder().switchId(SWITCH_ID_A).build())
+                .destSwitch(Switch.builder().switchId(SWITCH_ID_A).build())
+                .build();
+
+        FlowPath firstPath = FlowPath.builder()
+                .pathId(PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_A))
+                .destSwitch(makeSwitch(SWITCH_ID_A))
+                .build();
+        FlowPath secondPath = FlowPath.builder()
+                .pathId(NEW_PATH_ID)
+                .srcSwitch(makeSwitch(SWITCH_ID_A))
+                .destSwitch(makeSwitch(SWITCH_ID_A))
+                .build();
+
+        firstFlow.addPaths(firstPath);
+        secondFlow.addPaths(secondPath);
+
+        IntersectionComputer computer = new IntersectionComputer(FLOW_ID, PATH_ID, PATH_ID_REVERSE,
+                asList(firstPath, secondPath));
+        OverlappingSegmentsStats stats = computer.getOverlappingStats();
+
+        assertEquals(new OverlappingSegmentsStats(0, 1, 0, 100), stats);
     }
 
     private List<FlowPath> getFlowPaths() {

@@ -250,14 +250,4 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                                     oldPath.getFlowMirrorPointsSet().forEach(newPath::addFlowMirrorPoints))));
         }
     }
-
-    protected boolean hasIngressMirror(FlowPath flowPath) {
-        return flowPath.getFlowMirrorPointsSet().stream()
-                .anyMatch(point -> point.getMirrorSwitchId().equals(flowPath.getSrcSwitchId()));
-    }
-
-    protected boolean hasEgressMirror(FlowPath flowPath) {
-        return flowPath.getFlowMirrorPointsSet().stream()
-                .anyMatch(point -> point.getMirrorSwitchId().equals(flowPath.getDestSwitchId()));
-    }
 }

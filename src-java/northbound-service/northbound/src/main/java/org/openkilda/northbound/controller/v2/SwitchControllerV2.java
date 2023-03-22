@@ -27,8 +27,10 @@ import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
+import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
 import org.openkilda.northbound.service.SwitchService;
 
 import io.swagger.annotations.ApiOperation;
@@ -240,5 +242,42 @@ public class SwitchControllerV2 extends BaseController {
             @PathVariable("switch_id") SwitchId switchId,
             @PathVariable("logical_port_number") int logicalPortNumber) {
         return switchService.deleteLagPort(switchId, logicalPortNumber);
+    }
+
+    /**
+     * Validate the rules, groups, lags and the meters installed on the switch against the flows in the database.
+     *
+     * @param includeString validated fields to include in response
+     * @param excludeString drop flow id, flow path and y flow id
+     * @return the validation details.
+     */
+    @ApiOperation(value = "Validate rules, lags, groups and meters installed on the switch",
+            response = SwitchValidationResultV2.class)
+    @GetMapping(path = "/{switch_id}/validate")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchValidationResultV2> validateSwitch(
+            @PathVariable(name = "switch_id") SwitchId switchId,
+            @RequestParam(name = "include", required = false) String includeString,
+            @RequestParam(name = "exclude", required = false) String excludeString) {
+        return switchService.validateSwitch(switchId, includeString, excludeString);
+    }
+
+    /**
+     * Retrieves a map of all flows for each port for the given switch.
+     * When a port ID is provided, returns flows only for the given port.
+     * Ports that don't have any associated flow are skipped, i.e. if no flows are going through this switch,
+     * returns an empty output.
+     * @param switchId a specific switch
+     * @param portIds optional. Filters the output to display this port only
+     * @return mapping of port->[flows]
+     */
+    @ApiOperation(value = "Get all flows for each port for the given switch",
+            response = SwitchFlowsPerPortResponse.class)
+    @GetMapping("/{switch_id}/flows-by-port")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchFlowsPerPortResponse> getSwitchFlows(
+            @PathVariable("switch_id") SwitchId switchId,
+            @RequestParam(value = "ports", required = false) List<Integer> portIds) {
+        return switchService.getFlowsPerPortForSwitch(switchId, portIds);
     }
 }

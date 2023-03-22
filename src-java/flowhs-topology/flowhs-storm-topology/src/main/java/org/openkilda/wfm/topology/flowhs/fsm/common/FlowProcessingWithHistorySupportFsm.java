@@ -29,12 +29,12 @@ import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrie
 import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;
 
 import lombok.NonNull;
-import org.squirrelframework.foundation.fsm.StateMachine;
+import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.time.Instant;
 import java.util.Collection;
 
-public abstract class FlowProcessingWithHistorySupportFsm<T extends StateMachine<T, S, E, C>, S, E, C,
+public abstract class FlowProcessingWithHistorySupportFsm<T extends AbstractStateMachine<T, S, E, C>, S, E, C,
         R extends NorthboundResponseCarrier & HistoryUpdateCarrier, L extends ProcessingEventListener>
         extends NbTrackableFlowProcessingFsm<T, S, E, C, R, L>
         implements FlowHistoryCarrier {

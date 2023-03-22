@@ -20,7 +20,7 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.EXTRA_AUTH;
 import static org.openkilda.messaging.Utils.MAPPER;
-import static org.openkilda.northbound.controller.v1.TestMessageMock.ERROR_FLOW_ID;
+import static org.openkilda.northbound.controller.mock.TestMessageMock.ERROR_FLOW_ID;
 import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -37,6 +37,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.northbound.controller.TestConfig;
+import org.openkilda.northbound.controller.mock.TestMessageMock;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -90,7 +91,7 @@ public class FlowControllerTest {
         MvcResult mvcResult = mockMvc.perform(put("/v1/flows")
                 .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE)
-                .content(MAPPER.writeValueAsString(TestMessageMock.flow)))
+                .content(MAPPER.writeValueAsString(TestMessageMock.FLOW)))
                 .andReturn();
 
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
@@ -100,7 +101,7 @@ public class FlowControllerTest {
         System.out.println("RESPONSE: " + result.getResponse().getContentAsString());
         FlowResponsePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
                 FlowResponsePayload.class);
-        assertEquals(TestMessageMock.flowResponsePayload, response);
+        assertEquals(TestMessageMock.FLOW_RESPONSE_PAYLOAD, response);
     }
 
     @Test
@@ -118,7 +119,7 @@ public class FlowControllerTest {
                 .andReturn();
         FlowResponsePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
                 FlowResponsePayload.class);
-        assertEquals(TestMessageMock.flowResponsePayload, response);
+        assertEquals(TestMessageMock.FLOW_RESPONSE_PAYLOAD, response);
     }
 
     @Test
@@ -135,7 +136,7 @@ public class FlowControllerTest {
                 .andReturn();
         FlowResponsePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
                 FlowResponsePayload.class);
-        assertEquals(TestMessageMock.flowResponsePayload, response);
+        assertEquals(TestMessageMock.FLOW_RESPONSE_PAYLOAD, response);
     }
 
     @Test
@@ -153,7 +154,7 @@ public class FlowControllerTest {
                 .andReturn();
         FlowResponsePayload[] response = MAPPER.readValue(result.getResponse().getContentAsString(),
                 FlowResponsePayload[].class);
-        assertEquals(TestMessageMock.flowResponsePayload, response[0]);
+        assertEquals(TestMessageMock.FLOW_RESPONSE_PAYLOAD, response[0]);
     }
 
     @Test
@@ -171,7 +172,7 @@ public class FlowControllerTest {
         MvcResult mvcResult = mockMvc.perform(put("/v1/flows/{flow-id}", TestMessageMock.FLOW_ID)
                 .header(CORRELATION_ID, testCorrelationId())
                 .contentType(APPLICATION_JSON_VALUE)
-                .content(MAPPER.writeValueAsString(TestMessageMock.flow)))
+                .content(MAPPER.writeValueAsString(TestMessageMock.FLOW)))
                 .andReturn();
 
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
@@ -180,8 +181,24 @@ public class FlowControllerTest {
                 .andReturn();
         FlowResponsePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
                 FlowResponsePayload.class);
-        assertEquals(TestMessageMock.flowResponsePayload, response);
+        assertEquals(TestMessageMock.FLOW_RESPONSE_PAYLOAD, response);
     }
+
+    @Test
+    @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
+    public void updateFlowDifferentFlowIdInPathFails() throws Exception {
+        MvcResult result = mockMvc.perform(put("/v1/flows/{flow-id}", TestMessageMock.FLOW_ID_FROM_PATH)
+                        .header(CORRELATION_ID, testCorrelationId())
+                        .contentType(APPLICATION_JSON_VALUE)
+                        .content(MAPPER.writeValueAsString(TestMessageMock.FLOW)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
+                .andReturn();
+
+        MessageError response = MAPPER.readValue(result.getResponse().getContentAsString(), MessageError.class);
+        assertEquals(TestMessageMock.DIFFERENT_FLOW_ID_ERROR, response);
+    }
+
 
     @Test
     @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
@@ -198,7 +215,7 @@ public class FlowControllerTest {
         List<FlowResponsePayload> response = MAPPER.readValue(
                 result.getResponse().getContentAsString(),
                 new TypeReference<List<FlowResponsePayload>>() {});
-        assertEquals(Collections.singletonList(TestMessageMock.flowResponsePayload), response);
+        assertEquals(Collections.singletonList(TestMessageMock.FLOW_RESPONSE_PAYLOAD), response);
     }
 
     @Test
@@ -215,7 +232,7 @@ public class FlowControllerTest {
                 .andReturn();
         FlowIdStatusPayload response =
                 MAPPER.readValue(result.getResponse().getContentAsString(), FlowIdStatusPayload.class);
-        assertEquals(TestMessageMock.flowStatus, response);
+        assertEquals(TestMessageMock.FLOW_STATUS, response);
     }
 
     @Test
@@ -231,7 +248,7 @@ public class FlowControllerTest {
                 .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
         FlowPathPayload response = MAPPER.readValue(result.getResponse().getContentAsString(), FlowPathPayload.class);
-        assertEquals(TestMessageMock.flowPath, response);
+        assertEquals(TestMessageMock.FLOW_PATH, response);
     }
 
     @Test

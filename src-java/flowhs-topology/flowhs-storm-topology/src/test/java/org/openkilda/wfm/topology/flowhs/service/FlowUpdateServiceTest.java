@@ -22,6 +22,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -97,7 +98,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
     public void shouldFailUpdateFlowIfNoPathAvailable()
             throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         Flow origin = makeFlow();
-        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), anyCollection()))
+        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), anyCollection(), anyBoolean()))
                 .thenThrow(new UnroutableFlowException(injectedErrorMessage));
 
         FlowRequest request = makeRequest()
@@ -108,14 +109,15 @@ public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
         Flow result = testExpectedFailure(request, origin, ErrorType.NOT_FOUND);
         Assert.assertEquals(origin.getBandwidth(), result.getBandwidth());
 
-        verify(pathComputer, times(11)).getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
+        verify(pathComputer, times(11))
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), anyBoolean());
     }
 
     @Test
     public void shouldFailUpdateFlowIfRecoverableException()
             throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
         Flow origin = makeFlow();
-        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), anyCollection()))
+        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), anyCollection(), anyBoolean()))
                 .thenThrow(new RecoverableException(injectedErrorMessage));
 
         FlowRequest request = makeRequest()
@@ -125,7 +127,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
         testExpectedFailure(request, origin, ErrorType.INTERNAL_ERROR);
 
         verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
-                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), anyBoolean());
     }
 
     @Test
@@ -712,7 +714,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
 
     private void preparePathComputation(String flowId, GetPathsResult pathPair)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any())).thenReturn(pathPair);
+        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any(), anyBoolean())).thenReturn(pathPair);
     }
 
     private FlowUpdateService makeService() {

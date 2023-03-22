@@ -15,17 +15,21 @@
 
 package org.openkilda.pce.model;
 
+import org.openkilda.pce.finder.FailReason;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @AllArgsConstructor
 @Builder
 public class FindPathResult {
     Pair<List<Edge>, List<Edge>> foundPath;
+    Set<FailReason> failReasons;
     boolean backUpPathComputationWayUsed;
 }

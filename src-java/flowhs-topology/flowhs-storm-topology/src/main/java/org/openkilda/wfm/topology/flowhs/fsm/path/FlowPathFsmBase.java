@@ -22,6 +22,8 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.fsm.FsmUtil;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.path.FlowPathFsmBase.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.path.FlowPathFsmBase.State;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathChunk;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathOperationConfig;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathReference;
@@ -36,7 +38,7 @@ import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
 import lombok.Getter;
 import lombok.NonNull;
-import org.squirrelframework.foundation.fsm.StateMachine;
+import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,7 +54,7 @@ import java.util.stream.Collectors;
 // TODO(surabujin): reconsider inheritance from FlowProcessingWithHistorySupportFsm
 // TODO(surabujin): request round trip timer
 public abstract class FlowPathFsmBase<
-        T extends StateMachine<T, FlowPathFsmBase.State, FlowPathFsmBase.Event, FlowPathContext>>
+        T extends AbstractStateMachine<T, State, Event, FlowPathContext>>
         extends FlowProcessingWithHistorySupportFsm<
         T, FlowPathFsmBase.State, FlowPathFsmBase.Event, FlowPathContext, FlowGenericCarrier, ProcessingEventListener>
         implements FlowPathOperation {

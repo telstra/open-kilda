@@ -239,14 +239,6 @@ class YFlowHelper {
         }
     }
 
-    static SwitchPortVlan getBusyEndpoint(YFlowSharedEndpoint se) {
-        return new SwitchPortVlan(se.switchId, se.portNumber)
-    }
-
-    static SwitchPortVlan getBusyEndpoint(SubFlowUpdatePayload subFlow) {
-        return new SwitchPortVlan(subFlow.endpoint.switchId, subFlow.endpoint.portNumber)
-    }
-
     YFlowUpdatePayload convertToUpdate(YFlow yFlow) {
         def yFlowCopy = yFlow.jacksonCopy()
         def builder = YFlowUpdatePayload.builder()

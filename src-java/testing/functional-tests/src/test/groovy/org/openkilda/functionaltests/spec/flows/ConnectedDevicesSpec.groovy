@@ -585,7 +585,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "System properly detects devices if feature is 'off' on switch level and 'on' on flow level"() {
         given: "A switch with devices feature turned off"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def sw = topology.activeTraffGens[0].switchConnected
+        def tg = topology.activeTraffGens.shuffled().first()
+        def sw = tg.switchConnected
         def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
         def swProps = northbound.getSwitchProperties(sw.dpId)
         assert !swProps.switchLldp
@@ -595,7 +596,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
         def deviceVlan = 666
-        def tg = topology.getTraffGen(sw.dpId)
         def device = new ConnectedDevice(traffExamProvider.get(), tg, [deviceVlan])
         device.sendLldp(lldpData)
         device.sendArp(arpData)
@@ -672,7 +672,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         when: "Devices send lldp and arp packets into a flow port"
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
-        new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId), [flow.source.vlanId]).withCloseable {
+        new ConnectedDevice(traffExamProvider.get(), tg, [flow.source.vlanId]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
         }
@@ -1429,7 +1429,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         given: "A switch with devices feature turned off"
         def tgService = traffExamProvider.get()
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def sw = topology.activeTraffGens[0].switchConnected
+        def tg = topology.activeTraffGens.shuffled().first()
+        def sw = tg.getSwitchConnected()
         def initialPropsSource = enableMultiTableIfNeeded(true, sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
             it.multiTable = true
@@ -1438,7 +1439,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         and: "Flow is created on a target switch with devices feature 'off'"
-        def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        def dstTg = topology.activeTraffGens.find{it != tg && it.getSwitchConnected().getDpId() != sw.getDpId()}
+        def dst = dstTg.getSwitchConnected()
         def initialPropsDst = enableMultiTableIfNeeded(true, dst.dpId)
         def flow = flowHelperV2.randomFlow(sw, dst)
         def outerVlan = 100
@@ -1448,7 +1450,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
         flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
         flowHelperV2.addFlow(flow)
-        def var = false
 
         assert northboundV2.getConnectedDevices(flow.source.switchId).ports.empty
         assert northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
@@ -1464,9 +1465,9 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def dstLldpData = LldpData.buildRandom()
         def srcArpData = ArpData.buildRandom()
         def dstArpData = ArpData.buildRandom()
-        [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
-            endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [outerVlan]).withCloseable {
+        [[flow.source, srcLldpData, srcArpData, tg], [flow.destination, dstLldpData, dstArpData, dstTg]].each {
+            endpoint, lldpData, arpData, traffGen ->
+                new ConnectedDevice(tgService, traffGen, [outerVlan]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }
@@ -1493,7 +1494,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         given: "A switch with devices feature turned on"
         def tgService = traffExamProvider.get()
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def sw = topology.activeTraffGens[0].switchConnected
+        def tg = topology.activeTraffGens.shuffled().first()
+        def sw = tg.getSwitchConnected()
         def initialPropsSource = enableMultiTableIfNeeded(true, sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
             it.multiTable = true
@@ -1502,7 +1504,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         and: "Flow is created on a target switch with devices feature 'off'"
-        def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        def dstTg = topology.activeTraffGens.find{it != tg && it.getSwitchConnected().getDpId() != sw.getDpId()}
+        def dst = dstTg.getSwitchConnected()
         def initialPropsDst = enableMultiTableIfNeeded(true, dst.dpId)
         def flow = flowHelperV2.randomFlow(sw, dst)
         def outerVlan = 100
@@ -1522,9 +1525,9 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def dstLldpData = LldpData.buildRandom()
         def srcArpData = ArpData.buildRandom()
         def dstArpData = ArpData.buildRandom()
-        [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
-            endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [outerVlan]).withCloseable {
+        [[flow.source, srcLldpData, srcArpData, tg], [flow.destination, dstLldpData, dstArpData, dstTg]].each {
+            endpoint, lldpData, arpData, traffGen ->
+                new ConnectedDevice(tgService, traffGen, [outerVlan]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }

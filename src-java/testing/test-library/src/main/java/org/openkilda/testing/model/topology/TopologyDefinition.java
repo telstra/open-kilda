@@ -47,6 +47,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
 
@@ -224,6 +225,17 @@ public class TopologyDefinition {
             }
         }
         return isls;
+    }
+
+    /**
+     * Get random ISLs between two switches.
+     * Returns only outgoing from the first switch ISL.
+     */
+    @JsonIgnore
+    public Optional<Isl> getIslBetween(Switch srcSwitch, Switch dstSwitch) {
+        return getRelatedIsls(srcSwitch).stream()
+                .filter(isl -> isl.dstSwitch.equals(dstSwitch))
+                .findFirst();
     }
 
     /**

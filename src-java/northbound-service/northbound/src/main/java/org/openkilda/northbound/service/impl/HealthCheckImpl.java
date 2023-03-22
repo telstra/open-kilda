@@ -19,6 +19,7 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.northbound.service.HealthCheckService;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Manages health-check operation.
  */
+@Slf4j
 @Service
 public class HealthCheckImpl implements HealthCheckService {
     private static final String KAFKA_STATUS_KEY = "kafka";
@@ -62,6 +64,7 @@ public class HealthCheckImpl implements HealthCheckService {
      */
     @Override
     public HealthCheck getHealthCheck() {
+        log.info("API request: Get health check");
         Map<String, String> currentStatus = new HashMap<>();
         currentStatus.put(KAFKA_STATUS_KEY, Utils.HEALTH_CHECK_OPERATIONAL_STATUS);
         currentStatus.putAll(status);
@@ -74,6 +77,7 @@ public class HealthCheckImpl implements HealthCheckService {
      */
     @Override
     public void updateKafkaStatus(String status) {
+        log.info("API request: Update Kafka status {}", status);
         this.status.put(KAFKA_STATUS_KEY, status);
     }
 }

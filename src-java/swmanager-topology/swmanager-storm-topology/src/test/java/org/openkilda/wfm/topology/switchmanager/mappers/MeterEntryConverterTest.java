@@ -18,7 +18,7 @@ package org.openkilda.wfm.topology.switchmanager.mappers;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.wfm.topology.switchmanager.mappers.MeterEntryConverter.INSTANCE;
 
-import org.openkilda.messaging.info.switches.MeterInfoEntry;
+import org.openkilda.messaging.info.switches.v2.MeterInfoEntryV2;
 import org.openkilda.model.MeterId;
 import org.openkilda.rulemanager.MeterFlag;
 import org.openkilda.rulemanager.MeterSpeakerData;
@@ -53,11 +53,11 @@ public class MeterEntryConverterTest {
 
     @Test
     public void mapMeterEntryTest() {
-        MeterInfoEntry entry = INSTANCE.toMeterEntry(data);
+        MeterInfoEntryV2 entry = INSTANCE.toMeterEntry(data);
 
         assertEquals(METER_ID.getValue(), entry.getMeterId());
         assertEquals(RATE, entry.getRate());
         assertEquals(BURST_SIZE, entry.getBurstSize());
-        assertEquals(flags.toArray()[0].toString(), entry.getFlags()[0]);
+        assertEquals(flags.toArray()[0].toString(), entry.getFlags().get(0));
     }
 }

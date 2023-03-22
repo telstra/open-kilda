@@ -80,6 +80,7 @@ public class PersistenceDataAdapter implements DataAdapter {
     private Map<PathId, YFlow> yFlowCache;
 
     @Builder.Default
+    @Deprecated
     private boolean keepMultitableForFlow = false;
 
     @Builder

@@ -32,6 +32,7 @@ import static org.openkilda.rulemanager.utils.RuleManagerHelper.postProcessComma
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.KildaFeatureToggles;
@@ -473,6 +474,25 @@ public class RuleManagerImpl implements RuleManager {
         return postProcessCommands(generateRules(sw, generators));
     }
 
+    @Override
+    public List<SpeakerData> buildMirrorPointRules(FlowMirrorPoints mirrorPoints, DataAdapter adapter) {
+        FlowPath flowPath = adapter.getFlowPaths().get(mirrorPoints.getFlowPathId());
+        Flow flow = adapter.getFlow(flowPath.getPathId());
+        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(
+                flowPath.getPathId(), flow.getOppositePathId(flowPath.getPathId()).orElse(null));
+        List<SpeakerData> result = new ArrayList<>();
+
+        if (mirrorPoints.getMirrorSwitchId().equals(flowPath.getSrcSwitchId())) {
+            result.addAll(flowRulesFactory.getIngressMirrorRuleGenerator(flowPath, flow, encapsulation, null)
+                    .generateCommands(adapter.getSwitch(mirrorPoints.getMirrorSwitchId())));
+        } else if (mirrorPoints.getMirrorSwitchId().equals(flowPath.getDestSwitchId())) {
+            result.addAll(flowRulesFactory.getEgressMirrorRuleGenerator(flowPath, flow, encapsulation)
+                    .generateCommands(adapter.getSwitch(mirrorPoints.getMirrorSwitchId())));
+
+        }
+        return result;
+    }
+
     private List<SpeakerData> buildSharedEndpointYFlowCommands(List<FlowPath> flowPaths, DataAdapter adapter) {
         if (flowPaths.isEmpty()) {
             return emptyList();
@@ -579,7 +599,6 @@ public class RuleManagerImpl implements RuleManager {
                             flow.getFlowId(), protectedYPointSwitchId);
                     continue;
                 }
-                requireNonNull(protectedYPointMeterId, "The y-flow protected path meterId can't be null");
 
                 boolean meterToBeAdded = externalProtectedMeterCommandUuid == null;
                 if (meterToBeAdded) {
@@ -600,7 +619,6 @@ public class RuleManagerImpl implements RuleManager {
                             flow.getFlowId(), yPointSwitchId);
                     continue;
                 }
-                requireNonNull(yPointMeterId, "The y-flow meterId can't be null");
 
                 boolean meterToBeAdded = externalMeterCommandUuid == null;
                 if (meterToBeAdded) {
@@ -626,6 +644,7 @@ public class RuleManagerImpl implements RuleManager {
                 segment.getSrcSwitchId().equals(switchId) || segment.getDestSwitchId().equals(switchId));
     }
 
+    @VisibleForTesting
     private RuleGenerator buildYPointYRuleGenerator(Switch yPointSwitch, FlowPath path,
                                                     Flow flow, FlowTransitEncapsulation encapsulation,
                                                     MeterId yPointMeterId, UUID externalMeterCommandUuid,
