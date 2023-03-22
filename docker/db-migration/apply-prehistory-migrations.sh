@@ -19,7 +19,7 @@ DB_NAME="${KILDA_ORIENTDB_DB_NAME:-kilda}"
 DB_HOST="${KILDA_ORIENTDB_HOST:-odb1.pendev}"
 
 TMP=$(mktemp -d)
-if ! curl -i --user root:root -X POST http://"${DB_HOST}":2480/database/"${DB_NAME}"/plocal > "$TMP/db-create.out" 2>&1; then
+if ! curl -i --user "${KILDA_ORIENTDB_ROOT_USER:-root}":"${KILDA_ORIENTDB_ROOT_PASSWORD:-root}" -X POST http://"${DB_HOST}":2480/database/"${DB_NAME}"/plocal > "$TMP/db-create.out" 2>&1; then
   cat "$TMP/db-create.out"
   exit 1
 fi
@@ -28,7 +28,7 @@ set -e
 cd /liquibase
 
 echo "Apply access management migrations set"
-./liquibase --username=root --password=root --url=jdbc:orient:remote:"${DB_HOST}/${DB_NAME}" \
+./liquibase --username="${KILDA_ORIENTDB_ROOT_USER:-root}" --password="${KILDA_ORIENTDB_ROOT_PASSWORD:-root}" --url=jdbc:orient:remote:"${DB_HOST}/${DB_NAME}" \
   --driver=com.orientechnologies.orient.jdbc.OrientJdbcDriver \
   --changeLogFile=migrations/initial-access-management.yaml update
 
