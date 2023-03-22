@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import org.openkilda.functionaltests.exception.ExpectedHttpClientErrorException
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.model.PathComputationStrategy
+import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 
@@ -608,18 +609,19 @@ class FlowCrudSpec extends HealthCheckSpecification {
         !actualException && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
-        problem                          | update                                                          | expectedException
-        "invalid encapsulation type"     |
+        problem                      | update                                                              | expectedException
+        "invalid encapsulation type" |
                 { FlowRequestV2 flowToSpoil ->
                     flowToSpoil.setEncapsulationType("fake")
                     return flowToSpoil
                 }                                                                                          |
                 new ExpectedHttpClientErrorException(HttpStatus.BAD_REQUEST, ~/Can not parse arguments of the create flow request/)
-        "unavailable latency" |
-                {FlowRequestV2 flowToSpoil ->
-            flowToSpoil.setMaxLatency(IMPOSSIBLY_LOW_LATENCY)
-            flowToSpoil.setPathComputationStrategy(PathComputationStrategy.MAX_LATENCY.toString())
-        return flowToSpoil}|
+        "unavailable latency"        |
+                { FlowRequestV2 flowToSpoil ->
+                    flowToSpoil.setMaxLatency(IMPOSSIBLY_LOW_LATENCY)
+                    flowToSpoil.setPathComputationStrategy(PathComputationStrategy.MAX_LATENCY.toString())
+                    return flowToSpoil
+                }                                                                                          |
                 new ExpectedHttpClientErrorException(HttpStatus.NOT_FOUND,
                         ~/Latency limit: Requested path must have latency ${
                             IMPOSSIBLY_LOW_LATENCY}ms or lower/)
@@ -1361,6 +1363,51 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         cleanup:
         !error && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    def "Able to #method update with empty VLAN stats and non-zero VLANs (#5063)"() {
+        given: "A flow with non empty vlans stats and with src and dst vlans set to '0'"
+        def switches = topologyHelper.getSwitchPairs().shuffled().first()
+        def flowRequest = flowHelperV2.randomFlow(switches, false).tap {
+            it.source.tap { it.vlanId = 0 }
+            it.destination.tap { it.vlanId = 0 }
+            it.statistics = new FlowStatistics([1, 2, 3] as Set)
+        }
+        def flow = flowHelperV2.addFlow(flowRequest)
+        def UNUSED_VLAN = 1909
+
+        when: "Try to #method update flow with empty VLAN stats and non-zero VLANs"
+        def updatedFlow = updateCall(flow.getFlowId(), flowRequest, UNUSED_VLAN)
+
+        then: "Flow is really updated"
+        def actualFlow = northboundV2.getFlow(flow.getFlowId())
+        actualFlow.getSource() == updatedFlow.getSource()
+        actualFlow.getDestination() == updatedFlow.getDestination()
+        actualFlow.getStatistics() == updatedFlow.getStatistics()
+
+        cleanup:
+        Wrappers.silent {
+            flowHelperV2.deleteFlow(flow.getFlowId())
+        }
+
+        where:
+        method           | updateCall
+        "partial" | { String flowId, FlowRequestV2 originalFlow, Integer newVlan ->
+            flowHelperV2.partialUpdate(flowId, new FlowPatchV2().tap {
+                it.source = new FlowPatchEndpoint().tap {it.vlanId = newVlan}
+                it.destination = new FlowPatchEndpoint().tap {it.vlanId = newVlan}
+                it.statistics = new FlowStatistics([] as Set)
+            })
+        }
+        ""|  { String flowId, FlowRequestV2 originalFlow, Integer newVlan  ->
+            flowHelperV2.updateFlow(flowId, originalFlow.tap {
+                it.source = originalFlow.source.tap{it.vlanId = newVlan}
+                it.destination = originalFlow.destination.tap{it.vlanId = newVlan}
+                it.statistics = new FlowStatistics([] as Set)
+            })
+
+        }
     }
 
     @Tidy
