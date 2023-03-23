@@ -59,10 +59,10 @@ public class NetworkController extends BaseController {
     public CompletableFuture<PathsDto> getPaths(
             @RequestParam("src_switch") SwitchId srcSwitchId, @RequestParam("dst_switch") SwitchId dstSwitchId,
             @ApiParam(value = "Valid values are: TRANSIT_VLAN, VXLAN. If encapsulation type is not specified, default "
-                    + "value from Kilda Configuration will be used")
+                    + "value from OpenKilda Configuration will be used")
             @RequestParam(value = "encapsulation_type", required = false) FlowEncapsulationType encapsulationType,
             @ApiParam(value = "Valid values are: COST, LATENCY, MAX_LATENCY, COST_AND_AVAILABLE_BANDWIDTH. If path "
-                    + "computation strategy is not specified, default value from Kilda Configuration will be used")
+                    + "computation strategy is not specified, default value from OpenKilda Configuration will be used")
             @RequestParam(value = "path_computation_strategy", required = false)
                     PathComputationStrategy pathComputationStrategy,
             @ApiParam(value = "Maximum latency of flow path in milliseconds. Required for MAX_LATENCY strategy. "
@@ -74,9 +74,9 @@ public class NetworkController extends BaseController {
                     + "Other strategies will ignore this parameter.")
             @RequestParam(value = "max_latency_tier2", required = false) Long maxLatencyTier2Ms,
             @ApiParam(value = "Maximum count of paths which will be calculated. "
-                    + "If maximum path count is not specified, default value from Kilda Configuration will be used")
+                    + "If maximum path count is not specified, default value from OpenKilda Configuration will be used")
             @RequestParam(value = "max_path_count", required = false) Integer maxPathCount,
-            @ApiParam(value = "Calculate whether a protected path is available for the found paths")
+            @ApiParam(value = "Calculate and show a protected path for each found paths")
             @RequestParam(value = "protected", required = false) Boolean includeProtectedPathAvailability) {
 
         Duration maxLatency = maxLatencyMs != null ? Duration.ofMillis(maxLatencyMs) : null;

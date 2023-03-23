@@ -59,6 +59,14 @@ public class LogicalPortsValidationEntryV2 implements Serializable {
         builder.proper(joinLists(nonNullEntries.stream().map(LogicalPortsValidationEntryV2::getProper)));
         builder.missing(joinLists(nonNullEntries.stream().map(LogicalPortsValidationEntryV2::getMissing)));
         builder.misconfigured(joinLists(nonNullEntries.stream().map(LogicalPortsValidationEntryV2::getMisconfigured)));
+        List<String> errorList = nonNullEntries.stream().map(e -> e.error).distinct().collect(Collectors.toList());
+        if (errorList.size() > 1) {
+            builder.error(errorList.stream()
+                    .map(e -> Objects.isNull(e) ? "There is an error while splitting and joining entities" : e)
+                    .collect(Collectors.joining(",")));
+        } else {
+            errorList.stream().filter(Objects::nonNull).findFirst().ifPresent(builder::error);
+        }
         return builder.build();
     }
 
@@ -72,6 +80,7 @@ public class LogicalPortsValidationEntryV2 implements Serializable {
                     .excess(entry.getExcess())
                     .proper(entry.getProper())
                     .misconfigured(entry.getMisconfigured())
+                    .error(error)
                     .build());
         }
         return result;

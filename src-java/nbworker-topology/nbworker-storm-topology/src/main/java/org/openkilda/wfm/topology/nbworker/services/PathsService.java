@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import org.openkilda.messaging.command.flow.PathValidateRequest;
+import org.openkilda.messaging.info.network.PathValidationResult;
 import org.openkilda.messaging.info.network.PathsInfoData;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -33,6 +35,8 @@ import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.pce.mapper.PathSegmentMapper;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
@@ -42,6 +46,8 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
 import org.openkilda.wfm.share.mappers.PathMapper;
+import org.openkilda.wfm.share.mappers.PathValidationDataMapper;
+import org.openkilda.wfm.topology.nbworker.validators.PathValidator;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -58,14 +64,18 @@ public class PathsService {
     private final int defaultMaxPathCount;
     private final PathComputer pathComputer;
     private final SwitchRepository switchRepository;
-    private final FlowPathRepository flowPathRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
+    private final IslRepository islRepository;
+    private final FlowRepository flowRepository;
+    private final FlowPathRepository flowPathRepository;
 
     public PathsService(RepositoryFactory repositoryFactory, PathComputerConfig pathComputerConfig) {
         switchRepository = repositoryFactory.createSwitchRepository();
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
+        this.islRepository = repositoryFactory.createIslRepository();
+        this.flowRepository = repositoryFactory.createFlowRepository();
         PathComputerFactory pathComputerFactory = new PathComputerFactory(
                 pathComputerConfig, new AvailableNetworkFactory(pathComputerConfig, repositoryFactory));
         pathComputer = pathComputerFactory.getPathComputer();
@@ -214,8 +224,8 @@ public class PathsService {
                 () -> new SwitchPropertiesNotFoundException(srcSwitchId));
         if (!srcProperties.getSupportedTransitEncapsulation().contains(flowEncapsulationType)) {
             throw new IllegalArgumentException(String.format("Switch %s doesn't support %s encapsulation type. Choose "
-                            + "one of the supported encapsulation types %s or update switch properties and add needed "
-                            + "encapsulation type.", srcSwitchId, flowEncapsulationType,
+                    + "one of the supported encapsulation types %s or update switch properties and add needed "
+                    + "encapsulation type.", srcSwitchId, flowEncapsulationType,
                     srcProperties.getSupportedTransitEncapsulation()));
         }
 
@@ -223,8 +233,8 @@ public class PathsService {
                 () -> new SwitchPropertiesNotFoundException(dstSwitchId));
         if (!dstProperties.getSupportedTransitEncapsulation().contains(flowEncapsulationType)) {
             throw new IllegalArgumentException(String.format("Switch %s doesn't support %s encapsulation type. Choose "
-                            + "one of the supported encapsulation types %s or update switch properties and add needed "
-                            + "encapsulation type.", dstSwitchId, requestEncapsulationType,
+                    + "one of the supported encapsulation types %s or update switch properties and add needed "
+                    + "encapsulation type.", dstSwitchId, requestEncapsulationType,
                     dstProperties.getSupportedTransitEncapsulation()));
         }
 
@@ -241,5 +251,23 @@ public class PathsService {
 
         return pathComputer.getNPaths(srcSwitchId, dstSwitchId, maxPathCount, flowEncapsulationType,
                 pathComputationStrategy, maxLatency, maxLatencyTier2);
+    }
+
+    /**
+     * This method validates a path and collects errors if any. Validations depend on the information in the request.
+     * For example, if the request doesn't contain latency, the path will not be validated using max latency strategy.
+     * @param request request containing the path and parameters to validate
+     * @return a response with the success or the list of errors
+     */
+    public List<PathValidationResult> validatePath(PathValidateRequest request) {
+        PathValidator pathValidator = new PathValidator(islRepository,
+                flowRepository,
+                switchPropertiesRepository,
+                switchRepository,
+                kildaConfigurationRepository.getOrDefault());
+
+        return Collections.singletonList(pathValidator.validatePath(
+                PathValidationDataMapper.INSTANCE.toPathValidationData(request.getPathValidationPayload())
+        ));
     }
 }

@@ -16,7 +16,7 @@ In case of a network configuration change (for example, the ISL has entered the 
 the ISL is under maintenance), a situation may arise where the `MAX_LATENCY` strategy algorithm cannot build a path.
 
 ## Proposal
-Change current algorithm from greedy to non-greedy. In some cases it may lead to paths with latency not so close to the limit, but it will always find a path if it exists. Difference between two algorithms are shown on examples:
+Change the current algorithm from greedy to non-greedy. In some cases, it may lead to paths with latency not so close to the limit, but it will always find a path if it exists. Difference between two algorithms are shown on examples:
 
 In simple cases 1 and 2 both algorithms finds the best path.
 
@@ -26,12 +26,12 @@ Max-latency: 25
 ![Case 2](case_2.png)
 Max-latency: 45
 
-Case 3 shows current issue: changed algorithm finds path but current one fails.
+Case 3 shows current issue: changed algorithm finds a path, but the current one fails.
 
 ![Case 3](case_3.png)
 Max-latency: 11
 
-Case 4 shows that changed algorithm not able to find path closest to max-latency param.
+Case 4 shows that the changed algorithm is not able to find a path with the latency closest to the max-latency param.
 
 ![Case 4](case_4.png)
 Max-latency: 25

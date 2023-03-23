@@ -20,9 +20,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
+import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.model.PatchEndpoint;
@@ -76,15 +80,17 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     public static final SwitchId SWITCH_ID_3 = new SwitchId(3);
     public static final SwitchId SWITCH_ID_4 = new SwitchId(4);
     public static final int VLAN_1 = 1;
-    public static final int PORT_1 = 1;
-    public static final int PORT_2 = 2;
+    public static final int PORT_1 = 2;
+    public static final int PORT_2 = 3;
+    public static final int VLAN_2 = 4;
+    public static final int VLAN_3 = 5;
 
     private static FlowOperationsService flowOperationsService;
     private static FlowRepository flowRepository;
     private static FlowPathRepository flowPathRepository;
     private static PathSegmentRepository pathSegmentRepository;
     private static SwitchRepository switchRepository;
-    
+
     private Switch switchA;
     private Switch switchB;
     private Switch switchC;
@@ -109,7 +115,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void updateMaxLatencyPriorityAndPinnedFlowFieldsTest() throws FlowNotFoundException {
+    public void updateMaxLatencyPriorityAndPinnedFlowFieldsTest() throws FlowNotFoundException, InvalidFlowException {
         String testFlowId = "flow_id";
         Long maxLatency = 555L;
         Integer priority = 777;
@@ -161,7 +167,8 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testStrictBandwidthAndIgnoreBandwidthPatchConflict() throws FlowNotFoundException {
+    public void strictBandwidthAndIgnoreBandwidthPatchConflictTest()
+            throws FlowNotFoundException, InvalidFlowException {
         String testFlowId = "flow_id";
 
         Flow flow = new TestFlowBuilder()
@@ -181,7 +188,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testStrictBandwidthAndIgnoreBandwidthFlowConflict() throws FlowNotFoundException {
+    public void strictBandwidthAndIgnoreBandwidthFlowConflictTest() throws FlowNotFoundException, InvalidFlowException {
         String testFlowId = "flow_id";
 
         Flow flow = new TestFlowBuilder()
@@ -202,7 +209,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void testStrictBandwidthUpdate() throws FlowNotFoundException {
+    public void strictBandwidthUpdateTest() throws FlowNotFoundException, InvalidFlowException {
         String testFlowId = "flow_id";
 
         Flow flow = new TestFlowBuilder()
@@ -223,7 +230,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void updateVlanStatisticsTest() throws FlowNotFoundException {
+    public void updateVlanStatisticsTest() throws FlowNotFoundException, InvalidFlowException {
         String testFlowId = "flow_id";
         Set<Integer> originalVlanStatistics = new HashSet<>();
         originalVlanStatistics.add(11);
@@ -250,29 +257,69 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void updateVlanStatisticsToZeroDstVlanIsZeroTest() throws FlowNotFoundException {
-        runUpdateVlanStatisticsToZero(VLAN_1, 0);
+    public void updateVlanStatisticsToZeroOldSrcAndDstVlanAreZeroTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        runUpdateVlanStatisticsToZeroTest(0, 0, VLAN_1, VLAN_2);
     }
 
     @Test
-    public void updateVlanStatisticsToZeroSrcVlanIsZeroTest() throws FlowNotFoundException {
-        runUpdateVlanStatisticsToZero(0, VLAN_1);
+    public void updateVlanStatisticsToZeroOldDstVlanAreNotZeroTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        runUpdateVlanStatisticsToZeroTest(VLAN_3, 0, VLAN_1, VLAN_2);
     }
 
     @Test
-    public void updateVlanStatisticsToZeroSrcAndVlanAreZeroTest() throws FlowNotFoundException {
-        runUpdateVlanStatisticsToZero(0, 0);
+    public void updateVlanStatisticsToZeroOldSrcVlanAreNotZeroTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        runUpdateVlanStatisticsToZeroTest(0, VLAN_3, VLAN_1, VLAN_2);
     }
 
-    private void runUpdateVlanStatisticsToZero(int srcVLan, int dstVlan)
-            throws FlowNotFoundException {
+    @Test
+    public void updateVlanStatisticsToZeroDstVlanIsZeroNewVlansNullTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        runUpdateVlanStatisticsToZeroTest(VLAN_1, 0, null, null);
+    }
+
+    @Test
+    public void updateVlanStatisticsToZeroSrcVlanIsZeroNewVlansNullTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        runUpdateVlanStatisticsToZeroTest(0, VLAN_1, null, null);
+    }
+
+    @Test
+    public void updateVlanStatisticsToZeroSrcAndDstVlanAreZeroNewVlansNullTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        runUpdateVlanStatisticsToZeroTest(0, 0, null, null);
+    }
+
+    @Test
+    public void updateVlanStatisticsToZeroDstVlanIsZeroNewVlansZerosTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        runUpdateVlanStatisticsToZeroTest(VLAN_1, 0, 0, 0);
+    }
+
+    @Test
+    public void updateVlanStatisticsToZeroSrcVlanIsZeroNewVlansZerosTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        runUpdateVlanStatisticsToZeroTest(0, VLAN_1, 0, 0);
+    }
+
+    @Test
+    public void updateVlanStatisticsToZeroSrcAndDstVlanAreZeroNewVlansZerosTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        runUpdateVlanStatisticsToZeroTest(0, 0, 0, 0);
+    }
+
+    private void runUpdateVlanStatisticsToZeroTest(
+            int oldSrcVlan, int oldDstVlan, Integer newSrcVlan, Integer newDstVLan)
+            throws FlowNotFoundException, InvalidFlowException {
         Set<Integer> originalVlanStatistics = Sets.newHashSet(1, 2, 3);
         Flow flow = new TestFlowBuilder()
                 .flowId(FLOW_ID_1)
                 .srcSwitch(switchA)
-                .srcVlan(srcVLan)
+                .srcVlan(oldSrcVlan)
                 .destSwitch(switchB)
-                .destVlan(dstVlan)
+                .destVlan(oldDstVlan)
                 .vlanStatistics(originalVlanStatistics)
                 .build();
         flowRepository.add(flow);
@@ -280,6 +327,8 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
         FlowPatch receivedFlow = FlowPatch.builder()
                 .flowId(FLOW_ID_1)
                 .vlanStatistics(new HashSet<>())
+                .source(buildPathEndpoint(newSrcVlan))
+                .destination(buildPathEndpoint(newDstVLan))
                 .build();
 
         Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
@@ -287,13 +336,32 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void unableToUpdateVlanStatisticsTest() throws FlowNotFoundException {
+    public void unableToUpdateVlanStatisticsOldVlansSetNewVlansNullTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        runUnableToUpdateVlanStatisticsTest(VLAN_1, VLAN_2, null, null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void unableToUpdateVlanStatisticsOldVlansSetNewVlansSetTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        runUnableToUpdateVlanStatisticsTest(VLAN_1, VLAN_2, VLAN_2, VLAN_3);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void unableToUpdateVlanStatisticsOldVlansZeroNewVlansSetTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        runUnableToUpdateVlanStatisticsTest(0, 0, VLAN_1, VLAN_2);
+    }
+
+    private void runUnableToUpdateVlanStatisticsTest(
+            int oldSrcVlan, int oldDstVlan, Integer newSrcVlan, Integer newDstVLan)
+            throws FlowNotFoundException, InvalidFlowException {
         Flow flow = new TestFlowBuilder()
                 .flowId(FLOW_ID_1)
                 .srcSwitch(switchA)
-                .srcVlan(VLAN_1)
+                .srcVlan(oldSrcVlan)
                 .destSwitch(switchB)
-                .destVlan(VLAN_1)
+                .destVlan(oldDstVlan)
                 .vlanStatistics(new HashSet<>())
                 .build();
         flowRepository.add(flow);
@@ -301,13 +369,16 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
         FlowPatch receivedFlow = FlowPatch.builder()
                 .flowId(FLOW_ID_1)
                 .vlanStatistics(Sets.newHashSet(1, 2, 3))
+                .source(PatchEndpoint.builder().vlanId(newSrcVlan).build())
+                .destination(PatchEndpoint.builder().vlanId(newDstVLan).build())
                 .build();
 
         flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void unableToSetProtectedPathForInitiallyOneSwitchFlowTest() throws FlowNotFoundException {
+    public void unableToSetProtectedPathForInitiallyOneSwitchFlowTest()
+            throws FlowNotFoundException, InvalidFlowException {
         createFlow(FLOW_ID_1, switchA, switchA, false);
         FlowPatch receivedFlow = FlowPatch.builder()
                 .flowId(FLOW_ID_1)
@@ -317,7 +388,8 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void unableToMakeOneSwitchFlowFromProtectedByUpdatingDstTest() throws FlowNotFoundException {
+    public void unableToMakeOneSwitchFlowFromProtectedByUpdatingDstTest()
+            throws FlowNotFoundException, InvalidFlowException {
         createFlow(FLOW_ID_1, switchA, switchB, true);
         FlowPatch receivedFlow = FlowPatch.builder()
                 .flowId(FLOW_ID_1)
@@ -327,7 +399,8 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void unableToMakeOneSwitchFlowFromProtectedByUpdatingSrcTest() throws FlowNotFoundException {
+    public void unableToMakeOneSwitchFlowFromProtectedByUpdatingSrcTest()
+            throws FlowNotFoundException, InvalidFlowException {
         createFlow(FLOW_ID_1, switchA, switchB, true);
         FlowPatch receivedFlow = FlowPatch.builder()
                 .flowId(FLOW_ID_1)
@@ -337,7 +410,8 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void unableToMakeProtectedOneSwitchFlowTest() throws FlowNotFoundException {
+    public void unableToMakeProtectedOneSwitchFlowTest()
+            throws FlowNotFoundException, InvalidFlowException {
         createFlow(FLOW_ID_1, switchA, switchB, false);
         FlowPatch receivedFlow = FlowPatch.builder()
                 .flowId(FLOW_ID_1)
@@ -349,7 +423,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void ableToMakeProtectedFlowFromMultiSwitchFlowTest() throws FlowNotFoundException {
+    public void ableToMakeProtectedFlowFromMultiSwitchFlowTest() throws FlowNotFoundException, InvalidFlowException {
         createFlow(FLOW_ID_1, switchA, switchB, false);
         FlowPatch receivedFlow = FlowPatch.builder()
                 .flowId(FLOW_ID_1)
@@ -360,7 +434,8 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void ableToMakeProtectedFlowFromOneSwitchByChangingSrcTest() throws FlowNotFoundException {
+    public void ableToMakeProtectedFlowFromOneSwitchByChangingSrcTest()
+            throws FlowNotFoundException, InvalidFlowException {
         createFlow(FLOW_ID_1, switchA, switchA, false);
         FlowPatch receivedFlow = FlowPatch.builder()
                 .flowId(FLOW_ID_1)
@@ -372,7 +447,8 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void ableToMakeProtectedFlowFromOneSwitchByChangingDstTest() throws FlowNotFoundException {
+    public void ableToMakeProtectedFlowFromOneSwitchByChangingDstTest()
+            throws FlowNotFoundException, InvalidFlowException {
         createFlow(FLOW_ID_1, switchA, switchA, false);
         FlowPatch receivedFlow = FlowPatch.builder()
                 .flowId(FLOW_ID_1)
@@ -384,7 +460,8 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void ableToMakeProtectedFlowFromOneSwitchByChangingSrcAndDstTest() throws FlowNotFoundException {
+    public void ableToMakeProtectedFlowFromOneSwitchByChangingSrcAndDstTest()
+            throws FlowNotFoundException, InvalidFlowException {
         createFlow(FLOW_ID_1, switchA, switchA, false);
         FlowPatch receivedFlow = FlowPatch.builder()
                 .flowId(FLOW_ID_1)
@@ -526,6 +603,8 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .allocateProtectedPath(true)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .pathComputationStrategy(PathComputationStrategy.COST)
+                .maxLatency(1L)
+                .maxLatencyTier2(1L)
                 .build();
 
         // new src switch
@@ -708,6 +787,68 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
         assertFlows(flowOperationsService.getFlowsForEndpoint(SWITCH_ID_2, 2), FLOW_ID_1, FLOW_ID_2);
     }
 
+    @Test
+    public void patchFlowWithLatencyOnlyTest() throws FlowNotFoundException, InvalidFlowException {
+        Flow createdFlow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2, FORWARD_PATH_1, REVERSE_PATH_1, switchB);
+        assertNotEquals(Long.valueOf(100_500L), createdFlow.getMaxLatency());
+        FlowPatch flowPatch = FlowPatch.builder()
+                .flowId(FLOW_ID_1)
+                .maxLatency(100_500L)
+                .build();
+
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch);
+        assertEquals(Long.valueOf(100_500L), updatedFlow.getMaxLatency());
+    }
+
+    @Test
+    public void patchFlowWithLatencyAndLatencyTier2Test() throws FlowNotFoundException, InvalidFlowException {
+        Flow createdFlow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2, FORWARD_PATH_1, REVERSE_PATH_1, switchB);
+        assertNotEquals(Long.valueOf(100_500L), createdFlow.getMaxLatency());
+        assertNotEquals(Long.valueOf(420_000L), createdFlow.getMaxLatencyTier2());
+
+        FlowPatch flowPatch = FlowPatch.builder()
+                .flowId(FLOW_ID_1)
+                .maxLatency(100_500L)
+                .maxLatencyTier2(420_000L)
+                .build();
+
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch);
+
+        assertEquals(Long.valueOf(100_500L), updatedFlow.getMaxLatency());
+        assertEquals(Long.valueOf(420_000L), updatedFlow.getMaxLatencyTier2());
+    }
+
+    @Test
+    public void whenFlowWithNullLatency_patchFlowWithLatencyTier2OnlyThrowsAnException() {
+        Flow createdFlow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2, FORWARD_PATH_1, REVERSE_PATH_1, switchB);
+        assertNull(createdFlow.getMaxLatency());
+
+        FlowPatch flowPatch = FlowPatch.builder()
+                .flowId(FLOW_ID_1)
+                .maxLatencyTier2(420_000L)
+                .build();
+
+        assertThrows("Max latency tier 2 cannot be used without max latency parameter",
+                InvalidFlowException.class,
+                () -> flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch));
+    }
+
+    @Test
+    public void whenFlowWithMaxLatency_patchFlowWithLatencyTier2OnlyTest()
+            throws FlowNotFoundException, InvalidFlowException {
+        Flow createdFlow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2, FORWARD_PATH_1, REVERSE_PATH_1, switchB, false,
+                100_500L, 0L);
+        FlowPatch flowPatch = FlowPatch.builder()
+                .flowId(FLOW_ID_1)
+                .maxLatencyTier2(420_000L)
+                .build();
+
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch);
+
+        assertEquals(Long.valueOf(100_500L), updatedFlow.getMaxLatency());
+        assertEquals(Long.valueOf(420_000L), updatedFlow.getMaxLatencyTier2());
+    }
+
     private void assertFlows(Collection<Flow> actualFlows, String... expectedFlowIds) {
         assertEquals(expectedFlowIds.length, actualFlows.size());
         assertEquals(new HashSet<>(Arrays.asList(expectedFlowIds)),
@@ -763,17 +904,19 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
 
     private void createFlow(String flowId, Switch srcSwitch, Switch dstSwitch, Boolean protectedPath) {
         createFlow(flowId, srcSwitch, PORT_1, dstSwitch, PORT_2,
-                FORWARD_PATH_1, REVERSE_PATH_1, null, protectedPath);
+                FORWARD_PATH_1, REVERSE_PATH_1, null, protectedPath, null, null);
     }
 
     private Flow createFlow(String flowId, Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort,
                             PathId forwardPartId, PathId reversePathId, Switch transitSwitch) {
         return createFlow(
-                flowId, srcSwitch, srcPort, dstSwitch, dstPort, forwardPartId, reversePathId, transitSwitch, false);
+                flowId, srcSwitch, srcPort, dstSwitch, dstPort, forwardPartId, reversePathId, transitSwitch, false,
+                null, null);
     }
 
     private Flow createFlow(String flowId, Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort,
-                            PathId forwardPartId, PathId reversePathId, Switch transitSwitch, boolean protectedPath) {
+                            PathId forwardPartId, PathId reversePathId, Switch transitSwitch, boolean protectedPath,
+                            Long maxLatency, Long maxLatencyTier2) {
 
         Flow flow = Flow.builder()
                 .flowId(flowId)
@@ -783,6 +926,8 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .destPort(dstPort)
                 .status(FlowStatus.UP)
                 .allocateProtectedPath(protectedPath)
+                .maxLatency(maxLatency)
+                .maxLatencyTier2(maxLatencyTier2)
                 .build();
 
         FlowPath forwardPath = FlowPath.builder()
@@ -836,7 +981,36 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
         return pathSegment;
     }
 
-    private class FlowCarrierImpl implements FlowOperationsCarrier {
+    private void runUpdateVlanStatisticsToZero(int srcVLan, int dstVlan)
+            throws FlowNotFoundException, InvalidFlowException {
+        Set<Integer> originalVlanStatistics = Sets.newHashSet(1, 2, 3);
+        Flow flow = new TestFlowBuilder()
+                .flowId(FLOW_ID_1)
+                .srcSwitch(switchA)
+                .srcVlan(srcVLan)
+                .destSwitch(switchB)
+                .destVlan(dstVlan)
+                .vlanStatistics(originalVlanStatistics)
+                .build();
+        flowRepository.add(flow);
+
+        FlowPatch receivedFlow = FlowPatch.builder()
+                .flowId(FLOW_ID_1)
+                .vlanStatistics(new HashSet<>())
+                .build();
+
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+        assertTrue(updatedFlow.getVlanStatistics().isEmpty());
+    }
+
+    private static PatchEndpoint buildPathEndpoint(Integer vlan) {
+        if (vlan == null) {
+            return null;
+        }
+        return PatchEndpoint.builder().vlanId(vlan).build();
+    }
+
+    private static class FlowCarrierImpl implements FlowOperationsCarrier {
         @Override
         public void emitPeriodicPingUpdate(String flowId, boolean enabled) {
 

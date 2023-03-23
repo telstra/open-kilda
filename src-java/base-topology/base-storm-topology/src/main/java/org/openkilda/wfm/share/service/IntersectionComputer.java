@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -29,22 +29,23 @@ import org.apache.commons.collections4.iterators.ReverseListIterator;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Computes intersection counters for flow paths in flow group.
  */
 public class IntersectionComputer {
-    private Set<Edge> targetPathEdges;
-    private Set<SwitchId> targetPathSwitches;
+    private final Set<Edge> targetPathEdges = new HashSet<>();
+    private final Set<SwitchId> targetPathSwitches = new HashSet<>();
 
-    private Map<PathId, Set<Edge>> otherEdges;
+    private final Map<PathId, Set<Edge>> otherEdges = new HashMap<>();
+    private final Map<PathId, Set<SwitchId>> otherSwitches = new HashMap<>();
 
     /**
      * Construct intersection counter for current flow group and target flow and flow path.
@@ -56,25 +57,14 @@ public class IntersectionComputer {
      */
     public IntersectionComputer(String targetFlowId, PathId targetForwardPathId, PathId targetReversePathId,
                                 Collection<FlowPath> paths) {
-        List<Edge> targetPath = paths.stream()
-                .flatMap(path -> path.getSegments().stream())
-                .filter(e -> e.getPathId().equals(targetForwardPathId)
-                        || e.getPathId().equals(targetReversePathId))
-                .map(Edge::fromPathSegment)
-                .collect(Collectors.toList());
-
-        targetPathEdges = new HashSet<>(targetPath);
-        targetPathSwitches = targetPath.stream()
-                .flatMap(e -> Stream.of(e.getSrcSwitch(), e.getDestSwitch()))
-                .collect(Collectors.toSet());
-
-        otherEdges = paths.stream()
-                .filter(e -> !e.getFlow().getFlowId().equals(targetFlowId))
-                .flatMap(path -> path.getSegments().stream())
-                .collect(Collectors.groupingBy(
-                        PathSegment::getPathId,
-                        Collectors.mapping(Edge::fromPathSegment, Collectors.toSet())
-                ));
+        paths.forEach(path -> {
+            if (path.getPathId().equals(targetForwardPathId) || path.getPathId().equals(targetReversePathId)) {
+                handleTargetPath(path);
+            }
+            if (!path.getFlow().getFlowId().equals(targetFlowId)) {
+                handleAnotherPath(path);
+            }
+        });
     }
 
     /**
@@ -84,7 +74,9 @@ public class IntersectionComputer {
      */
     public OverlappingSegmentsStats getOverlappingStats() {
         return computeIntersectionCounters(
-                otherEdges.values().stream().flatMap(Collection::stream).collect(Collectors.toSet()));
+                otherEdges.values().stream().flatMap(Collection::stream).collect(Collectors.toSet()),
+                otherSwitches.values().stream().flatMap(Collection::stream).collect(Collectors.toSet())
+        );
     }
 
     /**
@@ -95,44 +87,9 @@ public class IntersectionComputer {
     public OverlappingSegmentsStats getOverlappingStats(PathId forwardPathId, PathId reversePathId) {
         Set<Edge> edges = new HashSet<>(otherEdges.getOrDefault(forwardPathId, Collections.emptySet()));
         edges.addAll(otherEdges.getOrDefault(reversePathId, Collections.emptySet()));
-        return computeIntersectionCounters(edges);
-    }
-
-    OverlappingSegmentsStats computeIntersectionCounters(Set<Edge> otherEdges) {
-        Set<SwitchId> switches = new HashSet<>();
-        Set<Edge> edges = new HashSet<>();
-        for (Edge edge : otherEdges) {
-            switches.add(edge.getSrcSwitch());
-            switches.add(edge.getDestSwitch());
-            edges.add(edge);
-        }
-
-        int edgesOverlap = Sets.intersection(edges, targetPathEdges).size();
-        int switchesOverlap = Sets.intersection(switches, targetPathSwitches).size();
-        return new OverlappingSegmentsStats(edgesOverlap,
-                switchesOverlap,
-                percent(edgesOverlap, targetPathEdges.size()),
-                percent(switchesOverlap, targetPathSwitches.size()));
-    }
-
-    private int percent(int n, int from) {
-        return (int) ((n * 100.0f) / from);
-    }
-
-    /**
-     * Calculates is overlapping between primary and protected flow segments exists.
-     *
-     * @param primaryFlowSegments primary flow segments.
-     * @param protectedFlowSegments protected flow segments.
-     * @return is overlapping flag.
-     */
-    public static boolean isProtectedPathOverlaps(
-            List<PathSegment> primaryFlowSegments, List<PathSegment> protectedFlowSegments) {
-        Set<Edge> primaryEdges = primaryFlowSegments.stream().map(Edge::fromPathSegment).collect(Collectors.toSet());
-        Set<Edge> protectedEdges = protectedFlowSegments.stream().map(Edge::fromPathSegment)
-                .collect(Collectors.toSet());
-
-        return !Sets.intersection(primaryEdges, protectedEdges).isEmpty();
+        Set<SwitchId> switches = new HashSet<>(otherSwitches.getOrDefault(forwardPathId, Collections.emptySet()));
+        switches.addAll(otherSwitches.getOrDefault(reversePathId, Collections.emptySet()));
+        return computeIntersectionCounters(edges, switches);
     }
 
     /**
@@ -201,6 +158,54 @@ public class IntersectionComputer {
         return Lists.reverse(getLongestIntersectionOfSegments(pathSegmentIterators));
     }
 
+    private void handleTargetPath(FlowPath path) {
+        if (path.isOneSwitchFlow()) {
+            targetPathSwitches.add(path.getSrcSwitchId());
+        } else {
+            path.getSegments().forEach(segment -> {
+                targetPathEdges.add(Edge.fromPathSegment(segment));
+                targetPathSwitches.add(segment.getSrcSwitchId());
+                targetPathSwitches.add(segment.getDestSwitchId());
+            });
+        }
+    }
+
+    private void handleAnotherPath(FlowPath path) {
+        Set<SwitchId> switches = new HashSet<>();
+        Set<Edge> edges = new HashSet<>();
+        if (path.isOneSwitchFlow()) {
+            switches.add(path.getSrcSwitchId());
+        } else {
+            path.getSegments().forEach(segment -> {
+                switches.add(segment.getSrcSwitchId());
+                switches.add(segment.getDestSwitchId());
+                edges.add(Edge.fromPathSegment(segment));
+            });
+        }
+        if (!switches.isEmpty()) {
+            otherSwitches.put(path.getPathId(), switches);
+        }
+        if (!edges.isEmpty()) {
+            otherEdges.put(path.getPathId(), edges);
+        }
+    }
+
+    private OverlappingSegmentsStats computeIntersectionCounters(Set<Edge> edges, Set<SwitchId> switches) {
+        int edgesOverlap = Sets.intersection(edges, targetPathEdges).size();
+        int switchesOverlap = Sets.intersection(switches, targetPathSwitches).size();
+        return new OverlappingSegmentsStats(edgesOverlap,
+                switchesOverlap,
+                percent(edgesOverlap, targetPathEdges.size()),
+                percent(switchesOverlap, targetPathSwitches.size()));
+    }
+
+    private int percent(int overlap, int total) {
+        if (total != 0) {
+            return (int) ((overlap * 100.0d) / total);
+        }
+        return 0;
+    }
+
     private static List<PathSegment> getLongestIntersectionOfSegments(List<Iterator<PathSegment>> pathSegments) {
         List<PathSegment> result = new ArrayList<>();
         // Iterate over the first path's segments and check other paths' segments.
@@ -230,10 +235,10 @@ public class IntersectionComputer {
      */
     @Value
     static class Edge {
-        private SwitchId srcSwitch;
-        private int srcPort;
-        private SwitchId destSwitch;
-        private int destPort;
+        SwitchId srcSwitch;
+        int srcPort;
+        SwitchId destSwitch;
+        int destPort;
 
         static Edge fromPathSegment(PathSegment segment) {
             if (segment.getSrcSwitchId().compareTo(segment.getDestSwitchId()) > 0) {

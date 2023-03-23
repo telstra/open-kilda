@@ -17,6 +17,7 @@ package org.openkilda.testing.service.northbound;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.openkilda.messaging.payload.network.PathValidationPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
@@ -28,6 +29,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.flows.PathValidateResponse;
 import org.openkilda.northbound.dto.v2.haflows.HaFlow;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowDump;
@@ -44,6 +46,7 @@ import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
 import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
@@ -353,6 +356,21 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     }
 
     @Override
+    public SwitchFlowsPerPortResponse getSwitchFlows(SwitchId switchId, List<Integer> portIds) {
+        log.debug("Get flows from switch {} on ports {}", switchId, portIds);
+        UriComponentsBuilder uriBuilder =
+                UriComponentsBuilder.fromUriString("/api/v2/switches/{switch_id}/flows-by-port");
+        if (!portIds.isEmpty()) {
+            uriBuilder.queryParam("ports", portIds);
+        }
+        return restTemplate.exchange(
+                uriBuilder.build().toString(),
+                HttpMethod.GET,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), SwitchFlowsPerPortResponse.class, switchId
+                ).getBody();
+    }
+
+    @Override
     public BfdPropertiesPayload setLinkBfd(TopologyDefinition.Isl isl) {
         return setLinkBfd(isl, new BfdProperties(350L, (short) 3));
     }
@@ -525,6 +543,14 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
                 uriBuilder.build().toString(), HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResultV2.class, switchId).getBody());
         return new SwitchValidationV2ExtendedResult(switchId, result);
+    }
+
+    @Override
+    public PathValidateResponse checkPath(PathValidationPayload pathValidationPayload) {
+        return restTemplate.exchange("/api/v2/network/path/check",
+                HttpMethod.POST,
+                new HttpEntity<>(pathValidationPayload, buildHeadersWithCorrelationId()),
+                PathValidateResponse.class).getBody();
     }
 
     @Override

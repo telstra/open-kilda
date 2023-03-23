@@ -1,4 +1,4 @@
-/* Copyright 2022 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,11 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.validation;
+package org.openkilda.messaging.validation;
 
 import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
 
 import java.util.concurrent.TimeUnit;
 
@@ -25,14 +26,15 @@ public final class ValidatorUtils {
 
     private ValidatorUtils() {}
 
-    /** maxLatencyValidator method check if the maxLatency and
-     * maxLatencyTier2 are valid.
+    /**
+     * maxLatencyValidator method checks if the maxLatency and maxLatencyTier2 are valid.
      * @param maxLatency maxLatency property
      * @param maxLatencyTier2 maxLatencyTier2 property
      * @throws InvalidFlowException invalidFlow exception
      */
-    public static void maxLatencyValidator(Long maxLatency, Long maxLatencyTier2) throws InvalidFlowException {
-        if (maxLatencyTier2 == null) {
+    public static void validateMaxLatencyAndLatencyTier(Long maxLatency, Long maxLatencyTier2)
+            throws InvalidFlowException {
+        if (maxLatency == null && maxLatencyTier2 == null) {
             return;
         }
         if (maxLatency == null) {
@@ -40,6 +42,16 @@ public final class ValidatorUtils {
                     "maxLatencyTier2 property cannot be used without maxLatency",
                     ErrorType.DATA_INVALID);
         }
+        if (maxLatency < 0) {
+            throw new InvalidFlowException("maxLatency cannot be negative", ErrorType.DATA_INVALID);
+        }
+        if (maxLatencyTier2 == null || maxLatencyTier2.equals(0L)) {
+            return;
+        }
+        if (maxLatencyTier2 < 0) {
+            throw new InvalidFlowException("maxLatencyTier2 cannot be negative", ErrorType.DATA_INVALID);
+        }
+
         if (maxLatency > maxLatencyTier2) {
             throw new InvalidFlowException(
                     format("The maxLatency %dms is higher than maxLatencyTier2 %dms",

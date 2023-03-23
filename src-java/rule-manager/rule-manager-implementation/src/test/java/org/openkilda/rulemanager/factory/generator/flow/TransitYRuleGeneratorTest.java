@@ -187,13 +187,41 @@ public class TransitYRuleGeneratorTest {
         assertTransitCommand(commands, OfTable.INPUT, VXLAN_ENCAPSULATION);
     }
 
+    @Test
+    public void buildCommandsWithNullSharedMeterId() {
+        TransitYRuleGenerator generator = TransitYRuleGenerator.builder()
+                .flowPath(PATH)
+                .inPort(PORT_NUMBER_1)
+                .outPort(PORT_NUMBER_2)
+                .multiTable(false)
+                .encapsulation(VXLAN_ENCAPSULATION)
+                .sharedMeterId(null)
+                .generateMeterCommand(true)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
+                .config(config)
+                .build();
+
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
+        assertTransitCommand(commands, OfTable.INPUT, VXLAN_ENCAPSULATION, null);
+    }
+
     private void assertTransitCommand(List<SpeakerData> commands, OfTable table,
                                       FlowTransitEncapsulation encapsulation) {
+        assertTransitCommand(commands, table, encapsulation, SHARED_METER_ID);
+    }
+
+    private void assertTransitCommand(List<SpeakerData> commands, OfTable table,
+                                      FlowTransitEncapsulation encapsulation, MeterId sharedMeterId) {
         assertEquals(1, commands.size());
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().contains(SHARED_METER_UUID));
+
+        if (sharedMeterId != null) {
+            assertTrue(flowCommandData.getDependsOn().contains(SHARED_METER_UUID));
+        } else {
+            assertTrue(flowCommandData.getDependsOn().isEmpty());
+        }
 
         assertEquals(COOKIE, flowCommandData.getCookie());
         assertEquals(table, flowCommandData.getTable());
@@ -210,7 +238,7 @@ public class TransitYRuleGeneratorTest {
 
         Instructions expectedInstructions = Instructions.builder()
                 .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(PORT_NUMBER_2))))
-                .goToMeter(SHARED_METER_ID)
+                .goToMeter(sharedMeterId)
                 .build();
         assertEquals(expectedInstructions, flowCommandData.getInstructions());
         assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());

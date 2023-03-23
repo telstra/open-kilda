@@ -1,4 +1,4 @@
-# Kilda Data storage V2
+# OpenKilda Data storage V2
 
 ## Overview
 This doc describes the proposed solutions for migration OpenKilda from Neo4j to another data storage(s).
@@ -6,7 +6,7 @@ This doc describes the proposed solutions for migration OpenKilda from Neo4j to 
 ## Goals
 The goal is to implement a data storage solution that satisfies the system requirements.
 
-Currently, Kilda uses [Neo4j](https://neo4j.com/) as a persistent storage for its [data model](../domain-model/domain-model.md),
+Currently, OpenKilda uses [Neo4j](https://neo4j.com/) as a persistent storage for its [data model](../domain-model/domain-model.md),
 and [Neo4j-OGM](https://github.com/neo4j/neo4j-ogm) as the mapping library in the persistence layer.
 
 Since the persistence layer was introduced, we faced multiple issues related to it: 

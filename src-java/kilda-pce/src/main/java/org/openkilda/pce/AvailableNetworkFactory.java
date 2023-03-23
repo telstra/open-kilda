@@ -1,4 +1,4 @@
-/* Copyright 2022 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -121,6 +121,7 @@ public class AvailableNetworkFactory {
             log.info("Filling AvailableNetwork diverse weights for group with id {}", flow.getDiverseGroupId());
 
             diverseGroupPaths.forEach(flowPath -> {
+                network.processDiversityGroupForSingleSwitchFlow(flowPath);
                 network.processDiversitySegments(flowPath.getSegments(), flow);
                 network.processDiversitySegmentsWithPop(flowPath.getSegments());
             });

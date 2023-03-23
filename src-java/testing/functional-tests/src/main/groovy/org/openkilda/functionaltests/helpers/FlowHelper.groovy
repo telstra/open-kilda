@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.messaging.payload.flow.PathNodePayload
+import org.openkilda.model.SwitchId
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
@@ -130,6 +133,13 @@ class FlowHelper {
         def response = northbound.addFlow(flow)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         return response
+    }
+
+    List<Integer> "get ports that flow uses on switch from path" (String flowId, SwitchId switchId) {
+        def response = northbound.getFlowPath(flowId)
+        def paths = response.forwardPath + response.reversePath + (response.protectedPath as PathNodePayload)
+        return paths.findAll{it != null && it.getSwitchId() == switchId}
+                .inject([].toSet()) {result, i -> result + [i.inputPort, i.outputPort]}.asList()
     }
 
     /**

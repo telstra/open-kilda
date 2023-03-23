@@ -1,5 +1,5 @@
 @startuml
-title Floodlight Kilda Modules collaboration diagram (Old)
+title Floodlight OpenKilda Modules collaboration diagram (Old)
 
 participant OFEventWFMTopology
 participant "Topology Engine" as TE
@@ -17,7 +17,7 @@ control kilda.topo.disco
 create Consumer
 KafkaMessageCollector -> Consumer : Start the reactor thread
 
-ref over OFEventWFMTopology, TE: Kilda components communicates to Floodlight
+ref over OFEventWFMTopology, TE: OpenKilda components communicates to Floodlight
 
 OFEventWFMTopology -> kilda.speaker: Send a discovery command
 
