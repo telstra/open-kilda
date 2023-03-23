@@ -20,6 +20,7 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PA
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.PathValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
@@ -88,7 +89,7 @@ public class RouterBolt extends AbstractBolt {
             emitWithContext(StreamType.FEATURE_TOGGLES.toString(), input, new Values(request));
         } else if (request instanceof KildaConfigurationBaseRequest) {
             emitWithContext(StreamType.KILDA_CONFIG.toString(), input, new Values(request));
-        } else if (request instanceof GetPathsRequest) {
+        } else if (request instanceof GetPathsRequest || request instanceof PathValidateRequest) {
             emitWithContext(StreamType.PATHS.toString(), input, new Values(request));
         } else if (request instanceof HistoryRequest) {
             emitWithContext(StreamType.HISTORY.toString(), input, new Values(request));

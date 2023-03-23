@@ -137,7 +137,7 @@ public class FlowController extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponsePayload> updateFlow(@PathVariable(name = "flow-id") String flowId,
                                                              @RequestBody FlowUpdatePayload flow) {
-        return flowService.updateFlow(flow);
+        return flowService.updateFlow(flowId, flow);
     }
 
     /**

@@ -13,10 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.controller.v1;
+package org.openkilda.northbound.controller.mock;
 
+import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.CompletableFuture.completedFuture;
+import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.error.ErrorType.OPERATION_TIMED_OUT;
 
 import org.openkilda.messaging.Destination;
@@ -30,6 +32,7 @@ import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -53,6 +56,7 @@ import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.northbound.messaging.MessagingChannel;
@@ -71,33 +75,42 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Component
 public class TestMessageMock implements MessagingChannel {
-    static final String FLOW_ID = "ff:00";
+    public static final String FLOW_ID = "flow_id_1";
     static final String SECOND_FLOW_ID = "second_flow";
-    static final SwitchId SWITCH_ID = new SwitchId(FLOW_ID);
+    public static final String FLOW_ID_FROM_PATH = "different_flow_id";
+    static final SwitchId SWITCH_ID = new SwitchId("ff:00");
     static final SwitchId SECOND_SWITCH_ID = new SwitchId("ff:01");
-    static final String ERROR_FLOW_ID = "error-flow";
-    static final String TEST_SWITCH_ID = "ff:01";
-    static final long TEST_SWITCH_RULE_COOKIE = 1L;
-    static final FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(SWITCH_ID, 1, 1,
+    public static final String ERROR_FLOW_ID = "error-flow";
+    public static final String TEST_SWITCH_ID = "ff:01";
+    public static final long TEST_SWITCH_RULE_COOKIE = 1L;
+    public static final FlowEndpointPayload FLOW_ENDPOINT = new FlowEndpointPayload(SWITCH_ID, 1, 1,
             new DetectConnectedDevicesPayload(false, false));
     static final FlowEndpointPayload secondFlowEndpoint = new FlowEndpointPayload(SECOND_SWITCH_ID, 2, 2,
             new DetectConnectedDevicesPayload(false, false));
-    static final FlowEndpointV2 flowPayloadEndpoint = new FlowEndpointV2(SWITCH_ID, 1, 1,
+    public static final FlowEndpointV2 FLOW_PAYLOAD_ENDPOINT = new FlowEndpointV2(SWITCH_ID, 1, 1,
             new DetectConnectedDevicesV2(false, false));
     static final FlowEndpointV2 secondFlowPayloadEndpoint = new FlowEndpointV2(SECOND_SWITCH_ID, 2, 2,
             new DetectConnectedDevicesV2(false, false));
-    public static final FlowPayload flow = FlowPayload.builder()
+
+    public static final FlowPayload FLOW = FlowPayload.builder()
             .id(FLOW_ID)
-            .source(flowEndpoint)
-            .destination(flowEndpoint)
+            .source(FLOW_ENDPOINT)
+            .destination(FLOW_ENDPOINT)
             .maximumBandwidth(10000)
             .description(FLOW_ID)
             .status(FlowState.UP.getState())
             .build();
-    public static final FlowResponsePayload flowResponsePayload = FlowResponsePayload.flowResponsePayloadBuilder()
+
+    public static final FlowRequestV2 FLOW_REQUEST_V2 = FlowRequestV2.builder()
+            .flowId(FLOW_ID)
+            .source(FLOW_PAYLOAD_ENDPOINT)
+            .destination(FLOW_PAYLOAD_ENDPOINT)
+            .build();
+
+    public static final FlowResponsePayload FLOW_RESPONSE_PAYLOAD = FlowResponsePayload.flowResponsePayloadBuilder()
             .id(FLOW_ID)
-            .source(flowEndpoint)
-            .destination(flowEndpoint)
+            .source(FLOW_ENDPOINT)
+            .destination(FLOW_ENDPOINT)
             .maximumBandwidth(10000)
             .description(FLOW_ID)
             .status(FlowState.UP.getState())
@@ -105,8 +118,8 @@ public class TestMessageMock implements MessagingChannel {
 
     public static final SwapFlowPayload firstSwapFlow = SwapFlowPayload.builder()
             .flowId(FLOW_ID)
-            .source(flowPayloadEndpoint)
-            .destination(flowPayloadEndpoint)
+            .source(FLOW_PAYLOAD_ENDPOINT)
+            .destination(FLOW_PAYLOAD_ENDPOINT)
             .build();
 
     public static final SwapFlowPayload secondSwapFlow = SwapFlowPayload.builder()
@@ -116,10 +129,10 @@ public class TestMessageMock implements MessagingChannel {
             .build();
 
     public static final SwapFlowEndpointPayload bulkFlow = new SwapFlowEndpointPayload(firstSwapFlow, secondSwapFlow);
-    static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowState.UP);
+    public static final FlowIdStatusPayload FLOW_STATUS = new FlowIdStatusPayload(FLOW_ID, FlowState.UP);
     static final PathInfoData path = new PathInfoData(0L, Collections.emptyList());
     static final List<PathNodePayload> pathPayloadsList = singletonList(new PathNodePayload(SWITCH_ID, 1, 1));
-    static final FlowPathPayload flowPath = FlowPathPayload.builder()
+    public static final FlowPathPayload FLOW_PATH = FlowPathPayload.builder()
             .id(FLOW_ID)
             .forwardPath(pathPayloadsList)
             .reversePath(pathPayloadsList)
@@ -151,6 +164,10 @@ public class TestMessageMock implements MessagingChannel {
             new SwitchRulesResponse(singletonList(TEST_SWITCH_RULE_COOKIE));
     private static final Map<String, CommandData> messages = new ConcurrentHashMap<>();
 
+    public static final MessageError DIFFERENT_FLOW_ID_ERROR = new MessageError(DEFAULT_CORRELATION_ID, 0,
+            ErrorType.DATA_INVALID.toString(), "flow_id from body and from path are different",
+            format("Body flow_id: %s, path flow_id: %s", FLOW_ID, FLOW_ID_FROM_PATH));
+
     /**
      * Chooses response by request.
      *
@@ -160,7 +177,7 @@ public class TestMessageMock implements MessagingChannel {
     private CompletableFuture<InfoData> formatResponse(final String correlationId, final CommandData data) {
         CompletableFuture<InfoData> result = new CompletableFuture<>();
         if (data instanceof FlowRequest) {
-            result.complete(flowResponse);
+            result.complete(buildFlowResponse((FlowRequest) data));
         } else if (data instanceof FlowDeleteRequest) {
             result.complete(flowResponse);
         } else if (data instanceof FlowReadRequest) {
@@ -174,6 +191,22 @@ public class TestMessageMock implements MessagingChannel {
         }
 
         return result;
+    }
+
+    private FlowResponse buildFlowResponse(FlowRequest flowRequest) {
+        return new FlowResponse(FlowDto.builder()
+                .flowId(flowRequest.getFlowId())
+                .bandwidth(flowRequest.getBandwidth())
+                .description(flowRequest.getDescription())
+                .sourceSwitch(flowRequest.getSource().getSwitchId())
+                .destinationSwitch(flowRequest.getDestination().getSwitchId())
+                .sourcePort(flowRequest.getSource().getPortNumber())
+                .destinationPort(flowRequest.getDestination().getPortNumber())
+                .sourceVlan(flowRequest.getSource().getOuterVlanId())
+                .destinationVlan(flowRequest.getDestination().getOuterVlanId())
+                .meterId(1)
+                .state(FlowState.UP)
+                .build());
     }
 
     @Override

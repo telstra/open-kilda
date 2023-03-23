@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -317,7 +317,8 @@ public class FlowOperationsService {
         FlowPathDtoBuilder builder = this.toFlowPathDtoBuilder(flow)
                 .primaryPathCorrespondStat(primaryPathCorrespondStat)
                 .segmentsStats(
-                        intersectionComputer.getOverlappingStats(flow.getForwardPathId(), flow.getReversePathId()));
+                        intersectionComputer.getOverlappingStats(flow.getForwardPathId(),
+                                flow.getReversePathId()));
         if (flow.isAllocateProtectedPath()) {
             builder.protectedPath(FlowProtectedPathDto.builder()
                     .forwardPath(buildPathFromFlow(flow, flow.getProtectedForwardPath()))
@@ -572,8 +573,7 @@ public class FlowOperationsService {
                     + "at the same time");
         }
 
-        if ((flow.getVlanStatistics() != null && !flow.getVlanStatistics().isEmpty())
-                || (flowPatch.getVlanStatistics() != null && !flowPatch.getVlanStatistics().isEmpty())) {
+        if (!isVlanStatisticsEmpty(flowPatch, flow)) {
             boolean zeroResultSrcVlan = isResultingVlanValueIsZero(flowPatch.getSource(), flow.getSrcVlan());
             boolean zeroResultDstVlan = isResultingVlanValueIsZero(flowPatch.getDestination(), flow.getDestVlan());
 
@@ -731,6 +731,13 @@ public class FlowOperationsService {
                         .filter(diverseFlow -> !flow.getFlowId().equals(diverseFlow.getFlowId())
                                 || (flow.getYFlowId() != null && !flow.getYFlowId().equals(diverseFlow.getYFlowId())))
                         .collect(Collectors.toSet());
+    }
+
+    private static boolean isVlanStatisticsEmpty(FlowPatch flowPatch, Flow flow) {
+        if (flowPatch.getVlanStatistics() != null) {
+            return flowPatch.getVlanStatistics().isEmpty();
+        }
+        return flow.getVlanStatistics() == null || flow.getVlanStatistics().isEmpty();
     }
 
     @Data
