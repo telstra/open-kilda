@@ -599,7 +599,6 @@ public class RuleManagerImpl implements RuleManager {
                             flow.getFlowId(), protectedYPointSwitchId);
                     continue;
                 }
-                requireNonNull(protectedYPointMeterId, "The y-flow protected path meterId can't be null");
 
                 boolean meterToBeAdded = externalProtectedMeterCommandUuid == null;
                 if (meterToBeAdded) {
@@ -620,7 +619,6 @@ public class RuleManagerImpl implements RuleManager {
                             flow.getFlowId(), yPointSwitchId);
                     continue;
                 }
-                requireNonNull(yPointMeterId, "The y-flow meterId can't be null");
 
                 boolean meterToBeAdded = externalMeterCommandUuid == null;
                 if (meterToBeAdded) {
@@ -646,6 +644,7 @@ public class RuleManagerImpl implements RuleManager {
                 segment.getSrcSwitchId().equals(switchId) || segment.getDestSwitchId().equals(switchId));
     }
 
+    @VisibleForTesting
     private RuleGenerator buildYPointYRuleGenerator(Switch yPointSwitch, FlowPath path,
                                                     Flow flow, FlowTransitEncapsulation encapsulation,
                                                     MeterId yPointMeterId, UUID externalMeterCommandUuid,

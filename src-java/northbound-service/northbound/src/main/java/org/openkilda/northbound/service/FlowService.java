@@ -87,7 +87,7 @@ public interface FlowService {
      * @param flow flow
      * @return updated flow
      */
-    CompletableFuture<FlowResponsePayload> updateFlow(final FlowUpdatePayload flow);
+    CompletableFuture<FlowResponsePayload> updateFlow(final String flowId, final FlowUpdatePayload flow);
 
     /**
      * Updates flow.
@@ -95,7 +95,7 @@ public interface FlowService {
      * @param flow flow
      * @return updated flow
      */
-    CompletableFuture<FlowResponseV2> updateFlow(FlowRequestV2 flow);
+    CompletableFuture<FlowResponseV2> updateFlow(final String flowId, FlowRequestV2 flow);
 
     /**
      * Patch flow.
