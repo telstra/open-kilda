@@ -46,7 +46,7 @@ public interface PathComputer {
     }
 
     /**
-     * Gets path between source and destination switch for specified flow.
+     * Gets path between source and destination switches for the specified flow.
      *
      * @param flow the {@link Flow} instance.
      * @param reusePathsResources    allow already allocated path resources (bandwidth)
@@ -57,14 +57,23 @@ public interface PathComputer {
             throws UnroutableFlowException, RecoverableException;
 
     /**
-     * Gets N best paths.
+     * Calculates a protected path based on given parameters and configuration.
+     * @param flow Flow is used to created available network. Uses this flow path to handle diversity weights.
+     * @param reusePathsResources include these resources as if they are not allocated
+     * @return GetPathResult containing a protected path or an empty path with fail reasons if it is not possible
+     *      to calculate the path.
+     */
+    GetPathsResult getProtectedPath(Flow flow, Collection<PathId> reusePathsResources);
+
+    /**
+     * Gets the best N paths.
      *
      * @param srcSwitch source switchId
      * @param dstSwitch destination switchId
      * @param flowEncapsulationType target encapsulation type
      * @param maxLatency max latency
      * @param maxLatencyTier2 max latency tier2
-     * @return an list of N (or less) best paths ordered from best to worst.
+     * @return at most N paths ordered from the best to worst.
      */
     List<Path> getNPaths(SwitchId srcSwitch, SwitchId dstSwitch, int count,
                          FlowEncapsulationType flowEncapsulationType, PathComputationStrategy pathComputationStrategy,

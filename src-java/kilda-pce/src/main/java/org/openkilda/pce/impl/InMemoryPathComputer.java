@@ -55,6 +55,7 @@ import org.openkilda.pce.model.PathWeight.Penalty;
 import org.openkilda.pce.model.WeightFunction;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
@@ -89,6 +90,25 @@ public class InMemoryPathComputer implements PathComputer {
         this.availableNetworkFactory = availableNetworkFactory;
         this.pathFinder = pathFinder;
         this.config = config;
+    }
+
+    @Override
+    public GetPathsResult getProtectedPath(Flow flow, Collection<PathId> reusePathsResources) {
+        try {
+            AvailableNetwork network =
+                    availableNetworkFactory.getAvailableNetwork(flow, reusePathsResources, flow.getPaths());
+
+            return getPath(network, flow, flow.getPathComputationStrategy(), true);
+        } catch (UnroutableFlowException e) {
+            if (e.getFailReason() == null || e.getFailReason().isEmpty()) {
+                return GetPathsResult.builder().failReasons(ImmutableMap.of(FailReasonType.UNROUTABLE_FLOW,
+                        new FailReason(FailReasonType.UNROUTABLE_FLOW, e.getMessage()))).build();
+            }
+            return GetPathsResult.builder().failReasons(e.getFailReason()).build();
+        } catch (RecoverableException e) {
+            return GetPathsResult.builder().failReasons(ImmutableMap.of(FailReasonType.PERSISTENCE_ERROR,
+                    new FailReason(FailReasonType.PERSISTENCE_ERROR))).build();
+        }
     }
 
     @Override

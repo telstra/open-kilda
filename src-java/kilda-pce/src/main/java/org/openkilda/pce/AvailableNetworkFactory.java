@@ -32,8 +32,11 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -42,9 +45,9 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public class AvailableNetworkFactory {
-    private PathComputerConfig config;
-    private IslRepository islRepository;
-    private FlowPathRepository flowPathRepository;
+    private final PathComputerConfig config;
+    private final IslRepository islRepository;
+    private final FlowPathRepository flowPathRepository;
 
     public AvailableNetworkFactory(PathComputerConfig config, RepositoryFactory repositoryFactory) {
         this.config = config;
@@ -61,6 +64,43 @@ public class AvailableNetworkFactory {
      */
     public AvailableNetwork getAvailableNetwork(Flow flow, Collection<PathId> reusePathsResources)
             throws RecoverableException {
+        Collection<FlowPath> diverseGroupPaths = Collections.emptyList();
+        if (flow.getDiverseGroupId() != null) {
+            Collection<PathId> flowPathIds =
+                    flowPathRepository.findPathIdsByFlowDiverseGroupId(flow.getDiverseGroupId());
+            if (!reusePathsResources.isEmpty()) {
+                flowPathIds = flowPathIds.stream()
+                        .filter(s -> !reusePathsResources.contains(s))
+                        .collect(Collectors.toList());
+            }
+
+            Collection<PathId> affinityPathIds =
+                    flowPathRepository.findPathIdsByFlowAffinityGroupId(flow.getAffinityGroupId());
+            flowPathIds.removeAll(affinityPathIds);
+            flowPathIds.removeIf(f -> Objects.equals(f.getId(), flow.getFlowId()));
+
+            diverseGroupPaths = flowPathIds.stream()
+                    .map(flowPathRepository::findById)
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .collect(Collectors.toList());
+        }
+
+        return getAvailableNetwork(flow, reusePathsResources, diverseGroupPaths);
+    }
+
+    /**
+     * This method creates AvailableNetwork based on the given flow parameters, reusable resources, and
+     * paths with the diversity weights.
+     * @param flow flow for which the network is being created
+     * @param reusePathsResources build the network as if these resources are available
+     * @param diverseGroupPaths paths that affect diversity weights. It could be null or empty when not applicable.
+     * @return AvailableNetwork
+     * @throws RecoverableException is thrown when it is not possible to obtain the required information
+     *      from the persistence layer.
+     */
+    public AvailableNetwork getAvailableNetwork(Flow flow, Collection<PathId> reusePathsResources,
+                                                Collection<FlowPath> diverseGroupPaths) throws RecoverableException {
         BuildStrategy buildStrategy = BuildStrategy.from(config.getNetworkStrategy());
         AvailableNetwork network = new AvailableNetwork();
         try {
@@ -77,26 +117,13 @@ public class AvailableNetworkFactory {
             throw new RecoverableException("An error from the database", e);
         }
 
-        if (flow.getDiverseGroupId() != null) {
+        if (flow.getDiverseGroupId() != null && diverseGroupPaths != null) {
             log.info("Filling AvailableNetwork diverse weights for group with id {}", flow.getDiverseGroupId());
 
-            Collection<PathId> flowPaths = flowPathRepository.findPathIdsByFlowDiverseGroupId(flow.getDiverseGroupId());
-            if (!reusePathsResources.isEmpty()) {
-                flowPaths = flowPaths.stream()
-                        .filter(s -> !reusePathsResources.contains(s))
-                        .collect(Collectors.toList());
-            }
-
-            Collection<PathId> affinityPathIds =
-                    flowPathRepository.findPathIdsByFlowAffinityGroupId(flow.getAffinityGroupId());
-            flowPaths.forEach(pathId ->
-                    flowPathRepository.findById(pathId)
-                            .filter(flowPath -> !affinityPathIds.contains(flowPath.getPathId())
-                                    || flowPath.getFlowId().equals(flow.getFlowId()))
-                            .ifPresent(flowPath -> {
-                                network.processDiversitySegments(flowPath.getSegments(), flow);
-                                network.processDiversitySegmentsWithPop(flowPath.getSegments());
-                            }));
+            diverseGroupPaths.forEach(flowPath -> {
+                network.processDiversitySegments(flowPath.getSegments(), flow);
+                network.processDiversitySegmentsWithPop(flowPath.getSegments());
+            });
         }
 
         // The main flow id is set as the affinity group id.

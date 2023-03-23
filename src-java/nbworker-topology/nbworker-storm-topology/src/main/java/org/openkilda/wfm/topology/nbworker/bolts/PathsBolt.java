@@ -65,7 +65,7 @@ public class PathsBolt extends PersistenceOperationsBolt {
     private List<PathsInfoData> getPaths(GetPathsRequest request) {
         try {
             if (Boolean.TRUE.equals(request.getIncludeProtectedPathAvailability())) {
-                return pathService.getPathsWithProtectedPathAvailability(request.getSrcSwitchId(),
+                return pathService.getPathsWithProtectedPath(request.getSrcSwitchId(),
                         request.getDstSwitchId(), request.getEncapsulationType(), request.getPathComputationStrategy(),
                         request.getMaxLatency(), request.getMaxLatencyTier2(), request.getMaxPathCount());
             } else {

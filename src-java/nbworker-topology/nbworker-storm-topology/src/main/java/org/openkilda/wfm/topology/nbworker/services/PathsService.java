@@ -34,6 +34,7 @@ import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.mapper.PathSegmentMapper;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -49,6 +50,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -56,6 +58,7 @@ public class PathsService {
     private final int defaultMaxPathCount;
     private final PathComputer pathComputer;
     private final SwitchRepository switchRepository;
+    private final FlowPathRepository flowPathRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
 
@@ -67,6 +70,7 @@ public class PathsService {
                 pathComputerConfig, new AvailableNetworkFactory(pathComputerConfig, repositoryFactory));
         pathComputer = pathComputerFactory.getPathComputer();
         defaultMaxPathCount = pathComputerConfig.getMaxPathCount();
+        flowPathRepository = repositoryFactory.createFlowPathRepository();
     }
 
     /**
@@ -101,7 +105,7 @@ public class PathsService {
      * @throws SwitchNotFoundException an exception from PCE
      * @throws UnroutableFlowException an exception from PCE
      */
-    public List<PathsInfoData> getPathsWithProtectedPathAvailability(
+    public List<PathsInfoData> getPathsWithProtectedPath(
             SwitchId srcSwitchId, SwitchId dstSwitchId, FlowEncapsulationType requestEncapsulationType,
             PathComputationStrategy requestPathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2,
             Integer maxPathCount)
@@ -131,12 +135,13 @@ public class PathsService {
                                   Duration maxLatency, Duration maxLatencyTier2) {
         Flow flow = createVirtualFlow(path, encapsulationType, pathComputationStrategy, maxLatency, maxLatencyTier2);
 
-        try {
-            GetPathsResult pathsResult = pathComputer.getPath(flow, Collections.emptyList(), true);
-            return pathsResult.getForward() == null ? null : pathsResult.getForward();
-        } catch (RecoverableException | UnroutableFlowException e) {
-            return null;
+        GetPathsResult pathsResult = pathComputer.getProtectedPath(flow, Collections.emptyList());
+        if (pathsResult.isSuccess() && pathsResult.getForward().equals(path)) {
+            log.error("Protected path is equal to the main path!");
+            throw new IllegalStateException("Protected path is equal to the main path!");
         }
+
+        return pathsResult.isSuccess() ? pathsResult.getForward() : null;
     }
 
     private Flow createVirtualFlow(Path path,
@@ -144,6 +149,12 @@ public class PathsService {
                                    PathComputationStrategy pathComputationStrategy,
                                    Duration maxLatency,
                                    Duration maxLatencyTier2) {
+        String diverseGroupId = UUID.randomUUID().toString();
+        if (!flowPathRepository.findByFlowGroupId(diverseGroupId).isEmpty()) {
+            log.error("There is a flow with the same diverse group ID as the virtual flow. group ID: {}",
+                    diverseGroupId);
+        }
+
         Flow flow = Flow.builder()
                 .description("A virtual flow for computing a protected path to this flow")
                 .flowId("")
@@ -155,6 +166,7 @@ public class PathsService {
                 .maxLatency(maxLatency.toNanos())
                 .maxLatencyTier2(maxLatencyTier2.toNanos())
                 .pathComputationStrategy(pathComputationStrategy)
+                .diverseGroupId(diverseGroupId)
                 .build();
 
         flow.setForwardPath(FlowPath.builder()

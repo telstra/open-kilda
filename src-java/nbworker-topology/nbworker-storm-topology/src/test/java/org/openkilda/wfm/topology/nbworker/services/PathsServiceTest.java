@@ -21,6 +21,8 @@ import static junit.framework.TestCase.assertNotNull;
 import static junit.framework.TestCase.assertTrue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.openkilda.model.PathComputationStrategy.COST;
@@ -293,33 +295,31 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void findNPathsWithProtectedPathIfAvailableTest()
+    public void whenTwoPathsExist_findPathsWithProtectedPath()
             throws UnroutableFlowException, SwitchNotFoundException, RecoverableException {
-        kildaConfigurationRepository.find().ifPresent(config -> {
-            config.setFlowEncapsulationType(VXLAN);
-        });
+        kildaConfigurationRepository.find().ifPresent(config -> config.setFlowEncapsulationType(VXLAN));
 
-        List<PathsInfoData> paths = pathsService.getPathsWithProtectedPathAvailability(
+        List<PathsInfoData> paths = pathsService.getPathsWithProtectedPath(
                 SWITCH_ID_1, SWITCH_ID_2, VXLAN, COST, Duration.ofMillis(10L), Duration.ofMillis(11L), 1);
 
         assertFalse(paths.isEmpty());
+        assertNotNull(paths.get(0).getPath());
         assertNotNull(paths.get(0).getPath().getProtectedPath());
+        assertNotEquals(paths.get(0).getPath(), paths.get(0).getPath().getProtectedPath());
     }
 
     @Test
-    public void whenTooLowLatencyRequested_andLatencyStrategy_noPathsWithProtectedAvailabilityTest()
+    public void whenTooLowLatencyRequested_andMaxLatencyStrategy_noPathsWithProtectedAvailabilityTest()
             throws UnroutableFlowException, SwitchNotFoundException, RecoverableException {
-        kildaConfigurationRepository.find().ifPresent(config -> {
-            config.setFlowEncapsulationType(VXLAN);
-        });
+        kildaConfigurationRepository.find().ifPresent(config -> config.setFlowEncapsulationType(VXLAN));
 
-        List<PathsInfoData> paths = pathsService.getPathsWithProtectedPathAvailability(
+        List<PathsInfoData> paths = pathsService.getPathsWithProtectedPath(
                 SWITCH_ID_1, SWITCH_ID_2, VXLAN, MAX_LATENCY,
                 Duration.ofNanos(18901L), Duration.ofMillis(0L), 5);
 
-        assertFalse(paths.isEmpty());
-        //TODO it always finds a protected path, because it doesn't discard the current path
-        assertNotNull(paths.get(0).getPath().getProtectedPath());
+        assertFalse("There must be at least one path.", paths.isEmpty());
+        assertNull(paths.get(0).getPath().getProtectedPath(),
+                "Found path must not have a protected path in this test topology");
     }
 
     private void assertMaxLatencyPaths(List<PathsInfoData> paths, Duration maxLatency, long expectedCount,
