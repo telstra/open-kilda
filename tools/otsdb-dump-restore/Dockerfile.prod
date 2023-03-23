@@ -5,5 +5,4 @@ ARG wheel
 WORKDIR /tmp
 COPY dist/${wheel} ./
 RUN pip install ${wheel}
-
-WORKDIR /
+RUN rm -rf ${wheel}

@@ -18,33 +18,38 @@ ZERO_TIMEDELTA = datetime.timedelta()
 @click.command()
 @click.option(
     '--time-stop', type=click.types.DateTime(), metavar='TIME_STOP',
-    help='timestamp where to stop dumping (by default NOW)')
+    default=str(datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")),
+    help='Timestamp where to stop dumping  [default: NOW]')
 @click.option(
     '--dump-dir', type=click.types.Path(file_okay=False), default='.',
-    help='location where dump files will be stored')
+    help='Location where dump files will be stored')
 @click.option(
-    '--query-frame-size-seconds', type=int, default=180,
-    help='OpenTSDB query time frame size')
+    '--query-frame-size', type=int, default=180, show_default=True,
+    help='OpenTSDB query time frame size (seconds)')
 @click.option(
-    '--metrics-prefix', default='kilda.',
-    help='only metrics that match this prefix will be dumped')
+    '--metrics-prefix', default='kilda.', show_default=True,
+    help='Only metrics that match this prefix will be dumped')
 @click.option(
     '--remove-metadata', is_flag=True)
 @click.argument('opentsdb_endpoint')
 @click.argument(
     'time_start', type=click.types.DateTime(), metavar='TIME_START')
 def main(opentsdb_endpoint, time_start, **options):
-    time_start = time_start.astimezone(datetime.timezone.utc)
+    """
+    This tool dumps the data from an OpenTSDB
 
-    time_stop = options['time_stop']
-    if not time_stop:
-        time_stop = utils.time_now()
-    else:
-        time_stop = time_stop.astimezone(datetime.timezone.utc)
+    OPENTSDB_ENDPOINT openTSDB endpoint
+
+    TIME_START time since the data is dumped
+
+    Example:
+    kilda-otsdb-dump http://example.com:4242 2023-03-08
+    """
+    time_start = time_start.astimezone(datetime.timezone.utc)
+    time_stop = options['time_stop'].astimezone(datetime.timezone.utc)
 
     dump_dir = pathlib.Path(options['dump_dir'])
-    query_frame_size = datetime.timedelta(
-        seconds=options['query_frame_size_seconds'])
+    query_frame_size = datetime.timedelta(seconds=options['query_frame_size'])
     prefix = options['metrics_prefix']
     need_remove_meta = options['remove_metadata']
 
@@ -55,22 +60,16 @@ def main(opentsdb_endpoint, time_start, **options):
     statistics = _DumpStatistics(rest_statistics)
 
     http_session = requests.Session()
-    http_session.hooks['response'].append(
-        utils.ResponseStatisticsHook(rest_statistics))
+    http_session.hooks['response'].append(utils.ResponseStatisticsHook(rest_statistics))
 
     client = stats_client.OpenTSDBStatsClient(http_session, opentsdb_endpoint)
 
-    all_metrics_iterator = stats_client.OpenTSDBMetricsList(
-        http_session, opentsdb_endpoint, prefix=prefix)
+    all_metrics_iterator = stats_client.OpenTSDBMetricsList(http_session, opentsdb_endpoint, prefix=prefix)
     for metric in all_metrics_iterator:
-        dump(
-            statistics, client, dump_frame, dump_dir, metric, query_frame_size,
-            need_remove_meta=need_remove_meta)
+        dump(statistics, client, dump_frame, dump_dir, metric, query_frame_size, need_remove_meta=need_remove_meta)
 
 
-def dump(
-        statistics, client, dump_frame, dump_location, metric_name,
-        query_frame_size, need_remove_meta):
+def dump(statistics, client, dump_frame, dump_location, metric_name, query_frame_size, need_remove_meta):
     meta = _DumpMetadata(metric_name, dump_location)
 
     try:

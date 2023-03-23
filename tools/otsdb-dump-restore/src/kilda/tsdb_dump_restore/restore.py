@@ -18,12 +18,20 @@ from kilda.tsdb_dump_restore import utils
     '--dump-dir', type=click.types.Path(file_okay=False), default='.',
     help='Location where dump files are stored')
 @click.option(
-    '--put-request-size-limit', type=int, default=4096,
+    '--request-size-limit', type=int, default=4096, show_default=True,
     help='Limit for "put" request payload size (bytes)')
 @click.argument('opentsdb_endpoint')
 def main(opentsdb_endpoint, **options):
+    """
+    This tool restore the data to an OpenTSDB
+
+    OPENTSDB_ENDPOINT openTSDB endpoint
+
+    Example:
+    kilda-otsdb-restore http://example.com:4242
+    """
     dump_dir = pathlib.Path(options['dump_dir'])
-    batch_size_limit = options['put_request_size_limit']
+    batch_size_limit = options['request_size_limit']
 
     http_session = requests.Session()
 
@@ -44,7 +52,7 @@ def main(opentsdb_endpoint, **options):
 
     metric_report = None
     try:
-        for batch, descriptors in stream:
+        for _, descriptors in stream:
             for d in descriptors:
                 metadata = d.stream_entry.metadata
                 metadata.write(d.offset_end)
@@ -63,11 +71,9 @@ def main(opentsdb_endpoint, **options):
 
 
 def stream_source(path):
-    patters = (
-        re.compile(r'^(?P<name>.*)\.ndjson$', re.IGNORECASE),)
-
+    patterns = (re.compile(r'^(?P<name>.*)\.ndjson$', re.IGNORECASE),)
     for entry in path.iterdir():
-        for p in patters:
+        for p in patterns:
             m = p.match(entry.name)
             if m is None:
                 continue
@@ -266,8 +272,7 @@ class RestoreProgressReport(report.ProgressReportBase):
             percent = descriptor.offset_end / one_percent
         else:
             percent = None
-        if (descriptor.stream_size
-                and descriptor.stream_size <= descriptor.offset_end):
+        if (descriptor.stream_size and descriptor.stream_size <= descriptor.offset_end):
             percent = 100
 
         if percent is None:
