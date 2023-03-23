@@ -9,6 +9,7 @@ import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static org.openkilda.testing.tools.KafkaUtils.buildMessage
@@ -129,10 +130,20 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         }
 
         and: "No rule discrepancies on every switch of the flow"
-        switches.each { sw -> Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(sw.dpId) } }
-
+        withPool {
+            switches.eachParallel { sw ->
+                Wrappers.wait(RULES_DELETION_TIME) {
+                    verifySwitchRules(sw.dpId)
+                }
+            }
+        }
         cleanup:
         !flowIsDeleted && flow && flowHelper.deleteFlow(flow.id)
+        withPool {
+            switches.eachParallel {
+                northbound.synchronizeSwitch(it.getDpId(), true)
+            }
+        }
 
         where:
         /*Some permutations may be missed, since at current implementation we only take 'direct' possible flows
@@ -346,7 +357,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         def flowIsDeleted = true
 
         and: "No rule discrepancies on the switch after delete"
-        Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(flow.source.datapath) }
+        Wrappers.wait(RULES_DELETION_TIME) { verifySwitchRules(flow.source.datapath) }
 
         cleanup:
         !flowIsDeleted && flowHelper.deleteFlow(flow.id)

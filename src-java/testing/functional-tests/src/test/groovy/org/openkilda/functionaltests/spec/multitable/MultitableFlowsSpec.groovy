@@ -146,9 +146,11 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
         def flowIsDeleted = true
 
         then: "Flow rules are deleted from switches"
-        involvedSwitches.each { sw ->
-            with(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-                rules.findAll { it.cookie in flowCookies }.empty
+        withPool {
+            involvedSwitches.eachParallel { sw ->
+                with(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
+                    rules.findAll { it.cookie in flowCookies }.empty
+                }
             }
         }
 
