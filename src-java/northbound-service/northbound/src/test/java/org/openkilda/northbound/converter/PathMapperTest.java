@@ -19,6 +19,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import org.openkilda.messaging.info.network.Path;
+import org.openkilda.messaging.info.network.PathValidationResult;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
@@ -26,6 +27,7 @@ import org.openkilda.messaging.payload.flow.GroupFlowPathPayload.FlowProtectedPa
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.messaging.payload.network.PathDto;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.v2.flows.PathValidateResponse;
 
 import org.junit.Test;
 
@@ -44,6 +46,11 @@ public class PathMapperTest {
 
         @Override
         public FlowProtectedPathsPayload mapFlowProtectedPathPayload(FlowProtectedPathDto data) {
+            return null;
+        }
+
+        @Override
+        public PathValidateResponse toPathValidateResponse(PathValidationResult data) {
             return null;
         }
     };
