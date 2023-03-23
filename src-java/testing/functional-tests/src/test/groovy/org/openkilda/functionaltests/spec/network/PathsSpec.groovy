@@ -158,7 +158,7 @@ class PathsSpec extends HealthCheckSpecification {
         exc.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Switch $switchPair.src.dpId doesn't support $FlowEncapsulationType.VXLAN " +
-                "encapslation type. Choose one of the supported encapsulation types $encapsTypesWithoutVxlan or " +
+                "encapsulation type. Choose one of the supported encapsulation types $encapsTypesWithoutVxlan or " +
                 "update switch properties and add needed encapsulation type."
 
         cleanup:
