@@ -1471,7 +1471,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         cleanup: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
-
     }
 
     @Shared
