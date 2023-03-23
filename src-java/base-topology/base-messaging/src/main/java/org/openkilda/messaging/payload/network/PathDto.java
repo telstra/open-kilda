@@ -20,12 +20,14 @@ import org.openkilda.messaging.payload.flow.PathNodePayload;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.Value;
 
 import java.time.Duration;
 import java.util.List;
 
 @Value
+@Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class PathDto {
     @JsonProperty("bandwidth")

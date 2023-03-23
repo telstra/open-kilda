@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import static java.lang.String.format;
 import org.openkilda.adapter.FlowDestAdapter;
 import org.openkilda.adapter.FlowSourceAdapter;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
+import org.openkilda.messaging.validation.ValidatorUtils;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
@@ -61,9 +63,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Checks whether flow can be created and has no conflicts with already created ones.
+ * Checks whether a flow can be created and has no conflicts with existing flows.
  */
 public class FlowValidator {
+
+    @VisibleForTesting
+    static final int STATS_VLAN_LOWER_BOUND = 1;
+
+    @VisibleForTesting
+    static final int STATS_VLAN_UPPER_BOUND = 4094;
 
     private final FlowRepository flowRepository;
     private final YFlowRepository yFlowRepository;
@@ -108,7 +116,7 @@ public class FlowValidator {
 
         checkFlags(flow);
         checkBandwidth(flow);
-        checkMaxLatency(flow);
+        checkMaxLatencyTier(flow);
         checkSwitchesSupportLldpAndArpIfNeeded(flow);
 
         if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
@@ -144,6 +152,7 @@ public class FlowValidator {
         checkOneSwitchFlowConflict(source, destination);
         checkSwitchesExistsAndActive(flow.getSrcSwitch(), flow.getDestSwitch());
         checkFlowForCorrectOuterVlansWithVlanStatistics(flow);
+        checkFlowForVlanStatisticsInCorrectRange(flow);
 
         for (EndpointDescriptor descriptor : new EndpointDescriptor[]{
                 EndpointDescriptor.makeSource(source),
@@ -182,6 +191,27 @@ public class FlowValidator {
     }
 
     @VisibleForTesting
+    void checkFlowForVlanStatisticsInCorrectRange(RequestedFlow flow) throws InvalidFlowException {
+        Set<Integer> vlanStatistics = flow.getVlanStatistics();
+
+        if (vlanStatistics == null || vlanStatistics.isEmpty()) {
+            return;
+        }
+
+        boolean isAnyVlanOutsideOfBounds = vlanStatistics.stream()
+                .anyMatch(it -> it < STATS_VLAN_LOWER_BOUND || it > STATS_VLAN_UPPER_BOUND);
+
+        if (isAnyVlanOutsideOfBounds) {
+            throw new InvalidFlowException(
+                    format(
+                            "To collect vlan statistics, the vlan IDs must be from %d up to %d",
+                            STATS_VLAN_LOWER_BOUND,
+                            STATS_VLAN_UPPER_BOUND),
+                    ErrorType.PARAMETERS_INVALID);
+        }
+    }
+
+    @VisibleForTesting
     void checkFlags(RequestedFlow flow) throws InvalidFlowException  {
         if (flow.isPinned() && flow.isAllocateProtectedPath()) {
             throw new InvalidFlowException("Flow flags are not valid, unable to process pinned protected flow",
@@ -205,7 +235,7 @@ public class FlowValidator {
     }
 
     /**
-     * Validates the specified flow when swap endpoint operation.
+     * Validates the specified flows whether the swap endpoint operation can be done.
      */
     public void validateForSwapEndpoints(RequestedFlow firstFlow, RequestedFlow secondFlow)
             throws InvalidFlowException, UnavailableFlowEndpointException {
@@ -246,8 +276,8 @@ public class FlowValidator {
     }
 
     @VisibleForTesting
-    void checkMaxLatency(RequestedFlow flow) throws InvalidFlowException {
-        ValidatorUtils.maxLatencyValidator(flow.getMaxLatency(), flow.getMaxLatencyTier2());
+    void checkMaxLatencyTier(RequestedFlow flow) throws InvalidFlowException {
+        ValidatorUtils.validateMaxLatencyAndLatencyTier(flow.getMaxLatency(), flow.getMaxLatencyTier2());
     }
 
     private void checkFlowForIslConflicts(EndpointDescriptor descriptor) throws InvalidFlowException {
@@ -288,7 +318,7 @@ public class FlowValidator {
             if ((flowMirrorPointsForward.isPresent() || flowMirrorPointsReverse.isPresent())
                     && (endpoint.isTrackLldpConnectedDevices() || endpoint.isTrackArpConnectedDevices())) {
                 String errorMessage = format("Flow mirror point is created for the flow %s, "
-                        + "lldp or arp can not be set to true.", flowId);
+                        + "LLDP or ARP can not be set to true.", flowId);
                 throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
             }
         }
@@ -347,11 +377,11 @@ public class FlowValidator {
     }
 
     /**
-     * Ensure switches are exists.
+     * This method verifies that a pair of switches exist and is active.
      *
-     * @param sourceId source flow switch id to be validated.
-     * @param destinationId destination flow switch id to be validated.
-     * @throws UnavailableFlowEndpointException if switch not found.
+     * @param sourceId a source switch ID to be validated.
+     * @param destinationId a destination switch ID to be validated.
+     * @throws UnavailableFlowEndpointException if a switch has not been found.
      */
     @VisibleForTesting
     void checkSwitchesExistsAndActive(SwitchId sourceId, SwitchId destinationId)
@@ -387,23 +417,18 @@ public class FlowValidator {
     }
 
     /**
-     * Ensure vlans are not equal in the case when there is an attempt to create one-switch flow for a single port.
+     * Verifies VLANs are not equal in the case when there is an attempt to create one-switch flow for a single port.
      */
     @VisibleForTesting
     private void checkOneSwitchFlowConflict(FlowEndpoint source, FlowEndpoint destination) throws InvalidFlowException {
         if (source.isSwitchPortVlanEquals(destination)) {
             throw new InvalidFlowException(
-                    "It is not allowed to create one-switch flow for the same ports and vlans", ErrorType.DATA_INVALID);
+                    "It is not allowed to create one-switch flow for the same ports and VLANs", ErrorType.DATA_INVALID);
         }
     }
 
     @VisibleForTesting
     void checkDiverseFlow(RequestedFlow targetFlow) throws InvalidFlowException {
-        if (targetFlow.getSrcSwitch().equals(targetFlow.getDestSwitch())) {
-            throw new InvalidFlowException("Couldn't add one-switch flow into diverse group",
-                    ErrorType.PARAMETERS_INVALID);
-        }
-
         Flow diverseFlow = flowRepository.findById(targetFlow.getDiverseFlowId()).orElse(null);
         if (diverseFlow == null) {
             YFlow diverseYFlow = yFlowRepository.findById(targetFlow.getDiverseFlowId())
@@ -420,14 +445,12 @@ public class FlowValidator {
                                             targetFlow.getDiverseFlowId()), ErrorType.INTERNAL_ERROR));
         }
 
-
         if (StringUtils.isNotBlank(diverseFlow.getAffinityGroupId())) {
             String diverseFlowId = diverseFlow.getAffinityGroupId();
             diverseFlow = flowRepository.findById(diverseFlowId)
                     .orElseThrow(() ->
                             new InvalidFlowException(format("Failed to find diverse flow id %s", diverseFlowId),
                                     ErrorType.PARAMETERS_INVALID));
-
 
             Collection<String> affinityFlowIds = flowRepository
                     .findFlowsIdByAffinityGroupId(diverseFlow.getAffinityGroupId()).stream()
@@ -437,11 +460,6 @@ public class FlowValidator {
                 throw new InvalidFlowException("Couldn't create diverse group with flow in the same affinity group",
                         ErrorType.PARAMETERS_INVALID);
             }
-        }
-
-        if (diverseFlow.isOneSwitchFlow()) {
-            throw new InvalidFlowException("Couldn't create diverse group with one-switch flow",
-                    ErrorType.PARAMETERS_INVALID);
         }
     }
 
@@ -484,11 +502,11 @@ public class FlowValidator {
     }
 
     /**
-     * Ensure switches support LLDP/ARP.
+     * Verifies that the given switches support LLDP and ARP.
      *
      * @param requestedFlow a flow to be validated.
      */
-    // TODO: switch to per endpoint based strategy (same as other enpoint related checks)
+    // TODO: switch to per endpoint based strategy (same as other end point related checks)
     @VisibleForTesting
     void checkSwitchesSupportLldpAndArpIfNeeded(RequestedFlow requestedFlow) throws InvalidFlowException {
         SwitchId sourceId = requestedFlow.getSrcSwitch();

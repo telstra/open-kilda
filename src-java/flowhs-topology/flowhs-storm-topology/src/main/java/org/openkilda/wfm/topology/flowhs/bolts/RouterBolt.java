@@ -26,6 +26,10 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_SYNC_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_UPDATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_VALIDATION_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_CREATE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_DELETE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_READ;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_UPDATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_CREATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_DELETE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_YFLOW_PATH_SWAP_HUB;
@@ -50,6 +54,11 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowSyncRequest;
 import org.openkilda.messaging.command.flow.FlowValidationRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
+import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
+import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
+import org.openkilda.messaging.command.haflow.HaFlowReadRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRequest;
+import org.openkilda.messaging.command.haflow.HaFlowsDumpRequest;
 import org.openkilda.messaging.command.yflow.SubFlowsReadRequest;
 import org.openkilda.messaging.command.yflow.YFlowDeleteRequest;
 import org.openkilda.messaging.command.yflow.YFlowPartialUpdateRequest;
@@ -215,6 +224,37 @@ public class RouterBolt extends AbstractBolt {
                 log.debug("Received a y-flow path swap request {} with key {}", request, key);
                 emitWithContext(ROUTER_TO_YFLOW_PATH_SWAP_HUB.name(), input, new Values(key, request.getYFlowId(),
                         data));
+            } else if (data instanceof HaFlowRequest) {
+                HaFlowRequest request = (HaFlowRequest) data;
+                log.debug("Received ha-flow request {} with key {}", request, key);
+                Values values = new Values(key, request.getHaFlowId(), request);
+                switch (request.getType()) {
+                    case CREATE:
+                        emitWithContext(ROUTER_TO_HA_FLOW_CREATE_HUB.name(), input, values);
+                        break;
+                    case UPDATE:
+                        emitWithContext(ROUTER_TO_HA_FLOW_UPDATE_HUB.name(), input, values);
+                        break;
+                    default:
+                        throw new UnsupportedOperationException(format("HA-flow operation %s is not supported",
+                                request.getType()));
+                }
+            } else if (data instanceof HaFlowPartialUpdateRequest) {
+                HaFlowPartialUpdateRequest request = (HaFlowPartialUpdateRequest) data;
+                log.debug("Received a ha-flow partial update request {} with key {}", request, key);
+                emitWithContext(ROUTER_TO_HA_FLOW_UPDATE_HUB.name(), input,
+                        new Values(key, request.getHaFlowId(), data));
+            } else if (data instanceof HaFlowDeleteRequest) {
+                HaFlowDeleteRequest request = (HaFlowDeleteRequest) data;
+                log.debug("Received a ha-flow delete request {} with key {}", request, key);
+                emitWithContext(ROUTER_TO_HA_FLOW_DELETE_HUB.name(), input,
+                        new Values(key, request.getHaFlowId(), data));
+            } else if (data instanceof HaFlowsDumpRequest) {
+                log.debug("Received a ha-flow dump request {} with key {}", data, key);
+                emitWithContext(ROUTER_TO_HA_FLOW_READ.name(), input, new Values(key, data));
+            } else if (data instanceof HaFlowReadRequest) {
+                log.debug("Received a ha-flow read request {} with key {}", data, key);
+                emitWithContext(ROUTER_TO_HA_FLOW_READ.name(), input, new Values(key, data));
             } else {
                 unhandledInput(input);
             }
@@ -257,6 +297,11 @@ public class RouterBolt extends AbstractBolt {
                 new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
         declarer.declareStream(ROUTER_TO_YFLOW_VALIDATION_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_YFLOW_PATH_SWAP_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_HA_FLOW_CREATE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_HA_FLOW_UPDATE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_HA_FLOW_DELETE_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_HA_FLOW_READ.name(),
+                new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
         declarer.declareStream(ZkStreams.ZK.toString(),
                 new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
     }

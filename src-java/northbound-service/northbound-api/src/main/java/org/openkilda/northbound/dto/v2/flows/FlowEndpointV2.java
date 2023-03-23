@@ -23,25 +23,13 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 
 @Data
-@Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowEndpointV2 {
-
-    @JsonProperty("switch_id")
-    private SwitchId switchId;
-
-    @JsonProperty("port_number")
-    private Integer portNumber;
-
-    @JsonProperty("vlan_id")
-    private int vlanId;
-
-    @JsonProperty("inner_vlan_id")
-    private int innerVlanId;
-
+@EqualsAndHashCode(callSuper = true)
+public class FlowEndpointV2 extends BaseFlowEndpointV2 {
     @NonNull
     @JsonProperty("detect_connected_devices")
     private DetectConnectedDevicesV2 detectConnectedDevices;
@@ -53,10 +41,7 @@ public class FlowEndpointV2 {
                           @JsonProperty("vlan_id") int vlanId,
                           @JsonProperty("inner_vlan_id") int innerVlanId,
                           @JsonProperty("detect_connected_devices") DetectConnectedDevicesV2 detectConnectedDevices) {
-        this.switchId = switchId;
-        this.portNumber = portNumber;
-        this.vlanId = vlanId;
-        this.innerVlanId = innerVlanId;
+        super(switchId, portNumber, vlanId, innerVlanId);
         setDetectConnectedDevices(detectConnectedDevices);
     }
 
@@ -81,6 +66,12 @@ public class FlowEndpointV2 {
             this.detectConnectedDevices = new DetectConnectedDevicesV2();
         } else {
             this.detectConnectedDevices = detectConnectedDevices;
+        }
+    }
+
+    public static class FlowEndpointV2Builder extends BaseFlowEndpointV2Builder {
+        FlowEndpointV2Builder() {
+            super();
         }
     }
 }

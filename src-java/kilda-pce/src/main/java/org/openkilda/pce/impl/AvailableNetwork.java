@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.openkilda.pce.impl;
 import static com.google.common.collect.Sets.newHashSet;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.model.Edge;
@@ -164,6 +165,15 @@ public class AvailableNetwork {
                 edge.increaseDiversityGroupPerPopUseCounter();
                 continue;
             }
+        }
+    }
+
+    /**
+     * Adds diversity weights into {@link AvailableNetwork} based on passed flow path.
+     */
+    public void processDiversityGroupForSingleSwitchFlow(FlowPath flowPath) {
+        if (flowPath.isOneSwitchFlow()) {
+            getSwitch(flowPath.getDestSwitchId()).increaseDiversityGroupUseCounter();
         }
     }
 

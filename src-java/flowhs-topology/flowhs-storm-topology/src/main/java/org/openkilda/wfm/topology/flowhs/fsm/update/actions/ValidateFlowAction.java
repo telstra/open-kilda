@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
@@ -34,7 +35,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.validation.FlowValidator;
-import org.openkilda.wfm.topology.flowhs.validation.InvalidFlowException;
 import org.openkilda.wfm.topology.flowhs.validation.UnavailableFlowEndpointException;
 
 import lombok.extern.slf4j.Slf4j;
@@ -94,12 +94,6 @@ public class ValidateFlowAction extends
             throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
                     "The current implementation of flow mirror points does not allow allocating paths. "
                             + "Therefore, remove the flow mirror points before changing the endpoint switch.");
-        }
-
-        if (diverseFlowId != null
-                && targetFlow.getSrcSwitch().equals(targetFlow.getDestSwitch())) {
-            throw new FlowProcessingException(ErrorType.DATA_INVALID,
-                    "Couldn't add one-switch flow into diverse group");
         }
 
         transactionManager.doInTransaction(() -> {

@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 package org.openkilda.persistence.ferma.frames;
 
 import static java.lang.String.format;
+import static org.openkilda.model.SwitchConnectedDevice.buildUniqueArpIndex;
+import static org.openkilda.model.SwitchConnectedDevice.buildUniqueLldpIndex;
 
 import org.openkilda.model.ConnectedDeviceType;
 import org.openkilda.model.Switch;
@@ -95,13 +97,12 @@ public abstract class SwitchConnectedDeviceFrame extends KildaBaseVertexFrame im
             String newUniqueIndex;
             switch (getType()) {
                 case LLDP:
-                    newUniqueIndex = format("%s_%s_%s_%s_%s_%s_%s",
-                            getSwitchId(), getPortNumber(), getType(), getVlan(), getMacAddress(),
+                    newUniqueIndex = buildUniqueLldpIndex(getSwitchId(), getPortNumber(), getVlan(), getMacAddress(),
                             getChassisId(), getPortId());
                     break;
                 case ARP:
-                    newUniqueIndex = format("%s_%s_%s_%s_%s_%s",
-                            getSwitchId(), getPortNumber(), getType(), getVlan(), getMacAddress(), getIpAddress());
+                    newUniqueIndex = buildUniqueArpIndex(
+                            getSwitchId(), getPortNumber(), getVlan(), getMacAddress(), getIpAddress());
                     break;
                 default:
                     throw new IllegalArgumentException(format("Unknown connected device type %s", getType()));

@@ -61,6 +61,7 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
             def missingLinks = links.findAll { it.state == IslChangeType.DISCOVERED } - topoLinks
             assert missingLinks.empty, "These links are missing in topology.yaml"
             northbound.allFlows.empty
+            northboundV2.allFlows.empty
             northbound.allLinkProps.empty
         }
 
