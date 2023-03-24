@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,24 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.validation;
+package org.openkilda.northbound.dto.v2.flows;
 
-import org.openkilda.messaging.error.ErrorType;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
 
-import lombok.Getter;
+import java.util.List;
 
-@Getter
-public class InvalidFlowException extends Exception {
-
-    private final ErrorType type;
-
-    public InvalidFlowException(String message, ErrorType type) {
-        super(message);
-        this.type = type;
-    }
-
-    public InvalidFlowException(String message, Throwable cause, ErrorType type) {
-        super(message, cause);
-        this.type = type;
-    }
+@Data
+@Builder
+@AllArgsConstructor
+@JsonNaming(value = PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class PathValidateResponse {
+    Boolean isValid;
+    List<String> errors;
 }

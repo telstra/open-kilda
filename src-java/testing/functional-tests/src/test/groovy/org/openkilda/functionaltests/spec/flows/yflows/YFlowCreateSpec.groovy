@@ -159,7 +159,9 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
-        statsHelper.verifyYFlowWritesMeterStats(yFlow, beforeTraffic, trafficApplicable)
+        if (trafficApplicable) {
+            statsHelper.verifyYFlowWritesStats(yFlow, beforeTraffic, trafficApplicable)
+        }
 
         when: "Delete the y-flow"
         northboundV2.deleteYFlow(yFlow.YFlowId)
@@ -438,7 +440,7 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
     }
 
     @Tidy
-    @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
+    @Tags([LOW_PRIORITY])
     def "System allows to create y-flow with bandwidth equal to link bandwidth between shared endpoint and y-point (#4965)"() {
         /* Shared <----------------> Y-Point ----------- Ep1
                          ⬆              \ ______________ Ep2
@@ -447,27 +449,19 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
         */
 
         given: "three switches and potential y-flow point"
-        def switchTripletsWithDirectLinkBetweenSharedAndYPoint = topologyHelper.getSwitchTriplets(true, false)
-                .findAll {
-                    def yPoints = yFlowHelper.findPotentialYPoints(it)
-                    if (yPoints.size() != 1) {
-                        return false
-                    }
-                    def yPoint = yPoints.get(0)
-                    def sharedToYPointBandwidth = topology.getIslBetween(it.shared, yPoint).map(isl -> isl.getMaxBandwidth())
-
-                    sharedToYPointBandwidth && it.shared != yPoint
+        def slowestLinkOnTheWest = database.getIsls(topology.getIsls()).sort {it.getMaxBandwidth()}.first()
+        def slowestLinkSwitchIds = [slowestLinkOnTheWest.getSrcSwitchId(), slowestLinkOnTheWest.getDestSwitchId()]
+        def switchTriplet = topologyHelper.getSwitchTriplets(true, false)
+                .find {
+                    def yPoints = yFlowHelper.findPotentialYPoints(it).collect {it.getDpId()}
+                    slowestLinkSwitchIds.contains(it.shared.getDpId()) &&
+                            !slowestLinkSwitchIds.intersect(yPoints).isEmpty()
                 }
-        def swT = switchTripletsWithDirectLinkBetweenSharedAndYPoint.sort {
-            topology.getIslBetween(it.shared, yFlowHelper.findPotentialYPoints(it).get(0)).get().getMaxBandwidth()
-        }.get(0)
-        assumeTrue(swT != null, "No suiting switches found.")
+        assumeTrue(switchTriplet != null, "No suiting switches found.")
 
         when: "y-flow plan for them with bandwidth equal to ISL bandwidth"
-
-        def islBetweenSharedAndYPoint = topology.getIslBetween(swT.shared, yFlowHelper.findPotentialYPoints(swT).first())
-        def yFlowRequest = yFlowHelper.randomYFlow(swT).tap
-                { maximumBandwidth = islBetweenSharedAndYPoint.get().getMaxBandwidth() }
+        def yFlowRequest = yFlowHelper.randomYFlow(switchTriplet, false).tap
+                { maximumBandwidth = slowestLinkOnTheWest.getMaxBandwidth() }
 
         then: "y-flow is created and UP"
         def yFlow = yFlowHelper.addYFlow(yFlowRequest)

@@ -75,9 +75,9 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
 
 
     @Builder
-    public HaSubFlow(@NonNull String subFlowId, FlowStatus status, SwitchId endpointSwitchId,
+    public HaSubFlow(@NonNull String haSubFlowId, FlowStatus status, SwitchId endpointSwitchId,
                      int endpointPort, int endpointVlan, int endpointInnerVlan, String description) {
-        HaSubFlowDataImpl.HaSubFlowDataImplBuilder builder = HaSubFlowDataImpl.builder().haSubFlowId(subFlowId)
+        HaSubFlowDataImpl.HaSubFlowDataImplBuilder builder = HaSubFlowDataImpl.builder().haSubFlowId(haSubFlowId)
                 .status(status).endpointSwitchId(endpointSwitchId).endpointPort(endpointPort)
                 .endpointVlan(endpointVlan).endpointInnerVlan(endpointInnerVlan).description(description);
         this.data = builder.build();

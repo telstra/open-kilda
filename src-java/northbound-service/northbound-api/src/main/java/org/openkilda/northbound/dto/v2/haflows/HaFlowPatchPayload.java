@@ -34,7 +34,7 @@ import javax.validation.constraints.PositiveOrZero;
 @JsonNaming(SnakeCaseStrategy.class)
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class HaFlowPatchPayload {
-    HaFlowPatchSharedEndpoint sharedEndpoint;
+    HaFlowPatchEndpoint sharedEndpoint;
 
     @PositiveOrZero(message = Constraints.NEGATIVE_MAXIMUM_BANDWIDTH_MESSAGE)
     Long maximumBandwidth;

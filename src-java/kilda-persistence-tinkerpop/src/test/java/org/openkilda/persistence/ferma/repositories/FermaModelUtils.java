@@ -87,7 +87,7 @@ public final class FermaModelUtils {
     public static HaSubFlow buildHaSubFlow(
             String subFlowId, SwitchId switchId, int port, int vlan, int innerVlan, String description) {
         return HaSubFlow.builder()
-                .subFlowId(subFlowId)
+                .haSubFlowId(subFlowId)
                 .endpointSwitchId(switchId)
                 .endpointPort(port)
                 .endpointVlan(vlan)

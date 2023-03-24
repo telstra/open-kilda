@@ -23,11 +23,13 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.openkilda.messaging.error.MessageError;
 import org.openkilda.northbound.controller.TestConfig;
-import org.openkilda.northbound.controller.v1.TestMessageMock;
+import org.openkilda.northbound.controller.mock.TestMessageMock;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
@@ -85,6 +87,21 @@ public class FlowControllerTest {
                 = MAPPER.readValue(result.getResponse().getContentAsString(), SwapFlowEndpointPayload.class);
         assertEquals(TestMessageMock.bulkFlow.getFirstFlow(), response.getFirstFlow());
         assertEquals(TestMessageMock.bulkFlow.getSecondFlow(), response.getSecondFlow());
+    }
+
+    @Test
+    @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
+    public void updateFlowDifferentFlowIdInPathFails() throws Exception {
+        MvcResult result = mockMvc.perform(put("/v2/flows/{flow-id}", TestMessageMock.FLOW_ID_FROM_PATH)
+                        .header(CORRELATION_ID, testCorrelationId())
+                        .contentType(APPLICATION_JSON_VALUE)
+                        .content(MAPPER.writeValueAsString(TestMessageMock.FLOW_REQUEST_V2)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
+                .andReturn();
+
+        MessageError response = MAPPER.readValue(result.getResponse().getContentAsString(), MessageError.class);
+        assertEquals(TestMessageMock.DIFFERENT_FLOW_ID_ERROR, response);
     }
 
     private static String testCorrelationId() {

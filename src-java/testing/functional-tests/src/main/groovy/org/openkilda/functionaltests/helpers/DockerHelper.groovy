@@ -3,7 +3,9 @@ package org.openkilda.functionaltests.helpers
 import com.spotify.docker.client.DefaultDockerClient
 import com.spotify.docker.client.DockerClient
 import com.spotify.docker.client.DockerClient.ListContainersParam
+import com.spotify.docker.client.messages.Container
 import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.helpers.model.ContainerName
 
 @Slf4j
 class DockerHelper {
@@ -24,10 +26,8 @@ class DockerHelper {
         log.debug("Network name: $networkName")
     }
 
-    String getContainerIp(String containerName) {
-        dockerClient.listContainers(ListContainersParam.allContainers()).find {
-            it.names().contains("/" + containerName)
-        }.networkSettings().networks()[networkName].ipAddress()
+    String getContainerIp(ContainerName containerName) {
+        "get container by name"(containerName).networkSettings().networks()[networkName].ipAddress()
     }
 
     void restartContainer(String containerId) {
@@ -36,6 +36,24 @@ class DockerHelper {
 
     void waitContainer(String containerId) {
         dockerClient.waitContainer(containerId)
+    }
+
+    String getContainerId(ContainerName containerName) {
+        return "get container by name"(containerName).id()
+    }
+
+    void pauseContainer(String containerId) {
+        dockerClient.pauseContainer(containerId)
+    }
+
+    void resumeContainer(String containerId) {
+        dockerClient.unpauseContainer(containerId)
+    }
+
+    Container "get container by name" (ContainerName containerName) {
+        return dockerClient.listContainers(ListContainersParam.allContainers()).find {
+            it.names().contains(containerName.toString())
+        }
     }
 
     private String getNetworkName() {

@@ -22,7 +22,6 @@ public final class ConstantsGrpc {
     public static final Integer REMOTE_LOG_PORT = 10514;
     public static final OnOffState DEFAULT_LOG_MESSAGES_STATE = OnOffState.OFF;
     public static final OnOffState DEFAULT_LOG_OF_MESSAGES_STATE = OnOffState.OFF;
-    public static final String GRPC_STUB_CONTAINER_NAME = "grpc-stub";
 
     private ConstantsGrpc() {
         throw new UnsupportedOperationException();

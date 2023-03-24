@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.exception.ExpectedHttpClientErrorException
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -36,6 +38,8 @@ import spock.lang.See
 import spock.lang.Shared
 
 import javax.inject.Provider
+
+import static org.springframework.http.HttpStatus.BAD_REQUEST
 
 @See("https://github.com/telstra/open-kilda/blob/develop/docs/design/LAG-for-ports/README.md")
 @Narrative("Verify that flow can be created on a LAG port.")
@@ -285,7 +289,7 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.statusCode == BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Error during LAG delete"
         errorDetails.errorDescription == "Couldn't delete LAG port '$lagPort' from switch $switchPair.src.dpId " +
@@ -308,7 +312,7 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.statusCode == BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Error during LAG create"
         errorDetails.errorDescription == "Physical port $flow.source.portNumber already used by following flows:" +
@@ -336,7 +340,7 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.statusCode == BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Port $flow.source.portNumber on switch $sw.dpId is used " +
@@ -371,11 +375,10 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Error during LAG create"
-        errorDetails.errorDescription == "Physical port $mirrorPort already used as sink by following mirror points" +
-                " flow '$flow.flowId': [$mirrorEndpoint.mirrorPointId]"
+        def expectedExc = new ExpectedHttpClientErrorException(BAD_REQUEST,
+                ~/Physical port $mirrorPort already used as sink by following mirror points flow \'${flow
+                        .getFlowId()}\'\: \[${mirrorEndpoint.getMirrorPointId()}\]/)
+        expectedExc == exc
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
@@ -391,7 +394,7 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.statusCode == BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Error during LAG create"
         errorDetails.errorDescription.contains(String.format(data.errorMsg, occupiedPort, sw.dpId))
@@ -439,7 +442,7 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.statusCode == BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         //test errorMessage, conflictPortsArray was introduced
         errorDetails.errorMessage == "Error during LAG create"
@@ -1003,7 +1006,7 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.statusCode == BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Error processing LAG logical port #$lagPort on $switchPair.src.dpId update request"
         errorDetails.errorDescription == "Not enough bandwidth for LAG port $lagPort."

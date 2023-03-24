@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -26,11 +26,9 @@ public interface SwitchConnectedDeviceRepository extends Repository<SwitchConnec
 
     Collection<SwitchConnectedDevice> findBySwitchId(SwitchId switchId);
 
-    Optional<SwitchConnectedDevice> findLldpByUniqueFieldCombination(
-            SwitchId switchId, int portNumber, int vlan, String macAddress, String chassisId, String portId);
+    Optional<SwitchConnectedDevice> findLldpByUniqueIndex(String uniqueIndex);
 
-    Optional<SwitchConnectedDevice> findArpByUniqueFieldCombination(
-            SwitchId switchId, int portNumber, int vlan, String macAddress, String ipAddress);
+    Optional<SwitchConnectedDevice> findArpByUniqueIndex(String uniqueIndex);
 
     Collection<SwitchConnectedDevice> findByFlowId(String flowId);
 }

@@ -84,3 +84,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 024-add-ha-flow-classes.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 025-optimise-switch-connected-device-class.yaml

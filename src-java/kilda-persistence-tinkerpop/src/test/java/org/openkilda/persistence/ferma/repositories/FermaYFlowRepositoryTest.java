@@ -15,8 +15,10 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -42,12 +44,17 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class FermaYFlowRepositoryTest extends InMemoryGraphBasedTest {
     static final String Y_FLOW_ID_1 = "y_flow_1";
     static final String FLOW_ID_1 = "test_flow_1";
     static final String FLOW_ID_2 = "test_flow_2";
     static final String FLOW_ID_3 = "test_flow_3";
+    public static final String SUB_FLOW_1_DESCRIPTION_UPDATED = "SubFlow1 description updated";
+    public static final String SUB_FLOW_2_DESCRIPTION_UPDATED = "SubFlow2 description updated";
+    public static final String Y_FLOW_DESCRIPTION = "Y-flow description";
 
     FlowRepository flowRepository;
     YFlowRepository yFlowRepository;
@@ -74,9 +81,34 @@ public class FermaYFlowRepositoryTest extends InMemoryGraphBasedTest {
         createYFlow(Y_FLOW_ID_1, FLOW_ID_1, FLOW_ID_2);
         createTestFlow(FLOW_ID_3, switch1, PORT_3, VLAN_2, switch2, PORT_2, VLAN_1);
 
+        assertTrue(yFlowRepository.findYFlowId(FLOW_ID_1).isPresent());
         assertEquals(Y_FLOW_ID_1, yFlowRepository.findYFlowId(FLOW_ID_1).get());
+        assertTrue(yFlowRepository.findYFlowId(FLOW_ID_2).isPresent());
         assertEquals(Y_FLOW_ID_1, yFlowRepository.findYFlowId(FLOW_ID_2).get());
         assertFalse(yFlowRepository.findYFlowId(FLOW_ID_3).isPresent());
+    }
+
+    @Test
+    public void editYSubFlowDescriptionViaActualFlowDescription() {
+        YFlow flow = createYFlow(Y_FLOW_ID_1, FLOW_ID_1, FLOW_ID_2);
+
+        assertTrue(flowRepository.findById(FLOW_ID_1).isPresent());
+        Flow subflow1 = flowRepository.findById(FLOW_ID_1).get();
+        subflow1.setDescription(SUB_FLOW_1_DESCRIPTION_UPDATED);
+
+        assertTrue(flowRepository.findById(FLOW_ID_2).isPresent());
+        Flow subflow2 = flowRepository.findById(FLOW_ID_2).get();
+        subflow2.setDescription(SUB_FLOW_2_DESCRIPTION_UPDATED);
+
+        assertTrue(yFlowRepository.findById(Y_FLOW_ID_1).isPresent());
+        YFlow updatedYfFlow = yFlowRepository.findById(Y_FLOW_ID_1).get();
+        Set<String> actualEditedDescriptions = updatedYfFlow.getSubFlows().stream()
+                .map(YSubFlow::getFlow)
+                .map(Flow::getDescription)
+                .collect(Collectors.toSet());
+
+        Set<String> expectedDescriptions = newHashSet(SUB_FLOW_1_DESCRIPTION_UPDATED, SUB_FLOW_2_DESCRIPTION_UPDATED);
+        assertEquals(expectedDescriptions, actualEditedDescriptions);
     }
 
     private YFlow createYFlow(String yFlowId, String flowId1, String flowId2) {
@@ -84,6 +116,7 @@ public class FermaYFlowRepositoryTest extends InMemoryGraphBasedTest {
                 .yFlowId(yFlowId)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .sharedEndpoint(new SharedEndpoint(SWITCH_ID_1, PORT_1))
+                .description(Y_FLOW_DESCRIPTION)
                 .build();
         Flow flow1 = createTestFlow(flowId1, switch1, PORT_1, VLAN_1, switch2, PORT_3, VLAN_3);
         Flow flow2 = createTestFlow(flowId2, switch1, PORT_1, VLAN_2, switch3, PORT_4, VLAN_3);

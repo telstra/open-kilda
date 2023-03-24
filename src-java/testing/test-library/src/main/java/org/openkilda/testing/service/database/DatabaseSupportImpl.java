@@ -28,6 +28,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
@@ -66,6 +67,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 @Component
@@ -227,6 +229,15 @@ public class DatabaseSupportImpl implements Database {
         return transactionManager.doInTransaction(() -> switchRepository.findById(switchId)
                 .map(Switch::new)
                 .orElseThrow(() -> new IllegalStateException(format("Switch %s not found", switchId))));
+    }
+
+    @Override
+    public void setSwitchFeatures(SwitchId switchId, Set<SwitchFeature> switchFeatures) {
+        transactionManager.doInTransaction(() -> {
+            Switch sw = switchRepository.findById(switchId)
+                    .orElseThrow(() -> new IllegalStateException(format("Switch %s not found", switchId)));
+            sw.setFeatures(switchFeatures);
+        });
     }
 
     @Override

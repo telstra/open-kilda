@@ -1,6 +1,6 @@
 @startuml
 
-title Kilda configuration
+title OpenKilda configuration
 
 participant Client
 participant Northbound

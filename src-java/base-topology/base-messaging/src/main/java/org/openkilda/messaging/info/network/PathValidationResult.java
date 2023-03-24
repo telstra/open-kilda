@@ -13,26 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.haflows;
+package org.openkilda.messaging.info.network;
 
-import org.openkilda.model.SwitchId;
+import org.openkilda.messaging.info.InfoData;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.experimental.FieldDefaults;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
-@Data
+import java.util.List;
+
+@Value
 @Builder
-@AllArgsConstructor
-@JsonNaming(SnakeCaseStrategy.class)
-@FieldDefaults(level = AccessLevel.PRIVATE)
-public class HaFlowPatchSharedEndpoint {
-    SwitchId switchId;
-    Integer portNumber;
-    Integer vlanId;
-    Integer innerVlanId;
+@EqualsAndHashCode(callSuper = false)
+@JsonNaming(value = PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class PathValidationResult extends InfoData {
+    Boolean isValid;
+    List<String> errors;
 }

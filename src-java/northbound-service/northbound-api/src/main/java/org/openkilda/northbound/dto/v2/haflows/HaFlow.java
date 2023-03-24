@@ -15,8 +15,6 @@
 
 package org.openkilda.northbound.dto.v2.haflows;
 
-import org.openkilda.model.SwitchId;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -55,11 +53,6 @@ public class HaFlow {
     boolean strictBandwidth;
     String description;
     boolean allocateProtectedPath;
-
-    @JsonProperty("y_point")
-    SwitchId yPoint;
-    @JsonProperty("protected_path_y_point")
-    SwitchId protectedPathYPoint;
 
     Set<String> diverseWithFlows;
     @JsonProperty("diverse_with_y_flows")

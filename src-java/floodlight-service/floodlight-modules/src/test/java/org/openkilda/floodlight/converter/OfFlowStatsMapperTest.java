@@ -89,6 +89,7 @@ public class OfFlowStatsMapperTest {
     public static final TableId goToTable = TableId.of(24);
     private static final String MAC_ADDRESS_1 = "01:01:01:01:01:01";
     private static final String MAC_ADDRESS_2 = "02:02:02:02:02:02";
+    private static final String NONE_DROP = "drop";
 
     @Test
     public void testToFlowStatsData() {
@@ -135,27 +136,30 @@ public class OfFlowStatsMapperTest {
         assertEquals(udpSrc.toString(), entry.getMatch().getUdpSrc());
         assertEquals(udpDst.toString(), entry.getMatch().getUdpDst());
 
-        FlowSetFieldAction flowSetEthSrcAction = new FlowSetFieldAction("eth_src", MAC_ADDRESS_1);
-        FlowSetFieldAction flowSetEthDstAction = new FlowSetFieldAction("eth_dst", MAC_ADDRESS_2);
-        FlowCopyFieldAction flowCopyFieldAction = FlowCopyFieldAction.builder()
-                .bits(String.valueOf(bits))
-                .srcOffset(String.valueOf(srcOffset))
-                .dstOffset(String.valueOf(dstOffset))
-                .srcOxm(String.valueOf(oxmSrcHeader))
-                .dstOxm(String.valueOf(oxmDstHeader))
-                .build();
-        FlowSwapFieldAction flowSwapFieldAction = FlowSwapFieldAction.builder()
-                .bits(String.valueOf(bits))
-                .srcOffset(String.valueOf(srcOffset))
-                .dstOffset(String.valueOf(dstOffset))
-                .srcOxm(String.valueOf(oxmSrcHeader))
-                .dstOxm(String.valueOf(oxmDstHeader))
-                .build();
-        FlowApplyActions applyActions = new FlowApplyActions(port.toString(),
-                Lists.newArrayList(flowSetEthSrcAction, flowSetEthDstAction), ethType.toString(), null, null, null,
-                group.toString(), flowCopyFieldAction, flowSwapFieldAction);
+
+        FlowApplyActions applyActions = buildFlowApplyActions();
         FlowInstructions instructions = new FlowInstructions(applyActions, null, meterId, goToTable.getValue());
         assertEquals(instructions, entry.getInstructions());
+    }
+
+    @Test
+    public void toFlowNoneEmptyInstructions() {
+        FlowApplyActions applyActions = buildFlowApplyActions();
+        FlowInstructions expectedNoneEmptyFlowInstructions = new FlowInstructions(applyActions,
+                null, meterId, goToTable.getValue());
+        FlowInstructions actualNoneEmptyFlowInstructions
+                = OfFlowStatsMapper.INSTANCE.toFlowInstructions(buildInstruction());
+
+        assertEquals(expectedNoneEmptyFlowInstructions, actualNoneEmptyFlowInstructions);
+    }
+
+    @Test
+    public void toFlowEmptyInstructions() {
+        FlowInstructions expectedEmptyFlowInstructions = FlowInstructions.builder().none(NONE_DROP).build();
+        List<OFInstruction> emptyInstructions = Collections.emptyList();
+        FlowInstructions actualEmptyInstructions = OfFlowStatsMapper.INSTANCE.toFlowInstructions(emptyInstructions);
+
+        assertEquals(expectedEmptyFlowInstructions, actualEmptyInstructions);
     }
 
     @Test
@@ -173,6 +177,30 @@ public class OfFlowStatsMapperTest {
         assertEquals("12", secondBucket.getApplyActions().getSetFieldActions().get(0).getFieldValue());
         assertEquals("1", secondBucket.getApplyActions().getFlowOutput());
 
+    }
+
+    private FlowApplyActions buildFlowApplyActions() {
+        FlowSetFieldAction flowSetEthSrcAction = new FlowSetFieldAction("eth_src", MAC_ADDRESS_1);
+        FlowSetFieldAction flowSetEthDstAction = new FlowSetFieldAction("eth_dst", MAC_ADDRESS_2);
+        FlowCopyFieldAction flowCopyFieldAction = FlowCopyFieldAction.builder()
+                .bits(String.valueOf(bits))
+                .srcOffset(String.valueOf(srcOffset))
+                .dstOffset(String.valueOf(dstOffset))
+                .srcOxm(String.valueOf(oxmSrcHeader))
+                .dstOxm(String.valueOf(oxmDstHeader))
+                .build();
+        FlowSwapFieldAction flowSwapFieldAction = FlowSwapFieldAction.builder()
+                .bits(String.valueOf(bits))
+                .srcOffset(String.valueOf(srcOffset))
+                .dstOffset(String.valueOf(dstOffset))
+                .srcOxm(String.valueOf(oxmSrcHeader))
+                .dstOxm(String.valueOf(oxmDstHeader))
+                .build();
+
+        return new FlowApplyActions(port.toString(),
+                Lists.newArrayList(flowSetEthSrcAction, flowSetEthDstAction),
+                ethType.toString(), null, null, null,
+                group.toString(), flowCopyFieldAction, flowSwapFieldAction);
     }
 
     private OFGroupDescStatsEntry buildFlowGroupEntry() {
