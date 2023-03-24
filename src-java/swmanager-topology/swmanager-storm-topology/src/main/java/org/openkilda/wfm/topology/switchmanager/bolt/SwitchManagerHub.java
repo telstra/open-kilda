@@ -25,6 +25,7 @@ import org.openkilda.floodlight.api.request.rulemanager.ModifySpeakerCommandsReq
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.AbstractMessage;
+import org.openkilda.messaging.Chunkable;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.MessageCookie;
@@ -36,6 +37,7 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
@@ -140,8 +142,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
         super.init();
 
         LagPortOperationConfig config = new LagPortOperationConfig(
-                persistenceManager.getRepositoryFactory(), persistenceManager.getTransactionManager(),
-                topologyConfig.getBfdPortOffset(), topologyConfig.getBfdPortMaxNumber(),
+                persistenceManager, topologyConfig.getBfdPortOffset(),
+                topologyConfig.getBfdPortMaxNumber(),
                 topologyConfig.getLagPortOffset(), topologyConfig.getLagPortMaxNumber(),
                 topologyConfig.getLagPortPoolChunksCount(), topologyConfig.getLagPortPoolCacheSize());
         log.info("LAG logical ports service config: {}", config);
@@ -166,11 +168,14 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                 serviceRegistry, "switch-rules", this,
                 carrier -> new SwitchRuleService(carrier, persistenceManager, ruleManager));
         createLagPortService = registerService(
-                serviceRegistry, "lag-create", this, carrier -> new CreateLagPortService(carrier, config));
+                serviceRegistry, "lag-create", this, carrier -> new CreateLagPortService(
+                        carrier, config, ruleManager));
         updateLagPortService = registerService(
-                serviceRegistry, "lag-update", this, carrier -> new UpdateLagPortService(carrier, config));
+                serviceRegistry, "lag-update", this, carrier -> new UpdateLagPortService(
+                        carrier, config, ruleManager));
         deleteLagPortService = registerService(
-                serviceRegistry, "lag-delete", this, carrier -> new DeleteLagPortService(carrier, config));
+                serviceRegistry, "lag-delete", this, carrier -> new DeleteLagPortService(
+                        carrier, config, ruleManager));
     }
 
     @Override
@@ -449,6 +454,15 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public void response(String key, InfoData payload) {
         InfoMessage message = new InfoMessage(payload, System.currentTimeMillis(), key);
         response(key, message);
+    }
+
+    @Override
+    public void responseChunks(String key, Chunkable<? extends InfoData> payload) {
+        List<ChunkedInfoMessage> chunkedList = ChunkedInfoMessage.createChunkedList(
+                payload.split(topologyConfig.getChunkedMessagesChunkSize()), key);
+        for (ChunkedInfoMessage message : chunkedList) {
+            response(key, message);
+        }
     }
 
     @Override

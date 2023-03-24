@@ -38,6 +38,6 @@ public class LagPortResponseTest {
     }
 
     public static LagPortResponse makeResponse() {
-        return new LagPortResponse(1, Sets.newHashSet(1, 2, 3));
+        return new LagPortResponse(1, Sets.newHashSet(1, 2, 3), false);
     }
 }

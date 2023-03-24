@@ -297,6 +297,39 @@ public class SingleTableIngressYRuleGeneratorTest {
 
     }
 
+    @Test
+    public void buildCommandsWithNullSharedMeterId() {
+        Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
+
+        SingleTableIngressYRuleGenerator generator = SingleTableIngressYRuleGenerator.builder()
+                .config(config)
+                .flowPath(PATH)
+                .flow(flow)
+                .encapsulation(VLAN_ENCAPSULATION)
+                .sharedMeterId(null)
+                .generateMeterCommand(true)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
+                .build();
+
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
+        assertEquals(1, commands.size());
+
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
+        assertTrue(ingressCommand.getDependsOn().isEmpty());
+
+        Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
+                FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
+                FieldMatch.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_1).build()
+        );
+        List<Action> expectedIngressActions = newArrayList(
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
+                new PortOutAction(new PortNumber(PORT_NUMBER_2))
+        );
+        assertIngressCommand(ingressCommand, Priority.Y_FLOW_PRIORITY, expectedIngressMatch, expectedIngressActions,
+                null);
+
+    }
+
     private void assertIngressCommand(
             FlowSpeakerData command, int expectedPriority, Set<FieldMatch> expectedMatch,
             List<Action> expectedApplyActions, MeterId expectedMeter) {

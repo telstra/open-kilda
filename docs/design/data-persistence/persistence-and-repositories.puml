@@ -1,5 +1,5 @@
 @startuml
-title Kilda Persistence, Service and Transport Layers
+title OpenKilda Persistence, Service and Transport Layers
 
 package "kilda-model" {
     class Flow

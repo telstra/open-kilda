@@ -31,8 +31,9 @@ import java.util.concurrent.CompletableFuture;
  */
 public class MessageExchanger implements MessagingChannel {
 
-    private Map<String, InfoData> pendingResponses = new HashMap<>();
-    private Map<String, List<InfoData>> pendingChunkedResponses = new HashMap<>();
+    private final Map<String, InfoData> pendingResponses = new HashMap<>();
+    private final Map<String, List<InfoData>> pendingChunkedResponses = new HashMap<>();
+    private final Map<String, Message> capturedMessages = new HashMap<>();
 
     public MessageExchanger() { }
 
@@ -43,6 +44,7 @@ public class MessageExchanger implements MessagingChannel {
     @Override
     public void send(String topic, Message message) {
         final String requestId = message.getCorrelationId();
+        capturedMessages.put(requestId, message);
         if (!pendingResponses.containsKey(requestId) && !pendingChunkedResponses.containsKey(requestId)) {
             throw new IllegalStateException(String.format(
                     "There is no pending response for request \"%s\"", requestId));
@@ -69,6 +71,10 @@ public class MessageExchanger implements MessagingChannel {
 
     public void mockChunkedResponse(String requestId, List<InfoData> messages) {
         pendingChunkedResponses.put(requestId, messages);
+    }
+
+    public Message getCapturedMessage(String requestId) {
+        return capturedMessages.get(requestId);
     }
 
     public void resetMockedResponses() {

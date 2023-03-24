@@ -137,7 +137,7 @@ public class FlowController extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponsePayload> updateFlow(@PathVariable(name = "flow-id") String flowId,
                                                              @RequestBody FlowUpdatePayload flow) {
-        return flowService.updateFlow(flow);
+        return flowService.updateFlow(flowId, flow);
     }
 
     /**
@@ -289,7 +289,6 @@ public class FlowController extends BaseController {
     @GetMapping(path = "/{flow_id}/validate")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<FlowValidationDto>> validateFlow(@PathVariable("flow_id") String flowId) {
-        logger.debug("Received Flow Validation request with flow {}", flowId);
         return flowService.validateFlow(flowId);
     }
 

@@ -43,6 +43,7 @@ import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
+import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
@@ -110,7 +111,8 @@ public class SwitchSyncServiceTest {
     public void setUp() {
         service = new SwitchSyncService(carrier, commandBuilder, new SwitchSyncConfig(OF_COMMANDS_BATCH_SIZE));
 
-        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).build();
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true)
+                .validationFilters(ValidationFilter.ALL_WITHOUT_FLOW_INFO).build();
         flowEntry = new FlowEntry(
                 new FlowSegmentCookie(FlowPathDirection.FORWARD, 7).getValue(),
                 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);

@@ -15,8 +15,11 @@
 
 package org.openkilda.messaging.info.group;
 
+import static org.openkilda.messaging.Utils.joinLists;
+
+import org.openkilda.messaging.Chunkable;
+import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.GroupSpeakerData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -26,21 +29,38 @@ import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
-public class GroupDumpResponse extends InfoData {
-    @JsonProperty("switch_id")
-    SwitchId switchId;
+public class GroupDumpResponse extends InfoData implements Chunkable<GroupDumpResponse> {
 
     @JsonProperty("group_speaker_data")
     List<GroupSpeakerData> groupSpeakerData;
 
     @JsonCreator
     @Builder
-    public GroupDumpResponse(@JsonProperty("switch_id") SwitchId switchId,
-                             @JsonProperty("group_speaker_data") List<GroupSpeakerData> groupSpeakerData) {
-        this.switchId = switchId;
+    public GroupDumpResponse(@JsonProperty("group_speaker_data") List<GroupSpeakerData> groupSpeakerData) {
         this.groupSpeakerData = groupSpeakerData;
+    }
+
+    @Override
+    public List<GroupDumpResponse> split(int chunkSize) {
+        return Utils.split(groupSpeakerData, chunkSize).stream()
+                .map(GroupDumpResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Unites several responses into one.
+     */
+    public static GroupDumpResponse unite(List<GroupDumpResponse> dataList) {
+        if (dataList == null) {
+            return null;
+        }
+        return new GroupDumpResponse(joinLists(dataList.stream()
+                .filter(Objects::nonNull)
+                .map(GroupDumpResponse::getGroupSpeakerData)));
     }
 }

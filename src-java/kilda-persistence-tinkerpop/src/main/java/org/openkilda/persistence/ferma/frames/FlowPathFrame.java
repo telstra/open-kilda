@@ -168,18 +168,22 @@ public abstract class FlowPathFrame extends KildaBaseVertexFrame implements Flow
 
     @Override
     @Property(SRC_MULTI_TABLE_PROPERTY)
+    @Deprecated
     public abstract boolean isSrcWithMultiTable();
 
     @Override
     @Property(SRC_MULTI_TABLE_PROPERTY)
+    @Deprecated
     public abstract void setSrcWithMultiTable(boolean srcWithMultiTable);
 
     @Override
     @Property(DST_MULTI_TABLE_PROPERTY)
+    @Deprecated
     public abstract boolean isDestWithMultiTable();
 
     @Override
     @Property(DST_MULTI_TABLE_PROPERTY)
+    @Deprecated
     public abstract void setDestWithMultiTable(boolean destWithMultiTable);
 
     @Override

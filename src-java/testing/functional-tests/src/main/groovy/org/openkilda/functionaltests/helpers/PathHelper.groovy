@@ -1,11 +1,13 @@
 package org.openkilda.functionaltests.helpers
 
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
-
+import groovy.util.logging.Slf4j
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath
 import org.openkilda.messaging.payload.flow.PathNodePayload
+import org.openkilda.messaging.payload.network.PathValidationPayload
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -15,8 +17,6 @@ import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.IslUtils
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Scope
@@ -24,6 +24,13 @@ import org.springframework.stereotype.Component
 
 import java.util.AbstractMap.SimpleEntry
 import java.util.stream.Collectors
+
+import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
+import static org.openkilda.model.FlowEncapsulationType.VXLAN
+import static org.openkilda.model.PathComputationStrategy.COST
+import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH
+import static org.openkilda.model.PathComputationStrategy.LATENCY
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 /**
  * Holds utility methods for working with flow paths.
@@ -36,9 +43,11 @@ class PathHelper {
 
     @Autowired
     TopologyDefinition topology
-    @Autowired @Qualifier("islandNb")
+    @Autowired
+    @Qualifier("islandNb")
     NorthboundService northbound
-    @Autowired @Qualifier("islandNbV2")
+    @Autowired
+    @Qualifier("islandNbV2")
     NorthboundServiceV2 northboundV2
     @Autowired
     IslUtils islUtils
@@ -100,6 +109,14 @@ class PathHelper {
         }
         return islToAvoid
     }
+
+    /**
+     * Method to call in test cleanup if test required to manipulate path ISL's cost
+     */
+    void 'remove ISL properties artifacts after manipulating paths weights'() {
+        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
+    }
+
 
     /**
      * Get list of ISLs that are involved in given path.
@@ -211,6 +228,17 @@ class PathHelper {
         return pathNodes
     }
 
+    static List<PathNodePayload> convertToPathNodePayload(List<PathNode> path) {
+        def result = [new PathNodePayload(path[0].getSwitchId(), null, path[0].getPortNo())]
+        for (int i = 1; i < path.size() - 1; i += 2) {
+            result.add(new PathNodePayload(path.get(i).getSwitchId(),
+                    path.get(i).getPortNo(),
+                    path.get(i + 1).getPortNo()))
+        }
+        result.add(new PathNodePayload(path[-1].getSwitchId(), path[-1].getPortNo(), null))
+        return result
+    }
+
     /**
      * Converts path nodes (in the form of List<PathNode>) to a List<FlowPathV2.PathNodeV2> representation
      */
@@ -268,5 +296,89 @@ class PathHelper {
      */
     int getCost(List<PathNode> path) {
         return getInvolvedIsls(path).sum { database.getIslCost(it) } as int
+    }
+
+    List<String> 'get path check errors'(List<PathNode> path,
+                                         Long bandwidth,
+                                         Long latencyMs,
+                                         Long latencyTier2ms,
+                                         String diverseWithFlow,
+                                         String reuseFlowResources,
+                                         FlowEncapsulationType flowEncapsulationType = TRANSIT_VLAN,
+                                         PathComputationStrategy pathComputationStrategy = COST) {
+        return northboundV2.checkPath(PathValidationPayload.builder()
+                .nodes(convertToPathNodePayload(path))
+                .bandwidth(bandwidth)
+                .latencyMs(latencyMs)
+                .latencyTier2ms(latencyTier2ms)
+                .diverseWithFlow(diverseWithFlow)
+                .reuseFlowResources(reuseFlowResources)
+                .flowEncapsulationType(convertEncapsulationType(flowEncapsulationType))
+                .pathComputationStrategy(pathComputationStrategy)
+                .build())
+                .getErrors()
+    }
+
+    List<String> 'get path check errors'(List<PathNode> path,
+                                         Long bandwidth,
+                                         FlowEncapsulationType flowEncapsulationType = TRANSIT_VLAN) {
+        return 'get path check errors'(path,
+                bandwidth,
+                null,
+                null,
+                null,
+                null,
+                flowEncapsulationType,
+                COST_AND_AVAILABLE_BANDWIDTH)
+    }
+
+    List<String> 'get path check errors'(List<PathNode> path) {
+        return 'get path check errors'(path,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                COST_AND_AVAILABLE_BANDWIDTH)
+    }
+
+    List<String> 'get path check errors'(List<PathNode> path,
+                                         String flowId,
+                                         Long maxLatency,
+                                         Long maxLatencyTier2 = null) {
+        return 'get path check errors'(path,
+                null,
+                maxLatency,
+                maxLatencyTier2,
+                null,
+                flowId,
+                null,
+                LATENCY)
+    }
+
+    List<String> 'get path check errors'(List<PathNode> path,
+                                         String flowId) {
+        return 'get path check errors'(path,
+                null,
+                null,
+                null,
+                flowId,
+                null,
+                null,
+                null)
+    }
+
+    private static org.openkilda.messaging.payload.flow.FlowEncapsulationType convertEncapsulationType(FlowEncapsulationType origin) {
+        // Let's laugh on this naive implementation after the third encapsulation type is introduced, not before.
+        if (origin == VXLAN) {
+            return org.openkilda.messaging.payload.flow.FlowEncapsulationType.VXLAN
+        } else {
+            return org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN
+        }
+    }
+
+    private static "pick random most probably free port"() {
+        return new Random().nextInt(1000) + 2000; //2000..2999
     }
 }

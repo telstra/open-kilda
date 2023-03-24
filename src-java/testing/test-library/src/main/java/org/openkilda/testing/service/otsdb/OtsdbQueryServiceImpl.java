@@ -53,7 +53,7 @@ public class OtsdbQueryServiceImpl implements OtsdbQueryService {
         List<String> tagParts = tags.entrySet().stream().map(entry -> entry.getKey() + "=" + entry.getValue())
                 .collect(toList());
         String tagsString = "{" + String.join(",", tagParts) + "}";
-        uriBuilder.queryParam("m", String.format("%s:%s{tags}", aggregator.toString(), metric));
+        uriBuilder.queryParam("m", String.format("%s:%s{%s}", aggregator.toString(), metric, tagParts));
         try {
             StatsResult[] result = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
                     new HttpEntity<>(new HttpHeaders()), StatsResult[].class, tagsString).getBody();

@@ -26,9 +26,11 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
+import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowsPerPortForSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchLagPortsRequest;
@@ -40,6 +42,7 @@ import org.openkilda.messaging.nbtopology.request.SwitchPatchRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.GetFlowsPerPortForSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchConnectedDeviceDto;
 import org.openkilda.messaging.nbtopology.response.SwitchConnectedDevicesResponse;
@@ -152,6 +155,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             result = getSwitchProperties();
         } else if (request instanceof GetSwitchLagPortsRequest) {
             result = getLagPorts((GetSwitchLagPortsRequest) request);
+        } else if (request instanceof GetFlowsPerPortForSwitchRequest) {
+            result = getSwitchFlows((GetFlowsPerPortForSwitchRequest) request);
         } else {
             unhandledInput(tuple);
         }
@@ -334,13 +339,23 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
         return switchOperationsService.getSwitchConnections(request.getSwitchId());
     }
 
+    private List<GetFlowsPerPortForSwitchResponse> getSwitchFlows(GetFlowsPerPortForSwitchRequest request) {
+        try {
+            return Collections.singletonList(
+                    switchOperationsService.getSwitchFlows(request.getSwitchId(), request.getPorts()));
+        } catch (SwitchNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(),
+                    "Could not get flows for non-existent switch");
+        }
+    }
+
     @Override
     public void requestSwitchSync(SwitchId switchId) {
         SwitchValidateRequest data = SwitchValidateRequest.builder()
                 .switchId(switchId)
                 .performSync(true)
-                .processMeters(true)
                 .removeExcess(true)
+                .validationFilters(ValidationFilter.ALL_WITHOUT_FLOW_INFO)
                 .build();
         getOutput().emit(StreamType.TO_SWITCH_MANAGER.toString(), getCurrentTuple(),
                 new Values(data, KeyProvider.generateChainedKey(getCorrelationId())));

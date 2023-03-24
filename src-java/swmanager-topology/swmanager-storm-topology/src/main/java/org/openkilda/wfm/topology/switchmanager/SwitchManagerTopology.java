@@ -72,7 +72,8 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
         declareSpout(builder, new CoordinatorSpout(), CoordinatorSpout.ID);
         declareBolt(builder, new CoordinatorBolt(), CoordinatorBolt.ID)
                 .allGrouping(CoordinatorSpout.ID)
-                .fieldsGrouping(SwitchManagerHub.ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
+                .fieldsGrouping(SwitchManagerHub.ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
+                .fieldsGrouping(SpeakerWorkerBolt.ID, CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
 
         PersistenceManager persistenceManager = new PersistenceManager(configurationProvider);
 

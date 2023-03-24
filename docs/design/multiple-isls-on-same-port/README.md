@@ -2,12 +2,12 @@
 
 ## Goal 
 
-Goal of this document is to describe how kilda works with virtual ISLs. 
+The goal of this document is to describe how kilda works with virtual ISLs. 
 
 ## Description
 
 We must be able to create tagged ISLs. There may be different VLANs at the ends of such ISLs. 
-We need to specify the interval of the used VLANs (for example: 4083, 4087-4091). Also we need to 
+We need to specify the interval of the used VLANs (for example: 4083, 4087-4091). Also, we need to 
 update discovery and other modules for these ISLs.
 
 ## Rules
@@ -16,7 +16,7 @@ This feature is based on [Multi-Table Mode](../multi-table-pipelines/README.md).
 
 ### Input Table Rules
 
-For each port + ISL VLAN, we will need to set additional rules for transit and egress. 
+For each port + ISL VLAN, we will need to add additional rules for transit and egress. 
 These are two rules for VxLAN and one rule for VLAN, in which we will pop ISL VLAN.
 We also need to lower the priority for the rules for non-virtual ISLs.
 
@@ -29,27 +29,25 @@ For ingress and transit tables, we need to add `push isl vlan` to all rules if t
 
  ![Table_Ingress_and_Transit](multi_isl_table_ingress_and_transit.png "Table Ingress and Transit")
 
-Aggregated list of rules is available [here](multi_isl_tables.pdf).
+An aggregated list of rules is available [here](multi_isl_tables.pdf).
 
 ## Components affected by this feature
 
 ### Floodlight
 
 * Floodlight requires a change in the processing of discovery packets on virtual ISLs.
-* Floodlight must be able to install additional rules on the switch for each tagged ISL, 
-  and additional actions for flow rules must be added.
+* Floodlight must be able to install additional rules on the switch for each tagged ISL. Additional actions for flow rules must be added.
 
 ### Path computation engine
 
-The definition of Edge needs to be expanded with the addition of VLANs, 
-and virtual ISLs must be considered when building a network.
+The definition of Edge needs to be expanded with the addition of VLANs. Virtual ISLs must be considered when building a network.
 
 ### Network topology
 
 * Network topology requires changes when working with ISL.
-* Particular attention should be paid to the discovery mechanism, 
-  because sending discovery requests for a large number of VLANs at one time can be expensive.
-* In this topology we also need to add the ability to create tagged ISLs.
+* Particular attention should be paid to the discovery mechanism 
+  because sending discovery requests for a large number of VLANs simultaneously can be expensive.
+* In this topology, we also need to add the ability to create tagged ISLs.
 
 ### Flow topology
 
@@ -66,15 +64,15 @@ Due to a change in the rules on the switch, we need to update the synchronizatio
 
 ### LabService
 
-In LabService we need to add the ability to emulate the network through which virtual ISLs will be laid.
+In LabService, we need to add the ability to emulate the network through which virtual ISLs will be laid.
 
 ### Stats
 
 It may be necessary to make changes to the statistics.
 
-### Kilda GUI
+### OpenKilda GUI
 
-Changes to the Kilda GUI will also be required.
+Changes to the OpenKilda GUI will also be required.
 
 ## Database changes
 

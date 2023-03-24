@@ -23,6 +23,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -103,7 +104,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
         testExpectedFailure(dummyRequestKey, request, commandContext, origin, FlowStatus.DOWN, ErrorType.NOT_FOUND);
 
         verify(pathComputer, times(11))
-                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), anyBoolean());
     }
 
     @Test
@@ -116,7 +117,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
         testExpectedFailure(dummyRequestKey, request, commandContext, origin, FlowStatus.UP, ErrorType.INTERNAL_ERROR);
 
         verify(pathComputer, times(PATH_ALLOCATION_RETRIES_LIMIT + 1))
-                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any());
+                .getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), anyBoolean());
     }
 
     @Test
@@ -507,7 +508,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
         transactionManager.doInTransaction(() ->
                 repositoryFactory.createFlowRepository().updateStatus(origin.getFlowId(), FlowStatus.DOWN));
 
-        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any()))
+        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), anyBoolean()))
                 .thenReturn(make2SwitchAltPathPair())
                 .thenReturn(make3SwitchesPathPair());
 
@@ -637,7 +638,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
         setupFlowRepositorySpy().findById(origin.getFlowId())
                 .ifPresent(foundPath -> foundPath.setTargetPathComputationStrategy(MAX_LATENCY));
         when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()),
-                any(Collection.class))).thenReturn(make3SwitchesPathPair(true));
+                any(Collection.class), anyBoolean())).thenReturn(make3SwitchesPathPair(true));
 
         FlowRerouteService service = makeService();
         IslEndpoint affectedEndpoint = extractIslEndpoint(origin);
@@ -692,12 +693,12 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
     private void preparePathComputation(String flowId, Throwable error)
             throws RecoverableException, UnroutableFlowException {
         doThrow(error).when(pathComputer)
-                .getPath(makeFlowArgumentMatch(flowId), any());
+                .getPath(makeFlowArgumentMatch(flowId), any(), anyBoolean());
     }
 
     private void preparePathComputation(String flowId, GetPathsResult pathPair)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any())).thenReturn(pathPair);
+        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any(), anyBoolean())).thenReturn(pathPair);
     }
 
     @Override

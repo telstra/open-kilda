@@ -17,7 +17,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm;
@@ -26,6 +27,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointC
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -34,13 +36,15 @@ public class HandleNotCompletedCommandsAction
     @Override
     public void perform(State from, State to, Event event, FlowMirrorPointCreateContext context,
                         FlowMirrorPointCreateFsm stateMachine) {
-        for (UUID commandId : stateMachine.getPendingCommands().keySet()) {
-            FlowSegmentRequestFactory installCommand = stateMachine.getCommands().get(commandId);
-            if (installCommand != null) {
-                stateMachine.saveErrorToHistory("Command is not finished yet",
-                        format("Completing the install operation although the remove command may not be "
-                                        + "finished yet: commandId %s, switch %s, cookie %s", commandId,
-                                installCommand.getSwitchId(), installCommand.getCookie()));
+        for (UUID requestId : stateMachine.getPendingCommands().keySet()) {
+            Optional<BaseSpeakerCommandsRequest> request = stateMachine.getSpeakerCommand(requestId);
+            if (request.isPresent()) {
+                for (OfCommand command : request.get().getCommands()) {
+                    stateMachine.saveErrorToHistory("Command is not finished yet",
+                            format("Completing the install operation although the remove command may not be "
+                                            + "finished yet: requestId %s, switch %s, command uuid %s", requestId,
+                                    request.get().getSwitchId(), command.getUuid()));
+                }
             }
         }
 

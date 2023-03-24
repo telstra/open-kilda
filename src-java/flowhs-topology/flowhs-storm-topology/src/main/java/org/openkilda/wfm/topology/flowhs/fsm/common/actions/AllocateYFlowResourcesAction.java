@@ -18,17 +18,20 @@ package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.stats.YFlowStatsInfoFactory.SubFlowPathInfo;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
@@ -145,7 +148,7 @@ public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, 
                 }
             }
 
-            transactionManager.doInTransaction(() -> {
+            List<SubFlowPathInfo> subPaths = transactionManager.doInTransaction(() -> {
                 YFlow yFlowToUpdate = getYFlow(yFlowId);
                 yFlowToUpdate.setYPoint(newResources.getMainPathYPointResources().getEndpoint());
                 yFlowToUpdate.setMeterId(newResources.getMainPathYPointResources().getMeterId());
@@ -157,9 +160,21 @@ public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, 
                     yFlowToUpdate.setProtectedPathMeterId(null);
                 }
                 yFlowToUpdate.setSharedEndpointMeterId(newResources.getSharedEndpointResources().getMeterId());
+
+                List<SubFlowPathInfo> subPathList = new ArrayList<>();
+                for (YSubFlow subFlow : yFlow.getSubFlows()) {
+                    Flow flow = subFlow.getFlow();
+                    for (FlowPath path : flow.getPaths()) {
+                        subPathList.add(new SubFlowPathInfo(
+                                flow.getFlowId(), path.getCookie(), path.getMeterId(),
+                                FlowPathMapper.INSTANCE.mapToPathNodes(flow, path),
+                                flow.getVlanStatistics(), path.hasIngressMirror(), path.hasEgressMirror()));
+                    }
+                }
+                return subPathList;
             });
 
-            notifyStats(stateMachine, newResources);
+            notifyStats(stateMachine, newResources, subPaths);
         } catch (ResourceAllocationException ex) {
             String errorMessage = format("Failed to allocate y-flow resources. %s", ex.getMessage());
             stateMachine.saveErrorToHistory(errorMessage, ex);
@@ -200,7 +215,7 @@ public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, 
         return meterId;
     }
 
-    private void notifyStats(T fsm, YFlowResources resources) {
-        fsm.sendAddOrUpdateStatsNotification(resources);
+    private void notifyStats(T fsm, YFlowResources resources, List<SubFlowPathInfo> subPaths) {
+        fsm.sendAddOrUpdateStatsNotification(resources, subPaths);
     }
 }

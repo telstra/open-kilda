@@ -76,6 +76,7 @@ import org.apache.commons.collections4.map.LazyMap;
 import org.apache.commons.lang3.StringUtils;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -332,7 +333,7 @@ public class ResourcesAllocationAction extends
             tmpFlow.setDiverseGroupId(flowRepository.getOrCreateDiverseFlowGroupId(flowId)
                     .orElseThrow(() -> new FlowNotFoundException(flowId)));
         }
-        GetPathsResult protectedPath = pathComputer.getPath(tmpFlow);
+        GetPathsResult protectedPath = pathComputer.getPath(tmpFlow, Collections.emptyList(), true);
         stateMachine.setBackUpProtectedPathComputationWayUsed(protectedPath.isBackUpPathComputationWayUsed());
 
         boolean overlappingProtectedPathFound =

@@ -78,3 +78,12 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 022-add-port-class.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 023-add-lacp-reply-into-lag-class.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 024-add-ha-flow-classes.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 025-optimise-switch-connected-device-class.yaml

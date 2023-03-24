@@ -15,11 +15,15 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.messaging.swmanager.request.CreateLagPortRequest;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.error.MessageDispatchException;
 import org.openkilda.wfm.error.UnexpectedInputException;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -52,8 +56,8 @@ public class CreateLagPortService implements SwitchManagerHubService {
 
     private boolean active = true;
 
-    public CreateLagPortService(SwitchManagerCarrier carrier, LagPortOperationConfig config) {
-        this.lagPortOperationService = new LagPortOperationService(config);
+    public CreateLagPortService(SwitchManagerCarrier carrier, LagPortOperationConfig config, RuleManager ruleManager) {
+        this.lagPortOperationService = new LagPortOperationService(config, ruleManager);
         this.builder = CreateLagPortFsm.builder();
         this.fsmExecutor = new FsmExecutor<>(CreateLagEvent.NEXT);
         this.carrier = carrier;
@@ -89,7 +93,7 @@ public class CreateLagPortService implements SwitchManagerHubService {
 
     @Override
     public void timeout(@NonNull MessageCookie cookie) throws MessageDispatchException {
-        OperationTimeoutException error = new OperationTimeoutException("LAG create operation timeout");
+        OperationTimeoutException error = new OperationTimeoutException("Create operation timeout");
         fireFsmEvent(cookie, CreateLagEvent.ERROR, CreateLagContext.builder().error(error).build());
     }
 
@@ -98,6 +102,24 @@ public class CreateLagPortService implements SwitchManagerHubService {
             throws UnexpectedInputException, MessageDispatchException {
         if (payload instanceof CreateOrUpdateLogicalPortResponse) {
             handleCreateOrUpdateResponse((CreateOrUpdateLogicalPortResponse) payload, cookie);
+        } else {
+            throw new UnexpectedInputException(payload);
+        }
+    }
+
+    @Override
+    public void dispatchWorkerMessage(SpeakerResponse payload, MessageCookie cookie)
+            throws UnexpectedInputException, MessageDispatchException {
+        if (payload instanceof SpeakerCommandResponse) {
+            SpeakerCommandResponse response = (SpeakerCommandResponse) payload;
+            if (response.isSuccess()) {
+                fireFsmEvent(cookie, CreateLagEvent.SPEAKER_ENTITIES_INSTALLED, CreateLagContext.builder().build());
+            } else {
+                ErrorData errorData = new ErrorData(ErrorType.INTERNAL_ERROR, "OpenFlow commands failed",
+                        response.getFailedCommandIds().values().toString());
+                fireFsmEvent(cookie, CreateLagEvent.ERROR,
+                        CreateLagContext.builder().error(new SpeakerFailureException(errorData)).build());
+            }
         } else {
             throw new UnexpectedInputException(payload);
         }

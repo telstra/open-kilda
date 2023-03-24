@@ -61,6 +61,10 @@ public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
     @Key("floodlight-region")
     String getFloodlightRegion();
 
+    @Key("kafka-messages-chunk-size")
+    @Default("500")
+    int getMessagesBatchSize();
+
     /**
      * Returns Kafka properties built with the configuration data for Consumer.
      */

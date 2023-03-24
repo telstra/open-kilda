@@ -22,6 +22,9 @@ import com.sabre.oss.conf4j.annotation.Converter;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
+
 public interface KildaCoreConfig {
     @Key("command-processor-workers-count")
     @Default("4")
@@ -58,15 +61,18 @@ public interface KildaCoreConfig {
     @Converter(EnumLowerCaseConverter.class)
     FloodlightRole getRole();
 
-    /**
-     * This offset is used for encoding ISL in_port number into udp_src port of Server 42 ISL RTT packets.
-     */
-    @Key("server42-isl-rtt-udp-port-offset")
-    @Default("10000")
-    int getServer42IslRttUdpPortOffset();
+    @Key("lacp-system-id")
+    @Default("00:00:00:00:00:01")
+    @NotBlank
+    String getLacpSystemId();
 
-    @Key("server42-isl-rtt-magic-mac-address")
-    @Default("00:26:E1:FF:FF:FD")
-    String getServer42IslRttMagicMacAddress();
+    @Key("lacp-system-priority")
+    @Min(1)
+    @Default("1")
+    int getLacpSystemPriority();
 
+    @Key("lacp-port-priority")
+    @Min(1)
+    @Default("1")
+    int getLacpPortPriority();
 }

@@ -60,6 +60,9 @@ public final class RepositoryAreaBinding {
         binding.put(FlowStatsRepository.class, PersistenceArea.COMMON);
         binding.put(YFlowRepository.class, PersistenceArea.COMMON);
         binding.put(PortRepository.class, PersistenceArea.COMMON);
+        binding.put(HaFlowRepository.class, PersistenceArea.COMMON);
+        binding.put(HaSubFlowRepository.class, PersistenceArea.COMMON);
+        binding.put(HaFlowPathRepository.class, PersistenceArea.COMMON);
 
         // history
         binding.put(FlowEventActionRepository.class, PersistenceArea.HISTORY);

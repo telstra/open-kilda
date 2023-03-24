@@ -39,6 +39,6 @@ public class CreateLagPortRequestTest {
     }
 
     public static CreateLagPortRequest makeRequest() {
-        return new CreateLagPortRequest(new SwitchId(1), Sets.newHashSet(1, 2, 3));
+        return new CreateLagPortRequest(new SwitchId(1), Sets.newHashSet(1, 2, 3), true);
     }
 }

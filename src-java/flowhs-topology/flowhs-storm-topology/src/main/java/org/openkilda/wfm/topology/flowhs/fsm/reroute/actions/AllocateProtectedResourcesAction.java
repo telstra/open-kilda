@@ -92,7 +92,7 @@ public class AllocateProtectedResourcesAction extends
         log.debug("Finding a new protected path for flow {}", flowId);
         GetPathsResult allocatedPaths = allocatePathPair(tmpFlowCopy, newForwardPathId, newReversePathId,
                 stateMachine.isIgnoreBandwidth(), pathsToReuse, oldPaths, stateMachine.isRecreateIfSamePath(),
-                stateMachine.getSharedBandwidthGroupId(), testNonOverlappingPath);
+                stateMachine.getSharedBandwidthGroupId(), testNonOverlappingPath, true);
         if (allocatedPaths != null) {
             stateMachine.setBackUpProtectedPathComputationWayUsed(allocatedPaths.isBackUpPathComputationWayUsed());
 

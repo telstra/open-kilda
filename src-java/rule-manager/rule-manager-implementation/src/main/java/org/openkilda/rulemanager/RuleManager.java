@@ -15,6 +15,7 @@
 
 package org.openkilda.rulemanager;
 
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 
@@ -57,4 +58,8 @@ public interface RuleManager {
      * Build all required service rules for ISL on specified port.
      */
     List<SpeakerData> buildIslServiceRules(SwitchId switchId, int port, DataAdapter adapter);
+
+    List<SpeakerData> buildLacpRules(SwitchId switchId, int logicalPort, DataAdapter adapter);
+
+    List<SpeakerData> buildMirrorPointRules(FlowMirrorPoints mirrorPoints, DataAdapter adapter);
 }

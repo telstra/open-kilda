@@ -15,20 +15,26 @@
 
 package org.openkilda.messaging.info.flow;
 
+import static org.openkilda.messaging.Utils.joinLists;
+
+import org.openkilda.messaging.Chunkable;
+import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.rulemanager.FlowSpeakerData;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Value;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
-@Value
+@Data
 @EqualsAndHashCode(callSuper = false)
-public class FlowDumpResponse extends InfoData {
+public class FlowDumpResponse extends InfoData implements Chunkable<FlowDumpResponse> {
     @JsonProperty("flow_speaker_data")
     List<FlowSpeakerData> flowSpeakerData;
 
@@ -36,5 +42,24 @@ public class FlowDumpResponse extends InfoData {
     @Builder
     public FlowDumpResponse(@JsonProperty("flow_speaker_data") List<FlowSpeakerData> flowSpeakerData) {
         this.flowSpeakerData = flowSpeakerData;
+    }
+
+    @Override
+    public List<FlowDumpResponse> split(int chunkSize) {
+        return Utils.split(flowSpeakerData, chunkSize).stream()
+                .map(FlowDumpResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Unites several responses into one.
+     */
+    public static FlowDumpResponse unite(List<FlowDumpResponse> dataList) {
+        if (dataList == null) {
+            return null;
+        }
+        return new FlowDumpResponse(joinLists(dataList.stream()
+                .filter(Objects::nonNull)
+                .map(FlowDumpResponse::getFlowSpeakerData)));
     }
 }

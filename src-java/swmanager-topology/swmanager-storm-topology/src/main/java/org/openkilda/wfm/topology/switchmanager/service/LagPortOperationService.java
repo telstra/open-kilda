@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.switchmanager.service;
 import static java.lang.String.format;
 import static org.openkilda.model.SwitchFeature.BFD;
 
+import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.IpSocketAddress;
@@ -41,11 +42,16 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.tx.TransactionManager;
+import org.openkilda.rulemanager.DataAdapter;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
 import org.openkilda.wfm.share.utils.PoolManager;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
 import org.openkilda.wfm.topology.switchmanager.error.InvalidDataException;
 import org.openkilda.wfm.topology.switchmanager.error.LagPortNotFoundException;
 import org.openkilda.wfm.topology.switchmanager.error.SwitchNotFoundException;
+import org.openkilda.wfm.topology.switchmanager.model.LagRollbackData;
+import org.openkilda.wfm.topology.switchmanager.model.LagRollbackData.LagRollbackDataBuilder;
 import org.openkilda.wfm.topology.switchmanager.service.configs.LagPortOperationConfig;
 
 import com.google.common.collect.Sets;
@@ -78,13 +84,17 @@ public class LagPortOperationService {
     private final FlowRepository flowRepository;
     private final FlowMirrorPathRepository flowMirrorPathRepository;
     private final PortRepository portRepository;
+    private final RuleManager ruleManager;
 
     private final LagPortOperationConfig config;
 
     private final LRUMap<SwitchId, PoolManager<LagLogicalPort>> portNumberPool;
 
-    public LagPortOperationService(LagPortOperationConfig config) {
+
+
+    public LagPortOperationService(LagPortOperationConfig config, RuleManager ruleManager) {
         this.transactionManager = config.getTransactionManager();
+        this.ruleManager = ruleManager;
 
         @NonNull RepositoryFactory repositoryFactory = config.getRepositoryFactory();
         this.switchRepository = repositoryFactory.createSwitchRepository();
@@ -104,23 +114,28 @@ public class LagPortOperationService {
     /**
      * Create LAG logical port.
      */
-    public int createLagPort(SwitchId switchId, Set<Integer> targetPorts) {
+    public int createLagPort(SwitchId switchId, Set<Integer> targetPorts, boolean lacpReply) {
         verifyTargetPortsInput(targetPorts);
         LagLogicalPort port = transactionManager.doInTransaction(
-                newCreateRetryPolicy(switchId), () -> createTransaction(switchId, targetPorts));
+                newCreateRetryPolicy(switchId), () -> createTransaction(switchId, targetPorts, lacpReply));
         return port.getLogicalPortNumber();
     }
 
     /**
      * Update LAG logical port.
      */
-    public Set<Integer> updateLagPort(SwitchId switchId, int logicalPortNumber, Set<Integer> targetPorts) {
+    public LagRollbackData updateLagPort(
+            SwitchId switchId, int logicalPortNumber, Set<Integer> targetPorts, boolean lacpReply) {
         verifyTargetPortsInput(targetPorts);
-        Set<Integer> targetsBeforeUpdate = new HashSet<>();
+        LagRollbackDataBuilder rollbackDataBuilder = LagRollbackData.builder();
         transactionManager.doInTransaction(
                 newUpdateRetryPolicy(switchId),
-                () -> targetsBeforeUpdate.addAll(updateTransaction(switchId, logicalPortNumber, targetPorts)));
-        return targetsBeforeUpdate;
+                () -> {
+                    LagRollbackData data = updateTransaction(switchId, logicalPortNumber, targetPorts, lacpReply);
+                    rollbackDataBuilder.physicalPorts(data.getPhysicalPorts());
+                    rollbackDataBuilder.lacpReply(data.isLacpReply());
+                });
+        return rollbackDataBuilder.build();
     }
 
     /**
@@ -224,18 +239,31 @@ public class LagPortOperationService {
                         format("Switch %s has invalid IP address %s", sw, sw.getSocketAddress())));
     }
 
+    /**
+     * Builds LACP commands witch will be sent to speaker.
+     */
+    public List<OfCommand> buildLacpSpeakerCommands(SwitchId switchId, int port) {
+        DataAdapter dataAdapter = PersistenceDataAdapter.builder()
+                .switchIds(Collections.singleton(switchId))
+                .pathIds(Collections.emptySet())
+                .persistenceManager(config.getPersistenceManager())
+                .build();
+        return OfCommand.toOfCommands(ruleManager.buildLacpRules(switchId, port, dataAdapter));
+    }
+
     private void verifyTargetPortsInput(Set<Integer> targetPorts) {
         if (targetPorts == null || targetPorts.isEmpty()) {
             throw new InvalidDataException("Physical ports list is empty");
         }
     }
 
-    private LagLogicalPort createTransaction(SwitchId switchId, Set<Integer> targetPorts) {
+    private LagLogicalPort createTransaction(SwitchId switchId, Set<Integer> targetPorts, boolean lacpReply) {
         Switch sw = querySwitch(switchId); // locate switch first to produce correct error if switch is missing
         ensureLagDataValid(sw, targetPorts);
         ensureNoLagCollisions(sw.getSwitchId(), targetPorts);
 
-        LagLogicalPort port = queryPoolManager(switchId).allocate(entityId -> newLagLogicalPort(switchId, entityId));
+        LagLogicalPort port = queryPoolManager(switchId).allocate(entityId -> newLagLogicalPort(
+                switchId, entityId, lacpReply));
         replacePhysicalPorts(port, switchId, targetPorts);
 
         log.info("Adding new LAG logical port entry into DB: {}", port);
@@ -243,28 +271,32 @@ public class LagPortOperationService {
         return port;
     }
 
-    private Set<Integer> updateTransaction(SwitchId switchId, int logicalPortNumber, Set<Integer> targetPorts) {
+    private LagRollbackData updateTransaction(
+            SwitchId switchId, int logicalPortNumber, Set<Integer> targetPorts, boolean lacpReply) {
         Switch sw = querySwitch(switchId);
         ensureLagDataValid(sw, targetPorts);
         ensureNoLagCollisions(switchId, targetPorts, logicalPortNumber);
         ensureTargetPortsBandwidthValid(sw, targetPorts, logicalPortNumber);
 
         LagLogicalPort port = queryLagPort(sw.getSwitchId(), logicalPortNumber);
-        Set<Integer> targetsBeforeUpdate = port.getPhysicalPorts().stream()
+        LagRollbackData rollbackData = new LagRollbackData(port.getPhysicalPorts().stream()
                 .map(PhysicalPort::getPortNumber)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toSet()), port.isLacpReply());
         log.info(
-                "Updating LAG logical port #{} on {} entry desired target ports set {}, current target ports set {}",
+                "Updating LAG logical port #{} on {} entry desired target ports set {}, current target ports set {}. "
+                        + "Desired LACP reply {}, current LACP reply {}",
                 logicalPortNumber, switchId,
-                formatPortNumbersSet(targetPorts), formatPortNumbersSet(targetsBeforeUpdate));
+                formatPortNumbersSet(targetPorts), formatPortNumbersSet(rollbackData.getPhysicalPorts()),
+                lacpReply, rollbackData.isLacpReply());
         replacePhysicalPorts(port, switchId, targetPorts);
+        port.setLacpReply(lacpReply);
 
-        return targetsBeforeUpdate;
+        return rollbackData;
     }
 
     private LagLogicalPort deleteTransaction(SwitchId switchId, int logicalPortNumber) {
         LagLogicalPort port = ensureDeleteIsPossible(switchId, logicalPortNumber);
-        log.info("Removing LAG logical port entry into DB: {}", port);
+        log.info("Removing LAG logical port entry from DB: {}", port);
         lagLogicalPortRepository.remove(port);
         return port;
     }
@@ -346,8 +378,8 @@ public class LagPortOperationService {
         return switchRepository.findById(switchId).orElseThrow(() -> new SwitchNotFoundException(switchId));
     }
 
-    private LagLogicalPort newLagLogicalPort(SwitchId switchId, long portNumber) {
-        return new LagLogicalPort(switchId, (int) portNumber, Collections.<Integer>emptyList());
+    private LagLogicalPort newLagLogicalPort(SwitchId switchId, long portNumber, boolean lacpReply) {
+        return new LagLogicalPort(switchId, (int) portNumber, Collections.<Integer>emptyList(), lacpReply);
     }
 
     private LagLogicalPort queryLagPort(SwitchId switchId, int logicalPortNumber) {

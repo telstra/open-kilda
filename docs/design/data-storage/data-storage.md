@@ -1,4 +1,4 @@
-# Kilda Data storage
+# OpenKilda Data storage V2
 
 ## Overview
 This doc describes the solution for data storage(s) used by Kilda.

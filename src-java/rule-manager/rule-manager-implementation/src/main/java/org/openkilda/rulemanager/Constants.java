@@ -82,6 +82,8 @@ public final class Constants {
         public static final int DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1;
         public static final int DEFAULT_FLOW_VLAN_STATS_PRIORITY = FLOW_PRIORITY - 10;
         public static final int DOUBLE_VLAN_FLOW_PRIORITY = FLOW_PRIORITY + 10;
+        public static final int LACP_RULE_PRIORITY = INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE + 200;
+        public static final int DROP_LOOP_SLOW_PROTOCOLS_PRIORITY = LACP_RULE_PRIORITY + 10;
 
         public static final int MIRROR_FLOW_PRIORITY = FLOW_PRIORITY + 50;
         public static final int MIRROR_DOUBLE_VLAN_FLOW_PRIORITY = MIRROR_FLOW_PRIORITY + 10;

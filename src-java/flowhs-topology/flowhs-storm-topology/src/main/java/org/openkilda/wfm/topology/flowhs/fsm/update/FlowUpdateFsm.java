@@ -327,7 +327,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
             builder.transition().from(State.UPDATING_FLOW_STATUS).to(State.FLOW_STATUS_UPDATED).on(Event.NEXT)
                     .perform(new UpdateFlowStatusAction(persistenceManager, dashboardLogger));
 
-            builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED).on(Event.NEXT);
+            builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.NOTIFY_FLOW_MONITOR).on(Event.NEXT);
             builder.transition().from(State.FLOW_STATUS_UPDATED)
                     .to(State.NOTIFY_FLOW_MONITOR_WITH_ERROR).on(Event.ERROR);
 

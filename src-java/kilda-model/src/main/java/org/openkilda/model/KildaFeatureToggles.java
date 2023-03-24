@@ -55,6 +55,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
             .server42IslRtt(false)
             .modifyYFlowEnabled(false)
             .syncSwitchOnConnect(true)
+            .discoverNewIslsInUnderMaintenanceMode(false)
             .build();
 
     @Getter
@@ -86,7 +87,8 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
                                Boolean floodlightRoutePeriodicSync,
                                Boolean flowsRerouteUsingDefaultEncapType, Boolean collectGrpcStats,
                                Boolean server42FlowRtt, Boolean flowLatencyMonitoringReactions,
-                               Boolean server42IslRtt, Boolean modifyYFlowEnabled, Boolean syncSwitchOnConnect) {
+                               Boolean server42IslRtt, Boolean modifyYFlowEnabled, Boolean syncSwitchOnConnect,
+                               Boolean discoverNewIslsInUnderMaintenanceMode) {
         data = KildaFeatureTogglesDataImpl.builder()
                 .flowsRerouteOnIslDiscoveryEnabled(flowsRerouteOnIslDiscoveryEnabled)
                 .createFlowEnabled(createFlowEnabled).updateFlowEnabled(updateFlowEnabled)
@@ -99,6 +101,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
                 .flowLatencyMonitoringReactions(flowLatencyMonitoringReactions)
                 .modifyYFlowEnabled(modifyYFlowEnabled)
                 .syncSwitchOnConnect(syncSwitchOnConnect)
+                .discoverNewIslsInUnderMaintenanceMode(discoverNewIslsInUnderMaintenanceMode)
                 .build();
     }
 
@@ -129,6 +132,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
                 .append(getServer42IslRtt(), that.getServer42IslRtt())
                 .append(getModifyYFlowEnabled(), that.getModifyYFlowEnabled())
                 .append(getSyncSwitchOnConnect(), that.getSyncSwitchOnConnect())
+                .append(getDiscoverNewIslsInUnderMaintenanceMode(), that.getDiscoverNewIslsInUnderMaintenanceMode())
                 .isEquals();
     }
 
@@ -139,7 +143,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
                 getUseBfdForIslIntegrityCheck(), getFloodlightRoutePeriodicSync(),
                 getFlowsRerouteUsingDefaultEncapType(), getCollectGrpcStats(), getServer42FlowRtt(),
                 getFlowLatencyMonitoringReactions(), getServer42IslRtt(), getModifyYFlowEnabled(),
-                getSyncSwitchOnConnect());
+                getSyncSwitchOnConnect(), getDiscoverNewIslsInUnderMaintenanceMode());
     }
 
     /**
@@ -197,6 +201,10 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
         Boolean getSyncSwitchOnConnect();
 
         void setSyncSwitchOnConnect(Boolean syncSwitchOnConnect);
+
+        Boolean getDiscoverNewIslsInUnderMaintenanceMode();
+
+        void setDiscoverNewIslsInUnderMaintenanceMode(Boolean discoverNewIslsInUnderMaintenanceMode);
     }
 
     /**
@@ -221,6 +229,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
         Boolean server42IslRtt;
         Boolean modifyYFlowEnabled;
         Boolean syncSwitchOnConnect;
+        Boolean discoverNewIslsInUnderMaintenanceMode;
     }
 
     /**
@@ -287,6 +296,9 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
             }
             if (target.getSyncSwitchOnConnect() == null) {
                 target.setSyncSwitchOnConnect(source.getSyncSwitchOnConnect());
+            }
+            if (target.getDiscoverNewIslsInUnderMaintenanceMode() == null) {
+                target.setDiscoverNewIslsInUnderMaintenanceMode(source.getDiscoverNewIslsInUnderMaintenanceMode());
             }
         }
     }

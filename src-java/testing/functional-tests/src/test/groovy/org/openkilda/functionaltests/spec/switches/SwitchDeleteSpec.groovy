@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
@@ -13,12 +14,23 @@ import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.service.traffexam.model.ArpData
+import org.openkilda.testing.service.traffexam.model.LldpData
+import org.openkilda.testing.tools.ConnectedDevice
 
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
+import javax.inject.Provider
 
 class SwitchDeleteSpec extends HealthCheckSpecification {
+
+    @Autowired @Shared
+    Provider<TraffExamService> traffExamProvider
+
     @Tidy
     def "Unable to delete a nonexistent switch"() {
         when: "Try to delete a nonexistent switch"
@@ -158,6 +170,72 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
         database.resetCosts(topology.isls)
+    }
+
+    @Tidy
+    def "Able to delete an inactive switch with connected devices"() {
+        given: "An inactive switch without any ISLs but with connected devices"
+        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
+        def tg = topology.activeTraffGens[0]
+        def sw = tg.switchConnected
+
+        //need to restore supportedTransitEncapsulation field after deleting sw
+        def initSwProps = switchHelper.getCachedSwProps(sw.dpId)
+        def swIsls = topology.getRelatedIsls(sw)
+
+        // enable connected devices on switch
+        switchHelper.updateSwitchProperties(sw, initSwProps.jacksonCopy().tap {
+            it.multiTable = true
+            it.switchLldp = true
+            it.switchArp = true
+        })
+
+        // send LLDP and ARP packets
+        def lldpData = LldpData.buildRandom()
+        def arpData = ArpData.buildRandom()
+        new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId), [777]).withCloseable {
+            it.sendLldp(lldpData)
+            it.sendArp(arpData)
+        }
+
+        // LLDP and ARP connected devices are recognized and saved"
+        Wrappers.wait(WAIT_OFFSET) {
+            verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) {
+                it.size() == 1
+                it[0].portNumber == tg.switchPort
+                it[0].lldp.size() == 1
+                it[0].arp.size() == 1
+            }
+        }
+
+        // port down on all active ISLs on switch
+        swIsls.each { antiflap.portDown(sw.dpId, it.srcPort) }
+        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
+        Wrappers.wait(WAIT_OFFSET) {
+            swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
+        }
+        // delete all ISLs on switch
+        swIsls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
+        // deactivate switch
+        def blockData = switchHelper.knockoutSwitch(sw, RW)
+
+        when: "Try to delete the switch"
+        def response = northbound.deleteSwitch(sw.dpId, false)
+
+        then: "The switch is actually deleted"
+        response.deleted
+        Wrappers.wait(WAIT_OFFSET) { assert !northbound.allSwitches.any { it.switchId == sw.dpId } }
+
+        cleanup: "Activate the switch back, restore ISLs, delete connected devices and reset costs"
+        switchHelper.reviveSwitch(sw, blockData)
+        swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }
+        initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
+        }
+        database.resetCosts(topology.isls)
+        lldpData && database.removeConnectedDevices(sw.dpId)
     }
 
     @Tidy

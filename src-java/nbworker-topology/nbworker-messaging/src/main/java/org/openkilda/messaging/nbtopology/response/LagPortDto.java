@@ -27,6 +27,7 @@ import java.util.List;
 public class LagPortDto implements Serializable {
     private static final long serialVersionUID = 998335534425508496L;
 
-    private int logicalPortNumber;
-    private List<Integer> portNumbers;
+    int logicalPortNumber;
+    List<Integer> portNumbers;
+    boolean lacpReply;
 }
