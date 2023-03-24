@@ -28,6 +28,7 @@ import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
 import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
@@ -290,5 +291,24 @@ public class SwitchControllerV2 extends BaseController {
             @RequestParam(name = "include", required = false) String includeString,
             @RequestParam(name = "exclude", required = false) String excludeString) {
         return switchService.validateSwitch(switchId, includeString, excludeString);
+    }
+
+    /**
+     * Retrieves a map of all flows for each port for the given switch.
+     * When a port ID is provided, returns flows only for the given port.
+     * Ports that don't have any associated flow are skipped, i.e. if no flows are going through this switch,
+     * returns an empty output.
+     * @param switchId a specific switch
+     * @param portIds optional. Filters the output to display this port only
+     * @return mapping of port->[flows]
+     */
+    @ApiOperation(value = "Get all flows for each port for the given switch",
+            response = SwitchFlowsPerPortResponse.class)
+    @GetMapping("/{switch_id}/flows-by-port")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchFlowsPerPortResponse> getSwitchFlows(
+            @PathVariable("switch_id") SwitchId switchId,
+            @RequestParam(value = "ports", required = false) List<Integer> portIds) {
+        return switchService.getFlowsPerPortForSwitch(switchId, portIds);
     }
 }

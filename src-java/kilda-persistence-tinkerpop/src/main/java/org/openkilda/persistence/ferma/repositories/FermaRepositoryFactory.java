@@ -27,6 +27,9 @@ import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowStatsRepository;
+import org.openkilda.persistence.repositories.HaFlowPathRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
+import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
@@ -236,5 +239,20 @@ public class FermaRepositoryFactory implements RepositoryFactory {
     @Override
     public YFlowRepository createYFlowRepository() {
         return new FermaYFlowRepository(implementation);
+    }
+
+    @Override
+    public HaFlowRepository createHaFlowRepository() {
+        return new FermaHaFlowRepository(implementation, createHaFlowPathRepository(), createHaSubFlowRepository());
+    }
+
+    @Override
+    public HaSubFlowRepository createHaSubFlowRepository() {
+        return new FermaHaSubFlowRepository(implementation);
+    }
+
+    @Override
+    public HaFlowPathRepository createHaFlowPathRepository() {
+        return new FermaHaFlowPathRepository(implementation);
     }
 }

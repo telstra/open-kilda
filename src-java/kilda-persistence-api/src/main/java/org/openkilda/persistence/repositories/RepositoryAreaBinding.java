@@ -61,6 +61,9 @@ public final class RepositoryAreaBinding {
         binding.put(YFlowRepository.class, PersistenceArea.COMMON);
         binding.put(PortRepository.class, PersistenceArea.COMMON);
         binding.put(LacpPartnerRepository.class, PersistenceArea.COMMON);
+        binding.put(HaFlowRepository.class, PersistenceArea.COMMON);
+        binding.put(HaSubFlowRepository.class, PersistenceArea.COMMON);
+        binding.put(HaFlowPathRepository.class, PersistenceArea.COMMON);
 
         // history
         binding.put(FlowEventActionRepository.class, PersistenceArea.HISTORY);
@@ -81,12 +84,12 @@ public final class RepositoryAreaBinding {
         queue.addFirst(klass);
 
         PersistenceArea result = null;
-        while (! queue.isEmpty()) {
+        while (!queue.isEmpty()) {
             Class<?> entry = queue.pollFirst();
             if (entry == null) {
                 continue;
             }
-            if (! Repository.class.isAssignableFrom(entry)) {
+            if (!Repository.class.isAssignableFrom(entry)) {
                 continue;
             }
 
@@ -105,3 +108,4 @@ public final class RepositoryAreaBinding {
         return result;
     }
 }
+

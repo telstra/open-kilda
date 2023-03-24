@@ -29,6 +29,9 @@ import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowStatsRepository;
+import org.openkilda.persistence.repositories.HaFlowPathRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
+import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
@@ -223,6 +226,21 @@ public class HibernateRepositoryFactory implements RepositoryFactory {
 
     @Override
     public PhysicalPortRepository createPhysicalPortRepository() {
+        throw new IllegalStateException("Repository not implemented on hibernate layer");
+    }
+
+    @Override
+    public HaFlowRepository createHaFlowRepository() {
+        throw new IllegalStateException("Repository not implemented on hibernate layer");
+    }
+
+    @Override
+    public HaSubFlowRepository createHaSubFlowRepository() {
+        throw new IllegalStateException("Repository not implemented on hibernate layer");
+    }
+
+    @Override
+    public HaFlowPathRepository createHaFlowPathRepository() {
         throw new IllegalStateException("Repository not implemented on hibernate layer");
     }
 

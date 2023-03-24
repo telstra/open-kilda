@@ -1,5 +1,5 @@
 @startuml
-title New implementation of ISL discovery and round-trip latency with NOT NoviFlow switch and with groups support
+title New implementation of ISL discovery and round-trip latency with non-NoviFlow switch and with groups support
 
 collections Floodlights as FL
 participant Floodlight_B as FL

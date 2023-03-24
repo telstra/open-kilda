@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@ package org.openkilda.wfm.topology.connecteddevices.service;
 
 import static org.openkilda.model.ConnectedDeviceType.ARP;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
+import static org.openkilda.model.SwitchConnectedDevice.buildUniqueArpIndex;
+import static org.openkilda.model.SwitchConnectedDevice.buildUniqueLldpIndex;
 import static org.openkilda.model.cookie.Cookie.ARP_INGRESS_COOKIE;
 import static org.openkilda.model.cookie.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_COOKIE;
@@ -54,6 +56,8 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -65,8 +69,8 @@ public class PacketService {
     private final SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
     private final TransitVlanRepository transitVlanRepository;
     private final FlowRepository flowRepository;
-
-    private LacpPartnerRepository lacpPartnerRepository;
+    private final Map<String, SwitchConnectedDevice> switchConnectedDeviceCache = new HashMap<>();
+    private final LacpPartnerRepository lacpPartnerRepository;
 
     public PacketService(PersistenceManager persistenceManager) {
         transactionManager = persistenceManager.getTransactionManager();
@@ -108,56 +112,58 @@ public class PacketService {
      * Handle LLDP info data.
      */
     public void handleLldpData(LldpInfoData data) {
-        transactionManager.doInTransaction(() -> {
+        FlowRelatedData flowRelatedData = findFlowRelatedData(data);
+        if (flowRelatedData == null) {
+            return;
+        }
 
-            FlowRelatedData flowRelatedData = findFlowRelatedData(data);
-            if (flowRelatedData == null) {
-                return;
-            }
+        String uniqueIndex = buildLldpUniqueIndex(data, flowRelatedData.getOriginalVlan());
+        SwitchConnectedDevice device = Optional.ofNullable(switchConnectedDeviceCache.get(uniqueIndex))
+                .orElseGet(() -> switchConnectedDeviceRepository.findLldpByUniqueIndex(uniqueIndex).orElse(null));
 
-            SwitchConnectedDevice device = getOrCreateLldpDevice(data, flowRelatedData.originalVlan);
-
-            if (device == null) {
-                return;
-            }
-
-            device.setTtl(data.getTtl());
-            device.setPortDescription(data.getPortDescription());
-            device.setSystemName(data.getSystemName());
-            device.setSystemDescription(data.getSystemDescription());
-            device.setSystemCapabilities(data.getSystemCapabilities());
-            device.setManagementAddress(data.getManagementAddress());
-            device.setTimeLastSeen(Instant.ofEpochMilli(data.getTimestamp()));
-            device.setFlowId(flowRelatedData.flowId);
-            device.setSource(flowRelatedData.source);
-        });
+        if (device != null) {
+            transactionManager.doInTransaction(() -> {
+                device.setTtl(data.getTtl());
+                device.setPortDescription(data.getPortDescription());
+                device.setSystemName(data.getSystemName());
+                device.setSystemDescription(data.getSystemDescription());
+                device.setSystemCapabilities(data.getSystemCapabilities());
+                device.setManagementAddress(data.getManagementAddress());
+                device.setTimeLastSeen(Instant.ofEpochMilli(data.getTimestamp()));
+                device.setFlowId(flowRelatedData.getFlowId());
+                device.setSource(flowRelatedData.getSource());
+            });
+        } else {
+            createLldpDevice(data, flowRelatedData);
+        }
     }
 
     /**
      * Handle Arp info data.
      */
     public void handleArpData(ArpInfoData data) {
-        transactionManager.doInTransaction(() -> {
+        FlowRelatedData flowRelatedData = findFlowRelatedData(data);
+        if (flowRelatedData == null) {
+            return;
+        }
 
-            FlowRelatedData flowRelatedData = findFlowRelatedData(data);
-            if (flowRelatedData == null) {
-                return;
-            }
+        String uniqueIndex = buildArpUniqueIndex(data, flowRelatedData.getOriginalVlan());
+        SwitchConnectedDevice device = Optional.ofNullable(switchConnectedDeviceCache.get(uniqueIndex))
+                .orElseGet(() -> switchConnectedDeviceRepository.findArpByUniqueIndex(uniqueIndex).orElse(null));
 
-            SwitchConnectedDevice device = getOrCreateArpDevice(data, flowRelatedData.originalVlan);
-
-            if (device == null) {
-                return;
-            }
-
-            device.setTimeLastSeen(Instant.ofEpochMilli(data.getTimestamp()));
-            device.setFlowId(flowRelatedData.flowId);
-            device.setSource(flowRelatedData.source);
-        });
+        if (device != null) {
+            transactionManager.doInTransaction(() -> {
+                device.setTimeLastSeen(Instant.ofEpochMilli(data.getTimestamp()));
+                device.setFlowId(flowRelatedData.getFlowId());
+                device.setSource(flowRelatedData.getSource());
+            });
+        } else {
+            createArpDevice(data, flowRelatedData);
+        }
     }
-
+    
     /**
-     * Handle lacp info data.
+     * Handle Lacp info data.
      */
     public void handleLacpData(LacpInfoData data) {
         transactionManager.doInTransaction(() -> {
@@ -200,7 +206,7 @@ public class PacketService {
             }
         });
     }
-    
+
     private FlowRelatedData findFlowRelatedData(ConnectedDevicePacketBase data) {
         long cookie = data.getCookie();
         if (cookie == LLDP_POST_INGRESS_COOKIE
@@ -346,6 +352,18 @@ public class PacketService {
         return null;
     }
 
+    @VisibleForTesting
+    String buildLldpUniqueIndex(LldpInfoData data, int vlan) {
+        return buildUniqueLldpIndex(data.getSwitchId(), data.getPortNumber(), vlan, data.getMacAddress(),
+                data.getChassisId(), data.getPortId());
+    }
+
+    @VisibleForTesting
+    String buildArpUniqueIndex(ArpInfoData data, int vlan) {
+        return buildUniqueArpIndex(data.getSwitchId(), data.getPortNumber(), vlan, data.getMacAddress(),
+                data.getIpAddress());
+    }
+
     private FlowRelatedData getOneSwitchOnePortFlowRelatedData(
             Flow flow, int outputVlan, int customerVlan, ConnectedDevicePacketBase data) {
         if (flow.getDestVlan() == outputVlan) {
@@ -424,27 +442,19 @@ public class PacketService {
         }
     }
 
-    private SwitchConnectedDevice getOrCreateLldpDevice(LldpInfoData data, int vlan) {
-        Optional<SwitchConnectedDevice> device = switchConnectedDeviceRepository
-                .findLldpByUniqueFieldCombination(
-                        data.getSwitchId(), data.getPortNumber(), vlan, data.getMacAddress(),
-                        data.getChassisId(), data.getPortId());
+    private void createLldpDevice(LldpInfoData data, FlowRelatedData flowRelatedData) {
+        Optional<Switch> optionalSwitch = switchRepository.findById(data.getSwitchId());
+        int vlan = flowRelatedData.getOriginalVlan();
 
-        if (device.isPresent()) {
-            return device.get();
-        }
-
-        Optional<Switch> sw = switchRepository.findById(data.getSwitchId());
-
-        if (!sw.isPresent()) {
+        if (!optionalSwitch.isPresent()) {
             log.warn("Got LLDP packet from non existent switch {}. Port number '{}', vlan '{}', mac address '{}', "
                             + "chassis id '{}', port id '{}'", data.getSwitchId(), data.getPortNumber(), vlan,
                     data.getMacAddress(), data.getChassisId(), data.getPortId());
-            return null;
+            return;
         }
 
         SwitchConnectedDevice connectedDevice = SwitchConnectedDevice.builder()
-                .switchObj(sw.get())
+                .switchObj(optionalSwitch.get())
                 .portNumber(data.getPortNumber())
                 .vlan(vlan)
                 .macAddress(data.getMacAddress())
@@ -452,27 +462,29 @@ public class PacketService {
                 .chassisId(data.getChassisId())
                 .portId(data.getPortId())
                 .timeFirstSeen(Instant.ofEpochMilli(data.getTimestamp()))
+                .ttl(data.getTtl())
+                .portDescription(data.getPortDescription())
+                .systemName(data.getSystemName())
+                .systemDescription(data.getSystemDescription())
+                .systemCapabilities(data.getSystemCapabilities())
+                .managementAddress(data.getManagementAddress())
+                .timeLastSeen(Instant.ofEpochMilli(data.getTimestamp()))
+                .flowId(flowRelatedData.getFlowId())
+                .source(flowRelatedData.getSource())
                 .build();
         switchConnectedDeviceRepository.add(connectedDevice);
-        return connectedDevice;
+        switchConnectedDeviceCache.put(buildLldpUniqueIndex(data, vlan), connectedDevice);
     }
 
-    private SwitchConnectedDevice getOrCreateArpDevice(ArpInfoData data, int vlan) {
-        Optional<SwitchConnectedDevice> device = switchConnectedDeviceRepository
-                .findArpByUniqueFieldCombination(
-                        data.getSwitchId(), data.getPortNumber(), vlan, data.getMacAddress(), data.getIpAddress());
-
-        if (device.isPresent()) {
-            return device.get();
-        }
-
+    private void createArpDevice(ArpInfoData data, FlowRelatedData flowRelatedData) {
         Optional<Switch> sw = switchRepository.findById(data.getSwitchId());
+        int vlan = flowRelatedData.getOriginalVlan();
 
         if (!sw.isPresent()) {
             log.warn("Got ARP packet from non existent switch {}. Port number '{}', vlan '{}', mac address '{}', "
                             + "ip address '{}'", data.getSwitchId(), data.getPortNumber(), vlan, data.getMacAddress(),
                     data.getIpAddress());
-            return null;
+            return;
         }
 
         SwitchConnectedDevice connectedDevice = SwitchConnectedDevice.builder()
@@ -483,10 +495,12 @@ public class PacketService {
                 .type(ARP)
                 .ipAddress(data.getIpAddress())
                 .timeFirstSeen(Instant.ofEpochMilli(data.getTimestamp()))
+                .timeLastSeen(Instant.ofEpochMilli(data.getTimestamp()))
+                .flowId(flowRelatedData.getFlowId())
+                .source(flowRelatedData.getSource())
                 .build();
         switchConnectedDeviceRepository.add(connectedDevice);
-        return connectedDevice;
-
+        switchConnectedDeviceCache.put(buildArpUniqueIndex(data, vlan), connectedDevice);
     }
 
     private String getPacketName(InfoData data) {

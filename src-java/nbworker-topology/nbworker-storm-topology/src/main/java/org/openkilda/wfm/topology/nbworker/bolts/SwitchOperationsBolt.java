@@ -30,6 +30,7 @@ import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowsPerPortForSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetLacpStatusRequest;
 import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesRequest;
@@ -43,6 +44,7 @@ import org.openkilda.messaging.nbtopology.request.SwitchPatchRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.GetFlowsPerPortForSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchConnectedDeviceDto;
 import org.openkilda.messaging.nbtopology.response.SwitchConnectedDevicesResponse;
@@ -160,9 +162,11 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             result = getLagPorts((GetSwitchLagPortsRequest) request);
         } else if (request instanceof GetSwitchLacpStatusRequest) {
             result = getSwitchLacpStatus((GetSwitchLacpStatusRequest) request);
-        }  else if (request instanceof GetLacpStatusRequest) {
+        } else if (request instanceof GetLacpStatusRequest) {
             result = getLacpStatus((GetLacpStatusRequest) request);
-        }   else {
+        } else if (request instanceof GetFlowsPerPortForSwitchRequest) {
+            result = getSwitchFlows((GetFlowsPerPortForSwitchRequest) request);
+        } else {
             unhandledInput(tuple);
         }
 
@@ -338,7 +342,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
                     .collect(Collectors.toList());
         } catch (SwitchNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(),
-                    "Could not get LACP Status for non-existent switch");
+                    "Could not get LACP Status for non existent switch");
         }
     }
 
@@ -370,6 +374,16 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
     private SwitchConnectionsResponse getSwitchConnections(SwitchConnectionsRequest request)
             throws SwitchNotFoundException {
         return switchOperationsService.getSwitchConnections(request.getSwitchId());
+    }
+
+    private List<GetFlowsPerPortForSwitchResponse> getSwitchFlows(GetFlowsPerPortForSwitchRequest request) {
+        try {
+            return Collections.singletonList(
+                    switchOperationsService.getSwitchFlows(request.getSwitchId(), request.getPorts()));
+        } catch (SwitchNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(),
+                    "Could not get flows for non-existent switch");
+        }
     }
 
     @Override
@@ -438,3 +452,4 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
         log.warn("Discard islBfdPropertiesChanged link carrier call");
     }
 }
+

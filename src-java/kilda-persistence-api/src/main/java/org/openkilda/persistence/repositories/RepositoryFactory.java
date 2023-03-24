@@ -89,4 +89,12 @@ public interface RepositoryFactory {
     PortRepository createPortRepository();
 
     LacpPartnerRepository createLacpPartnerRepository();
+
+    HaFlowRepository createHaFlowRepository();
+
+    HaSubFlowRepository createHaSubFlowRepository();
+
+    HaFlowPathRepository createHaFlowPathRepository();
 }
+
+

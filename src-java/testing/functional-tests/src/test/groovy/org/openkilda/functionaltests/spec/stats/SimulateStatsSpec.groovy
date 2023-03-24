@@ -86,7 +86,7 @@ class SimulateStatsSpec extends HealthCheckSpecification {
             expectedMetricValueMap.each { metric, expectedValue ->
                 soft.checkSucceeds {
                     def values = otsdb.query(1.minute.ago, "$metricPrefix$metric", [flowid: flow.flowId]).dps.values()
-                    assert values.contains(expectedValue), "metric: $metric"
+                    assert values.contains((long)expectedValue), "metric: $metric"
                 }
             }
             soft.verify()

@@ -57,6 +57,7 @@ import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetAllSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowsPerPortForSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetLacpStatusRequest;
 import org.openkilda.messaging.nbtopology.request.GetPortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchConnectedDevicesRequest;
@@ -72,6 +73,7 @@ import org.openkilda.messaging.nbtopology.request.UpdatePortPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.GetFlowsPerPortForSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchLacpStatusResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchLagPortResponse;
@@ -111,6 +113,7 @@ import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
 import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
@@ -126,6 +129,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -527,6 +531,20 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     }
 
     @Override
+    public CompletableFuture<SwitchFlowsPerPortResponse> getFlowsPerPortForSwitch(SwitchId switchId,
+                                                                                  Collection<Integer> ports) {
+        log.info("API request: Get all flows per port for the switch: {} with the port filter: {}", switchId, ports);
+        final String correlationId = RequestCorrelationId.getId();
+        GetFlowsPerPortForSwitchRequest data = new GetFlowsPerPortForSwitchRequest(switchId, ports);
+        CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGet(nbworkerTopic, message)
+                .thenApply(GetFlowsPerPortForSwitchResponse.class::cast)
+                .thenApply(switchMapper::toSwitchFlowsPerPortResponseV2Api);
+    }
+
+
+    @Override
     public CompletableFuture<SwitchPropertiesDto> getSwitchProperties(SwitchId switchId) {
         log.info("API request: Get switch properties for the switch: {}", switchId);
         final String correlationId = RequestCorrelationId.getId();
@@ -801,3 +819,5 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         return filters;
     }
 }
+
+
