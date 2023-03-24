@@ -110,7 +110,7 @@ import java.util.stream.IntStream;
 public class StatsTopologyTest extends AbstractStormTest {
 
     private static final long timestamp = System.currentTimeMillis();
-    private static final int POLL_TIMEOUT = 1000;
+    private static final int POLL_TIMEOUT = 100;
     private static final String POLL_DATAPOINT_ASSERT_MESSAGE = "Could not poll all %d datapoints, got only %d records";
     private static final String METRIC_PREFIX = "kilda.";
     private static final int ENCAPSULATION_ID = 123;
