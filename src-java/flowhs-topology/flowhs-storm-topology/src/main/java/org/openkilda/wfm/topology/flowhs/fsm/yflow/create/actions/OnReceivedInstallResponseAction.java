@@ -17,10 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
-import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
-import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
@@ -75,12 +72,7 @@ public class OnReceivedInstallResponseAction extends
                 Set<UUID> failedUuids = response.getFailedCommandIds().keySet();
                 InstallSpeakerCommandsRequest installRequest = request.get();
                 List<OfCommand> commands = installRequest.getCommands().stream()
-                        .filter(command -> command instanceof FlowCommand
-                                && failedUuids.contains(((FlowCommand) command).getData().getUuid())
-                                || command instanceof MeterCommand
-                                && failedUuids.contains(((MeterCommand) command).getData().getUuid())
-                                || command instanceof GroupCommand
-                                && failedUuids.contains(((GroupCommand) command).getData().getUuid()))
+                        .filter(command -> failedUuids.contains(command.getUuid()))
                         .collect(Collectors.toList());
                 InstallSpeakerCommandsRequest retryRequest = installRequest.toBuilder()
                         .commands(OfCommandConverter.INSTANCE.removeExcessDependencies(commands)).build();
