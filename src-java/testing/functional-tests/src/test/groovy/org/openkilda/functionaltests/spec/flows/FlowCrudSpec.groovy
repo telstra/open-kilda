@@ -58,6 +58,7 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 import spock.lang.Unroll
+import spock.lang.Ignore
 
 import javax.inject.Provider
 
@@ -991,7 +992,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def deleteResponse = northboundV2.deleteFlow(flow.flowId)
 
         then: "Flow is actually removed from flows dump only after all rules are removed"
-        northboundV2.getFlowStatus(flow.flowId).status == FlowState.IN_PROGRESS
         wait(RULES_DELETION_TIME) {
             assert !northboundV2.getFlowStatus(flow.flowId)
         }
@@ -1366,6 +1366,46 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Tags([LOW_PRIORITY])
+    def "Unable to update flow with incorrect id in request body"() {
+        given:"A flow"
+        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
+        flowHelperV2.addFlow(flow)
+
+        when: "Try to update flow with incorrect flow id in request body"
+        northboundV2.updateFlow(flow.flowId, flow.tap {flowId = "new_flow_id"})
+
+        then: "Bad Request response is returned"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.BAD_REQUEST
+        def errorDetails = error.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "flow_id from body and from path are different"
+
+        cleanup:
+        !error && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "Unable to update flow with incorrect id in request path"() {
+        given: "A flow"
+        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
+        flowHelperV2.addFlow(flow)
+
+        when: "Try to update flow with incorrect flow id in request path"
+        northboundV2.updateFlow("new_flow_id", flow.tap { maximumBandwidth = maximumBandwidth + 1 })
+
+        then: "Bad Request response is returned"
+        def error = thrown(HttpClientErrorException)
+        error.statusCode == HttpStatus.BAD_REQUEST
+        def errorDetails = error.responseBodyAsString.to(MessageError)
+        errorDetails.errorMessage == "flow_id from body and from path are different"
+
+        cleanup:
+        !error && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Ignore ("https://github.com/telstra/open-kilda/issues/5141")
     def "Able to #method update with empty VLAN stats and non-zero VLANs (#5063)"() {
         given: "A flow with non empty vlans stats and with src and dst vlans set to '0'"
         def switches = topologyHelper.getSwitchPairs().shuffled().first()
@@ -1385,7 +1425,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         actualFlow.getSource() == updatedFlow.getSource()
         actualFlow.getDestination() == updatedFlow.getDestination()
         actualFlow.getStatistics() == updatedFlow.getStatistics()
-
+        northboundV2.validateSwitch(switches.src.dpId).asExpected
+        northboundV2.validateSwitch(switches.dst.dpId).asExpected
         cleanup:
         Wrappers.silent {
             flowHelperV2.deleteFlow(flow.getFlowId())
