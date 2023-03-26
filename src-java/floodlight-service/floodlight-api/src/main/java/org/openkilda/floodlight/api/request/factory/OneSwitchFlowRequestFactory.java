@@ -28,6 +28,7 @@ import org.openkilda.model.MirrorConfig;
 
 import lombok.Builder;
 
+import java.util.Set;
 import java.util.UUID;
 
 public class OneSwitchFlowRequestFactory extends FlowSegmentRequestFactory {
@@ -36,9 +37,9 @@ public class OneSwitchFlowRequestFactory extends FlowSegmentRequestFactory {
     @Builder
     public OneSwitchFlowRequestFactory(
             MessageContext messageContext, FlowSegmentMetadata metadata, FlowEndpoint endpoint, MeterConfig meterConfig,
-            FlowEndpoint egressEndpoint, RulesContext rulesContext, MirrorConfig mirrorConfig) {
+            FlowEndpoint egressEndpoint, RulesContext rulesContext, MirrorConfig mirrorConfig, Set<Integer> statVlans) {
         this(new RequestBlank(messageContext, metadata, endpoint, meterConfig, egressEndpoint,
-                rulesContext, mirrorConfig));
+                rulesContext, mirrorConfig, statVlans));
     }
 
     private OneSwitchFlowRequestFactory(OneSwitchFlowRequest requestBlank) {
@@ -64,8 +65,10 @@ public class OneSwitchFlowRequestFactory extends FlowSegmentRequestFactory {
     private static class RequestBlank extends OneSwitchFlowRequest {
         RequestBlank(
                 MessageContext context, FlowSegmentMetadata metadata, FlowEndpoint endpoint, MeterConfig meterConfig,
-                FlowEndpoint egressEndpoint, RulesContext rulesContext, MirrorConfig mirrorConfig) {
-            super(context, dummyCommandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext, mirrorConfig);
+                FlowEndpoint egressEndpoint, RulesContext rulesContext, MirrorConfig mirrorConfig,
+                Set<Integer> statVlans) {
+            super(context, dummyCommandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext, mirrorConfig,
+                    statVlans);
         }
     }
 }

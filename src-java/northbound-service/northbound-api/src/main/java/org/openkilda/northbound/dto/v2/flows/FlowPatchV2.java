@@ -45,4 +45,6 @@ public class FlowPatchV2 {
     private String encapsulationType;
     private String pathComputationStrategy;
     private String targetPathComputationStrategy;
+
+    private FlowStatistics statistics;
 }

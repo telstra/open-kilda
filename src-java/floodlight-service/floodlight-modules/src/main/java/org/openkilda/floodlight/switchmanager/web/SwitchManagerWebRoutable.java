@@ -30,7 +30,6 @@ public class SwitchManagerWebRoutable implements RestletRoutable {
     @Override
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
-        router.attach("/flow", FlowResource.class);
         router.attach("/flows/switch_id/{switch_id}", FlowsResource.class);
         router.attach("/meters/switch_id/{switch_id}", MetersResource.class);
         router.attach("/switch/enable_bfd", EnableBfdResource.class);

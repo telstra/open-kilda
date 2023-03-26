@@ -63,6 +63,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "yFlowId", ignore = true)
     @Mapping(target = "yFlow", ignore = true)
+    @Mapping(target = "vlanStatistics", source = "vlanStatistics")
     public abstract Flow toFlow(@NonNull FlowRequest request);
 
     @Mapping(target = "flowId", source = "flowId")
@@ -85,6 +86,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "type", ignore = true)
     @Mapping(target = "bulkUpdateFlowIds", ignore = true)
     @Mapping(target = "doNotRevert", ignore = true)
+    @Mapping(target = "vlanStatistics", source = "vlanStatistics")
     protected abstract FlowRequest generatedMap(Flow flow);
 
     public SwitchId map(String value) {

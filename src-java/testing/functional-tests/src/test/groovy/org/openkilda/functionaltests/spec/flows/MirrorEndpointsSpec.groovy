@@ -158,12 +158,11 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         and: "Original flow rule counter is not increased"
         flowRule.packetCount == findFlowRule(getFlowRules(swPair.src.dpId), mirrorDirection).packetCount
 
-        //https://github.com/telstra/open-kilda/issues/4517
-//        and: "System collects stat for mirror cookie in otsdb"
-//        Wrappers.wait(statsRouterRequestInterval) {
-//            def tags = [flowid: flow.flowId, cookie: mirrorRule.cookie]
-//            assert otsdb.query(genTrafficTime, metricPrefix + "flow.raw.bytes", tags).dps.size() > 0
-//        }
+        and: "System collects stat for mirror cookie in otsdb"
+        Wrappers.wait(statsRouterRequestInterval) {
+            def tags = [flowid: flow.flowId, cookie: mirrorRule.cookie]
+            assert otsdb.query(genTrafficTime, metricPrefix + "flow.raw.bytes", tags).dps.size() > 0
+        }
 
         and: "Traffic is also received at the mirror point (check only if second tg available)"
         if (mirrorTg) {
@@ -994,7 +993,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         error.statusCode == HttpStatus.BAD_REQUEST
         def errorDetails = error.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
-        errorDetails.errorDescription == "Flow mirror point is created for the flow $flow.flowId, lldp or arp can not be set to true."
+        errorDetails.errorDescription.toLowerCase() == "Flow mirror point is created for the flow $flow.flowId, lldp or arp can not be set to true.".toLowerCase()
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
@@ -1025,7 +1024,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         flowHelperV2.createMirrorPoint(flow.flowId, mirrorPoint)
 
         when: "Try to enable connected devices for switch where mirror is created"
-        def originalProps = northbound.getSwitchProperties(swPair.src.dpId)
+        def originalProps = switchHelper.getCachedSwProps(swPair.src.dpId)
         northbound.updateSwitchProperties(swPair.src.dpId, originalProps.jacksonCopy().tap {
             it.switchArp = true
             it.switchLldp = true
@@ -1050,7 +1049,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         given: "A switch with enabled connected devices"
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         def swPair = topologyHelper.switchPairs[0]
-        def originalProps = northbound.getSwitchProperties(swPair.src.dpId)
+        def originalProps = switchHelper.getCachedSwProps(swPair.src.dpId)
         northbound.updateSwitchProperties(swPair.src.dpId, originalProps.jacksonCopy().tap {
             it.switchArp = true
             it.switchLldp = true
@@ -1182,7 +1181,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     }
 
     private SwitchPropertiesDto enableMultiTableIfNeeded(boolean needDevices, SwitchId switchId) {
-        def initialProps = northbound.getSwitchProperties(switchId)
+        def initialProps = switchHelper.getCachedSwProps(switchId)
         if (needDevices && !initialProps.multiTable) {
             def sw = topology.switches.find { it.dpId == switchId }
             switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
@@ -1214,7 +1213,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     @Memoized
     def initialSwPropsCache(SwitchId switchId) {
-        return northbound.getSwitchProperties(switchId)
+        return switchHelper.getCachedSwProps(switchId)
     }
 
     /**

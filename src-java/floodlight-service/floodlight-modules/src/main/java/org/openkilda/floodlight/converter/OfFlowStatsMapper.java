@@ -32,6 +32,7 @@ import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.SwitchId;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 import org.projectfloodlight.openflow.protocol.OFBucket;
@@ -77,6 +78,8 @@ public abstract class OfFlowStatsMapper {
      * OF specification added 13 bit that defines existence of vlan tag.
      */
     private static final int VLAN_MASK = 0xFFF;
+
+    private static final String DROP = "drop";
 
     /**
      * Convert {@link OFFlowStatsEntry} to format that kilda supports {@link FlowEntry}.
@@ -175,16 +178,20 @@ public abstract class OfFlowStatsMapper {
     public FlowInstructions toFlowInstructions(final List<OFInstruction> instructions) {
         FlowInstructions.FlowInstructionsBuilder flowInstructions = FlowInstructions.builder();
 
-        for (OFInstruction entry : instructions) {
-            if (entry instanceof OFInstructionApplyActions) {
-                List<OFAction> actions = ((OFInstructionApplyActions) entry).getActions();
-                flowInstructions.applyActions(toFlowApplyActions(actions));
-            } else if (entry instanceof OFInstructionMeter) {
-                flowInstructions.goToMeter(((OFInstructionMeter) entry).getMeterId());
-            } else if (entry instanceof OFInstructionGotoTable) {
-                flowInstructions.goToTable(((OFInstructionGotoTable) entry).getTableId().getValue());
+        if (CollectionUtils.isEmpty(instructions)) {
+            flowInstructions.none(DROP);
+        } else {
+            for (OFInstruction entry : instructions) {
+                if (entry instanceof OFInstructionApplyActions) {
+                    List<OFAction> actions = ((OFInstructionApplyActions) entry).getActions();
+                    flowInstructions.applyActions(toFlowApplyActions(actions));
+                } else if (entry instanceof OFInstructionMeter) {
+                    flowInstructions.goToMeter(((OFInstructionMeter) entry).getMeterId());
+                } else if (entry instanceof OFInstructionGotoTable) {
+                    flowInstructions.goToTable(((OFInstructionGotoTable) entry).getTableId().getValue());
+                }
+                // add handling for other instructions here
             }
-            // add handling for other instructions here
         }
 
         return flowInstructions.build();
@@ -287,7 +294,9 @@ public abstract class OfFlowStatsMapper {
      */
     public FlowStatsEntry toFlowStatsEntry(OFFlowStatsEntry entry) {
         try {
-            return new FlowStatsEntry(entry.getTableId().getValue(),
+            return new FlowStatsEntry(
+                    entry.getTableId().getValue(),
+                    entry.getPriority(),
                     entry.getCookie().getValue(),
                     entry.getPacketCount().getValue(),
                     entry.getByteCount().getValue(),

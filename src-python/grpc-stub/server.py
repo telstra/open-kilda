@@ -99,7 +99,7 @@ class Greeter(noviflow_pb2_grpc.NoviFlowGrpcServicer):
             del self.storage.logical_ports[port_number]
             return noviflow_pb2.CliReply(reply_status=0)
 
-        return noviflow_pb2.LogicalPort(reply_status=191)
+        return noviflow_pb2.CliReply(reply_status=191)
 
     def SetLogMessages(self, request, context):
         return noviflow_pb2.CliReply(reply_status=0)

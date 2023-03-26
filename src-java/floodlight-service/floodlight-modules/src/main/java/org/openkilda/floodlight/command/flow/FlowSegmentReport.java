@@ -47,7 +47,8 @@ public class FlowSegmentReport extends SpeakerCommandRemoteReport {
     }
 
     public void reply(KafkaChannel kafkaChannel, IKafkaProducerService kafkaProducerService, String requestKey) {
-        kafkaProducerService.sendMessageAndTrack(kafkaChannel.getSpeakerFlowHsTopic(), requestKey, assembleResponse());
+        kafkaProducerService.sendMessageAndTrack(kafkaChannel.getSpeakerFlowHsResponseTopic(),
+                requestKey, assembleResponse());
     }
 
     private SpeakerResponse assembleResponse() {

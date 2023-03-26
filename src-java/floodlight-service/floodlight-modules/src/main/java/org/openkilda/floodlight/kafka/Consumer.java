@@ -27,7 +27,6 @@ import org.openkilda.floodlight.service.kafka.KafkaConsumerSetup;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.zookeeper.ZooKeeperEventObserver;
 import org.openkilda.floodlight.service.zookeeper.ZooKeeperService;
-import org.openkilda.floodlight.switchmanager.ISwitchManager;
 
 import com.google.common.annotations.VisibleForTesting;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -58,7 +57,6 @@ public class Consumer implements Runnable, ZooKeeperEventObserver {
     private final long pollTimeout;
 
     private final KafkaUtilityService kafkaUtilityService;
-    private final ISwitchManager switchManager; // HACK alert.. adding to facilitate safeSwitchTick()
 
     private final Set<Future<?>> tasks = new HashSet<>();
 
@@ -79,7 +77,6 @@ public class Consumer implements Runnable, ZooKeeperEventObserver {
         this.pollTimeout = pollTimeout;
 
         kafkaUtilityService = moduleContext.getServiceImpl(KafkaUtilityService.class);
-        switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
 
         zkService = moduleContext.getServiceImpl(ZooKeeperService.class);
         zkService.subscribe(this);
@@ -129,8 +126,6 @@ public class Consumer implements Runnable, ZooKeeperEventObserver {
                         // force to commit after each completed batch or in a case of an exception / error.
                         offsetRegistry.commitOffsets();
                     }
-
-                    switchManager.safeModeTick(); // HACK alert .. should go in its own timer loop
                 }
             } catch (InterruptException ex) {
                 // Gracefully finish loop on thread interruption.

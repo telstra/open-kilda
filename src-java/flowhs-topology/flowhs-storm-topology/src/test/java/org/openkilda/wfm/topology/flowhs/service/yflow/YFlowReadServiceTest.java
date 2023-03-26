@@ -112,7 +112,7 @@ public class YFlowReadServiceTest extends AbstractYFlowTest<FlowSegmentRequest> 
         YFlowPathsResponse yFlowResponse = yFlowReadService.getYFlowPaths(yFlowId);
         // then
         // Only 1 shared segment
-        assertEquals(1, yFlowResponse.getSharedPath().getForwardPath().size());
+        assertEquals(2, yFlowResponse.getSharedPath().getForwardPath().size());
         assertEquals(SWITCH_SHARED, yFlowResponse.getSharedPath().getForwardPath().get(0).getSwitchId());
         assertEquals(2, yFlowResponse.getSubFlowPaths().size());
         // No protected paths
@@ -143,11 +143,13 @@ public class YFlowReadServiceTest extends AbstractYFlowTest<FlowSegmentRequest> 
         YFlowPathsResponse yFlowPathsResponse = yFlowReadService.getYFlowPaths(yFlowId);
         // then
         // Only 1 shared segment
-        assertEquals(1, yFlowPathsResponse.getSharedPath().getForwardPath().size());
+        assertEquals(2, yFlowPathsResponse.getSharedPath().getForwardPath().size());
+        assertEquals(2, yFlowPathsResponse.getSharedPath().getReversePath().size());
         assertEquals(SWITCH_SHARED, yFlowPathsResponse.getSharedPath().getForwardPath().get(0).getSwitchId());
         assertEquals(2, yFlowPathsResponse.getSubFlowPaths().size());
         // The protected paths
-        assertEquals(1, yFlowPathsResponse.getSharedPath().getProtectedPath().getForwardPath().size());
+        assertEquals(2, yFlowPathsResponse.getSharedPath().getProtectedPath().getForwardPath().size());
+        assertEquals(2, yFlowPathsResponse.getSharedPath().getProtectedPath().getReversePath().size());
         assertEquals(SWITCH_SHARED,
                 yFlowPathsResponse.getSharedPath().getProtectedPath().getForwardPath().get(0).getSwitchId());
     }

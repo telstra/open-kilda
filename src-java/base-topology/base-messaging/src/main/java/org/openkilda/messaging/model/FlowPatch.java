@@ -23,6 +23,8 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.Set;
+
 @Data
 @Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
@@ -45,4 +47,5 @@ public class FlowPatch {
     private Boolean strictBandwidth;
     private String description;
     private FlowEncapsulationType encapsulationType;
+    private Set<Integer> vlanStatistics;
 }

@@ -158,9 +158,9 @@ public final class PredicateBuilder {
                 return ignore -> true;
             case REMOVE_DEFAULTS:
             case REMOVE_ADD_DEFAULTS:
+            case OVERWRITE_DEFAULTS:
                 return PredicateBuilder::allServiceRulesPredicate;
             case IGNORE_DEFAULTS:
-            case OVERWRITE_DEFAULTS:
                 return PredicateBuilder::allNotServiceRulesPredicate;
             case REMOVE_DROP:
                 return buildPredicate(DROP_RULE_COOKIE);
@@ -226,7 +226,7 @@ public final class PredicateBuilder {
             case REMOVE_SERVER_42_ISL_RTT_OUTPUT:
                 return buildPredicate(SERVER_42_ISL_RTT_OUTPUT_COOKIE);
             default:
-                throw new IllegalStateException(format("Unknown install rules action %s", action));
+                throw new IllegalStateException(format("Received unexpected delete switch rule action: %s", action));
         }
     }
 

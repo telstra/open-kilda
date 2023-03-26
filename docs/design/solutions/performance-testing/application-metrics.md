@@ -1,10 +1,10 @@
-# Kilda Application metrics
+# OpenKilda Application metrics
 
 ## Overview
-This doc describes the approach for collecting and publishing of Kilda application metrics.
+This doc describes the approach for collecting and publishing of OpenKilda application metrics.
 
 ## Goals
-The goal is to gather application metrics from Kilda on the development and production environments.
+The goal is to gather application metrics from OpenKilda on the development and production environments.
 
 The metrics are to be used for:
 - Application performance monitoring and management (includes capacity planning and product development).
@@ -12,7 +12,7 @@ The metrics are to be used for:
 - Ensure that introduced changes don't cause performance degradation.
 
 ## The solution
-There are 2 general types of deployable components in Kilda: 
+There are 2 general types of deployable components in OpenKilda: 
 - Stand-alone (run as a dedicated process)
 - Storm topologies
 

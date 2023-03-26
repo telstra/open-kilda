@@ -80,8 +80,9 @@ org.openkilda.floodlight.pathverification.PathVerificationService.hmac256-secret
 org.openkilda.floodlight.pathverification.PathVerificationService.verification-bcast-packet-dst={{ getv "/kilda_floodlight_broadcast_mac_address" }}
 org.openkilda.floodlight.KildaCore.flow-ping-magic-src-mac-address={{ getv "/kilda_floodlight_flow_ping_magic_src_mac_address" }}
 org.openkilda.floodlight.KildaCore.server42-flow-rtt-udp-port-offset={{ getv "/kilda_floodlight_server42_flow_rtt_udp_port_offset" }}
-org.openkilda.floodlight.KildaCore.server42-isl-rtt-udp-port-offset={{ getv "/kilda_floodlight_server42_isl_rtt_udp_port_offset" }}
-org.openkilda.floodlight.KildaCore.server42-isl-rtt-magic-mac-address={{ getv "/kilda_floodlight_server42_isl_rtt_magic_mac_address" }}
+org.openkilda.floodlight.KildaCore.lacp-system-id={{ getv "/kilda_floodlight_lacp_system_id" }}
+org.openkilda.floodlight.KildaCore.lacp-system-priority={{ getv "/kilda_floodlight_lacp_system_priority" }}
+org.openkilda.floodlight.KildaCore.lacp-port-priority={{ getv "/kilda_floodlight_lacp_port_priority" }}
 org.openkilda.floodlight.switchmanager.SwitchManager.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
 org.openkilda.floodlight.switchmanager.SwitchManager.connect-mode=AUTO
 org.openkilda.floodlight.switchmanager.SwitchManager.broadcast-rate-limit=200
@@ -93,3 +94,4 @@ org.openkilda.floodlight.switchmanager.SwitchManager.system-meter-burst-size-in-
 org.openkilda.floodlight.switchmanager.SwitchManager.ovs-meters-enabled={{ getv "/kilda_floodlight_ovs_meters_enabled" }}
 org.openkilda.floodlight.KafkaChannel.floodlight-region=
 org.openkilda.floodlight.KafkaChannel.kafka-groupid=
+org.openkilda.floodlight.KafkaChannel.kafka-messages-chunk-size={{ getv "/kilda_floodlight_kafka_messages_chunk_size" }}

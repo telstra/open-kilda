@@ -15,17 +15,22 @@
 
 package org.openkilda.messaging.info.stats;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
 
 import java.io.Serializable;
 
 /**
  * TODO: add javadoc.
  */
+@Getter
 public class FlowStatsEntry implements Serializable {
-
     @JsonProperty
     private int tableId;
+
+    @JsonProperty
+    private int priority;
 
     @JsonProperty
     private long cookie;
@@ -42,13 +47,16 @@ public class FlowStatsEntry implements Serializable {
     @JsonProperty
     private int outPort;
 
+    @JsonCreator
     public FlowStatsEntry(@JsonProperty("tableId") int tableId,
+                          @JsonProperty("priority") int priority,
                           @JsonProperty("cookie") long cookie,
                           @JsonProperty("packetCount") long packetCount,
                           @JsonProperty("byteCount") long byteCount,
                           @JsonProperty("inPort") int inPort,
                           @JsonProperty("outPort") int outPort) {
         this.tableId = tableId;
+        this.priority = priority;
         this.cookie = cookie;
         this.packetCount = packetCount;
         this.byteCount = byteCount;
@@ -56,27 +64,7 @@ public class FlowStatsEntry implements Serializable {
         this.outPort = outPort;
     }
 
-    public int getTableId() {
-        return tableId;
-    }
-
-    public long getCookie() {
-        return cookie;
-    }
-
-    public long getPacketCount() {
-        return packetCount;
-    }
-
-    public long getByteCount() {
-        return byteCount;
-    }
-
-    public int getInPort() {
-        return inPort;
-    }
-
-    public int getOutPort() {
-        return outPort;
+    public FlowStatsEntry(int tableId, long cookie, long packetCount, long byteCount, int inPort, int outPort) {
+        this(tableId, -1, cookie, packetCount, byteCount, inPort, outPort);
     }
 }

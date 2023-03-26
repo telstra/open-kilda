@@ -41,6 +41,8 @@ public interface FlowPathRepository extends Repository<FlowPath> {
 
     Optional<FlowPath> findByFlowIdAndCookie(String flowId, FlowSegmentCookie flowCookie);
 
+    Optional<FlowPath> findByCookie(FlowSegmentCookie flowCookie);
+
     Collection<FlowPath> findByFlowId(String flowId);
 
     Collection<FlowPath> findByFlowGroupId(String flowGroupId);
@@ -50,6 +52,8 @@ public interface FlowPathRepository extends Repository<FlowPath> {
     Collection<PathId> findPathIdsByFlowAffinityGroupId(String flowAffinityGroupId);
 
     Collection<PathId> findActualPathIdsByFlowIds(Set<String> flowIds);
+
+    Collection<PathId> findPathIdsBySharedBandwidthGroupId(String sharedBandwidthGroupId);
 
     /**
      * Finds paths that starts with passed {@param switchId} switch.

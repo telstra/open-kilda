@@ -15,24 +15,40 @@
 
 package org.openkilda.pce.exception;
 
+import org.openkilda.pce.finder.FailReason;
+import org.openkilda.pce.finder.FailReasonType;
+
+import java.util.Map;
+
 /**
  * Indicates that a path can't be found for a flow.
  */
 public class UnroutableFlowException extends Exception {
     private final String flowId;
     private final boolean ignoreBandwidth;
+    private final Map<FailReasonType, FailReason> failReasons;
 
     public UnroutableFlowException(String message) {
         super(message);
         this.flowId = null;
         this.ignoreBandwidth = false;
+        failReasons = null;
     }
+
+    public UnroutableFlowException(String message, Map<FailReasonType, FailReason> failReason) {
+        super(message);
+        this.flowId = null;
+        this.ignoreBandwidth = false;
+        this.failReasons = failReason;
+    }
+
 
     public UnroutableFlowException(String message, String flowId) {
         super(message);
 
         this.flowId = flowId;
         this.ignoreBandwidth = false;
+        failReasons = null;
     }
 
     public UnroutableFlowException(String message, Throwable cause, String flowId) {
@@ -44,6 +60,7 @@ public class UnroutableFlowException extends Exception {
 
         this.flowId = flowId;
         this.ignoreBandwidth = ignoreBandwidth;
+        failReasons = null;
     }
 
     public String getFlowId() {
@@ -52,5 +69,9 @@ public class UnroutableFlowException extends Exception {
 
     public boolean isIgnoreBandwidth() {
         return ignoreBandwidth;
+    }
+
+    public Map<FailReasonType, FailReason> getFailReason() {
+        return failReasons;
     }
 }

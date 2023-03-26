@@ -15,16 +15,18 @@
 
 package org.openkilda.wfm.topology.switchmanager.mappers;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.assertEquals;
 
-import org.openkilda.messaging.info.switches.GroupInfoEntry;
-import org.openkilda.messaging.info.switches.GroupsValidationEntry;
-import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
-import org.openkilda.messaging.info.switches.LogicalPortsValidationEntry;
-import org.openkilda.messaging.info.switches.MeterInfoEntry;
-import org.openkilda.messaging.info.switches.MetersValidationEntry;
-import org.openkilda.messaging.info.switches.RulesValidationEntry;
-import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.GroupsValidationEntryV2;
+import org.openkilda.messaging.info.switches.v2.LogicalPortInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.LogicalPortsValidationEntryV2;
+import org.openkilda.messaging.info.switches.v2.MeterInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.MetersValidationEntryV2;
+import org.openkilda.messaging.info.switches.v2.MisconfiguredInfo;
+import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.RulesValidationEntryV2;
+import org.openkilda.messaging.info.switches.v2.SwitchValidationResponseV2;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.IPv4Address;
 import org.openkilda.model.LagLogicalPort;
@@ -54,16 +56,15 @@ import org.openkilda.rulemanager.group.WatchGroup;
 import org.openkilda.rulemanager.group.WatchPort;
 import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.wfm.topology.switchmanager.model.SwitchValidationContext;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateGroupsResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateLogicalPortsResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
-import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateGroupsResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateLogicalPortsResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateMetersResultV2;
+import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateRulesResultV2;
 
 import com.google.common.collect.Lists;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -169,7 +170,8 @@ public class ValidationMapperTest {
         }
         flowFlags.add(OfFlowFlag.RESET_COUNTERS);
 
-        instructions = new Instructions(applyActions, flowSpeakerWriteActions, METER_ID, OF_TABLE_FIELD, OF_METADATA);
+        instructions = new Instructions(applyActions, flowSpeakerWriteActions, METER_ID, OF_TABLE_FIELD,
+                OF_METADATA);
 
         return FlowSpeakerData.builder()
                 .cookie(COOKIE)
@@ -204,61 +206,83 @@ public class ValidationMapperTest {
 
     private static LagLogicalPort initializeLogicalPortData(SwitchId uniqueSwitchIdField) {
         return new LagLogicalPort(uniqueSwitchIdField, LAG_PORT,
-                Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2));
+                Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2), true);
     }
 
-    private static List<GroupInfoEntry> missingGroups = new LinkedList<>();
-    private static List<GroupInfoEntry> properGroups = new LinkedList<>();
-    private static List<GroupInfoEntry> excessGroups = new LinkedList<>();
-    private static List<GroupInfoEntry> misconfiguredGroups = new LinkedList<>();
-    private static Set<Long> missingRules = new HashSet<>();
-    private static Set<Long> properRules = new HashSet<>();
-    private static Set<Long> excessRules = new HashSet<>();
-    private static Set<Long> misconfiguredRules = new HashSet<>();
-    private static List<MeterInfoEntry> missingMeters = new LinkedList<>();
-    private static List<MeterInfoEntry> misconfiguredMeters = new LinkedList<>();
-    private static List<MeterInfoEntry> properMeters = new LinkedList<>();
-    private static List<MeterInfoEntry> excessMeters = new LinkedList<>();
-    private static List<LogicalPortInfoEntry> properPorts = new LinkedList<>();
-    private static List<LogicalPortInfoEntry> missingPorts = new LinkedList<>();
-    private static List<LogicalPortInfoEntry> excessPorts = new LinkedList<>();
-    private static List<LogicalPortInfoEntry> misconfiguredPorts = new LinkedList<>();
+    private static List<GroupInfoEntryV2> missingGroups = new LinkedList<>();
+    private static List<GroupInfoEntryV2> properGroups = new LinkedList<>();
+    private static List<GroupInfoEntryV2> excessGroups = new LinkedList<>();
+    private static List<MisconfiguredInfo<GroupInfoEntryV2>> misconfiguredGroups = new LinkedList<>();
 
-    private static ValidateGroupsResult groupsResult;
-    private static ValidateRulesResult rulesResult;
-    private static ValidateMetersResult metersResult;
-    private static ValidateLogicalPortsResult logicalPortsResult;
+    private static List<RuleInfoEntryV2> missingRules = new LinkedList<>();
+    private static List<RuleInfoEntryV2> properRules = new LinkedList<>();
+    private static List<RuleInfoEntryV2> excessRules = new LinkedList<>();
+    private static List<MisconfiguredInfo<RuleInfoEntryV2>> misconfiguredRules = new LinkedList<>();
+
+    private static List<MeterInfoEntryV2> missingMeters = new LinkedList<>();
+    private static List<MeterInfoEntryV2> properMeters = new LinkedList<>();
+    private static List<MeterInfoEntryV2> excessMeters = new LinkedList<>();
+    private static List<MisconfiguredInfo<MeterInfoEntryV2>> misconfiguredMeters = new LinkedList<>();
+
+    private static List<LogicalPortInfoEntryV2> missingPorts = new LinkedList<>();
+    private static List<LogicalPortInfoEntryV2> properPorts = new LinkedList<>();
+    private static List<LogicalPortInfoEntryV2> excessPorts = new LinkedList<>();
+    private static List<MisconfiguredInfo<LogicalPortInfoEntryV2>> misconfiguredPorts = new LinkedList<>();
+
+    private static ValidateGroupsResultV2 groupsResult;
+    private static ValidateRulesResultV2 rulesResult;
+    private static ValidateMetersResultV2 metersResult;
+    private static ValidateLogicalPortsResultV2 logicalPortsResult;
 
     @BeforeClass
     public static void initializeData() {
         missingGroups.add(GroupEntryConverter.INSTANCE.toGroupEntry(initializeGroupSpeakerData(new SwitchId(1))));
         properGroups.add(GroupEntryConverter.INSTANCE.toGroupEntry(initializeGroupSpeakerData(new SwitchId(2))));
         excessGroups.add(GroupEntryConverter.INSTANCE.toGroupEntry(initializeGroupSpeakerData(new SwitchId(3))));
-        misconfiguredGroups.add(GroupEntryConverter.INSTANCE.toGroupEntry(initializeGroupSpeakerData(new SwitchId(4))));
+        misconfiguredGroups.add(MisconfiguredInfo.<GroupInfoEntryV2>builder()
+                .id("11")
+                .expected(GroupEntryConverter.INSTANCE.toGroupEntry(initializeGroupSpeakerData(new SwitchId(4))))
+                .discrepancies(GroupEntryConverter.INSTANCE.toGroupEntry(initializeGroupSpeakerData(new SwitchId(5))))
+                .build());
 
-        missingRules.add(1L);
-        properRules.add(2L);
-        excessRules.add(3L);
-        misconfiguredRules.add(4L);
+        missingRules.add(RuleEntryConverter.INSTANCE.toRuleEntry(initializeFlowSpeakerData(1)));
+        properRules.add(RuleEntryConverter.INSTANCE.toRuleEntry(initializeFlowSpeakerData(2)));
+        excessRules.add(RuleEntryConverter.INSTANCE.toRuleEntry(initializeFlowSpeakerData(3)));
+        misconfiguredRules.add(MisconfiguredInfo.<RuleInfoEntryV2>builder()
+                .id("12")
+                .expected(RuleEntryConverter.INSTANCE.toRuleEntry(initializeFlowSpeakerData(4)))
+                .discrepancies(RuleEntryConverter.INSTANCE.toRuleEntry(initializeFlowSpeakerData(5)))
+                .build());
 
         missingMeters.add(MeterEntryConverter.INSTANCE.toMeterEntry(initializeMeterSpeakerData(new MeterId(1))));
-        misconfiguredMeters.add(MeterEntryConverter.INSTANCE.toMeterEntry(initializeMeterSpeakerData(
-                new MeterId(2))));
         properMeters.add(MeterEntryConverter.INSTANCE.toMeterEntry(initializeMeterSpeakerData(
-                new MeterId(3))));
+                new MeterId(2))));
         excessMeters.add(MeterEntryConverter.INSTANCE.toMeterEntry(initializeMeterSpeakerData(
-                new MeterId(4))));
+                new MeterId(3))));
+        misconfiguredMeters.add(MisconfiguredInfo.<MeterInfoEntryV2>builder()
+                .id("13")
+                .expected(MeterEntryConverter.INSTANCE.toMeterEntry(initializeMeterSpeakerData(new MeterId(4))))
+                .discrepancies(MeterEntryConverter.INSTANCE.toMeterEntry(
+                        initializeMeterSpeakerData(new MeterId(5))))
+                .build());
 
         properPorts.add(LogicalPortMapper.INSTANCE.map(initializeLogicalPortData(new SwitchId(1))));
         missingPorts.add(LogicalPortMapper.INSTANCE.map(initializeLogicalPortData(new SwitchId(2))));
         excessPorts.add(LogicalPortMapper.INSTANCE.map(initializeLogicalPortData(new SwitchId(3))));
-        misconfiguredPorts.add(LogicalPortMapper.INSTANCE.map(initializeLogicalPortData(new SwitchId(4))));
+        misconfiguredPorts.add(MisconfiguredInfo.<LogicalPortInfoEntryV2>builder()
+                .id("14")
+                .expected(LogicalPortMapper.INSTANCE.map(initializeLogicalPortData(new SwitchId(4))))
+                .discrepancies(LogicalPortMapper.INSTANCE.map(initializeLogicalPortData(new SwitchId(5))))
+                .build());
 
-        groupsResult = new ValidateGroupsResult(missingGroups, properGroups, excessGroups, misconfiguredGroups);
-        rulesResult = new ValidateRulesResult(missingRules, properRules, excessRules, misconfiguredRules);
-        metersResult = new ValidateMetersResult(missingMeters, misconfiguredMeters, properMeters, excessMeters);
-        logicalPortsResult = new ValidateLogicalPortsResult(properPorts,
-                missingPorts, excessPorts, misconfiguredPorts, "Test error");
+        groupsResult = new ValidateGroupsResultV2(false, missingGroups, properGroups, excessGroups,
+                misconfiguredGroups);
+        rulesResult = new ValidateRulesResultV2(false, missingRules, properRules, excessRules,
+                misconfiguredRules);
+        metersResult = new ValidateMetersResultV2(false,
+                missingMeters, properMeters, excessMeters, misconfiguredMeters);
+        logicalPortsResult = new ValidateLogicalPortsResultV2(false, missingPorts, properPorts,
+                excessPorts, misconfiguredPorts, "Test error");
     }
 
     @Test
@@ -271,30 +295,30 @@ public class ValidationMapperTest {
                 .ofFlowsValidationReport(rulesResult)
                 .build();
 
-        SwitchValidationResponse response = ValidationMapper.INSTANCE.toSwitchResponse(context);
+        SwitchValidationResponseV2 response = ValidationMapper.INSTANCE.toSwitchResponse(context);
 
-        GroupsValidationEntry groupsEntry = response.getGroups();
+        GroupsValidationEntryV2 groupsEntry = response.getGroups();
         assertEquals(missingGroups, groupsEntry.getMissing());
         assertEquals(properGroups, groupsEntry.getProper());
-        assertEquals(misconfiguredGroups, groupsEntry.getMisconfigured());
         assertEquals(excessGroups, groupsEntry.getExcess());
+        assertEquals(misconfiguredGroups, groupsEntry.getMisconfigured());
 
-        RulesValidationEntry rulesEntry = response.getRules();
-        assertEquals(new ArrayList<>(properRules), rulesEntry.getProper());
-        assertEquals(new ArrayList<>(excessRules), rulesEntry.getExcess());
-        assertEquals(new ArrayList<>(misconfiguredRules), rulesEntry.getMisconfigured());
-        assertEquals(new ArrayList<>(missingRules), rulesEntry.getMissing());
+        RulesValidationEntryV2 rulesEntry = response.getRules();
+        assertEquals(missingRules, rulesEntry.getMissing());
+        assertEquals(properRules, rulesEntry.getProper());
+        assertEquals(excessRules, rulesEntry.getExcess());
+        assertEquals(misconfiguredRules, rulesEntry.getMisconfigured());
 
-        LogicalPortsValidationEntry portsEntry = response.getLogicalPorts();
+        LogicalPortsValidationEntryV2 portsEntry = response.getLogicalPorts();
+        assertEquals(missingPorts, portsEntry.getMissing());
         assertEquals(properPorts, portsEntry.getProper());
         assertEquals(excessPorts, portsEntry.getExcess());
         assertEquals(misconfiguredPorts, portsEntry.getMisconfigured());
-        assertEquals(missingPorts, portsEntry.getMissing());
 
-        MetersValidationEntry metersEntry = response.getMeters();
+        MetersValidationEntryV2 metersEntry = response.getMeters();
+        assertEquals(missingMeters, metersEntry.getMissing());
         assertEquals(properMeters, metersEntry.getProper());
         assertEquals(excessMeters, metersEntry.getExcess());
         assertEquals(misconfiguredMeters, metersEntry.getMisconfigured());
-        assertEquals(missingMeters, metersEntry.getMissing());
     }
 }

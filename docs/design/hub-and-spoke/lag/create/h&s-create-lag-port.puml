@@ -6,6 +6,7 @@ boundary Northbound as NB
 participant SwitchManager << Hub >>
 participant SpeakerWorker
 participant GRPC
+participant Floodlight
 database DB
 
 User -> NB : Create LAG
@@ -25,7 +26,16 @@ GRPC -> SpeakerWorker : CreateLogicalPortResponse
 activate SpeakerWorker
 SpeakerWorker -> SwitchManager : CreateLogicalPortResponse
 deactivate SpeakerWorker
-SwitchManager ->> NB: LagPortResponse
+SwitchManager -> SpeakerWorker : OfCommands
+activate SpeakerWorker
+SpeakerWorker -> Floodlight : OfCommands
+deactivate SpeakerWorker
+Floodlight -> Floodlight : Installing rules\nand meter
+Floodlight -> SpeakerWorker : OfResponse
+activate SpeakerWorker
+SpeakerWorker -> SwitchManager : OfResponse
+deactivate SpeakerWorker
+SwitchManager -> NB : LagPortResponse
 deactivate SwitchManager
 NB -> User: LagPortDto
 deactivate NB

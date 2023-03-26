@@ -32,9 +32,11 @@ import static org.openkilda.rulemanager.utils.RuleManagerHelper.postProcessComma
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.KildaFeatureToggles;
+import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
@@ -52,6 +54,7 @@ import org.openkilda.rulemanager.factory.generator.flow.JointRuleGenerator.Joint
 import org.openkilda.rulemanager.utils.Utils;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -197,11 +200,23 @@ public class RuleManagerImpl implements RuleManager {
 
             Set<Integer> islPorts = adapter.getSwitchIslPorts(switchId);
 
-            islPorts.forEach(islPort -> {
-                generators.add(serviceRulesFactory.getEgressIslVxlanRuleGenerator(islPort));
-                generators.add(serviceRulesFactory.getEgressIslVlanRuleGenerator(islPort));
-                generators.add(serviceRulesFactory.getTransitIslVxlanRuleGenerator(islPort));
-            });
+            islPorts.forEach(islPort -> generators.addAll(getIslServiceRuleGenerators(islPort)));
+        }
+
+        List<LagLogicalPort> lacpPorts = adapter.getLagLogicalPorts(switchId)
+                .stream().filter(LagLogicalPort::isLacpReply).collect(toList());
+
+        if (!lacpPorts.isEmpty()) {
+            generators.add(serviceRulesFactory.getDropSlowProtocolsLoopRuleGenerator());
+
+            // we need to create only one meter for all Lacp reply rules. So first generator will receive parameter
+            // switchHasOtherLacpPackets = false
+            generators.add(serviceRulesFactory.getLacpReplyRuleGenerator(
+                    lacpPorts.get(0).getLogicalPortNumber(), false));
+            for (int i = 1; i < lacpPorts.size(); i++) {
+                generators.add(serviceRulesFactory.getLacpReplyRuleGenerator(
+                        lacpPorts.get(i).getLogicalPortNumber(), true));
+            }
         }
 
         Integer server42Port = switchProperties.getServer42Port();
@@ -233,6 +248,14 @@ public class RuleManagerImpl implements RuleManager {
         }
 
         return generators;
+    }
+
+    private List<RuleGenerator> getIslServiceRuleGenerators(int port) {
+        List<RuleGenerator> result = new ArrayList<>();
+        result.add(serviceRulesFactory.getEgressIslVxlanRuleGenerator(port));
+        result.add(serviceRulesFactory.getEgressIslVlanRuleGenerator(port));
+        result.add(serviceRulesFactory.getTransitIslVxlanRuleGenerator(port));
+        return result;
     }
 
     private List<SpeakerData> buildFlowRulesForSwitch(SwitchId switchId, DataAdapter adapter) {
@@ -309,6 +332,7 @@ public class RuleManagerImpl implements RuleManager {
             generators.add(flowRulesFactory.getIngressMirrorRuleGenerator(
                     flowPath, flow, encapsulation, ingressMeterCommandUuid));
         }
+        generators.add(flowRulesFactory.getVlanStatsRuleGenerator(flowPath, flow));
 
         ingressCommands.addAll(generateRules(sw, generators));
         return ingressCommands;
@@ -419,6 +443,56 @@ public class RuleManagerImpl implements RuleManager {
         return result;
     }
 
+    @Override
+    public List<SpeakerData> buildIslServiceRules(SwitchId switchId, int port, DataAdapter adapter) {
+        SwitchProperties switchProperties = adapter.getSwitchProperties(switchId);
+        if (!switchProperties.isMultiTable()) {
+            return emptyList();
+        }
+        Switch sw = adapter.getSwitch(switchId);
+        List<RuleGenerator> generators = getIslServiceRuleGenerators(port);
+        if (adapter.getFeatureToggles().getServer42IslRtt() && switchProperties.hasServer42IslRttEnabled()) {
+            generators.add(serviceRulesFactory
+                    .getServer42IslRttInputRuleGenerator(switchProperties.getServer42Port(), port));
+        }
+        return generateRules(sw, generators);
+    }
+
+    @Override
+    public List<SpeakerData> buildLacpRules(SwitchId switchId, int logicalPort, DataAdapter adapter) {
+        boolean switchHasOtherLacpPorts = adapter.getLagLogicalPorts(switchId).stream()
+                .filter(LagLogicalPort::isLacpReply)
+                .anyMatch(port -> port.getLogicalPortNumber() != logicalPort);
+
+        List<RuleGenerator> generators = Lists.newArrayList(
+                serviceRulesFactory.getLacpReplyRuleGenerator(logicalPort, switchHasOtherLacpPorts));
+        if (!switchHasOtherLacpPorts) {
+            generators.add(serviceRulesFactory.getDropSlowProtocolsLoopRuleGenerator());
+        }
+
+        Switch sw = adapter.getSwitch(switchId);
+        return postProcessCommands(generateRules(sw, generators));
+    }
+
+    @Override
+    public List<SpeakerData> buildMirrorPointRules(FlowMirrorPoints mirrorPoints, DataAdapter adapter) {
+        FlowPath flowPath = adapter.getFlowPaths().get(mirrorPoints.getFlowPathId());
+        Flow flow = adapter.getFlow(flowPath.getPathId());
+        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(
+                flowPath.getPathId(), flow.getOppositePathId(flowPath.getPathId()).orElse(null));
+        List<SpeakerData> result = new ArrayList<>();
+
+        if (mirrorPoints.getMirrorSwitchId().equals(flowPath.getSrcSwitchId())) {
+            result.addAll(flowRulesFactory.getIngressMirrorRuleGenerator(flowPath, flow, encapsulation, null)
+                    .generateCommands(adapter.getSwitch(mirrorPoints.getMirrorSwitchId())));
+        } else if (mirrorPoints.getMirrorSwitchId().equals(flowPath.getDestSwitchId())) {
+            result.addAll(flowRulesFactory.getEgressMirrorRuleGenerator(flowPath, flow, encapsulation)
+                    .generateCommands(adapter.getSwitch(mirrorPoints.getMirrorSwitchId())));
+
+        }
+        return result;
+    }
+
     private List<SpeakerData> buildSharedEndpointYFlowCommands(List<FlowPath> flowPaths, DataAdapter adapter) {
         if (flowPaths.isEmpty()) {
             return emptyList();
@@ -525,7 +599,6 @@ public class RuleManagerImpl implements RuleManager {
                             flow.getFlowId(), protectedYPointSwitchId);
                     continue;
                 }
-                requireNonNull(protectedYPointMeterId, "The y-flow protected path meterId can't be null");
 
                 boolean meterToBeAdded = externalProtectedMeterCommandUuid == null;
                 if (meterToBeAdded) {
@@ -546,7 +619,6 @@ public class RuleManagerImpl implements RuleManager {
                             flow.getFlowId(), yPointSwitchId);
                     continue;
                 }
-                requireNonNull(yPointMeterId, "The y-flow meterId can't be null");
 
                 boolean meterToBeAdded = externalMeterCommandUuid == null;
                 if (meterToBeAdded) {
@@ -572,6 +644,7 @@ public class RuleManagerImpl implements RuleManager {
                 segment.getSrcSwitchId().equals(switchId) || segment.getDestSwitchId().equals(switchId));
     }
 
+    @VisibleForTesting
     private RuleGenerator buildYPointYRuleGenerator(Switch yPointSwitch, FlowPath path,
                                                     Flow flow, FlowTransitEncapsulation encapsulation,
                                                     MeterId yPointMeterId, UUID externalMeterCommandUuid,

@@ -33,7 +33,7 @@ import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 @Slf4j
 public abstract class FlowProcessingService<T extends AbstractStateMachine<T, ?, E, C>, E, C,
-        R extends NorthboundResponseCarrier & LifecycleEventCarrier, F extends FsmRegister<T>,
+        R extends NorthboundResponseCarrier & LifecycleEventCarrier, F extends FsmRegister<String, T>,
         L extends ProcessingEventListener> extends FsmBasedProcessingService<T, E, C, F, L> {
     protected final R carrier;
     protected final FlowRepository flowRepository;

@@ -16,10 +16,12 @@
 package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.info.network.Path;
+import org.openkilda.messaging.info.network.PathValidationResult;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload.FlowProtectedPathsPayload;
 import org.openkilda.messaging.payload.network.PathDto;
+import org.openkilda.northbound.dto.v2.flows.PathValidateResponse;
 
 import org.mapstruct.Mapper;
 
@@ -27,10 +29,12 @@ import org.mapstruct.Mapper;
 public interface PathMapper {
 
     default PathDto mapToPath(Path data) {
-        return new PathDto(data.getBandwidth(), data.getLatency(), data.getNodes());
+        return new PathDto(data.getBandwidth(), data.getLatency(), data.getNodes(), data.getIsBackupPath());
     }
 
     GroupFlowPathPayload mapGroupFlowPathPayload(FlowPathDto data);
 
     FlowProtectedPathsPayload mapFlowProtectedPathPayload(FlowPathDto.FlowProtectedPathDto data);
+
+    PathValidateResponse toPathValidateResponse(PathValidationResult data);
 }

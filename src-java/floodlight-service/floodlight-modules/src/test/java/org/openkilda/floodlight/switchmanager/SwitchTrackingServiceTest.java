@@ -84,6 +84,8 @@ import java.util.Set;
 @Ignore("nmarchenko must be fixed after mfl merging")
 public class SwitchTrackingServiceTest extends EasyMockSupport {
     private static final String KAFKA_ISL_DISCOVERY_TOPIC = "kilda.topo.disco";
+    private static final long MAX_SPEED = 1000000;
+    private static final long CURRENT_SPEED = 99999;
     private static final DatapathId dpId = DatapathId.of(0x7fff);
     private static String switchIpAddress;
     private static final Set<SwitchFeature> switchFeatures = Collections.singleton(
@@ -160,7 +162,6 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
     @Test
     public void switchRemoved() {
         Capture<Message> producedMessage = prepareSwitchEventCommon(dpId);
-        switchManager.deactivate(eq(dpId));
         replayAll();
         service.switchRemoved(dpId);
 
@@ -168,38 +169,8 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
     }
 
     @Test
-    public void switchActivate() throws Exception {
-        SpeakerSwitchView expectedSwitchView = makeSwitchRecord(dpId, switchFeatures, true, true);
-        switchActivateTest(prepareAliveSwitchEvent(expectedSwitchView), expectedSwitchView);
-    }
-
-    @Test
-    public void switchActivateMissing() throws Exception {
-        switchActivateTest(prepareRemovedSwitchEvent(), null);
-    }
-
-    private void switchActivateTest(Capture<Message> producedMessage, SpeakerSwitchView expectedSwitchView)
-            throws Exception {
-        switchManager.activate(dpId);
-        expectLastCall().andAnswer(new IAnswer<Object>() {
-            @Override
-            public Object answer() throws Throwable {
-                service.completeSwitchActivation((DatapathId) getCurrentArguments()[0]);
-                return null;
-            }
-        });
-
-        replayAll();
-
-        service.switchActivated(dpId);
-        verifySwitchEvent(SwitchChangeType.ACTIVATED, expectedSwitchView, producedMessage);
-        assertEquals(1, producedMessage.getValues().size());
-    }
-
-    @Test
     public void switchDeactivated() {
         Capture<Message> producedMessage = prepareSwitchEventCommon(dpId);
-        switchManager.deactivate(eq(dpId));
         replayAll();
         service.switchDeactivated(dpId);
         verifySwitchEvent(SwitchChangeType.DEACTIVATED, null, producedMessage);
@@ -372,16 +343,19 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
 
         ArrayList<Message> expectedMessages = new ArrayList<>();
         expectedMessages.add(new InfoMessage(
-                        new NetworkDumpSwitchData(new SpeakerSwitchView(
-                                new SwitchId(swAid.getLong()),
-                                new IpSocketAddress("127.0.1.1", 32768),
-                                new IpSocketAddress("127.0.1.254", 6653),
-                                "127.0.1.1", "OF_13",
-                                switchDescription,
-                                ImmutableSet.of(SwitchFeature.METERS),
-                                ImmutableList.of(
-                                        new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP),
-                                        new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.UP))), dumpId, true),
+                new NetworkDumpSwitchData(new SpeakerSwitchView(
+                        new SwitchId(swAid.getLong()),
+                        new IpSocketAddress("127.0.1.1", 32768),
+                        new IpSocketAddress("127.0.1.254", 6653),
+                        "127.0.1.1", "OF_13",
+                        switchDescription,
+                        ImmutableSet.of(SwitchFeature.METERS),
+                        ImmutableList.of(
+                                new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP,
+                                        MAX_SPEED, CURRENT_SPEED),
+                                new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.UP,
+                                        MAX_SPEED, CURRENT_SPEED))),
+                        dumpId, true),
                 0, correlationId));
         expectedMessages.add(new InfoMessage(
                 new NetworkDumpSwitchData(new SpeakerSwitchView(
@@ -392,9 +366,13 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
                         switchDescription,
                         ImmutableSet.of(SwitchFeature.METERS, SwitchFeature.BFD),
                         ImmutableList.of(
-                                new SpeakerSwitchPortView(3, SpeakerSwitchPortView.State.UP),
-                                new SpeakerSwitchPortView(4, SpeakerSwitchPortView.State.UP),
-                                new SpeakerSwitchPortView(5, SpeakerSwitchPortView.State.DOWN))), dumpId, true),
+                                new SpeakerSwitchPortView(3, SpeakerSwitchPortView.State.UP,
+                                        MAX_SPEED, CURRENT_SPEED),
+                                new SpeakerSwitchPortView(4, SpeakerSwitchPortView.State.UP,
+                                        MAX_SPEED, CURRENT_SPEED),
+                                new SpeakerSwitchPortView(5, SpeakerSwitchPortView.State.DOWN,
+                                        MAX_SPEED, CURRENT_SPEED))),
+                        dumpId, true),
                 0, correlationId));
         assertEquals(expectedMessages, producedMessages);
     }
@@ -404,9 +382,10 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         List<SpeakerSwitchPortView> ports = new ArrayList<>(portState.length);
         for (int idx = 0; idx < portState.length; idx++) {
             ports.add(new SpeakerSwitchPortView(idx + 1,
-                                                portState[idx]
-                                                        ? SpeakerSwitchPortView.State.UP
-                                                        : SpeakerSwitchPortView.State.DOWN));
+                    portState[idx]
+                            ? SpeakerSwitchPortView.State.UP
+                            : SpeakerSwitchPortView.State.DOWN,
+                    MAX_SPEED, CURRENT_SPEED));
         }
 
         return new SpeakerSwitchView(

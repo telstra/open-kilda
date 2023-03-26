@@ -45,6 +45,10 @@ public interface FlowMonitoringTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoRerouteTopic();
     }
 
+    default String getKafkaTopoFlowHsTopic() {
+        return getKafkaTopics().getFlowHsTopic();
+    }
+
     @Key("flow.sla.check.interval.seconds")
     @Default("30")
     int getFlowSlaCheckIntervalSeconds();

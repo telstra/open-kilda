@@ -27,9 +27,11 @@ import org.openkilda.pce.model.FindOneDirectionPathResult;
 import org.openkilda.pce.model.FindPathResult;
 import org.openkilda.pce.model.Node;
 import org.openkilda.pce.model.PathWeight;
+import org.openkilda.pce.model.PathWeight.Penalty;
 import org.openkilda.pce.model.WeightFunction;
 
 import com.google.common.collect.Lists;
+import lombok.AllArgsConstructor;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -46,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -125,13 +128,19 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         FindOneDirectionPathResult pathFindResult = getPath.get();
         List<Edge> forwardPath = pathFindResult.getFoundPath();
         if (forwardPath.isEmpty()) {
-            throw new UnroutableFlowException(format("Can't find a path from %s to %s", start, end));
+
+            throw new UnroutableFlowException(format("Can't find a path from %s to %s. %s", start, end,
+                    FinderUtils.reasonsToString(pathFindResult.getPathNotFoundReasons())),
+                    pathFindResult.getPathNotFoundReasons());
         }
 
         List<Edge> reversePath = getReversePath(end, start, forwardPath);
         if (reversePath.isEmpty()) {
-            throw new UnroutableFlowException(format("Can't find a reverse path from %s to %s. Forward path : %s",
-                    end, start, StringUtils.join(forwardPath, ", ")));
+
+            throw new UnroutableFlowException(format("Can't find a reverse path from %s to %s. "
+                    + "Forward path : %s. %s", end, start, StringUtils.join(forwardPath, ", "),
+                    FinderUtils.reasonsToString(pathFindResult.getPathNotFoundReasons())),
+                    pathFindResult.getPathNotFoundReasons());
         }
 
         return FindPathResult.builder()
@@ -141,21 +150,22 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
     }
 
     @Override
-    public List<List<Edge>> findNPathsBetweenSwitches(
+    public List<FindOneDirectionPathResult> findNPathsBetweenSwitches(
             AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count,
             WeightFunction weightFunction) throws UnroutableFlowException {
         Node end = network.getSwitch(endSwitchId);
         return findNPathsBetweenSwitches(network, startSwitchId, endSwitchId, count, weightFunction,
-                (Node start) -> findOneDirectionPath(start, end, weightFunction));
+                (Node start) -> findOneDirectionPath(start, end, weightFunction), Long.MAX_VALUE, Long.MAX_VALUE);
     }
 
     @Override
-    public List<List<Edge>> findNPathsBetweenSwitches(
+    public List<FindOneDirectionPathResult> findNPathsBetweenSwitches(
             AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count,
             WeightFunction weightFunction, long maxWeight, long backUpMaxWeight) throws UnroutableFlowException {
         Node end = network.getSwitch(endSwitchId);
         return findNPathsBetweenSwitches(network, startSwitchId, endSwitchId, count, weightFunction,
-                (Node start) -> findOneDirectionPath(start, end, weightFunction, maxWeight, backUpMaxWeight));
+                (Node start) -> findOneDirectionPath(start, end, weightFunction, maxWeight, backUpMaxWeight),
+                maxWeight, backUpMaxWeight);
     }
 
     /**
@@ -163,10 +173,10 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
      *
      * @return an list of N (or less) best paths.
      */
-    private List<List<Edge>> findNPathsBetweenSwitches(
+    private List<FindOneDirectionPathResult> findNPathsBetweenSwitches(
             AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count,
-            WeightFunction weightFunction, Function<Node, FindOneDirectionPathResult> getPath)
-            throws UnroutableFlowException {
+            WeightFunction weightFunction, Function<Node, FindOneDirectionPathResult> getPath,
+            long maxWeight, long backUpMaxWeight) throws UnroutableFlowException {
 
         Node start = network.getSwitch(startSwitchId);
         Node end = network.getSwitch(endSwitchId);
@@ -176,28 +186,31 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         }
 
         // Determine the shortest path from the start to the end.
-        List<List<Edge>> bestPaths = new ArrayList<>();
-        List<Edge> firstPath = getPath.apply(start).getFoundPath();
-        if (firstPath.isEmpty()) {
-            return new ArrayList<>();
+        List<FindOneDirectionPathResult> bestPaths = new ArrayList<>();
+        FindOneDirectionPathResult firstPath = getPath.apply(start);
+
+        if (firstPath.getFoundPath().isEmpty()) {
+            return bestPaths;
         }
-        bestPaths.add(getPath.apply(start).getFoundPath());
+        bestPaths.add(firstPath);
 
         // Initialize the set to store the potential kth shortest path.
         // Use LinkedHashSet to have deterministic results.
-        Set<List<Edge>> potentialKthShortestPaths = new LinkedHashSet<>();
+        Set<FindOneDirectionPathResult> potentialKthShortestPaths = new LinkedHashSet<>();
 
         for (int k = 1; k < count; k++) {
-            List<Edge> bestPath = bestPaths.get(k - 1);
-            for (int i = 0; i < bestPath.size(); i++) {
+            FindOneDirectionPathResult bestPath = bestPaths.get(k - 1);
+            List<Edge> edgesList = bestPath.getFoundPath();
+            for (int i = 0; i < edgesList.size(); i++) {
                 // Spur node is retrieved from the previous k-shortest path.
-                Node spurNode = bestPath.get(i).getSrcSwitch();
+                Node spurNode = edgesList.get(i).getSrcSwitch();
                 // The sequence of edges from the start to the spur node (without spur node).
-                List<Edge> rootPath = new ArrayList<>(bestPath.subList(0, i));
+                List<Edge> rootPath = new ArrayList<>(edgesList.subList(0, i));
 
                 Set<Edge> removedEdges = new HashSet<>();
                 // Remove the links that are part of the previous shortest paths which share the same root path.
-                for (List<Edge> path : bestPaths) {
+                for (FindOneDirectionPathResult pathResult : bestPaths) {
+                    List<Edge> path = pathResult.getFoundPath();
                     if (path.size() > i && rootPath.equals(path.subList(0, i))
                             && spurNode.equals(path.get(i).getSrcSwitch())) {
                         removedEdges.add(path.get(i));
@@ -210,13 +223,21 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                 }
 
                 // Calculate the spur path from the spur node to the end.
-                List<Edge> pathFromSpurNode = getPath.apply(spurNode).getFoundPath();
-                if (!pathFromSpurNode.isEmpty()) {
+                FindOneDirectionPathResult pathFromSpurNode = getPath.apply(spurNode);
+                if (!pathFromSpurNode.getFoundPath().isEmpty()) {
                     List<Edge> totalPath = new ArrayList<>(rootPath);
                     // Entire path is made up of the root path and spur path.
-                    totalPath.addAll(pathFromSpurNode);
+                    totalPath.addAll(pathFromSpurNode.getFoundPath());
                     // Add the potential k-shortest path to the heap.
-                    potentialKthShortestPaths.add(totalPath);
+                    long totalPathWeight = totalPath.stream().map(weightFunction)
+                            .map(PathWeight::getTotalWeight)
+                            .reduce(0L, Long::sum);
+                    // Filtering by maxWeight.
+                    if (totalPathWeight < maxWeight) {
+                        potentialKthShortestPaths.add(new FindOneDirectionPathResult(totalPath, false));
+                    } else if (totalPathWeight < backUpMaxWeight) {
+                        potentialKthShortestPaths.add(new FindOneDirectionPathResult(totalPath, true));
+                    }
                 }
 
                 // Add back the edges and nodes that were removed from the graph.
@@ -233,34 +254,38 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
             }
 
             // Add the lowest weight path becomes the k-shortest path.
-            List<Edge> newBestPath =
+            FindOneDirectionPathResult newBestPath =
                     getBestPotentialKthShortestPath(potentialKthShortestPaths, bestPaths, weightFunction);
-            bestPaths.add(newBestPath);
+            if (newBestPath != null) {
+                bestPaths.add(newBestPath);
+            }
         }
 
         return bestPaths;
     }
 
-    private List<Edge> getBestPotentialKthShortestPath(Set<List<Edge>> potentialKthShortestPaths,
-                                                       List<List<Edge>> bestPaths,
-                                                       WeightFunction weightFunction) {
-        List<Edge> bestKthShortestPath = new ArrayList<>();
-
+    private FindOneDirectionPathResult getBestPotentialKthShortestPath(Set<FindOneDirectionPathResult> potentialPaths,
+                                                                       List<FindOneDirectionPathResult> bestPaths,
+                                                                       WeightFunction weightFunction) {
+        FindOneDirectionPathResult bestKthShortestPath = null;
         long bestAvailableBandwidth = Long.MIN_VALUE;
         long bestWeight = Long.MAX_VALUE;
 
-        for (List<Edge> path : potentialKthShortestPaths) {
+        for (FindOneDirectionPathResult pathResult : potentialPaths) {
+            List<Edge> path = pathResult.getFoundPath();
             long currentAvailableBandwidth = getMinAvailableBandwidth(path);
             long currentWeight = getTotalWeight(path, weightFunction);
-            if (!bestPaths.contains(path) && (currentAvailableBandwidth > bestAvailableBandwidth
+            if (!bestPaths.contains(pathResult) && (currentAvailableBandwidth > bestAvailableBandwidth
                     || (currentAvailableBandwidth == bestAvailableBandwidth && currentWeight < bestWeight))) {
                 bestAvailableBandwidth = currentAvailableBandwidth;
                 bestWeight = currentWeight;
-                bestKthShortestPath = path;
+                bestKthShortestPath = pathResult;
             }
         }
 
-        potentialKthShortestPaths.remove(bestKthShortestPath);
+        if (bestKthShortestPath != null) {
+            potentialPaths.remove(bestKthShortestPath);
+        }
 
         return bestKthShortestPath;
     }
@@ -273,7 +298,7 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         if (path.isEmpty()) {
             return Long.MAX_VALUE;
         }
-        return path.stream().map(weightFunction).mapToLong(PathWeight::toLong).sum();
+        return path.stream().map(weightFunction).mapToLong(PathWeight::getTotalWeight).sum();
     }
 
     private void removeEdge(Edge edge) {
@@ -295,24 +320,26 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
     }
 
     private FindOneDirectionPathResult findOneDirectionPath(Node start, Node end, WeightFunction weightFunction) {
-        return FindOneDirectionPathResult.builder()
-                .foundPath(getPath(start, end, weightFunction))
-                .backUpPathComputationWayUsed(false)
-                .build();
+        FindOneDirectionPathResult pathResult = getPath(start, end, weightFunction);
+        pathResult.setBackUpPathComputationWayUsed(false);
+        return pathResult;
     }
 
     private FindOneDirectionPathResult findOneDirectionPath(Node start, Node end, WeightFunction weightFunction,
                                                             long maxWeight, long backUpMaxWeight) {
-        List<Edge> foundPath = getPath(start, end, weightFunction, maxWeight);
+        FindOneDirectionPathResult pathResult = getPath(start, end, weightFunction, maxWeight);
+        Map<FailReasonType, FailReason> reasons = pathResult.getPathNotFoundReasons();
+
         boolean backUpPathComputationWayUsed = false;
 
-        if (foundPath.isEmpty()) {
-            foundPath = getPath(start, end, weightFunction, backUpMaxWeight);
+        if (pathResult.getFoundPath().isEmpty()) {
+            pathResult = getPath(start, end, weightFunction, backUpMaxWeight);
             backUpPathComputationWayUsed = true;
         }
 
         return FindOneDirectionPathResult.builder()
-                .foundPath(foundPath)
+                .foundPath(pathResult.getFoundPath())
+                .pathNotFoundReasons(reasons)
                 .backUpPathComputationWayUsed(backUpPathComputationWayUsed)
                 .build();
     }
@@ -320,18 +347,20 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
     private FindOneDirectionPathResult findOneDirectionPathWithLatencyLimits(Node start, Node end,
                                                                              WeightFunction weightFunction,
                                                                              long maxLatency, long latencyLimit) {
-        List<Edge> foundPath = getPath(start, end, weightFunction);
+        FindOneDirectionPathResult pathResult = getPath(start, end, weightFunction);
 
-        long pathLatency = foundPath.stream().mapToLong(Edge::getLatency).sum();
-        boolean backUpPathComputationWayUsed = pathLatency > maxLatency;
+        long pathLatency = pathResult.getFoundPath().stream().mapToLong(Edge::getLatency).sum();
+        pathResult.setBackUpPathComputationWayUsed(pathLatency > maxLatency);
         if (pathLatency > latencyLimit) {
-            foundPath = emptyList();
+
+            pathResult.getPathNotFoundReasons().put(FailReasonType.LATENCY_LIMIT,
+                    new FailReason(FailReasonType.LATENCY_LIMIT,
+                    format("Requested path must have latency %sms or lower, but best path has latency %sms",
+                            TimeUnit.NANOSECONDS.toMillis(latencyLimit), TimeUnit.NANOSECONDS.toMillis(pathLatency))));
+            pathResult.setFoundPath(emptyList());
         }
 
-        return FindOneDirectionPathResult.builder()
-                .foundPath(foundPath)
-                .backUpPathComputationWayUsed(backUpPathComputationWayUsed)
-                .build();
+        return pathResult;
     }
 
     /**
@@ -340,18 +369,31 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
      *
      * @return A pair of ordered lists that represents the path from start to end, or an empty list
      */
-    private List<Edge> getPath(Node start, Node end, WeightFunction weightFunction) {
+    private FindOneDirectionPathResult getPath(Node start, Node end, WeightFunction weightFunction) {
         PathWeight bestWeight = new PathWeight(Long.MAX_VALUE);
         SearchNode bestPath = null;
 
         Deque<SearchNode> toVisit = new LinkedList<>(); // working list
         Map<Node, SearchNode> visited = new HashMap<>();
 
+        Map<FailReasonType, FailReason> reasons = new HashMap<>();
+
+        boolean destinationFound = false;
         toVisit.add(new SearchNode(weightFunction, start, allowedDepth, new PathWeight(), emptyList()));
 
         while (!toVisit.isEmpty()) {
             SearchNode current = toVisit.pop();
-            log.trace("Going to visit node {} with weight {}.", current.dstSw, current.getParentWeight().toLong());
+            if (log.isTraceEnabled()) {
+                log.trace("Going to visit node {} with weight {}.",
+                        current.dstSw, current.getParentWeight().getTotalWeight());
+            }
+
+            if (isContainHardDiversityPenalties(current.parentWeight)) {
+                // Have not to use path with hard diversity penalties
+                reasons.put(FailReasonType.HARD_DIVERSITY_PENALTIES,
+                        new FailReason(FailReasonType.HARD_DIVERSITY_PENALTIES));
+                continue;
+            }
 
             // Determine if this node is the destination node.
             if (current.dstSw.equals(end)) {
@@ -363,7 +405,10 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                     bestPath = current;
                 }
                 // We found dest, no need to keep processing
-                log.trace("Found destination using {} with path {}", current.dstSw, current.parentPath);
+                if (log.isTraceEnabled()) {
+                    log.trace("Found destination using {} with path {}", current.dstSw, current.parentPath);
+                }
+                destinationFound = true;
                 continue;
             }
 
@@ -375,14 +420,24 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
 
             // Stop processing entirely if we've gone too far, or over bestWeight
             if (current.allowedDepth <= 0 || current.parentWeight.compareTo(bestWeight) > 0) {
-                log.trace("Skip node {} processing", current.dstSw);
+                if (log.isTraceEnabled()) {
+                    log.trace("Skip node {} processing", current.dstSw);
+                }
+                if (current.allowedDepth <= 0) {
+                    reasons.put(FailReasonType.ALLOWED_DEPTH_EXCEEDED,
+                            new FailReason(FailReasonType.ALLOWED_DEPTH_EXCEEDED,
+                                    format("Max allowed depth is %d", allowedDepth)));
+                }
+                destinationFound = true; //to no add the reason
                 continue;
             }
 
             // Either this is the first time, or this one has less weight .. either way, this node should
             // be the one in the visited list
             visited.put(current.dstSw, current);
-            log.trace("Save new path to node {} and process it's outgoing links", current.dstSw);
+            if (log.isTraceEnabled()) {
+                log.trace("Save new path to node {} and process it's outgoing links", current.dstSw);
+            }
 
             // At this stage .. haven't found END, haven't gone too deep, and we are not over weight.
             // So, add the outbound isls.
@@ -391,20 +446,29 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                     .forEach(edge -> toVisit.add(current.addNode(edge)));
         }
 
-        return (bestPath != null) ? bestPath.parentPath : new LinkedList<>();
-    }
-
-    private List<Edge> getPath(Node start, Node end, WeightFunction weightFunction, long maxWeight) {
-        SearchNode desiredPath = getDesiredPath(start, end, weightFunction, maxWeight);
-        List<Edge> foundPath = (desiredPath != null) ? desiredPath.getParentPath() : new LinkedList<>();
-        SearchNode desiredReversePath = getDesiredPath(end, start, weightFunction, maxWeight);
-
-        if (desiredReversePath != null
-                && (desiredPath == null || desiredReversePath.parentWeight.compareTo(desiredPath.parentWeight) > 0)) {
-            foundPath = getReversePath(start, end, desiredReversePath.getParentPath());
+        if (!destinationFound) {
+            reasons.put(FailReasonType.NO_CONNECTION, new FailReason(FailReasonType.NO_CONNECTION));
         }
 
-        return foundPath;
+        List<Edge> path = (bestPath != null) ? bestPath.parentPath : new LinkedList<>();
+
+        return new FindOneDirectionPathResult(path, reasons);
+    }
+
+    private FindOneDirectionPathResult getPath(Node start, Node end, WeightFunction weightFunction, long maxWeight) {
+        SearchNodeAndReasons desiredPath = getDesiredPath(start, end, weightFunction, maxWeight);
+
+        List<Edge> foundPath = (desiredPath.searchNode != null)
+                ? desiredPath.searchNode.getParentPath() : new LinkedList<>();
+
+        SearchNodeAndReasons desiredReversePath = getDesiredPath(end, start, weightFunction, maxWeight);
+
+        if (desiredReversePath.searchNode != null && (desiredPath.searchNode == null
+                || desiredReversePath.searchNode.parentWeight.compareTo(desiredPath.searchNode.parentWeight) > 0)) {
+            foundPath = getReversePath(start, end, desiredReversePath.searchNode.getParentPath());
+        }
+
+        return new FindOneDirectionPathResult(foundPath, desiredPath.reasons);
     }
 
     /**
@@ -412,63 +476,142 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
      *
      * @return A desired path from start to end as SearchNode representation, or null
      */
-    private SearchNode getDesiredPath(Node start, Node end, WeightFunction weightFunction, long maxWeight) {
-        long desiredWeight = Long.MAX_VALUE;
+    private SearchNodeAndReasons getDesiredPath(Node start, Node end, WeightFunction weightFunction, long maxWeight) {
         SearchNode desiredPath = null;
+        Map<FailReasonType, FailReason> reasons = new HashMap<>();
 
         Deque<SearchNode> toVisit = new LinkedList<>();
         Map<Node, SearchNode> visited = new HashMap<>();
 
+        boolean destinationFound = false;
+
         toVisit.add(new SearchNode(weightFunction, start, allowedDepth, new PathWeight(), emptyList()));
+
 
         while (!toVisit.isEmpty()) {
             SearchNode current = toVisit.pop();
-            log.trace("Going to visit node {} with weight {}.", current.dstSw, current.getParentWeight().toLong());
-
+            PathWeight currentPathWeight = current.getParentWeight();
+            if (log.isTraceEnabled()) {
+                log.trace("Going to visit node {} with weight {}.", current.dstSw, currentPathWeight);
+            }
             // Leave if the path contains this node
             if (current.containsSwitch(current.dstSw.getSwitchId())) {
-                log.trace("Skip node {} already in the path", current.dstSw);
+                if (log.isTraceEnabled()) {
+                    log.trace("Skip node {} already in the path", current.dstSw);
+                }
                 continue;
             }
 
             // Shift the current weight relative to maxWeight
-            long shiftedCurrentWeight = Math.abs(maxWeight - current.parentWeight.toLong());
+            final long shiftedCurrentWeight = Math.abs(maxWeight - current.parentWeight.getBaseWeight());
 
             // Determine if this node is the destination node.
             if (current.dstSw.equals(end)) {
                 // We found the destination
-                if (shiftedCurrentWeight < desiredWeight && current.parentWeight.toLong() < maxWeight) {
+                destinationFound = true;
+                if (current.parentWeight.getBaseWeight() < maxWeight) {
                     // We found a best path. If we don't get here, then the entire graph will be
                     // searched until we run out of nodes or the depth is reached.
-                    desiredWeight = shiftedCurrentWeight;
-                    desiredPath = current;
+                    if (isContainHardDiversityPenalties(current.parentWeight)) {
+                        // Have not to use path with hard diversity penalties
+                        reasons.put(FailReasonType.HARD_DIVERSITY_PENALTIES,
+                                new FailReason(FailReasonType.HARD_DIVERSITY_PENALTIES));
+                        continue;
+                    }
+
+                    if (desiredPath == null) {
+                        desiredPath = current;
+                        log.trace("Found first path to node {} with base weight {} and penalties {}",
+                                current.dstSw, current.parentWeight.getBaseWeight(),
+                                current.parentWeight.getPenaltiesWeight());
+                        continue;
+                    }
+
+                    if (currentPathWeight.getPenaltiesWeight() < desiredPath.parentWeight.getPenaltiesWeight()) {
+                        if (log.isTraceEnabled()) {
+                            log.trace("Found path with best penalties {} instead of {} penalties. Base weight is {}",
+                                    currentPathWeight.getPenaltiesWeight(),
+                                    desiredPath.parentWeight.getPenaltiesWeight(),
+                                    current.parentWeight.getBaseWeight());
+                        }
+                        desiredPath = current;
+                        continue;
+                    }
+
+                    if (currentPathWeight.getPenaltiesWeight() == desiredPath.parentWeight.getPenaltiesWeight()
+                            && currentPathWeight.getBaseWeight() > desiredPath.parentWeight.getBaseWeight()) {
+                        if (log.isTraceEnabled()) {
+                            log.trace("Found path with same penalties {}, but different weight {} instead of {}",
+                                    currentPathWeight.getPenaltiesWeight(), currentPathWeight.getBaseWeight(),
+                                    desiredPath.parentWeight.getBaseWeight());
+                        }
+                        desiredPath = current;
+                        continue;
+                    }
+                } else {
+                    if (reasons.containsKey(FailReasonType.MAX_WEIGHT_EXCEEDED)) {
+                        Long lastWeight = reasons.get(FailReasonType.MAX_WEIGHT_EXCEEDED).getWeight();
+                        if (lastWeight == null || current.parentWeight.getBaseWeight() < lastWeight) {
+                            reasons.put(FailReasonType.MAX_WEIGHT_EXCEEDED,
+                                    new FailReason(FailReasonType.MAX_WEIGHT_EXCEEDED,
+                                            current.parentWeight.getBaseWeight()));
+                        }
+                    } else {
+                        reasons.put(FailReasonType.MAX_WEIGHT_EXCEEDED,
+                                new FailReason(FailReasonType.MAX_WEIGHT_EXCEEDED,
+                                        current.parentWeight.getBaseWeight()));
+                    }
                 }
+
                 // We found dest, no need to keep processing
-                log.trace("Found destination using {} with path {}", current.dstSw, current.parentPath);
+                if (log.isTraceEnabled()) {
+                    log.trace("Found destination using {} with path {}", current.dstSw, current.parentPath);
+                }
                 continue;
             }
 
             // Stop processing entirely if we've gone too far, or over maxWeight
-            if (current.allowedDepth <= 0 || current.parentWeight.toLong() >= maxWeight) {
+            if (current.allowedDepth <= 0 || current.parentWeight.getBaseWeight() >= maxWeight) {
+                if (current.allowedDepth <= 0) {
+                    reasons.put(FailReasonType.ALLOWED_DEPTH_EXCEEDED,
+                            new FailReason(FailReasonType.ALLOWED_DEPTH_EXCEEDED,
+                                    format("Max allowed depth is %d", allowedDepth)));
+                } else if (!reasons.containsKey(FailReasonType.MAX_WEIGHT_EXCEEDED)) {
+                    reasons.put(FailReasonType.MAX_WEIGHT_EXCEEDED,
+                            new FailReason(FailReasonType.MAX_WEIGHT_EXCEEDED));
+                }
+                destinationFound = true;
                 continue;
             }
+
 
             // Otherwise, if we've been here before, see if this path is better
             SearchNode prior = visited.get(current.dstSw);
             // Use non-greedy way to save visited nodes to fix issue mentioned in docs/design/pce/max-latency-issue
-            if (prior != null && shiftedCurrentWeight < Math.abs(maxWeight - prior.parentWeight.toLong())) {
-                log.trace("Skip node {} processing", current.dstSw);
-                continue;
+            if (prior != null && shiftedCurrentWeight < Math.abs(maxWeight - prior.parentWeight.getBaseWeight())) {
+
+                // Should check with penalties too
+                if (currentPathWeight.getTotalWeight() > prior.getParentWeight().getTotalWeight()) {
+                    if (log.isTraceEnabled()) {
+                        log.trace("Skip node {} processing", current.dstSw);
+                    }
+                    continue;
+                }
             }
 
             // Either this is the first time, or this one has less weight .. either way, this node should
             // be the one in the visited list
             visited.put(current.dstSw, current);
-            log.trace("Save new path to node {} and process it's outgoing links", current.dstSw);
+            if (log.isTraceEnabled()) {
+                log.trace("Save new path to node {} and process it's outgoing links", current.dstSw);
+            }
 
             // At this stage .. haven't found END, haven't gone too deep, and we are not over weight.
             // So, add the outbound isls.
+            PathWeight desiredWeight = desiredPath == null ? null : desiredPath.getParentWeight();
             current.dstSw.getOutgoingLinks().stream()
+                    // We can skip path if its penalties are higher than bestPath penalties
+                    .filter(edge -> filterEdgeByPenalties(edge, current.parentWeight, desiredWeight, weightFunction))
                     // should firstly process edges with big weights to guarantee they will not be skipped.
                     // See unit test shouldUseSlowLinkInsidePath.
                     .sorted(Comparator.comparing(weightFunction).reversed()
@@ -476,7 +619,20 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
                     .forEach(edge -> toVisit.add(current.addNode(edge)));
         }
 
-        return desiredPath;
+        if (!destinationFound) {
+            reasons.put(FailReasonType.NO_CONNECTION, new FailReason(FailReasonType.NO_CONNECTION));
+        }
+
+        return new SearchNodeAndReasons(desiredPath, reasons);
+    }
+
+    private static boolean filterEdgeByPenalties(
+            Edge edge, PathWeight currentWeight, PathWeight desiredWeight, WeightFunction weightFunction) {
+        if (desiredWeight == null) {
+            return true;
+        }
+        PathWeight nextPathWeight = currentWeight.add(weightFunction.apply(edge));
+        return nextPathWeight.getPenaltiesWeight() <= desiredWeight.getPenaltiesWeight();
     }
 
     /**
@@ -590,5 +746,23 @@ public class BestWeightAndShortestPathFinder implements PathFinder {
         boolean containsSwitch(SwitchId switchId) {
             return parentPath.stream().anyMatch(s -> s.getSrcSwitch().getSwitchId().equals(switchId));
         }
+    }
+
+    private long getPathWeightDiversityPenaltiesValue(PathWeight pathWeight) {
+        return pathWeight.getPenaltyValue(PathWeight.Penalty.DIVERSITY_ISL_LATENCY)
+                + pathWeight.getPenaltyValue(PathWeight.Penalty.DIVERSITY_SWITCH_LATENCY)
+                + pathWeight.getPenaltyValue(PathWeight.Penalty.DIVERSITY_POP_ISL_COST);
+    }
+
+    private boolean isContainHardDiversityPenalties(PathWeight pathWeight) {
+        long penaltiesSum = pathWeight.getPenaltyValue(Penalty.PROTECTED_DIVERSITY_ISL_LATENCY)
+                + pathWeight.getPenaltyValue(Penalty.PROTECTED_DIVERSITY_SWITCH_LATENCY);
+        return penaltiesSum > 0;
+    }
+
+    @AllArgsConstructor
+    private static class SearchNodeAndReasons {
+        private SearchNode searchNode;
+        private Map<FailReasonType, FailReason> reasons;
     }
 }

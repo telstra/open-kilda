@@ -112,8 +112,12 @@ public class ValidateYFlowAction extends
             Flow mainAffinitySubFlow = subFlows.stream()
                     .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
                     .findFirst()
-                    .orElseThrow(() -> new FlowProcessingException(ErrorType.DATA_INVALID,
-                            format("Main affinity sub-flow of the y-flow %s not found", yFlowId)));
+                    .orElseGet(() ->
+                            subFlows.stream()
+                                    .findFirst()
+                                    .orElseThrow(() -> new FlowProcessingException(ErrorType.DATA_INVALID,
+                                            format("Main affinity sub-flow of the y-flow %s not found", yFlowId))));
+
             stateMachine.setMainAffinityFlowId(mainAffinitySubFlow.getFlowId());
 
             boolean mainAffinitySubFlowIsAffected = isFlowAffected(mainAffinitySubFlow, affectedIsls);

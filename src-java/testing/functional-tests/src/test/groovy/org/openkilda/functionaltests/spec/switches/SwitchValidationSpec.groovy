@@ -11,6 +11,7 @@ import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -18,25 +19,24 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandMessage
-import org.openkilda.messaging.command.flow.BaseInstallFlow
-import org.openkilda.messaging.command.flow.InstallEgressFlow
-import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest
-import org.openkilda.messaging.command.flow.InstallIngressFlow
-import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.FlowEndpoint
-import org.openkilda.model.OutputVlanType
+import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+import org.openkilda.rulemanager.FlowSpeakerData
+import org.openkilda.rulemanager.Instructions
+import org.openkilda.rulemanager.MeterFlag
+import org.openkilda.rulemanager.MeterSpeakerData
+import org.openkilda.rulemanager.OfTable
+import org.openkilda.rulemanager.OfVersion
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import com.google.common.collect.Sets
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
@@ -60,7 +60,7 @@ Description of fields:
 """)
 @Tags([SMOKE, SMOKE_SWITCHES])
 class SwitchValidationSpec extends HealthCheckSpecification {
-    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
+    @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}")
     String speakerTopic
     @Autowired
     @Qualifier("kafkaProducerProperties")
@@ -353,7 +353,7 @@ misconfigured"
         def sharedCookieOnSrcSw = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
             new Cookie(it.cookie).getType() in [CookieType.SHARED_OF_FLOW, CookieType.SERVER_42_FLOW_RTT_INGRESS]
         }?.cookie
-        def untouchedCookiesOnSrcSw = northbound.getSwitchProperties(srcSwitch.dpId).multiTable ?
+        def untouchedCookiesOnSrcSw = switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable ?
             (reverseCookies + sharedCookieOnSrcSw).sort() : reverseCookies
         def cookiesOnDstSw = northbound.getSwitchRules(dstSwitch.dpId).flowEntries*.cookie
         northbound.deleteMeter(srcSwitch.dpId, srcSwitchCreatedMeterIds[0])
@@ -451,7 +451,7 @@ misconfigured"
         def sharedCookieOnSrcSw = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
             new Cookie(it.cookie).getType() in [CookieType.SHARED_OF_FLOW, CookieType.SERVER_42_FLOW_RTT_INGRESS]
         }?.cookie
-        def untouchedCookies = northbound.getSwitchProperties(srcSwitch.dpId).multiTable ?
+        def untouchedCookies = switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable ?
                 ([egressCookie] + sharedCookieOnSrcSw).sort() : [egressCookie]
         verifyAll(northbound.validateSwitch(srcSwitch.dpId)) {
             it.rules.missing == [ingressCookie]
@@ -678,19 +678,42 @@ misconfigured"
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(switchPair.src.dpId)
                                                                   .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(speakerTopic, switchPair.dst.dpId.toString(), buildMessage(
-                new InstallEgressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.dst.dpId, 1, 2, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN, 1, 0,
-                        OutputVlanType.REPLACE, false, new FlowEndpoint(switchPair.src.dpId, 1), null)).toJson())).get()
-        involvedSwitches[1..-1].findAll { !it.description.contains("OF_12") }.each { transitSw ->
+                FlowSpeakerData.builder()
+                    .switchId(switchPair.dst.dpId)
+                    .ofVersion(OfVersion.of(switchPair.dst.ofVersion))
+                    .cookie(new Cookie(1L))
+                    .table(OfTable.EGRESS)
+                    .priority(101)
+                    .instructions(Instructions.builder().build())
+                    .build()).toJson())).get()
+        involvedSwitches[1..-2].findAll { !it.description.contains("OF_12") }.each { transitSw ->
             producer.send(new ProducerRecord(speakerTopic, transitSw.toString(), buildMessage(
-                    new InstallTransitFlow(UUID.randomUUID(), flow.flowId, 1L, transitSw, 1, 2, 1,
-                            FlowEncapsulationType.TRANSIT_VLAN, false)).toJson())).get()
+                    FlowSpeakerData.builder()
+                            .switchId(transitSw)
+                            .ofVersion(OfVersion.of(switchPair.dst.ofVersion))
+                            .cookie(new Cookie(1L))
+                            .table(OfTable.TRANSIT)
+                            .priority(102)
+                            .instructions(Instructions.builder().build())
+                            .build()).toJson())).get()
         }
-        producer.send(new ProducerRecord(speakerTopic, switchPair.src.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), flow.flowId, 1L, switchPair.src.dpId, 1, 2, 1, 0, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN,
-                        OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId,
-                        switchPair.dst.dpId, false, false, false, null)).toJson())).get()
+        producer.send(new ProducerRecord(speakerTopic, switchPair.src.dpId.toString(), buildMessage([
+                FlowSpeakerData.builder()
+                        .switchId(switchPair.src.dpId)
+                        .ofVersion(OfVersion.of(switchPair.src.ofVersion))
+                        .cookie(new Cookie(1L))
+                        .table(OfTable.INPUT)
+                        .priority(103)
+                        .instructions(Instructions.builder().build())
+                        .build(),
+                MeterSpeakerData.builder()
+                        .switchId(switchPair.src.dpId)
+                        .ofVersion(OfVersion.of(switchPair.src.ofVersion))
+                        .meterId(new MeterId(excessMeterId))
+                        .rate(flow.getMaximumBandwidth())
+                        .burst(flow.getMaximumBandwidth())
+                        .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
+                        .build()]).toJson())).get()
         producer.flush()
 
         then: "Switch validation shows excess rules and store them in the 'excess' section"
@@ -716,7 +739,7 @@ misconfigured"
         }
 
         and: "Excess meter is shown on the srcSwitch only"
-        Long burstSize = switchHelper.getExpectedBurst(switchPair.src.dpId, flow.maximumBandwidth)
+        Long burstSize = flow.maximumBandwidth
         def validateSwitchInfo = northbound.validateSwitch(switchPair.src.dpId)
         assert validateSwitchInfo.meters.excess.size() == 1
         assert validateSwitchInfo.meters.excess.each {
@@ -1028,11 +1051,6 @@ misconfigured"
         return northbound.getSwitchRules(switchId).flowEntries.findAll {
             !new Cookie(it.cookie).serviceFlag && it.instructions.goToMeter
         }*.cookie.sort()
-    }
-
-    private static Message buildMessage(final BaseInstallFlow commandData) {
-        InstallFlowForSwitchManagerRequest request = new InstallFlowForSwitchManagerRequest(commandData)
-        return new CommandMessage(request, System.currentTimeMillis(), UUID.randomUUID().toString(), null)
     }
 
     private SwitchPropertiesDto enableMultiTableIfNeeded(boolean needDevices, SwitchId switchId) {

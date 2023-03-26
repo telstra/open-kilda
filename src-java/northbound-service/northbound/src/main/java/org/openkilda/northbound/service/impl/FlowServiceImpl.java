@@ -32,6 +32,7 @@ import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.flow.FlowSyncRequest;
 import org.openkilda.messaging.command.flow.FlowValidationRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.error.ErrorType;
@@ -96,8 +97,7 @@ import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -115,12 +115,9 @@ import java.util.stream.Collectors;
 /**
  * Manages operations with flows.
  */
+@Slf4j
 @Service
 public class FlowServiceImpl implements FlowService {
-    /**
-     * The logger.
-     */
-    private static final Logger logger = LoggerFactory.getLogger(FlowServiceImpl.class);
 
     /**
      * The kafka topic for the new flow topology.
@@ -166,7 +163,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowResponsePayload> createFlow(FlowCreatePayload request) {
-        logger.info("Create flow: {}", request);
+        log.info("API request: Create flow: {}", request);
 
         final String correlationId = RequestCorrelationId.getId();
 
@@ -174,7 +171,7 @@ public class FlowServiceImpl implements FlowService {
         try {
             flowRequest = flowMapper.toFlowCreateRequest(request);
         } catch (IllegalArgumentException e) {
-            logger.error("Can not parse arguments: {}", e.getMessage(), e);
+            log.error("Can not parse arguments: {}", e.getMessage(), e);
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the create flow request");
         }
@@ -190,7 +187,7 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<FlowResponseV2> createFlow(FlowRequestV2 request) {
-        logger.info("Processing flow creation: {}", request);
+        log.info("API request: Processing flow creation: {}", request);
 
         final String correlationId = RequestCorrelationId.getId();
         FlowRequest flowRequest;
@@ -198,7 +195,7 @@ public class FlowServiceImpl implements FlowService {
         try {
             flowRequest = flowMapper.toFlowCreateRequest(request);
         } catch (IllegalArgumentException e) {
-            logger.error("Can not parse arguments: {}", e.getMessage(), e);
+            log.error("Can not parse arguments: {}", e.getMessage(), e);
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the create flow request");
         }
@@ -217,7 +214,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowResponsePayload> getFlow(final String id) {
-        logger.debug("Get flow request for flow {}", id);
+        log.info("API request: Get flow request for flow {}", id);
         return getFlowResponse(id, RequestCorrelationId.getId())
                 .thenApply(flowMapper::toFlowResponseOutput);
     }
@@ -227,7 +224,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowResponseV2> getFlowV2(final String id) {
-        logger.debug("Get flow request for flow {}", id);
+        log.info("API request: Get flow request for flow {}", id);
         FlowReadRequest data =
                 new FlowReadRequest(id);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(),
@@ -242,8 +239,8 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowResponsePayload> updateFlow(final FlowUpdatePayload request) {
-        logger.info("Update flow request for flow {}", request.getId());
+    public CompletableFuture<FlowResponsePayload> updateFlow(final String flowId, final FlowUpdatePayload request) {
+        log.info("API request: Update flow request for flow {}: {}", flowId, request);
 
         final String correlationId = RequestCorrelationId.getId();
         FlowRequest updateRequest;
@@ -251,10 +248,11 @@ public class FlowServiceImpl implements FlowService {
         try {
             updateRequest = flowMapper.toFlowUpdateRequest(request);
         } catch (IllegalArgumentException e) {
-            logger.error("Can not parse arguments: {}", e.getMessage(), e);
+            log.error("Can not parse arguments: {}", e.getMessage(), e);
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the update flow request");
         }
+        validateFlowId(updateRequest.getFlowId(), flowId, correlationId);
 
         CommandMessage command = new CommandMessage(updateRequest,
                 System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -266,8 +264,8 @@ public class FlowServiceImpl implements FlowService {
     }
 
     @Override
-    public CompletableFuture<FlowResponseV2> updateFlow(FlowRequestV2 request) {
-        logger.info("Processing flow update: {}", request);
+    public CompletableFuture<FlowResponseV2> updateFlow(final String flowId, FlowRequestV2 request) {
+        log.info("API request: Update flow request for flow {}: {}", flowId, request);
 
         final String correlationId = RequestCorrelationId.getId();
         FlowRequest updateRequest;
@@ -275,10 +273,11 @@ public class FlowServiceImpl implements FlowService {
         try {
             updateRequest = flowMapper.toFlowRequest(request).toBuilder().type(Type.UPDATE).build();
         } catch (IllegalArgumentException e) {
-            logger.error("Can not parse arguments: {}", e.getMessage(), e);
+            log.error("Can not parse arguments: {}", e.getMessage(), e);
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the update flow request");
         }
+        validateFlowId(updateRequest.getFlowId(), flowId, correlationId);
 
         CommandMessage command = new CommandMessage(updateRequest,
                 System.currentTimeMillis(), correlationId, Destination.WFM);
@@ -291,14 +290,14 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<FlowResponsePayload> patchFlow(String flowId, FlowPatchDto flowPatchDto) {
-        logger.info("Patch flow request for flow {}", flowId);
+        log.info("API request: Patch flow request for flow {}. New properties {}", flowId, flowPatchDto);
         String correlationId = RequestCorrelationId.getId();
 
         FlowPatch flowPatch;
         try {
             flowPatch = flowMapper.toFlowPatch(flowPatchDto);
         } catch (IllegalArgumentException e) {
-            logger.error("Can not parse arguments: {}", e.getMessage(), e);
+            log.error("Can not parse arguments: {}", e.getMessage(), e);
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the flow patch request");
         }
@@ -314,14 +313,14 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<FlowResponseV2> patchFlow(String flowId, FlowPatchV2 flowPatchDto) {
-        logger.info("Patch flow request for flow {}", flowId);
+        log.info("API request: Patch flow request for flow {}. New properties {}", flowId, flowPatchDto);
         String correlationId = RequestCorrelationId.getId();
 
         FlowPatch flowPatch;
         try {
             flowPatch = flowMapper.toFlowPatch(flowPatchDto);
         } catch (IllegalArgumentException e) {
-            logger.error("Can not parse arguments: {}", e.getMessage(), e);
+            log.error("Can not parse arguments: {}", e.getMessage(), e);
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the flow patch request");
         }
@@ -341,7 +340,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<List<FlowResponsePayload>> getAllFlows() {
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Get flows request processing");
+        log.info("API request: Get all flows request processing");
         return handleGetAllFlowsRequest(
                 new FlowsDumpRequest(), correlationId, flowMapper::toFlowResponseOutput);
     }
@@ -352,13 +351,13 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<List<FlowResponseV2>> getAllFlowsV2(String status) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Get flows request processing");
+        log.info("API request: Get all flows request processing");
 
         FlowsDumpRequest data;
         try {
             data = new FlowsDumpRequest(status);
         } catch (IllegalArgumentException e) {
-            logger.error("Can not parse arguments: {}", e.getMessage(), e);
+            log.error("Can not parse arguments: {}", e.getMessage(), e);
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments of the flow dump request");
         }
@@ -372,7 +371,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<List<FlowResponsePayload>> deleteAllFlows() {
         CompletableFuture<List<FlowResponsePayload>> result = new CompletableFuture<>();
-        logger.warn("Delete all flows request");
+        log.warn("API request: Delete all flows request");
         // TODO: Need a getFlowIDs .. since that is all we need
         CompletableFuture<List<FlowResponsePayload>> getFlowsStage = this.getAllFlows();
         final String correlationId = RequestCorrelationId.getId();
@@ -417,7 +416,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowResponsePayload> deleteFlow(final String id) {
-        logger.info("Delete flow request for flow: {}", id);
+        log.info("API request: Delete flow request for flow: {}", id);
         final String correlationId = RequestCorrelationId.getId();
 
         return sendDeleteFlow(id, correlationId);
@@ -437,7 +436,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowResponseV2> deleteFlowV2(String flowId) {
-        logger.info("Delete flow request for flow: {}", flowId);
+        log.info("API request: Delete flow request for flow: {}", flowId);
 
         CommandMessage command = new CommandMessage(new FlowDeleteRequest(flowId),
                 System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
@@ -464,7 +463,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowIdStatusPayload> statusFlow(final String id) {
-        logger.debug("Flow status request for flow: {}", id);
+        log.info("API request: Flow status request for flow: {}", id);
         return getFlowResponse(id, RequestCorrelationId.getId())
                 .thenApply(flowMapper::toFlowIdStatusPayload);
     }
@@ -474,7 +473,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowPathPayload> pathFlow(final String id) {
-        logger.debug("Flow path request for flow {}", id);
+        log.info("API request: Flow path request for flow {}", id);
         final String correlationId = RequestCorrelationId.getId();
 
         GetFlowPathRequest data = new GetFlowPathRequest(id);
@@ -572,7 +571,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowResponsePayload> swapFlowPaths(String flowId) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.info("Swapping paths for flow : {}", flowId);
+        log.info("API request: Swapping paths for flow : {}", flowId);
 
         FlowPathSwapRequest payload = new FlowPathSwapRequest(flowId);
         CommandMessage request = new CommandMessage(
@@ -584,19 +583,29 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(flowMapper::toFlowResponseOutput);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public CompletableFuture<FlowReroutePayload> rerouteFlow(String flowId) {
-        logger.info("Reroute flow request for flow {}", flowId);
-        return reroute(flowId, false);
+        log.info("API request: Reroute flow: {}={}", FLOW_ID, flowId);
+
+        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, false, "initiated via Northbound");
+        CommandMessage command = new CommandMessage(
+                payload, System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(rerouteTopic, command)
+                .thenApply(FlowRerouteResponse.class::cast)
+                .thenApply(response ->
+                        flowMapper.toReroutePayload(flowId, response.getPayload(), response.isRerouted()));
     }
 
     @Override
     public CompletableFuture<FlowReroutePayload> syncFlow(String flowId) {
-        logger.info("Forced reroute request for flow {}", flowId);
-        return reroute(flowId, true);
+        log.info("API request: Sync flow {}", flowId);
+        FlowSyncRequest payload = new FlowSyncRequest(flowId);
+        CommandMessage command = new CommandMessage(payload, System.currentTimeMillis(), RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(FlowRerouteResponse.class::cast)
+                .thenApply(response ->
+                        flowMapper.toReroutePayload(flowId, response.getPayload(), response.isRerouted()));
     }
 
     /**
@@ -604,7 +613,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<List<FlowValidationDto>> validateFlow(final String flowId) {
-        logger.debug("Validate flow request for flow {}", flowId);
+        log.info("API request: Validate flow request for flow {}", flowId);
         CommandMessage message = new CommandMessage(new FlowValidationRequest(flowId),
                 System.currentTimeMillis(), RequestCorrelationId.getId());
 
@@ -617,6 +626,7 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<PingOutput> pingFlow(String flowId, PingInput payload) {
+        log.info("API request: Ping flow {}, input={}", flowId, payload);
         FlowPingRequest request = new FlowPingRequest(flowId, payload.getTimeoutMillis());
 
         final String correlationId = RequestCorrelationId.getId();
@@ -633,6 +643,7 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<FlowMeterEntries> modifyMeter(String flowId) {
+        log.info("API request: Modify meter for flow {}", flowId);
         MeterModifyRequest request = new MeterModifyRequest(flowId);
 
         final String correlationId = RequestCorrelationId.getId();
@@ -643,9 +654,9 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<FlowRerouteResponseV2> rerouteFlowV2(String flowId) {
-        logger.info("Processing flow reroute: {}", flowId);
+        log.info("API request: Processing flow reroute: {}", flowId);
 
-        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, false, false, "initiated via Northbound");
+        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, false, "initiated via Northbound");
         CommandMessage command = new CommandMessage(
                 payload, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
 
@@ -655,23 +666,12 @@ public class FlowServiceImpl implements FlowService {
                         flowMapper.toRerouteResponseV2(flowId, response.getPayload(), response.isRerouted()));
     }
 
-    private CompletableFuture<FlowReroutePayload> reroute(String flowId, boolean forced) {
-        logger.debug("Reroute flow: {}={}, forced={}", FLOW_ID, flowId, forced);
-        String correlationId = RequestCorrelationId.getId();
-        FlowRerouteRequest payload = createManualFlowRerouteRequest(flowId, forced, false, "initiated via Northbound");
-        CommandMessage command = new CommandMessage(
-                payload, System.currentTimeMillis(), correlationId, Destination.WFM);
-
-        return messagingChannel.sendAndGet(rerouteTopic, command)
-                .thenApply(FlowRerouteResponse.class::cast)
-                .thenApply(response ->
-                        flowMapper.toReroutePayload(flowId, response.getPayload(), response.isRerouted()));
-    }
-
     @Override
     public CompletableFuture<List<FlowHistoryEntry>> listFlowEvents(String flowId,
                                                                     long timestampFrom,
                                                                     long timestampTo, int maxCount) {
+        log.info("API request: List flow events: flowId {}, timestampFrom {}, timestampTo {}, maxCount {}",
+                flowId, timestampFrom, timestampTo, maxCount);
         if (maxCount < 1) {
             throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
                     ErrorType.PARAMETERS_INVALID, format("Invalid `max_count` argument '%s'.", maxCount),
@@ -694,6 +694,8 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowHistoryStatusesResponse> getFlowStatuses(String flowId, long timestampFrom,
                                                                           long timestampTo, int maxCount) {
+        log.info("API request: Get flow statuses: flowId {}, timestampFrom {}, timestampTo {}, maxCount {}",
+                flowId, timestampFrom, timestampTo, maxCount);
         if (maxCount < 1) {
             throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
                     ErrorType.PARAMETERS_INVALID, format("Invalid `max_count` argument '%s'.", maxCount),
@@ -720,10 +722,9 @@ public class FlowServiceImpl implements FlowService {
      */
     @Override
     public CompletableFuture<SwapFlowEndpointPayload> swapFlowEndpoint(SwapFlowEndpointPayload input) {
-        final String correlationId = RequestCorrelationId.getId();
-        logger.info("Swap endpoints for flow {} and {}", input.getFirstFlow().getFlowId(),
-                input.getSecondFlow().getFlowId());
+        log.info("API request: Swap flow endpoint. input={}", input);
 
+        final String correlationId = RequestCorrelationId.getId();
         SwapFlowEndpointRequest payload = new SwapFlowEndpointRequest(flowMapper.toSwapFlowDto(input.getFirstFlow()),
                 flowMapper.toSwapFlowDto(input.getSecondFlow()));
 
@@ -739,7 +740,7 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<FlowConnectedDevicesResponse> getFlowConnectedDevices(String flowId, Instant since) {
-        logger.info("Get connected devices for flow {} since {}", flowId, since);
+        log.info("API request: Get connected devices for flow {} since {}", flowId, since);
 
         FlowConnectedDeviceRequest request = new FlowConnectedDeviceRequest(flowId, since);
 
@@ -753,7 +754,7 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<List<FlowLoopResponse>> getFlowLoops(String flowId, String switchId) {
-        logger.info("Get flow loops for flow {} and switch {}", flowId, switchId);
+        log.info("API request: Get flow loops for flow {} and switch {}", flowId, switchId);
 
         GetFlowLoopsRequest request = new GetFlowLoopsRequest(flowId, switchId);
 
@@ -771,7 +772,7 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<FlowLoopResponse> createFlowLoop(String flowId, SwitchId switchId) {
-        logger.info("Create flow loop for flow {} and switch {}", flowId, switchId);
+        log.info("API request: Create flow loop for flow {} and switch {}", flowId, switchId);
 
         CreateFlowLoopRequest request = new CreateFlowLoopRequest(flowId, switchId);
 
@@ -785,7 +786,7 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<FlowLoopResponse> deleteFlowLoop(String flowId) {
-        logger.info("Delete flow loop for flow {}", flowId);
+        log.info("API request: Delete flow loop for flow {}", flowId);
 
         DeleteFlowLoopRequest request = new DeleteFlowLoopRequest(flowId);
 
@@ -800,7 +801,7 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowMirrorPointResponseV2> createFlowMirrorPoint(String flowId,
                                                                               FlowMirrorPointPayload payload) {
-        logger.info("Processing flow mirror point creation: {}, for flow {}", payload, flowId);
+        log.info("API request: Create flow mirror point: {}, for flow {}", payload, flowId);
 
         final String correlationId = RequestCorrelationId.getId();
         FlowMirrorPointCreateRequest request;
@@ -825,7 +826,7 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<FlowMirrorPointResponseV2> deleteFlowMirrorPoint(String flowId, String mirrorPointId) {
-        logger.info("Processing flow mirror point deletion: {}, for flow {}", mirrorPointId, flowId);
+        log.info("API request: Delete flow mirror points. mirrorPoint {}, flowId {}", mirrorPointId, flowId);
 
         final String correlationId = RequestCorrelationId.getId();
         FlowMirrorPointDeleteRequest request = new FlowMirrorPointDeleteRequest(flowId, mirrorPointId);
@@ -839,7 +840,7 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<FlowMirrorPointsResponseV2> getFlowMirrorPoints(String flowId) {
-        logger.info("Processing flow mirror point getting for flow {}", flowId);
+        log.info("API request: Get flow mirror points for flow {}", flowId);
 
         final String correlationId = RequestCorrelationId.getId();
         FlowMirrorPointsDumpRequest request = new FlowMirrorPointsDumpRequest(flowId);
@@ -861,5 +862,13 @@ public class FlowServiceImpl implements FlowService {
                         .map(FlowResponse::getPayload)
                         .map(encoder)
                         .collect(Collectors.toList()));
+    }
+
+    private void validateFlowId(String requestFlowId, String pathFlowId, String correlationId) {
+        if (!requestFlowId.equals(pathFlowId)) {
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    "flow_id from body and from path are different",
+                    format("Body flow_id: %s, path flow_id: %s", requestFlowId, pathFlowId));
+        }
     }
 }

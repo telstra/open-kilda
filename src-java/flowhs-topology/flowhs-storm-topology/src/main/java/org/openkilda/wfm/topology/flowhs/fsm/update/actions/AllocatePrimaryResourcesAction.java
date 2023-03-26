@@ -80,7 +80,7 @@ public class AllocatePrimaryResourcesAction extends
         log.debug("Finding a new primary path for flow {}", flowId);
         GetPathsResult allocatedPaths = allocatePathPair(tmpFlow, newForwardPathId, newReversePathId,
                 false, pathIdsToReuse, oldPaths, true,
-                stateMachine.getSharedBandwidthGroupId(), path -> true);
+                stateMachine.getSharedBandwidthGroupId(), path -> true, false);
         if (allocatedPaths == null) {
             throw new ResourceAllocationException("Unable to allocate a path");
         }

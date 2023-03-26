@@ -44,23 +44,32 @@ import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
+import org.openkilda.messaging.info.stats.RemoveYFlowStatsInfo;
+import org.openkilda.messaging.info.stats.StatsNotification;
 import org.openkilda.messaging.info.stats.SwitchTableStatsData;
 import org.openkilda.messaging.info.stats.TableStatsEntry;
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
+import org.openkilda.messaging.info.stats.UpdateYFlowStatsInfo;
 import org.openkilda.messaging.model.grpc.PacketInOutStatsDto;
+import org.openkilda.messaging.payload.yflow.YFlowEndpointResources;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YFlow.SharedEndpoint;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
@@ -70,6 +79,7 @@ import org.openkilda.wfm.topology.TestKafkaConsumer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
@@ -85,10 +95,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -102,15 +114,18 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static final String POLL_DATAPOINT_ASSERT_MESSAGE = "Could not poll all %d datapoints, got only %d records";
     private static final String METRIC_PREFIX = "kilda.";
     private static final int ENCAPSULATION_ID = 123;
-    private static final UUID TRANSACTION_ID = UUID.randomUUID();
     private static final ObjectMapper objectMapper = new ObjectMapper();
     public static final String COMPONENT_NAME = "stats";
     public static final String RUN_ID = "blue";
     public static final String ROOT_NODE = "kilda";
+    private static final int STAT_VLAN_1 = 4;
+    private static final int STAT_VLAN_2 = 5;
+    public static final HashSet<Integer> STAT_VLANS = Sets.newHashSet(STAT_VLAN_1, STAT_VLAN_2);
     private static InMemoryGraphPersistenceManager persistenceManager;
     private static StatsTopologyConfig statsTopologyConfig;
     private static TestKafkaConsumer otsdbConsumer;
     private static FlowRepository flowRepository;
+    private static YFlowRepository yFlowRepository;
     private static SwitchRepository switchRepository;
     private static final SwitchId SWITCH_ID_1 = new SwitchId(1L);
     private static final SwitchId SWITCH_ID_2 = new SwitchId(2L);
@@ -118,13 +133,29 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static final int PORT_1 = 1;
     private static final int PORT_2 = 2;
     private static final int PORT_3 = 3;
+    private static final int PORT_4 = 4;
+    private static final MeterId SHARED_POINT_METER_ID = new MeterId(4);
+    private static final MeterId Y_POINT_METER_ID = new MeterId(5);
     private static final long MAIN_COOKIE = 15;
     private static final long PROTECTED_COOKIE = 17;
     private static final FlowSegmentCookie MAIN_FORWARD_COOKIE = new FlowSegmentCookie(FORWARD, MAIN_COOKIE);
     private static final FlowSegmentCookie MAIN_REVERSE_COOKIE = new FlowSegmentCookie(REVERSE, MAIN_COOKIE);
     private static final FlowSegmentCookie PROTECTED_FORWARD_COOKIE = new FlowSegmentCookie(FORWARD, PROTECTED_COOKIE);
     private static final FlowSegmentCookie PROTECTED_REVERSE_COOKIE = new FlowSegmentCookie(REVERSE, PROTECTED_COOKIE);
-    private final String flowId = "f253423454343";
+    private static final FlowSegmentCookie FORWARD_MIRROR_COOKIE = MAIN_FORWARD_COOKIE.toBuilder().mirror(true).build();
+    private static final FlowSegmentCookie REVERSE_MIRROR_COOKIE = MAIN_REVERSE_COOKIE.toBuilder().mirror(true).build();
+    private static final FlowSegmentCookie Y_MAIN_FORWARD_COOKIE = MAIN_FORWARD_COOKIE.toBuilder().yFlow(true).build();
+    private static final FlowSegmentCookie Y_MAIN_REVERSE_COOKIE = MAIN_REVERSE_COOKIE.toBuilder().yFlow(true).build();
+    private static final FlowSegmentCookie STAT_VLAN_FORWARD_COOKIE_1 = MAIN_FORWARD_COOKIE.toBuilder()
+            .type(CookieType.VLAN_STATS_PRE_INGRESS).statsVlan(STAT_VLAN_1).build();
+    private static final FlowSegmentCookie STAT_VLAN_FORWARD_COOKIE_2 = MAIN_FORWARD_COOKIE.toBuilder()
+            .type(CookieType.VLAN_STATS_PRE_INGRESS).statsVlan(STAT_VLAN_2).build();
+    private static final FlowSegmentCookie STAT_VLAN_REVERSE_COOKIE_1 = MAIN_REVERSE_COOKIE.toBuilder()
+            .type(CookieType.VLAN_STATS_PRE_INGRESS).statsVlan(STAT_VLAN_1).build();
+    private static final FlowSegmentCookie STAT_VLAN_REVERSE_COOKIE_2 = MAIN_REVERSE_COOKIE.toBuilder()
+            .type(CookieType.VLAN_STATS_PRE_INGRESS).statsVlan(STAT_VLAN_2).build();
+    private static final String flowId = "f253423454343";
+    private static final String Y_FLOW_ID = "Y_flow_1";
 
     @BeforeClass
     public static void setupOnce() throws Exception {
@@ -155,6 +186,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         otsdbConsumer.start();
 
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
         sleep(TOPOLOGY_START_TIMEOUT);
@@ -174,7 +206,10 @@ public class StatsTopologyTest extends AbstractStormTest {
 
         // need clear data in CacheBolt
         for (Flow flow : flowRepository.findAll()) {
-            flow.getPaths().forEach(this::sendRemoveFlowPathInfo);
+            flow.getPaths().forEach(path -> sendRemoveFlowPathInfo(path, flow.getVlanStatistics()));
+        }
+        for (YFlow yFlow : yFlowRepository.findAll()) {
+            sendRemoveYFlowPathInfo(yFlow);
         }
 
         persistenceManager.getInMemoryImplementation().purgeData();
@@ -319,7 +354,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     public void meterFlowRulesStatsTest() {
         Flow flow = createOneSwitchFlow(SWITCH_ID_1);
         FlowPath flowPath = flow.getForwardPath();
-        sendUpdateFlowPathInfo(flowPath);
+        sendUpdateFlowPathInfo(flowPath, flow.getVlanStatistics());
 
         MeterStatsEntry meterStats = new MeterStatsEntry(flowPath.getMeterId().getValue(), 500L, 700L);
 
@@ -383,9 +418,9 @@ public class StatsTopologyTest extends AbstractStormTest {
     @Test
     public void flowStatsTest() {
         Flow flow = createOneSwitchFlow(SWITCH_ID_1);
-        sendUpdateFlowPathInfo(flow.getForwardPath());
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
 
-        FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, MAIN_FORWARD_COOKIE.getValue(), 150L, 300L, 10, 10);
+        FlowStatsEntry flowStats = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 150L, 300L, 10, 10);
 
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(flowStats)));
         validateFlowStats(flowStats, MAIN_FORWARD_COOKIE, SWITCH_ID_1, true, true);
@@ -394,10 +429,10 @@ public class StatsTopologyTest extends AbstractStormTest {
     @Test
     public void flowStatsWithProtectedTest() {
         Flow flow = createFlowWithProtectedPath();
-        sendUpdateFlowPathInfo(flow.getForwardPath());
-        sendUpdateFlowPathInfo(flow.getReversePath());
-        sendUpdateFlowPathInfo(flow.getProtectedForwardPath());
-        sendUpdateFlowPathInfo(flow.getProtectedReversePath());
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getReversePath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getProtectedForwardPath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getProtectedReversePath(), flow.getVlanStatistics());
 
         FlowStatsEntry mainForwardStats = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(mainForwardStats)));
@@ -421,12 +456,281 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
+    public void ySubFlowIngressStatsTest() {
+        Flow flow = createYSubFlow();
+        sendUpdateSubFlowPathInfo(flow.getForwardPath(), flow);
+        sendUpdateSubFlowPathInfo(flow.getReversePath(), flow);
+        sendUpdateYFlowPathInfo(flow.getYFlow());
+
+        FlowStatsEntry flowForwardIngress = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(flowForwardIngress)));
+        validateFlowStats(flowForwardIngress, MAIN_FORWARD_COOKIE, SWITCH_ID_1, false, false, true);
+
+        FlowStatsEntry yForwardIngress = new FlowStatsEntry(1, Y_MAIN_FORWARD_COOKIE.getValue(), 5, 6, 7, 8);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(yForwardIngress)));
+        validateFlowStats(yForwardIngress, Y_MAIN_FORWARD_COOKIE, SWITCH_ID_1, true, false, true);
+
+        FlowStatsEntry flowReverseIngress = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 9, 10, 11, 12);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(flowReverseIngress)));
+        validateFlowStats(flowReverseIngress, MAIN_REVERSE_COOKIE, SWITCH_ID_3, true, false, true);
+    }
+
+    @Test
+    public void ySubFlowEgressStatsTest() {
+        Flow flow = createYSubFlow();
+        sendUpdateSubFlowPathInfo(flow.getForwardPath(), flow);
+        sendUpdateSubFlowPathInfo(flow.getReversePath(), flow);
+        sendUpdateYFlowPathInfo(flow.getYFlow());
+
+        FlowStatsEntry flowReverseEgress = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 1, 2, 3, 4);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(flowReverseEgress)));
+        validateFlowStats(flowReverseEgress, MAIN_REVERSE_COOKIE, SWITCH_ID_1, false, true, true);
+
+        FlowStatsEntry flowForwardEgress = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 5, 6, 7, 8);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(flowForwardEgress)));
+        validateFlowStats(flowForwardEgress, MAIN_FORWARD_COOKIE, SWITCH_ID_3, false, true, true);
+    }
+
+    @Test
+    public void ySubFlowTransitStatsTest() {
+        Flow flow = createYSubFlow();
+        sendUpdateSubFlowPathInfo(flow.getForwardPath(), flow);
+        sendUpdateSubFlowPathInfo(flow.getReversePath(), flow);
+        sendUpdateYFlowPathInfo(flow.getYFlow());
+
+        FlowStatsEntry flowForwardTransit = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(flowForwardTransit)));
+        validateFlowStats(flowForwardTransit, MAIN_FORWARD_COOKIE, SWITCH_ID_2, false, false, true);
+
+        FlowStatsEntry flowReverseTransit = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 5, 6, 7, 8);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(flowReverseTransit)));
+        validateFlowStats(flowReverseTransit, MAIN_REVERSE_COOKIE, SWITCH_ID_2, false, false, true);
+
+        FlowStatsEntry yForwardTransit = new FlowStatsEntry(1, Y_MAIN_FORWARD_COOKIE.getValue(), 9, 10, 11, 12);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(yForwardTransit)));
+        validateFlowStats(yForwardTransit, Y_MAIN_FORWARD_COOKIE, SWITCH_ID_2, false, false, true);
+
+        FlowStatsEntry yReverseTransit = new FlowStatsEntry(1, Y_MAIN_REVERSE_COOKIE.getValue(), 13, 14, 11, 12);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(yReverseTransit)));
+        validateFlowStats(yReverseTransit, Y_MAIN_REVERSE_COOKIE, SWITCH_ID_2, false, false, true);
+    }
+
+    @Test
+    public void vkindSubFlowIngressStatsTest() {
+        Flow flow = createVSubFlow();
+        sendUpdateSubFlowPathInfo(flow.getForwardPath(), flow);
+        sendUpdateSubFlowPathInfo(flow.getReversePath(), flow);
+        sendUpdateYFlowPathInfo(flow.getYFlow());
+
+        FlowStatsEntry flowForwardIngress = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(flowForwardIngress)));
+        validateFlowStats(flowForwardIngress, MAIN_FORWARD_COOKIE, SWITCH_ID_1, false, false, true);
+
+        FlowStatsEntry yForwardIngress = new FlowStatsEntry(1, Y_MAIN_FORWARD_COOKIE.getValue(), 5, 6, 7, 8);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(yForwardIngress)));
+        validateFlowStats(yForwardIngress, Y_MAIN_FORWARD_COOKIE, SWITCH_ID_1, true, false, true);
+
+        FlowStatsEntry flowReverseIngress = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 9, 10, 11, 12);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(flowReverseIngress)));
+        validateFlowStats(flowReverseIngress, MAIN_REVERSE_COOKIE, SWITCH_ID_3, true, false, true);
+    }
+
+    @Test
+    public void vkindSubFlowEgressStatsTest() {
+        Flow flow = createVSubFlow();
+        sendUpdateSubFlowPathInfo(flow.getForwardPath(), flow);
+        sendUpdateSubFlowPathInfo(flow.getReversePath(), flow);
+        sendUpdateYFlowPathInfo(flow.getYFlow());
+
+        FlowStatsEntry flowForwardEgress = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(flowForwardEgress)));
+        validateFlowStats(flowForwardEgress, MAIN_FORWARD_COOKIE, SWITCH_ID_3, false, true, true);
+
+        FlowStatsEntry flowReverseEgress = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 5, 6, 7, 8);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(flowReverseEgress)));
+        validateFlowStats(flowReverseEgress, MAIN_REVERSE_COOKIE, SWITCH_ID_1, false, false, true);
+
+        FlowStatsEntry yReverseEgress = new FlowStatsEntry(1, Y_MAIN_REVERSE_COOKIE.getValue(), 9, 10, 11, 12);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(yReverseEgress)));
+        validateFlowStats(yReverseEgress, Y_MAIN_REVERSE_COOKIE, SWITCH_ID_1, false, true, true);
+    }
+
+    @Test
+    public void vkindSubFlowTransitStatsTest() {
+        Flow flow = createYSubFlow();
+        sendUpdateSubFlowPathInfo(flow.getForwardPath(), flow);
+        sendUpdateSubFlowPathInfo(flow.getReversePath(), flow);
+        sendUpdateYFlowPathInfo(flow.getYFlow());
+
+        FlowStatsEntry flowForwardTransit = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(flowForwardTransit)));
+        validateFlowStats(flowForwardTransit, MAIN_FORWARD_COOKIE, SWITCH_ID_2, false, false, true);
+
+        FlowStatsEntry flowReverseTransit = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 5, 6, 7, 8);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(flowReverseTransit)));
+        validateFlowStats(flowReverseTransit, MAIN_REVERSE_COOKIE, SWITCH_ID_2, false, false, true);
+
+        FlowStatsEntry yForwardTransit = new FlowStatsEntry(1, Y_MAIN_FORWARD_COOKIE.getValue(), 9, 10, 11, 12);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(yForwardTransit)));
+        validateFlowStats(yForwardTransit, Y_MAIN_FORWARD_COOKIE, SWITCH_ID_2, false, false, true);
+
+        FlowStatsEntry yReverseTransit = new FlowStatsEntry(1, Y_MAIN_REVERSE_COOKIE.getValue(), 13, 14, 15, 16);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(yReverseTransit)));
+        validateFlowStats(yReverseTransit, Y_MAIN_REVERSE_COOKIE, SWITCH_ID_2, false, false, true);
+    }
+
+    @Test
+    public void flatSubFlowIngressStatsTest() {
+        Flow flow = createFlatSubFlow();
+        sendUpdateSubFlowPathInfo(flow.getForwardPath(), flow);
+        sendUpdateSubFlowPathInfo(flow.getReversePath(), flow);
+        sendUpdateYFlowPathInfo(flow.getYFlow());
+
+        FlowStatsEntry flowForwardIngress = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(flowForwardIngress)));
+        validateFlowStats(flowForwardIngress, MAIN_FORWARD_COOKIE, SWITCH_ID_1, false, false, true);
+
+        FlowStatsEntry yForwardIngress = new FlowStatsEntry(1, Y_MAIN_FORWARD_COOKIE.getValue(), 5, 6, 7, 8);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(yForwardIngress)));
+        validateFlowStats(yForwardIngress, Y_MAIN_FORWARD_COOKIE, SWITCH_ID_1, true, false, true);
+
+        FlowStatsEntry flowReverseIngress = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 9, 10, 11, 12);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(flowReverseIngress)));
+        validateFlowStats(flowReverseIngress, MAIN_REVERSE_COOKIE, SWITCH_ID_3, false, false, true);
+
+        FlowStatsEntry yReverseIngress = new FlowStatsEntry(1, Y_MAIN_REVERSE_COOKIE.getValue(), 13, 14, 15, 16);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(yReverseIngress)));
+        validateFlowStats(yReverseIngress, Y_MAIN_REVERSE_COOKIE, SWITCH_ID_3, true, false, true);
+    }
+
+    @Test
+    public void flatSubFlowEgressStatsTest() {
+        Flow flow = createFlatSubFlow();
+        sendUpdateSubFlowPathInfo(flow.getForwardPath(), flow);
+        sendUpdateSubFlowPathInfo(flow.getReversePath(), flow);
+        sendUpdateYFlowPathInfo(flow.getYFlow());
+
+        FlowStatsEntry flowForwardEgress = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(flowForwardEgress)));
+        validateFlowStats(flowForwardEgress, MAIN_FORWARD_COOKIE, SWITCH_ID_3, false, true, true);
+
+        FlowStatsEntry flowReverseEgress = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 5, 6, 7, 8);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(flowReverseEgress)));
+        validateFlowStats(flowReverseEgress, MAIN_REVERSE_COOKIE, SWITCH_ID_1, false, true, true);
+    }
+
+    @Test
+    public void flatSubFlowTransitStatsTest() {
+        Flow flow = createFlatSubFlow();
+        sendUpdateSubFlowPathInfo(flow.getForwardPath(), flow);
+        sendUpdateSubFlowPathInfo(flow.getReversePath(), flow);
+        sendUpdateYFlowPathInfo(flow.getYFlow());
+
+        FlowStatsEntry flowForwardTransit = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(flowForwardTransit)));
+        validateFlowStats(flowForwardTransit, MAIN_FORWARD_COOKIE, SWITCH_ID_2, false, false, true);
+
+        FlowStatsEntry flowReverseTransit = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 5, 6, 7, 8);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(flowReverseTransit)));
+        validateFlowStats(flowReverseTransit, MAIN_REVERSE_COOKIE, SWITCH_ID_2, false, false, true);
+
+        FlowStatsEntry yForwardTransit = new FlowStatsEntry(1, Y_MAIN_FORWARD_COOKIE.getValue(), 9, 10, 11, 12);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(yForwardTransit)));
+        validateFlowStats(yForwardTransit, Y_MAIN_FORWARD_COOKIE, SWITCH_ID_2, false, false, true);
+
+        FlowStatsEntry yReverseTransit = new FlowStatsEntry(1, Y_MAIN_REVERSE_COOKIE.getValue(), 13, 14, 15, 16);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_2, Collections.singletonList(yReverseTransit)));
+        validateFlowStats(yReverseTransit, Y_MAIN_REVERSE_COOKIE, SWITCH_ID_2, false, false, true);
+    }
+
+    @Test
+    public void flowVlanStatsTest() {
+        Flow flow = createFlowWithProtectedPath();
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getReversePath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getProtectedForwardPath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getProtectedReversePath(), flow.getVlanStatistics());
+
+        FlowStatsEntry vlanForwardStats1 = new FlowStatsEntry(1, STAT_VLAN_FORWARD_COOKIE_1.getValue(), 1, 2, 3, 4);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(vlanForwardStats1)));
+        validateStatVlan(vlanForwardStats1, STAT_VLAN_FORWARD_COOKIE_1, SWITCH_ID_1);
+
+        FlowStatsEntry vlanForwardStats2 = new FlowStatsEntry(1, STAT_VLAN_FORWARD_COOKIE_2.getValue(), 5, 6, 7, 8);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(vlanForwardStats2)));
+        validateStatVlan(vlanForwardStats2, STAT_VLAN_FORWARD_COOKIE_2, SWITCH_ID_1);
+
+        FlowStatsEntry vlanReverseStats1 = new FlowStatsEntry(1, STAT_VLAN_REVERSE_COOKIE_1.getValue(), 9, 10, 11, 12);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(vlanReverseStats1)));
+        validateStatVlan(vlanReverseStats1, STAT_VLAN_REVERSE_COOKIE_1, SWITCH_ID_3);
+
+        FlowStatsEntry vlanReverseStats2 = new FlowStatsEntry(1, STAT_VLAN_REVERSE_COOKIE_2.getValue(), 13, 14, 15, 16);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_3, Collections.singletonList(vlanReverseStats2)));
+        validateStatVlan(vlanReverseStats2, STAT_VLAN_REVERSE_COOKIE_2, SWITCH_ID_3);
+    }
+
+    @Test
+    public void flowStatsMirrorTest() {
+        // FLow without mirrors
+        Flow flow = createFlow();
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics(), false, false);
+        sendUpdateFlowPathInfo(flow.getReversePath(), flow.getVlanStatistics(), false, false);
+
+        // Flow has no mirrors. Ingress rule generates ingress metrics
+        FlowStatsEntry ingressForwardStats = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(ingressForwardStats)));
+        validateFlowStats(ingressForwardStats, MAIN_FORWARD_COOKIE, SWITCH_ID_1, true, false);
+
+        // Flow has no mirrors. Egress rule generates egress metrics
+        FlowStatsEntry egressReverseStats = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 5, 6, 7, 8);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(egressReverseStats)));
+        validateFlowStats(egressReverseStats, MAIN_REVERSE_COOKIE, SWITCH_ID_1, false, true);
+
+        // Add mirrors to the flow
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics(), true, true);
+        sendUpdateFlowPathInfo(flow.getReversePath(), flow.getVlanStatistics(), true, true);
+
+        // Flow has mirrors. Ingress rule generates only raw metrics
+        FlowStatsEntry ingressForwardRawStats = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 9, 10, 11, 12);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(ingressForwardRawStats)));
+        validateFlowStats(ingressForwardRawStats, MAIN_FORWARD_COOKIE, SWITCH_ID_1, false, false);
+
+        // Flow has mirrors. Egress rule generates only raw metrics
+        FlowStatsEntry egressReverseRawStats = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 13, 14, 15, 16);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(egressReverseRawStats)));
+        validateFlowStats(egressReverseRawStats, MAIN_REVERSE_COOKIE, SWITCH_ID_1, false, false);
+
+        // Flow has mirrors. Mirror rule generates ingress metrics
+        FlowStatsEntry mirrorForwardStats = new FlowStatsEntry(1, FORWARD_MIRROR_COOKIE.getValue(), 17, 18, 19, 20);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(mirrorForwardStats)));
+        validateFlowStats(mirrorForwardStats, FORWARD_MIRROR_COOKIE, SWITCH_ID_1, true, false);
+
+        // Flow has mirrors. Mirror rule generates egress metrics
+        FlowStatsEntry mirrorReverseRawStats = new FlowStatsEntry(1, REVERSE_MIRROR_COOKIE.getValue(), 21, 22, 23, 24);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(mirrorReverseRawStats)));
+        validateFlowStats(mirrorReverseRawStats, REVERSE_MIRROR_COOKIE, SWITCH_ID_1, false, true);
+
+        // Remove mirrors from the flow
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics(), false, false);
+        sendUpdateFlowPathInfo(flow.getReversePath(), flow.getVlanStatistics(), false, false);
+
+        // Flow has no mirrors. Ingress rule generates ingress metrics
+        FlowStatsEntry newIngressForwardStats = new FlowStatsEntry(1, MAIN_FORWARD_COOKIE.getValue(), 25, 26, 27, 28);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(newIngressForwardStats)));
+        validateFlowStats(newIngressForwardStats, MAIN_FORWARD_COOKIE, SWITCH_ID_1, true, false);
+
+        // Flow has no mirrors. Egress rule generates egress metrics
+        FlowStatsEntry newEgressReverseStats = new FlowStatsEntry(1, MAIN_REVERSE_COOKIE.getValue(), 29, 30, 31, 32);
+        sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(newEgressReverseStats)));
+        validateFlowStats(newEgressReverseStats, MAIN_REVERSE_COOKIE, SWITCH_ID_1, false, true);
+    }
+
+    @Test
     public void flowStatsSwapPathTest() {
         Flow flow = createFlowWithProtectedPath();
-        sendUpdateFlowPathInfo(flow.getForwardPath());
-        sendUpdateFlowPathInfo(flow.getReversePath());
-        sendUpdateFlowPathInfo(flow.getProtectedForwardPath());
-        sendUpdateFlowPathInfo(flow.getProtectedReversePath());
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getReversePath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getProtectedForwardPath(), flow.getVlanStatistics());
+        sendUpdateFlowPathInfo(flow.getProtectedReversePath(), flow.getVlanStatistics());
 
         // check ingress protected rule on switch 1
         FlowStatsEntry protectedForwardStats = new FlowStatsEntry(1, PROTECTED_FORWARD_COOKIE.getValue(), 1, 2, 3, 4);
@@ -452,6 +756,12 @@ public class StatsTopologyTest extends AbstractStormTest {
     private void validateFlowStats(
             FlowStatsEntry flowStats, FlowSegmentCookie cookie, SwitchId switchId,
             boolean includeIngress, boolean includeEgress) {
+        validateFlowStats(flowStats, cookie, switchId, includeIngress, includeEgress, false);
+    }
+
+    private void validateFlowStats(
+            FlowStatsEntry flowStats, FlowSegmentCookie cookie, SwitchId switchId,
+            boolean includeIngress, boolean includeEgress, boolean yFlow) {
         int expectedDatapointCount = 3;
         if (includeIngress) {
             expectedDatapointCount += 3;
@@ -490,13 +800,15 @@ public class StatsTopologyTest extends AbstractStormTest {
         }
 
         String direction = cookie.getDirection().name().toLowerCase();
+        int expectedRawTagsCount = cookie.isMirror() ? 12 : 9;
+        int expectedEndpointTagsCount = yFlow ? 4 : 3;
 
         datapoints.forEach(datapoint -> {
             switch (datapoint.getMetric()) {
                 case METRIC_PREFIX + "flow.raw.packets":
                 case METRIC_PREFIX + "flow.raw.bytes":
                 case METRIC_PREFIX + "flow.raw.bits":
-                    assertEquals(9, datapoint.getTags().size());
+                    assertEquals(expectedRawTagsCount, datapoint.getTags().size());
                     assertEquals(flowId, datapoint.getTags().get("flowid"));
                     assertEquals(direction, datapoint.getTags().get("direction"));
                     assertEquals(String.valueOf(flowStats.getTableId()), datapoint.getTags().get("tableid"));
@@ -504,7 +816,15 @@ public class StatsTopologyTest extends AbstractStormTest {
                     assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
                     assertEquals(Integer.toString(flowStats.getOutPort()), datapoint.getTags().get("outPort"));
                     assertEquals(Integer.toString(flowStats.getInPort()), datapoint.getTags().get("inPort"));
-                    assertEquals("false", datapoint.getTags().get("is_flow_satellite"));
+
+                    if (cookie.isMirror()) {
+                        assertEquals("true", datapoint.getTags().get("is_flow_satellite"));
+                        assertEquals("true", datapoint.getTags().get("is_mirror"));
+                        assertEquals("false", datapoint.getTags().get("is_loop"));
+                        assertEquals("false", datapoint.getTags().get("is_flowrtt_inject"));
+                    } else {
+                        assertEquals("false", datapoint.getTags().get("is_flow_satellite"));
+                    }
                     break;
                 case METRIC_PREFIX + "flow.ingress.packets":
                 case METRIC_PREFIX + "flow.ingress.bytes":
@@ -512,9 +832,44 @@ public class StatsTopologyTest extends AbstractStormTest {
                 case METRIC_PREFIX + "flow.packets":
                 case METRIC_PREFIX + "flow.bytes":
                 case METRIC_PREFIX + "flow.bits":
-                    assertEquals(3, datapoint.getTags().size());
+                    assertEquals(expectedEndpointTagsCount, datapoint.getTags().size());
                     assertEquals(flowId, datapoint.getTags().get("flowid"));
                     assertEquals(direction, datapoint.getTags().get("direction"));
+                    if (yFlow) {
+                        assertEquals(Y_FLOW_ID, datapoint.getTags().get("y_flow_id"));
+                    }
+                    break;
+                default:
+                    throw new AssertionError(format("Unknown metric: %s", datapoint.getMetric()));
+            }
+        });
+    }
+
+    private void validateStatVlan(FlowStatsEntry flowStats, FlowSegmentCookie cookie, SwitchId switchId) {
+        List<Datapoint> datapoints = pollDatapoints(3);
+        Map<String, Datapoint> datapointMap = createDatapointMap(datapoints);
+
+        assertEquals(flowStats.getPacketCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.vlan.packets").getValue().longValue());
+        assertEquals(flowStats.getByteCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.vlan.bytes").getValue().longValue());
+        assertEquals(flowStats.getByteCount() * 8,
+                datapointMap.get(METRIC_PREFIX + "flow.vlan.bits").getValue().longValue());
+
+        String direction = cookie.getDirection().name().toLowerCase();
+
+        datapoints.forEach(datapoint -> {
+            switch (datapoint.getMetric()) {
+                case METRIC_PREFIX + "flow.vlan.packets":
+                case METRIC_PREFIX + "flow.vlan.bytes":
+                case METRIC_PREFIX + "flow.vlan.bits":
+                    assertEquals(6, datapoint.getTags().size());
+                    assertEquals(flowId, datapoint.getTags().get("flowid"));
+                    assertEquals(direction, datapoint.getTags().get("direction"));
+                    assertEquals(Long.toString(cookie.getValue()), datapoint.getTags().get("cookie"));
+                    assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
+                    assertEquals(Integer.toString(cookie.getStatsVlan()), datapoint.getTags().get("vlan"));
+                    assertEquals(Integer.toString(flowStats.getInPort()), datapoint.getTags().get("inPort"));
                     break;
                 default:
                     throw new AssertionError(format("Unknown metric: %s", datapoint.getMetric()));
@@ -526,7 +881,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     @Ignore
     public void flowLldpStatsTest() {
         long lldpCookie = 1;
-        FlowStatsEntry stats = new FlowStatsEntry((short) 1, lldpCookie, 450, 550L, 10, 10);
+        FlowStatsEntry stats = new FlowStatsEntry(1, lldpCookie, 450, 550L, 10, 10);
 
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(stats)));
 
@@ -570,11 +925,11 @@ public class StatsTopologyTest extends AbstractStormTest {
 
         sendStatsMessage(new FlowStatsData(ingress.getSwitchId(), Collections.singletonList(measure0)));
 
-        sendUpdateFlowPathInfo(flow.getForwardPath());
+        sendUpdateFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
 
         sendStatsMessage(new FlowStatsData(ingress.getSwitchId(), Collections.singletonList(measure1)));
 
-        sendRemoveFlowPathInfo(flow.getForwardPath());
+        sendRemoveFlowPathInfo(flow.getForwardPath(), flow.getVlanStatistics());
 
         sendStatsMessage(new FlowStatsData(ingress.getSwitchId(), Collections.singletonList(measure2)));
 
@@ -602,8 +957,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @Test
     public void systemRulesStatsTest() {
-        FlowStatsEntry systemRuleStats = new FlowStatsEntry((short) 1, VERIFICATION_BROADCAST_RULE_COOKIE, 100L, 200L,
-                10, 10);
+        FlowStatsEntry systemRuleStats = new FlowStatsEntry(1, VERIFICATION_BROADCAST_RULE_COOKIE, 100L, 200L, 10, 10);
 
         sendStatsMessage(new FlowStatsData(SWITCH_ID_1, Collections.singletonList(systemRuleStats)));
 
@@ -694,8 +1048,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     private Flow createOneSwitchFlow(SwitchId switchId) {
-        Switch sw = Switch.builder().switchId(switchId).build();
-        switchRepository.add(sw);
+        Switch sw = createSwitch(switchId);
 
         Flow flow = new TestFlowBuilder(flowId)
                 .srcSwitch(sw)
@@ -710,6 +1063,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                 .forwardTransitEncapsulationId(ENCAPSULATION_ID)
                 .reverseTransitEncapsulationId(ENCAPSULATION_ID + 1)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .vlanStatistics(STAT_VLANS)
                 .build();
 
         flowRepository.add(flow);
@@ -717,10 +1071,8 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     private Flow createFlow() {
-        Switch srcSw = Switch.builder().switchId(SWITCH_ID_1).build();
-        switchRepository.add(srcSw);
-        Switch dstSw = Switch.builder().switchId(SWITCH_ID_3).build();
-        switchRepository.add(dstSw);
+        Switch srcSw = createSwitch(SWITCH_ID_1);
+        Switch dstSw = createSwitch(SWITCH_ID_3);
 
         Flow flow = new TestFlowBuilder(flowId)
                 .srcSwitch(srcSw)
@@ -737,18 +1089,16 @@ public class StatsTopologyTest extends AbstractStormTest {
                 .destPort(PORT_3)
                 .destVlan(5)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .vlanStatistics(STAT_VLANS)
                 .build();
         flowRepository.add(flow);
         return flow;
     }
 
     private Flow createFlowWithProtectedPath() {
-        Switch srcSw = Switch.builder().switchId(SWITCH_ID_1).build();
-        switchRepository.add(srcSw);
-        Switch transitSw = Switch.builder().switchId(SWITCH_ID_2).build();
-        switchRepository.add(transitSw);
-        Switch dstSw = Switch.builder().switchId(SWITCH_ID_3).build();
-        switchRepository.add(dstSw);
+        Switch srcSw = createSwitch(SWITCH_ID_1);
+        Switch transitSw = createSwitch(SWITCH_ID_2);
+        Switch dstSw = createSwitch(SWITCH_ID_3);
 
         Flow flow = new TestFlowBuilder(flowId)
                 .srcSwitch(srcSw)
@@ -774,9 +1124,122 @@ public class StatsTopologyTest extends AbstractStormTest {
                 .destPort(PORT_3)
                 .destVlan(5)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .vlanStatistics(STAT_VLANS)
                 .build();
         flowRepository.add(flow);
         return flow;
+    }
+
+    private YFlow buildYFlow(SwitchId sharedSwitchId, SwitchId yPointSwitchId) {
+        return YFlow.builder()
+                .yFlowId(Y_FLOW_ID)
+                .sharedEndpoint(new SharedEndpoint(sharedSwitchId, PORT_1))
+                .yPoint(yPointSwitchId)
+                .meterId(Y_POINT_METER_ID)
+                .sharedEndpointMeterId(SHARED_POINT_METER_ID)
+                .status(FlowStatus.UP)
+                .build();
+    }
+
+    private YFlow addSubFlowAndCreate(YFlow yFlow, Flow flow) {
+        yFlow.setSubFlows(Sets.newHashSet(
+                YSubFlow.builder()
+                        .sharedEndpointVlan(flow.getSrcVlan())
+                        .sharedEndpointInnerVlan(flow.getSrcInnerVlan())
+                        .endpointSwitchId(flow.getDestSwitchId())
+                        .endpointPort(flow.getDestPort())
+                        .endpointVlan(flow.getDestVlan())
+                        .endpointInnerVlan(flow.getDestInnerVlan())
+                        .flow(flow)
+                        .yFlow(yFlow)
+                        .build()));
+        YFlowRepository yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
+        yFlowRepository.add(yFlow);
+        return yFlow;
+    }
+
+
+    private Flow createYSubFlow() {
+        Switch sharedSw = createSwitch(SWITCH_ID_1);
+        Switch yPointSw = createSwitch(SWITCH_ID_2);
+        Switch dstSw = createSwitch(SWITCH_ID_3);
+
+        YFlow yFlow = buildYFlow(sharedSw.getSwitchId(), yPointSw.getSwitchId());
+        Flow flow = buildSubFlowBase(yFlow)
+                .srcSwitch(sharedSw)
+                .addTransitionEndpoint(sharedSw, PORT_2)
+                .addTransitionEndpoint(yPointSw, PORT_2)
+                .addTransitionEndpoint(yPointSw, PORT_3)
+                .addTransitionEndpoint(dstSw, PORT_3)
+                .destSwitch(dstSw)
+                .build();
+
+        flowRepository.add(flow);
+        addSubFlowAndCreate(yFlow, flow);
+        return flow;
+    }
+
+    private Flow createVSubFlow() {
+        Switch sharedSw = createSwitch(SWITCH_ID_1);
+        Switch transitSw = createSwitch(SWITCH_ID_2);
+        Switch dstSw = createSwitch(SWITCH_ID_3);
+
+        YFlow yFlow = buildYFlow(sharedSw.getSwitchId(), sharedSw.getSwitchId());
+        Flow flow = buildSubFlowBase(yFlow)
+                .srcSwitch(sharedSw)
+                .addTransitionEndpoint(sharedSw, PORT_2)
+                .addTransitionEndpoint(transitSw, PORT_2)
+                .addTransitionEndpoint(transitSw, PORT_3)
+                .addTransitionEndpoint(dstSw, PORT_3)
+                .destSwitch(dstSw)
+                .build();
+
+        flowRepository.add(flow);
+        addSubFlowAndCreate(yFlow, flow);
+        return flow;
+    }
+
+    private Flow createFlatSubFlow() {
+        Switch sharedSw = createSwitch(SWITCH_ID_1);
+        Switch transitSw = createSwitch(SWITCH_ID_2);
+        Switch dstSw = createSwitch(SWITCH_ID_3);
+
+        YFlow yFlow = buildYFlow(sharedSw.getSwitchId(), dstSw.getSwitchId());
+        Flow flow = buildSubFlowBase(yFlow)
+                .srcSwitch(sharedSw)
+                .addTransitionEndpoint(sharedSw, PORT_2)
+                .addTransitionEndpoint(transitSw, PORT_2)
+                .addTransitionEndpoint(transitSw, PORT_3)
+                .addTransitionEndpoint(dstSw, PORT_3)
+                .destSwitch(dstSw)
+                .build();
+
+        flowRepository.add(flow);
+        addSubFlowAndCreate(yFlow, flow);
+        return flow;
+    }
+
+    private TestFlowBuilder buildSubFlowBase(YFlow yFlow) {
+        return new TestFlowBuilder(flowId)
+                .yFlowId(Y_FLOW_ID)
+                .yFlow(yFlow)
+                .srcPort(PORT_1)
+                .srcVlan(5)
+                .unmaskedCookie(MAIN_COOKIE)
+                .forwardMeterId(456)
+                .forwardTransitEncapsulationId(ENCAPSULATION_ID)
+                .reverseMeterId(457)
+                .reverseTransitEncapsulationId(ENCAPSULATION_ID + 1)
+                .destPort(PORT_4)
+                .destVlan(5)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .vlanStatistics(STAT_VLANS);
+    }
+
+    private static Switch createSwitch(SwitchId switchId) {
+        Switch sw = Switch.builder().switchId(switchId).build();
+        switchRepository.add(sw);
+        return sw;
     }
 
     private void sendStatsMessage(InfoData infoData) {
@@ -785,19 +1248,57 @@ public class StatsTopologyTest extends AbstractStormTest {
         sendMessage(infoMessage, statsTopologyConfig.getKafkaStatsTopic());
     }
 
-    private void sendRemoveFlowPathInfo(FlowPath flowPath) {
-        RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
-                flowPath.getFlowId(), null, flowPath.getCookie(), flowPath.getMeterId(),
-                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath));
-        InfoMessage infoMessage = new InfoMessage(pathInfo, timestamp, UUID.randomUUID().toString(), null, null);
-        sendMessage(infoMessage, statsTopologyConfig.getFlowStatsNotifyTopic());
+    private void sendRemoveFlowPathInfo(FlowPath flowPath, Set<Integer> vlanStatistics) {
+        sendRemoveFlowPathInfo(flowPath, vlanStatistics, flowPath.hasIngressMirror(), flowPath.hasEgressMirror());
     }
 
-    private void sendUpdateFlowPathInfo(FlowPath flowPath) {
+    private void sendRemoveFlowPathInfo(
+            FlowPath flowPath, Set<Integer> vlanStatistics, boolean ingressMirror, boolean egressMirror) {
+        RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
+                flowPath.getFlowId(), null, null, flowPath.getCookie(), flowPath.getMeterId(),
+                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath), vlanStatistics, ingressMirror,
+                egressMirror);
+        sendNotification(pathInfo);
+    }
+
+
+    private void sendUpdateFlowPathInfo(FlowPath flowPath, Set<Integer> vlanStatistics) {
+        sendUpdateFlowPathInfo(flowPath, vlanStatistics, flowPath.hasIngressMirror(), flowPath.hasEgressMirror());
+    }
+
+    private void sendUpdateFlowPathInfo(
+            FlowPath flowPath, Set<Integer> vlanStatistics, boolean ingressMirror, boolean egressMirror) {
         UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
-                flowPath.getFlowId(), null, flowPath.getCookie(), flowPath.getMeterId(),
-                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath));
-        InfoMessage infoMessage = new InfoMessage(pathInfo, timestamp, UUID.randomUUID().toString(), null, null);
+                flowPath.getFlowId(), null, null, flowPath.getCookie(), flowPath.getMeterId(),
+                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath), vlanStatistics, ingressMirror,
+                egressMirror);
+        sendNotification(pathInfo);
+    }
+
+    private void sendUpdateSubFlowPathInfo(FlowPath flowPath, Flow flow) {
+        UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
+                flowPath.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), flowPath.getCookie(),
+                flowPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath),
+                flow.getVlanStatistics(), false, false);
+        sendNotification(pathInfo);
+    }
+
+    private void sendUpdateYFlowPathInfo(YFlow yflow) {
+        UpdateYFlowStatsInfo info = new UpdateYFlowStatsInfo(yflow.getYFlowId(),
+                new YFlowEndpointResources(yflow.getSharedEndpoint().getSwitchId(), yflow.getSharedEndpointMeterId()),
+                new YFlowEndpointResources(yflow.getYPoint(), yflow.getMeterId()), null);
+        sendNotification(info);
+    }
+
+    private void sendRemoveYFlowPathInfo(YFlow yflow) {
+        RemoveYFlowStatsInfo info = new RemoveYFlowStatsInfo(yflow.getYFlowId(),
+                new YFlowEndpointResources(yflow.getSharedEndpoint().getSwitchId(), yflow.getSharedEndpointMeterId()),
+                new YFlowEndpointResources(yflow.getYPoint(), yflow.getMeterId()), null);
+        sendNotification(info);
+    }
+
+    private void sendNotification(StatsNotification notification) {
+        InfoMessage infoMessage = new InfoMessage(notification, timestamp, UUID.randomUUID().toString(), null, null);
         sendMessage(infoMessage, statsTopologyConfig.getFlowStatsNotifyTopic());
     }
 

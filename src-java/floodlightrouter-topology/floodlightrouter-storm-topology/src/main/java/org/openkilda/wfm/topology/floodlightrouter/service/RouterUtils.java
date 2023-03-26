@@ -23,17 +23,8 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.PortsCommandData;
-import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
-import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
-import org.openkilda.messaging.command.flow.ModifyDefaultMeterForSwitchManagerRequest;
-import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
-import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
-import org.openkilda.messaging.command.switches.ConnectModeRequest;
-import org.openkilda.messaging.command.switches.DeleteGroupRequest;
-import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpGroupsForFlowHsRequest;
 import org.openkilda.messaging.command.switches.DumpGroupsForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForFlowHsRequest;
@@ -44,15 +35,11 @@ import org.openkilda.messaging.command.switches.DumpRulesForFlowHsRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
-import org.openkilda.messaging.command.switches.InstallGroupRequest;
-import org.openkilda.messaging.command.switches.ModifyGroupRequest;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.floodlight.request.RemoveBfdSession;
 import org.openkilda.messaging.floodlight.request.SetupBfdSession;
-import org.openkilda.messaging.payload.switches.InstallIslDefaultRulesCommand;
-import org.openkilda.messaging.payload.switches.RemoveIslDefaultRulesCommand;
 import org.openkilda.model.SwitchId;
 
 public final class RouterUtils {
@@ -65,8 +52,7 @@ public final class RouterUtils {
      * Checks if the message should be broadcasted among regions or not.
      */
     public static boolean isBroadcast(CommandData payload) {
-        return payload instanceof PortsCommandData
-                || payload instanceof ConnectModeRequest;
+        return payload instanceof PortsCommandData;
     }
 
     /**
@@ -78,11 +64,7 @@ public final class RouterUtils {
     public static SwitchId lookupSwitchId(Message message) {
         if (message instanceof CommandMessage) {
             CommandData commandData = ((CommandMessage) message).getData();
-            if (commandData instanceof BaseInstallFlow) {
-                return ((BaseInstallFlow) commandData).getSwitchId();
-            } else if (commandData instanceof RemoveFlow) {
-                return ((RemoveFlow) commandData).getSwitchId();
-            } else if (commandData instanceof DiscoverIslCommandData) {
+            if (commandData instanceof DiscoverIslCommandData) {
                 return ((DiscoverIslCommandData) commandData).getSwitchId();
             } else if (commandData instanceof PingRequest) {
                 return ((PingRequest) commandData).getPing().getSource().getDatapath();
@@ -92,8 +74,6 @@ public final class RouterUtils {
                 return ((SwitchRulesDeleteRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpRulesRequest) {
                 return ((DumpRulesRequest) commandData).getSwitchId();
-            } else if (commandData instanceof DeleterMeterForSwitchManagerRequest) {
-                return ((DeleterMeterForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DeleteMeterRequest) {
                 return ((DeleteMeterRequest) commandData).getSwitchId();
             } else if (commandData instanceof PortConfigurationRequest) {
@@ -108,16 +88,8 @@ public final class RouterUtils {
                 return ((DumpRulesForFlowHsRequest) commandData).getSwitchId();
             } else if (commandData instanceof MeterModifyCommandRequest) {
                 return ((MeterModifyCommandRequest) commandData).getSwitchId();
-            } else if (commandData instanceof ModifyDefaultMeterForSwitchManagerRequest) {
-                return ((ModifyDefaultMeterForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpRulesForSwitchManagerRequest) {
                 return ((DumpRulesForSwitchManagerRequest) commandData).getSwitchId();
-            } else if (commandData instanceof InstallFlowForSwitchManagerRequest) {
-                return ((InstallFlowForSwitchManagerRequest) commandData).getSwitchId();
-            } else if (commandData instanceof RemoveFlowForSwitchManagerRequest) {
-                return ((RemoveFlowForSwitchManagerRequest) commandData).getSwitchId();
-            } else if (commandData instanceof ReinstallDefaultFlowForSwitchManagerRequest) {
-                return ((ReinstallDefaultFlowForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpMetersForSwitchManagerRequest) {
                 return ((DumpMetersForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpMetersForFlowHsRequest) {
@@ -126,16 +98,6 @@ public final class RouterUtils {
                 return ((SetupBfdSession) commandData).getBfdSession().getTarget().getDatapath();
             } else if (commandData instanceof RemoveBfdSession) {
                 return ((RemoveBfdSession) commandData).getBfdSession().getTarget().getDatapath();
-            } else if (commandData instanceof InstallIslDefaultRulesCommand) {
-                return ((InstallIslDefaultRulesCommand) commandData).getSrcSwitch();
-            } else if (commandData instanceof RemoveIslDefaultRulesCommand) {
-                return ((RemoveIslDefaultRulesCommand) commandData).getSrcSwitch();
-            } else if (commandData instanceof InstallGroupRequest) {
-                return ((InstallGroupRequest) commandData).getSwitchId();
-            } else if (commandData instanceof ModifyGroupRequest) {
-                return ((ModifyGroupRequest) commandData).getSwitchId();
-            } else if (commandData instanceof DeleteGroupRequest) {
-                return ((DeleteGroupRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpGroupsForSwitchManagerRequest) {
                 return ((DumpGroupsForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpGroupsForFlowHsRequest) {

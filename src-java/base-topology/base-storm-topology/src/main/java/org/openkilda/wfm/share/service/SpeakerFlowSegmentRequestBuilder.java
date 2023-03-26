@@ -53,14 +53,17 @@ import org.openkilda.wfm.share.model.MirrorContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
+import org.openkilda.wfm.topology.flowhs.service.FlowSegmentRequestFactoriesSequence;
 
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -92,7 +95,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     public List<FlowSegmentRequestFactory> buildAll(CommandContext context, Flow flow, FlowPath path,
                                                     SpeakerRequestBuildContext speakerRequestBuildContext,
                                                     MirrorContext mirrorContext) {
-        return makeRequests(context, flow, path, null, true, true, true, speakerRequestBuildContext, mirrorContext);
+        return mergePair(makeRequests(
+                context, flow, path, null, true, true, true, speakerRequestBuildContext, mirrorContext));
     }
 
     @Override
@@ -107,8 +111,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                                                     FlowPath reversePath,
                                                     SpeakerRequestBuildContext speakerRequestBuildContext,
                                                     MirrorContext mirrorContext) {
-        return makeRequests(context, flow, forwardPath, reversePath, true, true, true, speakerRequestBuildContext,
-                mirrorContext);
+        return mergePair(makeRequests(
+                context, flow, forwardPath, reversePath, true, true, true, speakerRequestBuildContext, mirrorContext));
     }
 
     @Override
@@ -136,8 +140,15 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     @Override
     public List<FlowSegmentRequestFactory> buildAllExceptIngress(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath, MirrorContext mirrorContext) {
+        return mergePair(makeRequests(context, flow, path, oppositePath, false, true, true,
+                SpeakerRequestBuildContext.getEmpty(), mirrorContext));
+    }
+
+    @Override
+    public Pair<FlowSegmentRequestFactoriesSequence, FlowSegmentRequestFactoriesSequence>
+            buildAllExceptIngressSeverally(CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath) {
         return makeRequests(context, flow, path, oppositePath, false, true, true,
-                SpeakerRequestBuildContext.getEmpty(), mirrorContext);
+                SpeakerRequestBuildContext.getEmpty(), MirrorContext.DEFAULT);
     }
 
     @Override
@@ -158,8 +169,16 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     public List<FlowSegmentRequestFactory> buildIngressOnly(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
             SpeakerRequestBuildContext speakerRequestBuildContext, MirrorContext mirrorContext) {
+        return mergePair(makeRequests(context, flow, path, oppositePath, true, false, false,
+                speakerRequestBuildContext, mirrorContext));
+    }
+
+    @Override
+    public Pair<FlowSegmentRequestFactoriesSequence, FlowSegmentRequestFactoriesSequence> buildIngressOnlySeverally(
+            CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
+            SpeakerRequestBuildContext speakerRequestBuildContext) {
         return makeRequests(context, flow, path, oppositePath, true, false, false,
-                speakerRequestBuildContext, mirrorContext);
+                speakerRequestBuildContext, MirrorContext.DEFAULT);
     }
 
     @Override
@@ -187,9 +206,9 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     @Override
     public List<FlowSegmentRequestFactory> buildEgressOnly(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath, MirrorContext mirrorContext) {
-        return makeRequests(
+        return mergePair(makeRequests(
                 context, flow, path, oppositePath, false, false, true, SpeakerRequestBuildContext.getEmpty(),
-                mirrorContext);
+                mirrorContext));
     }
 
     @Override
@@ -226,12 +245,15 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 doIngress, doTransit, doEgress, createRulesContext(pathContext), mirrorContext));
     }
 
-    private List<FlowSegmentRequestFactory> makeRequests(
+    private Pair<FlowSegmentRequestFactoriesSequence, FlowSegmentRequestFactoriesSequence> makeRequests(
             CommandContext context, Flow flow, FlowPath path, FlowPath oppositePath,
             boolean doIngress, boolean doTransit, boolean doEgress,
             SpeakerRequestBuildContext speakerRequestBuildContext, MirrorContext mirrorContext) {
+        boolean isSwapped = false;
+
         // TODO: this swap is weird, need to clean this up and not to rely on luck.
         if (path == null) {
+            isSwapped = true;
             path = oppositePath;
             oppositePath = null;
             speakerRequestBuildContext = SpeakerRequestBuildContext.builder()
@@ -258,9 +280,11 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             }
         }
 
-        List<FlowSegmentRequestFactory> requests = new ArrayList<>(makePathRequests(flow, path, context, encapsulation,
+        FlowSegmentRequestFactoriesSequence left = new FlowSegmentRequestFactoriesSequence(
+                makePathRequests(flow, path, context, encapsulation,
                 doIngress, doTransit, doEgress, createRulesContext(speakerRequestBuildContext.getForward()),
                 mirrorContext));
+        FlowSegmentRequestFactoriesSequence right = new FlowSegmentRequestFactoriesSequence();
         if (oppositePath != null) {
             if (!flow.isOneSwitchFlow()) {
                 try {
@@ -273,10 +297,14 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     encapsulation = DELETE_ENCAPSULATION_STUB;
                 }
             }
-            requests.addAll(makePathRequests(flow, oppositePath, context, encapsulation, doIngress, doTransit, doEgress,
+            right.addAll(makePathRequests(flow, oppositePath, context, encapsulation, doIngress, doTransit, doEgress,
                     createRulesContext(speakerRequestBuildContext.getReverse()), mirrorContext));
         }
-        return requests;
+
+        if (isSwapped) {
+            return Pair.of(right, left);
+        }
+        return Pair.of(left, right);
     }
 
     private RulesContext createRulesContext(PathContext pathContext) {
@@ -311,7 +339,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             if (lastSegment == null) {
                 if (doIngress) {
                     requests.addAll(makeIngressSegmentRequests(context, path, encapsulation, ingressSide, segment,
-                            egressSide, rulesContext, mirrorContext));
+                            egressSide, rulesContext, mirrorContext, flow.getVlanStatistics()));
                     if (ingressLoopRuleRequired(flow, ingressSide)) {
                         requests.addAll(makeLoopRequests(
                                 context, path, encapsulation, ingressSide, egressSide, segment));
@@ -332,7 +360,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             }
         } else if (flow.isOneSwitchFlow()) {
             // one switch flow (path without path segments)
-            requests.addAll(makeOneSwitchRequest(context, path, ingressSide, egressSide, rulesContext, mirrorContext));
+            requests.addAll(makeOneSwitchRequest(context, path, ingressSide, egressSide, rulesContext, mirrorContext,
+                    flow.getVlanStatistics()));
             if (singleSwitchLoopRuleRequired(flow)) {
                 requests.add(makeSingleSwitchIngressLoopRequest(context, path, ingressSide));
             }
@@ -344,7 +373,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     private List<FlowSegmentRequestFactory> makeIngressSegmentRequests(
             CommandContext context, FlowPath path, FlowTransitEncapsulation encapsulation,
             FlowSideAdapter flowSide, PathSegment segment, FlowSideAdapter egressFlowSide,
-            RulesContext rulesContext, MirrorContext mirrorContext) {
+            RulesContext rulesContext, MirrorContext mirrorContext, Set<Integer> statVlans) {
         PathSegmentSide segmentSide = makePathSegmentSourceSide(segment);
 
         UUID commandId = commandIdGenerator.generate();
@@ -369,6 +398,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     .islPort(segmentSide.getEndpoint().getPortNumber())
                     .encapsulation(encapsulation)
                     .rulesContext(rulesContext)
+                    .statVlans(statVlans)
                     .build());
         }
 
@@ -390,6 +420,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                             .installServer42OuterVlanMatchSharedRule(false)
                             .build())
                     .mirrorConfig(mirrorConfig.orElse(null))
+                    .statVlans(new HashSet<>())
                     .build());
         }
 
@@ -524,7 +555,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
 
     private List<FlowSegmentRequestFactory> makeOneSwitchRequest(
             CommandContext context, FlowPath path, FlowSideAdapter ingressSide, FlowSideAdapter egressSide,
-            RulesContext rulesContext, MirrorContext mirrorContext) {
+            RulesContext rulesContext, MirrorContext mirrorContext, Set<Integer> statVlans) {
         Flow flow = ingressSide.getFlow();
 
         UUID commandId = commandIdGenerator.generate();
@@ -545,6 +576,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     .meterConfig(getMeterConfig(path))
                     .egressEndpoint(egressSide.getEndpoint())
                     .rulesContext(rulesContext)
+                    .statVlans(statVlans)
                     .build());
         }
 
@@ -560,6 +592,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                     .egressEndpoint(egressSide.getEndpoint())
                     .rulesContext(rulesContext)
                     .mirrorConfig(mirrorConfig.orElse(null))
+                    .statVlans(new HashSet<>())
                     .build());
         }
 
@@ -649,5 +682,12 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         }
 
         return Optional.empty();
+    }
+
+    private static List<FlowSegmentRequestFactory> mergePair(
+            Pair<FlowSegmentRequestFactoriesSequence, FlowSegmentRequestFactoriesSequence> source) {
+        List<FlowSegmentRequestFactory> results = new ArrayList<>(source.getLeft());
+        results.addAll(source.getRight());
+        return results;
     }
 }

@@ -946,7 +946,6 @@ switches"() {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/3627")
     @Tags(LOW_PRIORITY)
     def "Able to swap endpoints for two flows when not enough bandwidth on ISL and ignore_bandwidth=true"() {
         setup: "Create two flows with different source and the same destination switches"
@@ -961,8 +960,8 @@ switches"() {
         def flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair)
         def flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1)
 
-        flowHelper.addFlow(flow1)
-        flowHelper.addFlow(flow2.tap { it.ignoreBandwidth = true })
+        flowHelper.addFlow(flow1.tap { it.ignoreBandwidth = true })
+        flowHelper.addFlow(flow2)
 
         and: "Update the first flow so that it consumes all bandwidth on the link"
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
@@ -1333,7 +1332,6 @@ switches"() {
     }
 
     @Tidy
-    @Ignore("https://github.com/telstra/open-kilda/issues/4409")
     def "Able to swap endpoints (#data.description) for two qinq flows with the same source and destination switches"() {
         given: "Two flows with the same source and destination switches"
         flow1.source.innerVlanId = 300

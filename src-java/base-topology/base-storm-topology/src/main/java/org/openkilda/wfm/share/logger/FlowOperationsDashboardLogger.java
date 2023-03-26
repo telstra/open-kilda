@@ -19,6 +19,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.reporting.AbstractDashboardLogger;
 
@@ -41,6 +42,8 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String UPDATE_RESULT_EVENT = "flow_update_result";
     private static final String FLOW_DELETE_EVENT = "flow_delete";
     private static final String DELETE_RESULT_EVENT = "flow_delete_result";
+    private static final String FLOW_SYNC_EVENT = "flow_sync";
+    private static final String SYNC_RESULT_EVENT = "flow_sync_result";
     private static final String PATHS_SWAP_EVENT = "paths_swap";
     private static final String REROUTE_EVENT = "flow_reroute";
     private static final String REROUTE_RESULT_EVENT = "flow_reroute_result";
@@ -147,14 +150,16 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
      * Log a flow-create event.
      */
     public void onFlowCreate(String flowId, SwitchId srcSwitch, int srcPort, int srcVlan,
-                             SwitchId destSwitch, int destPort, int destVlan, String diverseFlowId, long bandwidth) {
+                             SwitchId destSwitch, int destPort, int destVlan, String diverseFlowId, long bandwidth,
+                             PathComputationStrategy strategy, Long maxLatency, Long maxLatencyTier2) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-create");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_CREATE_EVENT);
         invokeLogger(Level.INFO, String.format("Create the flow: %s, source %s_%d_%d, destination %s_%d_%d, "
-                        + "diverse flowId %s, bandwidth %d", flowId, srcSwitch, srcPort, srcVlan,
-                destSwitch, destPort, destVlan, diverseFlowId, bandwidth), data);
+                        + "diverse flowId %s, bandwidth %d, path computation strategy %s, max latency %s, "
+                        + "max latency tier2 %s", flowId, srcSwitch, srcPort, srcVlan, destSwitch, destPort, destVlan,
+                diverseFlowId, bandwidth, strategy, maxLatency, maxLatencyTier2), data);
     }
 
     /**
@@ -221,14 +226,16 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
      * Log a flow-update event.
      */
     public void onFlowUpdate(String flowId, SwitchId srcSwitch, int srcPort, int srcVlan,
-                             SwitchId destSwitch, int destPort, int destVlan, String diverseFlowId, long bandwidth) {
+                             SwitchId destSwitch, int destPort, int destVlan, String diverseFlowId, long bandwidth,
+                             PathComputationStrategy strategy, Long maxLatency, Long maxLatencyTier2) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-update");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_UPDATE_EVENT);
         invokeLogger(Level.INFO, String.format("Update the flow %s with: source %s_%d_%d, destination %s_%d_%d, "
-                        + "diverse flowId %s, bandwidth %d", flowId, srcSwitch, srcPort, srcVlan,
-                destSwitch, destPort, destVlan, diverseFlowId, bandwidth), data);
+                        + "diverse flowId %s, bandwidth %d, path computation strategy %s, max latency %s, "
+                        + "max latency tier2 %s", flowId, srcSwitch, srcPort, srcVlan,
+                destSwitch, destPort, destVlan, diverseFlowId, bandwidth, strategy, maxLatency, maxLatencyTier2), data);
     }
 
     /**
@@ -302,6 +309,45 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put("delete-result", "failed");
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed delete of the flow %s, reason: %s", flowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a flow-sync event.
+     */
+    public void onFlowSync(String flowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "flow-sync");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_SYNC_EVENT);
+        invokeLogger(Level.INFO, String.format("Performing flow \"%s\" SYNC", flowId), data);
+    }
+
+    /**
+     * Log a flow-sync-successful event.
+     */
+    public void onSuccessfulFlowSync(String flowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "flow-sync-success");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_SYNC_EVENT);
+        data.put("sync-result", "successful");
+        invokeLogger(Level.INFO, String.format("Flow \"%s\" SYNC success", flowId), data);
+    }
+
+    /**
+     * Log a flow-sync-failed event.
+     */
+    public void onFailedFlowSync(String flowId, int failedPathsCount, int totalPathsCount) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "flow-sync-failed");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, FLOW_SYNC_EVENT);
+        data.put("sync-result", "failed");
+        invokeLogger(
+                Level.INFO, String.format(
+                        "Flow \"%s\" SYNC failed - %d of %d path have failed to sync",
+                        flowId, failedPathsCount, totalPathsCount),
                 data);
     }
 
@@ -458,14 +504,17 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     /**
      * Log a y-flow-create event.
      */
-    public void onYFlowCreate(String yFlowId, FlowEndpoint sharedEndpoint,
-                              List<FlowEndpoint> subFlowEndpoints, long maximumBandwidth) {
+    public void onYFlowCreate(
+            String yFlowId, FlowEndpoint sharedEndpoint, List<FlowEndpoint> subFlowEndpoints, long maximumBandwidth,
+            PathComputationStrategy strategy, Long maxLatency, Long maxLatencyTier2) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "y-flow-create");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_CREATE_EVENT);
         invokeLogger(Level.INFO, String.format("Create the y-flow: %s, shared endpoint %s, endpoints (%s), "
-                        + "bandwidth %d", yFlowId, sharedEndpoint, subFlowEndpoints, maximumBandwidth), data);
+                        + "bandwidth %d, path computation strategy %s, max latency %s, max latency tier2 %s",
+                yFlowId, sharedEndpoint, subFlowEndpoints, maximumBandwidth, strategy, maxLatency, maxLatencyTier2),
+                data);
     }
 
     /**
@@ -497,14 +546,17 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     /**
      * Log a y-flow-update event.
      */
-    public void onYFlowUpdate(String yFlowId, FlowEndpoint sharedEndpoint,
-                              List<FlowEndpoint> subFlowEndpoints, long maximumBandwidth) {
+    public void onYFlowUpdate(
+            String yFlowId, FlowEndpoint sharedEndpoint, List<FlowEndpoint> subFlowEndpoints, long maximumBandwidth,
+            PathComputationStrategy strategy, Long maxLatency, Long maxLatencyTier2) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "y-flow-update");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_UPDATE_EVENT);
         invokeLogger(Level.INFO, String.format("Update the y-flow: %s, shared endpoint %s, endpoints (%s), "
-                + "bandwidth %d", yFlowId, sharedEndpoint, subFlowEndpoints, maximumBandwidth), data);
+                + "bandwidth %d, path computation strategy %s, max latency %s, max latency tier2 %s",
+                yFlowId, sharedEndpoint, subFlowEndpoints, maximumBandwidth, strategy, maxLatency, maxLatencyTier2),
+                data);
     }
 
     /**

@@ -72,8 +72,8 @@ public abstract class OfPortDescConverter {
     public PortInfoData toPortInfoData(DatapathId dpId, OFPortDesc portDesc,
                                        net.floodlightcontroller.core.PortChangeType type) {
         return new PortInfoData(
-                new SwitchId(dpId.getLong()), portDesc.getPortNo().getPortNumber(), mapChangeType(type),
-                isPortEnabled(portDesc));
+                new SwitchId(dpId.getLong()), portDesc.getPortNo().getPortNumber(), portDesc.getMaxSpeed(),
+                portDesc.getCurrSpeed(), mapChangeType(type), isPortEnabled(portDesc));
     }
 
     /**
@@ -110,8 +110,8 @@ public abstract class OfPortDescConverter {
             default:
                 throw new IllegalArgumentException(
                         String.format("Can't map %s.%s into %s",
-                                      net.floodlightcontroller.core.PortChangeType.class.getName(),
-                                      type, PortChangeType.class.getName()));
+                                net.floodlightcontroller.core.PortChangeType.class.getName(),
+                                type, PortChangeType.class.getName()));
         }
     }
 }

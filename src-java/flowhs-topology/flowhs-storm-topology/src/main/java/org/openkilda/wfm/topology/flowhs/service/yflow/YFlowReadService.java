@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -32,7 +32,9 @@ import org.openkilda.model.YFlow.SharedEndpoint;
 import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.error.FlowNotFoundException;
@@ -47,8 +49,10 @@ import net.jodah.failsafe.RetryPolicy;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -56,15 +60,18 @@ import java.util.stream.Collectors;
 public class YFlowReadService {
     private final YFlowRepository yFlowRepository;
     private final FlowRepository flowRepository;
+    private final FlowPathRepository flowPathRepository;
     private final TransactionManager transactionManager;
     private final int readOperationRetriesLimit;
     private final Duration readOperationRetryDelay;
 
     public YFlowReadService(@NonNull PersistenceManager persistenceManager,
                             int readOperationRetriesLimit, @NonNull Duration readOperationRetryDelay) {
-        this.yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
-        this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        this.transactionManager = persistenceManager.getTransactionManager();
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        yFlowRepository = repositoryFactory.createYFlowRepository();
+        flowRepository = repositoryFactory.createFlowRepository();
+        flowPathRepository = repositoryFactory.createFlowPathRepository();
+        transactionManager = persistenceManager.getTransactionManager();
         this.readOperationRetriesLimit = readOperationRetriesLimit;
         this.readOperationRetryDelay = readOperationRetryDelay;
     }
@@ -114,35 +121,60 @@ public class YFlowReadService {
             Set<FlowPath> protectedForwardPaths = new HashSet<>();
             Set<FlowPath> protectedReversePaths = new HashSet<>();
             List<FlowPathDto> subFlowPathDtos = new ArrayList<>();
+            Map<String, List<FlowPathDto>> diverseWithFlows = new HashMap<>();
+
             for (YSubFlow subFlow : yFlow.getSubFlows()) {
                 Flow flow = subFlow.getFlow();
                 if (!flow.isOneSwitchFlow()) {
                     mainForwardPaths.add(flow.getForwardPath());
                     mainReversePaths.add(flow.getReversePath());
                 }
-                FlowPathDto.FlowPathDtoBuilder pathDtoBuilder = FlowPathDto.builder()
-                        .id(flow.getFlowId())
-                        .forwardPath(FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getForwardPath()))
-                        .reversePath(FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getReversePath()));
-
+                FlowPathDto.FlowPathDtoBuilder pathDtoBuilder = buildFlowPathDto(flow);
+                FlowProtectedPathDto.FlowProtectedPathDtoBuilder protectedDtoBuilder = null;
                 if (flow.isAllocateProtectedPath()) {
-                    FlowProtectedPathDto.FlowProtectedPathDtoBuilder protectedDtoBuilder =
-                            FlowProtectedPathDto.builder();
-                    if (flow.getProtectedForwardPath() != null) {
-                        if (!flow.isOneSwitchFlow()) {
-                            protectedForwardPaths.add(flow.getProtectedForwardPath());
-                        }
-                        protectedDtoBuilder.forwardPath(
-                                FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getProtectedForwardPath()));
+                    protectedDtoBuilder = buildFlowProtectedPathDto(flow);
+                    if (flow.getProtectedForwardPath() != null && !flow.isOneSwitchFlow()) {
+                        protectedForwardPaths.add(flow.getProtectedForwardPath());
+                    }
+                    if (flow.getProtectedReversePath() != null && !flow.isOneSwitchFlow()) {
+                        protectedReversePaths.add(flow.getProtectedReversePath());
+                    }
+                }
 
+                String diverseGroupId = flow.getDiverseGroupId();
+                if (diverseGroupId != null) {
+                    Collection<FlowPath> flowPathsInDiverseGroup = flowPathRepository.findByFlowGroupId(diverseGroupId);
+                    IntersectionComputer primaryIntersectionComputer = new IntersectionComputer(
+                            flow.getFlowId(), flow.getForwardPathId(), flow.getReversePathId(),
+                            flowPathsInDiverseGroup);
+                    pathDtoBuilder.segmentsStats(primaryIntersectionComputer.getOverlappingStats());
+
+                    Collection<Flow> flowsInDiverseGroup = flowRepository.findByDiverseGroupId(diverseGroupId).stream()
+                            .filter(f -> !flow.getFlowId().equals(f.getFlowId()))
+                            .collect(Collectors.toList());
+
+                    List<FlowPathDto> groupFlowsWithOverlappingStats = new ArrayList<>();
+                    flowsInDiverseGroup.stream()
+                            .map(diverseFlow -> buildGroupPathFlowDto(diverseFlow, true, primaryIntersectionComputer))
+                            .forEach(groupFlowsWithOverlappingStats::add);
+
+                    if (protectedDtoBuilder != null) {
+                        IntersectionComputer protectedIntersectionComputer = new IntersectionComputer(
+                                flow.getFlowId(), flow.getProtectedForwardPathId(), flow.getProtectedReversePathId(),
+                                flowPathsInDiverseGroup);
+                        protectedDtoBuilder.segmentsStats(
+                                protectedIntersectionComputer.getOverlappingStats());
+
+                        flowsInDiverseGroup.stream()
+                                .map(diverseFlow ->
+                                        buildGroupPathFlowDto(diverseFlow, false, protectedIntersectionComputer))
+                                .forEach(groupFlowsWithOverlappingStats::add);
                     }
-                    if (flow.getProtectedReversePath() != null) {
-                        if (!flow.isOneSwitchFlow()) {
-                            protectedReversePaths.add(flow.getProtectedReversePath());
-                        }
-                        protectedDtoBuilder.reversePath(
-                                FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getProtectedReversePath()));
-                    }
+
+                    diverseWithFlows.put(flow.getFlowId(), groupFlowsWithOverlappingStats);
+                }
+
+                if (protectedDtoBuilder != null) {
                     pathDtoBuilder.protectedPath(protectedDtoBuilder.build());
                 }
                 subFlowPathDtos.add(pathDtoBuilder.build());
@@ -181,8 +213,47 @@ public class YFlowReadService {
                 sharedPath.setProtectedPath(protectedDtoBuilder.build());
             }
 
-            return new YFlowPathsResponse(sharedPath, subFlowPathDtos);
+            return new YFlowPathsResponse(sharedPath, subFlowPathDtos, diverseWithFlows);
         });
+    }
+
+    private FlowPathDto.FlowPathDtoBuilder buildFlowPathDto(Flow flow) {
+        return FlowPathDto.builder()
+                .id(flow.getFlowId())
+                .forwardPath(FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getForwardPath()))
+                .reversePath(FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getReversePath()));
+    }
+
+    private FlowProtectedPathDto.FlowProtectedPathDtoBuilder buildFlowProtectedPathDto(Flow flow) {
+        FlowProtectedPathDto.FlowProtectedPathDtoBuilder protectedDtoBuilder =
+                FlowProtectedPathDto.builder();
+        if (flow.getProtectedForwardPath() != null) {
+            protectedDtoBuilder.forwardPath(
+                    FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getProtectedForwardPath()));
+
+        }
+        if (flow.getProtectedReversePath() != null) {
+            protectedDtoBuilder.reversePath(
+                    FlowPathMapper.INSTANCE.mapToPathNodes(flow, flow.getProtectedReversePath()));
+        }
+        return protectedDtoBuilder;
+    }
+
+    private FlowPathDto buildGroupPathFlowDto(Flow flow, boolean primaryPathCorrespondStat,
+                                              IntersectionComputer intersectionComputer) {
+        FlowPathDto.FlowPathDtoBuilder builder = buildFlowPathDto(flow)
+                .primaryPathCorrespondStat(primaryPathCorrespondStat)
+                .segmentsStats(
+                        intersectionComputer.getOverlappingStats(flow.getForwardPathId(),
+                                flow.getReversePathId()));
+        if (flow.isAllocateProtectedPath()) {
+            FlowProtectedPathDto.FlowProtectedPathDtoBuilder protectedPathBuilder = buildFlowProtectedPathDto(flow)
+                    .segmentsStats(
+                            intersectionComputer.getOverlappingStats(
+                                    flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()));
+            builder.protectedPath(protectedPathBuilder.build());
+        }
+        return builder.build();
     }
 
     /**

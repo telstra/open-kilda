@@ -25,7 +25,9 @@ import org.openkilda.wfm.topology.stats.bolts.metrics.FlowDirectionHelper.Direct
 import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyMeterDescriptor;
+import org.openkilda.wfm.topology.stats.model.EndpointFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
+import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowSubDescriptor;
 
@@ -77,6 +79,16 @@ public final class AnyFlowStatsEntryHandler extends BaseFlowStatsEntryHandler {
     @Override
     public void handleStatsEntry(DummyMeterDescriptor descriptor) {
         throw new IllegalArgumentException(formatUnexpectedDescriptorMessage(descriptor.getClass()));
+    }
+
+    @Override
+    public void handleStatsEntry(StatVlanDescriptor descriptor) {
+        // nothing to do here
+    }
+
+    @Override
+    public void handleStatsEntry(EndpointFlowDescriptor descriptor) {
+        handleStatsEntry((CommonFlowDescriptor) descriptor);
     }
 
     private void emitMeterPoints(TagsFormatter tagsFormatter) {

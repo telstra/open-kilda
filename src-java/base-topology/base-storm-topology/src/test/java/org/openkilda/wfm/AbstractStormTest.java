@@ -59,7 +59,7 @@ import java.util.stream.Stream;
 
 @Slf4j
 public abstract class AbstractStormTest {
-    public static final int TOPOLOGY_START_TIMEOUT = 20000;
+    public static final int TOPOLOGY_START_TIMEOUT = 30000;
     public static final String STRING_SERIALIZER = "org.apache.kafka.common.serialization.StringSerializer";
     public static final String STRING_DESERIALIZER = "org.apache.kafka.common.serialization.StringDeserializer";
 

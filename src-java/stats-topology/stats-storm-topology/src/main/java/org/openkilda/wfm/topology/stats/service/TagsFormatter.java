@@ -64,8 +64,12 @@ public class TagsFormatter {
         tags.put("cookie", cookie != null ? String.valueOf(cookie) : UNKNOWN_COOKIE_TAG_VALUE);
     }
 
+    public void addCookieHexTag(String cookieTag) {
+        tags.put("cookieHex", cookieTag);
+    }
+
     public void addCookieHexTag(CookieBase cookie) {
-        tags.put("cookieHex", cookie != null ? String.valueOf(cookie) : UNKNOWN_COOKIE_TAG_VALUE);
+        addCookieHexTag(cookie != null ? String.valueOf(cookie) : UNKNOWN_COOKIE_TAG_VALUE);
     }
 
     public void addCookieTypeTag(CookieType type) {
@@ -106,6 +110,10 @@ public class TagsFormatter {
 
     public void addIsYFlowSubFlowTag(boolean value) {
         tags.put("is_y_flow_subflow", mapTagValue(value));
+    }
+
+    public void addVlanTag(int value) {
+        tags.put("vlan", String.valueOf(value));
     }
 
     private static String mapTagValue(boolean value) {

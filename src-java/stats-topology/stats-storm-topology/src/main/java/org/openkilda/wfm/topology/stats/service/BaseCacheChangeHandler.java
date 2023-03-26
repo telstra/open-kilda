@@ -23,9 +23,11 @@ import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.CookieCacheKey;
 import org.openkilda.wfm.topology.stats.model.DummyFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyMeterDescriptor;
+import org.openkilda.wfm.topology.stats.model.EndpointFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptorHandler;
 import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
+import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowSubDescriptor;
 
@@ -49,6 +51,22 @@ abstract class BaseCacheChangeHandler implements KildaEntryDescriptorHandler {
 
     @Override
     public void handleStatsEntry(CommonFlowDescriptor descriptor) {
+        handleFlowStatsEntry(descriptor.getSwitchId(), descriptor.getCookie(), descriptor.getMeterId(), descriptor);
+    }
+
+    @Override
+    public void handleStatsEntry(StatVlanDescriptor descriptor) {
+        if (descriptor.getStatVlans() != null) {
+            for (Integer statVlan : descriptor.getStatVlans()) {
+                long statVlanCookie = descriptor.getCookie().toBuilder()
+                        .type(CookieType.VLAN_STATS_PRE_INGRESS).statsVlan(statVlan).build().getValue();
+                cacheAction(new CookieCacheKey(descriptor.getSwitchId(), statVlanCookie), descriptor);
+            }
+        }
+    }
+
+    @Override
+    public void handleStatsEntry(EndpointFlowDescriptor descriptor) {
         handleFlowStatsEntry(descriptor.getSwitchId(), descriptor.getCookie(), descriptor.getMeterId(), descriptor);
     }
 

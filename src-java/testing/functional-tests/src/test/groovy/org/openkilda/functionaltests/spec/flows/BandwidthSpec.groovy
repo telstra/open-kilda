@@ -256,7 +256,7 @@ class BandwidthSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/1150")
+    @Ignore("https://github.com/telstra/open-kilda/issues/5069")
     @Tidy
     def "System doesn't allow to exceed bandwidth limit on ISL while updating a flow with ignore_bandwidth=false"() {
         given: "Two active switches"

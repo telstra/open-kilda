@@ -16,15 +16,12 @@ import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.ExamReport
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
-import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
@@ -112,9 +109,9 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         def beforeTraffic = new Date()
         def traffExam = traffExamProvider.get()
         List<ExamReport> examReports
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildYFlowExam(yFlow, yFlow.maximumBandwidth, 5)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildYFlowExam(yFlow, yFlow.maximumBandwidth, 10)
         examReports = withPool {
-            [exam.forward1, exam.reverse1, exam.forward2, exam.reverse2].collectParallel { Exam direction ->
+            [exam.forward1, exam.forward2, exam.reverse1, exam.reverse2].collectParallel { Exam direction ->
                 def resources = traffExam.startExam(direction)
                 direction.setResources(resources)
                 traffExam.waitExam(direction)
@@ -127,11 +124,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         }
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
-        statsHelper.verifyYFlowWritesMeterStats(yFlow, beforeTraffic, true)
-        yFlow.subFlows.each {
-            statsHelper.verifyFlowWritesStats(it.flowId, beforeTraffic, true)
-        }
-
+        statsHelper.verifyYFlowWritesStats(yFlow, beforeTraffic, true)
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
@@ -458,7 +451,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         return topologyHelper.switchTriplets.find {
             def ep1paths = it.pathsEp1.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
             def ep2paths = it.pathsEp2.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def yPoints = findPotentialYPoints(it)
+            def yPoints = yFlowHelper.findPotentialYPoints(it)
 
             it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
                     yPoints.size() == 1 && yPoints[0] != it.shared && yPoints[0] != it.ep1 && yPoints[0] != it.ep2 &&
@@ -467,25 +460,5 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
                     ep2paths.every { path -> !path.any { node -> node.getSwitchId() == it.ep1.getDpId() } } &&
                     ep1paths.size() >= 2 && ep2paths.size() >= 2
         }
-    }
-
-    @Memoized
-    List<Switch> findPotentialYPoints(SwitchTriplet swT) {
-        def sortedEp1Paths = swT.pathsEp1.sort { it.size() }
-        def potentialEp1Paths = sortedEp1Paths.takeWhile { it.size() == sortedEp1Paths[0].size() }
-        def potentialEp2Paths = potentialEp1Paths.collect { potentialEp1Path ->
-            def sortedEp2Paths = swT.pathsEp2.sort {
-                it.size() - it.intersect(potentialEp1Path).size()
-            }
-            [path1          : potentialEp1Path,
-             potentialPaths2: sortedEp2Paths.takeWhile { it.size() == sortedEp2Paths[0].size() }]
-        }
-        return potentialEp2Paths.collectMany { path1WithPath2 ->
-            path1WithPath2.potentialPaths2.collect { List<PathNode> potentialPath2 ->
-                def switches = pathHelper.getInvolvedSwitches(path1WithPath2.path1)
-                        .intersect(pathHelper.getInvolvedSwitches(potentialPath2))
-                switches ? switches[-1] : null
-            }
-        }.findAll().unique()
     }
 }

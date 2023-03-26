@@ -133,6 +133,7 @@ public abstract class FlowMapper {
     @Mapping(target = "description", ignore = true)
     @Mapping(target = "encapsulationType", ignore = true)
     @Mapping(target = "maxLatencyTier2", ignore = true)
+    @Mapping(target = "vlanStatistics", ignore = true)
     public abstract FlowPatch toFlowPatch(FlowPatchDto flowPatchDto);
 
     @Mapping(target = "flowId", ignore = true)
@@ -143,6 +144,7 @@ public abstract class FlowMapper {
     @Mapping(target = "priority", source = "priority")
     @Mapping(target = "periodicPings", source = "periodicPings")
     @Mapping(target = "diverseFlowId", source = "diverseFlowId")
+    @Mapping(target = "vlanStatistics", source = "statistics.vlans")
     public abstract FlowPatch toFlowPatch(FlowPatchV2 flowPatchDto);
 
     @Mapping(target = "trackLldpConnectedDevices", source = "detectConnectedDevices.lldp")
@@ -158,6 +160,7 @@ public abstract class FlowMapper {
     @Mapping(target = "maxLatency", qualifiedByName = "timeMillisToNanos")
     @Mapping(target = "maxLatencyTier2", qualifiedByName = "timeMillisToNanos")
     @Mapping(target = "loopSwitchId", ignore = true)
+    @Mapping(target = "vlanStatistics", source = "statistics.vlans")
     public abstract FlowRequest toFlowRequest(FlowRequestV2 request);
 
     @Mapping(target = "flowId", source = "id")
@@ -173,6 +176,7 @@ public abstract class FlowMapper {
     @Mapping(target = "maxLatencyTier2", ignore = true)
     @Mapping(target = "loopSwitchId", ignore = true)
     @Mapping(target = "strictBandwidth", ignore = true)
+    @Mapping(target = "vlanStatistics", ignore = true)
     public abstract FlowRequest toFlowRequest(FlowPayload payload);
 
     @Mapping(target = "outerVlanId", source = "vlanId")
@@ -285,6 +289,8 @@ public abstract class FlowMapper {
     @Mapping(target = "destinationPort", source = "destination.portNumber")
     @Mapping(target = "sourceVlan", source = "source.vlanId")
     @Mapping(target = "destinationVlan", source = "destination.vlanId")
+    @Mapping(target = "destinationInnerVlan", source = "destination.innerVlanId")
+    @Mapping(target = "sourceInnerVlan", source = "source.innerVlanId")
     public abstract SwapFlowDto toSwapFlowDto(SwapFlowPayload request);
 
     public abstract FlowValidationDto toFlowValidationDto(FlowValidationResponse response);
@@ -302,6 +308,7 @@ public abstract class FlowMapper {
     @Mapping(target = "forwardPathLatencyNs", source = "f.forwardLatency")
     @Mapping(target = "reversePathLatencyNs", source = "f.reverseLatency")
     @Mapping(target = "yFlowId", source = "f.YFlowId")
+    @Mapping(target = "statistics.vlans", source = "f.vlanStatistics")
     protected abstract FlowResponseV2 generatedMap(FlowDto f, FlowEndpointV2 source, FlowEndpointV2 destination);
 
     @Mapping(target = "id", source = "flowId")

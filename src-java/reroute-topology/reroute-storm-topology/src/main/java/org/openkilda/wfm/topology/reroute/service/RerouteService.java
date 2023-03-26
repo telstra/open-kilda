@@ -450,7 +450,7 @@ public class RerouteService {
         FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(flow.orElse(null))
                 .correlationId(correlationId)
                 .affectedIsl(request.getAffectedIsl())
-                .force(request.isForce())
+                .force(false)
                 .effectivelyDown(request.isEffectivelyDown())
                 .reason(request.getReason())
                 .build();

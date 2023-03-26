@@ -233,7 +233,7 @@ feature toggle"() {
             [it.src, it.dst].every { switchHelper.isVxlanEnabled(it.dpId) } && it.paths.size() >= 2
         }
         assumeTrue(swPair as boolean, "Unable to find required switches in topology")
-        def initSrcSwProps = northbound.getSwitchProperties(swPair.src.dpId)
+        def initSrcSwProps = switchHelper.getCachedSwProps(swPair.src.dpId)
         northbound.updateSwitchProperties(swPair.src.dpId, initSrcSwProps.jacksonCopy().tap {
             it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
         })

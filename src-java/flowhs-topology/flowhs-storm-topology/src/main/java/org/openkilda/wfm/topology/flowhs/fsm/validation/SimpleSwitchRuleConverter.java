@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.validation;
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT;
 
 import org.openkilda.adapter.FlowSideAdapter;
+import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -49,8 +50,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -334,15 +337,30 @@ public class SimpleSwitchRuleConverter {
             return Collections.emptyList();
         }
 
+        Map<Long, MeterEntry> meterMap = new HashMap<>();
+        if (meters != null && meters.getMeterEntries() != null) {
+            for (MeterEntry meterEntry : meters.getMeterEntries()) {
+                meterMap.put(meterEntry.getMeterId(), meterEntry);
+            }
+        }
+
+        Map<Integer, List<GroupBucket>> groupMap = new HashMap<>();
+        if (groups != null && groups.getGroupEntries() != null) {
+            for (GroupEntry groupEntry : groups.getGroupEntries()) {
+                groupMap.put(groupEntry.getGroupId(), groupEntry.getBuckets());
+            }
+        }
+
         List<SimpleSwitchRule> simpleRules = new ArrayList<>();
         for (FlowEntry flowEntry : rules.getFlowEntries()) {
-            simpleRules.add(buildSimpleSwitchRule(rules.getSwitchId(), flowEntry, meters, groups));
+            simpleRules.add(buildSimpleSwitchRule(rules.getSwitchId(), flowEntry, meterMap, groupMap));
         }
         return simpleRules;
     }
 
-    private SimpleSwitchRule buildSimpleSwitchRule(SwitchId switchId, FlowEntry flowEntry,
-                                                   SwitchMeterEntries meters, SwitchGroupEntries groups) {
+    private SimpleSwitchRule buildSimpleSwitchRule(
+            SwitchId switchId, FlowEntry flowEntry, Map<Long, MeterEntry> meterMap,
+            Map<Integer, List<GroupBucket>> groupMap) {
         SimpleSwitchRule rule = SimpleSwitchRule.builder()
                 .switchId(switchId)
                 .cookie(flowEntry.getCookie())
@@ -382,32 +400,22 @@ public class SimpleSwitchRuleConverter {
                             .orElse(NumberUtils.INTEGER_ZERO));
                 }
 
-                if (NumberUtils.isParsable(applyActions.getGroup())
-                        && groups != null && groups.getGroupEntries() != null) {
+                if (NumberUtils.isParsable(applyActions.getGroup())) {
                     int groupId = NumberUtils.toInt(applyActions.getGroup());
-                    List<SimpleGroupBucket> buckets = groups.getGroupEntries().stream()
-                            .filter(config -> config.getGroupId() == groupId)
-                            .map(GroupEntry::getBuckets)
-                            .map(this::mapGroupBuckets)
-                            .findFirst()
-                            .orElse(Collections.emptyList());
+                    List<GroupBucket> buckets = groupMap.getOrDefault(groupId, new ArrayList<>());
                     rule.setGroupId(groupId);
-                    rule.setGroupBuckets(buckets);
+                    rule.setGroupBuckets(mapGroupBuckets(buckets));
                 }
             }
 
             Optional.ofNullable(flowEntry.getInstructions().getGoToMeter())
                     .ifPresent(meterId -> {
                         rule.setMeterId(meterId);
-                        if (meters != null && meters.getMeterEntries() != null) {
-                            meters.getMeterEntries().stream()
-                                    .filter(entry -> meterId.equals(entry.getMeterId()))
-                                    .findFirst()
-                                    .ifPresent(entry -> {
-                                        rule.setMeterRate(entry.getRate());
-                                        rule.setMeterBurstSize(entry.getBurstSize());
-                                        rule.setMeterFlags(entry.getFlags());
-                                    });
+                        MeterEntry meterEntry = meterMap.get(meterId);
+                        if (meterEntry != null) {
+                            rule.setMeterRate(meterEntry.getRate());
+                            rule.setMeterBurstSize(meterEntry.getBurstSize());
+                            rule.setMeterFlags(meterEntry.getFlags());
                         }
                     });
         }

@@ -23,6 +23,7 @@ import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Context;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Event;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.State;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
+import org.openkilda.wfm.topology.network.model.PortDataHolder;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
@@ -51,12 +52,12 @@ public class NetworkAntiFlapService {
         controllerExecutor = controllerFactory.produceExecutor();
     }
 
-    public void filterLinkStatus(Endpoint endpoint, LinkStatus status) {
-        filterLinkStatus(endpoint, status, now());
+    public void filterLinkStatus(Endpoint endpoint, LinkStatus status, PortDataHolder portData) {
+        filterLinkStatus(endpoint, status, portData, now());
     }
 
     @VisibleForTesting
-    void filterLinkStatus(Endpoint endpoint, LinkStatus status, long timeMs) {
+    void filterLinkStatus(Endpoint endpoint, LinkStatus status, PortDataHolder portData, long timeMs) {
         AntiFlapFsm fsm = locateController(endpoint);
         AntiFlapFsm.Event event;
         switch (status) {
@@ -73,7 +74,10 @@ public class NetworkAntiFlapService {
                         String.format("Unsupported %s value %s", LinkStatus.class.getName(), status));
         }
         log.debug("Physical port {} become {}", endpoint, event);
-        controllerExecutor.fire(fsm, event, new AntiFlapFsm.Context(carrier, timeMs));
+        Context context = Context.builder(carrier, timeMs)
+                .portData(portData)
+                .build();
+        controllerExecutor.fire(fsm, event, context);
     }
 
     /**
@@ -86,7 +90,8 @@ public class NetworkAntiFlapService {
     @VisibleForTesting
     void tick(long timeMs) {
         controller.values().forEach(fsm ->
-                controllerExecutor.fire(fsm, AntiFlapFsm.Event.TICK, new AntiFlapFsm.Context(carrier, timeMs)));
+                controllerExecutor.fire(
+                        fsm, AntiFlapFsm.Event.TICK, AntiFlapFsm.Context.builder(carrier, timeMs).build()));
     }
 
     public void reset() {

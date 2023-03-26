@@ -29,4 +29,5 @@ public class UpdateLagPortRequest extends CommandData {
     SwitchId switchId;
     int logicalPortNumber;
     Set<Integer> targetPorts;
+    boolean lacpReply;
 }

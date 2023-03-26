@@ -35,6 +35,7 @@ import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Config;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.OnlineStatus;
+import org.openkilda.wfm.topology.network.model.PortDataHolder;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.service.IAntiFlapCarrier;
 import org.openkilda.wfm.topology.network.service.IPortCarrier;
@@ -217,7 +218,7 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
 
     @Override
     public void sendPortStateChangedHistory(Endpoint endpoint, PortHistoryEvent event, Instant time) {
-        HistoryCommand command =  new PortHistoryCommand(endpoint, event, time);
+        HistoryCommand command = new PortHistoryCommand(endpoint, event, time);
         emit(STREAM_HISTORY_ID, getCurrentTuple(), makeHistoryTuple(command));
     }
 
@@ -240,20 +241,20 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     // IAntiFlapCarrier
 
     @Override
-    public void filteredLinkStatus(Endpoint endpoint, LinkStatus status) {
-        portService.updateLinkStatus(endpoint, status);
+    public void filteredLinkStatus(Endpoint endpoint, LinkStatus status, PortDataHolder portData) {
+        portService.updateLinkStatus(endpoint, status, portData);
     }
 
     @Override
     public void sendAntiFlapPortHistoryEvent(Endpoint endpoint, PortHistoryEvent event, Instant time) {
-        HistoryCommand command =  new PortHistoryCommand(endpoint, event, time);
+        HistoryCommand command = new PortHistoryCommand(endpoint, event, time);
         emit(STREAM_HISTORY_ID, getCurrentTuple(), makeHistoryTuple(command));
     }
 
     @Override
     public void sendAntiFlapStatsPortHistoryEvent(Endpoint endpoint, PortHistoryEvent event, Instant time,
                                                   int upEvents, int downEvents) {
-        HistoryCommand command =  new AntiFlapPortHistoryWithStatsCommand(endpoint, event, time, upEvents, downEvents);
+        HistoryCommand command = new AntiFlapPortHistoryWithStatsCommand(endpoint, event, time, upEvents, downEvents);
         emit(STREAM_HISTORY_ID, getCurrentTuple(), makeHistoryTuple(command));
     }
 
@@ -263,16 +264,20 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         portService.setup(endpoint, history);
     }
 
+    public void processUpdate(Endpoint endpoint, PortDataHolder portData) {
+        portService.update(endpoint, portData);
+    }
+
     public void processRemove(Endpoint endpoint) {
         portService.remove(endpoint);
     }
 
-    public void processUpdateOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus) {
-        portService.updateOnlineMode(endpoint, onlineStatus);
+    public void processUpdateOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus, PortDataHolder portData) {
+        portService.updateOnlineMode(endpoint, onlineStatus, portData);
     }
 
-    public void processUpdateLinkStatus(Endpoint endpoint, LinkStatus linkStatus) {
-        antiFlapService.filterLinkStatus(endpoint, linkStatus);
+    public void processUpdateLinkStatus(Endpoint endpoint, LinkStatus linkStatus, PortDataHolder portData) {
+        antiFlapService.filterLinkStatus(endpoint, linkStatus, portData);
     }
 
     public void processDiscovery(Endpoint endpoint, IslInfoData speakerDiscoveryEvent) {
@@ -295,7 +300,7 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
 
     @Override
     public void activationStatusUpdate(boolean isActive) {
-        if (! isActive) {
+        if (!isActive) {
             antiFlapService.reset();
         }
     }

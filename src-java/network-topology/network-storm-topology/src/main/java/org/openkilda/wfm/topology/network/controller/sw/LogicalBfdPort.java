@@ -41,6 +41,11 @@ public class LogicalBfdPort extends AbstractPort {
     }
 
     @Override
+    public void portUpdate(ISwitchCarrier carrier) {
+        // no operation required
+    }
+
+    @Override
     public void portDel(ISwitchCarrier carrier) {
         carrier.sendBfdPortDelete(getEndpoint());
     }

@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.switchmanager.error;
 
 import org.openkilda.messaging.error.ErrorData;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
 
 @Getter
@@ -24,7 +25,12 @@ public class SpeakerFailureException extends SwitchManagerException {
     private final ErrorData response;
 
     public SpeakerFailureException(ErrorData response) {
-        super(response.getErrorType(), response.getErrorMessage());
+        super(response.getErrorType(), makeMessage(response));
         this.response = response;
+    }
+
+    @VisibleForTesting
+    public static String makeMessage(ErrorData response) {
+        return String.format("%s Details: %s", response.getErrorMessage(), response.getErrorDescription());
     }
 }

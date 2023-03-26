@@ -20,12 +20,13 @@ import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;
 
 import lombok.Getter;
 import lombok.NonNull;
-import org.squirrelframework.foundation.fsm.StateMachine;
+import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.util.Collection;
 import java.util.function.Consumer;
 
-public abstract class FlowProcessingFsm<T extends StateMachine<T, S, E, C>, S, E, C, L extends ProcessingEventListener>
+public abstract class FlowProcessingFsm<
+        T extends AbstractStateMachine<T, S, E, C>, S, E, C, L extends ProcessingEventListener>
         extends AbstractBaseFsm<T, S, E, C> {
     private final E nextEvent;
     private final E errorEvent;

@@ -44,10 +44,12 @@ import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.CookieCacheKey;
+import org.openkilda.wfm.topology.stats.model.EndpointFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptorHandler;
 import org.openkilda.wfm.topology.stats.model.MeasurePoint;
 import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
+import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.SwitchFlowStats;
 import org.openkilda.wfm.topology.stats.model.SwitchMeterStats;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
@@ -59,9 +61,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
 public class KildaEntryCacheService {
+    private boolean active;
     private final FlowRepository commonFlowRepository;
     private final YFlowRepository yFlowRepository;
 
@@ -78,6 +83,7 @@ public class KildaEntryCacheService {
         this.commonFlowRepository = repositoryFactory.createFlowRepository();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
         this.carrier = carrier;
+        this.active = false;
     }
 
     /**
@@ -137,16 +143,43 @@ public class KildaEntryCacheService {
     /**
      * Refresh the cache by rereading the flow data from the persistence.
      */
-    public void refreshCache() {
+    private void refreshCache() {
         refreshCommonFlowsCache();
         refreshYFlowsCache();
         log.debug("cookieToFlow cache: {}, switchAndMeterToFlow cache: {}", cookieToFlow, switchAndMeterToFlow);
     }
 
+    private void clearCache() {
+        cookieToFlow.clear();
+        switchAndMeterToFlow.clear();
+    }
+
+    /**
+     * Activates the service. Fills cache in particular.
+     */
+    public void activate() {
+        if (!active) {
+            refreshCache();
+        }
+        active = true;
+    }
+
+    /**
+     * Deactivates the service. Clears cache in particular.
+     */
+    public boolean deactivate() {
+        if (active) {
+            clearCache();
+        }
+        active = false;
+        return true;
+    }
+
     private void updateCache(KildaEntryDescriptorHandler cacheHandler, BaseFlowPathInfo pathInfo) {
         updateCache(
-                cacheHandler, pathInfo.getFlowId(), pathInfo.getYFlowId(), pathInfo.getCookie(), pathInfo.getMeterId(),
-                pathInfo.getPathNodes());
+                cacheHandler, pathInfo.getFlowId(), pathInfo.getYFlowId(), pathInfo.getYPointSwitchId(),
+                pathInfo.getCookie(), pathInfo.getMeterId(), pathInfo.getPathNodes(), pathInfo.getStatVlans(),
+                pathInfo.isIngressMirror(), pathInfo.isEgressMirror());
     }
 
     private void updateCache(KildaEntryDescriptorHandler cacheHandler, BaseYFlowStatsInfo yFlowStatsInfo) {
@@ -164,24 +197,30 @@ public class KildaEntryCacheService {
     }
 
     private void updateCache(
-            KildaEntryDescriptorHandler cacheHandler, String flowId, String yFlowId, FlowSegmentCookie cookie,
-            MeterId meterId, List<PathNodePayload> pathNodes) {
+            KildaEntryDescriptorHandler cacheHandler, String flowId, String yFlowId, SwitchId yPointSwitchId,
+            FlowSegmentCookie cookie, MeterId meterId, List<PathNodePayload> pathNodes, Set<Integer> statsVlan,
+            boolean ingressMirror, boolean egressMirror) {
         if (pathNodes.isEmpty()) {
             throw new IllegalArgumentException("The path can't be empty");
         }
 
-        processTransitCookies(cacheHandler, flowId, yFlowId, cookie, pathNodes);
+        processTransitCookies(cacheHandler, flowId, yFlowId, yPointSwitchId, cookie, pathNodes);
 
         SwitchId srcSwitchId = pathNodes.get(0).getSwitchId();
         SwitchId dstSwitchId = pathNodes.get(pathNodes.size() - 1).getSwitchId();
 
         boolean isOneSwitchFlow = srcSwitchId.equals(dstSwitchId);
         if (isOneSwitchFlow) {
-            cacheHandler.handle(newPathEntry(srcSwitchId, ONE_SWITCH, flowId, yFlowId, cookie, meterId));
+            cacheHandler.handle(newEndpointPathEntry(srcSwitchId, ONE_SWITCH, flowId, yFlowId, yPointSwitchId,
+                    cookie, meterId, ingressMirror || egressMirror));
         } else {
-            cacheHandler.handle(newPathEntry(srcSwitchId, INGRESS, flowId, yFlowId, cookie, meterId));
-            cacheHandler.handle(newPathEntry(dstSwitchId, EGRESS, flowId, yFlowId, cookie));
+            cacheHandler.handle(newEndpointPathEntry(
+                    srcSwitchId, INGRESS, flowId, yFlowId, yPointSwitchId, cookie, meterId, ingressMirror));
+            cacheHandler.handle(newEndpointPathEntry(
+                    dstSwitchId, EGRESS, flowId, yFlowId, yPointSwitchId, cookie, null, egressMirror));
         }
+        cacheHandler.handle(new StatVlanDescriptor(srcSwitchId, INGRESS, flowId, cookie, statsVlan));
+        cacheHandler.handle(new StatVlanDescriptor(dstSwitchId, EGRESS, flowId, cookie, statsVlan));
     }
 
     private void updateCache(
@@ -204,9 +243,17 @@ public class KildaEntryCacheService {
                 .filter(Objects::nonNull)
                 .forEach(path -> {
                     Flow flow = path.getFlow();
+                    boolean ingressMirror = path.getFlowMirrorPointsSet().stream()
+                            .anyMatch(point -> point.getMirrorSwitchId().equals(path.getSrcSwitchId()));
+                    boolean egressMirror = path.getFlowMirrorPointsSet().stream()
+                            .anyMatch(point -> point.getMirrorSwitchId().equals(path.getDestSwitchId()));
+                    SwitchId yPointSwitchId = Optional.ofNullable(flow.getYFlow())
+                            .map(YFlow::getYPoint)
+                            .orElse(null);
                     updateCache(
-                            cacheHandler, flow.getFlowId(), flow.getYFlowId(), path.getCookie(), path.getMeterId(),
-                            FlowPathMapper.INSTANCE.mapToPathNodes(flow, path));
+                            cacheHandler, flow.getFlowId(), flow.getYFlowId(), yPointSwitchId, path.getCookie(),
+                            path.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, path),
+                            flow.getVlanStatistics(), ingressMirror, egressMirror);
                 });
     }
 
@@ -230,26 +277,29 @@ public class KildaEntryCacheService {
     }
 
     private void processTransitCookies(
-            KildaEntryDescriptorHandler cacheHandler, String flowId, String yFlowId, FlowSegmentCookie cookie,
-            List<PathNodePayload> path) {
+            KildaEntryDescriptorHandler cacheHandler, String flowId, String yFlowId, SwitchId yPointSwitchId,
+            FlowSegmentCookie cookie, List<PathNodePayload> path) {
         // Skip the first and the last nodes as they're handled as INGRESS and EGRESS.
         for (int i = 1; i < path.size() - 1; i++) {
             SwitchId transitSrc = path.get(i).getSwitchId();
-            cacheHandler.handle(newPathEntry(transitSrc, TRANSIT, flowId, yFlowId, cookie));
+            cacheHandler.handle(newTransitPathEntry(transitSrc, flowId, yFlowId, yPointSwitchId, cookie));
         }
     }
 
-    private static KildaEntryDescriptor newPathEntry(
-            SwitchId switchId, MeasurePoint measurePoint, String flowId, String yFlowId, FlowSegmentCookie cookie) {
-        return newPathEntry(switchId, measurePoint, flowId, yFlowId, cookie, null);
-    }
-
-    private static KildaEntryDescriptor newPathEntry(
-            SwitchId switchId, MeasurePoint measurePoint, String flowId, String yFlowId, FlowSegmentCookie cookie,
-            MeterId meterId) {
+    private static KildaEntryDescriptor newTransitPathEntry(
+            SwitchId switchId, String flowId, String yFlowId, SwitchId yPointSwitchId, FlowSegmentCookie cookie) {
         if (yFlowId != null) {
-            return new YFlowSubDescriptor(switchId, measurePoint, yFlowId, flowId, cookie, meterId);
+            return new YFlowSubDescriptor(switchId, TRANSIT, yFlowId, flowId, yPointSwitchId, cookie, null);
         }
-        return new CommonFlowDescriptor(switchId, measurePoint, flowId, cookie, meterId);
+        return new CommonFlowDescriptor(switchId, TRANSIT, flowId, cookie, null);
+    }
+
+    private static KildaEntryDescriptor newEndpointPathEntry(
+            SwitchId switchId, MeasurePoint measurePoint, String flowId, String yFlowId, SwitchId yPointSwitchId,
+            FlowSegmentCookie cookie, MeterId meterId, boolean hasMirror) {
+        if (yFlowId != null) {
+            return new YFlowSubDescriptor(switchId, measurePoint, yFlowId, flowId, yPointSwitchId, cookie, meterId);
+        }
+        return new EndpointFlowDescriptor(switchId, measurePoint, flowId, cookie, meterId, hasMirror);
     }
 }

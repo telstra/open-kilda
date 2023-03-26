@@ -30,6 +30,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -47,9 +48,10 @@ public class OneSwitchFlowVerifyRequest extends OneSwitchFlowRequest {
             @JsonProperty("meter_config") MeterConfig meterConfig,
             @JsonProperty("egress_endpoint") FlowEndpoint egressEndpoint,
             @JsonProperty("rules_context") RulesContext rulesContext,
-            @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
+            @JsonProperty("mirror_config") MirrorConfig mirrorConfig,
+            @JsonProperty("stat_vlans") Set<Integer> statVlans) {
         super(messageContext, commandId, metadata, endpoint, meterConfig, egressEndpoint,
-                rulesContext, mirrorConfig);
+                rulesContext, mirrorConfig, statVlans);
     }
 
     public OneSwitchFlowVerifyRequest(OneSwitchFlowRequest other, UUID commandId) {

@@ -76,13 +76,12 @@ import org.apache.commons.collections4.map.LazyMap;
 import org.apache.commons.lang3.StringUtils;
 
 import java.time.Duration;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 @Slf4j
 public class ResourcesAllocationAction extends
@@ -176,7 +175,7 @@ public class ResourcesAllocationAction extends
             transactionManager.doInTransaction(() -> {
                 Flow flow = RequestedFlowMapper.INSTANCE.toFlow(targetFlow);
                 flow.setStatus(FlowStatus.IN_PROGRESS);
-                getFlowDiverseGroupFromContext(targetFlow.getDiverseFlowId())
+                getOrCreateFlowDiverseGroup(targetFlow.getDiverseFlowId())
                         .ifPresent(flow::setDiverseGroupId);
                 getFlowAffinityGroupFromContext(targetFlow.getAffinityFlowId())
                         .ifPresent(flow::setAffinityGroupId);
@@ -211,21 +210,21 @@ public class ResourcesAllocationAction extends
         }
     }
 
-    private Optional<String> getFlowDiverseGroupFromContext(String diverseFlowId) throws FlowNotFoundException {
-        if (StringUtils.isNotBlank(diverseFlowId)) {
-            String flowId = yFlowRepository.findById(diverseFlowId).map(Stream::of).orElseGet(Stream::empty)
-                    .map(YFlow::getSubFlows)
-                    .flatMap(Collection::stream)
-                    .map(YSubFlow::getFlow)
-                    .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
-                    .map(Flow::getFlowId)
-                    .findFirst()
-                    .orElse(diverseFlowId);
-            return flowRepository.getOrCreateDiverseFlowGroupId(flowId)
-                    .map(Optional::of)
-                    .orElseThrow(() -> new FlowNotFoundException(flowId));
+    private Optional<String> getOrCreateFlowDiverseGroup(String diverseFlowId) throws FlowNotFoundException {
+        if (StringUtils.isBlank(diverseFlowId)) {
+            return Optional.empty();
         }
-        return Optional.empty();
+        Optional<String> groupId;
+        if (yFlowRepository.exists(diverseFlowId)) {
+            groupId = yFlowRepository.getOrCreateDiverseYFlowGroupId(diverseFlowId);
+        } else if (yFlowRepository.isSubFlow(diverseFlowId)) {
+            groupId = flowRepository.findById(diverseFlowId)
+                    .map(Flow::getYFlowId)
+                    .flatMap(yFlowRepository::getOrCreateDiverseYFlowGroupId);
+        } else {
+            groupId = flowRepository.getOrCreateDiverseFlowGroupId(diverseFlowId);
+        }
+        return Optional.of(groupId.orElseThrow(() -> new FlowNotFoundException(diverseFlowId)));
     }
 
     private Optional<String> getFlowAffinityGroupFromContext(String affinityFlowId) throws FlowNotFoundException {
@@ -330,9 +329,11 @@ public class ResourcesAllocationAction extends
         if (!tmpFlow.isAllocateProtectedPath()) {
             return;
         }
-        tmpFlow.setDiverseGroupId(getFlowDiverseGroupFromContext(flowId)
-                .orElseThrow(() -> new FlowNotFoundException(flowId)));
-        GetPathsResult protectedPath = pathComputer.getPath(tmpFlow);
+        if (tmpFlow.getDiverseGroupId() == null) {
+            tmpFlow.setDiverseGroupId(flowRepository.getOrCreateDiverseFlowGroupId(flowId)
+                    .orElseThrow(() -> new FlowNotFoundException(flowId)));
+        }
+        GetPathsResult protectedPath = pathComputer.getPath(tmpFlow, Collections.emptyList(), true);
         stateMachine.setBackUpProtectedPathComputationWayUsed(protectedPath.isBackUpPathComputationWayUsed());
 
         boolean overlappingProtectedPathFound =

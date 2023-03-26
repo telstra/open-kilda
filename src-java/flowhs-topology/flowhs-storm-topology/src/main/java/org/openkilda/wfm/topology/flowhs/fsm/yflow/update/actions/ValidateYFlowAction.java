@@ -21,6 +21,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowStatus;
@@ -38,7 +39,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.update.YFlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.validation.InvalidFlowException;
 import org.openkilda.wfm.topology.flowhs.validation.UnavailableFlowEndpointException;
 import org.openkilda.wfm.topology.flowhs.validation.YFlowValidator;
 
@@ -127,22 +127,46 @@ public class ValidateYFlowAction extends
                     format("Unable to map provided sub-flows set onto existing y-flow %s", yFlowId));
         }
 
-        YSubFlow subFlow = yFlow.getSubFlows().stream().findAny()
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.DATA_INVALID,
-                        format("No sub-flows of the y-flow %s were found", yFlowId)));
-        stateMachine.setMainAffinityFlowId(subFlow.getFlow().getAffinityGroupId());
+        stateMachine.setMainAffinityFlowId(getMainAffinityFlowId(yFlow));
 
         List<FlowEndpoint> subFlowEndpoints = targetFlow.getSubFlows().stream()
                 .map(SubFlowDto::getEndpoint)
                 .collect(Collectors.toList());
         dashboardLogger.onYFlowUpdate(yFlowId, targetFlow.getSharedEndpoint(), subFlowEndpoints,
-                targetFlow.getMaximumBandwidth());
+                targetFlow.getMaximumBandwidth(), targetFlow.getPathComputationStrategy(), targetFlow.getMaxLatency(),
+                targetFlow.getMaxLatencyTier2());
 
         stateMachine.setTargetFlow(targetFlow);
 
         stateMachine.saveNewEventToHistory("Y-flow was validated successfully", FlowEventData.Event.UPDATE);
 
         return Optional.empty();
+    }
+
+    private String getMainAffinityFlowId(YFlow yFlow) {
+        // TODO: maybe we should add filtering of one switch sub flows into method getSubFlows()
+        YSubFlow flowInAffinityGroup = yFlow.getSubFlows().stream()
+                .filter(sub -> sub.getFlow().getAffinityGroupId() != null)
+                .findAny()
+                .orElse(null);
+        if (flowInAffinityGroup != null) {
+            return flowInAffinityGroup.getFlow().getAffinityGroupId();
+        }
+
+        YSubFlow multiSwitchFlow = yFlow.getSubFlows().stream()
+                .filter(sub -> !sub.isOneSwitchYFlow(yFlow.getSharedEndpoint().getSwitchId()))
+                .findAny()
+                .orElse(null);
+        if (multiSwitchFlow != null) {
+            return multiSwitchFlow.getSubFlowId();
+        } else {
+            // if there is no multi switch flows we have to use one switch flow
+            YSubFlow oneSwitchSubFlow = yFlow.getSubFlows().stream()
+                    .findAny()
+                    .orElseThrow(() -> new FlowProcessingException(ErrorType.DATA_INVALID,
+                            format("No sub-flows of the y-flow %s were found", yFlow.getYFlowId())));
+            return oneSwitchSubFlow.getSubFlowId();
+        }
     }
 
     @Override

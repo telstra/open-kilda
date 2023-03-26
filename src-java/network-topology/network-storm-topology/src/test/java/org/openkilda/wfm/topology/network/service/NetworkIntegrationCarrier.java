@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.network.service;
 
+import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.messaging.command.reroute.RerouteFlows;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
@@ -35,6 +36,7 @@ import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.OnlineStatus;
+import org.openkilda.wfm.topology.network.model.PortDataHolder;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.utils.EndpointStatusMonitor;
 import org.openkilda.wfm.topology.network.utils.SwitchOnlineStatusMonitor;
@@ -42,6 +44,8 @@ import org.openkilda.wfm.topology.network.utils.SwitchOnlineStatusMonitor;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 @Data
 public class NetworkIntegrationCarrier
@@ -240,18 +244,23 @@ public class NetworkIntegrationCarrier
     }
 
     @Override
+    public void updatePortHandler(Endpoint endpoint, PortDataHolder portData) {
+        portService.update(endpoint, portData);
+    }
+
+    @Override
     public void removePortHandler(Endpoint endpoint) {
         portService.remove(endpoint);
     }
 
     @Override
-    public void setOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus) {
-        portService.updateOnlineMode(endpoint, onlineStatus);
+    public void setOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus, PortDataHolder portData) {
+        portService.updateOnlineMode(endpoint, onlineStatus, portData);
     }
 
     @Override
-    public void setPortLinkMode(Endpoint endpoint, LinkStatus linkStatus) {
-        portService.updateLinkStatus(endpoint, linkStatus);
+    public void setPortLinkMode(Endpoint endpoint, LinkStatus linkStatus, PortDataHolder portData) {
+        portService.updateLinkStatus(endpoint, linkStatus, portData);
     }
 
     @Override
@@ -337,13 +346,37 @@ public class NetworkIntegrationCarrier
     }
 
     @Override
-    public void islDefaultRulesInstall(Endpoint source, Endpoint destination, boolean multitableMode,
-                                       boolean server42IslRtt, Integer server42Port) {
+    public void islRulesInstall(IslReference reference, Endpoint source) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
     }
 
     @Override
-    public void islDefaultRulesDelete(Endpoint source, Endpoint destination) {
+    public void sendIslRulesInstallCommand(SwitchId switchId, UUID commandId, List<OfCommand> speakerData) {
+        // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+    }
+
+    @Override
+    public void islRulesDelete(IslReference reference, Endpoint source) {
+        // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+    }
+
+    @Override
+    public void sendIslRulesDeleteCommand(SwitchId switchId, UUID commandId, List<OfCommand> speakerData) {
+        // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+    }
+
+    @Override
+    public void islRulesInstalled(IslReference reference, Endpoint endpoint) {
+        // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+    }
+
+    @Override
+    public void islRulesDeleted(IslReference reference, Endpoint endpoint) {
+        // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+    }
+
+    @Override
+    public void islRulesFailed(IslReference reference, Endpoint endpoint) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
     }
 
