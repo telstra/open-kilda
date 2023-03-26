@@ -59,7 +59,7 @@ public class NetworkSwitchService {
         controllerFactory = SwitchFsm.factory();
 
         log.info("Discovery switch service configuration: bfd-logical-port-offset:{}",
-                 options.getBfdLogicalPortOffset());
+                options.getBfdLogicalPortOffset());
     }
 
     /**
@@ -212,9 +212,10 @@ public class NetworkSwitchService {
      */
     public void switchPortEvent(PortInfoData payload) {
         log.debug("Switch service receive PORT event for {} port:{}, status:{}",
-                  payload.getSwitchId(), payload.getPortNo(), payload.getState());
+                payload.getSwitchId(), payload.getPortNo(), payload.getState());
         SwitchFsmContext.SwitchFsmContextBuilder fsmContext = SwitchFsmContext.builder(carrier)
-                .portNumber(payload.getPortNo());
+                .portNumber(payload.getPortNo()).portMaxSpeed(payload.getMaxSpeed())
+                .portCurrentSpeed(payload.getCurrentSpeed());
         SwitchFsmEvent event = null;
         switch (payload.getState()) {
             case ADD:
@@ -229,6 +230,10 @@ public class NetworkSwitchService {
                 break;
             case DOWN:
                 event = SwitchFsmEvent.PORT_DOWN;
+                break;
+            case OTHER_UPDATE:
+                event = SwitchFsmEvent.PORT_DATA;
+                // TODO(vshakirova): add logic for changing ISL speed
                 break;
 
             default:

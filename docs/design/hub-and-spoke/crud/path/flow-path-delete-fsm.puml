@@ -1,0 +1,38 @@
+@startuml
+title Flow path delete FSM state diagram
+
+[*] --> DELETE
+
+DELETE: enter / activate next segments chunk
+DELETE: enter / fire "no_more_chunks" if there is no more chunks
+DELETE: enter / emit DELETE request for each segment in active chunk
+DELETE: enter / fire "chunk_complete" if there is no more pending requests
+DELETE: enter / fire "next"
+DELETE --> WAIT_PENDING: next
+DELETE --> REVERT: error / set result_code into SPEAKER_ERROR
+DELETE --> REVERT_WAIT_PENDING: cancel / set result_code into CANCEL
+DELETE --> END: (chunk_complete | no_more_chunks)
+
+WAIT_PENDING --> REVERT: error / set result_code into SPEAKER_ERROR
+WAIT_PENDING --> REVERT_WAIT_PENDING: cancel / set result_code into CANCEL
+WAIT_PENDING --> DELETE: chunk_complete
+WAIT_PENDING: speaker_response / handle speaker response
+WAIT_PENDING: speaker_response / [no more pending request && no error responses received] fire "chunk_complete"
+WAIT_PENDING: speaker_response / [no more pending request && error responses are present] fire "error"
+
+REVERT_WAIT_PENDING --> REVERT: (error | chunk_complete)
+REVERT_WAIT_PENDING: speaker_response / handle speaker response
+REVERT_WAIT_PENDING: speaker_response / [no more pending request && no error responses received] fire "chunk_complete"
+REVERT_WAIT_PENDING: speaker_response / [no more pending request && error responses are present] fire "error"
+
+REVERT: enter / [! is revert enabled] fire "chunk_complete"
+REVERT: enter / assemble and activate revert chunk
+REVERT: enter / emit INSTALL request for each segment in active chunk
+REVERT --> END: (chunk_complete | error)
+REVERT: speaker_response / handle speaker response
+REVERT: speaker_response / [no more pending request && no error responses received] fire "chunk_complete"
+REVERT: speaker_response / [no more pending request && error responses are present] fire "error"
+
+END: enter / [result code is null] set result_code into success
+END --> [*]
+@enduml

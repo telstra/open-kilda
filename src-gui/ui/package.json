@@ -23,6 +23,7 @@
     "@ng-bootstrap/ng-bootstrap": "^3.2.0",
     "@ng-select/ng-select": "^2.8.0",
     "@types/d3": "^4.13.0",
+    "@types/geojson": "7946.0.8",
     "@types/jqueryui": "^1.12.4",
     "angular-datatables": "^6.0.0",
     "angular-font-awesome": "^3.1.2",

@@ -1,10 +1,10 @@
 # Flow pings
 ## The idea
 Use our link validation mechanism to validate the whole flow. We can inject
-validation packet on edge switch, it will be "routed" using flow rules on all 
-intermediate switches and cached on the edge switch on other side of flow
-("packet out" message must specify special out port called "TABLE" to pass
-packet via existing on switch open flow rules).
+validation packet on an edge switch. It will be "routed" using flow rules on all 
+intermediate switches and cached on the edge switch on other side of flow.
+A `PACKET_OUT` message must specify a special out port called "TABLE" to pass
+the packet via existing Open Flow rules on that switch.
 
 ## Goals
 * measure flow latency
@@ -12,15 +12,17 @@ packet via existing on switch open flow rules).
 
 # Ping topology
 ## Periodic pings
-Periodic pings are initiated by kilda system periodically, with interval defined by `flow.ping.interval` configuration option. Pings for both directions for all existing flows are created on each iteration.
+Periodic pings are initiated by OpenKilda system periodically with the interval defined by `flow.ping.interval` configuration option.
+Pings for both directions for all existing flows are created on each iteration.
 
-If ping success - it's latency is stored into OTSDB, in metric `pen.flow.latency`, with tags flowid and direction.
+If ping succeeds, its latency is saved into OTSDB, in metric `pen.flow.latency` with tags: flowid and direction.
 
-If there is no successful pings for `flow.ping.fail.delay` seconds - flow failure will be reported in logs also `PingReport` message will be send into kafka topic defined in `kafka.topic.flow.status` configuration option.
+If there are no successful pings for `flow.ping.fail.delay` seconds, a flow failure will be logged and the `PingReport` message 
+will be sent into the Kafka topic defined in the `kafka.topic.flow.status` configuration option.
 
-To simplify flow status log filtration, all flow status log message are prefixed with `{FLOW-PING}` keyword.
+To simplify flow status log filtration, all flow status log messages are prefixed with `{FLOW-PING}` keyword.
 
-Example of `PingReport` message:
+An example of `PingReport` message:
 ```json
 {
   "clazz": "org.openkilda.messaging.info.InfoMessage",
@@ -40,9 +42,10 @@ Example of `PingReport` message:
 ![pediodic pings](./periodic-ping-sequence-diagram.png "Periodic ping sequence diagram")
 
 ## On demand pings
-This kind of flow ping is initiated via NorthBound API. The only mandatory input parameter if flowId. On this request kilda will initiate 2 pings, one in forward direction and one in reverse direction. 
+This kind of flow ping is initiated via NorthBound API. The only mandatory input parameter is the `flowId`. On this request,
+kilda will initiate 2 pings: one in the forward direction and one in the reverse direction. 
 
-NorthBound endpoint - ulr path `/flows/{flow_id}/ping`, method PUT. In request body you can pass additional ping options.
+NorthBound endpoint: URL path `/flows/{flow_id}/ping`, method PUT. You can pass additional ping options in the request body.
 
 Request body example:
 ```json
@@ -51,9 +54,9 @@ Request body example:
 }
 ```
 
-`timeout` - how long time wait for response (in milliseconds). If not defined - the default value 2000 will be used.
+`timeout`: how much time to wait for a response in milliseconds before consider the ping unsuccessful. The default value is 2000 ms.
 
-Successful ping call response:
+A successful ping call response:
 ```json
 {
   "flow_id": "flowping-alpha",
@@ -71,7 +74,7 @@ Successful ping call response:
 }
 ```
 
-Failure in forward direction:
+A failure in the forward direction:
 ```json
 {
   "flow_id": "flowping-alpha",

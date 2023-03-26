@@ -29,6 +29,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.ToString;
 
+import java.util.Set;
 import java.util.UUID;
 
 @JsonIgnoreProperties({"switch_id", "egress_switch"})
@@ -42,9 +43,9 @@ public class OneSwitchFlowRequest extends IngressFlowSegmentBase {
     protected OneSwitchFlowRequest(
             MessageContext context, UUID commandId, FlowSegmentMetadata metadata, FlowEndpoint endpoint,
             MeterConfig meterConfig, @NonNull FlowEndpoint egressEndpoint,
-            RulesContext rulesContext, MirrorConfig mirrorConfig) {
+            RulesContext rulesContext, MirrorConfig mirrorConfig, Set<Integer> statVlans) {
         super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint.getSwitchId(),
-                rulesContext, mirrorConfig);
+                rulesContext, mirrorConfig, statVlans);
 
         if (! getSwitchId().equals(egressEndpoint.getSwitchId())) {
             throw new IllegalArgumentException(String.format(
@@ -58,6 +59,6 @@ public class OneSwitchFlowRequest extends IngressFlowSegmentBase {
     protected OneSwitchFlowRequest(@NonNull OneSwitchFlowRequest other, @NonNull UUID commandId) {
         this(
                 other.messageContext, commandId, other.metadata, other.endpoint, other.meterConfig,
-                other.egressEndpoint, other.rulesContext, other.mirrorConfig);
+                other.egressEndpoint, other.rulesContext, other.mirrorConfig, other.statVlans);
     }
 }

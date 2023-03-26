@@ -46,6 +46,9 @@ import java.util.Set;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkIntegrationTest {
+    private static final long MAX_SPEED = 10000000;
+    private static final long CURRENT_SPEED = 99999;
+
     private static PersistenceManager persistenceManager;
 
     @ClassRule
@@ -73,8 +76,8 @@ public class NetworkIntegrationTest {
             Inet4Address.getByName("127.1.0.1"), 32768);
 
     private final String alphaDescription = String.format("%s OF_13 %s",
-                                                          switchDescription.getManufacturer(),
-                                                          switchDescription.getSoftware());
+            switchDescription.getManufacturer(),
+            switchDescription.getSoftware());
 
     private NetworkIntegrationCarrier integrationCarrier;
 
@@ -101,10 +104,12 @@ public class NetworkIntegrationTest {
 
         Integer bfdLocalPortOffset = options.getBfdLogicalPortOffset();
         List<SpeakerSwitchPortView> ports = ImmutableList.of(
-                new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP),
-                new SpeakerSwitchPortView(1 + bfdLocalPortOffset, SpeakerSwitchPortView.State.UP),
-                new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.DOWN),
-                new SpeakerSwitchPortView(2 + bfdLocalPortOffset, SpeakerSwitchPortView.State.DOWN));
+                new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP, MAX_SPEED, CURRENT_SPEED),
+                new SpeakerSwitchPortView(1 + bfdLocalPortOffset, SpeakerSwitchPortView.State.UP,
+                        MAX_SPEED, CURRENT_SPEED),
+                new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.DOWN, MAX_SPEED, CURRENT_SPEED),
+                new SpeakerSwitchPortView(2 + bfdLocalPortOffset, SpeakerSwitchPortView.State.DOWN, MAX_SPEED,
+                        CURRENT_SPEED));
         SpeakerSwitchView speakerSwitchView = new SpeakerSwitchView(
                 alphaDatapath,
                 new IpSocketAddress(alphaInetAddress.getHostString(), alphaInetAddress.getPort()),

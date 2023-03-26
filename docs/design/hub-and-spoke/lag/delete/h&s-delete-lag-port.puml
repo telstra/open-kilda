@@ -5,6 +5,7 @@ actor User
 boundary Northbound as NB
 participant SwitchManager << Hub >>
 participant SpeakerWorker
+participant Floodlight
 participant GRPC
 database DB
 
@@ -14,8 +15,15 @@ activate NB
 NB -> SwitchManager : DeleteLagPortRequest
 activate SwitchManager
 SwitchManager -> SwitchManager : Request validation
-SwitchManager -> DB : Delete LAG from DB
-DB -> SwitchManager
+SwitchManager -> SpeakerWorker : OfCommands
+activate SpeakerWorker
+SpeakerWorker -> Floodlight : OfCommands
+deactivate SpeakerWorker
+Floodlight -> Floodlight : Remove rules\nand meter
+Floodlight -> SpeakerWorker : OfResponse
+activate SpeakerWorker
+SpeakerWorker -> SwitchManager : OfResponse
+deactivate SpeakerWorker
 SwitchManager -> SpeakerWorker : DeleteLogicalPortRequest
 activate SpeakerWorker
 SpeakerWorker -> GRPC : DeleteLogicalPortRequest
@@ -25,6 +33,8 @@ GRPC -> SpeakerWorker : DeleteLogicalPortResponse
 activate SpeakerWorker
 SpeakerWorker -> SwitchManager : DeleteLogicalPortResponse
 deactivate SpeakerWorker
+SwitchManager -> DB : Delete LAG from DB
+DB -> SwitchManager
 SwitchManager ->> NB: LagPortResponse
 deactivate SwitchManager
 NB -> User: LagPortDto

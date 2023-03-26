@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -95,11 +95,11 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         transitVlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
-        packetService = new PacketService(persistenceManager);
     }
 
     @Before
     public void setUp() {
+        packetService = new PacketService(persistenceManager);
         switchRepository.add(Switch.builder().switchId(SWITCH_ID_1).build());
         switchRepository.add(Switch.builder().switchId(SWITCH_ID_2).build());
     }
@@ -439,16 +439,14 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
 
     private void assertLldpConnectedDeviceExistInDatabase(LldpInfoData data) {
         Optional<SwitchConnectedDevice> switchConnectedDevice = switchConnectedDeviceRepository
-                .findLldpByUniqueFieldCombination(data.getSwitchId(), data.getPortNumber(), data.getVlans().get(0),
-                        data.getMacAddress(), data.getChassisId(), data.getPortId());
+                .findLldpByUniqueIndex(packetService.buildLldpUniqueIndex(data, data.getVlans().get(0)));
         assertTrue(switchConnectedDevice.isPresent());
         assertLldpInfoDataDataEqualsSwitchConnectedDevice(data, switchConnectedDevice.get());
     }
 
     private void assertArpConnectedDeviceExistInDatabase(ArpInfoData data) {
         Optional<SwitchConnectedDevice> switchConnectedDevice = switchConnectedDeviceRepository
-                .findArpByUniqueFieldCombination(data.getSwitchId(), data.getPortNumber(), data.getVlans().get(0),
-                        data.getMacAddress(), data.getIpAddress());
+                .findArpByUniqueIndex(packetService.buildArpUniqueIndex(data, data.getVlans().get(0)));
         assertTrue(switchConnectedDevice.isPresent());
         assertArpInfoDataEqualsSwitchConnectedDevice(data, switchConnectedDevice.get());
     }

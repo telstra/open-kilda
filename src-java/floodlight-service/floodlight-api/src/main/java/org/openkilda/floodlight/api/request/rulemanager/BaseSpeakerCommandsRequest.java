@@ -42,6 +42,7 @@ import java.util.UUID;
         @Type(value = DeleteSpeakerCommandsRequest.class,
                 name = "org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest")
 })
+
 @Getter
 @ToString(callSuper = true)
 public abstract class BaseSpeakerCommandsRequest extends SpeakerRequest {
@@ -49,25 +50,20 @@ public abstract class BaseSpeakerCommandsRequest extends SpeakerRequest {
     @JsonProperty("command_data")
     protected Collection<OfCommand> commands;
 
-    @JsonProperty("origin")
-    protected Origin origin;
+    @JsonProperty("source_topic")
+    protected String sourceTopic;
 
     public BaseSpeakerCommandsRequest(MessageContext messageContext,
                                       @NonNull SwitchId switchId,
                                       @NonNull UUID commandId,
-                                      Collection<OfCommand> commands,
-                                      Origin origin) {
+                                      Collection<OfCommand> commands) {
+
         super(messageContext, switchId, commandId);
         this.commands = commands;
-        this.origin = origin;
     }
 
-    public Collection<OfCommand> getCommands() {
-        return commands;
-    }
-
-    public Origin getOrigin() {
-        return origin;
+    public void setSourceTopic(String sourceTopic) {
+        this.sourceTopic = sourceTopic;
     }
 
     public abstract void process(BatchCommandProcessor processor, String key);

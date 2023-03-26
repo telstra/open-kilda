@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
@@ -33,7 +34,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm.
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm.State;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.validation.FlowValidator;
-import org.openkilda.wfm.topology.flowhs.validation.InvalidFlowException;
 import org.openkilda.wfm.topology.flowhs.validation.UnavailableFlowEndpointException;
 
 import lombok.extern.slf4j.Slf4j;
@@ -58,7 +58,9 @@ public class ValidateFlowsAction
         RequestedFlow secondTargetFlow = stateMachine.getSecondTargetFlow();
 
         if (!featureTogglesRepository.getOrDefault().getUpdateFlowEnabled()) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Flow update feature is disabled");
+            stateMachine.fireValidationError(
+                    new ErrorData(ErrorType.NOT_PERMITTED, FlowSwapEndpointsFsm.GENERIC_ERROR_MESSAGE,
+                            "Flow update feature is disabled"));
         }
 
         try {

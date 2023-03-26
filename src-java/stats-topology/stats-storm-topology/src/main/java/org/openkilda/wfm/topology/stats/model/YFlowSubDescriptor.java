@@ -30,13 +30,15 @@ import lombok.Value;
 public class YFlowSubDescriptor extends BaseFlowDescriptor {
     @NonNull String yFlowId;
     @NonNull String subFlowId;
+    SwitchId yPointSwitchId;
 
     public YFlowSubDescriptor(
             SwitchId switchId, MeasurePoint measurePoint, @NonNull String yFlowId, @NonNull String subFlowId,
-            @NonNull FlowSegmentCookie cookie, MeterId meterId) {
+            SwitchId yPointSwitchId, @NonNull FlowSegmentCookie cookie, MeterId meterId) {
         super(switchId, measurePoint, cookie, meterId);
         this.yFlowId = yFlowId;
         this.subFlowId = subFlowId;
+        this.yPointSwitchId = yPointSwitchId;
     }
 
     @Override

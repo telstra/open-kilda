@@ -19,6 +19,7 @@ import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.time.TimeCategory
+import spock.lang.Ignore
 import spock.lang.Shared
 
 class FlowSyncSpec extends HealthCheckSpecification {
@@ -77,6 +78,7 @@ class FlowSyncSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore("After PR4817 flow sync never change existing paths")
     def "Able to synchronize a flow (install missing flow rules, reinstall existing) with rerouting"() {
         given: "An intermediate-switch flow with two possible paths at least and deleted rules on src switch"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:

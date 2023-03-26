@@ -31,7 +31,10 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.YFlowPingResponse;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
+import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
+import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2;
@@ -57,7 +60,11 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.List;
+import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring",
@@ -65,10 +72,14 @@ import java.util.stream.Collectors;
                 TimeMapper.class, PingMapper.class},
         imports = {FlowEndpointPayload.class, FlowEndpointV2.class})
 public abstract class YFlowMapper {
+    @Autowired
+    PathMapper pathMapper;
 
     @Mapping(target = "yFlowId", source = "YFlowId")
     @Mapping(target = "yPoint", source = "YPoint")
     @Mapping(target = "protectedPathYPoint", source = "protectedPathYPoint")
+    @Mapping(target = "maxLatency", qualifiedByName = "timeNanosToMillis")
+    @Mapping(target = "maxLatencyTier2", qualifiedByName = "timeNanosToMillis")
     public abstract YFlow toYFlow(YFlowDto flow);
 
     public abstract SubFlow toYFlow(SubFlowDto flow);
@@ -85,31 +96,87 @@ public abstract class YFlowMapper {
     public abstract YFlowSharedEndpointEncapsulation toYFlowSharedEndpointEncapsulation(FlowEndpoint endpoint);
 
     @Mapping(target = "sharedPath", source = "sharedPath", resultType = YFlowPath.class)
+    @Mapping(target = "subFlowPaths",
+            expression = "java(toSubFlowPaths(source.getSubFlowPaths(), source.getDiverseWithFlows()))")
     public abstract YFlowPaths toYFlowPaths(YFlowPathsResponse source);
 
+    protected List<SubFlowPath> toSubFlowPaths(List<FlowPathDto> subFlowPaths,
+                                               Map<String, List<FlowPathDto>> diverseWithFlows) {
+        return subFlowPaths.stream()
+                .map(f -> toSubFlowPath(f, diverseWithFlows.get(f.getId())))
+                .collect(Collectors.toList());
+    }
+
     @Mapping(target = "forward", source = "forwardPath")
     @Mapping(target = "reverse", source = "reversePath")
+    @Mapping(target = "protectedPath", expression = "java(toYFlowProtectedPath(source.getProtectedPath(), null))")
+    @Mapping(target = "diverseGroup", expression = "java(toDiverseGroupPayload(source, null))")
     public abstract YFlowPath toYFlowPath(FlowPathDto source);
 
-    @Mapping(target = "forward", source = "forwardPath")
-    @Mapping(target = "reverse", source = "reversePath")
-    public abstract YFlowProtectedPath toYFlowProtectedPath(FlowProtectedPathDto source);
+    @Mapping(target = "forward", source = "source.forwardPath")
+    @Mapping(target = "reverse", source = "source.reversePath")
+    @Mapping(target = "diverseGroup", expression = "java(toDiverseGroupPayload(source, diverseWithFlows))")
+    public abstract YFlowProtectedPath toYFlowProtectedPath(FlowProtectedPathDto source,
+                                                            List<FlowPathDto> diverseWithFlows);
 
-    @Mapping(target = "flowId", source = "id")
-    @Mapping(target = "reverse", source = "reversePath")
-    @Mapping(target = "forward", source = "forwardPath")
-    public abstract SubFlowPath toSubFlowPath(FlowPathDto source);
+    @Mapping(target = "flowId", source = "source.id")
+    @Mapping(target = "reverse", source = "source.reversePath")
+    @Mapping(target = "forward", source = "source.forwardPath")
+    @Mapping(target = "protectedPath",
+            expression = "java(toYFlowProtectedPath(source.getProtectedPath(), diverseWithFlows))")
+    @Mapping(target = "diverseGroup", expression = "java(toDiverseGroupPayload(source, diverseWithFlows))")
+    public abstract SubFlowPath toSubFlowPath(FlowPathDto source, List<FlowPathDto> diverseWithFlows);
+
+    protected DiverseGroupPayload toDiverseGroupPayload(FlowPathDto source, List<FlowPathDto> diverseWithFlows) {
+        OverlappingSegmentsStats segmentsStats = source.getSegmentsStats();
+        if (segmentsStats != null) {
+            return DiverseGroupPayload.builder()
+                    .overlappingSegments(segmentsStats)
+                    .otherFlows(diverseWithFlows != null
+                            ? toGroupPaths(diverseWithFlows, FlowPathDto::isPrimaryPathCorrespondStat) : null)
+                    .build();
+        }
+        return null;
+    }
+
+    protected DiverseGroupPayload toDiverseGroupPayload(FlowProtectedPathDto source,
+                                                        List<FlowPathDto> diverseWithFlows) {
+        if (source != null) {
+            OverlappingSegmentsStats segmentsStats = source.getSegmentsStats();
+            if (segmentsStats != null) {
+                return DiverseGroupPayload.builder()
+                        .overlappingSegments(segmentsStats)
+                        .otherFlows(diverseWithFlows != null
+                                ? toGroupPaths(diverseWithFlows, e -> !e.isPrimaryPathCorrespondStat()) : null)
+                        .build();
+            }
+        }
+        return null;
+    }
+
+    private List<GroupFlowPathPayload> toGroupPaths(List<FlowPathDto> paths, Predicate<FlowPathDto> predicate) {
+        return paths.stream()
+                .filter(predicate)
+                .map(pathMapper::mapGroupFlowPathPayload)
+                .collect(Collectors.toList());
+    }
 
     @Mapping(target = "segmentLatency", source = "segLatency")
     public abstract FlowPathV2.PathNodeV2 toPathNodeV2(PathNode pathNode);
 
     @Mapping(target = "type", constant = "CREATE")
     @Mapping(target = "yFlowId", source = "YFlowId")
+    @Mapping(target = "maxLatency", qualifiedByName = "timeMillisToNanos")
+    @Mapping(target = "maxLatencyTier2", qualifiedByName = "timeMillisToNanos")
     public abstract YFlowRequest toYFlowCreateRequest(YFlowCreatePayload source);
 
     @Mapping(target = "type", constant = "UPDATE")
+    @Mapping(target = "maxLatency", qualifiedByName = "timeMillisToNanos")
+    @Mapping(target = "maxLatencyTier2", qualifiedByName = "timeMillisToNanos")
     public abstract YFlowRequest toYFlowUpdateRequest(String yFlowId, YFlowUpdatePayload source);
 
+    @Mapping(target = "maxLatency", qualifiedByName = "timeMillisToNanos")
+    @Mapping(target = "maxLatencyTier2", qualifiedByName = "timeMillisToNanos")
     public abstract YFlowPartialUpdateRequest toYFlowPatchRequest(String yFlowId, YFlowPatchPayload source);
 
     @Mapping(target = "status", ignore = true)

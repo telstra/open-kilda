@@ -32,4 +32,5 @@ import java.util.Set;
 public class LagPortResponse extends InfoData {
     int logicalPortNumber;
     Set<Integer> portNumbers;
+    boolean lacpReply;
 }

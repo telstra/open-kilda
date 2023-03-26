@@ -40,9 +40,8 @@ public class InstallSpeakerCommandsRequest extends BaseSpeakerCommandsRequest {
                                          @JsonProperty("switch_id") @NonNull SwitchId switchId,
                                          @JsonProperty("command_id") @NonNull UUID commandId,
                                          @JsonProperty("command_data") Collection<OfCommand> commands,
-                                         @JsonProperty("origin") Origin origin,
                                          @JsonProperty("fail_if_exists") Boolean failIfExists) {
-        super(messageContext, switchId, commandId, commands, origin);
+        super(messageContext, switchId, commandId, commands);
         this.failIfExists = failIfExists == null || failIfExists;
     }
 

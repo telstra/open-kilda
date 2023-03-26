@@ -49,17 +49,22 @@ public class GetPathsRequest extends BaseRequest {
     @JsonProperty("max_latency_tier2")
     Duration maxLatencyTier2;
 
+    @JsonProperty("max_path_count")
+    Integer maxPathCount;
+
     public GetPathsRequest(@JsonProperty("src_switch_id") SwitchId srcSwitchId,
                            @JsonProperty("dst_switch_id") SwitchId dstSwitchId,
                            @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType,
                            @JsonProperty("path_computation_strategy") PathComputationStrategy pathComputationStrategy,
                            @JsonProperty("max_latency") Duration maxLatency,
-                           @JsonProperty("max_latency_tier2") Duration maxLatencyTier2) {
+                           @JsonProperty("max_latency_tier2") Duration maxLatencyTier2,
+                           @JsonProperty("max_path_count") Integer maxPathCount) {
         this.srcSwitchId = srcSwitchId;
         this.dstSwitchId = dstSwitchId;
         this.encapsulationType = encapsulationType;
         this.pathComputationStrategy = pathComputationStrategy;
         this.maxLatency = maxLatency;
         this.maxLatencyTier2 = maxLatencyTier2;
+        this.maxPathCount = maxPathCount;
     }
 }

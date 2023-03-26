@@ -17,8 +17,6 @@ package org.openkilda.wfm.topology.network.service;
 
 import static java.lang.String.format;
 
-import org.openkilda.messaging.info.discovery.InstallIslDefaultRulesResult;
-import org.openkilda.messaging.info.discovery.RemoveIslDefaultRulesResult;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
 import org.openkilda.persistence.PersistenceManager;
@@ -170,63 +168,46 @@ public class NetworkIslService {
     }
 
     /**
-     * Process installed isl rule notification.
-     * @param reference isl reference
-     * @param payload response payload
+     * Process isl rules installed notification.
      */
-    public void islDefaultRuleInstalled(IslReference reference, InstallIslDefaultRulesResult payload) {
-        log.debug("ISL service received isl rule installed for {} (on {})", reference, reference.getSource());
-        IslFsm islFsm = locateController(reference);
-        IslFsmContext context;
-        if (payload.isSuccess()) {
-            context = IslFsmContext.builder(carrier, reference.getSource())
-                    .installedRulesEndpoint(Endpoint.of(payload.getSrcSwitch(), payload.getSrcPort()))
-                    .build();
-            controllerExecutor.fire(islFsm, IslFsmEvent.ISL_RULE_INSTALLED, context);
-        } else {
-            context = IslFsmContext.builder(carrier, reference.getSource())
-                    .build();
-            controllerExecutor.fire(islFsm, IslFsmEvent.ISL_RULE_TIMEOUT, context);
-        }
+    public void islRulesInstalled(IslReference reference, Endpoint endpoint) {
+        islRulesProcessed(reference, endpoint, IslFsmEvent.ISL_RULE_INSTALLED);
     }
 
     /**
-     * Process removed isl rule notification.
-     * @param reference isl reference
-     * @param payload target endpoint
+     * Process isl rules deleted notification.
      */
-    public void islDefaultRuleDeleted(IslReference reference, RemoveIslDefaultRulesResult payload) {
-        log.debug("ISL service received isl rule removed for {} (on {})", reference, reference.getSource());
+    public void islRulesDeleted(IslReference reference, Endpoint endpoint) {
+        islRulesProcessed(reference, endpoint, IslFsmEvent.ISL_RULE_REMOVED);
+    }
+
+    private void islRulesProcessed(IslReference reference, Endpoint endpoint, IslFsmEvent event) {
+        log.debug("ISL service received isl rule event {} for {} (on {})", event, reference, reference.getSource());
         IslFsm controller = this.controller.get(reference);
         if (controller == null) {
-            log.info("Got clean up resources notification for not existing ISL {}", reference);
+            log.info("Got isl rules event {} notification for not existing ISL {}", event, reference);
             return;
         }
         IslFsmContext context;
-        if (payload.isSuccess()) {
-            context = IslFsmContext.builder(carrier, reference.getSource())
-                    .removedRulesEndpoint(Endpoint.of(payload.getSrcSwitch(), payload.getSrcPort()))
-                    .build();
-            controllerExecutor.fire(controller, IslFsmEvent.ISL_RULE_REMOVED, context);
-        } else {
-            context = IslFsmContext.builder(carrier, reference.getSource()).build();
-            controllerExecutor.fire(controller, IslFsmEvent.ISL_RULE_TIMEOUT, context);
-        }
+        context = IslFsmContext.builder(carrier, reference.getSource())
+                .endpoint(endpoint)
+                .build();
+        controllerExecutor.fire(controller, event, context);
 
         removeIfCompleted(reference, controller);
     }
 
     /**
-     * Process isl rule timeout notification.
+     * Process isl rule failed.
      * @param reference isl reference
      * @param endpoint target endpoint
      */
-    public void islDefaultTimeout(IslReference reference, Endpoint endpoint) {
-        log.debug("ISL service received isl rule timeout notification for {} (on {})",
+    public void islRulesFailed(IslReference reference, Endpoint endpoint) {
+        log.debug("ISL service received isl rules failed notification for {} (on {})",
                 reference, reference.getSource());
         IslFsm controller = locateController(reference);
-        IslFsmContext context = IslFsmContext.builder(carrier, reference.getSource()).build();
-        controllerExecutor.fire(controller, IslFsmEvent.ISL_RULE_TIMEOUT, context);
+        IslFsmContext context = IslFsmContext.builder(carrier, endpoint).build();
+        controllerExecutor.fire(controller, IslFsmEvent.ISL_RULE_FAILED, context);
         removeIfCompleted(reference, controller);
     }
 

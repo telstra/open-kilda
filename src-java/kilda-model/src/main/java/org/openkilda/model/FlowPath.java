@@ -187,6 +187,24 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         }
     }
 
+    /**
+     * Checks if ingress endpoint has mirror.
+     * NOTE: this method needs external transaction
+     */
+    public boolean hasIngressMirror() {
+        return getFlowMirrorPointsSet().stream()
+                .anyMatch(point -> point.getMirrorSwitchId().equals(getSrcSwitchId()));
+    }
+
+    /**
+     * Checks if ingress endpoint has mirror.
+     * NOTE: this method needs external transaction
+     */
+    public boolean hasEgressMirror() {
+        return getFlowMirrorPointsSet().stream()
+                .anyMatch(point -> point.getMirrorSwitchId().equals(getDestSwitchId()));
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -294,12 +312,16 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
 
         void setApplications(Set<FlowApplication> applications);
 
+        @Deprecated
         boolean isSrcWithMultiTable();
 
+        @Deprecated
         void setSrcWithMultiTable(boolean srcWithMultiTable);
 
+        @Deprecated
         boolean isDestWithMultiTable();
 
+        @Deprecated
         void setDestWithMultiTable(boolean destWithMultiTable);
 
         Set<FlowMirrorPoints> getFlowMirrorPointsSet();
@@ -365,7 +387,9 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         @EqualsAndHashCode.Exclude
         FlowPath flowPath;
 
+        @Deprecated
         boolean srcWithMultiTable;
+        @Deprecated
         boolean destWithMultiTable;
         String sharedBandwidthGroupId;
 

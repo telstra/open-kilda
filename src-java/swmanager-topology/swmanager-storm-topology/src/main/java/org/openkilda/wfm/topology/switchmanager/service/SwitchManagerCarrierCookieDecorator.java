@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.switchmanager.service;
 
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
+import org.openkilda.messaging.Chunkable;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.CommandData;
@@ -85,6 +86,11 @@ public class SwitchManagerCarrierCookieDecorator implements SwitchManagerCarrier
     @Override
     public void response(String key, InfoData payload) {
         target.response(key, payload);
+    }
+
+    @Override
+    public void responseChunks(String key, Chunkable<? extends InfoData> payload) {
+        target.responseChunks(key, payload);
     }
 
     @Override

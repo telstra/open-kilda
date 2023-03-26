@@ -22,8 +22,6 @@ import static org.openkilda.wfm.topology.switchmanager.service.impl.PredicateBui
 import static org.openkilda.wfm.topology.switchmanager.service.impl.PredicateBuilder.isInstallServiceRulesRequired;
 
 import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
-import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
-import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
@@ -46,8 +44,6 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.rulemanager.DataAdapter;
 import org.openkilda.rulemanager.FlowSpeakerData;
-import org.openkilda.rulemanager.GroupSpeakerData;
-import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
@@ -155,7 +151,7 @@ public class SwitchRuleService implements SwitchManagerHubService {
             RuleManagerHelper.reverseDependencies(speakerData);
             List<OfCommand> removeCommands = speakerData.stream()
                     .filter(data -> toRemove.contains(data.getUuid()))
-                    .map(this::toCommand)
+                    .map(OfCommand::toOfCommand)
                     .collect(Collectors.toList());
             CommandsBatch deleteCommandsBatch = new CommandsBatch(OfCommandAction.DELETE, removeCommands);
             List<CommandsBatch> commandsBatches = Lists.newArrayList(deleteCommandsBatch);
@@ -167,7 +163,7 @@ public class SwitchRuleService implements SwitchManagerHubService {
                         .collect(Collectors.toList());
                 List<OfCommand> installCommands = speakerData.stream()
                         .filter(data -> toInstall.contains(data.getUuid()))
-                        .map(this::toCommand)
+                        .map(OfCommand::toOfCommand)
                         .collect(Collectors.toList());
                 CommandsBatch installCommandsBatch =
                         new CommandsBatch(OfCommandAction.INSTALL_IF_NOT_EXIST, installCommands);
@@ -205,7 +201,7 @@ public class SwitchRuleService implements SwitchManagerHubService {
 
         List<OfCommand> commands = speakerData.stream()
                 .filter(data -> toInstall.contains(data.getUuid()))
-                .map(this::toCommand)
+                .map(OfCommand::toOfCommand)
                 .collect(Collectors.toList());
         CommandsBatch commandsBatch = new CommandsBatch(OfCommandAction.INSTALL_IF_NOT_EXIST, commands);
         CommandsQueue commandsQueue = new CommandsQueue(switchId, singletonList(commandsBatch));
@@ -232,17 +228,6 @@ public class SwitchRuleService implements SwitchManagerHubService {
         log.info("Send {} command batch with key {}", commandsBatch.getAction(), key);
         carrier.sendOfCommandsToSpeaker(key, commandsBatch.getCommands(), commandsBatch.getAction(),
                 commandsQueue.getSwitchId());
-    }
-
-    private OfCommand toCommand(SpeakerData speakerData) {
-        if (speakerData instanceof FlowSpeakerData) {
-            return new FlowCommand((FlowSpeakerData) speakerData);
-        } else if (speakerData instanceof MeterSpeakerData) {
-            return new MeterCommand((MeterSpeakerData) speakerData);
-        } else if (speakerData instanceof GroupSpeakerData) {
-            return new GroupCommand((GroupSpeakerData) speakerData);
-        }
-        throw new IllegalStateException(format("Unknown speaker data type %s", speakerData));
     }
 
     private void handleRulesResponse(String key, SwitchRulesResponse response) {
@@ -288,7 +273,7 @@ public class SwitchRuleService implements SwitchManagerHubService {
             carrier.response(key, message);
         } else {
             carrier.errorResponse(key, ErrorType.INTERNAL_ERROR, "Failed to process rules",
-                    response.getFailedCommandIds().values().stream().reduce("", String::concat));
+                    String.join(" ", response.getFailedCommandIds().values()));
         }
         commandsCache.remove(key);
 

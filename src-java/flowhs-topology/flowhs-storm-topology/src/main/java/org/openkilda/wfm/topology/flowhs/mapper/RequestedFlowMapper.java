@@ -69,9 +69,11 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "sourceSwitch", target = "srcSwitch")
     @Mapping(source = "sourcePort", target = "srcPort")
     @Mapping(source = "sourceVlan", target = "srcVlan")
+    @Mapping(source = "sourceInnerVlan", target = "srcInnerVlan")
     @Mapping(source = "destinationSwitch", target = "destSwitch")
     @Mapping(source = "destinationPort", target = "destPort")
     @Mapping(source = "destinationVlan", target = "destVlan")
+    @Mapping(source = "destinationInnerVlan", target = "destInnerVlan")
     @Mapping(target = "priority", ignore = true)
     @Mapping(target = "pinned", ignore = true)
     @Mapping(target = "allocateProtectedPath", ignore = true)
@@ -87,10 +89,9 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "flowEncapsulationType", ignore = true)
     @Mapping(target = "pathComputationStrategy", ignore = true)
     @Mapping(target = "detectConnectedDevices", ignore = true)
-    @Mapping(target = "srcInnerVlan", ignore = true)
-    @Mapping(target = "destInnerVlan", ignore = true)
     @Mapping(target = "loopSwitchId", ignore = true)
     @Mapping(target = "yFlowId", ignore = true)
+    @Mapping(target = "vlanStatistics", ignore = true)
     public abstract RequestedFlow toRequestedFlow(SwapFlowDto flow);
 
     /**
@@ -104,6 +105,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "targetPathComputationStrategy", ignore = true)
     @Mapping(target = "yFlowId", ignore = true)
     @Mapping(target = "yFlow", ignore = true)
+    @Mapping(target = "vlanStatistics", source = "vlanStatistics")
     public abstract Flow toFlow(RequestedFlow requestedFlow);
 
     /**
@@ -129,6 +131,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "destVlan", ignore = true)
     @Mapping(target = "destInnerVlan", ignore = true)
     @Mapping(target = "yFlowId", ignore = true)
+    @Mapping(target = "vlanStatistics", source = "vlanStatistics")
     protected abstract RequestedFlow generatedMap(FlowRequest request);
 
     /**
@@ -143,6 +146,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(target = "type", ignore = true)
     @Mapping(target = "bulkUpdateFlowIds", ignore = true)
     @Mapping(target = "doNotRevert", ignore = true)
+    @Mapping(target = "vlanStatistics", source = "vlanStatistics")
     protected abstract FlowRequest generatedMap(Flow flow);
 
     public abstract FlowEncapsulationType map(org.openkilda.messaging.payload.flow.FlowEncapsulationType source);

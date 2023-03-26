@@ -19,12 +19,12 @@ endlegend
 [*] -l-> Init
 
 Init --> Nothing : port-up, port-down
-Init: port-up / emit port-up, save up-time
+Init: port-up / emit port-up, save port data in FSM memory, save up-time
 Init: port-down / emit port-down, save down-time
 
 state WarmingUpEnded <<choice>>
 
-Nothing: port-up / emit port-up, save up-time
+Nothing: port-up / emit port-up, save port data in FSM memory, save up-time
 Nothing -d-> WarmingUp : port-down [last-up]
 
 WarmingUp: enter / save start-time and down-time
@@ -43,7 +43,7 @@ CoolingDown: enter / emit port-down
 CoolingDown: enter / save to history antiflap activated
 CoolingDown: exit [last-up] / emit port-up
 CoolingDown: exit / save to history antiflap deactivated
-CoolingDown: port-up / save port-up-time
+CoolingDown: port-up / save port-up-time, save port data in FSM memory
 CoolingDown: port-down / save port-down-time
 CoolingDown: tick [(now() - last_stats_sent) > stats_send_interval] / send antiflap stats to history
 CoolingDown -u-> Nothing : tick [now() - last-event \n> delay_cooldown]

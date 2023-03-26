@@ -26,5 +26,5 @@ import java.io.Serializable;
 @Value
 public class YFlowEndpointResources implements Serializable {
     @NonNull SwitchId switchId;
-    @NonNull MeterId meterId;
+    MeterId meterId;
 }

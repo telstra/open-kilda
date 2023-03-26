@@ -1,4 +1,4 @@
-/* Copyright 2022 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -32,7 +32,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -63,20 +65,13 @@ public class AvailableNetworkFactory {
         AvailableNetwork network = new AvailableNetwork();
         try {
             // Reads all active links from the database and creates representation of the network.
-            getAvailableIsls(buildStrategy, flow)
-                    .forEach(link -> addIslAsEdge(link, network));
-
-            if (!reusePathsResources.isEmpty() && !flow.isIgnoreBandwidth()) {
-                reusePathsResources.stream()
-                        .filter(pathId -> flowPathRepository.findById(pathId)
-                                .map(path -> !path.isIgnoreBandwidth())
-                                .orElse(false))
-                        .forEach(pathId -> {
-                            // ISLs occupied by the flow (take the bandwidth already occupied by the flow into account).
-                            islRepository.findActiveByPathAndBandwidthAndEncapsulationType(
-                                    pathId, flow.getBandwidth(), flow.getEncapsulationType())
-                                    .forEach(link -> addIslAsEdge(link, network));
-                        });
+            getAvailableIsls(buildStrategy, flow).forEach(link -> addIslAsEdge(link, network));
+            if (!flow.isIgnoreBandwidth()) {
+                Set<PathId> reusePaths = new HashSet<>(reusePathsResources);
+                if (flow.getYFlowId() != null) {
+                    reusePaths.addAll(flowPathRepository.findPathIdsBySharedBandwidthGroupId(flow.getYFlowId()));
+                }
+                reuseResources(reusePaths, flow, network);
             }
         } catch (PersistenceException e) {
             throw new RecoverableException("An error from the database", e);
@@ -99,6 +94,7 @@ public class AvailableNetworkFactory {
                             .filter(flowPath -> !affinityPathIds.contains(flowPath.getPathId())
                                     || flowPath.getFlowId().equals(flow.getFlowId()))
                             .ifPresent(flowPath -> {
+                                network.processDiversityGroupForSingleSwitchFlow(flowPath);
                                 network.processDiversitySegments(flowPath.getSegments(), flow);
                                 network.processDiversitySegmentsWithPop(flowPath.getSegments());
                             }));
@@ -119,6 +115,19 @@ public class AvailableNetworkFactory {
         }
 
         return network;
+    }
+
+    private void reuseResources(Collection<PathId> reusePathsResources, Flow flow, AvailableNetwork network) {
+        reusePathsResources.stream()
+                .filter(pathId -> flowPathRepository.findById(pathId)
+                        .map(path -> !path.isIgnoreBandwidth())
+                        .orElse(false))
+                .forEach(pathId -> {
+                    // ISLs occupied by the flow (take the bandwidth already occupied by the flow into account).
+                    islRepository.findActiveByPathAndBandwidthAndEncapsulationType(
+                                    pathId, flow.getBandwidth(), flow.getEncapsulationType())
+                            .forEach(link -> addIslAsEdge(link, network));
+                });
     }
 
     private Collection<IslImmutableView> getAvailableIsls(BuildStrategy buildStrategy, Flow flow) {

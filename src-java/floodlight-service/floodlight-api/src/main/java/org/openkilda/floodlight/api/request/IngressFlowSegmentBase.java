@@ -29,6 +29,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.ToString;
 
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -47,15 +48,19 @@ abstract class IngressFlowSegmentBase extends FlowSegmentRequest {
     @JsonProperty("rules_context")
     protected final RulesContext rulesContext;
 
+    @JsonProperty("stat_vlans")
+    protected final Set<Integer> statVlans;
+
     IngressFlowSegmentBase(
             MessageContext context, UUID commandId, FlowSegmentMetadata metadata, @NonNull FlowEndpoint endpoint,
             MeterConfig meterConfig, @NonNull SwitchId egressSwitchId,
-            RulesContext rulesContext, MirrorConfig mirrorConfig) {
+            RulesContext rulesContext, MirrorConfig mirrorConfig, Set<Integer> statVlans) {
         super(context, endpoint.getSwitchId(), commandId, metadata, mirrorConfig);
 
         this.endpoint = endpoint;
         this.meterConfig = meterConfig;
         this.egressSwitchId = egressSwitchId;
         this.rulesContext = rulesContext;
+        this.statVlans = statVlans;
     }
 }

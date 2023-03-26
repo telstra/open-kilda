@@ -7,29 +7,27 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandMessage
-import org.openkilda.messaging.command.flow.BaseInstallFlow
-import org.openkilda.messaging.command.flow.InstallEgressFlow
-import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest
-import org.openkilda.messaging.command.flow.InstallIngressFlow
-import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.FlowEndpoint
-import org.openkilda.model.OutputVlanType
+import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
+import org.openkilda.rulemanager.FlowSpeakerData
+import org.openkilda.rulemanager.Instructions
+import org.openkilda.rulemanager.MeterFlag
+import org.openkilda.rulemanager.MeterSpeakerData
+import org.openkilda.rulemanager.OfTable
+import org.openkilda.rulemanager.OfVersion
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import com.google.common.collect.Sets
 import groovy.transform.Memoized
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -49,7 +47,7 @@ Description of fields:
 """)
 @Tags([SMOKE_SWITCHES])
 class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
-    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
+    @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}")
     String speakerTopic
     @Autowired
     @Qualifier("kafkaProducerProperties")
@@ -123,7 +121,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
-        def amountOfMultiTableFlRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 0 //2 SHARED_OF_FLOW, 2 MULTI_TABLE_INGRESS_RULES
+        def amountOfMultiTableFlRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 0 //2 SHARED_OF_FLOW, 2 MULTI_TABLE_INGRESS_RULES
         def amountOfFlowRules = 2 //SERVICE_OR_FLOW_SEGMENT(ingress/egress)
         def amountOfSwRules = northbound.getSwitchRules(sw.dpId).flowEntries.size()
         def amountOfRules = amountOfSwRules + amountOfFlowRules + amountOfMultiTableFlRules
@@ -311,7 +309,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Rules and meters are created"
         def swValidateInfo = northbound.validateSwitch(sw.dpId)
         def properMeters = swValidateInfo.meters.proper.findAll({ !isDefaultMeter(it) })
-        def amountOfFlowRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 2
+        def amountOfFlowRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 2
         properMeters.meterId.size() == 2
         swValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
 
@@ -393,7 +391,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def syncResponse = northbound.synchronizeSwitch(sw.dpId, false)
 
         then: "System detects missing rules, then installs them"
-        def amountOfFlowRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 2
+        def amountOfFlowRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 2
         syncResponse.rules.missing.size() == amountOfFlowRules
         syncResponse.rules.missing.containsAll(createdCookies)
         syncResponse.rules.installed.size() == amountOfFlowRules
@@ -445,16 +443,40 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
                 .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
-                new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN, 1, 0, OutputVlanType.REPLACE, false,
-                        new FlowEndpoint(sw.dpId, 17), null)).toJson())).get()
+                FlowSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .cookie(new Cookie(1L))
+                        .table(OfTable.EGRESS)
+                        .priority(100)
+                        .instructions(Instructions.builder().build())
+                        .build()).toJson())).get()
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
-                new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 3,
-                        FlowEncapsulationType.TRANSIT_VLAN, false)).toJson())).get()
-        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 5, 0, 3,
-                        FlowEncapsulationType.TRANSIT_VLAN, OutputVlanType.REPLACE, fakeBandwidth, excessMeterId,
-                        sw.dpId, false, false, false, null)).toJson())).get()
+                FlowSpeakerData.builder()
+                        .switchId(sw.dpId)
+                        .ofVersion(OfVersion.of(sw.ofVersion))
+                        .cookie(new Cookie(2L))
+                        .table(OfTable.TRANSIT)
+                        .priority(100)
+                        .instructions(Instructions.builder().build())
+                        .build()).toJson())).get()
+        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage([
+                        FlowSpeakerData.builder()
+                                .switchId(sw.dpId)
+                                .ofVersion(OfVersion.of(sw.ofVersion))
+                                .cookie(new Cookie(3L))
+                                .table(OfTable.INPUT)
+                                .priority(100)
+                                .instructions(Instructions.builder().build())
+                                .build(),
+                        MeterSpeakerData.builder()
+                                .switchId(sw.dpId)
+                                .ofVersion(OfVersion.of(sw.ofVersion))
+                                .meterId(new MeterId(excessMeterId))
+                                .rate(fakeBandwidth)
+                                .burst(burstSize)
+                                .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
+                                .build()]).toJson())).get()
 
         then: "System detects created rules/meter as excess rules"
         //excess egress/ingress/transit rules are not added yet
@@ -532,7 +554,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
 
         then: "Switch validation shows missing rules"
-        def amountOfFlowRules = northbound.getSwitchProperties(sw.dpId).multiTable ? 4 : 2
+        def amountOfFlowRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 2
         northbound.validateSwitch(sw.dpId).rules.missing.size() == amountOfFlowRules
         northbound.validateSwitch(sw.dpId).rules.missingHex.size() == amountOfFlowRules
 
@@ -617,10 +639,5 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         else {
             assert expected == actual
         }
-    }
-
-    private static Message buildMessage(final BaseInstallFlow commandData) {
-        InstallFlowForSwitchManagerRequest data = new InstallFlowForSwitchManagerRequest(commandData)
-        return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null)
     }
 }

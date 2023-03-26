@@ -17,8 +17,6 @@ package org.openkilda.northbound.controller.v1;
 
 import static org.openkilda.messaging.error.ErrorType.PARAMETERS_INVALID;
 
-import org.openkilda.messaging.command.switches.ConnectModeRequest;
-import org.openkilda.messaging.command.switches.ConnectModeRequest.Mode;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria.DeleteRulesCriteriaBuilder;
@@ -51,8 +49,6 @@ import org.openkilda.northbound.utils.RequestCorrelationId;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -80,8 +76,6 @@ import java.util.concurrent.CompletableFuture;
 @RequestMapping("/v1/switches")
 @PropertySource("classpath:northbound.properties")
 public class SwitchController extends BaseController {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchController.class);
 
     @Autowired
     private SwitchService switchService;
@@ -250,22 +244,14 @@ public class SwitchController extends BaseController {
 
 
     /**
-     * Toggle the global behavior of Floodlight when the switch connects:
-     *      - AUTO - this is the default. Installs all default rules when a switch connects
-     *      - SAFE - add the default rules slowly .. monitoring traffic on existing rules
-     *      - MANUAL - don't install any default rules. Call addRule for that.
-     * NOTE: no action is taking with existing, connected switches. This operation will only affect
-     *      future connections
-     *
-     * @param mode the connectMode to use. A Null value is a No-Op and can be used to return existing value.
-     * @return the value of the toggle in Floodlight.
+     * Not supported anymore.
      */
-    @ApiOperation(value = "Set the connect mode if mode is specified. If mode is null, this is effectively a get.",
-            response = ConnectModeRequest.Mode.class)
+    @Deprecated
+    @ApiOperation(value = "Connect mode is not supported anymore.")
     @PutMapping(value = "/toggle-connect-mode")
-    @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<Mode> toggleSwitchConnectMode(@RequestParam("mode") ConnectModeRequest.Mode mode) {
-        return switchService.connectMode(mode);
+    @ResponseStatus(HttpStatus.GONE)
+    public CompletableFuture<Void> toggleSwitchConnectMode() {
+        return null;
     }
 
     /**
@@ -361,7 +347,6 @@ public class SwitchController extends BaseController {
             @PathVariable(name = "switch_id") SwitchId switchId,
             @PathVariable(name = "port_no") int portNo,
             @RequestBody PortConfigurationPayload portConfig) {
-        LOGGER.info("Port Configuration '{}' request for port {} of switch {}", portConfig, portNo, switchId);
         return switchService.configurePort(switchId, portNo, portConfig);
     }
 

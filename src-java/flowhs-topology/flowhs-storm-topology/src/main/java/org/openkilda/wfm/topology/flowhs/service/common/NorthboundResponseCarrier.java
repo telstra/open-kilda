@@ -16,6 +16,9 @@
 package org.openkilda.wfm.topology.flowhs.service.common;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.ChunkedInfoMessage;
+
+import java.util.List;
 
 /**
  * Defines a base carrier for processing Northbound requests.
@@ -25,4 +28,13 @@ public interface NorthboundResponseCarrier {
      * Sends response to northbound component.
      */
     void sendNorthboundResponse(Message message);
+
+    /**
+     * Sends responses to northbound component.
+     */
+    default void sendNorthboundResponses(List<? extends ChunkedInfoMessage> messages) {
+        for (ChunkedInfoMessage message : messages) {
+            sendNorthboundResponse(message);
+        }
+    }
 }

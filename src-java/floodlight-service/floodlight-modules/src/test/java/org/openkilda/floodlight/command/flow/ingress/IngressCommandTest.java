@@ -92,6 +92,11 @@ abstract class IngressCommandTest extends AbstractSpeakerCommandTest {
                 .andAnswer(() -> extractFlowModFactory(command).makeCustomerPortSharedCatchMessage());
     }
 
+    public void expectMakeVlanStatsFlowMessage(IngressFlowSegmentBase command) {
+        EasyMock.expect(flowModFactoryMock.makeVlanStatsFlowMessage())
+                .andAnswer(() -> extractFlowModFactory(command).makeVlanStatsFlowMessage());
+    }
+
     public void expectNoMoreOfMessages() {
         EasyMock.replay(flowModFactoryMock);
     }

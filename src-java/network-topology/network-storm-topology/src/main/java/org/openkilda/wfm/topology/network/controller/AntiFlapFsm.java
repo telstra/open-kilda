@@ -24,6 +24,7 @@ import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Context;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Event;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.State;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
+import org.openkilda.wfm.topology.network.model.PortDataHolder;
 import org.openkilda.wfm.topology.network.service.IAntiFlapCarrier;
 
 import lombok.Builder;
@@ -36,7 +37,7 @@ import java.io.Serializable;
 import java.time.Instant;
 
 @Slf4j
-public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event, Context>  {
+public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event, Context> {
     private final NetworkTopologyDashboardLogger dashboardLogger;
 
     private final Endpoint endpoint;
@@ -44,6 +45,8 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     private final long delayCoolingDown;
     private final long delayMin;
     private final long statsDumpingInterval;
+
+    private PortDataHolder portData;
 
     private long downTime = 0;
     private long upTime = 0;
@@ -72,6 +75,7 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     // -- FSM actions --
 
     public void emitPortUpAndSaveTime(State from, State to, Event event, Context context) {
+        portData = context.getPortData();
         emitPortUp(context);
         savePortUpTime(from, to, event, context);
     }
@@ -84,6 +88,7 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     }
 
     public void portUpOnNothing(State from, State to, Event event, Context context) {
+        portData = context.getPortData();
         emitPortUp(context);
         savePortUpTime(from, to, event, context);
     }
@@ -97,8 +102,8 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     }
 
     private void emitPortUp(Context context) {
-        log.debug("Emit physical port {} become {}", endpoint, LinkStatus.UP);
-        context.getOutput().filteredLinkStatus(endpoint, LinkStatus.UP);
+        log.debug("Emit physical port {} become {} {}", endpoint, LinkStatus.UP, portData);
+        context.getOutput().filteredLinkStatus(endpoint, LinkStatus.UP, portData);
     }
 
     public void saveStartTimeAndDownTime(State from, State to, Event event, Context context) {
@@ -113,6 +118,7 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
         log.debug("handlePortUpWhileCoolingDown {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
                 from, to, event, context);
         upEventsCount++;
+        portData = context.getPortData();
         savePortUpTime(from, to, event, context);
     }
 
@@ -127,6 +133,7 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
         log.debug("savePortUpTime {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
                 from, to, event, context);
         upTime = context.getTime();
+        portData = context.getPortData();
 
         if (downTime > upTime) {
             log.debug("Physical port {} fix for port-up uptime: {} downtime: {}", endpoint, upTime, downTime);
@@ -177,7 +184,7 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
 
     private void emitPortDown(Context context) {
         log.debug("Emit physical port {} become {}", endpoint, LinkStatus.DOWN);
-        context.getOutput().filteredLinkStatus(endpoint, LinkStatus.DOWN);
+        context.getOutput().filteredLinkStatus(endpoint, LinkStatus.DOWN, context.getPortData());
     }
 
     public void tickCoolingDown(State from, State to, Event event, Context context) {
@@ -321,8 +328,16 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     }
 
     @Data
+    @Builder
     public static class Context {
         private final IAntiFlapCarrier output;
         private final Long time;
+        private final PortDataHolder portData;
+
+        public static ContextBuilder builder(IAntiFlapCarrier output, Long time) {
+            return new ContextBuilder()
+                    .output(output)
+                    .time(time);
+        }
     }
 }

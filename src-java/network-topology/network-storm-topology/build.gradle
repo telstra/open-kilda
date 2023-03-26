@@ -21,6 +21,8 @@ dependencies {
     implementation project(':ping-messaging')
     implementation project(':floodlight-api')
     implementation project(':grpc-api')
+    implementation project(':rule-manager-api')
+    implementation project(':rule-manager-implementation')
     runtimeOnly project(':kilda-persistence-orientdb')
     runtimeOnly project(':kilda-persistence-hibernate')
     aspect project(':kilda-persistence-api')

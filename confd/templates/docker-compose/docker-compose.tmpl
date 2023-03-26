@@ -18,7 +18,7 @@ services:
       default:
         aliases:
           - grpc-stub.pendev
-    mem_limit: ${GRPC_STUB_MEM_LIMIT:-67108864}
+    mem_limit: ${GRPC_STUB_MEM_LIMIT:-128m}
 {{end}}
 
   lab-api:
@@ -38,7 +38,7 @@ services:
       default:
         aliases:
         - lab-api.pendev
-    mem_limit: ${LAB_API_MEM_LIMIT:-256741824}
+    mem_limit: ${LAB_API_MEM_LIMIT:-512m}
 {{if not (exists "/no_server42_server")}}
     environment:
       LAB_NET: server42_to_lab
@@ -145,7 +145,7 @@ services:
       default:
         aliases:
           - mysql.pendev
-    mem_limit: ${MYSQL_MEM_LIMIT:-1073741824}
+    mem_limit: ${MYSQL_MEM_LIMIT:-2g}
 
   db_migration:
     container_name: db_migration
@@ -210,7 +210,7 @@ services:
       default:
         aliases:
          - zookeeper.pendev
-    mem_limit: ${ZOOKEEPER_MEM_LIMIT:-1073741824}
+    mem_limit: ${ZOOKEEPER_MEM_LIMIT:-2g}
     environment:
       KILDA_ZKNODE: kilda
 
@@ -242,7 +242,7 @@ services:
          - kafka.pendev
     environment:
       KAFKA_HEAP_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XshowSettings:all"
-    mem_limit: ${KAFKA_MEM_LIMIT:-1073741824}
+    mem_limit: ${KAFKA_MEM_LIMIT:-2g}
 
 
   wfm:
@@ -286,7 +286,7 @@ services:
       default:
         aliases:
          - hbase.pendev
-    mem_limit: ${HBASE_MEM_LIMIT:-1073741824}
+    mem_limit: ${HBASE_MEM_LIMIT:-2g}
 
   storm-nimbus:
     container_name: storm-nimbus
@@ -385,7 +385,7 @@ services:
          - floodlight_1.pendev
 # we use kilda as hostname for FL in atdd topologies
          - kilda
-    mem_limit: ${FL_1_MEM_LIMIT:-1073741824}
+    mem_limit: ${FL_1_MEM_LIMIT:-2g}
 
 {{if not (exists "/no_floodlight_2")}}
   floodlight_2:
@@ -412,7 +412,7 @@ services:
       default:
         aliases:
           - floodlight_2.pendev
-    mem_limit: ${FL_2_MEM_LIMIT:-1073741824}
+    mem_limit: ${FL_2_MEM_LIMIT:-2g}
 {{end}}
 {{if not (exists "/no_floodlight_stats")}}
   floodlight_stats:
@@ -442,7 +442,7 @@ services:
       default:
         aliases:
           - floodlight_stats.pendev
-    mem_limit: ${FL_STATS_MEM_LIMIT:-1073741824}
+    mem_limit: ${FL_STATS_MEM_LIMIT:-2g}
 {{end}}
 
   northbound:
@@ -470,7 +470,7 @@ services:
       default:
         aliases:
          - northbound.pendev
-    mem_limit: ${NB_MEM_LIMIT:-1073741824}
+    mem_limit: ${NB_MEM_LIMIT:-4g}
 
   northbound-blue-green:
     container_name: openkilda-northbound-blue-green
@@ -495,7 +495,7 @@ services:
       default:
         aliases:
          - northbound.pendev
-    mem_limit: ${NB_MEM_LIMIT:-1073741824}
+    mem_limit: ${NB_MEM_LIMIT:-4g}
 
 {{if not (exists "/no_grpc_speaker")}}
   grpc-speaker:
@@ -517,7 +517,7 @@ services:
       default:
         aliases:
          - grpc-speaker.pendev
-    mem_limit: ${GRPC_MEM_LIMIT:-1073741824}
+    mem_limit: ${GRPC_MEM_LIMIT:-2g}
 
   grpc-speaker-blue-green:
     container_name: grpc-speaker-blue-green
@@ -538,7 +538,7 @@ services:
       default:
         aliases:
          - grpc-speaker.pendev
-    mem_limit: ${GRPC_MEM_LIMIT:-1073741824}
+    mem_limit: ${GRPC_MEM_LIMIT:-2g}
 {{end}}
 {{if not (exists "/no_opentsdb")}}
   opentsdb:
@@ -557,7 +557,7 @@ services:
       default:
         aliases:
          - opentsdb.pendev
-    mem_limit: ${OTSDB_MEM_LIMIT:-1073741824}
+    mem_limit: ${OTSDB_MEM_LIMIT:-2g}
 {{end}}
 {{if not (exists "/no_gui")}}
   gui:
@@ -576,7 +576,7 @@ services:
       default:
         aliases:
          - openkilda-gui.pendev
-    mem_limit: ${GUI_MEM_LIMIT:-1073741824}
+    mem_limit: ${GUI_MEM_LIMIT:-2g}
 {{end}}
 
 {{if not (exists "/no_elasticsearch")}}
@@ -593,7 +593,7 @@ services:
          - elasticsearch.pendev
     environment:
       ES_JAVA_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
-    mem_limit: ${ELASTIC_MEM_LIMIT:-1073741824}
+    mem_limit: ${ELASTIC_MEM_LIMIT:-3g}
 {{end}}
 {{if not (exists "/no_kibana")}}
   kibana:
@@ -609,7 +609,7 @@ services:
       default:
         aliases:
          - kibana.pendev
-    mem_limit: ${KIBANA_MEM_LIMIT:-1073741824}
+    mem_limit: ${KIBANA_MEM_LIMIT:-2g}
 {{end}}
 {{if not (exists "/no_logstash")}}
   logstash:
@@ -631,7 +631,7 @@ services:
       LS_OPTS: "--debug-config"
       # remove default 500m heap size in /usr/share/logstash/vendor/jruby/bin/jruby
       JAVA_MEM: " "
-    mem_limit: ${LOGSTASH_MEM_LIMIT:-1073741824}
+    mem_limit: ${LOGSTASH_MEM_LIMIT:-2g}
     healthcheck:
       test: ["CMD-SHELL", "/simple-logstash-healthcheck.sh"]
       interval: 10s
@@ -658,7 +658,7 @@ services:
       default:
         aliases:
          - server42-control.pendev
-    mem_limit: ${S42C_MEM_LIMIT:-1073741824}
+    mem_limit: ${S42C_MEM_LIMIT:-2g}
 {{end}}
 {{if not (exists "/no_server42_stats")}}
   server42-stats:
@@ -680,7 +680,7 @@ services:
       default:
         aliases:
          - server42-stats.pendev
-    mem_limit: ${S42S_MEM_LIMIT:-1073741824}
+    mem_limit: ${S42S_MEM_LIMIT:-2g}
 {{end}}
 {{if not (exists "/no_server42_server_stub")}}
   server42-server-stub:
@@ -703,7 +703,7 @@ services:
       default:
         aliases:
          - server42-server.pendev
-    mem_limit: ${S42SS_MEM_LIMIT:-1073741824}
+    mem_limit: ${S42SS_MEM_LIMIT:-2g}
 
 {{end}}
 {{if not (exists "/no_server42_server")}}
@@ -731,7 +731,7 @@ services:
         aliases:
          - server42-server.pendev
       server42_to_lab:
-    mem_limit: ${S42SS_MEM_LIMIT:-1073741824}
+    mem_limit: ${S42SS_MEM_LIMIT:-2g}
     environment:
       LAB_NET: server42_to_lab
 {{end}}
@@ -757,7 +757,7 @@ services:
       default:
         aliases:
          - server42-storm-stub.pendev
-    mem_limit: ${S42STS_MEM_LIMIT:-1073741824}
+    mem_limit: ${S42STS_MEM_LIMIT:-2g}
 {{end}}
 
 {{if not (exists "/no_server42_server")}}

@@ -599,7 +599,7 @@ public class RerouteQueueServiceTest {
     }
 
     private FlowRerouteRequest getFlowRerouteRequest(String flowId, FlowThrottlingData flowThrottlingData) {
-        return new FlowRerouteRequest(flowId, flowThrottlingData.isForce(), flowThrottlingData.isEffectivelyDown(),
+        return new FlowRerouteRequest(flowId, flowThrottlingData.isEffectivelyDown(),
                 flowThrottlingData.isIgnoreBandwidth(),
                 flowThrottlingData.getAffectedIsl(), flowThrottlingData.getReason(), false);
     }

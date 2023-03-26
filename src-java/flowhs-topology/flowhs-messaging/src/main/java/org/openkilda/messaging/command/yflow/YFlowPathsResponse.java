@@ -25,6 +25,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a read response for y-flow paths.
@@ -38,4 +39,5 @@ public class YFlowPathsResponse extends InfoData {
 
     FlowPathDto sharedPath;
     List<FlowPathDto> subFlowPaths;
+    Map<String, List<FlowPathDto>> diverseWithFlows;
 }

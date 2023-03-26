@@ -18,7 +18,7 @@ package org.openkilda.wfm.topology.switchmanager.mappers;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.wfm.topology.switchmanager.mappers.GroupEntryConverter.INSTANCE;
 
-import org.openkilda.messaging.info.switches.GroupInfoEntry;
+import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.IPv4Address;
 import org.openkilda.model.MacAddress;
@@ -105,10 +105,10 @@ public class GroupEntryConverterTest {
     @Test
     public void mapGroupEntryTest() {
 
-        GroupInfoEntry entry = INSTANCE.toGroupEntry(data);
+        GroupInfoEntryV2 entry = INSTANCE.toGroupEntry(data);
 
         assertEquals(GROUP_ID.intValue(), entry.getGroupId());
-        GroupInfoEntry.BucketEntry testBucket = entry.getGroupBuckets().get(0);
+        GroupInfoEntryV2.BucketEntry testBucket = entry.getBuckets().get(0);
         assertEquals(PORT_NUMBER.getPortNumber(), testBucket.getPort());
         assertEquals(SET_FIELD_ACTION.getValue(), (long) testBucket.getVlan());
         assertEquals(PUSH_VXLAN_OVS_ACTION.getVni(), (int) testBucket.getVni());

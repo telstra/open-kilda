@@ -17,6 +17,10 @@
 set -e
 
 export SELF_CONTAINER_ID=$(cat /proc/self/cgroup | grep cpuset | cut -d/ -f3)
+if [ -z "$SELF_CONTAINER_ID" ]; then
+  SELF_CONTAINER_ID="$(hostname)"
+fi
+
 cd /app/lab
 
 if [ "$1" = 'api' ]; then

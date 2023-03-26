@@ -475,6 +475,48 @@ public class MultiTableIngressYRuleGeneratorTest {
                 expectedIngressActions, SHARED_METER_ID, null);
     }
 
+    @Test
+    public void buildCommandsWithNullSharedMeterId() {
+        Flow oneSwitchFlow = buildFlow(ONE_SWITCH_PATH, OUTER_VLAN_ID_2, 0);
+        Set<FlowSideAdapter> overlapping = Sets.newHashSet(
+                FlowSideAdapter.makeIngressAdapter(oneSwitchFlow, ONE_SWITCH_PATH));
+        Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+
+        MultiTableIngressYRuleGenerator generator =  MultiTableIngressYRuleGenerator.builder()
+                .config(config)
+                .flowPath(PATH)
+                .flow(flow)
+                .encapsulation(VLAN_ENCAPSULATION)
+                .overlappingIngressAdapters(overlapping)
+                .sharedMeterId(null)
+                .generateMeterCommand(true)
+                .externalMeterCommandUuid(SHARED_METER_UUID)
+                .build();
+
+        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
+        assertEquals(1, commands.size());
+
+        FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
+        assertTrue(ingressCommand.getDependsOn().isEmpty());
+
+        RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
+                .build(SWITCH_1.getFeatures());
+        Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
+                FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
+                FieldMatch.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID_1).build(),
+                FieldMatch.builder().field(Field.METADATA)
+                        .value(ingressMetadata.getValue()).mask(ingressMetadata.getMask()).build()
+        );
+        List<Action> expectedIngressActions = newArrayList(
+                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
+                new PortOutAction(new PortNumber(PORT_NUMBER_2))
+        );
+
+        assertIngressCommand(ingressCommand, Priority.Y_FLOW_DOUBLE_VLAN_PRIORITY, expectedIngressMatch,
+                expectedIngressActions, null, null);
+    }
+
+
     private void assertIngressCommand(
             FlowSpeakerData command, int expectedPriority, Set<FieldMatch> expectedMatch,
             List<Action> expectedApplyActions, MeterId expectedMeter, OfMetadata expectedMetadata) {

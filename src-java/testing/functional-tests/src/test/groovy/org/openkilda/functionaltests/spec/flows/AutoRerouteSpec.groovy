@@ -134,8 +134,8 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             history = northbound.getFlowHistory(flow.flowId)
             verifyAll {
                 history.count { it.action == REROUTE_ACTION } == 4 //original + 3 retries
-                history.last().payload.last().details.startsWith("Not enough bandwidth or no path found. " +
-                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth:")
+                history.last().payload.last().details.endsWith(
+                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth")
                 history.last().payload.last().action == REROUTE_FAIL
             }
         }
@@ -160,8 +160,8 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             history = northbound.getFlowHistory(flow.flowId, manualRerouteTime, null)
             verifyAll {
                 history.count { it.action == REROUTE_ACTION } == 4 //manual original + 3 reties
-                history.last().payload.last().details.startsWith("Not enough bandwidth or no path found. " +
-                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth:")
+                history.last().payload.last().details.endsWith(
+                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth")
                 history.last().payload.last().action == REROUTE_FAIL
             }
         }
@@ -256,7 +256,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(SMOKE)
-    @Ignore("fix ASAP, unstable on jenkins(history size)")
+    // unignored. Test needs supervision next builds
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no alt path to reroute"() {
         given: "A flow without alternative paths"
         def data = noIntermediateSwitchFlow(0, true)
@@ -889,9 +889,9 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
                 sleep(500)
             }
             assert northboundV2.getFlow(firstFlow.flowId).statusInfo =~ /ISL (.*) become INACTIVE(.*)/
-            assert northboundV2.getFlow(secondFlow.flowId).statusInfo == "No path found.\
- Failed to find path with requested bandwidth= ignored: Switch $secondFlow.source.switchId doesn't \
-have links with enough bandwidth"
+            assert northboundV2.getFlow(secondFlow.flowId).statusInfo == "No path found. \
+Switch $secondFlow.source.switchId doesn't have links with enough bandwidth, \
+Failed to find path with requested bandwidth= ignored"
         }
 
         when: "Connect the switch back to the controller"
@@ -976,8 +976,8 @@ have links with enough bandwidth"
             history = northbound.getFlowHistory(flow.flowId)
             verifyAll {
                 history[-2].payload.last().action == REROUTE_FAIL
-                history[-2].payload.last().details.startsWith("Not enough bandwidth or no path found. " +
-                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth:")
+                history[-2].payload.last().details.endsWith(
+                        "Failed to find path with requested bandwidth=$flow.maximumBandwidth")
                 history[-1].payload.last().action == REROUTE_COMPLETE
             }
         }

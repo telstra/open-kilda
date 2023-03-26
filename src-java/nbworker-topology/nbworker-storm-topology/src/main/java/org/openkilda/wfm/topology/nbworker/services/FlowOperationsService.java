@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
@@ -34,6 +35,7 @@ import org.openkilda.messaging.model.PatchEndpoint;
 import org.openkilda.messaging.nbtopology.request.FlowsDumpRequest;
 import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse.FlowMirrorPoint;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.messaging.validation.ValidatorUtils;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowFilter;
@@ -45,8 +47,6 @@ import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.YFlow;
-import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -149,7 +149,7 @@ public class FlowOperationsService {
      */
     public Collection<FlowStats> getFlowStats() {
         return transactionManager.doInTransaction(getReadOperationRetryPolicy(),
-                () -> flowStatsRepository.findAll());
+                flowStatsRepository::findAll);
     }
 
     /**
@@ -195,7 +195,7 @@ public class FlowOperationsService {
         }
 
         Collection<FlowPath> paths = flowPathRepository.findWithPathSegment(srcSwitchId, srcPort, dstSwitchId, dstPort);
-        paths.forEach(path -> flowPathRepository.detach(path));
+        paths.forEach(flowPathRepository::detach);
         return paths;
     }
 
@@ -249,7 +249,7 @@ public class FlowOperationsService {
         flowDashboardLogger.onFlowPathsDumpBySwitch(switchId);
 
         Collection<FlowPath> paths = flowPathRepository.findBySegmentSwitch(switchId);
-        paths.forEach(path -> flowPathRepository.detach(path));
+        paths.forEach(flowPathRepository::detach);
         return paths;
     }
 
@@ -279,7 +279,7 @@ public class FlowOperationsService {
             FlowPathDtoBuilder targetFlowDtoBuilder = this.toFlowPathDtoBuilder(flow)
                     .segmentsStats(primaryIntersectionComputer.getOverlappingStats());
 
-            // other flows in the the group
+            // other flows in the group
             List<FlowPathDto> payloads = flowsInGroup.stream()
                     .filter(e -> !e.getFlowId().equals(flowId))
                     .map(e -> this.mapGroupPathFlowDto(e, true, primaryIntersectionComputer))
@@ -298,7 +298,7 @@ public class FlowOperationsService {
                                 protectedIntersectionComputer.getOverlappingStats())
                         .build());
 
-                // other flows in the the group
+                // other flows in the group
                 List<FlowPathDto> protectedPathPayloads = flowsInGroup.stream()
                         .filter(e -> !e.getFlowId().equals(flowId))
                         .map(e -> this.mapGroupPathFlowDto(e, false, protectedIntersectionComputer))
@@ -317,7 +317,8 @@ public class FlowOperationsService {
         FlowPathDtoBuilder builder = this.toFlowPathDtoBuilder(flow)
                 .primaryPathCorrespondStat(primaryPathCorrespondStat)
                 .segmentsStats(
-                        intersectionComputer.getOverlappingStats(flow.getForwardPathId(), flow.getReversePathId()));
+                        intersectionComputer.getOverlappingStats(flow.getForwardPathId(),
+                                flow.getReversePathId()));
         if (flow.isAllocateProtectedPath()) {
             builder.protectedPath(FlowProtectedPathDto.builder()
                     .forwardPath(buildPathFromFlow(flow, flow.getProtectedForwardPath()))
@@ -344,7 +345,8 @@ public class FlowOperationsService {
     /**
      * Partial update flow.
      */
-    public Flow updateFlow(FlowOperationsCarrier carrier, FlowPatch flowPatch) throws FlowNotFoundException {
+    public Flow updateFlow(FlowOperationsCarrier carrier, FlowPatch flowPatch)
+            throws FlowNotFoundException, InvalidFlowException {
         String flowId = flowPatch.getFlowId();
         if (yFlowRepository.isSubFlow(flowId)) {
             throw new MessageException(ErrorType.REQUEST_INVALID, "Could not modify flow",
@@ -378,6 +380,8 @@ public class FlowOperationsService {
                     carrier.emitPeriodicPingUpdate(flowId, flowPatch.getPeriodicPings());
                 }
             });
+
+            Optional.ofNullable(flowPatch.getVlanStatistics()).ifPresent(currentFlow::setVlanStatistics);
 
             return Optional.of(result.updatedFlow(currentFlow).build());
 
@@ -415,6 +419,8 @@ public class FlowOperationsService {
 
         updateRequired |= flowPatch.getEncapsulationType() != null
                 && !flow.getEncapsulationType().equals(flowPatch.getEncapsulationType());
+
+        updateRequired |= updateRequiredByVlanStatistics(flowPatch, flow);
 
         return UpdateFlowResult.builder()
                 .needUpdateFlow(updateRequired);
@@ -478,20 +484,26 @@ public class FlowOperationsService {
         return updateRequired;
     }
 
+    private boolean updateRequiredByVlanStatistics(FlowPatch flowPatch, Flow flow) {
+        Set<Integer> patchVlanStatistics = flowPatch.getVlanStatistics();
+        return patchVlanStatistics != null && !Objects.equals(patchVlanStatistics, flow.getVlanStatistics());
+    }
+
     private boolean updateRequiredByDiverseFlowIdField(FlowPatch flowPatch, Flow flow) {
-        if (flowPatch.getDiverseFlowId() != null) {
-            String diverseFlowId = yFlowRepository.findById(flowPatch.getDiverseFlowId())
-                    .map(Stream::of).orElseGet(Stream::empty)
-                    .map(YFlow::getSubFlows)
-                    .flatMap(Collection::stream)
-                    .map(YSubFlow::getFlow)
-                    .filter(f -> f.getFlowId().equals(f.getAffinityGroupId()))
-                    .map(Flow::getFlowId)
-                    .findFirst()
-                    .orElse(flowPatch.getDiverseFlowId());
-            return flowRepository.getOrCreateDiverseFlowGroupId(diverseFlowId)
-                    .map(groupId -> !flowRepository.findFlowsIdByDiverseGroupId(groupId).contains(flow.getFlowId()))
-                    .orElse(true);
+        String diverseFlowId = flowPatch.getDiverseFlowId();
+        if (diverseFlowId != null) {
+            Optional<String> groupId;
+            if (yFlowRepository.exists(diverseFlowId)) {
+                groupId = yFlowRepository.getOrCreateDiverseYFlowGroupId(diverseFlowId);
+            } else if (yFlowRepository.isSubFlow(diverseFlowId)) {
+                groupId = flowRepository.findById(diverseFlowId)
+                        .map(Flow::getYFlowId)
+                        .flatMap(yFlowRepository::getOrCreateDiverseYFlowGroupId);
+            } else {
+                groupId = flowRepository.getOrCreateDiverseFlowGroupId(diverseFlowId);
+            }
+            return !groupId.isPresent()
+                    || !flowRepository.findFlowsIdByDiverseGroupId(groupId.get()).contains(flow.getFlowId());
         }
         return false;
     }
@@ -546,11 +558,13 @@ public class FlowOperationsService {
         Optional.ofNullable(flowPatch.getPathComputationStrategy()).map(PathComputationStrategy::toString)
                 .ifPresent(flowRequest::setPathComputationStrategy);
         Optional.ofNullable(flowPatch.getDiverseFlowId()).ifPresent(flowRequest::setDiverseFlowId);
+        Optional.ofNullable(flowPatch.getVlanStatistics())
+                .ifPresent(vlans -> flowRequest.setVlanStatistics(new HashSet<>(vlans)));
 
         return flowRequest;
     }
 
-    private void validateFlow(FlowPatch flowPatch, Flow flow) {
+    private void validateFlow(FlowPatch flowPatch, Flow flow) throws InvalidFlowException {
         boolean strictBandwidthPatch = Optional.ofNullable(flowPatch.getStrictBandwidth()).orElse(false);
         boolean ignoreBandwidthPatch = Optional.ofNullable(flowPatch.getIgnoreBandwidth()).orElse(false);
 
@@ -558,6 +572,50 @@ public class FlowOperationsService {
             throw new IllegalArgumentException("Can not turn on ignore bandwidth flag and strict bandwidth flag "
                     + "at the same time");
         }
+
+        if (!isVlanStatisticsEmpty(flowPatch, flow)) {
+            boolean zeroResultSrcVlan = isResultingVlanValueIsZero(flowPatch.getSource(), flow.getSrcVlan());
+            boolean zeroResultDstVlan = isResultingVlanValueIsZero(flowPatch.getDestination(), flow.getDestVlan());
+
+            if (!zeroResultSrcVlan && !zeroResultDstVlan) {
+                throw new IllegalArgumentException("To collect vlan statistics you need to set source or "
+                        + "destination vlan_id to zero");
+            }
+        }
+
+        if (isProtectedPathNeedToBeAllocated(flowPatch, flow) && isOneSwitchFlow(flowPatch, flow)) {
+            throw new IllegalArgumentException("Can not allocate protected path for one switch flow");
+        }
+
+        ValidatorUtils.validateMaxLatencyAndLatencyTier(
+                Optional.ofNullable(flowPatch.getMaxLatency()).orElse(flow.getMaxLatency()),
+                Optional.ofNullable(flowPatch.getMaxLatencyTier2()).orElse(flow.getMaxLatencyTier2()));
+    }
+
+    private boolean isProtectedPathNeedToBeAllocated(FlowPatch flowPatch, Flow flow) {
+        if (flowPatch.getAllocateProtectedPath() == null) {
+            return flow.isAllocateProtectedPath();
+        } else {
+            return flowPatch.getAllocateProtectedPath();
+        }
+    }
+
+    private boolean isOneSwitchFlow(FlowPatch patch, Flow flow) {
+        SwitchId srcSwitchId = Optional.ofNullable(patch.getSource()).map(PatchEndpoint::getSwitchId)
+                .orElse(flow.getSrcSwitchId());
+        SwitchId dstSwitchId = Optional.ofNullable(patch.getDestination()).map(PatchEndpoint::getSwitchId)
+                .orElse(flow.getDestSwitchId());
+        return srcSwitchId.equals(dstSwitchId);
+    }
+
+    private boolean isResultingVlanValueIsZero(PatchEndpoint patchEndpoint, int flowOuterVlan) {
+        boolean isResultVlanIsZero = flowOuterVlan == 0;
+        Integer patchVlanResult = Optional.ofNullable(patchEndpoint)
+                .map(PatchEndpoint::getVlanId).orElse(null);
+        if (patchVlanResult != null) {
+            isResultVlanIsZero = patchVlanResult == 0;
+        }
+        return isResultVlanIsZero;
     }
 
     /**
@@ -587,7 +645,7 @@ public class FlowOperationsService {
             Flow flow = entry.getFlow();
             if (processed.add(flow.getFlowId())) {
                 FlowRerouteRequest request = new FlowRerouteRequest(
-                        flow.getFlowId(), false, false, false, affectedIslEndpoints, reason, false);
+                        flow.getFlowId(), false, false, affectedIslEndpoints, reason, false);
                 results.add(request);
             }
         }
@@ -673,6 +731,13 @@ public class FlowOperationsService {
                         .filter(diverseFlow -> !flow.getFlowId().equals(diverseFlow.getFlowId())
                                 || (flow.getYFlowId() != null && !flow.getYFlowId().equals(diverseFlow.getYFlowId())))
                         .collect(Collectors.toSet());
+    }
+
+    private static boolean isVlanStatisticsEmpty(FlowPatch flowPatch, Flow flow) {
+        if (flowPatch.getVlanStatistics() != null) {
+            return flowPatch.getVlanStatistics().isEmpty();
+        }
+        return flow.getVlanStatistics() == null || flow.getVlanStatistics().isEmpty();
     }
 
     @Data

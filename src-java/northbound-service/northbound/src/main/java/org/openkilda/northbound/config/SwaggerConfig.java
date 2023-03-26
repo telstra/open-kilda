@@ -55,7 +55,8 @@ public class SwaggerConfig {
                 .groupName("API v1")
                 .apiInfo(new ApiInfoBuilder()
                         .title("Northbound")
-                        .description("Kilda SDN Controller API")
+                        .description("Kilda SDN Controller API <h1>NOTE: There are features "
+                                + "that are present in API v2 but are not present in API v1.</h1>")
                         .version("1.0")
                         .build())
                 .globalOperationParameters(Collections.singletonList(correlationIdParameter.build()))

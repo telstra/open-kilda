@@ -19,6 +19,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.rule.SwitchSyncErrorData;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
+import org.openkilda.messaging.model.ValidationFilter;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
@@ -120,8 +121,8 @@ public class SwitchManagerWorker extends WorkerBolt {
         return SwitchValidateRequest.builder()
                 .switchId(switchId)
                 .performSync(true)
-                .processMeters(true)
                 .removeExcess(options.isRemoveExcessWhenSwitchSync())
+                .validationFilters(ValidationFilter.ALL_WITHOUT_FLOW_INFO)
                 .build();
     }
 

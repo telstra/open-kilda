@@ -27,6 +27,7 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -129,6 +130,11 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
                 of.instructions().applyActions(ImmutableList.of(of.actions().popVlan())),
                 of.instructions().writeMetadata(metadata.getValue(), metadata.getMask()),
                 of.instructions().gotoTable(TableId.of(SwitchManager.INGRESS_TABLE_ID)));
+    }
+
+    @Override
+    protected List<OFInstruction> makeIngressVlanStatsInstructions() {
+        return Lists.newArrayList(of.instructions().gotoTable(TableId.of(SwitchManager.INGRESS_TABLE_ID)));
     }
 
     protected abstract List<OFAction> makeTransformActions(List<Integer> vlanStack, boolean groupIsPresent);

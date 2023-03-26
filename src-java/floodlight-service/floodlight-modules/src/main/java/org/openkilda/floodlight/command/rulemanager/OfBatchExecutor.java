@@ -21,10 +21,7 @@ import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
 
-import org.openkilda.floodlight.KafkaChannel;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
-import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
-import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
+import org.openkilda.floodlight.api.BatchCommandProcessor;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.messaging.MessageContext;
@@ -43,31 +40,29 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class OfBatchExecutor {
 
     private final IOFSwitch iofSwitch;
-    private final KafkaUtilityService kafkaUtilityService;
-    private final IKafkaProducerService kafkaProducerService;
+    private final BatchCommandProcessor commandProcessor;
     private final SessionService sessionService;
     private final SwitchDataProvider switchDataProvider;
     private final MessageContext messageContext;
     private final OfBatchHolder holder;
     private final Set<SwitchFeature> switchFeatures;
     private final String kafkaKey;
-    private final Origin origin;
     private final boolean failIfExists;
+    private final String sourceTopic;
 
     private boolean hasMeters;
     private boolean hasGroups;
@@ -78,13 +73,12 @@ public class OfBatchExecutor {
     private CompletableFuture<List<FlowSpeakerData>> flowStats = CompletableFuture.completedFuture(emptyList());
 
     @Builder
-    public OfBatchExecutor(IOFSwitch iofSwitch, KafkaUtilityService kafkaUtilityService,
-                           IKafkaProducerService kafkaProducerService, SessionService sessionService,
+    public OfBatchExecutor(IOFSwitch iofSwitch, BatchCommandProcessor commandProcessor, SessionService sessionService,
                            MessageContext messageContext, OfBatchHolder holder,
-                           Set<SwitchFeature> switchFeatures, String kafkaKey, Origin origin, Boolean failIfExists) {
+                           Set<SwitchFeature> switchFeatures, String kafkaKey, String sourceTopic,
+                           Boolean failIfExists) {
         this.iofSwitch = iofSwitch;
-        this.kafkaUtilityService = kafkaUtilityService;
-        this.kafkaProducerService = kafkaProducerService;
+        this.commandProcessor = commandProcessor;
         this.sessionService = sessionService;
         this.switchDataProvider = SwitchDataProvider.builder()
                 .iofSwitch(iofSwitch)
@@ -96,7 +90,7 @@ public class OfBatchExecutor {
         this.holder = holder;
         this.switchFeatures = switchFeatures;
         this.kafkaKey = kafkaKey;
-        this.origin = origin;
+        this.sourceTopic = sourceTopic;
         this.failIfExists = failIfExists == null || failIfExists;
     }
 
@@ -106,7 +100,7 @@ public class OfBatchExecutor {
     public void executeBatch() {
         log.debug("Execute batch start (key={})", kafkaKey);
         List<UUID> stageCommandsUuids = holder.getCurrentStage();
-        Map<SpeakerData, OFMessage> stageMessages = new HashMap<>();
+        List<BatchData> stageMessages = new ArrayList<>();
         for (UUID uuid : stageCommandsUuids) {
             if (holder.canExecute(uuid)) {
                 BatchData batchData = holder.getByUUid(uuid);
@@ -116,10 +110,7 @@ public class OfBatchExecutor {
                 hasFlows |= batchData.isFlow();
                 hasMeters |= batchData.isMeter();
                 hasGroups |= batchData.isGroup();
-                OFMessage previous = stageMessages.put(holder.getSpeakerDataByUUid(uuid), batchData.getMessage());
-                if (previous != null) {
-                    log.warn("Command with uuid {} already processed.", uuid);
-                }
+                stageMessages.add(batchData);
             } else {
                 Map<UUID, String> blockingDependencies = holder.getBlockingDependencies(uuid);
                 if (!blockingDependencies.isEmpty()) {
@@ -137,7 +128,9 @@ public class OfBatchExecutor {
             removeAlreadyExists(stageMessages);
         }
 
-        Collection<OFMessage> ofMessages = stageMessages.values();
+        Collection<OFMessage> ofMessages = stageMessages.stream()
+                .map(BatchData::getMessage)
+                .collect(Collectors.toList());
         List<CompletableFuture<Optional<OFMessage>>> requests = new ArrayList<>();
         try (Session session = sessionService.open(messageContext, iofSwitch)) {
             for (OFMessage message : ofMessages) {
@@ -175,7 +168,7 @@ public class OfBatchExecutor {
                 });
     }
 
-    private void removeAlreadyExists(Map<SpeakerData, OFMessage> stageMessages) {
+    private void removeAlreadyExists(List<BatchData> stageMessages) {
         if (hasMeters) {
             meterStats = switchDataProvider.getMeters();
         }
@@ -186,15 +179,15 @@ public class OfBatchExecutor {
         try {
             List<SpeakerData> speakerData = new ArrayList<>(meterStats.get());
             speakerData.addAll(groupStats.get());
-            Set<SpeakerData> toRemove = new HashSet<>();
-            for (Entry<SpeakerData, OFMessage> entry : stageMessages.entrySet()) {
-                if (speakerData.contains(entry.getKey())) {
-                    toRemove.add(entry.getKey());
+            Set<BatchData> toRemove = new HashSet<>();
+            for (BatchData batchData : stageMessages) {
+                if (speakerData.contains(batchData.getOrigin())) {
+                    toRemove.add(batchData);
                 }
             }
             toRemove.forEach(data -> {
                 log.debug("OpenFlow entry is already exist. Skipping command {}", data);
-                holder.recordSuccessUuid(data.getUuid());
+                holder.recordSuccessUuid(data.getOrigin().getUuid());
                 stageMessages.remove(data);
             });
         } catch (ExecutionException | InterruptedException e) {
@@ -350,20 +343,6 @@ public class OfBatchExecutor {
     }
 
     private void sendResponse() {
-        KafkaChannel kafkaChannel = kafkaUtilityService.getKafkaChannel();
-        String topic = getTopic(kafkaChannel);
-        log.debug("Send response to {} (key={})", topic, kafkaKey);
-        kafkaProducerService.sendMessageAndTrack(topic, kafkaKey, holder.getResult());
-    }
-
-    private String getTopic(KafkaChannel kafkaChannel) {
-        switch (origin) {
-            case FLOW_HS:
-                return kafkaChannel.getSpeakerFlowHsTopic();
-            case SW_MANAGER:
-                return kafkaChannel.getSpeakerSwitchManagerResponseTopic();
-            default:
-                throw new IllegalStateException(format("Unknown message origin %s", origin));
-        }
+        commandProcessor.processResponse(holder.getResult(), kafkaKey, sourceTopic);
     }
 }

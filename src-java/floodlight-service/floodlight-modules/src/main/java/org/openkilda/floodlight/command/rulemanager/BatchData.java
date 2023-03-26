@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.rulemanager;
 
+import org.openkilda.rulemanager.SpeakerData;
+
 import lombok.Builder;
 import lombok.Data;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -26,5 +28,6 @@ public class BatchData {
     private boolean group;
     private boolean flow;
     private OFMessage message;
+    private SpeakerData origin;
     private boolean presenceBeVerified;
 }

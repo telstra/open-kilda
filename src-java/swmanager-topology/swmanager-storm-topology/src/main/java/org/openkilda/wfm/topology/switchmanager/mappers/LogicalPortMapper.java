@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.switchmanager.mappers;
 
-import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
 import org.openkilda.messaging.info.switches.LogicalPortType;
+import org.openkilda.messaging.info.switches.v2.LogicalPortInfoEntryV2;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PhysicalPort;
@@ -32,14 +32,10 @@ public abstract class LogicalPortMapper {
     public static final LogicalPortMapper INSTANCE = Mappers.getMapper(LogicalPortMapper.class);
 
     @Mapping(target = "physicalPorts", source = "portNumbers")
-    @Mapping(target = "expected", ignore = true)
-    @Mapping(target = "actual", ignore = true)
-    public abstract LogicalPortInfoEntry map(LogicalPort logicalPort);
+    public abstract LogicalPortInfoEntryV2 map(LogicalPort logicalPort);
 
     @Mapping(target = "type", constant = "LAG")
-    @Mapping(target = "expected", ignore = true)
-    @Mapping(target = "actual", ignore = true)
-    public abstract LogicalPortInfoEntry map(LagLogicalPort logicalPort);
+    public abstract LogicalPortInfoEntryV2 map(LagLogicalPort logicalPort);
 
     public Integer map(PhysicalPort physicalPort) {
         return Optional.ofNullable(physicalPort).map(PhysicalPort::getPortNumber).orElse(null);

@@ -36,6 +36,7 @@ import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.OnlineStatus;
+import org.openkilda.wfm.topology.network.model.PortDataHolder;
 import org.openkilda.wfm.topology.network.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
 import org.openkilda.wfm.topology.network.service.NetworkSwitchService;
@@ -52,6 +53,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortLinkStatus
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortOnlineModeCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortRemoveCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortSetupCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortUpdateCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.swmanager.SwitchManagerWorker;
@@ -147,18 +149,25 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     }
 
     @Override
+    public void updatePortHandler(Endpoint endpoint, PortDataHolder portData) {
+        emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortUpdateCommand(endpoint, portData)));
+    }
+
+    @Override
     public void removePortHandler(Endpoint endpoint) {
         emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortRemoveCommand(endpoint)));
     }
 
     @Override
-    public void setOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus) {
-        emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortOnlineModeCommand(endpoint, onlineStatus)));
+    public void setOnlineMode(Endpoint endpoint, OnlineStatus onlineStatus, PortDataHolder portData) {
+        emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortOnlineModeCommand(endpoint, onlineStatus,
+                portData)));
     }
 
     @Override
-    public void setPortLinkMode(Endpoint endpoint, LinkStatus linkStatus) {
-        emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortLinkStatusCommand(endpoint, linkStatus)));
+    public void setPortLinkMode(Endpoint endpoint, LinkStatus linkStatus, PortDataHolder portData) {
+        emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(
+                new PortLinkStatusCommand(endpoint, linkStatus, portData)));
     }
 
     @Override

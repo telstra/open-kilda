@@ -15,11 +15,15 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.swmanager.request.DeleteLagPortRequest;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.error.MessageDispatchException;
 import org.openkilda.wfm.error.UnexpectedInputException;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -52,8 +56,8 @@ public class DeleteLagPortService implements SwitchManagerHubService {
 
     private boolean active = true;
 
-    public DeleteLagPortService(SwitchManagerCarrier carrier, LagPortOperationConfig config) {
-        this.lagOperationService = new LagPortOperationService(config);
+    public DeleteLagPortService(SwitchManagerCarrier carrier, LagPortOperationConfig config, RuleManager ruleManager) {
+        this.lagOperationService = new LagPortOperationService(config, ruleManager);
         this.builder = DeleteLagPortFsm.builder();
         this.fsmExecutor = new FsmExecutor<>(DeleteLagEvent.NEXT);
         this.carrier = carrier;
@@ -88,10 +92,37 @@ public class DeleteLagPortService implements SwitchManagerHubService {
     }
 
     @Override
+    public void dispatchWorkerMessage(SpeakerResponse payload, MessageCookie cookie)
+            throws UnexpectedInputException, MessageDispatchException {
+        if (payload instanceof SpeakerCommandResponse) {
+            SpeakerCommandResponse response = (SpeakerCommandResponse) payload;
+            if (response.isSuccess()) {
+                fireFsmEvent(cookie, DeleteLagEvent.SPEAKER_ENTITIES_REMOVED, DeleteLagContext.builder().build());
+            } else {
+                ErrorData errorData = new ErrorData(ErrorType.INTERNAL_ERROR, "OpenFlow commands failed",
+                        response.getFailedCommandIds().values().toString());
+                fireFsmEvent(cookie, DeleteLagEvent.ERROR,
+                        DeleteLagContext.builder().error(new SpeakerFailureException(errorData)).build());
+            }
+        } else {
+            throw new UnexpectedInputException(payload);
+        }
+    }
+
+    @Override
     public void dispatchErrorMessage(ErrorData payload, MessageCookie cookie) throws MessageDispatchException {
         DeleteLagContext context = DeleteLagContext.builder()
                 .error(new SpeakerFailureException(payload))
                 .build();
+
+        if (payload.getErrorType() == ErrorType.NOT_FOUND) {
+            DeleteLagPortFsm fsm = fetchHandler(cookie);
+            log.warn("The port {} is stored in the database but does not exist on the switch {}",
+                    fsm.getRequest().getLogicalPortNumber(), fsm.getSwitchId());
+            fireFsmEvent(cookie, DeleteLagEvent.LAG_REMOVED, context);
+            return;
+        }
+
         fireFsmEvent(cookie, DeleteLagEvent.ERROR, context);
     }
 
@@ -119,14 +150,8 @@ public class DeleteLagPortService implements SwitchManagerHubService {
 
     private void fireFsmEvent(MessageCookie cookie, DeleteLagEvent event, DeleteLagContext context)
             throws MessageDispatchException {
-        DeleteLagPortFsm handler = null;
-        if (cookie != null) {
-            handler = handlers.get(cookie.getValue());
-        }
-        if (handler == null) {
-            throw new MessageDispatchException(cookie);
-        }
-        fireFsmEvent(handler, event, context);
+        DeleteLagPortFsm fsm = fetchHandler(cookie);
+        fireFsmEvent(fsm, event, context);
     }
 
     private void fireFsmEvent(DeleteLagPortFsm fsm, DeleteLagEvent event, DeleteLagContext context) {
@@ -145,5 +170,16 @@ public class DeleteLagPortService implements SwitchManagerHubService {
                 carrier.sendInactive();
             }
         }
+    }
+
+    private DeleteLagPortFsm fetchHandler(MessageCookie cookie) throws MessageDispatchException {
+        DeleteLagPortFsm handler = null;
+        if (cookie != null) {
+            handler = handlers.get(cookie.getValue());
+        }
+        if (handler == null) {
+            throw new MessageDispatchException(cookie);
+        }
+        return handler;
     }
 }

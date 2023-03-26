@@ -44,7 +44,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
  "MultiTable mode should be supported by the src and dst switches")
 
         Map<SwitchId, SwitchPropertiesDto> initSwProps = [srcSwitch, dstSwitch, newDstSwitch].collectEntries {
-            [(it): northbound.getSwitchProperties(it.dpId)]
+            [(it): switchHelper.getCachedSwProps(it.dpId)]
         }
         initSwProps.each { sw, swProps ->
             switchHelper.updateSwitchProperties(sw, swProps.jacksonCopy().tap {

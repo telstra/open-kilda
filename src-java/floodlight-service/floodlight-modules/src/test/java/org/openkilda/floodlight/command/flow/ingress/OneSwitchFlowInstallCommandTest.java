@@ -28,6 +28,7 @@ import lombok.Getter;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.HashSet;
 import java.util.UUID;
 
 public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
@@ -90,7 +91,8 @@ public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
                 MessageContext context, UUID commandId, FlowSegmentMetadata metadata, FlowEndpoint endpoint,
                 MeterConfig meterConfig, FlowEndpoint egressEndpoint,
                 RulesContext rulesContext) {
-            super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext, null);
+            super(context, commandId, metadata, endpoint, meterConfig, egressEndpoint, rulesContext, null,
+                    new HashSet<>());
         }
 
         @Override

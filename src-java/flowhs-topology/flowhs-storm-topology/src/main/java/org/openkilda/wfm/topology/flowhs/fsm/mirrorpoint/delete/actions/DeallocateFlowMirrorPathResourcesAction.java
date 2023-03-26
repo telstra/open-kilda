@@ -15,14 +15,19 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
+import org.openkilda.rulemanager.DataAdapter;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
@@ -33,17 +38,21 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointD
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Set;
+
 @Slf4j
 public class DeallocateFlowMirrorPathResourcesAction
         extends BaseFlowPathRemovalAction<FlowMirrorPointDeleteFsm, State, Event, FlowMirrorPointDeleteContext> {
     private final FlowResourcesManager resourcesManager;
     private final FlowMirrorPathRepository flowMirrorPathRepository;
+    private final RuleManager ruleManager;
 
-    public DeallocateFlowMirrorPathResourcesAction(PersistenceManager persistenceManager,
-                                                   FlowResourcesManager resourcesManager) {
+    public DeallocateFlowMirrorPathResourcesAction(
+            PersistenceManager persistenceManager, FlowResourcesManager resourcesManager, RuleManager ruleManager) {
         super(persistenceManager);
         this.resourcesManager = resourcesManager;
         this.flowMirrorPathRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPathRepository();
+        this.ruleManager = ruleManager;
     }
 
     @Override
@@ -58,6 +67,15 @@ public class DeallocateFlowMirrorPathResourcesAction
         FlowMirrorPoints flowMirrorPoints = flowMirrorPath.getFlowMirrorPoints();
         stateMachine.setFlowPathId(flowMirrorPoints.getFlowPathId());
         stateMachine.setMirrorSwitchId(flowMirrorPoints.getMirrorSwitchId());
+
+        // need to build rules before resources deallocation, because these resources will be used during building
+        Flow flow = getFlow(stateMachine.getFlowId());
+        PathId oppositePathId = flow.getOppositePathId(stateMachine.getFlowPathId()).orElse(null);
+        Set<PathId> involvedPaths = newHashSet(stateMachine.getFlowPathId(), oppositePathId);
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths,
+                newHashSet(stateMachine.getMirrorSwitchId()), false);
+        stateMachine.getMirrorPointSpeakerData().addAll(ruleManager.buildMirrorPointRules(
+                flowMirrorPoints, dataAdapter));
 
         resourcesManager.deallocateCookie(flowMirrorPath.getCookie().getFlowEffectiveId());
         flowMirrorPathRepository.remove(stateMachine.getMirrorPathId());

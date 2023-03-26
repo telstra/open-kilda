@@ -15,9 +15,10 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMirrorPoints;
@@ -26,47 +27,41 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
-import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.model.MirrorContext;
-import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
+import org.openkilda.rulemanager.DataAdapter;
+import org.openkilda.rulemanager.GroupSpeakerData;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.SpeakerData;
+import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.converters.FlowRulesConverter;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
-import org.openkilda.wfm.topology.flowhs.utils.SpeakerInstallSegmentEmitter;
-import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
-import org.openkilda.wfm.topology.flowhs.utils.SpeakerRequestEmitter;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 @Slf4j
 public class EmitCommandRequestsAction extends
         FlowProcessingWithHistorySupportAction<FlowMirrorPointDeleteFsm, State, Event, FlowMirrorPointDeleteContext> {
-    private final FlowCommandBuilderFactory commandBuilderFactory;
     private final FlowMirrorPointsRepository flowMirrorPointsRepository;
+    private final RuleManager ruleManager;
 
-    public EmitCommandRequestsAction(PersistenceManager persistenceManager,
-                                     FlowResourcesManager resourcesManager) {
+    public EmitCommandRequestsAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
         super(persistenceManager);
-        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
         flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
+        this.ruleManager = ruleManager;
     }
 
     @Override
     protected void perform(State from, State to,
                            Event event, FlowMirrorPointDeleteContext context, FlowMirrorPointDeleteFsm stateMachine) {
-        String flowId = stateMachine.getFlowId();
-        Flow flow = getFlow(flowId);
-
         PathId flowPathId = stateMachine.getFlowPathId();
         SwitchId mirrorSwitchId = stateMachine.getMirrorSwitchId();
 
@@ -75,54 +70,56 @@ public class EmitCommandRequestsAction extends
                         format("Flow mirror points for flow path %s and mirror switch id %s not found",
                                 flowPathId, mirrorSwitchId)));
 
-        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
-        Collection<FlowSegmentRequestFactory> commands =
-                buildCommands(commandBuilder, stateMachine, flow, mirrorPoints);
+        List<SpeakerData> installSpeakerCommands = new ArrayList<>();
+        List<SpeakerData> modifySpeakerCommands = new ArrayList<>();
+        List<SpeakerData> deleteSpeakerCommands = new ArrayList<>();
 
-        // emitting
-        SpeakerRequestEmitter requestEmitter;
         if (mirrorPoints.getMirrorPaths().isEmpty()) {
-            requestEmitter = SpeakerRemoveSegmentEmitter.INSTANCE;
+            deleteSpeakerCommands.addAll(stateMachine.getMirrorPointSpeakerData());
         } else {
-            requestEmitter = SpeakerInstallSegmentEmitter.INSTANCE;
+            for (SpeakerData command : buildSpeakerCommands(stateMachine, mirrorPoints)) {
+                if (command instanceof GroupSpeakerData
+                        && command.getSwitchId().equals(stateMachine.getMirrorSwitchId())) {
+                    modifySpeakerCommands.add(command);
+                } else {
+                    installSpeakerCommands.add(command);
+                }
+            }
         }
 
-        requestEmitter.emitBatch(stateMachine.getCarrier(), commands, stateMachine.getCommands());
-        stateMachine.getCommands().forEach(
-                (key, value) -> stateMachine.getPendingCommands().put(key, value.getSwitchId()));
+        // emitting
+        Collection<BaseSpeakerCommandsRequest> speakerCommands = new ArrayList<>(FlowRulesConverter.INSTANCE
+                .buildFlowInstallCommands(installSpeakerCommands, stateMachine.getCommandContext()));
+        speakerCommands.addAll(FlowRulesConverter.INSTANCE.buildFlowModifyCommands(
+                modifySpeakerCommands, stateMachine.getCommandContext()));
+        speakerCommands.addAll(FlowRulesConverter.INSTANCE.buildFlowDeleteCommands(
+                deleteSpeakerCommands, stateMachine.getCommandContext()));
 
-        if (commands.isEmpty()) {
+
+        if (speakerCommands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to remove group");
+            return;
         } else {
+            for (BaseSpeakerCommandsRequest command : speakerCommands) {
+                stateMachine.getCarrier().sendSpeakerRequest(command);
+                stateMachine.addPendingCommand(command.getCommandId(), command.getSwitchId());
+                stateMachine.addSpeakerCommand(command.getCommandId(), command);
+            }
             stateMachine.saveActionToHistory("Commands for removing group have been sent");
         }
     }
 
-    private Collection<FlowSegmentRequestFactory> buildCommands(FlowCommandBuilder commandBuilder,
-                                                                FlowMirrorPointDeleteFsm stateMachine, Flow flow,
-                                                                FlowMirrorPoints mirrorPoints) {
-        FlowPath path = mirrorPoints.getFlowPath();
-        FlowPath oppositePath = path.isForward() ? flow.getReversePath() : flow.getForwardPath();
+    private List<SpeakerData> buildSpeakerCommands(
+            FlowMirrorPointDeleteFsm stateMachine, FlowMirrorPoints mirrorPoints) {
+        Flow flow = getFlow(stateMachine.getFlowId());
+        PathId flowPathId = stateMachine.getFlowPathId();
+        FlowPath path = flow.getPath(flowPathId).orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                format("Flow path %s not found", flowPathId)));
+        Set<PathId> involvedPaths = newHashSet(stateMachine.getMirrorPathId());
+        getFlow(stateMachine.getFlowId()).getOppositePathId(path.getPathId()).ifPresent(involvedPaths::add);
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths,
+                newHashSet(stateMachine.getMirrorSwitchId()), false);
 
-        CommandContext context = stateMachine.getCommandContext();
-        SpeakerRequestBuildContext speakerContext =
-                buildBaseSpeakerContextForInstall(path.getSrcSwitchId(), path.getDestSwitchId());
-        if (mirrorPoints.getMirrorSwitchId().equals(path.getSrcSwitchId())) {
-            return new ArrayList<>(commandBuilder
-                    .buildIngressOnlyOneDirection(context, flow, path, oppositePath,
-                            speakerContext.getForward(),
-                            MirrorContext.builder()
-                                    .buildMirrorFactoryOnly(true)
-                                    .build()));
-
-        } else if (mirrorPoints.getMirrorSwitchId().equals(path.getDestSwitchId())) {
-            return new ArrayList<>(commandBuilder
-                    .buildEgressOnlyOneDirection(context, flow, path, oppositePath,
-                            MirrorContext.builder()
-                                    .buildMirrorFactoryOnly(true)
-                                    .build()));
-        }
-
-        return Collections.emptyList();
+        return ruleManager.buildMirrorPointRules(mirrorPoints, dataAdapter);
     }
 }

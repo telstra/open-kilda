@@ -18,6 +18,7 @@ package org.openkilda.persistence.ferma.frames;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.MirrorPointStatus;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
@@ -31,6 +32,8 @@ import org.openkilda.persistence.ferma.frames.converters.PathComputationStrategy
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 
 import com.syncleus.ferma.annotations.Property;
+
+import java.util.List;
 
 public abstract class FlowEventDumpFrame extends KildaBaseVertexFrame implements FlowEventDumpData {
     public static final String FRAME_LABEL = "flow_dump";
@@ -76,6 +79,14 @@ public abstract class FlowEventDumpFrame extends KildaBaseVertexFrame implements
     @Override
     @Property("ignoreBandwidth")
     public abstract void setIgnoreBandwidth(boolean ignoreBandwidth);
+
+    @Override
+    @Property("strict_bandwidth")
+    public abstract boolean isStrictBandwidth();
+
+    @Override
+    @Property("strict_bandwidth")
+    public abstract void setStrictBandwidth(boolean strictBandwidth);
 
     @Override
     @Property("forward_cookie")
@@ -288,6 +299,30 @@ public abstract class FlowEventDumpFrame extends KildaBaseVertexFrame implements
     @Override
     @Property("max_latency")
     public abstract void setMaxLatency(Long maxLatency);
+
+    @Override
+    @Property("max_latency_tier2")
+    public abstract Long getMaxLatencyTier2();
+
+    @Override
+    @Property("max_latency_tier2")
+    public abstract void setMaxLatencyTier2(Long maxLatencyTier2);
+
+    @Override
+    @Property("priority")
+    public abstract Integer getPriority();
+
+    @Override
+    @Property("priority")
+    public abstract void setPriority(Integer priority);
+
+    @Override
+    @Property("mirror_point_statuses")
+    public abstract List<MirrorPointStatus> getMirrorPointStatuses();
+
+    @Override
+    @Property("mirror_point_statuses")
+    public abstract void setMirrorPointStatuses(List<MirrorPointStatus> mirrorPointStatuses);
 
     @Override
     @Property("loop_switch_id")
