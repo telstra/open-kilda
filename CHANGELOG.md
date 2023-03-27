@@ -1,5 +1,47 @@
 # Changelog
 
+## v1.130.0 (23/03/2023)
+
+### Features:
+-  [#5070](https://github.com/telstra/open-kilda/pull/5070) Path validation (Issue: [#4527](https://github.com/telstra/open-kilda/issues/4527)) [**docs**]
+-  [#5078](https://github.com/telstra/open-kilda/pull/5078) Ability to add single switch flow into diverse group Closes #2072 (Issues: [#2072](https://github.com/telstra/open-kilda/issues/2072) [#2072](https://github.com/telstra/open-kilda/issues/2072))
+
+### Bug Fixes:
+-  [#5064](https://github.com/telstra/open-kilda/pull/5064) Fixed bug with empty vlan stats and set vlans (Issue: [#5063](https://github.com/telstra/open-kilda/issues/5063)) [**storm-topologies**]
+-  [#5036](https://github.com/telstra/open-kilda/pull/5036) #4984: fix sub flow descriptions (Issue: [#4984](https://github.com/telstra/open-kilda/issues/4984))
+-  [#5079](https://github.com/telstra/open-kilda/pull/5079) fix flow_id in path from flow update request ignored (Issue: [#5075](https://github.com/telstra/open-kilda/issues/5075))
+-  [#5110](https://github.com/telstra/open-kilda/pull/5110) Bugfix/4574 switch validation fail for grpc timeout (Issue: [#4574](https://github.com/telstra/open-kilda/issues/4574))
+
+### Improvements:
+-  [#5124](https://github.com/telstra/open-kilda/pull/5124) #4574: Switch validation when GPRC is down tests (Issue: [#4574](https://github.com/telstra/open-kilda/issues/4574)) [**tests**]
+-  [#5128](https://github.com/telstra/open-kilda/pull/5128) 5013 max bandwidth from topologyyaml is not applying (Issue: [#5013](https://github.com/telstra/open-kilda/issues/5013))
+-  [#5104](https://github.com/telstra/open-kilda/pull/5104) #5063: Can't patch flow with empty vlan stats and non zeros src/dst v… (Issues: [#5063](https://github.com/telstra/open-kilda/issues/5063) [#5063](https://github.com/telstra/open-kilda/issues/5063)) [**tests**]
+-  [#5107](https://github.com/telstra/open-kilda/pull/5107) #5067: Added vlan in range check for flow statistics tests (Issue: [#5067](https://github.com/telstra/open-kilda/issues/5067)) [**tests**]
+-  [#5012](https://github.com/telstra/open-kilda/pull/5012) Added Kilda High Level Design doc [**docs**]
+-  [#5115](https://github.com/telstra/open-kilda/pull/5115) #4527: Path validation tests (Issues: [#4527](https://github.com/telstra/open-kilda/issues/4527) [#4527](https://github.com/telstra/open-kilda/issues/4527)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.129.1...v1.130.0).
+
+### Affected Components:
+nbworker
+
+---
+
+## v1.129.1 (16/03/2023)
+
+### Bug Fixes:
+-  [#5056](https://github.com/telstra/open-kilda/pull/5056) fix yflow is not created without max_bandwidth bug (Issue: [#5039](https://github.com/telstra/open-kilda/issues/5039))
+
+### Improvements:
+-  [#5127](https://github.com/telstra/open-kilda/pull/5127) Fixing low priority test on updated error description [**tests**]
+-  [#5108](https://github.com/telstra/open-kilda/pull/5108) Improve performance of SwitchConnectedDevices storing (Issue: [#5051](https://github.com/telstra/open-kilda/issues/5051))
+-  [#5065](https://github.com/telstra/open-kilda/pull/5065) #5042: Quick fix to update flow creation errors in low priority tests (Issue: [#5042](https://github.com/telstra/open-kilda/issues/5042)) [**tests**]
+-  [#5116](https://github.com/telstra/open-kilda/pull/5116) Updated test in YFlowCreateSpec which failed on HW environment [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.129.0...v1.129.1).
+
+---
+
 ## v1.129.0 (09/03/2023)
 
 ### Features:

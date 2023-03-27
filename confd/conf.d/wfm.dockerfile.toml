@@ -1,5 +1,0 @@
-[template]
-src = "wfm/dockerfile.tmpl"
-dest = "docker/wfm/Dockerfile"
-keys = [ "/" ]
-mode = "0644"
