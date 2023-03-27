@@ -179,7 +179,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         islUtils.getIslInfo(updatedLinks, isl).get().maxBandwidth == maxBandwidthValue.toInteger()
         islUtils.getIslInfo(updatedLinks, isl.reversed).get().maxBandwidth == maxBandwidthValue.toInteger()
 
-        and: "Description on forward and reverse ISLs us really updated as well"
+        and: "Description on forward and reverse ISLs is really updated as well"
         islUtils.getIslInfo(updatedLinks, isl).get().description == descriptionValue
         islUtils.getIslInfo(updatedLinks, isl.reversed).get().description == descriptionValue
 
