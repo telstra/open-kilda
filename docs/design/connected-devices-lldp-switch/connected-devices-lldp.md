@@ -2,26 +2,26 @@
 
 ## Summary
 
-This feature allows to detect devices connected to particular switch
-by catching LLDP packets. Design of the feature is based on multi-table feature design.
+This feature allows to detect devices connected to a particular switch by catching LLDP packets.
+Design of the feature is based on multi-table feature design.
 
 ## API
 
-New boolean field `switch_lldp` will be added to switch properties.
-After setting it to `true` by API `PUT /{switch-id}/properties` several rules will be installed on the switch.
-Description of these rules you can find in section `Detecting of connected devices via LLDP`.
+A new boolean field `switch_lldp` will be added to switch properties.
+After setting it to `true` by API `PUT /{switch-id}/properties` several rules will be installed on the given switch.
+You can find descriptions of these rules in the section [Detecting connected devices via LLDP](#detecting-of-connected-devices-via-lldp).
 
-As switch LLDP feature is based on multi-table feature user can't set `switch_lldp` property to `true`
-without setting `multi_table` to `true`. Bad request will be returned otherwise.
+Due to the switch LLDP feature is based on the multi-table feature, a user cannot set the `switch_lldp` property
+to `true` without setting `multi_table` to `true`. Bad request will be returned otherwise.
 
-New API will be created to get a list of devices connected to Switch: `GET /{switch_id}/devices?since={time}`
+A new API will be created to get a list of devices connected to Switch: `GET /{switch_id}/devices?since={time}`
 
 * `switch_id` - Switch ID
 * `since` - Optional param. If specified only devices which were seen since this time will be returned.
 
 This API returns following body:
 
-~~~
+~~~json
 {
   "ports": [
       {
@@ -47,7 +47,6 @@ This API returns following body:
       ***
    ]
 }
-
 ~~~
 
 The following fields are optional:
@@ -59,14 +58,14 @@ The following fields are optional:
 * managementAddress
 * flowId
 
-## Detecting of connected devices via LLDP
+## Detecting connected devices via LLDP
 
 To detect connected devices via LLDP we will catch LLDP packets from each switch port
-and send them to controller to analyze them in Connected Devices Storm Topology.
+and send them to the controller to analyze them in Connected Devices Storm Topology.
 
 There are three types of switch ports:
 1. Customer (port with created flow on it).
-2. Isl
+2. ISL
 3. Other (port without ISL and without flows).
  
 Rules will be different for each port type.
@@ -86,10 +85,10 @@ Short description:
 
 There are 7 types of new rules will be introduced:
 * Flow (1 rule for each flow and 3 default rules)
-* Isl (1 default rule)
-* Other (2 default rule)
+* ISL (1 default rule)
+* Other (2 default rules)
 
-One Switch Flow rule will be changed to mark packets from one switch flow (by 0x0020 metadata)
+One Switch Flow rule will be changed to mark packets from One Switch Flow (by 0x0020 metadata)
 
 #### Flow rules
 
@@ -113,7 +112,7 @@ Rule for each flow in Input Table:
 
 ```
 
-Rule for one switch flows in Post Ingress table:
+Rule for One Switch Flows in Post Ingress table:
 ```
 [FLOW_ID0]
     ofp_version      = 4
@@ -128,7 +127,7 @@ Rule for one switch flows in Post Ingress table:
                     mlen = 65535
 ```
 
-Rule for vxlan flows in Post Ingress table:
+Rule for VXLAN flows in Post Ingress table:
 ```
 [FLOW_ID0]
     ofp_version      = 4

@@ -17,12 +17,11 @@ package org.openkilda.wfm.share.utils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.squirrelframework.foundation.fsm.StateMachine;
 import org.squirrelframework.foundation.fsm.StateMachineStatus;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 
-public abstract class AbstractBaseFsm<T extends StateMachine<T, S, E, C>, S, E, C>
+public abstract class AbstractBaseFsm<T extends AbstractStateMachine<T, S, E, C>, S, E, C>
         extends AbstractStateMachine<T, S, E, C> {
 
     protected transient Logger log = makeLog();

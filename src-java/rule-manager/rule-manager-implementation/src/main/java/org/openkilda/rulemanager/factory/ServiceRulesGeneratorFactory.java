@@ -35,6 +35,8 @@ import org.openkilda.rulemanager.factory.generator.service.arp.ArpTransitRuleGen
 import org.openkilda.rulemanager.factory.generator.service.isl.EgressIslVlanRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.isl.EgressIslVxlanRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.isl.TransitIslVxlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lacp.DropSlowProtocolsLoopRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.lacp.LacpReplyRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lldp.LldpIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lldp.LldpInputPreDropRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressOneSwitchRuleGenerator;
@@ -336,5 +338,23 @@ public class ServiceRulesGeneratorFactory {
         return TransitIslVxlanRuleGenerator.builder()
                 .islPort(islPort)
                 .build();
+    }
+
+    /**
+     * Get LACP reply rule generator.
+     */
+    public LacpReplyRuleGenerator getLacpReplyRuleGenerator(int inPort, boolean switchHasOtherLacpPorts) {
+        return LacpReplyRuleGenerator.builder()
+                .config(config)
+                .inPort(inPort)
+                .switchHasOtherLacpPorts(switchHasOtherLacpPorts)
+                .build();
+    }
+
+    /**
+     * Get drop slow protocol loop rule generator.
+     */
+    public DropSlowProtocolsLoopRuleGenerator getDropSlowProtocolsLoopRuleGenerator() {
+        return DropSlowProtocolsLoopRuleGenerator.builder().build();
     }
 }

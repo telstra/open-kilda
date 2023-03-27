@@ -17,6 +17,8 @@ package org.openkilda.wfm.topology.flowhs.service.yflow;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -72,6 +74,9 @@ import java.util.stream.Stream;
 @RunWith(MockitoJUnitRunner.class)
 public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     private static final int METER_ALLOCATION_RETRIES_LIMIT = 3;
+    private static final String SUB_FLOW_ID_1 = "test_sub_flow_id_1";
+    private static final String SUB_FLOW_ID_2 = "test_sub_flow_id_2";
+    private static final String Y_FLOW_ID = "test_successful_y_flow";
 
     @Mock
     private FlowGenericCarrier flowCreateHubCarrier;
@@ -104,8 +109,8 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         request.setMaximumBandwidth(2000L);
         request.getSubFlows().get(0).setEndpoint(newFirstEndpoint);
         request.getSubFlows().get(1).setEndpoint(newSecondEndpoint);
-        preparePathComputationForUpdate("test_flow_1", buildNewFirstSubFlowPathPair());
-        preparePathComputationForUpdate("test_flow_2", buildNewSecondSubFlowPathPair());
+        preparePathComputationForUpdate(SUB_FLOW_ID_1, buildNewFirstSubFlowPathPair());
+        preparePathComputationForUpdate(SUB_FLOW_ID_2, buildNewSecondSubFlowPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_NEW_FIRST_EP, SWITCH_NEW_SECOND_EP, SWITCH_TRANSIT);
 
         // when
@@ -133,9 +138,9 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         request.getSubFlows().get(0).setEndpoint(newFirstEndpoint);
         request.getSubFlows().get(1).setEndpoint(newSecondEndpoint);
 
-        preparePathComputationForUpdate("test_flow_1",
+        preparePathComputationForUpdate(SUB_FLOW_ID_1,
                 buildNewFirstSubFlowPathPair(), buildNewFirstSubFlowProtectedPathPair());
-        preparePathComputationForUpdate("test_flow_2",
+        preparePathComputationForUpdate(SUB_FLOW_ID_2,
                 buildNewSecondSubFlowPathPair(), buildNewSecondSubFlowProtectedPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_NEW_FIRST_EP, SWITCH_NEW_SECOND_EP,
                 SWITCH_TRANSIT, SWITCH_TRANSIT);
@@ -167,9 +172,9 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         request.getSubFlows().get(0).setEndpoint(newFirstEndpoint);
         request.getSubFlows().get(1).setEndpoint(newSecondEndpoint);
 
-        when(pathComputer.getPath(buildFlowIdArgumentMatch("test_flow_1"), any()))
+        when(pathComputer.getPath(buildFlowIdArgumentMatch(SUB_FLOW_ID_1), any(), anyBoolean()))
                 .thenThrow(new UnroutableFlowException(injectedErrorMessage));
-        preparePathComputationForUpdate("test_flow_2", buildNewSecondSubFlowPathPair(), buildSecondSubFlowPathPair());
+        preparePathComputationForUpdate(SUB_FLOW_ID_2, buildNewSecondSubFlowPathPair(), buildSecondSubFlowPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_NEW_FIRST_EP, SWITCH_NEW_SECOND_EP, SWITCH_TRANSIT);
 
         // when
@@ -197,8 +202,8 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         request.getSubFlows().get(0).setEndpoint(newFirstEndpoint);
         request.getSubFlows().get(1).setEndpoint(newSecondEndpoint);
 
-        preparePathComputationForUpdate("test_flow_1", buildNewFirstSubFlowPathPair(), buildFirstSubFlowPathPair());
-        when(pathComputer.getPath(buildFlowIdArgumentMatch("test_flow_2"), any()))
+        preparePathComputationForUpdate(SUB_FLOW_ID_1, buildNewFirstSubFlowPathPair(), buildFirstSubFlowPathPair());
+        when(pathComputer.getPath(buildFlowIdArgumentMatch(SUB_FLOW_ID_2), any(), anyBoolean()))
                 .thenThrow(new UnroutableFlowException(injectedErrorMessage));
         prepareYPointComputation(SWITCH_SHARED, SWITCH_NEW_FIRST_EP, SWITCH_NEW_SECOND_EP, SWITCH_TRANSIT);
 
@@ -227,18 +232,18 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         request.getSubFlows().get(0).setEndpoint(newFirstEndpoint);
         request.getSubFlows().get(1).setEndpoint(newSecondEndpoint);
 
-        preparePathComputationForUpdate("test_flow_1", buildNewFirstSubFlowPathPair(), buildFirstSubFlowPathPair());
-        preparePathComputationForUpdate("test_flow_2", buildNewSecondSubFlowPathPair(), buildSecondSubFlowPathPair());
+        preparePathComputationForUpdate(SUB_FLOW_ID_1, buildNewFirstSubFlowPathPair(), buildFirstSubFlowPathPair());
+        preparePathComputationForUpdate(SUB_FLOW_ID_2, buildNewSecondSubFlowPathPair(), buildSecondSubFlowPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_NEW_FIRST_EP, SWITCH_NEW_SECOND_EP, SWITCH_TRANSIT);
         doThrow(new ResourceAllocationException(injectedErrorMessage))
-                .when(flowResourcesManager).allocateMeter(eq("test_successful_yflow"), eq(SWITCH_TRANSIT));
+                .when(flowResourcesManager).allocateMeter(eq(Y_FLOW_ID), eq(SWITCH_TRANSIT));
 
         // when
         processUpdateRequestAndSpeakerCommands(request);
 
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
         verify(flowResourcesManager, times(METER_ALLOCATION_RETRIES_LIMIT + 2)) // +1 from YFlowCreateFsm
-                .allocateMeter(eq("test_successful_yflow"), eq(SWITCH_TRANSIT));
+                .allocateMeter(eq(Y_FLOW_ID), eq(SWITCH_TRANSIT));
 
         YFlow flow = getYFlow(request.getYFlowId());
         assertEquals(1000L, flow.getMaximumBandwidth());
@@ -259,8 +264,8 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         request.getSubFlows().get(0).setEndpoint(newFirstEndpoint);
         request.getSubFlows().get(1).setEndpoint(newSecondEndpoint);
 
-        preparePathComputationForUpdate("test_flow_1", buildNewFirstSubFlowPathPair(), buildFirstSubFlowPathPair());
-        preparePathComputationForUpdate("test_flow_2", buildNewSecondSubFlowPathPair(), buildSecondSubFlowPathPair());
+        preparePathComputationForUpdate(SUB_FLOW_ID_1, buildNewFirstSubFlowPathPair(), buildFirstSubFlowPathPair());
+        preparePathComputationForUpdate(SUB_FLOW_ID_2, buildNewSecondSubFlowPathPair(), buildSecondSubFlowPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_NEW_FIRST_EP, SWITCH_NEW_SECOND_EP, SWITCH_TRANSIT);
 
         YFlowUpdateService service = makeYFlowUpdateService(0);
@@ -269,7 +274,7 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         service.handleRequest(request.getYFlowId(), new CommandContext(), request);
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.IN_PROGRESS, FlowStatus.IN_PROGRESS, FlowStatus.UP);
         // and
-        handleSpeakerCommandsAndFailInstall(service, request.getYFlowId(), "test_successful_yflow");
+        handleSpeakerCommandsAndFailInstall(service, request.getYFlowId(), Y_FLOW_ID);
 
         // then
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
@@ -285,15 +290,15 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
 
     @Test
     public void shouldFailOnTimeoutDuringMeterInstallation()
-            throws UnroutableFlowException, RecoverableException, DuplicateKeyException, UnknownKeyException {
+            throws UnroutableFlowException, RecoverableException, DuplicateKeyException {
         // given
         YFlowRequest request = createYFlow();
         request.setMaximumBandwidth(2000L);
         request.getSubFlows().get(0).setEndpoint(newFirstEndpoint);
         request.getSubFlows().get(1).setEndpoint(newSecondEndpoint);
 
-        preparePathComputationForUpdate("test_flow_1", buildNewFirstSubFlowPathPair(), buildFirstSubFlowPathPair());
-        preparePathComputationForUpdate("test_flow_2", buildNewSecondSubFlowPathPair(), buildSecondSubFlowPathPair());
+        preparePathComputationForUpdate(SUB_FLOW_ID_1, buildNewFirstSubFlowPathPair(), buildFirstSubFlowPathPair());
+        preparePathComputationForUpdate(SUB_FLOW_ID_2, buildNewSecondSubFlowPathPair(), buildSecondSubFlowPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_NEW_FIRST_EP, SWITCH_NEW_SECOND_EP, SWITCH_TRANSIT);
 
         YFlowUpdateService service = makeYFlowUpdateService(0);
@@ -323,24 +328,24 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         createYFlow();
         List<SubFlowPartialUpdateDto> subFlowPartialUpdateDtos = new ArrayList<>();
         subFlowPartialUpdateDtos.add(SubFlowPartialUpdateDto.builder()
-                .flowId("test_flow_1")
+                .flowId(SUB_FLOW_ID_1)
                 .endpoint(FlowPartialUpdateEndpoint.builder()
                         .switchId(SWITCH_NEW_FIRST_EP).portNumber(2).vlanId(103).build())
                 .build());
         subFlowPartialUpdateDtos.add(SubFlowPartialUpdateDto.builder()
-                .flowId("test_flow_2")
+                .flowId(SUB_FLOW_ID_2)
                 .endpoint(FlowPartialUpdateEndpoint.builder()
                         .switchId(SWITCH_NEW_SECOND_EP).portNumber(3).vlanId(104).build())
                 .build());
 
-        YFlowPartialUpdateRequest request = YFlowPartialUpdateRequest.builder()
-                .yFlowId("test_successful_yflow")
+        final YFlowPartialUpdateRequest request = YFlowPartialUpdateRequest.builder()
+                .yFlowId(Y_FLOW_ID)
                 .maximumBandwidth(2000L)
                 .subFlows(subFlowPartialUpdateDtos)
                 .build();
 
-        preparePathComputationForUpdate("test_flow_1", buildNewFirstSubFlowPathPair());
-        preparePathComputationForUpdate("test_flow_2", buildNewSecondSubFlowPathPair());
+        preparePathComputationForUpdate(SUB_FLOW_ID_1, buildNewFirstSubFlowPathPair());
+        preparePathComputationForUpdate(SUB_FLOW_ID_2, buildNewSecondSubFlowPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_NEW_FIRST_EP, SWITCH_NEW_SECOND_EP, SWITCH_TRANSIT);
 
         // when
@@ -359,10 +364,10 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     }
 
     private YFlowRequest createYFlow() throws UnroutableFlowException, RecoverableException, DuplicateKeyException {
-        YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
+        final YFlowRequest request = buildYFlowRequest(Y_FLOW_ID, SUB_FLOW_ID_1, SUB_FLOW_ID_2)
                 .build();
-        preparePathComputationForCreate("test_flow_1", buildFirstSubFlowPathPair());
-        preparePathComputationForCreate("test_flow_2", buildSecondSubFlowPathPair());
+        preparePathComputationForCreate(SUB_FLOW_ID_1, buildFirstSubFlowPathPair());
+        preparePathComputationForCreate(SUB_FLOW_ID_2, buildSecondSubFlowPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT);
 
         processCreateRequestAndSpeakerCommands(request);
@@ -375,12 +380,12 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
 
     private YFlowRequest createYFlowWithProtectedPath()
             throws UnroutableFlowException, RecoverableException, DuplicateKeyException {
-        YFlowRequest request = buildYFlowRequest("test_successful_yflow", "test_flow_1", "test_flow_2")
+        final YFlowRequest request = buildYFlowRequest(Y_FLOW_ID, SUB_FLOW_ID_1, SUB_FLOW_ID_2)
                 .allocateProtectedPath(true)
                 .build();
-        preparePathComputationForCreate("test_flow_1",
+        preparePathComputationForCreate(SUB_FLOW_ID_1,
                 buildFirstSubFlowPathPair(), buildFirstSubFlowProtectedPathPair());
-        preparePathComputationForCreate("test_flow_2",
+        preparePathComputationForCreate(SUB_FLOW_ID_2,
                 buildSecondSubFlowPathPair(), buildSecondSubFlowProtectedPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT, SWITCH_TRANSIT);
         prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_ALT_TRANSIT,
@@ -566,17 +571,20 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
 
     private void preparePathComputationForCreate(String flowId, GetPathsResult pathPair, GetPathsResult pathPair2)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId))).thenReturn(pathPair).thenReturn(pathPair2);
+        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId))).thenReturn(pathPair);
+        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), anyCollection(), eq(true)))
+                .thenReturn(pathPair2);
     }
 
     private void preparePathComputationForUpdate(String flowId, GetPathsResult pathPair)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), any())).thenReturn(pathPair);
+        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), any(), anyBoolean())).thenReturn(pathPair);
     }
 
     private void preparePathComputationForUpdate(String flowId, GetPathsResult pathPair, GetPathsResult pathPair2)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), any())).thenReturn(pathPair).thenReturn(pathPair2);
+        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), any(), anyBoolean()))
+                .thenReturn(pathPair).thenReturn(pathPair2);
     }
 
     private void prepareYPointComputation(SwitchId sharedEndpoint, SwitchId first, SwitchId second, SwitchId yPoint) {

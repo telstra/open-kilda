@@ -28,5 +28,6 @@ import java.util.Set;
 public class CreateLagPortRequest extends CommandData {
     SwitchId switchId;
     Set<Integer> portNumbers;
+    boolean lacpReply;
 }
 

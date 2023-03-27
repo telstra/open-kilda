@@ -40,7 +40,7 @@ public class YFlowRerouteRequest extends CommandData {
 
     String yFlowId;
     Set<IslEndpoint> affectedIsl;
-    boolean force;
+    boolean force;  // TODO: remove
     String reason;
     boolean ignoreBandwidth;
 

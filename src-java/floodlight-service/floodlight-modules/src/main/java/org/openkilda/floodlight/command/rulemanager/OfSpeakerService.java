@@ -24,7 +24,6 @@ import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsReq
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.ModifySpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
@@ -32,6 +31,7 @@ import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.model.SwitchId;
 
+import com.google.common.collect.ImmutableMap;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -39,20 +39,31 @@ import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.projectfloodlight.openflow.types.DatapathId;
 
+import java.util.Map;
+
 @Slf4j
 public class OfSpeakerService implements BatchCommandProcessor {
     private final IOFSwitchService iofSwitchService;
     private final SessionService sessionService;
-    private final KafkaUtilityService kafkaUtilityService;
     private final IKafkaProducerService kafkaProducerService;
     private final FeatureDetectorService featureDetectorService;
+
+    private final Map<String, String> responseTopics;
 
     public OfSpeakerService(@NonNull FloodlightModuleContext moduleContext) {
         this.iofSwitchService = moduleContext.getServiceImpl(IOFSwitchService.class);
         this.sessionService = moduleContext.getServiceImpl(SessionService.class);
-        this.kafkaUtilityService = moduleContext.getServiceImpl(KafkaUtilityService.class);
         this.kafkaProducerService = moduleContext.getServiceImpl(IKafkaProducerService.class);
         this.featureDetectorService = moduleContext.getServiceImpl(FeatureDetectorService.class);
+
+        KafkaUtilityService kafkaUtilityService = moduleContext.getServiceImpl(KafkaUtilityService.class);
+        KafkaChannel kafkaChannel = kafkaUtilityService.getKafkaChannel();
+
+        responseTopics = ImmutableMap.of(
+                kafkaChannel.getSpeakerFlowHsTopic(), kafkaChannel.getSpeakerFlowHsResponseTopic(),
+                kafkaChannel.getNetworkControlTopic(), kafkaChannel.getNetworkControlResponseTopic(),
+                kafkaChannel.getSpeakerSwitchManagerTopic(), kafkaChannel.getSpeakerSwitchManagerResponseTopic()
+        );
     }
 
     @Override
@@ -82,7 +93,7 @@ public class OfSpeakerService implements BatchCommandProcessor {
         }
         if (sw == null) {
             log.warn("Switch {} not found. Can't process request {}.", switchId, request);
-            processResponse(holder.getResult(), key, request.getOrigin());
+            processResponse(holder.getResult(), key, request.getSourceTopic());
             return;
         }
         OfBatchExecutor executor = OfBatchExecutor.builder()
@@ -93,8 +104,8 @@ public class OfSpeakerService implements BatchCommandProcessor {
                 .holder(holder)
                 .switchFeatures(featureDetectorService.detectSwitch(sw))
                 .kafkaKey(key)
-                .origin(request.getOrigin())
                 .failIfExists(failIfExists)
+                .sourceTopic(request.getSourceTopic())
                 .build();
         executor.executeBatch();
     }
@@ -112,25 +123,13 @@ public class OfSpeakerService implements BatchCommandProcessor {
     }
 
     @Override
-    public void processResponse(SpeakerCommandResponse response, String kafkaKey, Origin origin) {
-        KafkaChannel kafkaChannel = kafkaUtilityService.getKafkaChannel();
-        String topic = getTopic(kafkaChannel, origin);
-        log.debug("Send response to {} (key={})", topic, kafkaKey);
-        kafkaProducerService.sendMessageAndTrack(topic, kafkaKey, response);
-    }
-
-    private String getTopic(KafkaChannel kafkaChannel, Origin origin) {
-        //TODO: remove origin and detect response topic by income topic
-        switch (origin) {
-            case FLOW_HS:
-                return kafkaChannel.getSpeakerFlowHsTopic();
-            case SW_MANAGER:
-                return kafkaChannel.getSpeakerSwitchManagerResponseTopic();
-            case NETWORK:
-                return kafkaChannel.getNetworkControlResponseTopic();
-            default:
-                throw new IllegalStateException(format("Unknown message origin %s", origin));
+    public void processResponse(SpeakerCommandResponse response, String kafkaKey, String sourceTopic) {
+        String responseTopic = responseTopics.get(sourceTopic);
+        if (responseTopic == null) {
+            throw new IllegalStateException(format("Unknown message sourceTopic %s", sourceTopic));
         }
+        log.debug("Send response to {} (key={})", responseTopic, kafkaKey);
+        kafkaProducerService.sendMessageAndTrack(responseTopic, kafkaKey, response);
     }
 
     @FunctionalInterface

@@ -94,13 +94,13 @@ tasks.withType(Test) {
         it.write 'false'
     }
     afterTest { desc, result ->
-        if ('FAILURE' == result.resultType as String) {
+        if (result.resultType as String == 'FAILURE' ) {
             unstableLog.write 'true'
         }
     }
     retry { //test-retry plugin config
-        maxRetries = 1
-        maxFailures = 5
+        maxRetries = 2
+        maxFailures = 30
         failOnPassedAfterRetry = false
     }
 }

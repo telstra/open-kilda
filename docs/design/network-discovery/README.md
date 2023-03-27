@@ -1,149 +1,149 @@
 # Network discovery
 
 ## Overview
-One of the main Open-Kilda task is automatic network discovery. The discovery 
-process is not some one time action. We must be able to track and react on
-topology change. I.e. new inter switch links (ISL) must be detected and used 
-as possible route for existing and future flows. Corrupted (temporary or
-permanently) ISLs must be detected too. All flows must be evacuated from such
-ISLs.
+One of the main OpenKilda tasks is the automatic network discovery. This discovery 
+process is not a one-time action. We must be able to track and react on
+topology changes. For example, a new inter-switch link (ISL) must be detected and used 
+as a possible route for existing or future flows. Temporary or permanently corrupted 
+ISLs must be detected and all flows must be evacuated from these kind of ISLs.
 
-Discovered ISL consist of:
-* datapath + port-number (source)
-* datapath + port-number (dest)
-* link-speed
-* link-latency
-* BFD-support (and other optional capabilities)
+Information about a discovered ISL contains:
+* data path + port number (source)
+* data path + port number (dest)
+* link speed
+* link latency
+* whether it supports BFD or other optional capabilities
 
-Open-Kilda produce "discovery" packet (Ethernet+IP+UDP+LLDP), put inside source
-datapath, source port-number, current time and send it using PACKET_OUT OF
-message to the source switch and set as PORT_OUT source port-number in actions.
+OpenKilda installs on all switches an OF rule that manages discovery packets. Switches use
+that rule to send and receive discovery packets (based on PACKET_IN and PACKET_OUT messages),
+as well as to report the state to the controller.
 
-All switches have OF rule that match and send to controller our "discovery"
-packets (using PACKET_IN message.
+OpenKilda produces a "discovery" packet (Ethernet+IP+UDP+LLDP), puts inside it a source
+data path, source port number, current time. OpenKilda sends this packet using a PACKET_OUT OF
+message to the source switch and sets the source port number in actions as PORT_OUT.
 
-When controller receive "discovery" packet via PACKET_IN message it extract
-source datapath and source port-number extract datapath and port-number 
-(from PACKET_IN message) and treat it as destination datapath and destination
-port-number. So now it have both ISL endpoints. Link speed is extracted from
-current port-speed. Latency is calculated as current time minus packet create
-time (extracted from packet) minus source switch latency (calculated by FL
-using echo-request/response OF messages) minus dest switch latency. All
-accumulated data used to create "discovery-event" and pass in into storm for
-further processing.
+When the controller receives a "discovery" packet via PACKET_IN message, it extracts
+the source data path and the source port number from PACKET_IN message and uses it 
+as a destination data path and destination port number on a receiving end point. 
+Combining information from PACKET_IN and PACKET_OUT messages, a controller has information
+about both ISL endpoints. Link speed is extracted from the current port speed. 
+Latency is calculated as the current time minus packet create time (extracted from packet)
+minus source switch latency (calculated by FL using echo-request/response OF messages) 
+minus dest switch latency. All accumulated data is used to create a "discovery-event"
+which is passed in to the Storm for further processing.
 
-This "process" is done for each enabled port of each switch on each N 
-seconds(configuration parameter). As result we will receive 2 discovery
-packets/event for each "link" - one for each direction. And because it repeats
-periodically Open-Kilda can "detect" ISL-fails i.e. link-corruptions. And react
+This "process" is done for each enabled port of each switch each N 
+seconds (a configuration parameter). As a result, we receive two discovery
+packets/events for each "link": one for each direction. Due to this process repeats
+periodically, OpenKilda is able to detect ISL fails (link corruptions) and react
 on them.
 
-Network topology will/can use different delays between discovery requests. 
-These delay depends on discovery history for specific switch+port:
+In order to reduce the number of PACKET_OUT and PACKET_IN messages, network topology
+uses delays between discovery requests. These delays vary depending on discovery history
+for the specific switch and port:
  - if the last discovery was unsuccessful for port without links, 
  then the interval for the next discovery messages will be increased 
  until we get a successful one;
  - if BFD is active on this endpoint, then regardless of whether the discovery 
  is successful or not, the interval for discovery messages will be increased.
- 
-This is done in order to reduce the number of PACKET_OUT/PACKET_IN messages.
 
-Only discovery events is not enough to "discover" all links in network, we need
-to "know" the list of switches and list of their ports. This info is collected
-from OF async messages - switch-add/remove, port-add/up/down/del.
+Discovery events alone are not sufficient to "discover" all links in a network. We need
+to "know" the list of switches and list of their ports. This information is collected
+from OF async messages: _switch-add, switch-remove, port-add, port-up, port-down, port-delete_.
 
 ## All events used in discovery process
-* switch-added (ignored - have meaning only in multi-FL environment)
-* switch-activated (alias switch-online)
-* switch-deactivated (alias switch-offline)
-* switch-removed (ignored - have meaning only in multi-FL environment)
-* port-up
-* port-down
-* port-add (collect extra detail - port UP/DOWN status)
-* port-delete
-* port-other-update (ignored - must be translated into port-up/down event)
+* _switch-added_ (ignored - have meaning only in multi-FL environment)
+* _switch-activated_ (alias switch-online)
+* _switch-deactivated_ (alias switch-offline)
+* _switch-removed_ (ignored - have meaning only in multi-FL environment)
+* _port-up_
+* _port-down_
+* _port-add_ (collect extra detail - port UP/DOWN status)
+* _port-delete_
+* _port-other-update_ (ignored - must be translated into port-up/down event)
 
-This events are wrapped into IslInfoData/PortInfoData messages and pushed into
-storm for processing.
+These events are wrapped into IslInfoData or PortInfoData messages and pushed into
+Storm for processing.
 
 ![workflow](Isl-create.png)
 
 # Processing layers
 
-Whole event processing is split into several layers or several nested finite
+Whole event processing is split into several layers: several nested finite
 state machines. Each layer is responsible for some specific "function".
 
 ## Switch layer
-Track switch online/offline status and track port change between switch reconnects.
-Also, populate DB with switch objects (and directly related to them objects).
+The switch layer tracks switch status changes and tracks ports changes between 
+switch reconnect events. It manages DB objects related to switches.
 
 ![Switch FSM](switch-FSM.png)
 
 ## Port anti-flapping layer
-Detect and filter out port flapping events.
+This layer detects and filters out port flapping events.
 
 ![Port AntiFlapping](AF-FSM.png)
 
 ## Port events processor
-Track port UP/DOWN state and control discovery poll process.
+The port events processor tracks port state changes (UP/DOWN) and controls 
+the discovery poll process.
  
 ![Port FSM](port-FSM.png)
 
 ## Uni-ISL layer
-Collect info about both ISL endpoint(by extracting remote point from discovery
-events). Responsible for routing ISL event (correctly populate storm tuple with 
-fields used in stream fields grouping), also responsible for tracking moved state.
+This layer collects information about both ISL endpoints by extracting remote points from discovery
+events. It is responsible for routing ISL event (correctly populate Storm tuple with 
+fields used in stream fields grouping) and for tracking moved state.
 
 ## ISL events processor
-Collect both discovery-event for both ISL directions, manage DB representation of
-ISL, emit flows reroute on ISL discovery/fail.
+The ISL events processor collects both discovery events for both ISL directions. It manages DB representation of
+ISLs. The processor emits a flow reroute on ISL discovery or fail.
 
 ![ISL FSM](ISL-FSM.png)
 
 ## BFD port
-Manage setup/remove BFD sessions
+This layer manages setting up and removing BFD sessions.
 
-![BFDPort FSM](bfd-port-FSM.png)
+![BFDPort FSM](bfd-logical-port-FSM.png)
 
 ## BFD port global toggle
-Responsible for global BFD toggle.
+This layer is responsible for the global BFD toggle.
 
 ![BFDGlobalToggleFSM](bfd-global-toggle.png)
 
 
 # Discovery poll process
-Discovery poll represented by 3 services, each one responsible for some small
+The discovery poll process is represented by 3 services, each one responsible for some small
 particular part.
 
 ![discovery-sequence-diagram](discovery-sequence.png)
 
 ## Watch list service
-Keep the list of ISL endpoints (switch + port) available for the discovery
-process i.e. The port event processor is responsible for managing add and for
-remove events into this list. Periodically for each entry in this the list,
-it produces request to the `watcher` service.
+The watch list service keeps the list of ISL endpoints (switch + port) available for
+the discovery process. The port event processor is responsible for managing _add_ and 
+_remove_ events from this list. Periodically, for each entry in this list,
+the service produces a request to the `watcher` service.
 
 ## Watcher service
-This service track the state of the particular discovery request. Using request
-from watch list service it produces discovery requests to the `speaker`.
+This service tracks the state of the particular discovery request. Using request
+from watch list, the service produces and sends discovery requests to the `speaker`.
 
 Each produced discovery request contains a unique identifier, discovery sent
-confirmation, discovery response and round trip notification are bring this
-identifier back to the watcher service. If unique identifier extracted from one
-of these responses is missing in the "wait" list of the watcher, this is
-stale/foreign response and must be ignored. See the discovery sequence diagram
+confirmation, discovery response, and round trip notification are bring this
+identifier back to the watcher service. If the unique identifier, extracted from one
+of these responses, is missing in the "wait" list of the watcher, this response is
+stale/foreign and must be ignored. See the discovery sequence diagram
 above for details.
 
-Also watcher is responsible for tracking round trip status (this status is
+The watcher service is responsible for tracking round trip status (this status is
 represented with "last round trip received time" for each network endpoint). On
-receive-round-trip event from the `speaker`, the watcher updates stored
-round-trip-status.
+receive-round-trip event from the `speaker`, the watcher service updates the
+currently stored round-trip-status.
 
-With some constant time interval (1 second should be good default) watcher
-emits round-trip-status for all managed by it network endpoints into port
-handler (it is responsible to route it to correct ISL handler). ISL handler can
-use this round-trip-status data to measure the affected time frame and use it
-during ISL state evaluation. 
+With some constant time interval (1 second should be a good default value) the 
+watcher service emits a round-trip-status event for all network endpoints
+(managed by this watcher service) into the port handler, which is responsible to route
+this event to the correct ISL handler. ISL handler can use this round-trip-status data to
+measure the affected time frame and use it during ISL state evaluation. 
 
 ## Decision maker service
 ![decision-maker-service](DiscoveryDecisionMaker-FSM.png)

@@ -30,6 +30,7 @@ public final class ProtoConstants {
         public static final long IPv4 = 0x0800;
         public static final long LLDP = 0x88CC;
         public static final long ARP = 0x0806;
+        public static final long SLOW_PROTOCOLS = 0x8809;
     }
 
     public static final class IpProto {

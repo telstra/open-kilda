@@ -59,10 +59,10 @@ public class NetworkController extends BaseController {
     public CompletableFuture<PathsDto> getPaths(
             @RequestParam("src_switch") SwitchId srcSwitchId, @RequestParam("dst_switch") SwitchId dstSwitchId,
             @ApiParam(value = "Valid values are: TRANSIT_VLAN, VXLAN. If encapsulation type is not specified, default "
-                    + "value from Kilda Configuration will be used")
+                    + "value from OpenKilda Configuration will be used")
             @RequestParam(value = "encapsulation_type", required = false) FlowEncapsulationType encapsulationType,
             @ApiParam(value = "Valid values are: COST, LATENCY, MAX_LATENCY, COST_AND_AVAILABLE_BANDWIDTH. If path "
-                    + "computation strategy is not specified, default value from Kilda Configuration will be used")
+                    + "computation strategy is not specified, default value from OpenKilda Configuration will be used")
             @RequestParam(value = "path_computation_strategy", required = false)
                     PathComputationStrategy pathComputationStrategy,
             @ApiParam(value = "Maximum latency of flow path in milliseconds. Required for MAX_LATENCY strategy. "
@@ -72,14 +72,16 @@ public class NetworkController extends BaseController {
             @ApiParam(value = "Second tier for flow path latency in milliseconds. If there is no path with required "
                     + "max_latency, max_latency_tier2 with be used instead. Used only with MAX_LATENCY strategy. "
                     + "Other strategies will ignore this parameter.")
-            @RequestParam(value = "max_latency_tier2", required = false)
-                    Long maxLatencyTier2Ms) {
+            @RequestParam(value = "max_latency_tier2", required = false) Long maxLatencyTier2Ms,
+            @ApiParam(value = "Maximum count of paths which will be calculated. "
+                    + "If maximum path count is not specified, default value from OpenKilda Configuration will be used")
+            @RequestParam(value = "max_path_count", required = false) Integer maxPathCount) {
 
         Duration maxLatency = maxLatencyMs != null ? Duration.ofMillis(maxLatencyMs) : null;
         Duration maxLatencyTier2 = maxLatencyTier2Ms != null ? Duration.ofMillis(maxLatencyTier2Ms) : null;
 
         return networkService.getPaths(srcSwitchId, dstSwitchId, encapsulationType, pathComputationStrategy, maxLatency,
-                maxLatencyTier2);
+                maxLatencyTier2, maxPathCount);
     }
 
     /**

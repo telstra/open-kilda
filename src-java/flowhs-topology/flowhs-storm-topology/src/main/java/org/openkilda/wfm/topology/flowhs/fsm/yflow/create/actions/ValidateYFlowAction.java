@@ -21,6 +21,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
@@ -34,7 +35,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.YFlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.validation.InvalidFlowException;
 import org.openkilda.wfm.topology.flowhs.validation.UnavailableFlowEndpointException;
 import org.openkilda.wfm.topology.flowhs.validation.YFlowValidator;
 
@@ -96,7 +96,8 @@ public class ValidateYFlowAction extends
                 .map(SubFlowDto::getEndpoint)
                 .collect(Collectors.toList());
         dashboardLogger.onYFlowCreate(yFlowId, targetFlow.getSharedEndpoint(), subFlowEndpoints,
-                targetFlow.getMaximumBandwidth());
+                targetFlow.getMaximumBandwidth(), targetFlow.getPathComputationStrategy(), targetFlow.getMaxLatency(),
+                targetFlow.getMaxLatencyTier2());
 
         stateMachine.saveNewEventToHistory("Y-flow was validated successfully", FlowEventData.Event.CREATE);
 

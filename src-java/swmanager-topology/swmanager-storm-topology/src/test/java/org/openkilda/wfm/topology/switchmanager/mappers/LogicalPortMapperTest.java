@@ -16,10 +16,9 @@
 package org.openkilda.wfm.topology.switchmanager.mappers;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.openkilda.wfm.topology.switchmanager.mappers.LogicalPortMapper.INSTANCE;
 
-import org.openkilda.messaging.info.switches.LogicalPortInfoEntry;
+import org.openkilda.messaging.info.switches.v2.LogicalPortInfoEntryV2;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.messaging.model.grpc.LogicalPortType;
 import org.openkilda.model.LagLogicalPort;
@@ -37,15 +36,13 @@ public class LogicalPortMapperTest {
     @Test
     public void mapLagLogicalPortTest() {
         LagLogicalPort lagLogicalPort = new LagLogicalPort(SWITCH_ID, LAG_PORT,
-                Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2));
+                Lists.newArrayList(PHYSICAL_PORT_1, PHYSICAL_PORT_2), false);
 
-        LogicalPortInfoEntry port = INSTANCE.map(lagLogicalPort);
+        LogicalPortInfoEntryV2 port = INSTANCE.map(lagLogicalPort);
         assertEquals(LAG_PORT, port.getLogicalPortNumber().intValue());
         assertEquals(2, port.getPhysicalPorts().size());
         assertEquals(PHYSICAL_PORT_1, port.getPhysicalPorts().get(0).intValue());
         assertEquals(PHYSICAL_PORT_2, port.getPhysicalPorts().get(1).intValue());
-        assertNull(port.getExpected());
-        assertNull(port.getActual());
     }
 
     @Test
@@ -57,13 +54,12 @@ public class LogicalPortMapperTest {
                 .name("some")
                 .build();
 
-        LogicalPortInfoEntry port = INSTANCE.map(logicalPort);
+        LogicalPortInfoEntryV2 port = INSTANCE.map(logicalPort);
         assertEquals(LAG_PORT, port.getLogicalPortNumber().intValue());
-        assertEquals(2, port.getPhysicalPorts().size());
+        assertEquals(logicalPort.getType().name(), port.getType().getType());
+        assertEquals(logicalPort.getPortNumbers().size(), port.getPhysicalPorts().size());
         assertEquals(PHYSICAL_PORT_1, port.getPhysicalPorts().get(0).intValue());
         assertEquals(PHYSICAL_PORT_2, port.getPhysicalPorts().get(1).intValue());
-        assertNull(port.getExpected());
-        assertNull(port.getActual());
     }
 
     @Test

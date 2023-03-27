@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows.yflows
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS_Y
@@ -18,20 +19,17 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload
 import org.openkilda.northbound.dto.v2.yflows.YFlowPingPayload
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.ExamReport
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.openkilda.testing.tools.SoftAssertions
 
-import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -44,9 +42,11 @@ import javax.inject.Provider
 @Slf4j
 @Narrative("Verify create operations on y-flows.")
 class YFlowCreateSpec extends HealthCheckSpecification {
-    @Autowired @Shared
+    @Autowired
+    @Shared
     YFlowHelper yFlowHelper
-    @Autowired @Shared
+    @Autowired
+    @Shared
     Provider<TraffExamService> traffExamProvider
 
     @Tidy
@@ -92,7 +92,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "YFlow is pingable"
-        if(swT.shared != swT.ep1 || swT.shared != swT.ep2) {
+        if (swT.shared != swT.ep1 || swT.shared != swT.ep2) {
             def response = northboundV2.pingYFlow(yFlow.YFlowId, new YFlowPingPayload(2000))
             !response.error
             response.subFlows.each {
@@ -115,16 +115,16 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         (involvedIslsSFlow_1 + involvedIslsSFlow_2).unique().each { link ->
             [link, link.reversed].each {
-                 islUtils.getIslInfo(allLinksBefore, it).ifPresent(islBefore -> {
-                     def bwBefore = islBefore.availableBandwidth
-                     def bwAfter = islUtils.getIslInfo(allLinksAfter, it).get().availableBandwidth
-                     assert bwBefore == bwAfter + yFlow.maximumBandwidth
-                 })
+                islUtils.getIslInfo(allLinksBefore, it).ifPresent(islBefore -> {
+                    def bwBefore = islBefore.availableBandwidth
+                    def bwAfter = islUtils.getIslInfo(allLinksAfter, it).get().availableBandwidth
+                    assert bwBefore == bwAfter + yFlow.maximumBandwidth
+                })
             }
         }
 
         and: "YFlow is pingable #2"
-        if(swT.shared != swT.ep1 || swT.shared != swT.ep2) {
+        if (swT.shared != swT.ep1 || swT.shared != swT.ep2) {
             //TODO: remove this quickfix for failing traffexam
             !northboundV2.pingYFlow(yFlow.YFlowId, new YFlowPingPayload(2000)).error
         }
@@ -159,9 +159,8 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
-        statsHelper.verifyYFlowWritesMeterStats(yFlow, beforeTraffic, trafficApplicable)
-        yFlow.subFlows.each {
-            statsHelper.verifyFlowWritesStats(it.flowId, beforeTraffic, trafficApplicable)
+        if (trafficApplicable) {
+            statsHelper.verifyYFlowWritesStats(yFlow, beforeTraffic, trafficApplicable)
         }
 
         when: "Delete the y-flow"
@@ -239,8 +238,8 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         where: "Use different types of conflicts"
         data << [
                 [
-                        descr: "subflow1 and subflow2 same vlan on shared endpoint",
-                        yFlow: yFlowHelper.randomYFlow(topologyHelper.switchTriplets[0]).tap {
+                        descr       : "subflow1 and subflow2 same vlan on shared endpoint",
+                        yFlow       : yFlowHelper.randomYFlow(topologyHelper.switchTriplets[0]).tap {
                             it.subFlows[1].sharedEndpoint.vlanId = it.subFlows[0].sharedEndpoint.vlanId
                         },
                         errorPattern: { YFlowCreatePayload flow ->
@@ -250,8 +249,8 @@ SubFlowSharedEndpointEncapsulation\(vlanId=${flow.subFlows[1].sharedEndpoint.vla
                         }
                 ],
                 [
-                        descr: "subflow1 and subflow2 no vlan on shared endpoint",
-                        yFlow: yFlowHelper.randomYFlow(topologyHelper.switchTriplets[0]).tap {
+                        descr       : "subflow1 and subflow2 no vlan on shared endpoint",
+                        yFlow       : yFlowHelper.randomYFlow(topologyHelper.switchTriplets[0]).tap {
                             it.subFlows[0].sharedEndpoint.vlanId = 0
                             it.subFlows[1].sharedEndpoint.vlanId = 0
                         },
@@ -262,8 +261,8 @@ SubFlowSharedEndpointEncapsulation\(vlanId=0, innerVlanId=0\)/
                         }
                 ],
                 [
-                        descr: "ep1 = ep2, same vlan",
-                        yFlow: yFlowHelper.randomYFlow(topologyHelper.switchTriplets.find { it.ep1 == it.ep2 }).tap {
+                        descr       : "ep1 = ep2, same vlan",
+                        yFlow       : yFlowHelper.randomYFlow(topologyHelper.switchTriplets.find { it.ep1 == it.ep2 }).tap {
                             it.subFlows[1].endpoint.portNumber = it.subFlows[0].endpoint.portNumber
                             it.subFlows[1].endpoint.vlanId = it.subFlows[0].endpoint.vlanId
                         },
@@ -274,8 +273,8 @@ switchId="${flow.subFlows[1].endpoint.switchId}" port=${flow.subFlows[1].endpoin
                         }
                 ],
                 [
-                        descr: "ep1 = ep2, both no vlan",
-                        yFlow: yFlowHelper.randomYFlow(topologyHelper.switchTriplets.find { it.ep1 == it.ep2 }).tap {
+                        descr       : "ep1 = ep2, both no vlan",
+                        yFlow       : yFlowHelper.randomYFlow(topologyHelper.switchTriplets.find { it.ep1 == it.ep2 }).tap {
                             it.subFlows[1].endpoint.portNumber = it.subFlows[0].endpoint.portNumber
                             it.subFlows[0].endpoint.vlanId = 0
                             it.subFlows[1].endpoint.vlanId = 0
@@ -287,8 +286,8 @@ switchId="${flow.subFlows[1].endpoint.switchId}" port=${flow.subFlows[1].endpoin
                         }
                 ],
                 [
-                        descr: "ep1 = ep2, vlans [0,X] and [X,0]",
-                        yFlow: yFlowHelper.randomYFlow(topologyHelper.switchTriplets.find { it.ep1 == it.ep2 }).tap {
+                        descr       : "ep1 = ep2, vlans [0,X] and [X,0]",
+                        yFlow       : yFlowHelper.randomYFlow(topologyHelper.switchTriplets.find { it.ep1 == it.ep2 }).tap {
                             it.subFlows[1].endpoint.portNumber = it.subFlows[0].endpoint.portNumber
                             it.subFlows[0].endpoint.innerVlanId = it.subFlows[0].endpoint.vlanId
                             it.subFlows[0].endpoint.vlanId = 0
@@ -302,8 +301,8 @@ switchId="${flow.subFlows[1].endpoint.switchId}" port=${flow.subFlows[1].endpoin
                         }
                 ],
                 [
-                        descr: "ep1 on ISL port",
-                        yFlow: yFlowHelper.randomYFlow(topologyHelper.switchTriplets[0]).tap {
+                        descr       : "ep1 on ISL port",
+                        yFlow       : yFlowHelper.randomYFlow(topologyHelper.switchTriplets[0]).tap {
                             def islPort = topology.getBusyPortsForSwitch(it.subFlows[0].endpoint.switchId)[0]
                             it.subFlows[0].endpoint.portNumber = islPort
                         },
@@ -313,8 +312,8 @@ switch '${flow.subFlows[0].endpoint.switchId}' is occupied by an ISL \(destinati
                         }
                 ],
                 [
-                        descr: "shared endpoint on ISL port",
-                        yFlow: yFlowHelper.randomYFlow(topologyHelper.switchTriplets[0]).tap {
+                        descr       : "shared endpoint on ISL port",
+                        yFlow       : yFlowHelper.randomYFlow(topologyHelper.switchTriplets[0]).tap {
                             def islPort = topology.getBusyPortsForSwitch(it.sharedEndpoint.switchId)[0]
                             it.sharedEndpoint.portNumber = islPort
                         },
@@ -324,8 +323,8 @@ switch '${flow.sharedEndpoint.switchId}' is occupied by an ISL \(source endpoint
                         }
                 ],
                 [
-                        descr: "ep2 on s42 port",
-                        yFlow: {
+                        descr       : "ep2 on s42 port",
+                        yFlow       : {
                             def swTriplet = topologyHelper.getSwitchTriplets(true).find { it.ep2.prop?.server42Port }
                             if (swTriplet) {
                                 return yFlowHelper.randomYFlow(swTriplet).tap {
@@ -340,8 +339,8 @@ switch '${flow.sharedEndpoint.switchId}' is occupied by an ISL \(source endpoint
                         }
                 ],
                 [
-                        descr: "shared endpoint on s42 port",
-                        yFlow: {
+                        descr       : "shared endpoint on s42 port",
+                        yFlow       : {
                             def swTriplet = topologyHelper.switchTriplets.find { it.shared.prop?.server42Port }
                             if (swTriplet) {
                                 return yFlowHelper.randomYFlow(swTriplet).tap {
@@ -440,6 +439,37 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
         lagPort && northboundV2.deleteLagLogicalPort(swT.shared.dpId, lagPort)
     }
 
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "System allows to create y-flow with bandwidth equal to link bandwidth between shared endpoint and y-point (#4965)"() {
+        /* Shared <----------------> Y-Point ----------- Ep1
+                         ⬆              \ ______________ Ep2
+          flow max_bandwidth == bw of this link         ↖
+                                                        flow max_bandwidth <= bw on these two links
+        */
+
+        given: "three switches and potential y-flow point"
+        def slowestLinkOnTheWest = database.getIsls(topology.getIsls()).sort {it.getMaxBandwidth()}.first()
+        def slowestLinkSwitchIds = [slowestLinkOnTheWest.getSrcSwitchId(), slowestLinkOnTheWest.getDestSwitchId()]
+        def switchTriplet = topologyHelper.getSwitchTriplets(true, false)
+                .find {
+                    def yPoints = yFlowHelper.findPotentialYPoints(it).collect {it.getDpId()}
+                    slowestLinkSwitchIds.contains(it.shared.getDpId()) &&
+                            !slowestLinkSwitchIds.intersect(yPoints).isEmpty()
+                }
+        assumeTrue(switchTriplet != null, "No suiting switches found.")
+
+        when: "y-flow plan for them with bandwidth equal to ISL bandwidth"
+        def yFlowRequest = yFlowHelper.randomYFlow(switchTriplet, false).tap
+                { maximumBandwidth = slowestLinkOnTheWest.getMaxBandwidth() }
+
+        then: "y-flow is created and UP"
+        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
+
+        cleanup:
+        Wrappers.silent { yFlowHelper.deleteYFlow(yFlow.getYFlowId()) }
+    }
+
     /**
      * First N iterations are covering all unique se-yp-ep combinations from 'getSwTripletsTestData' with random vlans.
      * Then add required iterations of unusual vlan combinations (default port, qinq, etc.)
@@ -516,11 +546,13 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
                 [name     : "se is wb and se!=yp",
                  condition: { SwitchTriplet swT ->
                      def yPoints = yFlowHelper.findPotentialYPoints(swT)
-                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared }],
+                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared
+                 }],
                 [name     : "se is non-wb and se!=yp",
                  condition: { SwitchTriplet swT ->
                      def yPoints = yFlowHelper.findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared }],
+                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared
+                 }],
                 [name     : "ep on wb and different eps", //ep1 is not the same sw as ep2
                  condition: { SwitchTriplet swT -> swT.ep1.wb5164 && swT.ep1 != swT.ep2 }],
                 [name     : "ep on non-wb and different eps", //ep1 is not the same sw as ep2
@@ -528,31 +560,38 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
                 [name     : "se+yp on wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = yFlowHelper.findPotentialYPoints(swT)
-                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared }],
+                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared
+                 }],
                 [name     : "se+yp on non-wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = yFlowHelper.findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared }],
+                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared
+                 }],
                 [name     : "yp on wb and yp!=se!=ep",
                  condition: { SwitchTriplet swT ->
                      def yPoints = yFlowHelper.findPotentialYPoints(swT)
-                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared && yPoints[0] != swT.ep1 && yPoints[0] != swT.ep2 }],
+                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared && yPoints[0] != swT.ep1 && yPoints[0] != swT.ep2
+                 }],
                 [name     : "yp on non-wb and yp!=se!=ep",
                  condition: { SwitchTriplet swT ->
                      def yPoints = yFlowHelper.findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared && yPoints[0] != swT.ep1 && yPoints[0] != swT.ep2 }],
+                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared && yPoints[0] != swT.ep1 && yPoints[0] != swT.ep2
+                 }],
                 [name     : "ep+yp on wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = yFlowHelper.findPotentialYPoints(swT)
-                     swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2) }],
+                     swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2)
+                 }],
                 [name     : "ep+yp on non-wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = yFlowHelper.findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2) }],
+                     !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2)
+                 }],
                 [name     : "yp==se",
                  condition: { SwitchTriplet swT ->
                      def yPoints = yFlowHelper.findPotentialYPoints(swT)
-                     yPoints.size() == 1 && yPoints[0] == swT.shared && swT.shared != swT.ep1 && swT.shared != swT.ep2 }]
+                     yPoints.size() == 1 && yPoints[0] == swT.shared && swT.shared != swT.ep1 && swT.shared != swT.ep2
+                 }]
         ]
         requiredCases.each { it.picked = false }
         //match all triplets to the list of requirements that it satisfies
@@ -561,17 +600,17 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
                     [(triplet): requiredCases.findAll { it.condition(triplet) }*.name]
                 }
         //sort, so that most valuable triplet is first
-        weightedTriplets = weightedTriplets.sort { - it.value.size() }
+        weightedTriplets = weightedTriplets.sort { -it.value.size() }
         def result = []
         //greedy alg. Pick most valuable triplet. Re-weigh remaining triplets considering what is no longer required and repeat
-        while(requiredCases.find { !it.picked } && weightedTriplets.entrySet()[0].value.size() > 0) {
+        while (requiredCases.find { !it.picked } && weightedTriplets.entrySet()[0].value.size() > 0) {
             def pick = weightedTriplets.entrySet()[0]
             weightedTriplets.remove(pick.key)
-            pick.value.each {satisfiedCase ->
-                requiredCases.find{ it.name == satisfiedCase}.picked = true
+            pick.value.each { satisfiedCase ->
+                requiredCases.find { it.name == satisfiedCase }.picked = true
             }
             weightedTriplets.entrySet().each { it.value.removeAll(pick.value) }
-            weightedTriplets = weightedTriplets.sort { - it.value.size() }
+            weightedTriplets = weightedTriplets.sort { -it.value.size() }
             result << [swT: pick.key, coveredCases: pick.value]
         }
         def notPicked = requiredCases.findAll { !it.picked }

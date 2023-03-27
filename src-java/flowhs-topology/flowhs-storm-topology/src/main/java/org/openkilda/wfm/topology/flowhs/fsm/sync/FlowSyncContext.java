@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.sync;
 
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.PathId;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathResultCode;
@@ -30,4 +31,6 @@ public class FlowSyncContext {
 
     PathId pathId;
     FlowPathResultCode pathResultCode;
+
+    SpeakerCommandResponse speakerRuleResponse;
 }

@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -162,7 +162,8 @@ public class YFlowReadService {
                         IntersectionComputer protectedIntersectionComputer = new IntersectionComputer(
                                 flow.getFlowId(), flow.getProtectedForwardPathId(), flow.getProtectedReversePathId(),
                                 flowPathsInDiverseGroup);
-                        protectedDtoBuilder.segmentsStats(protectedIntersectionComputer.getOverlappingStats());
+                        protectedDtoBuilder.segmentsStats(
+                                protectedIntersectionComputer.getOverlappingStats());
 
                         flowsInDiverseGroup.stream()
                                 .map(diverseFlow ->
@@ -243,7 +244,8 @@ public class YFlowReadService {
         FlowPathDto.FlowPathDtoBuilder builder = buildFlowPathDto(flow)
                 .primaryPathCorrespondStat(primaryPathCorrespondStat)
                 .segmentsStats(
-                        intersectionComputer.getOverlappingStats(flow.getForwardPathId(), flow.getReversePathId()));
+                        intersectionComputer.getOverlappingStats(flow.getForwardPathId(),
+                                flow.getReversePathId()));
         if (flow.isAllocateProtectedPath()) {
             FlowProtectedPathDto.FlowProtectedPathDtoBuilder protectedPathBuilder = buildFlowProtectedPathDto(flow)
                     .segmentsStats(

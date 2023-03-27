@@ -101,6 +101,10 @@ public interface SwitchManagerTopologyConfig  extends AbstractTopologyConfig {
     @Default("15")
     int getChunkedMessagesExpirationMinutes();
 
+    @Key("swmanager.kafka.chunked.messages.size")
+    @Default("500")
+    int getChunkedMessagesChunkSize();
+
     @Key("swmanager.of.commands.batch.size")
     @Default("500")
     int getOfCommandsBatchSize();

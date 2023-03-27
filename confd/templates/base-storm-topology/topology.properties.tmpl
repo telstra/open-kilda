@@ -113,6 +113,7 @@ local.execution.time = 3000
 #######
 # Path computation engine
 pce.network.strategy = {{ getv "/kilda_pce_network_strategy" }}
+pce.max.path.count = {{ getv "/kilda_pce_max_path_count" }}
 #######
 # cost strategy params
 # value added to path weight for each isl used in the same diversity group
@@ -178,3 +179,4 @@ server42-isl-rtt-magic-mac-address = {{ getv "/kilda_floodlight_server42_isl_rtt
 
 # swmanager
 swmanager.of.commands.batch.size = {{ getv "/kilda_swmanager_of_commands_batch_size" }}
+swmanager.kafka.chunked.messages.size = {{ getv "/kilda_swmanager_kafka_chunked_messages_size" }}

@@ -16,6 +16,7 @@
 package org.openkilda.testing.service.northbound;
 
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.openkilda.messaging.payload.network.PathValidationPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
@@ -27,6 +28,11 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.flows.PathValidateResponse;
+import org.openkilda.northbound.dto.v2.haflows.HaFlow;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.links.BfdProperties;
 import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
@@ -37,6 +43,7 @@ import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlow;
@@ -50,6 +57,7 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult;
 
 import java.util.Date;
 import java.util.List;
@@ -126,6 +134,8 @@ public interface NorthboundServiceV2 {
 
     LagPortResponse deleteLagLogicalPort(SwitchId switchId, Integer logicalPortNumber);
 
+    SwitchFlowsPerPortResponse getSwitchFlows(SwitchId switchId, List<Integer> portIds);
+
     //links
     BfdPropertiesPayload setLinkBfd(TopologyDefinition.Isl isl);
 
@@ -166,4 +176,24 @@ public interface NorthboundServiceV2 {
     YFlowPingResult pingYFlow(String yFlowId, YFlowPingPayload payload);
 
     YFlow swapYFlowPaths(String yFlowId);
+
+    SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId);
+
+    SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId, String include, String exclude);
+
+    //network
+    PathValidateResponse checkPath(PathValidationPayload pathValidationPayload);
+
+    //ha-flows
+    HaFlow getHaFlow(String haFlowId);
+
+    List<HaFlow> getAllHaFlows();
+
+    HaFlow addHaFlow(HaFlowCreatePayload request);
+
+    HaFlow updateHaFlow(String haFlowId, HaFlowUpdatePayload request);
+
+    HaFlow partialUpdateHaFlow(String haFlowId, HaFlowPatchPayload request);
+
+    HaFlow deleteHaFlow(String haFlowId);
 }

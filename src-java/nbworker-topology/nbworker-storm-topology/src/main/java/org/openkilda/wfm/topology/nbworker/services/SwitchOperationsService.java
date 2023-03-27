@@ -18,12 +18,15 @@ package org.openkilda.wfm.topology.nbworker.services;
 import static java.lang.String.format;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.SwitchAvailabilityData;
 import org.openkilda.messaging.model.SwitchPatch;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
+import org.openkilda.messaging.nbtopology.response.GetFlowsPerPortForSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchConnectionsResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
+import org.openkilda.model.DetectConnectedDevices.DetectConnectedDevicesBuilder;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
@@ -61,6 +64,7 @@ import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.error.SwitchPropertiesNotFoundException;
+import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
 import org.openkilda.wfm.share.mappers.SwitchPropertiesMapper;
 
@@ -68,10 +72,14 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -205,6 +213,9 @@ public class SwitchOperationsService {
                     .forEach(portPropertiesRepository::remove);
             portRepository.getAllBySwitchId(sw.getSwitchId())
                     .forEach(portRepository::remove);
+            switchConnectedDeviceRepository.findBySwitchId(switchId)
+                    .forEach(switchConnectedDeviceRepository::remove);
+
             if (force) {
                 // remove() removes switch along with all relationships.
                 switchRepository.remove(sw);
@@ -341,6 +352,8 @@ public class SwitchOperationsService {
 
             // must be called before updating of switchProperties object
             final boolean isSwitchSyncNeeded = isSwitchSyncNeeded(switchProperties, update);
+            final boolean switchLldpChanged = switchProperties.isSwitchLldp() != update.isSwitchLldp();
+            final boolean switchArpChanged = switchProperties.isSwitchArp() != update.isSwitchArp();
 
             switchProperties.setMultiTable(update.isMultiTable());
             switchProperties.setSwitchLldp(update.isSwitchLldp());
@@ -355,8 +368,14 @@ public class SwitchOperationsService {
             log.info("Updating {} switch properties from {} to {}. Is switch sync needed: {}",
                     switchId, oldProperties, switchProperties, isSwitchSyncNeeded);
             return new UpdateSwitchPropertiesResult(
-                    SwitchPropertiesMapper.INSTANCE.map(switchProperties), isSwitchSyncNeeded);
+                    SwitchPropertiesMapper.INSTANCE.map(switchProperties), isSwitchSyncNeeded,
+                    switchLldpChanged, switchArpChanged);
         });
+
+
+        if (result.switchLldpChanged || result.switchArpChanged) {
+            updateFLowDetectedConnectedDevices(switchId, update);
+        }
 
         if (result.isSwitchSyncRequired()) {
             carrier.requestSwitchSync(switchId);
@@ -375,6 +394,25 @@ public class SwitchOperationsService {
         }
 
         return result.switchPropertiesDto;
+    }
+
+    private void updateFLowDetectedConnectedDevices(SwitchId switchId, SwitchProperties updateProperties) {
+        transactionManager.doInTransaction(() -> {
+            Collection<Flow> flows = flowRepository.findByEndpointSwitch(switchId);
+
+            for (Flow flow : flows) {
+                DetectConnectedDevicesBuilder updatedConnectedDevices = flow.getDetectConnectedDevices().toBuilder();
+                if (switchId.equals(flow.getSrcSwitchId())) {
+                    updatedConnectedDevices.srcSwitchLldp(updateProperties.isSwitchLldp());
+                    updatedConnectedDevices.srcSwitchArp(updateProperties.isSwitchArp());
+                }
+                if (switchId.equals(flow.getDestSwitchId())) {
+                    updatedConnectedDevices.dstSwitchLldp(updateProperties.isSwitchLldp());
+                    updatedConnectedDevices.dstSwitchArp(updateProperties.isSwitchArp());
+                }
+                flow.setDetectConnectedDevices(updatedConnectedDevices.build());
+            }
+        });
     }
 
     private boolean isSwitchSyncNeeded(SwitchProperties current, SwitchProperties updated) {
@@ -587,10 +625,37 @@ public class SwitchOperationsService {
         return new SwitchConnectionsResponse(sw.getSwitchId(), sw.getStatus(), payload.build());
     }
 
+    /**
+     * Returns a mapping of all distinct flows per each port for the given switch.
+     *
+     * @param switchId the target switch
+     * @param ports filters the output to contain these ports only
+     */
+    public GetFlowsPerPortForSwitchResponse getSwitchFlows(SwitchId switchId, Collection<Integer> ports)
+            throws SwitchNotFoundException {
+        if (!switchRepository.exists(switchId)) {
+            throw new SwitchNotFoundException(switchId);
+        }
+
+        return new GetFlowsPerPortForSwitchResponse(
+                flowRepository.findSwitchFlowsByPort(switchId, ports)
+                        .entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey,
+                                entry -> entry.getValue().stream()
+                                        .map(FlowMapper.INSTANCE::map).collect(Collectors.toList()),
+                                (l1, l2) -> Stream.of(l1, l2)
+                                        .flatMap(Collection::stream)
+                                        .collect(Collectors.toCollection(() ->
+                                                new TreeSet<>(Comparator.comparing(FlowDto::getFlowId)))),
+                                TreeMap::new)));
+
+    }
+
     @Value
     private class UpdateSwitchPropertiesResult {
-        private SwitchPropertiesDto switchPropertiesDto;
-        private boolean switchSyncRequired;
-
+        SwitchPropertiesDto switchPropertiesDto;
+        boolean switchSyncRequired;
+        boolean switchLldpChanged;
+        boolean switchArpChanged;
     }
 }

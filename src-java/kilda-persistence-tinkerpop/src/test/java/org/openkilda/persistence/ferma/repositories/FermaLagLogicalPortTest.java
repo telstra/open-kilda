@@ -27,6 +27,7 @@ import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -34,17 +35,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class FermaLagLogicalPortTest extends InMemoryGraphBasedTest {
-    static final SwitchId SWITCH_ID_1 = new SwitchId(1);
-    static final SwitchId SWITCH_ID_2 = new SwitchId(2);
-    static final SwitchId SWITCH_ID_3 = new SwitchId(3);
     static final int LOGICAL_PORT_NUMBER_1 = 1;
     static final int LOGICAL_PORT_NUMBER_2 = 2;
-    static final int LOGICAL_PORT_NUMBER_3 = 2;
-    static final int PHYSICAL_PORT_NUMBER_1 = 4;
-    static final int PHYSICAL_PORT_NUMBER_2 = 5;
+    static final int LOGICAL_PORT_NUMBER_3 = 3;
+    static final int LOGICAL_PORT_NUMBER_4 = 4;
+    static final int PHYSICAL_PORT_NUMBER_1 = 5;
+    static final int PHYSICAL_PORT_NUMBER_2 = 6;
 
     LagLogicalPortRepository lagLogicalPortRepository;
     PhysicalPortRepository physicalPortRepository;
@@ -57,9 +57,9 @@ public class FermaLagLogicalPortTest extends InMemoryGraphBasedTest {
 
     @Test
     public void createLogicalPortWithoutPhysicalPortsTest() {
-        createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1);
-        createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_2);
-        createLogicalPort(SWITCH_ID_2, LOGICAL_PORT_NUMBER_3);
+        createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1, true);
+        createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_2, false);
+        createLogicalPort(SWITCH_ID_2, LOGICAL_PORT_NUMBER_3, true);
 
         List<LagLogicalPort> ports = new ArrayList<>(lagLogicalPortRepository.findAll());
 
@@ -77,11 +77,15 @@ public class FermaLagLogicalPortTest extends InMemoryGraphBasedTest {
         assertEquals(0, ports.get(0).getPhysicalPorts().size());
         assertEquals(0, ports.get(1).getPhysicalPorts().size());
         assertEquals(0, ports.get(2).getPhysicalPorts().size());
+
+        assertTrue(ports.get(0).isLacpReply());
+        assertFalse(ports.get(1).isLacpReply());
+        assertTrue(ports.get(2).isLacpReply());
     }
 
     @Test
     public void createLogicalPortWithPhysicalPortsTest() {
-        LagLogicalPort logicalPort = createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1,
+        LagLogicalPort logicalPort = createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1, true,
                 PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2);
 
         List<LagLogicalPort> ports = new ArrayList<>(lagLogicalPortRepository.findAll());
@@ -96,11 +100,13 @@ public class FermaLagLogicalPortTest extends InMemoryGraphBasedTest {
 
         assertEquals(logicalPort, ports.get(0).getPhysicalPorts().get(0).getLagLogicalPort());
         assertEquals(logicalPort, ports.get(0).getPhysicalPorts().get(1).getLagLogicalPort());
+
+        assertTrue(ports.get(0).isLacpReply());
     }
 
     @Test
     public void createLogicalPortAndSetPhysicalPortsTest() {
-        LagLogicalPort logicalPort = createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1);
+        LagLogicalPort logicalPort = createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1, false);
         assertEquals(0, lagLogicalPortRepository.findAll().iterator().next().getPhysicalPorts().size());
 
         PhysicalPort physicalPort1 = createPhysicalPort(SWITCH_ID_1, PHYSICAL_PORT_NUMBER_1, logicalPort);
@@ -123,15 +129,15 @@ public class FermaLagLogicalPortTest extends InMemoryGraphBasedTest {
 
     @Test
     public void removeLogicalPortTest() {
-        LagLogicalPort logicalPort1 = createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1,
+        LagLogicalPort logicalPort1 = createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1, true,
                 PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2);
-        LagLogicalPort logicalPort2 = createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1);
+        LagLogicalPort logicalPort2 = createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_2, false);
 
         transactionManager.doInTransaction(() -> lagLogicalPortRepository.remove(logicalPort2));
 
         List<LagLogicalPort> ports = new ArrayList<>(lagLogicalPortRepository.findAll());
         assertEquals(1, ports.size());
-        assertEquals(2, ports.get(0).getPhysicalPorts().size());
+        basicLagAssert(LOGICAL_PORT_NUMBER_1, 2, true, ports.get(0));
         assertEquals(2, physicalPortRepository.findAll().size());
 
         transactionManager.doInTransaction(() -> lagLogicalPortRepository.remove(logicalPort1));
@@ -142,44 +148,64 @@ public class FermaLagLogicalPortTest extends InMemoryGraphBasedTest {
 
     @Test
     public void findBySwitchIdTest() {
-        createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2);
-        createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_2);
-        createLogicalPort(SWITCH_ID_3, LOGICAL_PORT_NUMBER_3);
+        createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1, false, PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2);
+        createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_2, true);
+        createLogicalPort(SWITCH_ID_3, LOGICAL_PORT_NUMBER_3, false);
 
         List<LagLogicalPort> foundPorts = new ArrayList<>(lagLogicalPortRepository.findBySwitchId(SWITCH_ID_1));
         foundPorts.sort(Comparator.comparingInt(LagLogicalPort::getLogicalPortNumber));
 
-        assertEquals(LOGICAL_PORT_NUMBER_1, foundPorts.get(0).getLogicalPortNumber());
-        assertEquals(LOGICAL_PORT_NUMBER_2, foundPorts.get(1).getLogicalPortNumber());
-        assertEquals(2, foundPorts.get(0).getPhysicalPorts().size());
-        assertEquals(0, foundPorts.get(1).getPhysicalPorts().size());
+        basicLagAssert(LOGICAL_PORT_NUMBER_1, 2, false, foundPorts.get(0));
+        basicLagAssert(LOGICAL_PORT_NUMBER_2, 0, true, foundPorts.get(1));
 
         assertEquals(0, lagLogicalPortRepository.findBySwitchId(SWITCH_ID_2).size());
     }
 
     @Test
+    public void findBySwitchIdsTest() {
+        createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1, true, PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2);
+        createLogicalPort(SWITCH_ID_2, LOGICAL_PORT_NUMBER_2, false);
+        createLogicalPort(SWITCH_ID_2, LOGICAL_PORT_NUMBER_3, true);
+        createLogicalPort(SWITCH_ID_3, LOGICAL_PORT_NUMBER_4, false);
+
+        Map<SwitchId, List<LagLogicalPort>> foundPorts = lagLogicalPortRepository.findBySwitchIds(
+                Sets.newHashSet(SWITCH_ID_1, SWITCH_ID_2));
+
+        assertEquals(2, foundPorts.size());
+
+        assertEquals(1, foundPorts.get(SWITCH_ID_1).size());
+        basicLagAssert(LOGICAL_PORT_NUMBER_1, 2, true, foundPorts.get(SWITCH_ID_1).get(0));
+
+        assertEquals(2, foundPorts.get(SWITCH_ID_2).size());
+        foundPorts.get(SWITCH_ID_2).sort(Comparator.comparingInt(LagLogicalPort::getLogicalPortNumber));
+        basicLagAssert(LOGICAL_PORT_NUMBER_2, 0, false, foundPorts.get(SWITCH_ID_2).get(0));
+        basicLagAssert(LOGICAL_PORT_NUMBER_3, 0, true, foundPorts.get(SWITCH_ID_2).get(1));
+
+        assertEquals(0, lagLogicalPortRepository.findBySwitchIds(Sets.newHashSet(SWITCH_ID_4)).size());
+    }
+
+    @Test
     public void findBySwitchIdAndPortNumberTest() {
-        createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2);
-        createLogicalPort(SWITCH_ID_2, LOGICAL_PORT_NUMBER_2);
+        createLogicalPort(SWITCH_ID_1, LOGICAL_PORT_NUMBER_1, true, PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2);
+        createLogicalPort(SWITCH_ID_2, LOGICAL_PORT_NUMBER_2, false);
 
         Optional<LagLogicalPort> foundPort1 = lagLogicalPortRepository.findBySwitchIdAndPortNumber(
                 SWITCH_ID_1, LOGICAL_PORT_NUMBER_1);
         assertTrue(foundPort1.isPresent());
-        assertEquals(LOGICAL_PORT_NUMBER_1, foundPort1.get().getLogicalPortNumber());
-        assertEquals(2, foundPort1.get().getPhysicalPorts().size());
+        basicLagAssert(LOGICAL_PORT_NUMBER_1, 2, true, foundPort1.get());
 
         Optional<LagLogicalPort> foundPort2 = lagLogicalPortRepository.findBySwitchIdAndPortNumber(
                 SWITCH_ID_2, LOGICAL_PORT_NUMBER_2);
         assertTrue(foundPort2.isPresent());
-        assertEquals(LOGICAL_PORT_NUMBER_2, foundPort2.get().getLogicalPortNumber());
-        assertEquals(0, foundPort2.get().getPhysicalPorts().size());
+        basicLagAssert(LOGICAL_PORT_NUMBER_2, 0, false, foundPort2.get());
 
         assertFalse(lagLogicalPortRepository.findBySwitchIdAndPortNumber(
                 SWITCH_ID_3, LOGICAL_PORT_NUMBER_3).isPresent());
     }
 
-    private LagLogicalPort createLogicalPort(SwitchId switchId, int logicalPortNumber, Integer... physicalPorts) {
-        LagLogicalPort port = new LagLogicalPort(switchId, logicalPortNumber, Arrays.asList(physicalPorts));
+    private LagLogicalPort createLogicalPort(
+            SwitchId switchId, int logicalPortNumber, boolean lacpReply, Integer... physicalPorts) {
+        LagLogicalPort port = new LagLogicalPort(switchId, logicalPortNumber, Arrays.asList(physicalPorts), lacpReply);
         lagLogicalPortRepository.add(port);
         return port;
     }
@@ -188,5 +214,12 @@ public class FermaLagLogicalPortTest extends InMemoryGraphBasedTest {
         PhysicalPort port = new PhysicalPort(switchId, physicalPortNumber, logicalPort);
         physicalPortRepository.add(port);
         return port;
+    }
+
+    private void basicLagAssert(
+            int expectedPortNumber, int expectedPhysPortCount, boolean expectedLacpReply, LagLogicalPort port) {
+        assertEquals(expectedPortNumber, port.getLogicalPortNumber());
+        assertEquals(expectedPhysPortCount, port.getPhysicalPorts().size());
+        assertEquals(expectedLacpReply, port.isLacpReply());
     }
 }

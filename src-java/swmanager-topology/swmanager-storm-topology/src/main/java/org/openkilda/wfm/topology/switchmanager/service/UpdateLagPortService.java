@@ -15,12 +15,15 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.grpc.CreateOrUpdateLogicalPortResponse;
 import org.openkilda.messaging.swmanager.request.UpdateLagPortRequest;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.error.MessageDispatchException;
 import org.openkilda.wfm.error.UnexpectedInputException;
 import org.openkilda.wfm.topology.switchmanager.error.InconsistentDataException;
@@ -49,8 +52,8 @@ public class UpdateLagPortService implements SwitchManagerHubService {
 
     private boolean active = true;
 
-    public UpdateLagPortService(SwitchManagerCarrier carrier, LagPortOperationConfig config) {
-        this(carrier, new LagPortOperationService(config));
+    public UpdateLagPortService(SwitchManagerCarrier carrier, LagPortOperationConfig config, RuleManager ruleManager) {
+        this(carrier, new LagPortOperationService(config, ruleManager));
     }
 
     public UpdateLagPortService(SwitchManagerCarrier carrier, LagPortOperationService operationService) {
@@ -99,8 +102,25 @@ public class UpdateLagPortService implements SwitchManagerHubService {
     }
 
     @Override
+    public void dispatchWorkerMessage(SpeakerResponse payload, MessageCookie cookie)
+            throws UnexpectedInputException, MessageDispatchException {
+        if (payload instanceof SpeakerCommandResponse) {
+            SpeakerCommandResponse response = (SpeakerCommandResponse) payload;
+            if (response.isSuccess()) {
+                process(cookie, (h,  nested) -> h.dispatchFloodlightResponse(payload, nested));
+            } else {
+                ErrorData errorData = new ErrorData(ErrorType.INTERNAL_ERROR, "OpenFlow commands failed",
+                        response.getFailedCommandIds().values().toString());
+                dispatchErrorMessage(errorData, cookie);
+            }
+        } else {
+            throw new UnexpectedInputException(payload);
+        }
+    }
+
+    @Override
     public void dispatchErrorMessage(ErrorData payload, MessageCookie cookie) throws MessageDispatchException {
-        process(cookie, (h,  nested) -> h.dispatchGrpcResponse(payload, nested));
+        process(cookie, (h,  nested) -> h.dispatchErrorResponse(payload, nested));
     }
 
     @Override

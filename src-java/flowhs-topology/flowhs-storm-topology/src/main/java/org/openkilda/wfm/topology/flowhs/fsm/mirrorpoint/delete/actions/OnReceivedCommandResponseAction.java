@@ -17,10 +17,11 @@ package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.converters.OfCommandConverter;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.Event;
@@ -28,7 +29,10 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointD
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class OnReceivedCommandResponseAction
@@ -44,42 +48,46 @@ public class OnReceivedCommandResponseAction
     @Override
     protected void perform(State from, State to, Event event,
                            FlowMirrorPointDeleteContext context, FlowMirrorPointDeleteFsm stateMachine) {
-        SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
+        SpeakerCommandResponse response = context.getSpeakerResponse();
         UUID commandId = response.getCommandId();
-        FlowSegmentRequestFactory command = stateMachine.getCommands().get(commandId);
-        if (!stateMachine.getPendingCommands().containsKey(commandId) || command == null) {
+        Optional<BaseSpeakerCommandsRequest> command = stateMachine.getSpeakerCommand(commandId);
+        if (!command.isPresent() || !stateMachine.hasPendingCommand(commandId)) {
             log.info("Received a response for unexpected command: {}", response);
             return;
         }
 
         if (response.isSuccess()) {
-            stateMachine.getPendingCommands().remove(commandId);
+            stateMachine.removePendingCommand(commandId);
 
-            stateMachine.saveActionToHistory("Group id was removed",
-                    format("The group id was removed: switch %s, cookie %s",
-                            response.getSwitchId(), command.getCookie()));
+            stateMachine.saveActionToHistory(format("%s mirror point entities were removed",
+                            command.get().getCommands().size()),
+                    format("%s mirror point entities were removed: switch %s", command.get().getCommands().size(),
+                            response.getSwitchId()));
         } else {
-            FlowErrorResponse errorResponse = (FlowErrorResponse) response;
+            BaseSpeakerCommandsRequest request = stateMachine.getSpeakerCommand(commandId).orElse(null);
+            int retries = stateMachine.doRetryForCommand(commandId);
+            if (retries <= speakerCommandRetriesLimit && request != null) {
+                response.getFailedCommandIds().forEach((uuid, message) ->
+                        stateMachine.saveErrorToHistory(FAILED_TO_REMOVE_GROUP_ACTION, format(
+                                "Failed to remove mirror point entity: commandId %s, switch %s, uuid %s. Error %s. "
+                                        + "Retrying (attempt %d)",
+                                commandId, response.getSwitchId(), uuid, message, retries)));
 
-            int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
-            if (retries < speakerCommandRetriesLimit) {
-                stateMachine.getRetriedCommands().put(commandId, ++retries);
-
-                stateMachine.saveErrorToHistory(FAILED_TO_REMOVE_GROUP_ACTION, format(
-                        "Failed to remove the group: commandId %s, switch %s, cookie %s. Error %s. "
-                                + "Retrying (attempt %d)",
-                        commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, retries));
-
-                stateMachine.getCarrier().sendSpeakerRequest(command.makeInstallRequest(commandId));
-
+                List<OfCommand> failedCommands = request.getCommands().stream()
+                        .filter(ofCommand -> response.getFailedCommandIds().containsKey(ofCommand.getUuid()))
+                        .collect(Collectors.toList());
+                request.getCommands().clear();
+                request.getCommands().addAll(OfCommandConverter.INSTANCE.removeExcessDependencies(failedCommands));
+                stateMachine.getCarrier().sendSpeakerRequest(request);
             } else {
-                stateMachine.getPendingCommands().remove(commandId);
+                stateMachine.removePendingCommand(commandId);
 
-                stateMachine.saveErrorToHistory(FAILED_TO_REMOVE_GROUP_ACTION, format(
-                        "Failed to remove the group: commandId %s, switch %s, cookie %s. Error: %s",
-                        commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse));
+                response.getFailedCommandIds().forEach((uuid, message) ->
+                        stateMachine.saveErrorToHistory(FAILED_TO_REMOVE_GROUP_ACTION, format(
+                                "Failed to remove the mirror point entities: commandId %s, switch %s, uuid %s. "
+                                        + "Error: %s", commandId, response.getSwitchId(), uuid, message)));
 
-                stateMachine.getFailedCommands().put(commandId, errorResponse);
+                stateMachine.getFailedCommands().put(commandId, response);
             }
         }
 

@@ -42,7 +42,11 @@ public class FlowDumpPayload {
 
     private long forwardCookie;
 
+    private String forwardCookieHex;
+
     private long reverseCookie;
+
+    private String reverseCookieHex;
 
     private String sourceSwitch;
 
