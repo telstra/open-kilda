@@ -18,9 +18,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.yflow.update.actions;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
-import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
-import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
-import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
@@ -75,12 +72,7 @@ public class OnReceivedRemoveResponseAction extends
                 Set<UUID> failedUuids = response.getFailedCommandIds().keySet();
                 DeleteSpeakerCommandsRequest deleteRequest = request.get();
                 List<OfCommand> commands = deleteRequest.getCommands().stream()
-                        .filter(command -> command instanceof FlowCommand
-                                && failedUuids.contains(((FlowCommand) command).getData().getUuid())
-                                || command instanceof MeterCommand
-                                && failedUuids.contains(((MeterCommand) command).getData().getUuid())
-                                || command instanceof GroupCommand
-                                && failedUuids.contains(((GroupCommand) command).getData().getUuid()))
+                        .filter(command -> failedUuids.contains(command.getUuid()))
                         .collect(Collectors.toList());
                 DeleteSpeakerCommandsRequest retryRequest = deleteRequest.toBuilder()
                         .commands(OfCommandConverter.INSTANCE.removeExcessDependencies(commands)).build();
