@@ -22,6 +22,7 @@ import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.LINK_
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.REQUEST_ID_FIELD;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.IslDataSplitterBolt.INFO_DATA_FIELD;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslChangedInfoData;
 import org.openkilda.messaging.info.event.IslOneWayLatency;
@@ -97,6 +98,12 @@ public class IslCacheBolt extends AbstractBolt {
     }
 
     @Override
+    protected boolean deactivate(LifecycleEvent event) {
+        islCacheService.deactivate();
+        return true;
+    }
+
+    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields(REQUEST_ID_FIELD, FLOW_ID_FIELD, LINK_FIELD, LATENCY_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
@@ -107,4 +114,6 @@ public class IslCacheBolt extends AbstractBolt {
     private IslCacheService newIslCacheService() {
         return new IslCacheService(persistenceManager, Clock.systemUTC(), islRttLatencyExpiration);
     }
+
+
 }

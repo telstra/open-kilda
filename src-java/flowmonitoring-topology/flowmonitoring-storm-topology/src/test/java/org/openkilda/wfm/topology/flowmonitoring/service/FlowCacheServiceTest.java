@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowmonitoring.service;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -169,6 +171,22 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
         verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath);
 
         verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void serviceActivationDeactivationAndReactivation() {
+        createFlow();
+        service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
+        //check service.flowStates is not empty
+        assertFalse(service.flowStatesIsEmpty());
+        // deactivate service
+        service.deactivate();
+        //check service.flowStates is empty
+        assertTrue(service.flowStatesIsEmpty());
+        // reactivate service
+        service.activate();
+        //check service.flowStates is not empty
+        assertFalse(service.flowStatesIsEmpty());
     }
 
     private void createIsl(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort) {

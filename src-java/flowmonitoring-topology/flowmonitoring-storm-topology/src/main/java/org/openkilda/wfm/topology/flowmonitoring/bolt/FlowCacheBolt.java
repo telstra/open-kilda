@@ -24,6 +24,7 @@ import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt.IN
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.IslDataSplitterBolt.ISL_KEY_FIELD;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.IslDataSplitterBolt.getIslKey;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.flow.UpdateFlowCommand;
@@ -115,6 +116,12 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
             FlowRttStatsData flowRttStatsData = pullValue(input, INFO_DATA_FIELD, FlowRttStatsData.class);
             flowCacheService.processFlowRttStatsData(flowRttStatsData);
         }
+    }
+
+    @Override
+    protected boolean deactivate(LifecycleEvent event) {
+        flowCacheService.deactivate();
+        return true;
     }
 
     @Override

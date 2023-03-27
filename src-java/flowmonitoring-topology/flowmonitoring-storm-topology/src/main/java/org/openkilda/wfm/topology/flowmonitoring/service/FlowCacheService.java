@@ -26,6 +26,7 @@ import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.wfm.topology.flowmonitoring.mapper.FlowMapper;
 import org.openkilda.wfm.topology.flowmonitoring.model.FlowState;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Clock;
@@ -41,6 +42,8 @@ public class FlowCacheService {
     private Clock clock;
     private Duration flowRttStatsExpirationTime;
     private FlowCacheBoltCarrier carrier;
+    private boolean active = false;
+    private final FlowRepository flowRepository;
 
     private final Map<String, FlowState> flowStates = new HashMap<>();
 
@@ -49,9 +52,8 @@ public class FlowCacheService {
         this.clock = clock;
         this.flowRttStatsExpirationTime = flowRttStatsExpirationTime;
         this.carrier = carrier;
-
-        FlowRepository flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        initCache(flowRepository);
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        activate();
     }
 
     private void initCache(FlowRepository flowRepository) {
@@ -121,6 +123,27 @@ public class FlowCacheService {
         }
     }
 
+    /**
+     * Activate the service. Init cache.
+     */
+    public void activate() {
+        if (!active) {
+            initCache(flowRepository);
+            active = true;
+        }
+    }
+
+    /**
+     * Deactivate the service. Clears cache.
+     */
+    public void deactivate() {
+        if (active) {
+            flowStates.clear();
+            log.info("Flow cache cleared.");
+            active = false;
+        }
+    }
+
     private void checkFlowLatency(String flowId, FlowState flowState) {
         Instant current = clock.instant();
         if (isExpired(flowState.getForwardPathLatency().getTimestamp(), current)) {
@@ -143,5 +166,13 @@ public class FlowCacheService {
 
     private boolean isIncompleteFlow(Flow flow) {
         return flow.getForwardPathId() == null || flow.getReversePathId() == null;
+    }
+
+    /**
+     * Check if flowState is empty.
+     */
+    @VisibleForTesting
+    public boolean flowStatesIsEmpty() {
+        return flowStates.isEmpty();
     }
 }

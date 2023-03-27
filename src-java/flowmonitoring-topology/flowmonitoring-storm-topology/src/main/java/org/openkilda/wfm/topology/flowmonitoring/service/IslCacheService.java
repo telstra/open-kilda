@@ -25,6 +25,7 @@ import org.openkilda.wfm.topology.flowmonitoring.mapper.LinkMapper;
 import org.openkilda.wfm.topology.flowmonitoring.model.Link;
 import org.openkilda.wfm.topology.flowmonitoring.model.LinkState;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Clock;
@@ -41,13 +42,15 @@ public class IslCacheService {
     private Clock clock;
     private Duration islRttLatencyExpiration;
     private Map<Link, LinkState> linkStates;
+    private boolean active = false;
+    private final IslRepository islRepository;
 
     public IslCacheService(PersistenceManager persistenceManager, Clock clock, Duration islRttLatencyExpiration) {
         this.clock = clock;
         this.islRttLatencyExpiration = islRttLatencyExpiration;
 
-        IslRepository islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
-        initCache(islRepository);
+        islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
+        activate();
     }
 
     private void initCache(IslRepository islRepository) {
@@ -58,6 +61,27 @@ public class IslCacheService {
         } catch (Exception e) {
             log.error("Isl cache initialization exception. Empty cache is used.", e);
             linkStates = new HashMap<>();
+        }
+    }
+
+    /**
+     * Activate the service. Init cache.
+     */
+    public void activate() {
+        if (!active) {
+            initCache(islRepository);
+            active = true;
+        }
+    }
+
+    /**
+     * Deactivate the service. Clears cache.
+     */
+    public void deactivate() {
+        if (active) {
+            linkStates.clear();
+            log.info("Isl cache cleared.");
+            active = false;
         }
     }
 
@@ -140,5 +164,13 @@ public class IslCacheService {
                 .filter(link -> link.srcEquals(switchId, port))
                 .collect(Collectors.toList())
                 .forEach(link -> linkStates.remove(link));
+    }
+
+    /**
+     * Check if linkStates is empty.
+     */
+    @VisibleForTesting
+    public boolean linkStatesIsEmpty() {
+        return linkStates.isEmpty();
     }
 }
