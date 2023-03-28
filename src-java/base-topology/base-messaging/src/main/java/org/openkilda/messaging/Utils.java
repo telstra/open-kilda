@@ -107,11 +107,11 @@ public final class Utils {
     /**
      * Minimum allowable VLAN ID value.
      */
-    private static final int MIN_VLAN_ID = 0;
+    public static final int MIN_VLAN_ID = 0;
     /**
      * Maximum allowable VLAN ID value.
      */
-    private static final int MAX_VLAN_ID = 4095;
+    public static final int MAX_VLAN_ID = 4095;
 
     /**
      * Minimum allowable VXLAN VNI value.
