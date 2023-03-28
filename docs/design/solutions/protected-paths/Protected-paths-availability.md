@@ -20,19 +20,11 @@ only one path A-D-C, which cannot have a protected path in this topology. If the
 ## Proposal
 Extend `network/paths` API so that each found path contains a field containing an object representing a protected path.
 If a response doesn't contain any path, it means that PCE cannot find a protected path in the given context. Or, in other 
-words, if a field with a protected path is empty, it is not possible to create a flow with a protected path.
-To enable this option, in V2 API, there will be a field in the request body 
-(other optional parameters are omitted):
-```json
-{
-  "src_switch": "00:00:00:00:00:00:00:01",
-  "dst_switch": "00:00:00:00:00:00:00:02",
-  "protected" : true
-}
-```
+words, if a field with a protected path is absent or empty, it is not possible to create a flow with a protected path.
+
 In V1 API, there will be a URL parameter: 
 ```
-protected=true
+includeProtectedPath=true
 ```
 
 OpenKilda will find all paths between the given switches and return the response:
@@ -78,5 +70,5 @@ Since there are no any locking and resource allocation, this API cannot guarante
 a flow with the particular protected path in the future.
 
 ### Backward compatibility and consistency
-When a user don't use the new parameter ```protected=true```, then the response doesn't contain any new fields from this 
+When a user don't use the new parameter ```includeProtectedPath=true```, then the response doesn't contain any new fields from this 
 feature.  

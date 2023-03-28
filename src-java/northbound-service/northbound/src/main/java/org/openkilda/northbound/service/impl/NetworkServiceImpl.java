@@ -92,7 +92,7 @@ public class NetworkServiceImpl implements NetworkService {
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
                 .thenApply(paths -> {
                     List<PathDto> pathsDtoList = paths.stream().map(PathsInfoData.class::cast)
-                            .map(p -> pathMapper.mapToPath(p.getPath()))
+                            .map(p -> pathMapper.mapToPathDto(p.getPath()))
                             .collect(Collectors.toList());
                     return new PathsDto(pathsDtoList);
                 });

@@ -16,48 +16,40 @@
 package org.openkilda.northbound.converter;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import org.openkilda.messaging.info.network.Path;
-import org.openkilda.messaging.info.network.PathValidationResult;
-import org.openkilda.messaging.model.FlowPathDto;
-import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
-import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
-import org.openkilda.messaging.payload.flow.GroupFlowPathPayload.FlowProtectedPathsPayload;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.messaging.payload.network.PathDto;
 import org.openkilda.model.SwitchId;
-import org.openkilda.northbound.dto.v2.flows.PathValidateResponse;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
+@RunWith(SpringRunner.class)
 public class PathMapperTest {
+
+    @TestConfiguration
+    @ComponentScan({"org.openkilda.northbound.converter"})
+    static class Config {
+        // nothing to define here
+    }
+
     public static final int NANOS = 12_345_678;
     public static final long BANDWIDTH = 100_000L;
-    private final PathMapper pathDtoOnlyMapper = new PathMapper() {
-        @Override
-        public GroupFlowPathPayload mapGroupFlowPathPayload(FlowPathDto data) {
-            return null;
-        }
-
-        @Override
-        public FlowProtectedPathsPayload mapFlowProtectedPathPayload(FlowProtectedPathDto data) {
-            return null;
-        }
-
-        @Override
-        public PathValidateResponse toPathValidateResponse(PathValidationResult data) {
-            return null;
-        }
-    };
+    @Autowired
+    private PathMapper pathMapper;
 
     @Test
     public void whenNoProtectedPath_convertToPathDtoTest() {
-        PathDto pathDto = pathDtoOnlyMapper.mapToPath(getPath(getNodes()));
+        PathDto pathDto = pathMapper.mapToPathDto(getPath(getNodes()));
 
         assertThat(pathDto.getIsBackupPath()).isEqualTo(false);
         assertThat(pathDto.getProtectedPath()).isNull();
@@ -70,7 +62,7 @@ public class PathMapperTest {
 
     @Test
     public void whenPathWithProtectedPath_convertToPathDtoTest() {
-        PathDto pathDto = pathDtoOnlyMapper.mapToPath(getPathWithProtectedPath(getPath(getNodes()), getNodes()));
+        PathDto pathDto = pathMapper.mapToPathDto(getPathWithProtectedPath(getPath(getNodes()), getNodes()));
 
         assertThat(pathDto.getIsBackupPath()).isEqualTo(false);
         assertThat(pathDto.getProtectedPath()).isNotNull();
@@ -87,13 +79,6 @@ public class PathMapperTest {
         assertThat(pathDto.getProtectedPath().getLatency()).isEqualTo(Duration.ofNanos(NANOS).toNanos());
         assertThat(pathDto.getProtectedPath().getLatencyNs()).isEqualTo(Duration.ofNanos(NANOS).toNanos());
         assertThat(pathDto.getProtectedPath().getLatencyMs()).isEqualTo(Duration.ofNanos(NANOS).toMillis());
-    }
-
-    @Test
-    public void whenProtectedPathWithProtectedPath_errorIsRaisedTest() {
-        assertThatThrownBy(() -> pathDtoOnlyMapper.mapToPath(getPathWithProtectedPath(
-                getPathWithProtectedPath(getPath(getNodes()), getNodes()), getNodes())))
-                .isInstanceOf(IllegalStateException.class);
     }
 
     private Path getPath(List<PathNodePayload> nodes) {

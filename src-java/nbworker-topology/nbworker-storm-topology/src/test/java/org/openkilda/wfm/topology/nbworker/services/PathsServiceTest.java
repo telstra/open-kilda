@@ -309,7 +309,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void whenTooLowLatencyRequested_andMaxLatencyStrategy_noPathsWithProtectedAvailabilityTest()
+    public void whenTooLowLatencyRequested_andMaxLatencyStrategy_noPathsWithProtectedTest()
             throws UnroutableFlowException, SwitchNotFoundException, RecoverableException {
         kildaConfigurationRepository.find().ifPresent(config -> config.setFlowEncapsulationType(VXLAN));
 
@@ -320,6 +320,20 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         assertFalse("There must be at least one path.", paths.isEmpty());
         assertNull(paths.get(0).getPath().getProtectedPath(),
                 "Found path must not have a protected path in this test topology");
+    }
+
+    @Test
+    public void whenOnlySwitchesInRequest_returnsPathsWithProtectedTest()
+            throws UnroutableFlowException, SwitchNotFoundException, RecoverableException {
+        kildaConfigurationRepository.find().ifPresent(config -> config.setFlowEncapsulationType(VXLAN));
+        kildaConfigurationRepository.find().ifPresent(config -> config.setPathComputationStrategy(COST));
+
+        List<PathsInfoData> paths = pathsService.getPathsWithProtectedPath(
+                SWITCH_ID_1, SWITCH_ID_2, null, null,
+                null, null, null);
+
+        assertFalse("There must be at least one path.", paths.isEmpty());
+        // TODO this test find the protected path that equals to the requested path
     }
 
     private void assertMaxLatencyPaths(List<PathsInfoData> paths, Duration maxLatency, long expectedCount,

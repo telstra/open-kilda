@@ -77,13 +77,13 @@ public class NetworkController extends BaseController {
                     + "If maximum path count is not specified, default value from OpenKilda Configuration will be used")
             @RequestParam(value = "max_path_count", required = false) Integer maxPathCount,
             @ApiParam(value = "Calculate and show a protected path for each found paths")
-            @RequestParam(value = "protected", required = false) Boolean includeProtectedPathAvailability) {
+            @RequestParam(value = "includeProtectedPath", required = false) Boolean includeProtectedPath) {
 
         Duration maxLatency = maxLatencyMs != null ? Duration.ofMillis(maxLatencyMs) : null;
         Duration maxLatencyTier2 = maxLatencyTier2Ms != null ? Duration.ofMillis(maxLatencyTier2Ms) : null;
 
         return networkService.getPaths(srcSwitchId, dstSwitchId, encapsulationType, pathComputationStrategy, maxLatency,
-                maxLatencyTier2, maxPathCount, includeProtectedPathAvailability);
+                maxLatencyTier2, maxPathCount, includeProtectedPath);
     }
 
     /**

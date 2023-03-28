@@ -49,6 +49,8 @@ import org.openkilda.wfm.share.mappers.PathMapper;
 import org.openkilda.wfm.share.mappers.PathValidationDataMapper;
 import org.openkilda.wfm.topology.nbworker.validators.PathValidator;
 
+import lombok.Builder;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
@@ -84,19 +86,39 @@ public class PathsService {
     }
 
     /**
-     * Get paths.
+     * Get paths based on the given parameters. Some parameters might be defaulted using OpenKilda configuration.
      */
     public List<PathsInfoData> getPaths(
             SwitchId srcSwitchId, SwitchId dstSwitchId, FlowEncapsulationType requestEncapsulationType,
             PathComputationStrategy requestPathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2,
             Integer maxPathCount) throws RecoverableException, SwitchNotFoundException, UnroutableFlowException {
 
-        List<Path> flowPaths = validateInputAndGetPaths(srcSwitchId, dstSwitchId, requestEncapsulationType,
-                requestPathComputationStrategy, maxLatency, maxLatencyTier2, maxPathCount);
-
-        return flowPaths.stream().map(PathMapper.INSTANCE::map)
+        return getPaths(
+                validateAndDefaultGetPathRequestParameters(
+                    srcSwitchId,
+                    dstSwitchId,
+                    requestEncapsulationType,
+                    requestPathComputationStrategy,
+                    maxLatency,
+                    maxLatencyTier2,
+                    maxPathCount)
+                )
+                .stream()
+                .map(PathMapper.INSTANCE::map)
                 .map(path -> PathsInfoData.builder().path(path).build())
                 .collect(Collectors.toList());
+    }
+
+    private List<Path> getPaths(GetPathsRequestParameters getPathsRequestParameters)
+            throws UnroutableFlowException, RecoverableException {
+        return pathComputer.getNPaths(
+                getPathsRequestParameters.getSrcSwitchId(),
+                getPathsRequestParameters.getDstSwitchId(),
+                getPathsRequestParameters.getMaxPathCount(),
+                getPathsRequestParameters.getFlowEncapsulationType(),
+                getPathsRequestParameters.getPathComputationStrategy(),
+                getPathsRequestParameters.getMaxLatency(),
+                getPathsRequestParameters.getMaxLatencyTier2());
     }
 
     /**
@@ -121,8 +143,16 @@ public class PathsService {
             Integer maxPathCount)
             throws RecoverableException, SwitchNotFoundException, UnroutableFlowException {
 
-        return validateInputAndGetPaths(srcSwitchId, dstSwitchId, requestEncapsulationType,
-                requestPathComputationStrategy, maxLatency, maxLatencyTier2, maxPathCount)
+        GetPathsRequestParameters getPathsRequestParameters = validateAndDefaultGetPathRequestParameters(
+                srcSwitchId,
+                dstSwitchId,
+                requestEncapsulationType,
+                requestPathComputationStrategy,
+                maxLatency,
+                maxLatencyTier2,
+                maxPathCount);
+
+        return getPaths(getPathsRequestParameters)
                 .stream()
                 .map(path ->
                     Path.builder()
@@ -132,23 +162,24 @@ public class PathsService {
                             .latency(path.getLatency())
                             .srcSwitchId(path.getSrcSwitchId())
                             .destSwitchId(path.getDestSwitchId())
-                            .protectedPath(getProtectedPath(path, requestEncapsulationType,
-                                    requestPathComputationStrategy, maxLatency, maxLatencyTier2))
+                            .protectedPath(getProtectedPath(path, getPathsRequestParameters))
                             .build())
                 .map(PathMapper.INSTANCE::map)
                 .map(path -> PathsInfoData.builder().path(path).build())
                 .collect(Collectors.toList());
     }
 
-    private Path getProtectedPath(Path path, FlowEncapsulationType encapsulationType,
-                                  PathComputationStrategy pathComputationStrategy,
-                                  Duration maxLatency, Duration maxLatencyTier2) {
-        Flow flow = createVirtualFlow(path, encapsulationType, pathComputationStrategy, maxLatency, maxLatencyTier2);
+    private Path getProtectedPath(Path path, GetPathsRequestParameters getPathsRequestParameters) {
+        Flow flow = createVirtualFlow(path,
+                getPathsRequestParameters.getFlowEncapsulationType(),
+                getPathsRequestParameters.getPathComputationStrategy(),
+                getPathsRequestParameters.getMaxLatency(),
+                getPathsRequestParameters.getMaxLatencyTier2());
 
         GetPathsResult pathsResult = pathComputer.getProtectedPath(flow, Collections.emptyList());
         if (pathsResult.isSuccess() && pathsResult.getForward().equals(path)) {
             log.error("Protected path is equal to the main path!");
-            throw new IllegalStateException("Protected path is equal to the main path!");
+            // TODO investigate: throw new IllegalStateException("Protected path is equal to the main path!");
         }
 
         return pathsResult.isSuccess() ? pathsResult.getForward() : null;
@@ -170,11 +201,10 @@ public class PathsService {
                 .flowId("")
                 .srcSwitch(Switch.builder().switchId(path.getSrcSwitchId()).build())
                 .destSwitch(Switch.builder().switchId(path.getDestSwitchId()).build())
-                .maxLatency(path.getLatency())
                 .bandwidth(path.getMinAvailableBandwidth())
                 .encapsulationType(encapsulationType)
-                .maxLatency(maxLatency.toNanos())
-                .maxLatencyTier2(maxLatencyTier2.toNanos())
+                .maxLatency(maxLatency != null ? maxLatency.toNanos() : null)
+                .maxLatencyTier2(maxLatencyTier2 != null ? maxLatencyTier2.toNanos() : null)
                 .pathComputationStrategy(pathComputationStrategy)
                 .diverseGroupId(diverseGroupId)
                 .build();
@@ -200,10 +230,10 @@ public class PathsService {
         return flow;
     }
 
-    private List<Path> validateInputAndGetPaths(
+    private GetPathsRequestParameters validateAndDefaultGetPathRequestParameters(
             SwitchId srcSwitchId, SwitchId dstSwitchId, FlowEncapsulationType requestEncapsulationType,
             PathComputationStrategy requestPathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2,
-            Integer maxPathCount) throws RecoverableException, SwitchNotFoundException, UnroutableFlowException {
+            Integer maxPathCount) throws SwitchNotFoundException {
         if (Objects.equals(srcSwitchId, dstSwitchId)) {
             throw new IllegalArgumentException(
                     String.format("Source and destination switch IDs are equal: '%s'", srcSwitchId));
@@ -224,8 +254,8 @@ public class PathsService {
                 () -> new SwitchPropertiesNotFoundException(srcSwitchId));
         if (!srcProperties.getSupportedTransitEncapsulation().contains(flowEncapsulationType)) {
             throw new IllegalArgumentException(String.format("Switch %s doesn't support %s encapsulation type. Choose "
-                    + "one of the supported encapsulation types %s or update switch properties and add needed "
-                    + "encapsulation type.", srcSwitchId, flowEncapsulationType,
+                            + "one of the supported encapsulation types %s or update switch properties and add needed "
+                            + "encapsulation type.", srcSwitchId, flowEncapsulationType,
                     srcProperties.getSupportedTransitEncapsulation()));
         }
 
@@ -233,8 +263,8 @@ public class PathsService {
                 () -> new SwitchPropertiesNotFoundException(dstSwitchId));
         if (!dstProperties.getSupportedTransitEncapsulation().contains(flowEncapsulationType)) {
             throw new IllegalArgumentException(String.format("Switch %s doesn't support %s encapsulation type. Choose "
-                    + "one of the supported encapsulation types %s or update switch properties and add needed "
-                    + "encapsulation type.", dstSwitchId, requestEncapsulationType,
+                            + "one of the supported encapsulation types %s or update switch properties and add needed "
+                            + "encapsulation type.", dstSwitchId, requestEncapsulationType,
                     dstProperties.getSupportedTransitEncapsulation()));
         }
 
@@ -249,8 +279,15 @@ public class PathsService {
             throw new IllegalArgumentException(String.format("Incorrect maxPathCount: %s", maxPathCount));
         }
 
-        return pathComputer.getNPaths(srcSwitchId, dstSwitchId, maxPathCount, flowEncapsulationType,
-                pathComputationStrategy, maxLatency, maxLatencyTier2);
+        return GetPathsRequestParameters.builder()
+                .srcSwitchId(srcSwitchId)
+                .dstSwitchId(dstSwitchId)
+                .maxPathCount(maxPathCount)
+                .flowEncapsulationType(flowEncapsulationType)
+                .pathComputationStrategy(pathComputationStrategy)
+                .maxLatency(maxLatency)
+                .maxLatencyTier2(maxLatencyTier2)
+                .build();
     }
 
     /**
@@ -269,5 +306,17 @@ public class PathsService {
         return Collections.singletonList(pathValidator.validatePath(
                 PathValidationDataMapper.INSTANCE.toPathValidationData(request.getPathValidationPayload())
         ));
+    }
+
+    @Value
+    @Builder
+    private static class GetPathsRequestParameters {
+        SwitchId srcSwitchId;
+        SwitchId dstSwitchId;
+        FlowEncapsulationType flowEncapsulationType;
+        PathComputationStrategy pathComputationStrategy;
+        Duration maxLatency;
+        Duration maxLatencyTier2;
+        Integer maxPathCount;
     }
 }

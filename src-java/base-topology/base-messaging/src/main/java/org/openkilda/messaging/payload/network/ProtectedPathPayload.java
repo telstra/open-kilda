@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,40 +15,25 @@
 
 package org.openkilda.messaging.payload.network;
 
-import org.openkilda.messaging.payload.flow.PathNodePayload;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
 
-import java.time.Duration;
-import java.util.List;
-
+@EqualsAndHashCode(callSuper = true)
 @Data
+@Setter(value = AccessLevel.PRIVATE)
+@FieldDefaults(level = AccessLevel.PRIVATE)
 @SuperBuilder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
-@AllArgsConstructor
-@FieldDefaults(level = AccessLevel.PACKAGE)
-@Setter(value = AccessLevel.PRIVATE)
-public class PathDto {
-    Long bandwidth;
-    Long latency;
-    Long latencyNs;
-    Long latencyMs;
-    List<PathNodePayload> nodes;
-    Boolean isBackupPath;
+public class ProtectedPathPayload extends PathDto {
+    @JsonIgnore
     ProtectedPathPayload protectedPath;
-
-    public PathDto(Long bandwidth, Duration latency, List<PathNodePayload> nodes, Boolean isBackupPath,
-                   ProtectedPathPayload protectedPath) {
-        this(bandwidth, latency.toNanos(), latency.toNanos(), latency.toMillis(), nodes, isBackupPath,
-                protectedPath);
-    }
 }
