@@ -51,6 +51,7 @@ public abstract class IslFrame extends KildaBaseEdgeFrame implements IslData {
     public static final String MAX_BANDWIDTH_PROPERTY = "max_bandwidth";
     public static final String UNDER_MAINTENANCE_PROPERTY = "under_maintenance";
     public static final String TIME_UNSTABLE_PROPERTY = "time_unstable";
+    public static final String DESCRIPTION_PROPERTY = "description";
 
     private Switch srcSwitch;
     private Switch destSwitch;
@@ -204,6 +205,14 @@ public abstract class IslFrame extends KildaBaseEdgeFrame implements IslData {
     @Property("bfd_session_status")
     @Convert(BfdSessionStatusConverter.class)
     public abstract void setBfdSessionStatus(BfdSessionStatus bfdSessionStatus);
+
+    @Override
+    @Property(DESCRIPTION_PROPERTY)
+    public abstract String getDescription();
+
+    @Override
+    @Property(DESCRIPTION_PROPERTY)
+    public abstract void setDescription(String description);
 
     @Override
     public Switch getSrcSwitch() {

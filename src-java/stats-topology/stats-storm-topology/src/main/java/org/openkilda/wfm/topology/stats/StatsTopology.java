@@ -35,8 +35,10 @@ import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.TABLE_S
 import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.TICK_BOLT;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.kafka.InfoDataSerializer;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
@@ -55,6 +57,7 @@ import org.openkilda.wfm.topology.stats.bolts.metrics.TableStatsMetricGenBolt;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
+import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
 import org.apache.storm.topology.TopologyBuilder;
@@ -182,8 +185,9 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
     }
 
     private void openTsdbBolt(TopologyBuilder topologyBuilder) {
-        declareBolt(topologyBuilder,
-                createKafkaBolt(topologyConfig.getKafkaOtsdbTopic()), STATS_OPENTSDB_BOLT.name())
+        KafkaBolt<String, InfoData> kafkaBolt = makeKafkaBolt(InfoDataSerializer.class)
+                .withTopicSelector(topologyConfig.getKafkaOtsdbTopic());
+        declareBolt(topologyBuilder, kafkaBolt, STATS_OPENTSDB_BOLT.name())
                 .shuffleGrouping(PORT_STATS_METRIC_GEN_BOLT.name())
                 .shuffleGrouping(METER_STATS_METRIC_GEN_BOLT.name())
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN_BOLT.name())
