@@ -55,12 +55,17 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
             assert haFlow && haFlow.status == FlowState.UP.toString()
         }
 
-        when: "Delete the ha-flow"
+        when: "Delete the ha-flow and validate switches"
         northboundV2.deleteHaFlow(haFlow.haFlowId)
 
         then: "The ha-flow is no longer visible via 'get' API"
         Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getHaFlow(haFlow.haFlowId) }
         def flowRemoved = true
+
+        then: "And involved switches pass validation"
+        collectHaFlowEdgeSwitchesIds(haFlow).each { switchToValidate ->
+            assert northboundV2.validateSwitch(switchToValidate).isAsExpected()
+        }
 
         cleanup:
         haFlow && !flowRemoved && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
@@ -238,5 +243,14 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
             result << [swT: null, coveredCases: notPicked*.name]
         }
         return result
+    }
+
+    def collectHaFlowEdgeSwitchesIds(HaFlow haFlow) {
+        def switches = []
+        switches << haFlow.sharedEndpoint.switchId
+        haFlow.getSubFlows().each { subflow ->
+            switches.add(subflow.endpoint.switchId)
+        }
+        return switches
     }
 }
