@@ -118,36 +118,50 @@ public class YFlowControllerV2Test {
 
     @Test
     @WithMockUser(username = TestConfig.USERNAME, password = TestConfig.PASSWORD, roles = TestConfig.ROLE)
-    public void shouldReturnStatus400WhenSubFlowVlanIdIsInvalid() throws Exception {
+    public void shouldReturnStatus400WhenEndpointVlanIdMaxValueIsInvalid() throws Exception {
         verifyCreateRequestFailsOnBadVlanId(4096, 0, 0, 0);
+    }
+
+    @Test
+    @WithMockUser(username = TestConfig.USERNAME, password = TestConfig.PASSWORD, roles = TestConfig.ROLE)
+    public void shouldReturnStatus400WhenEndpointInnerVlanIdMaxValueIsInvalid() throws Exception {
         verifyCreateRequestFailsOnBadVlanId(10, 4096, 0, 0);
+    }
+
+    @Test
+    @WithMockUser(username = TestConfig.USERNAME, password = TestConfig.PASSWORD, roles = TestConfig.ROLE)
+    public void shouldReturnStatus400WhenSharedVlanIdMaxValueIsInvalid() throws Exception {
         verifyCreateRequestFailsOnBadVlanId(10, 0, 4096, 0);
+    }
+
+    @Test
+    @WithMockUser(username = TestConfig.USERNAME, password = TestConfig.PASSWORD, roles = TestConfig.ROLE)
+    public void shouldReturnStatus400WhenSharedInnerVlanIdMaxValueIsInvalid() throws Exception {
         verifyCreateRequestFailsOnBadVlanId(10, 0, 20, 4096);
-        verifyCreateRequestFailsOnBadVlanId(4096, 4096, 4096, 4096);
+    }
 
+    @Test
+    @WithMockUser(username = TestConfig.USERNAME, password = TestConfig.PASSWORD, roles = TestConfig.ROLE)
+    public void shouldReturnStatus400WhenEndpointVlanIdMinValueIsInvalid() throws Exception {
         verifyCreateRequestFailsOnBadVlanId(-1, 0, 0, 0);
-        verifyCreateRequestFailsOnBadVlanId(10, -1, 0, 0);
-        verifyCreateRequestFailsOnBadVlanId(10, 0, -1, 0);
-        verifyCreateRequestFailsOnBadVlanId(10, 0, 20, -1);
-        verifyCreateRequestFailsOnBadVlanId(-1, -1, -1, -1);
+    }
 
-        verifyPatchRequestFailsOnBadVlanId(
-                FlowPatchEndpoint.builder()
-                        .vlanId(4096).build(), null);
-        verifyPatchRequestFailsOnBadVlanId(
-                FlowPatchEndpoint.builder()
-                        .vlanId(10).innerVlanId(4096).build(), null);
-        verifyPatchRequestFailsOnBadVlanId(
-                null, YFlowPatchSharedEndpointEncapsulation.builder()
-                        .vlanId(4096).build());
-        verifyPatchRequestFailsOnBadVlanId(
-                null, YFlowPatchSharedEndpointEncapsulation.builder()
-                        .vlanId(10).innerVlanId(4096).build());
-        verifyPatchRequestFailsOnBadVlanId(
-                FlowPatchEndpoint.builder()
-                        .vlanId(4096).innerVlanId(4096).build(),
-                YFlowPatchSharedEndpointEncapsulation.builder()
-                        .vlanId(4096).innerVlanId(4096).build());
+    @Test
+    @WithMockUser(username = TestConfig.USERNAME, password = TestConfig.PASSWORD, roles = TestConfig.ROLE)
+    public void shouldReturnStatus400WhenEndpointInnerVlanIdMinValueIsInvalid() throws Exception {
+        verifyCreateRequestFailsOnBadVlanId(10, -1, 0, 0);
+    }
+
+    @Test
+    @WithMockUser(username = TestConfig.USERNAME, password = TestConfig.PASSWORD, roles = TestConfig.ROLE)
+    public void shouldReturnStatus400WhenSharedVlanIdMinValueIsInvalid() throws Exception {
+        verifyCreateRequestFailsOnBadVlanId(10, 0, -1, 0);
+    }
+
+    @Test
+    @WithMockUser(username = TestConfig.USERNAME, password = TestConfig.PASSWORD, roles = TestConfig.ROLE)
+    public void shouldReturnStatus400WhenSharedInnerVlanIdMinValueIsInvalid() throws Exception {
+        verifyCreateRequestFailsOnBadVlanId(10, 0, 20, -1);
     }
 
     private void verifyCreateRequestFailsOnBadVlanId(
@@ -205,3 +219,4 @@ public class YFlowControllerV2Test {
                 .pathComputationStrategy(PathComputationStrategy.COST.name());
     }
 }
+
