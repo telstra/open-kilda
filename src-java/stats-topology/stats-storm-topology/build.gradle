@@ -34,6 +34,7 @@ dependencies {
     testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
     testRuntimeOnly 'org.glassfish:javax.el'
     testRuntimeOnly 'org.apache.curator:curator-test'
+    testImplementation 'org.apache.kafka:kafka_2.13'
 
     compileOnly 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'

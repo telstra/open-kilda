@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.floodlightrouter;
 
-import joptsimple.internal.Strings;
+import com.google.common.base.Strings;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.kafka.bolt.selector.KafkaTopicSelector;
 import org.apache.storm.tuple.Tuple;

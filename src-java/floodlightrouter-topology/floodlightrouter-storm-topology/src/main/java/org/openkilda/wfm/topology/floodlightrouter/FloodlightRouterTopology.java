@@ -34,7 +34,7 @@ import org.openkilda.wfm.topology.floodlightrouter.bolts.SpeakerToControllerProx
 import org.openkilda.wfm.topology.floodlightrouter.bolts.SpeakerToNetworkProxyBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.SwitchMonitorBolt;
 
-import joptsimple.internal.Strings;
+import com.google.common.base.Strings;
 import lombok.Value;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;

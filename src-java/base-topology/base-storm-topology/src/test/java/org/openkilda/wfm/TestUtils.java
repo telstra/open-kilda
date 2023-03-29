@@ -19,8 +19,10 @@ import org.openkilda.wfm.config.KafkaConfig;
 import org.openkilda.wfm.config.ZookeeperConfig;
 
 import com.google.common.io.Files;
-import kafka.server.KafkaServerStartable;
+import kafka.server.KafkaServer;
 import org.apache.curator.test.TestingServer;
+import org.apache.kafka.common.utils.Time;
+import scala.Option;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,7 +50,7 @@ public final class TestUtils {
 
     public static class KafkaTestFixture {
         public TestingServer zk;
-        public KafkaServerStartable kafka;
+        public KafkaServer kafka;
         public File tempDir = Files.createTempDir();
         private ZookeeperConfig zooKeeperConfig;
         private KafkaConfig kafkaConfig;
@@ -72,7 +74,7 @@ public final class TestUtils {
 
             props.put("log.dirs", tempDir.getAbsolutePath());
             kafka.server.KafkaConfig kafkaConfig = new kafka.server.KafkaConfig(props);
-            kafka = new KafkaServerStartable(kafkaConfig);
+            kafka = new KafkaServer(kafkaConfig, Time.SYSTEM, Option.empty(), false);
             kafka.startup();
             System.out.println("Started KAFKA: ");
         }
