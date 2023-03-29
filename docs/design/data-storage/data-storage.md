@@ -1,22 +1,7 @@
 # OpenKilda Data storage V2
 
 ## Overview
-This doc describes the proposed solutions for migration OpenKilda from Neo4j to another data storage(s).
-
-## Goals
-The goal is to implement a data storage solution that satisfies the system requirements.
-
-Currently, OpenKilda uses [Neo4j](https://neo4j.com/) as a persistent storage for its [data model](../domain-model/domain-model.md),
-and [Neo4j-OGM](https://github.com/neo4j/neo4j-ogm) as the mapping library in the persistence layer.
-
-Since the persistence layer was introduced, we faced multiple issues related to it: 
-Neo4j-OGM performance on concurrent updates (https://github.com/telstra/open-kilda/pull/2747),
-missed changes in persistent objects (https://github.com/telstra/open-kilda/issues/3064), 
-improper handling of data types and converters (https://github.com/telstra/open-kilda/issues/3166).
-
-Considering the above mentioned along with a lack of high-availability configuration and online backups in the Neo4j community edition, 
-it was decided that Neo4j along with Neo4j-OGM doesn't correspond to the current and emerging system requirements -
-https://github.com/telstra/open-kilda/issues/940. 
+This doc describes the solution for data storage(s) used by Kilda.
 
 ## Requirements for Data storage
 Kilda architecture among other requirements to the data storage, expects flexibility in choice of the storage options:
@@ -36,10 +21,9 @@ specific use cases and requirements to storage:
 - History records (flow events, port status changes, etc)
 - Resources pools (flow encapsulation, meter, etc) 
 
-## The solutions
 Each data group has own and specific use cases, so we evaluate it separately from others:
 
-#### Network topology, flow data
+### Network topology, flow data
 _Use cases:_
 - Transactional CRUD operations on entities that represent the network.
 - Find a path between nodes (via PCE).
@@ -54,19 +38,12 @@ which has a complete implementation of [Tinkerpop Graph API](http://tinkerpop.ap
 - The persistence layer utilizes a one of existing OGM for data mapping: [Tinkerpop](https://tinkerpop.apache.org/) / [Ferma](http://syncleus.com/Ferma/).
 - PCE utilizes graph traversal on the database side.
 
-_Known issues / problems:_
-- The planned 2-step migration (via Neo4j + Tinkerpop) can't be implemented due to [a fundamental performance issue 
-in neo4j-gremlin-bolt](#neo4j).
-- No exising options for schema versioning: [Liquigraph](https://www.liquigraph.org/) supports Neo4j only.
-
 _Alternative solutions:_
 - Use a graph database which supports [Gremlin](https://tinkerpop.apache.org/gremlin.html) traversal language,
 but doesn't have a complete implementation of Tinkerpop Graph API: [Amazon Neptune](https://aws.amazon.com/neptune/), 
 [Azure Cosmos DB](https://azure.microsoft.com/services/cosmos-db/). This requires custom data mapping to be coded in the persistence layer.
-- Use a relational database. In this case, persistent data kept in a way that differs from how the business sees it. This may complicate future integrations
-with external systems, data migrations, data analysis, visualization. Also, this type of storage limits the PCE implementation to an in-memory one coded by us.	
 
-#### History records
+### History records
 Use cases:
 - Record an event / event details
 - Find by keys, time periods, etc.
@@ -75,12 +52,8 @@ Use cases:
 _The solution:_ 
 - The data is stored in a relational database (Postgre, MySQL, RDS) or multi-model storage ([OrientDB](https://orientdb.com/multi-model-database/)). 
 - The persistence layer utilizes ORM frameworks (e.g. Hibernate) for data mapping.
-- Use a one of powerful schema versioning tools: [Flyway](https://flywaydb.org/), Liquibase.
 
-_Alternative solutions:_
-- Use [Elasticsearch](https://www.elastic.co/what-is/elk-stack) as a storage. Easy to configure and use free-text search. But direct writes to Kibana may demonstrate low performance.
-
-#### Resources pools
+### Resources pools
 Use cases:
 - Reliable allocation under high contention of requests.  
 
@@ -88,19 +61,11 @@ _The solution:_
 - The data is stored in a relational database (Postgre, MySQL, RDS) or multi-model storage ([OrientDB](https://orientdb.com/multi-model-database/)).
 - The database must be ACID compliant.
 - The persistence layer utilizes ORM frameworks (e.g. Hibernate) for data mapping.
-- Use a one of powerful schema versioning tools: [Flyway](https://flywaydb.org/), Liquibase.
 
 _Alternative solutions:_
 - Use the same graph database as for Network topology, flow data.
 
-### Implementation steps
-1. Migrate the persistence layer from Neo4j OGM to the Tinkerpop-based implementation. Use OrientDB as the reference data storage.
-2. Separate the History records from the graph data: relational database schema, ORM mapping. Use OrientDB as the reference data storage.
-3. Separate the Resource pools from the data model: relational database schema, ORM mapping, transactional allocation. 
-Use OrientDB as the reference data storage.
-4. Test with a relational database as a storage for #2 and #3.
-
-### Implementation overview
+## Implementation overview
 
 _The solution with a combination of graph and relational databases:_
 ![Persistence Layer with graph and relational databases](persistence-layer-rdbms.svg)
@@ -121,7 +86,7 @@ https://stackoverflow.com/questions/48417910/how-is-it-possible-to-use-ferma-ogm
 https://docs.aws.amazon.com/neptune/latest/userguide/access-graph-gremlin-java.html
 https://docs.microsoft.com/en-us/azure/cosmos-db/create-graph-java
 
-#### Neo4j as the storage
+#### Neo4j
 Neo4j invest into development of own language (Cypher) and push to make it as a standard for graph databases (http://www.opencypher.org/, https://www.gqlstandards.org/, 
 https://gql.today/wp-content/uploads/2018/05/a-proposal-to-the-database-industry-not-three-but-one-gql.pdf, https://www.linkedin.com/pulse/sql-now-gql-alastair-green/).
 
