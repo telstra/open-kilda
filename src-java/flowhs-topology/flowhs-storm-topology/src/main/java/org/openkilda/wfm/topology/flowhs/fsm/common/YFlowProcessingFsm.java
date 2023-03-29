@@ -55,8 +55,6 @@ public abstract class YFlowProcessingFsm<T extends AbstractStateMachine<T, S, E,
     private final Map<UUID, SwitchId> pendingCommands = new HashMap<>();
     private final Map<UUID, Integer> retriedCommands = new HashMap<>();
     private final Map<UUID, SpeakerCommandResponse> failedCommands = new HashMap<>();
-    private final Map<UUID, SpeakerCommandResponse> failedValidationResponses = new HashMap<>();
-
     private final Map<UUID, InstallSpeakerCommandsRequest> installSpeakerRequests = new HashMap<>();
     private final Map<UUID, DeleteSpeakerCommandsRequest> deleteSpeakerRequests = new HashMap<>();
 
@@ -79,10 +77,6 @@ public abstract class YFlowProcessingFsm<T extends AbstractStateMachine<T, S, E,
 
     public void clearPendingCommands() {
         pendingCommands.clear();
-    }
-
-    public Optional<SwitchId> getPendingCommand(UUID key) {
-        return Optional.ofNullable(pendingCommands.get(key));
     }
 
     public boolean hasPendingCommand(UUID key) {
