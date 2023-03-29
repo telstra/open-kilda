@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static groovyx.gpars.GParsPool.withPool
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -63,9 +64,12 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         def flowRemoved = true
 
         then: "And involved switches pass validation"
-        collectHaFlowEdgeSwitchesIds(haFlow).each { switchToValidate ->
-            assert northboundV2.validateSwitch(switchToValidate).isAsExpected()
+        withPool {
+            collectHaFlowEdgeSwitchesIds(haFlow).eachParallel { swId ->
+                assert northboundV2.validateSwitch(swId).isAsExpected()
+            }
         }
+
 
         cleanup:
         haFlow && !flowRemoved && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
