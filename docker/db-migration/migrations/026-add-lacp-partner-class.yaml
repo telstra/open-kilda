@@ -1,0 +1,34 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: dkakollu
+      changes:
+        - tagDatabase:
+            tag: 024-add-lacp-partner-class
+
+  - changeSet:
+      id: add-lacp-partner-class
+      author: dkakollu
+      changes:
+        - sql: "CREATE CLASS lacp_partner IF NOT EXISTS EXTENDS V"
+        - sql: "CREATE PROPERTY lacp_partner.switch_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY lacp_partner.logical_port_number IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY lacp_partner.system_priority IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY lacp_partner.system_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY lacp_partner.key IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY lacp_partner.port_priority IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY lacp_partner.port_number IF NOT EXISTS INTEGER"
+        - sql: "CREATE PROPERTY lacp_partner.state_active IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY lacp_partner.state_short_timeout IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY lacp_partner.state_aggregatable IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY lacp_partner.state_synchronised IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY lacp_partner.state_collecting IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY lacp_partner.state_distributing IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY lacp_partner.state_defaulted IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE PROPERTY lacp_partner.state_expired IF NOT EXISTS BOOLEAN"
+        - sql: "CREATE INDEX lacp_partner.switch_id IF NOT EXISTS NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX lacp_partner.logical_port_number IF NOT EXISTS NOTUNIQUE_HASH_INDEX"
+
+      rollback:
+        - sql: "DELETE VERTEX lacp_partner"
+        - sql: "DROP CLASS lacp_partner IF EXISTS"

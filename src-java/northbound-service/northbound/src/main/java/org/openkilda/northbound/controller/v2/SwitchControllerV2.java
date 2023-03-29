@@ -19,6 +19,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.BaseController;
+import org.openkilda.northbound.dto.v2.switches.LacpStatusResponse;
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
 import org.openkilda.northbound.dto.v2.switches.LagPortResponse;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
@@ -83,10 +84,10 @@ public class SwitchControllerV2 extends BaseController {
             @PathVariable("port") int port,
             @ApiParam(value = "default: the day before timeTo.")
             @RequestParam(value = "timeFrom", required = false) @DateTimeFormat(iso = ISO.DATE_TIME)
-                    Optional<Date> optionalFrom,
+            Optional<Date> optionalFrom,
             @ApiParam(value = "default: now.")
             @RequestParam(value = "timeTo", required = false) @DateTimeFormat(iso = ISO.DATE_TIME)
-                    Optional<Date> optionalTo) {
+            Optional<Date> optionalTo) {
         Instant timeTo = optionalTo.map(Date::toInstant).orElseGet(Instant::now);
         Instant timeFrom = optionalFrom.map(Date::toInstant).orElseGet(() ->
                 timeTo.minus(1, ChronoUnit.DAYS));
@@ -214,6 +215,36 @@ public class SwitchControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<LagPortResponse>> getLagPorts(@PathVariable("switch_id") SwitchId switchId) {
         return switchService.getLagPorts(switchId);
+    }
+
+    /**
+     * Get LACP status on Switch.
+     *
+     * @param switchId the switch
+     */
+    @ApiOperation(value = "Read all LACP status values/fields, on a specific switch", 
+            response = LacpStatusResponse.class)
+    @GetMapping(value = "/{switch_id}/lacpstatus")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<LacpStatusResponse>> getLacpStatus(@PathVariable("switch_id") SwitchId switchId) {
+        return switchService.getLacpStatus(switchId);
+    }
+
+    /**
+     * Get LACP status.
+     *
+     * @param switchId the switch
+     * @param logicalPortNumber the switch
+     *
+     */
+    @ApiOperation(value = "Read LACP status values/fields, on a specific port of the switch", 
+            response = LacpStatusResponse.class)
+    @GetMapping(value = "/{switch_id}/lacp/{logical_port_number}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<LacpStatusResponse> getLacpStatus(@PathVariable("switch_id") SwitchId switchId,
+                                                                     @PathVariable("logical_port_number")
+                                                                     int logicalPortNumber) {
+        return switchService.getLacpStatus(switchId, logicalPortNumber);
     }
 
     /**

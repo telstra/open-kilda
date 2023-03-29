@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.connecteddevices.service;
 
-import static java.lang.String.format;
 import static org.openkilda.model.ConnectedDeviceType.ARP;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
 import static org.openkilda.model.SwitchConnectedDevice.buildUniqueArpIndex;
@@ -33,16 +32,20 @@ import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COO
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
 import static org.openkilda.model.cookie.Cookie.LLDP_TRANSIT_COOKIE;
 
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.ArpInfoData;
 import org.openkilda.messaging.info.event.ConnectedDevicePacketBase;
+import org.openkilda.messaging.info.event.LacpInfoData;
 import org.openkilda.messaging.info.event.LldpInfoData;
 import org.openkilda.model.Flow;
+import org.openkilda.model.LacpPartner;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnectedDevice;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.LacpPartnerRepository;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
@@ -66,8 +69,8 @@ public class PacketService {
     private final SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
     private final TransitVlanRepository transitVlanRepository;
     private final FlowRepository flowRepository;
-
     private final Map<String, SwitchConnectedDevice> switchConnectedDeviceCache = new HashMap<>();
+    private final LacpPartnerRepository lacpPartnerRepository;
 
     public PacketService(PersistenceManager persistenceManager) {
         transactionManager = persistenceManager.getTransactionManager();
@@ -76,6 +79,33 @@ public class PacketService {
                 .createSwitchConnectedDeviceRepository();
         transitVlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        lacpPartnerRepository = persistenceManager.getRepositoryFactory().createLacpPartnerRepository();
+    }
+
+    /**
+     * This key is needed to balance load on Packet Bolt. If you see that some packet bolts have high load, and
+     * some have low load, try to extend this key. Maximum extension is equal to
+     * <code>SwitchConnectedDeviceFrame.UNIQUE_INDEX_PROPERTY</code>
+     */
+    public static String createMessageKey(LldpInfoData data) {
+        return String.format("%s_%s_lldp", data.getSwitchId(), data.getPortNumber());
+    }
+
+    /**
+     * This key is needed to balance load on Packet Bolt. If you see that some packet bolts have high load, and
+     * some have low load, try to extend this key. Maximum extension is equal to
+     * <code>SwitchConnectedDeviceFrame.UNIQUE_INDEX_PROPERTY</code>
+     */
+    public static String createMessageKey(ArpInfoData data) {
+        return String.format("%s_%s_arp", data.getSwitchId(), data.getPortNumber());
+    }
+
+    /**
+     * This key is needed to balance load on Packet Bolt. If you see that some packet bolts have high load, and
+     * some have low load, try to extend this key. Maximum extension is equal to
+     */
+    public static String createMessageKey(LacpInfoData data) {
+        return String.format("%s_%s_lacp", data.getSwitchId(), data.getLogicalPortNumber());
     }
 
     /**
@@ -131,25 +161,50 @@ public class PacketService {
             createArpDevice(data, flowRelatedData);
         }
     }
-
+    
     /**
-     * This key is needed to balance load on Packet Bolt. If you see that some packet bolts have high load, and
-     * some have low load, try to extend this key. Maximum extension is equal to
-     * <code>SwitchConnectedDeviceFrame.UNIQUE_INDEX_PROPERTY</code>
+     * Handle Lacp info data.
      */
-    public static String createMessageKey(LldpInfoData data) {
-        return format("%s_%s_%s_%s_%s_lldp", data.getSwitchId(), data.getPortNumber(), data.getMacAddress(),
-                data.getChassisId(), data.getPortId());
-    }
-
-    /**
-     * This key is needed to balance load on Packet Bolt. If you see that some packet bolts have high load, and
-     * some have low load, try to extend this key. Maximum extension is equal to
-     * <code>SwitchConnectedDeviceFrame.UNIQUE_INDEX_PROPERTY</code>
-     */
-    public static String createMessageKey(ArpInfoData data) {
-        return format("%s_%s_%s_%s_arp", data.getSwitchId(), data.getPortNumber(), data.getMacAddress(),
-                data.getIpAddress());
+    public void handleLacpData(LacpInfoData data) {
+        transactionManager.doInTransaction(() -> {
+            Optional<LacpPartner> lacpPartnerOptional = lacpPartnerRepository.findBySwitchIdAndLogicalPortNumber(
+                    data.getSwitchId(), data.getLogicalPortNumber());
+            org.openkilda.messaging.info.event.LacpPartner actor = data.getActor();
+            if (lacpPartnerOptional.isPresent()) {
+                lacpPartnerOptional.get().setSystemPriority(actor.getSystemPriority());
+                lacpPartnerOptional.get().setSystemId(actor.getSystemId());
+                lacpPartnerOptional.get().setKey(actor.getKey());
+                lacpPartnerOptional.get().setPortPriority(actor.getPortPriority());
+                lacpPartnerOptional.get().setPortNumber(actor.getPortNumber());
+                lacpPartnerOptional.get().setStateActive(actor.getState().isActive());
+                lacpPartnerOptional.get().setStateShortTimeout(actor.getState().isActive());
+                lacpPartnerOptional.get().setStateAggregatable(actor.getState().isActive());
+                lacpPartnerOptional.get().setStateSynchronised(actor.getState().isActive());
+                lacpPartnerOptional.get().setStateCollecting(actor.getState().isActive());
+                lacpPartnerOptional.get().setStateDistributing(actor.getState().isActive());
+                lacpPartnerOptional.get().setStateDefaulted(actor.getState().isActive());
+                lacpPartnerOptional.get().setStateExpired(actor.getState().isActive());
+            } else {
+                LacpPartner partner = LacpPartner.builder()
+                        .switchId(data.getSwitchId())
+                        .logicalPortNumber(data.getLogicalPortNumber())
+                        .systemPriority(actor.getSystemPriority())
+                        .systemId(actor.getSystemId())
+                        .key(actor.getKey())
+                        .portPriority(actor.getPortPriority())
+                        .portNumber(actor.getPortNumber())
+                        .stateActive(actor.getState().isActive())
+                        .stateShortTimeout(actor.getState().isActive())
+                        .stateAggregatable(actor.getState().isActive())
+                        .stateSynchronised(actor.getState().isActive())
+                        .stateCollecting(actor.getState().isActive())
+                        .stateDistributing(actor.getState().isActive())
+                        .stateDefaulted(actor.getState().isActive())
+                        .stateExpired(actor.getState().isActive())
+                        .build();
+                lacpPartnerRepository.add(partner);
+            }
+        });
     }
 
     private FlowRelatedData findFlowRelatedData(ConnectedDevicePacketBase data) {
@@ -448,11 +503,13 @@ public class PacketService {
         switchConnectedDeviceCache.put(buildArpUniqueIndex(data, vlan), connectedDevice);
     }
 
-    private String getPacketName(ConnectedDevicePacketBase data) {
+    private String getPacketName(InfoData data) {
         if (data instanceof LldpInfoData) {
             return "LLDP";
         } else if (data instanceof ArpInfoData) {
             return "ARP";
+        } else if (data instanceof LacpInfoData) {
+            return "LACP";
         } else {
             return "unknown";
         }

@@ -31,6 +31,7 @@ import org.apache.storm.tuple.Fields;
 
 public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesTopologyConfig> {
     public static final String CONNECTED_DEVICES_SPOUT_ID = "connected-devices-spout";
+    public static final String LACP_SPOUT_ID = "lacp-spout";
     public static final String ROUTER_BOLT_ID = "router-bolt";
     public static final String PACKET_BOLT_ID = "packet-bolt";
 
@@ -43,11 +44,13 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
      */
     public StormTopology createTopology() {
         TopologyBuilder builder = new TopologyBuilder();
-        PersistenceManager persistenceManager = new PersistenceManager(configurationProvider);
 
         createZkSpout(builder);
 
         createSpout(builder);
+        createLacpSpout(builder);
+
+        PersistenceManager persistenceManager = new PersistenceManager(configurationProvider);
         createRouterBolt(builder, persistenceManager);
         createPacketBolt(builder, persistenceManager);
 
@@ -66,6 +69,7 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
         RouterBolt routerBolt = new RouterBolt(persistenceManager, ZooKeeperSpout.SPOUT_ID);
         declareBolt(builder, routerBolt, ROUTER_BOLT_ID)
                 .shuffleGrouping(CONNECTED_DEVICES_SPOUT_ID)
+                .shuffleGrouping(LACP_SPOUT_ID)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
@@ -78,6 +82,10 @@ public class ConnectedDevicesTopology extends AbstractTopology<ConnectedDevicesT
 
     private void createSpout(TopologyBuilder builder) {
         declareKafkaSpout(builder, topologyConfig.getKafkaTopoConnectedDevicesTopic(), CONNECTED_DEVICES_SPOUT_ID);
+    }
+
+    private void createLacpSpout(TopologyBuilder builder) {
+        declareKafkaSpout(builder, topologyConfig.getKafkaLacpTopic(), LACP_SPOUT_ID);
     }
 
     private void createZkBolt(TopologyBuilder builder) {

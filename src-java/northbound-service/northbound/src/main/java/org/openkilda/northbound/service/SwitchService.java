@@ -35,6 +35,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
+import org.openkilda.northbound.dto.v2.switches.LacpStatusResponse;
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest;
 import org.openkilda.northbound.dto.v2.switches.LagPortResponse;
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
@@ -325,6 +326,10 @@ public interface SwitchService {
     CompletableFuture<LagPortResponse> createLag(SwitchId switchId, LagPortRequest lagPortRequest);
 
     CompletableFuture<List<LagPortResponse>> getLagPorts(SwitchId switchId);
+
+    CompletableFuture<List<LacpStatusResponse>> getLacpStatus(SwitchId switchId);
+
+    CompletableFuture<LacpStatusResponse> getLacpStatus(SwitchId switchId, int logicalPortNumber);
 
     CompletableFuture<LagPortResponse> updateLagPort(
             SwitchId switchId, int logicalPortNumber, LagPortRequest payload);

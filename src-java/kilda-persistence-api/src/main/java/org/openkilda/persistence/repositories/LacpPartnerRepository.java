@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,21 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.connecteddevices;
+package org.openkilda.persistence.repositories;
 
-import org.openkilda.wfm.topology.AbstractTopologyConfig;
+import org.openkilda.model.LacpPartner;
+import org.openkilda.model.SwitchId;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
+import java.util.Collection;
+import java.util.Optional;
 
-@Configuration
-public interface ConnectedDevicesTopologyConfig extends AbstractTopologyConfig {
+public interface LacpPartnerRepository extends Repository<LacpPartner> {
+    Collection<LacpPartner> findAll();
 
-    default String getKafkaTopoConnectedDevicesTopic() {
-        return getKafkaTopics().getTopoConnectedDevicesTopic();
-    }
+    Collection<LacpPartner> findBySwitchId(SwitchId switchId);
 
-    default String getKafkaLacpTopic() {
-        return getKafkaTopics().getLacpTopic();
-    }
-
+    Optional<LacpPartner> findBySwitchIdAndLogicalPortNumber(SwitchId switchId, int logicalPortNumber);
 }

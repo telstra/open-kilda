@@ -87,3 +87,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 025-optimise-switch-connected-device-class.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 026-add-lacp-partner-class.yaml

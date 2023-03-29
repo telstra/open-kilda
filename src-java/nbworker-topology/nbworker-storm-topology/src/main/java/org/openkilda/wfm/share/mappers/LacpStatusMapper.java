@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,21 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.connecteddevices;
+package org.openkilda.wfm.share.mappers;
 
-import org.openkilda.wfm.topology.AbstractTopologyConfig;
+import org.openkilda.messaging.nbtopology.response.LacpStatusDto;
+import org.openkilda.model.LacpPartner;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
+import org.mapstruct.Mapper;
+import org.mapstruct.factory.Mappers;
 
-@Configuration
-public interface ConnectedDevicesTopologyConfig extends AbstractTopologyConfig {
+@Mapper
+public abstract class LacpStatusMapper {
 
-    default String getKafkaTopoConnectedDevicesTopic() {
-        return getKafkaTopics().getTopoConnectedDevicesTopic();
-    }
+    public static final LacpStatusMapper INSTANCE = Mappers.getMapper(LacpStatusMapper.class);
 
-    default String getKafkaLacpTopic() {
-        return getKafkaTopics().getLacpTopic();
-    }
-
+    public abstract LacpStatusDto map(LacpPartner partner);
 }

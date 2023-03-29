@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,21 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.connecteddevices;
+package org.openkilda.northbound.converter;
 
-import org.openkilda.wfm.topology.AbstractTopologyConfig;
+import org.openkilda.messaging.nbtopology.response.LacpStatusDto;
+import org.openkilda.northbound.dto.v2.switches.LacpStatusResponse;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
+import org.mapstruct.Mapper;
 
-@Configuration
-public interface ConnectedDevicesTopologyConfig extends AbstractTopologyConfig {
+@Mapper(componentModel = "spring")
+public interface LacpStatusMapper {
 
-    default String getKafkaTopoConnectedDevicesTopic() {
-        return getKafkaTopics().getTopoConnectedDevicesTopic();
-    }
-
-    default String getKafkaLacpTopic() {
-        return getKafkaTopics().getLacpTopic();
-    }
-
+    LacpStatusResponse map(LacpStatusDto response);
 }

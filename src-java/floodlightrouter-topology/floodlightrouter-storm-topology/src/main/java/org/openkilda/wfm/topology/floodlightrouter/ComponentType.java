@@ -25,6 +25,7 @@ public final class ComponentType {
     public static final String KILDA_STATS_REPLY_BOLT = "KILDA_STATS_REPLY_BOLT";
     public static final String KILDA_ISL_LATENCY_REPLY_BOLT = "KILDA_ISL_LATENCY_REPLY_BOLT";
     public static final String KILDA_CONNECTED_DEVICES_REPLY_BOLT = "KILDA_CONNECTED_DEVICES_REPLY_BOLT";
+    public static final String KILDA_LACP_REPLY_BOLT = "KILDA_LACP_REPLY_BOLT";
     public static final String KILDA_NB_WORKER_REPLY_BOLT = "KILDA_NB_WORKER_REPLY_BOLT";
     public static final String KILDA_TOPO_DISCO_REPLY_BOLT = "KILDA_TOPO_DISCO_REPLY_BOLT";
     public static final String KILDA_TOPO_DISCO_BOLT = "KILDA_TOPO_DISCO_BOLT";
@@ -47,6 +48,7 @@ public final class ComponentType {
     public static final String KILDA_STATS_KAFKA_SPOUT = "KILDA_STATS_KAFKA_SPOUT";
     public static final String KILDA_ISL_LATENCY_KAFKA_SPOUT = "KILDA_ISL_LATENCY_KAFKA_SPOUT";
     public static final String KILDA_CONNECTED_DEVICES_KAFKA_SPOUT = "KILDA_CONNECTED_DEVICES_KAFKA_SPOUT";
+    public static final String KILDA_LACP_KAFKA_SPOUT = "KILDA_LACP_KAFKA_SPOUT";
     public static final String KILDA_SWITCH_MANAGER_KAFKA_SPOUT = "KILDA_SWITCH_MANAGER_KAFKA_SPOUT";
     public static final String SPEAKER_DISCO_KAFKA_SPOUT = "SPEAKER_DISCO_KAFKA_SPOUT";
     public static final String KILDA_TOPO_DISCO_KAFKA_SPOUT = "KILDA_TOPO_DISCO_KAFKA_SPOUT";

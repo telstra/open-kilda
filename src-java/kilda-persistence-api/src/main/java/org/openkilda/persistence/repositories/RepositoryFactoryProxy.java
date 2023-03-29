@@ -191,6 +191,11 @@ public class RepositoryFactoryProxy implements RepositoryFactory {
     }
 
     @Override
+    public LacpPartnerRepository createLacpPartnerRepository() {
+        return resolve(LacpPartnerRepository.class).createLacpPartnerRepository();
+    }
+
+    @Override
     public HaFlowRepository createHaFlowRepository() {
         return resolve(HaFlowRepository.class).createHaFlowRepository();
     }
@@ -211,3 +216,4 @@ public class RepositoryFactoryProxy implements RepositoryFactory {
         return implementation.getRepositoryFactory();
     }
 }
+

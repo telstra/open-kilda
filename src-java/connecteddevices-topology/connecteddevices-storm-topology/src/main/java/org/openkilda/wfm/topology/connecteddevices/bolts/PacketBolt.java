@@ -17,8 +17,9 @@ package org.openkilda.wfm.topology.connecteddevices.bolts;
 
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.ArpInfoData;
-import org.openkilda.messaging.info.event.ConnectedDevicePacketBase;
+import org.openkilda.messaging.info.event.LacpInfoData;
 import org.openkilda.messaging.info.event.LldpInfoData;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
@@ -43,12 +44,14 @@ public class PacketBolt extends AbstractBolt {
 
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
-        ConnectedDevicePacketBase data = pullValue(input, FIELD_ID_PAYLOAD, ConnectedDevicePacketBase.class);
+        InfoData data = pullValue(input, FIELD_ID_PAYLOAD, InfoData.class);
 
         if (data instanceof LldpInfoData) {
             packetService.handleLldpData((LldpInfoData) data);
         } else if (data instanceof ArpInfoData) {
             packetService.handleArpData((ArpInfoData) data);
+        } else if (data instanceof LacpInfoData) {
+            packetService.handleLacpData((LacpInfoData) data);
         } else {
             unhandledInput(input);
         }
