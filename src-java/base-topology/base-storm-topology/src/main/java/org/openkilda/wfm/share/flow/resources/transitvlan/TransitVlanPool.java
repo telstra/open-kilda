@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.share.flow.resources.transitvlan;
 
-import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.PersistenceManager;
@@ -61,16 +60,16 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
      * Allocates a vlan for the flow path.
      */
     @Override
-    public TransitVlanEncapsulation allocate(Flow flow, PathId pathId, PathId oppositePathId) {
+    public TransitVlanEncapsulation allocate(String flowId, PathId pathId, PathId oppositePathId) {
         return get(oppositePathId, null)
-                .orElseGet(() -> allocate(flow, pathId));
+                .orElseGet(() -> allocate(flowId, pathId));
     }
 
     @TransactionRequired
-    private TransitVlanEncapsulation allocate(Flow flow, PathId pathId) {
+    private TransitVlanEncapsulation allocate(String flowId, PathId pathId) {
         if (nextVlan > 0) {
             if (nextVlan <= maxTransitVlan && !transitVlanRepository.exists(nextVlan)) {
-                return addVlan(flow, pathId, nextVlan++);
+                return addVlan(flowId, pathId, nextVlan++);
             } else {
                 nextVlan = 0;
             }
@@ -85,7 +84,7 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
                         minTransitVlan + (int) (poolToTake + 1) * poolSize - 1);
                 if (availableVlan.isPresent()) {
                     nextVlan = availableVlan.get();
-                    return addVlan(flow, pathId, nextVlan++);
+                    return addVlan(flowId, pathId, nextVlan++);
                 }
             }
             // The pool requires full scan.
@@ -96,16 +95,16 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
                     minTransitVlan);
             if (availableVlan.isPresent()) {
                 nextVlan = availableVlan.get();
-                return addVlan(flow, pathId, nextVlan++);
+                return addVlan(flowId, pathId, nextVlan++);
             }
         }
         throw new ResourceNotAvailableException("No vlan available");
     }
 
-    private TransitVlanEncapsulation addVlan(Flow flow, PathId pathId, int vlan) {
+    private TransitVlanEncapsulation addVlan(String flowId, PathId pathId, int vlan) {
         TransitVlan transitVlanEntity = TransitVlan.builder()
                 .vlan(vlan)
-                .flowId(flow.getFlowId())
+                .flowId(flowId)
                 .pathId(pathId)
                 .build();
         transitVlanRepository.add(transitVlanEntity);

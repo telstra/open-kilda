@@ -19,6 +19,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PathId;
@@ -199,5 +200,10 @@ public class PersistenceDataAdapter implements DataAdapter {
             yFlowCache = flowPathRepository.findYFlowsByPathIds(pathIds);
         }
         return yFlowCache.get(pathId);
+    }
+
+    @Override
+    public HaFlow getHaFlow(PathId pathId) {
+        return null;
     }
 }

@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PathId;
@@ -115,5 +116,10 @@ public class InMemoryDataAdapter implements DataAdapter {
             throw new IllegalStateException(format("Switch lag ports for '%s' not found.", switchId));
         }
         return result;
+    }
+
+    @Override
+    public HaFlow getHaFlow(PathId pathId) {
+        return null;
     }
 }

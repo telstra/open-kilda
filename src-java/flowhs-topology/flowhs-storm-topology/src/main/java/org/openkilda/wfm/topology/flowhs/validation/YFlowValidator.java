@@ -44,6 +44,16 @@ public class YFlowValidator {
     }
 
     /**
+     * Validates the specified flow id.
+     *
+     * @param id - ID of a flow, a y-flow, a ha-flow or a ha-subFlow.
+     * @throws InvalidFlowException is thrown if a flow, a y-flow or ha-flow with specified ID exists.
+     */
+    public void validateFlowIdUniqueness(String id) throws InvalidFlowException {
+        flowValidator.validateFlowIdUniqueness(id);
+    }
+
+    /**
      * Validates the specified y-flow request.
      *
      * @param request a request to be validated.

@@ -8,8 +8,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
@@ -122,55 +120,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "User can partially update fields of one-switch ha-flow"() {
-        given: "Existing one-switch ha-flow"
-        def singleSwitch = topologyHelper.getRandomSwitch()
-        def switchId = singleSwitch.dpId
-        def haFlowRequest = haFlowHelper.singleSwitchHaFlow(singleSwitch)
-        haFlowRequest.setMaxLatency(50)
-        haFlowRequest.setMaxLatencyTier2(100)
-        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
-        def patch = HaFlowPatchPayload.builder()
-                .maximumBandwidth(haFlow.maximumBandwidth * 2)
-        .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY.toString().toLowerCase())
-        .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase())
-        .maxLatency(haFlow.maxLatency * 2)
-        .maxLatencyTier2(haFlow.maxLatencyTier2 * 2)
-        .ignoreBandwidth(true)
-        .pinned(true)
-        .priority(10)
-        .strictBandwidth(false)
-        .description("updated description")
-        .build()
-        haFlow.setMaximumBandwidth(patch.getMaximumBandwidth())
-        haFlow.setPathComputationStrategy(patch.getPathComputationStrategy())
-        haFlow.setEncapsulationType(patch.getEncapsulationType())
-        haFlow.setMaxLatency(patch.getMaxLatency())
-        haFlow.setMaxLatencyTier2(patch.getMaxLatencyTier2())
-        haFlow.setIgnoreBandwidth(patch.getIgnoreBandwidth())
-        haFlow.setPinned(patch.getPinned())
-        haFlow.setPriority(patch.getPriority())
-        haFlow.setStrictBandwidth(patch.getStrictBandwidth())
-        haFlow.setDescription(patch.getDescription())
-
-
-        when: "Partial update the ha-flow"
-        def updateResponse = haFlowHelper.partialUpdateHaFlow(haFlow.haFlowId, patch)
-        def ignores = ["subFlows", "timeUpdate", "status"]
-
-        then: "Requested updates are reflected in the response and in 'get' API"
-        expect updateResponse, sameBeanAs(haFlow, ignores)
-        expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
-
-        and: "All related switches have no discrepancies"
-        northboundV2.validateSwitch(switchId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        northboundV2.validateSwitch(switchId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-
-        cleanup:
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
-    }
-
-    @Tidy
     def "User can partially update #data.descr of a ha-flow"() {
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets.find { it.ep1 != it.ep2 }
@@ -272,7 +221,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "User cannot update a ha-flow with #data.descr"() {
+    def "User cannot update a ha-flow #data.descr"() {
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
@@ -296,7 +245,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
         where: data << [
                 [
-                        descr: "non-existent subflowId",
+                        descr: "with non-existent subflowId",
                         updateClosure: { HaFlow payload ->
                             payload.subFlows[0].flowId += "non-existent"
                             def allowedPorts = topology.getAllowedPortsForSwitch(topology.find(
@@ -308,13 +257,23 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                         errorDescrPattern: /HA-flow .*? has no sub flow .*?/
                 ],
                 [
-                        descr: "subflowId not specified",
+                        descr: "with subflowId not specified",
                         updateClosure: { HaFlow payload ->
                             payload.subFlows[1].flowId = null
                         },
                         errorStatusCode: HttpStatus.BAD_REQUEST,
                         errorDescrPattern: /HA-flow .*? has no sub flow .*?/
-                ]
+                ],
+                //TODO enable when HA-flow update validation will be ready
+                //[
+                //        descr: "to one switch ha-flow",
+                //        updateClosure: { HaFlow payload ->
+                //            payload.subFlows[0].endpoint.switchId = payload.getSharedEndpoint().switchId
+                //            payload.subFlows[1].endpoint.switchId = payload.getSharedEndpoint().switchId
+                //        },
+                //        errorStatusCode: HttpStatus.BAD_REQUEST,
+                //        errorDescrPattern: /The ha-flow .*? is one switch flow\..*?/
+                //]
         ]
     }
 

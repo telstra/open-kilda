@@ -35,6 +35,7 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.MacAddress;
@@ -491,6 +492,12 @@ public class RuleManagerImpl implements RuleManager {
 
         }
         return result;
+    }
+
+    @Override
+    public List<SpeakerData> buildRulesHaFlowPath(
+            HaFlowPath haPath, boolean filterOutUsedSharedRules, DataAdapter adapter) {
+        return new ArrayList<>(); // will be added in the next PR
     }
 
     private List<SpeakerData> buildSharedEndpointYFlowCommands(List<FlowPath> flowPaths, DataAdapter adapter) {

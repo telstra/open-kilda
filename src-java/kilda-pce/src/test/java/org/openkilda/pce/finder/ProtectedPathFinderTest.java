@@ -44,6 +44,7 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.pce.impl.InMemoryPathComputer;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslImmutableView;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -88,6 +89,8 @@ public class ProtectedPathFinderTest {
     private IslRepository islRepository;
     @Mock
     private FlowPathRepository flowPathRepository;
+    @Mock
+    private HaFlowPathRepository haFlowPathRepository;
 
     private AvailableNetworkFactory availableNetworkFactory;
 
@@ -103,6 +106,7 @@ public class ProtectedPathFinderTest {
 
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
+        when(repositoryFactory.createHaFlowPathRepository()).thenReturn(haFlowPathRepository);
 
         availableNetworkFactory = new AvailableNetworkFactory(config, repositoryFactory);
     }

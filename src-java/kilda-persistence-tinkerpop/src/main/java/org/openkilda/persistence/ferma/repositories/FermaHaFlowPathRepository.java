@@ -20,8 +20,10 @@ import org.openkilda.model.HaFlowPath.HaFlowPathData;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowPathFrame;
+import org.openkilda.persistence.ferma.frames.HaFlowFrame;
 import org.openkilda.persistence.ferma.frames.HaFlowPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
+import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 
@@ -62,6 +64,28 @@ public class FermaHaFlowPathRepository extends FermaGenericRepository<HaFlowPath
                         .has(HaFlowPathFrame.HA_FLOW_ID_PROPERTY, haFlowId))
                 .toListExplicit(HaFlowPathFrame.class).stream()
                 .map(HaFlowPath::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Collection<PathId> findPathIdsByDiverseGroupId(String diverseGroupId) {
+        return findPathIdsByFlowGroupId(HaFlowFrame.DIVERSE_GROUP_ID_PROPERTY, diverseGroupId);
+    }
+
+    @Override
+    public Collection<PathId> findPathIdsByAffinityGroupId(String affinityGroupId) {
+        return findPathIdsByFlowGroupId(HaFlowFrame.AFFINITY_GROUP_ID_PROPERTY, affinityGroupId);
+    }
+
+    private Collection<PathId> findPathIdsByFlowGroupId(String groupIdProperty, String groupId) {
+        return framedGraph().traverse(g -> g.V()
+                        .hasLabel(HaFlowFrame.FRAME_LABEL)
+                        .has(groupIdProperty, groupId)
+                        .out(HaFlowFrame.OWNS_PATHS_EDGE)
+                        .hasLabel(HaFlowPathFrame.FRAME_LABEL)
+                        .values(HaFlowPathFrame.HA_PATH_ID_PROPERTY))
+                .getRawTraversal().toStream()
+                .map(pathId -> PathIdConverter.INSTANCE.toEntityAttribute((String) pathId))
                 .collect(Collectors.toList());
     }
 

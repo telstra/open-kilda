@@ -28,5 +28,9 @@ public interface HaFlowPathRepository extends Repository<HaFlowPath> {
 
     Collection<HaFlowPath> findByHaFlowId(String haFlowId);
 
+    Collection<PathId> findPathIdsByDiverseGroupId(String diverseGroupId);
+
+    Collection<PathId> findPathIdsByAffinityGroupId(String affinityGroupId);
+
     Optional<HaFlowPath> remove(PathId pathId);
 }
