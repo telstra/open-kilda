@@ -32,9 +32,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
-import org.openkilda.messaging.payload.network.PathsDto;
-import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.PathComputationStrategy;
+import org.openkilda.messaging.payload.network.PathDto;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
@@ -59,9 +57,11 @@ import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
+import org.openkilda.testing.service.northbound.payloads.PathRequestParameter;
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public interface NorthboundService {
@@ -208,9 +208,7 @@ public interface NorthboundService {
 
     //feature network
 
-    PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType flowEncapsulationType,
-                      PathComputationStrategy pathComputationStrategy, Long maxLatency,
-                      Long maxLatencyTier2, Integer maxPathCount);
+    List<PathDto> getPaths(Map<PathRequestParameter, Object> parameters);
 
     // configuration
 

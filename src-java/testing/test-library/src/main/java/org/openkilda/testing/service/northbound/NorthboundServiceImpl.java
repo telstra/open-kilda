@@ -35,9 +35,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
+import org.openkilda.messaging.payload.network.PathDto;
 import org.openkilda.messaging.payload.network.PathsDto;
-import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
@@ -67,6 +66,7 @@ import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
+import org.openkilda.testing.service.northbound.payloads.PathRequestParameter;
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult;
 
 import com.google.common.collect.ImmutableMap;
@@ -84,6 +84,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -647,34 +648,15 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType flowEncapsulationType,
-                             PathComputationStrategy pathComputationStrategy,
-                             Long maxLatency, Long maxLatencyTier2, Integer maxPathCount) {
+    public List<PathDto>  getPaths(Map<PathRequestParameter, Object> parameters) {
+        /* it looks like it makes more sense to pass SwitchPair as the mandatory first parameter, but this leads to
+        circular dependencies between groovy and java code, so for now it is implemented as it is implemented */
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/network/paths");
-        if (srcSwitch != null) {
-            uriBuilder.queryParam("src_switch", srcSwitch);
+        for (Map.Entry<PathRequestParameter, Object> param : parameters.entrySet()) {
+            uriBuilder.queryParam(param.getKey().getQueryKey(), param.getValue().toString());
         }
-        if (dstSwitch != null) {
-            uriBuilder.queryParam("dst_switch", dstSwitch);
-        }
-        if (flowEncapsulationType != null) {
-            uriBuilder.queryParam("encapsulation_type", flowEncapsulationType);
-        }
-        if (pathComputationStrategy != null) {
-            uriBuilder.queryParam("path_computation_strategy", pathComputationStrategy);
-        }
-        if (maxLatency != null) {
-            uriBuilder.queryParam("max_latency", maxLatency);
-        }
-        if (maxLatencyTier2 != null) {
-            uriBuilder.queryParam("max_latency_tier2", maxLatencyTier2);
-        }
-        if (maxPathCount != null) {
-            uriBuilder.queryParam("max_path_count", maxPathCount);
-        }
-
         return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), PathsDto.class, srcSwitch, dstSwitch).getBody();
+                new HttpEntity(buildHeadersWithCorrelationId()), PathsDto.class).getBody().getPaths();
     }
 
     @Override

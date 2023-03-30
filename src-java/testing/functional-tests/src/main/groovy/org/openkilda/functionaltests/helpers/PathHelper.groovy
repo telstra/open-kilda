@@ -369,6 +369,11 @@ class PathHelper {
                 null)
     }
 
+    Boolean "paths can be mutually protected" (List<PathNodePayload> path1, List<PathNodePayload> path2) {
+        assert ! (path1.isEmpty() || path2.isEmpty()), "Both paths must be not empty"
+        return getInvolvedIsls(convert(path1)).intersect(getInvolvedIsls(convert(path2))).size() == 0
+    }
+
     private static org.openkilda.messaging.payload.flow.FlowEncapsulationType convertEncapsulationType(FlowEncapsulationType origin) {
         // Let's laugh on this naive implementation after the third encapsulation type is introduced, not before.
         if (origin == VXLAN) {
