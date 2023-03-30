@@ -21,7 +21,6 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.HaFlow;
-import org.openkilda.model.HaFlow.HaSharedEndpoint;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.MeterId;
@@ -64,10 +63,10 @@ public final class FermaModelUtils {
      * Builds HaSubFlow object.
      */
     public static HaSubFlow buildHaSubFlow(
-            String subFlowId, SwitchId switchId, int port, int vlan, int innerVlan, String description) {
+            String subFlowId, Switch sw, int port, int vlan, int innerVlan, String description) {
         return HaSubFlow.builder()
                 .haSubFlowId(subFlowId)
-                .endpointSwitchId(switchId)
+                .endpointSwitch(sw)
                 .endpointPort(port)
                 .endpointVlan(vlan)
                 .endpointInnerVlan(innerVlan)
@@ -80,13 +79,16 @@ public final class FermaModelUtils {
      * Builds HaFlow object.
      */
     public static HaFlow buildHaFlow(
-            String flowId, SwitchId switchId, int port, int vlan, int innerVlan, long latency, long latencyTier2,
+            String flowId, Switch sw, int port, int vlan, int innerVlan, long latency, long latencyTier2,
             long bandwidth, FlowEncapsulationType encapsulationType, int priority, String description,
             PathComputationStrategy strategy, FlowStatus status, boolean protectedPath, boolean pinned, boolean pings,
             boolean ignoreBandwidth, boolean strictBandwidth) {
         return HaFlow.builder()
                 .haFlowId(flowId)
-                .sharedEndpoint(new HaSharedEndpoint(switchId, port, vlan, innerVlan))
+                .sharedSwitch(sw)
+                .sharedPort(port)
+                .sharedOuterVlan(vlan)
+                .sharedInnerVlan(innerVlan)
                 .maxLatency(latency)
                 .maxLatencyTier2(latencyTier2)
                 .maximumBandwidth(bandwidth)

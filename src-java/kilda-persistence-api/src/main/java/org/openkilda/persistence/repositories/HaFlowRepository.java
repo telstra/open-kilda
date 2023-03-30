@@ -15,7 +15,9 @@
 
 package org.openkilda.persistence.repositories;
 
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
+import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -26,6 +28,12 @@ public interface HaFlowRepository extends Repository<HaFlow> {
     boolean exists(String haFlowId);
 
     Optional<HaFlow> findById(String haFlowId);
+
+    Collection<HaFlow> findByEndpoint(SwitchId switchId, int port, int vlan, int innerVLan);
+
+    Optional<String> getOrCreateDiverseHaFlowGroupId(String haFlowId);
+
+    void updateStatus(String haFlowId, FlowStatus flowStatus);
 
     Optional<HaFlow> remove(String haFlowId);
 }

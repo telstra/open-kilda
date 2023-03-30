@@ -165,6 +165,14 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
                 .collect(Collectors.toSet());
     }
 
+    /**
+     * Check whether the path is protected for the flow.
+     */
+    public boolean isProtected() {
+        HaFlow haFlow = getHaFlow();
+        return haFlow != null && haFlow.isProtectedPath(getHaPathId());
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

@@ -18,11 +18,12 @@ package org.openkilda.persistence.ferma.frames;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow.HaFlowData;
-import org.openkilda.model.HaFlow.HaSharedEndpoint;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
+import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.ferma.frames.converters.Convert;
 import org.openkilda.persistence.ferma.frames.converters.FlowEncapsulationTypeConverter;
 import org.openkilda.persistence.ferma.frames.converters.FlowStatusConverter;
@@ -36,9 +37,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -72,10 +73,13 @@ public abstract class HaFlowFrame extends KildaBaseVertexFrame implements HaFlow
     public static final String REVERSE_PATH_ID_PROPERTY = "reverse_path_id";
     public static final String PROTECTED_FORWARD_PATH_ID_PROPERTY = "protected_forward_path_id";
     public static final String PROTECTED_REVERSE_PATH_ID_PROPERTY = "protected_reverse_path_id";
+    public static final String DIVERSE_GROUP_ID_PROPERTY = "diverse_group_id";
+    public static final String AFFINITY_GROUP_ID_PROPERTY = "affinity_group_id";
 
     private Map<String, HaSubFlow> subFlows;
     private Set<PathId> pathIds;
     private Map<PathId, HaFlowPath> paths;
+    private Switch sharedSwitch;
 
     @Override
     @Property(HA_FLOW_ID_PROPERTY)
@@ -86,21 +90,33 @@ public abstract class HaFlowFrame extends KildaBaseVertexFrame implements HaFlow
     public abstract void setHaFlowId(String haFlowId);
 
     @Override
-    public HaSharedEndpoint getSharedEndpoint() {
-        return new HaSharedEndpoint(
-                SwitchIdConverter.INSTANCE.toEntityAttribute(getProperty(SHARED_ENDPOINT_SWITCH_ID_PROPERTY)),
-                getProperty(SHARED_ENDPOINT_PORT_PROPERTY), getProperty(SHARED_ENDPOINT_VLAN_PROPERTY),
-                getProperty(SHARED_ENDPOINT_INNER_VLAN_PROPERTY));
-    }
+    @Property(SHARED_ENDPOINT_SWITCH_ID_PROPERTY)
+    @Convert(SwitchIdConverter.class)
+    public abstract SwitchId getSharedSwitchId();
 
     @Override
-    public void setSharedEndpoint(HaSharedEndpoint sharedEndpoint) {
-        setProperty(SHARED_ENDPOINT_SWITCH_ID_PROPERTY,
-                SwitchIdConverter.INSTANCE.toGraphProperty(sharedEndpoint.getSwitchId()));
-        setProperty(SHARED_ENDPOINT_PORT_PROPERTY, sharedEndpoint.getPortNumber());
-        setProperty(SHARED_ENDPOINT_VLAN_PROPERTY, sharedEndpoint.getOuterVlanId());
-        setProperty(SHARED_ENDPOINT_INNER_VLAN_PROPERTY, sharedEndpoint.getInnerVlanId());
-    }
+    @Property(SHARED_ENDPOINT_PORT_PROPERTY)
+    public abstract int getSharedPort();
+
+    @Override
+    @Property(SHARED_ENDPOINT_PORT_PROPERTY)
+    public abstract void setSharedPort(int sharedPort);
+
+    @Override
+    @Property(SHARED_ENDPOINT_VLAN_PROPERTY)
+    public abstract int getSharedOuterVlan();
+
+    @Override
+    @Property(SHARED_ENDPOINT_VLAN_PROPERTY)
+    public abstract void setSharedOuterVlan(int sharedPort);
+
+    @Override
+    @Property(SHARED_ENDPOINT_INNER_VLAN_PROPERTY)
+    public abstract int getSharedInnerVlan();
+
+    @Override
+    @Property(SHARED_ENDPOINT_INNER_VLAN_PROPERTY)
+    public abstract void setSharedInnerVlan(int sharedPort);
 
     @Override
     @Property(ALLOCATE_PROTECTED_PATH_PROPERTY)
@@ -213,6 +229,22 @@ public abstract class HaFlowFrame extends KildaBaseVertexFrame implements HaFlow
     public abstract void setPathComputationStrategy(PathComputationStrategy pathComputationStrategy);
 
     @Override
+    @Property(DIVERSE_GROUP_ID_PROPERTY)
+    public abstract String getDiverseGroupId();
+
+    @Override
+    @Property(DIVERSE_GROUP_ID_PROPERTY)
+    public abstract void setDiverseGroupId(String diverseGroupId);
+
+    @Override
+    @Property(AFFINITY_GROUP_ID_PROPERTY)
+    public abstract String getAffinityGroupId();
+
+    @Override
+    @Property(AFFINITY_GROUP_ID_PROPERTY)
+    public abstract void setAffinityGroupId(String affinityGroupId);
+
+    @Override
     @Property(FORWARD_PATH_ID_PROPERTY)
     @Convert(PathIdConverter.class)
     public abstract PathId getForwardPathId();
@@ -253,6 +285,22 @@ public abstract class HaFlowFrame extends KildaBaseVertexFrame implements HaFlow
     public abstract void setProtectedReversePathId(PathId protectedReversePathId);
 
     @Override
+    public Switch getSharedSwitch() {
+        if (sharedSwitch == null) {
+            String switchId = getProperty(SHARED_ENDPOINT_SWITCH_ID_PROPERTY);
+            sharedSwitch = SwitchFrame.load(getGraph(), switchId).map(Switch::new).orElse(null);
+        }
+        return sharedSwitch;
+    }
+
+    @Override
+    public void setSharedSwitch(Switch sharedSwitch) {
+        this.sharedSwitch = sharedSwitch;
+        String switchId = SwitchIdConverter.INSTANCE.toGraphProperty(sharedSwitch.getSwitchId());
+        setProperty(SHARED_ENDPOINT_SWITCH_ID_PROPERTY, switchId);
+    }
+
+    @Override
     public Optional<HaSubFlow> getSubFlow(String subFlowId) {
         if (subFlows == null) {
             // init the cache map with sub flows.
@@ -262,7 +310,7 @@ public abstract class HaFlowFrame extends KildaBaseVertexFrame implements HaFlow
     }
 
     @Override
-    public Set<HaSubFlow> getSubFlows() {
+    public List<HaSubFlow> getSubFlows() {
         if (subFlows == null) {
             subFlows = traverse(v -> v.out(HaFlowFrame.OWNS_SUB_FLOW_EDGE)
                     .hasLabel(HaSubFlowFrame.FRAME_LABEL))
@@ -270,7 +318,7 @@ public abstract class HaFlowFrame extends KildaBaseVertexFrame implements HaFlow
                     .map(HaSubFlow::new)
                     .collect(Collectors.toMap(HaSubFlow::getHaSubFlowId, v -> v));
         }
-        return new HashSet<>(subFlows.values());
+        return new ArrayList<>(subFlows.values());
     }
 
     @Override

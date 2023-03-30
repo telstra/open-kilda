@@ -24,10 +24,10 @@ import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.build
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildSegments;
 
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.HaFlow;
-import org.openkilda.model.HaFlow.HaSharedEndpoint;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.MeterId;
@@ -56,8 +56,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class FermaHaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
-    private static final FlowSegmentCookie COOKIE_1 = FlowSegmentCookie.builder().flowEffectiveId(1).build();
-    private static final FlowSegmentCookie COOKIE_2 = FlowSegmentCookie.builder().flowEffectiveId(2).build();
+    private static final FlowSegmentCookie COOKIE_1 = FlowSegmentCookie.builder().flowEffectiveId(1)
+            .direction(FlowPathDirection.FORWARD).build();
+    private static final FlowSegmentCookie COOKIE_2 = FlowSegmentCookie.builder().flowEffectiveId(2)
+            .direction(FlowPathDirection.REVERSE).build();
     private static final int BANDWIDTH_1 = 1000;
     private static final int BANDWIDTH_2 = 2000;
 
@@ -93,11 +95,14 @@ public class FermaHaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
 
         haFlow = HaFlow.builder()
                 .haFlowId(HA_FLOW_ID_1)
-                .sharedEndpoint(new HaSharedEndpoint(SWITCH_ID_3, 0, 0, 0))
+                .sharedSwitch(switch3)
+                .sharedPort(PORT_1)
+                .sharedOuterVlan(0)
+                .sharedInnerVlan(0)
                 .build();
         haFlowRepository.add(haFlow);
-        subFlow1 = buildHaSubFlow(SUB_FLOW_ID_1, SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1, DESCRIPTION_1);
-        subFlow2 = buildHaSubFlow(SUB_FLOW_ID_2, SWITCH_ID_2, PORT_2, VLAN_2, INNER_VLAN_2, DESCRIPTION_2);
+        subFlow1 = buildHaSubFlow(SUB_FLOW_ID_1, switch1, PORT_1, VLAN_1, INNER_VLAN_1, DESCRIPTION_1);
+        subFlow2 = buildHaSubFlow(SUB_FLOW_ID_2, switch2, PORT_2, VLAN_2, INNER_VLAN_2, DESCRIPTION_2);
         haSubFlowRepository.add(subFlow1);
         haSubFlowRepository.add(subFlow2);
         haFlow.setSubFlows(Sets.newHashSet(subFlow1, subFlow2));
@@ -140,9 +145,9 @@ public class FermaHaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
     @Test
     public void createFlowWithSubFlowsTest() {
         HaFlowPath path1 = createHaFlowPath(PATH_ID_1, BANDWIDTH_1, COOKIE_1, METER_ID_1, METER_ID_2,
-                switch1, SWITCH_ID_2, GROUP_ID_1);
-        haFlow.addPaths(path1);
+                switch3, SWITCH_ID_2, GROUP_ID_1);
         path1.setHaSubFlows(Lists.newArrayList(subFlow1, subFlow2));
+        haFlow.setForwardPath(path1);
 
         Collection<HaFlowPath> paths = haFlowPathRepository.findAll();
         assertEquals(1, paths.size());
