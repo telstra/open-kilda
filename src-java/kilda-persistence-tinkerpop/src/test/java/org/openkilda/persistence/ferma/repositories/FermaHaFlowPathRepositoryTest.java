@@ -105,9 +105,9 @@ public class FermaHaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         subFlow2 = buildHaSubFlow(SUB_FLOW_ID_2, switch2, PORT_2, VLAN_2, INNER_VLAN_2, DESCRIPTION_2);
         haSubFlowRepository.add(subFlow1);
         haSubFlowRepository.add(subFlow2);
-        haFlow.setSubFlows(Sets.newHashSet(subFlow1, subFlow2));
+        haFlow.setHaSubFlows(Sets.newHashSet(subFlow1, subFlow2));
 
-        assertEquals(2, haFlow.getSubFlows().size());
+        assertEquals(2, haFlow.getHaSubFlows().size());
 
     }
 
@@ -302,7 +302,7 @@ public class FermaHaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         haFlow.addPaths(path);
         path.setSubPaths(createSubPaths(path));
         path.setHaSubFlows(Lists.newArrayList(subFlow1, subFlow2));
-        assertEquals(2, path.getHaFlow().getSubFlows().size());
+        assertEquals(2, path.getHaFlow().getHaSubFlows().size());
         return path;
     }
 

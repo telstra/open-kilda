@@ -106,7 +106,7 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
                         format("HA-flow %s not found.", payload.getHaFlowId()));
             }
             HaFlow haFlow = foundHaFlow.get();
-            Map<String, HaSubFlow> subFlowMap = haFlow.getSubFlows().stream()
+            Map<String, HaSubFlow> subFlowMap = haFlow.getHaSubFlows().stream()
                     .collect(Collectors.toMap(HaSubFlow::getHaSubFlowId, Function.identity()));
 
             for (HaSubFlowDto subFlowPayload : payload.getSubFlows()) {
@@ -143,7 +143,7 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
     }
 
     private void updateSubFlows(HaFlowPartialUpdateRequest payload, HaFlow haFlow) throws SwitchNotFoundException {
-        Map<String, HaSubFlow> subFlowMap = haFlow.getSubFlows().stream()
+        Map<String, HaSubFlow> subFlowMap = haFlow.getHaSubFlows().stream()
                 .collect(Collectors.toMap(HaSubFlow::getHaSubFlowId, Function.identity()));
 
         for (HaSubFlowPartialUpdateDto subFlowPayload : payload.getSubFlows()) {

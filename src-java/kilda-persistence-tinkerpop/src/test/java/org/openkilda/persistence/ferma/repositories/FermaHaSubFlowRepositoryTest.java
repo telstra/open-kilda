@@ -68,7 +68,7 @@ public class FermaHaSubFlowRepositoryTest extends InMemoryGraphBasedTest {
     public void createSubFlowTest() {
         HaSubFlow sub1 = createSubFlow(SUB_FLOW_ID_1, switch1, PORT_1, VLAN_1, INNER_VLAN_1, DESCRIPTION_1);
         HaSubFlow sub2 = createSubFlow(SUB_FLOW_ID_2, switch2, PORT_2, VLAN_2, INNER_VLAN_2, DESCRIPTION_2);
-        haFlow.setSubFlows(Sets.newHashSet(sub1, sub2));
+        haFlow.setHaSubFlows(Sets.newHashSet(sub1, sub2));
         createSubFlow(SUB_FLOW_ID_3, switch3, PORT_3, VLAN_3, INNER_VLAN_3, DESCRIPTION_3);
 
         Map<String, HaSubFlow> subFlowMap = haSubFlowsToMap(haSubFlowRepository.findAll());
@@ -87,7 +87,7 @@ public class FermaHaSubFlowRepositoryTest extends InMemoryGraphBasedTest {
         HaSubFlow sub1 = createSubFlow(SUB_FLOW_ID_1, switch1, PORT_1, VLAN_1, INNER_VLAN_1, DESCRIPTION_1);
         HaSubFlow sub2 = createSubFlow(SUB_FLOW_ID_2, switch2, PORT_2, VLAN_2, INNER_VLAN_2, DESCRIPTION_2);
         HaSubFlow sub3 = createSubFlow(SUB_FLOW_ID_3, switch3, PORT_3, VLAN_3, INNER_VLAN_3, DESCRIPTION_3);
-        haFlow.setSubFlows(Sets.newHashSet(sub1, sub2));
+        haFlow.setHaSubFlows(Sets.newHashSet(sub1, sub2));
 
         assertEquals(3, haSubFlowRepository.findAll().size());
 
@@ -106,7 +106,7 @@ public class FermaHaSubFlowRepositoryTest extends InMemoryGraphBasedTest {
     public void findSubFlowByFlowIdTest() {
         HaSubFlow sub1 = createSubFlow(SUB_FLOW_ID_1, switch1, PORT_1, VLAN_1, INNER_VLAN_1, DESCRIPTION_1);
         HaSubFlow sub2 = createSubFlow(SUB_FLOW_ID_2, switch2, PORT_2, VLAN_2, INNER_VLAN_2, DESCRIPTION_2);
-        haFlow.setSubFlows(Sets.newHashSet(sub1, sub2));
+        haFlow.setHaSubFlows(Sets.newHashSet(sub1, sub2));
         createSubFlow(SUB_FLOW_ID_3, switch3, PORT_3, VLAN_3, INNER_VLAN_3, DESCRIPTION_3);
 
         Optional<HaSubFlow> subFlow1 = haSubFlowRepository.findById(SUB_FLOW_ID_1);

@@ -146,14 +146,14 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
         assertHaFlow(HA_FLOW_ID_1, SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1, LATENCY_1, LATENCY_2, BANDWIDTH_1,
                 FlowEncapsulationType.TRANSIT_VLAN, PRIORITY_1, DESCRIPTION_1, PathComputationStrategy.COST,
                 FlowStatus.UP, true, true, true, true, true, flowMap.get(HA_FLOW_ID_1));
-        assertSubFlows(flowMap.get(HA_FLOW_ID_1).getSubFlows(), subFlow1, subFlow2);
+        assertSubFlows(flowMap.get(HA_FLOW_ID_1).getHaSubFlows(), subFlow1, subFlow2);
         assertPathsFlows(flowMap.get(HA_FLOW_ID_1).getPaths(), haPath1, haPath2);
 
         // flow 2
         assertHaFlow(HA_FLOW_ID_2, SWITCH_ID_2, PORT_2, VLAN_2, INNER_VLAN_2, LATENCY_3, LATENCY_4, BANDWIDTH_2,
                 FlowEncapsulationType.VXLAN, PRIORITY_2, DESCRIPTION_2, PathComputationStrategy.LATENCY,
                 FlowStatus.IN_PROGRESS, false, false, false, false, false, flowMap.get(HA_FLOW_ID_2));
-        assertEquals(0, flowMap.get(HA_FLOW_ID_2).getSubFlows().size());
+        assertEquals(0, flowMap.get(HA_FLOW_ID_2).getHaSubFlows().size());
         assertEquals(0, flowMap.get(HA_FLOW_ID_2).getPaths().size());
     }
 
@@ -179,7 +179,7 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
         assertHaFlow(HA_FLOW_ID_1, SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1, LATENCY_1, LATENCY_2, BANDWIDTH_1,
                 FlowEncapsulationType.TRANSIT_VLAN, PRIORITY_1, DESCRIPTION_1, PathComputationStrategy.COST,
                 FlowStatus.UP, true, true, true, true, true, foundFlow1.get());
-        assertSubFlows(foundFlow1.get().getSubFlows(), subFlow1, subFlow2);
+        assertSubFlows(foundFlow1.get().getHaSubFlows(), subFlow1, subFlow2);
         assertPathsFlows(foundFlow1.get().getPaths(), haPath1, haPath2);
 
         // flow 2
@@ -188,7 +188,7 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
         assertHaFlow(HA_FLOW_ID_2, SWITCH_ID_2, PORT_2, VLAN_2, INNER_VLAN_2, LATENCY_3, LATENCY_4, BANDWIDTH_2,
                 FlowEncapsulationType.VXLAN, PRIORITY_2, DESCRIPTION_2, PathComputationStrategy.LATENCY,
                 FlowStatus.IN_PROGRESS, false, false, false, false, false, foundFlow2.get());
-        assertEquals(0, foundFlow2.get().getSubFlows().size());
+        assertEquals(0, foundFlow2.get().getHaSubFlows().size());
         assertEquals(0, foundFlow2.get().getPaths().size());
     }
 
@@ -318,7 +318,7 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
         createHaFlowWithSubFlows(haFlow1);
         createHaFlow(haFlow2);
         haSubFlowRepository.add(subFlow3);
-        haFlow2.setSubFlows(newHashSet(subFlow3));
+        haFlow2.setHaSubFlows(newHashSet(subFlow3));
 
         Collection<HaFlow> foundBySharedEndpoint = haFlowRepository.findByEndpoint(
                 haFlow1.getSharedSwitchId(), haFlow1.getSharedPort(),
@@ -349,7 +349,7 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
         createHaFlow(haFlow);
         haSubFlowRepository.add(subFlow1);
         haSubFlowRepository.add(subFlow2);
-        haFlow.setSubFlows(newHashSet(subFlow1, subFlow2));
+        haFlow.setHaSubFlows(newHashSet(subFlow1, subFlow2));
     }
 
     private void assertPathsFlows(Collection<HaFlowPath> actualPaths, HaFlowPath... expectedPaths) {

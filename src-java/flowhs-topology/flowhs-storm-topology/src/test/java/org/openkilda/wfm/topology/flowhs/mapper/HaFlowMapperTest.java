@@ -110,8 +110,7 @@ public class HaFlowMapperTest {
         assertEquals(request.getSharedEndpoint().getPortNumber().intValue(), result.getSharedPort());
         assertEquals(request.getSharedEndpoint().getOuterVlanId(), result.getSharedOuterVlan());
         assertEquals(request.getSharedEndpoint().getInnerVlanId(), result.getSharedInnerVlan());
-        // subflows must be mapped separately
-        assertEquals(0, result.getSubFlows().size());
+        assertEquals("Subflows must be mapped separately", 0, result.getHaSubFlows().size());
     }
 
     @Test
@@ -120,7 +119,7 @@ public class HaFlowMapperTest {
                 HA_FLOW_ID, SWITCH_3, PORT_3, VLAN_3, INNER_VLAN_3, BANDWIDTH,
                 PathComputationStrategy.COST, FlowEncapsulationType.VXLAN, MAX_LATENCY, MAX_LATENCY_TIER_2, true, false,
                 true, PRIORITY, false, DESC_1, true, FlowStatus.UP, GROUP_1, GROUP_2);
-        haFlow.setSubFlows(Sets.newHashSet(
+        haFlow.setHaSubFlows(Sets.newHashSet(
                 HaSubFlow.builder().haSubFlowId(SUB_FLOW_1_NAME)
                         .endpointSwitch(SWITCH_1)
                         .endpointPort(PORT_1)
@@ -157,7 +156,7 @@ public class HaFlowMapperTest {
         assertEquals(haFlow.getSharedPort(), result.getSharedEndpoint().getPortNumber().intValue());
         assertEquals(haFlow.getSharedOuterVlan(), result.getSharedEndpoint().getOuterVlanId());
         assertEquals(haFlow.getSharedInnerVlan(), result.getSharedEndpoint().getInnerVlanId());
-        assertSubFlows(haFlow.getSubFlows(), result.getSubFlows());
+        assertSubFlows(haFlow.getHaSubFlows(), result.getSubFlows());
     }
 
     @Test
@@ -191,7 +190,7 @@ public class HaFlowMapperTest {
         assertEquals(2, requestedFlows.size());
         Map<String, RequestedFlow> requestedFlowMap = requestedFlows.stream()
                 .collect(Collectors.toMap(RequestedFlow::getFlowId, Function.identity()));
-        assertEquals(2, requestedFlowMap.size());
+        assertEquals(Sets.newHashSet(SUB_FLOW_1.getFlowId(), SUB_FLOW_2.getFlowId()), requestedFlowMap.keySet());
 
         for (HaSubFlowDto subFlow : subFlows) {
             assertSubFlow(

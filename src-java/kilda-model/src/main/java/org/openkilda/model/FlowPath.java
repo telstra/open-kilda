@@ -141,7 +141,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
     }
 
     /**
-     * Check whether the path is protected for the flow.
+     * Checks whether this path is a protected path for the flow.
      */
     public boolean isProtected() {
         Flow flow = getFlow();

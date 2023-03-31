@@ -301,16 +301,16 @@ public abstract class HaFlowFrame extends KildaBaseVertexFrame implements HaFlow
     }
 
     @Override
-    public Optional<HaSubFlow> getSubFlow(String subFlowId) {
+    public Optional<HaSubFlow> getHaSubFlow(String subFlowId) {
         if (subFlows == null) {
             // init the cache map with sub flows.
-            getSubFlows();
+            getHaSubFlows();
         }
         return Optional.ofNullable(subFlows.get(subFlowId));
     }
 
     @Override
-    public List<HaSubFlow> getSubFlows() {
+    public List<HaSubFlow> getHaSubFlows() {
         if (subFlows == null) {
             subFlows = traverse(v -> v.out(HaFlowFrame.OWNS_SUB_FLOW_EDGE)
                     .hasLabel(HaSubFlowFrame.FRAME_LABEL))
@@ -322,7 +322,7 @@ public abstract class HaFlowFrame extends KildaBaseVertexFrame implements HaFlow
     }
 
     @Override
-    public void setSubFlows(Set<HaSubFlow> subFlows) {
+    public void setHaSubFlows(Set<HaSubFlow> subFlows) {
         for (HaSubFlow subFlow : subFlows) {
             HaSubFlow.HaSubFlowData data = subFlow.getData();
             HaSubFlowFrame frame;

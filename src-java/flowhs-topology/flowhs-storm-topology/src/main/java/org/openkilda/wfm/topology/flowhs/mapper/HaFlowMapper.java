@@ -50,6 +50,7 @@ public abstract class HaFlowMapper {
 
     @Mapping(target = "timeUpdate", source = "haFlow.timeModify")
     @Mapping(target = "sharedEndpoint", source = "haFlow")
+    @Mapping(target = "subFlows", source = "haSubFlows")
     @Mapping(target = "diverseWithFlows", ignore = true)
     @Mapping(target = "diverseWithYFlows", ignore = true)
     @Mapping(target = "diverseWithHaFlows", ignore = true)
@@ -99,6 +100,8 @@ public abstract class HaFlowMapper {
 
     /**
      * Converts {@link HaFlowRequest} to a few {@link RequestedFlow}.
+     * The methods also insures that all IDs of all subflows are different.
+     * If there are several subflows with equal subFLowIds - only one will be left.
      */
     public Collection<RequestedFlow> toRequestedFlows(HaFlowRequest request) {
         return request.getSubFlows().stream()

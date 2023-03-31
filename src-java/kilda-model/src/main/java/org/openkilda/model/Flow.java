@@ -277,7 +277,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
     }
 
     /**
-     * Checks if specified path is protected.
+     * Checks if the specified path is a protected path.
      */
     public boolean isProtectedPath(PathId pathId) {
         if (pathId == null) {

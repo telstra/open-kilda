@@ -330,6 +330,11 @@ public abstract class FlowPathFrame extends KildaBaseVertexFrame implements Flow
             List<? extends HaFlowPathFrame> haPathFrames = traverse(v -> v.in(HaFlowPathFrame.OWNS_PATH_EDGE)
                     .hasLabel(HaFlowPathFrame.FRAME_LABEL))
                     .toListExplicit(HaFlowPathFrame.class);
+            if (haPathFrames.size() > 1) {
+                throw new IllegalStateException(
+                        format("The flow path %s with id %s has more than one ha_flow_path references: %s",
+                        getPathId(), getId(), haPathFrames));
+            }
             haFlowPath = !haPathFrames.isEmpty() ? new HaFlowPath(haPathFrames.get(0)) : null;
             PathId haPathId = haFlowPath != null ? haFlowPath.getHaPathId() : null;
             if (!Objects.equals(getHaFlowPathId(), haPathId)) {

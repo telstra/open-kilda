@@ -166,7 +166,7 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
     }
 
     /**
-     * Check whether the path is protected for the flow.
+     * Checks whether this path is a protected path for the flow.
      */
     public boolean isProtected() {
         HaFlow haFlow = getHaFlow();

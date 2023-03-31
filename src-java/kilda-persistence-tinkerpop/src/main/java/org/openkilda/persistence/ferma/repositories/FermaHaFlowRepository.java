@@ -158,7 +158,7 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
         HaFlowFrame frame = KildaBaseVertexFrame.addNewFramedVertex(
                 framedGraph(), HaFlowFrame.FRAME_LABEL, HaFlowFrame.class);
         HaFlow.HaFlowCloner.INSTANCE.copyWithoutSubFlowsAndPaths(data, frame);
-        frame.setSubFlows(data.getSubFlows().stream()
+        frame.setHaSubFlows(data.getHaSubFlows().stream()
                 .peek(subFlow -> {
                     if (!(subFlow.getData() instanceof HaSubFlowFrame)) {
                         haSubFlowRepository.add(subFlow);
@@ -181,7 +181,7 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
                 haFlowPathRepository.remove(path);
             }
         });
-        frame.getSubFlows().forEach(subFlow -> {
+        frame.getHaSubFlows().forEach(subFlow -> {
             if (subFlow.getData() instanceof HaSubFlowFrame) {
                 haSubFlowRepository.remove(subFlow);
             }

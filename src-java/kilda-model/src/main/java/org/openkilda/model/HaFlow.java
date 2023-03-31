@@ -213,7 +213,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
     }
 
     /**
-     * Checks if specified path is protected.
+     * Checks if the specified path is a protected path.
      */
     public boolean isProtectedPath(PathId pathId) {
         if (pathId == null) {
@@ -227,7 +227,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
             throw new IllegalArgumentException(format("HA-path %s has the shared endpoint switch ID %s, but %s is "
                             + "expected", path.getHaPathId(), path.getSharedSwitchId(), getSharedSwitchId()));
         }
-        Set<SwitchId> subFlowSwitchIds = getSubFlows().stream()
+        Set<SwitchId> subFlowSwitchIds = getHaSubFlows().stream()
                 .map(HaSubFlow::getEndpointSwitchId)
                 .collect(Collectors.toSet());
         Set<SwitchId> pathSwitchIds = path.getSubFlowSwitchIds();
@@ -286,7 +286,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                 .append(getReversePathId(), that.getReversePathId())
                 .append(getProtectedForwardPathId(), that.getProtectedForwardPathId())
                 .append(getProtectedReversePathId(), that.getProtectedReversePathId())
-                .append(getSubFlows(), that.getSubFlows())
+                .append(getHaSubFlows(), that.getHaSubFlows())
                 .append(getStatus(), that.getStatus())
                 .append(getAffinityGroupId(), that.getAffinityGroupId())
                 .append(getDiverseGroupId(), that.getDiverseGroupId())
@@ -302,7 +302,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                 getEncapsulationType(), getMaxLatency(), getMaxLatencyTier2(), isIgnoreBandwidth(), isPeriodicPings(),
                 isPinned(), getPriority(), isStrictBandwidth(), getDescription(), isAllocateProtectedPath(),
                 getForwardPathId(), getReversePathId(), getProtectedForwardPathId(), getProtectedReversePathId(),
-                getSubFlows(), getStatus(), getTimeCreate(), getTimeModify(), getAffinityGroupId(),
+                getHaSubFlows(), getStatus(), getTimeCreate(), getTimeModify(), getAffinityGroupId(),
                 getDiverseGroupId());
     }
 
@@ -311,7 +311,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
      */
     public void recalculateStatus() {
         FlowStatus haFlowStatus = null;
-        for (HaSubFlow subFlow : getSubFlows()) {
+        for (HaSubFlow subFlow : getHaSubFlows()) {
             FlowStatus subFlowStatus = subFlow.getStatus();
             if (subFlowStatus == FlowStatus.IN_PROGRESS) {
                 haFlowStatus = FlowStatus.IN_PROGRESS;
@@ -435,11 +435,11 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
 
         void addPaths(HaFlowPath... paths);
 
-        Optional<HaSubFlow> getSubFlow(String subFlowId);
+        Optional<HaSubFlow> getHaSubFlow(String subFlowId);
 
-        List<HaSubFlow> getSubFlows();
+        List<HaSubFlow> getHaSubFlows();
 
-        void setSubFlows(Set<HaSubFlow> subFlows);
+        void setHaSubFlows(Set<HaSubFlow> haSubFlows);
 
         FlowStatus getStatus();
 
@@ -513,19 +513,19 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
         }
 
         @Override
-        public Optional<HaSubFlow> getSubFlow(String subFlowId) {
+        public Optional<HaSubFlow> getHaSubFlow(String subFlowId) {
             return subFlows.stream()
                     .filter(subFlow -> subFlow.getHaSubFlowId().equals(subFlowId))
                     .findAny();
         }
 
         @Override
-        public List<HaSubFlow> getSubFlows() {
+        public List<HaSubFlow> getHaSubFlows() {
             return Collections.unmodifiableList(subFlows);
         }
 
         @Override
-        public void setSubFlows(Set<HaSubFlow> subFlows) {
+        public void setHaSubFlows(Set<HaSubFlow> subFlows) {
             for (HaSubFlow subFlow : this.subFlows) {
                 boolean keepSubFlow = subFlows.stream()
                         .anyMatch(sub -> sub.getHaSubFlowId().equals(subFlow.getHaSubFlowId()));
@@ -590,12 +590,12 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
     public interface HaFlowCloner {
         HaFlowCloner INSTANCE = Mappers.getMapper(HaFlowCloner.class);
 
-        @Mapping(target = "subFlows", ignore = true)
+        @Mapping(target = "haSubFlows", ignore = true)
         @Mapping(target = "paths", ignore = true)
         @Mapping(target = "pathIds", ignore = true)
         void copyWithoutSubFlowsAndPaths(HaFlowData source, @MappingTarget HaFlowData target);
 
-        @Mapping(target = "subFlows", ignore = true)
+        @Mapping(target = "haSubFlows", ignore = true)
         @Mapping(target = "paths", ignore = true)
         @Mapping(target = "pathIds", ignore = true)
         @Mapping(target = "sharedSwitch", ignore = true)
@@ -611,7 +611,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
             result.haFlow = targetFlow;
             copyWithoutSwitchSubFlowsAndPaths(source, result);
             result.setSharedSwitch(new Switch(source.getSharedSwitch()));
-            result.setSubFlows(source.getSubFlows().stream()
+            result.setHaSubFlows(source.getHaSubFlows().stream()
                     .map(subFlow -> new HaSubFlow(subFlow, targetFlow))
                     .collect(Collectors.toSet()));
 
