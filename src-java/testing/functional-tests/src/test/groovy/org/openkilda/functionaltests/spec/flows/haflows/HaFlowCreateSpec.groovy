@@ -250,11 +250,6 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
     }
 
     def collectHaFlowEdgeSwitchesIds(HaFlow haFlow) {
-        def switches = []
-        switches << haFlow.sharedEndpoint.switchId
-        haFlow.getSubFlows().each { subflow ->
-            switches.add(subflow.endpoint.switchId)
-        }
-        return switches
+        return haFlow.subFlows*.endpoint.switchId + haFlow.sharedEndpoint.switchId as Set
     }
 }
