@@ -364,26 +364,6 @@ public class ResourcesAllocationAction extends
         }
     }
 
-    //    private void saveHistory(HaFlowCreateFsm stateMachine, HaFlow haFlow) {
-    //        FlowDumpData primaryPathsDumpData =
-    //                HistoryMapper.INSTANCE.map(haFlow, haFlow.getForwardPath(),
-    //                        haFlow.getReversePath(), DumpType.STATE_AFTER);
-    //        stateMachine.saveActionWithDumpToHistory("New primary paths were created",
-    //                format("The flow paths were created (with allocated resources): %s / %s",
-    //                        haFlow.getForwardPathId(), haFlow.getReversePathId()),
-    //                primaryPathsDumpData);
-    //
-    //        if (haFlow.isAllocateProtectedPath()) {
-    //            FlowDumpData protectedPathsDumpData = HistoryMapper.INSTANCE.map(haFlow,
-    //                    haFlow.getProtectedForwardPath(),
-    //                    haFlow.getProtectedReversePath(), DumpType.STATE_AFTER);
-    //            stateMachine.saveActionWithDumpToHistory("New protected paths were created",
-    //                    format("The flow paths were created (with allocated resources): %s / %s",
-    //                            haFlow.getProtectedForwardPathId(), haFlow.getProtectedReversePathId()),
-    //                    protectedPathsDumpData);
-    //        }
-    //    }
-
     private Message buildResponseMessage(HaFlow haFlow, CommandContext commandContext) {
         //TODO add diverse into response
         HaFlowResponse response = HaFlowResponse.builder()

@@ -168,14 +168,14 @@ public class HaFlowValidatorTest {
     @Test(expected = InvalidFlowException.class)
     public void failIfMaxLatencyTier2HigherThanMaxLatencyTest()
             throws InvalidFlowException, UnavailableFlowEndpointException {
-        HaFlowRequest request = buildHaFlowRequestWithMaxLatency((long) 1000, (long) 500);
+        HaFlowRequest request = buildHaFlowRequestWithMaxLatency(1000L, 500L);
         haFlowValidator.validate(request);
     }
 
     @Test(expected = InvalidFlowException.class)
     public void failIfMaxLatencyTier2butMaxLatencyIsNullTest()
             throws InvalidFlowException, UnavailableFlowEndpointException {
-        HaFlowRequest request = buildHaFlowRequestWithMaxLatency(null, (long) 500);
+        HaFlowRequest request = buildHaFlowRequestWithMaxLatency(null, 500L);
         haFlowValidator.validate(request);
     }
 

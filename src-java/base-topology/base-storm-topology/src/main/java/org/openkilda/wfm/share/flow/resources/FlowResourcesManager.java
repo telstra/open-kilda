@@ -125,11 +125,11 @@ public class FlowResourcesManager {
     }
 
     /**
-     * Try to allocate resources for the flow paths. The method doesn't initialize a transaction.
-     * So it requires external transaction to cover allocation failures.
+     * Tries to allocate resources for the HA flow paths. The method doesn't initialize a transaction.
+     * It requires an external transaction to cover allocation failures.
      * <p/>
      * Provided two flows are considered as paired (forward and reverse),
-     * so some resources can be shared among them.
+     * some resources can be shared among them.
      */
     public HaFlowResources allocateFlowResources(HaFlow haFlow, SwitchId yPointSwitchId)
             throws ResourceAllocationException {

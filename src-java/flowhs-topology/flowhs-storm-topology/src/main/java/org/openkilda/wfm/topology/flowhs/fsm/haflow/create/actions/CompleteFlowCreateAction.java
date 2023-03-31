@@ -117,7 +117,7 @@ public class CompleteFlowCreateAction extends
     private boolean isBackUpStrategyUsed(PathId pathId, HaFlowCreateFsm stateMachine) {
         Boolean result = stateMachine.getBackUpComputationWayUsedMap().get(pathId);
         if (result == null) {
-            throw new IllegalArgumentException(format("There is no path id %s in path map. Valida values are: %s",
+            throw new IllegalArgumentException(format("There is no path id %s in the path map. Valid values are: %s",
                     pathId, stateMachine.getBackUpComputationWayUsedMap().keySet()));
         }
         return result;

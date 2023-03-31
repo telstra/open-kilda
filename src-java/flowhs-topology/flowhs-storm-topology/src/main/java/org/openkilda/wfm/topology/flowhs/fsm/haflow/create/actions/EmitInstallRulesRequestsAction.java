@@ -62,7 +62,7 @@ public class EmitInstallRulesRequestsAction extends
                 speakerCommands, stateMachine.getCommandContext());
 
         if (installRequests.isEmpty()) {
-            stateMachine.saveActionToHistory("No need to install ha-flow rules");
+            stateMachine.saveActionToHistory("No requests to install ha-flow rules");
             stateMachine.fire(Event.SKIP_RULES_INSTALL);
         } else {
             // emitting

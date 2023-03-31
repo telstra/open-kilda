@@ -189,33 +189,47 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     private static SwitchId findYPointForForwardPaths(Path firstPath, Path secondPath) {
-        int id = findLastForwardSharedSegmentId(firstPath.getSegments(), secondPath.getSegments());
-        if (id == -1) {
-            return firstPath.getSrcSwitchId();
+        if (!firstPath.getSrcSwitchId().equals(secondPath.getSrcSwitchId())) {
+            throw new IllegalArgumentException(format(
+                    "Forward sub paths must have equal src switchId. But switch IDs are different: [%s, %s]",
+                    firstPath.getSrcSwitchId(), secondPath.getSrcSwitchId()));
+        }
+
+        Optional<Integer> id = findLastForwardSharedSegmentId(firstPath.getSegments(), secondPath.getSegments());
+        if (id.isPresent()) {
+            return firstPath.getSegments().get(id.get()).getDestSwitchId();
         } else {
-            return firstPath.getSegments().get(id).getDestSwitchId();
+            return firstPath.getSrcSwitchId();
         }
     }
 
     private static SwitchId findYPointForReversePaths(Path firstPath, Path secondPath) {
-        int id = findFirstReverseSharedSegmentId(firstPath.getSegments(), secondPath.getSegments());
-        if (id == firstPath.getSegments().size()) {
-            return firstPath.getDestSwitchId();
+        if (!firstPath.getDestSwitchId().equals(secondPath.getDestSwitchId())) {
+            throw new IllegalArgumentException(format(
+                    "Reverse sub paths must have equal dst switchId. But switch IDs are different: [%s, %s]",
+                    firstPath.getDestSwitchId(), secondPath.getDestSwitchId()));
+        }
+        Optional<Integer> id = findFirstReverseSharedSegmentId(firstPath.getSegments(), secondPath.getSegments());
+        if (id.isPresent()) {
+            return firstPath.getSegments().get(id.get()).getSrcSwitchId();
         } else {
-            return firstPath.getSegments().get(id).getSrcSwitchId();
+            return firstPath.getDestSwitchId();
         }
     }
 
-    private static int findLastForwardSharedSegmentId(List<Segment> firstSegments, List<Segment> secondSegments) {
+    private static Optional<Integer> findLastForwardSharedSegmentId(
+            List<Segment> firstSegments, List<Segment> secondSegments) {
         int i = 0;
         while (i < firstSegments.size() && i < secondSegments.size()
                 && firstSegments.get(i).areEndpointsEqual(secondSegments.get(i))) {
             i++;
         }
-        return i - 1;
+        i--;
+        return i == -1 ? Optional.empty() : Optional.of(i);
     }
 
-    private static int findFirstReverseSharedSegmentId(List<Segment> firstSegments, List<Segment> secondSegments) {
+    private static Optional<Integer> findFirstReverseSharedSegmentId(
+            List<Segment> firstSegments, List<Segment> secondSegments) {
         int i = firstSegments.size() - 1;
         int j = secondSegments.size() - 1;
 
@@ -223,7 +237,8 @@ public class InMemoryPathComputer implements PathComputer {
             i--;
             j--;
         }
-        return i + 1;
+        i++;
+        return i == firstSegments.size() ? Optional.empty() : Optional.of(i);
     }
 
     private FindPathResult findPathInNetwork(RequestedPath requestedPath, AvailableNetwork network,

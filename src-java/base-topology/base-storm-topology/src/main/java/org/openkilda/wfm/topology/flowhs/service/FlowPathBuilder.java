@@ -224,7 +224,7 @@ public class FlowPathBuilder {
     /**
      * Build a flow path entity for the flow using provided resources and segments.
      *
-     * @param haFlow a ha-flow the ha-flow path will be associated with.
+     * @param haFlow an HA Flow that will be associated with the created HA flow path.
      * @param pathResources resources to be used for the ha-flow path.
      * @param haPath ha-path to be used for the ha-flow path.
      * @param cookie cookie to be used for the ha-flow path.
