@@ -18,11 +18,14 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify update and partial update operations on ha-flows.")
+@Ignore("""HA flow create operation allocates resources, but HA flow delete operation can't deallocate these resources 
+        yet. Need to be unignored when HA flow delete operation will be ready""")
 class HaFlowUpdateSpec extends HealthCheckSpecification {
     @Autowired
     @Shared

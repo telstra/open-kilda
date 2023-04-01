@@ -33,7 +33,9 @@ import java.util.Set;
 
 public interface DataAdapter {
 
-    Map<PathId, FlowPath> getFlowPaths();
+    Map<PathId, FlowPath> getCommonFlowPaths();
+
+    Map<PathId, FlowPath> getHaFlowSubPaths();
 
     Flow getFlow(PathId pathId);
 

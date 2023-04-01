@@ -114,12 +114,12 @@ public class PersistenceDataAdapterTest {
                 .persistenceManager(persistenceManager)
                 .build();
 
-        Map<PathId, FlowPath> actual = adapter.getFlowPaths();
+        Map<PathId, FlowPath> actual = adapter.getCommonFlowPaths();
 
         assertEquals(1, actual.size());
         assertEquals(flowPath, actual.get(pathId));
 
-        adapter.getFlowPaths();
+        adapter.getCommonFlowPaths();
 
         verify(flowPathRepository).findByIds(pathIds);
         verifyNoMoreInteractions(flowPathRepository);

@@ -42,7 +42,8 @@ import java.util.Set;
 @Builder
 public class InMemoryDataAdapter implements DataAdapter {
 
-    Map<PathId, FlowPath> flowPaths;
+    Map<PathId, FlowPath> commonFlowPaths;
+    Map<PathId, FlowPath> haFlowSubPaths;
     Map<PathId, Flow> flows;
     Map<PathId, FlowTransitEncapsulation> transitEncapsulations;
     Map<SwitchId, Switch> switches;
