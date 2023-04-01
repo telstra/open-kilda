@@ -29,3 +29,12 @@ databaseChangeLog:
       rollback:
         - sql: "DROP INDEX flow_path.ha_path_id"
         - sql: "DROP PROPERTY flow_path.ha_path_id"
+  - changeSet:
+      id: change_type_of_ha_sub_flow_description_to_string
+      author: snikitin
+      changes:
+        - sql: "DROP PROPERTY ha_subflow.description"
+        - sql: "CREATE PROPERTY ha_subflow.description IF NOT EXISTS STRING"
+      rollback:
+        - sql: "DROP PROPERTY ha_subflow.description"
+        - sql: "CREATE PROPERTY ha_subflow.description IF NOT EXISTS INTEGER"
