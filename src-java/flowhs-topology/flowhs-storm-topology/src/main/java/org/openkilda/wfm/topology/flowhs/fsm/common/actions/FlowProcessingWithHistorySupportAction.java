@@ -30,18 +30,23 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
+import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
@@ -51,6 +56,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySup
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -58,6 +64,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -69,6 +76,9 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
     protected final PersistenceManager persistenceManager;
     protected final TransactionManager transactionManager;
     protected final FlowRepository flowRepository;
+    protected final YFlowRepository yFlowRepository;
+    protected final HaFlowRepository haFlowRepository;
+    protected final HaSubFlowRepository haSubFlowRepository;
     protected final FlowPathRepository flowPathRepository;
     protected final SwitchPropertiesRepository switchPropertiesRepository;
     protected final SwitchRepository switchRepository;
@@ -79,6 +89,9 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
         this.transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.flowRepository = repositoryFactory.createFlowRepository();
+        this.yFlowRepository = repositoryFactory.createYFlowRepository();
+        this.haFlowRepository = repositoryFactory.createHaFlowRepository();
+        this.haSubFlowRepository = repositoryFactory.createHaSubFlowRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchRepository = repositoryFactory.createSwitchRepository();
@@ -226,8 +239,10 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                 .map(Flow::getYFlowId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+        Set<String> diverseHaFlows = new HashSet<>(
+                haFlowRepository.findHaFlowsIdByDiverseGroupId(flow.getDiverseGroupId()));
         InfoData flowData =
-                new FlowResponse(FlowMapper.INSTANCE.map(flow, diverseFlows, diverseYFlows,
+                new FlowResponse(FlowMapper.INSTANCE.map(flow, diverseFlows, diverseYFlows, diverseHaFlows,
                         getFlowMirrorPaths(flow)));
         return new InfoMessage(flowData, commandContext.getCreateTime(),
                 commandContext.getCorrelationId());
@@ -249,5 +264,28 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                             .ifPresent(newPath ->
                                     oldPath.getFlowMirrorPointsSet().forEach(newPath::addFlowMirrorPoints))));
         }
+    }
+
+    protected Optional<String> getOrCreateFlowDiverseGroup(String diverseFlowId) throws FlowNotFoundException {
+        if (StringUtils.isBlank(diverseFlowId)) {
+            return Optional.empty();
+        }
+        Optional<String> groupId;
+        if (yFlowRepository.exists(diverseFlowId)) {
+            groupId = yFlowRepository.getOrCreateDiverseYFlowGroupId(diverseFlowId);
+        } else if (yFlowRepository.isSubFlow(diverseFlowId)) {
+            groupId = flowRepository.findById(diverseFlowId)
+                    .map(Flow::getYFlowId)
+                    .flatMap(yFlowRepository::getOrCreateDiverseYFlowGroupId);
+        } else if (haFlowRepository.exists(diverseFlowId)) {
+            groupId = haFlowRepository.getOrCreateDiverseHaFlowGroupId(diverseFlowId);
+        } else if (haSubFlowRepository.exists(diverseFlowId)) {
+            groupId = haSubFlowRepository.findById(diverseFlowId)
+                    .map(HaSubFlow::getHaFlowId)
+                    .flatMap(haFlowRepository::getOrCreateDiverseHaFlowGroupId);
+        } else {
+            groupId = flowRepository.getOrCreateDiverseFlowGroupId(diverseFlowId);
+        }
+        return Optional.of(groupId.orElseThrow(() -> new FlowNotFoundException(diverseFlowId)));
     }
 }

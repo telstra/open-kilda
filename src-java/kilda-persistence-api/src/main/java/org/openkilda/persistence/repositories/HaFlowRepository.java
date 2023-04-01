@@ -31,6 +31,8 @@ public interface HaFlowRepository extends Repository<HaFlow> {
 
     Collection<HaFlow> findByEndpoint(SwitchId switchId, int port, int vlan, int innerVLan);
 
+    Collection<String> findHaFlowsIdByDiverseGroupId(String diverseGroupId);
+
     Optional<String> getOrCreateDiverseHaFlowGroupId(String haFlowId);
 
     void updateStatus(String haFlowId, FlowStatus flowStatus);

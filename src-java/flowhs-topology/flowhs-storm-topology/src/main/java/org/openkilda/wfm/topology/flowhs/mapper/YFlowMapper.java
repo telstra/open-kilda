@@ -24,6 +24,7 @@ import org.openkilda.model.YFlow;
 import org.openkilda.model.YFlow.SharedEndpoint;
 import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -42,31 +43,28 @@ public abstract class YFlowMapper {
     public static final YFlowMapper INSTANCE = Mappers.getMapper(YFlowMapper.class);
 
     @Mapping(target = "timeUpdate", source = "flow.timeModify")
-    public abstract YFlowDto toYFlowDto(YFlow flow, Set<String> diverseWithFlows, Set<String> diverseWithYFlows);
+    public abstract YFlowDto toYFlowDto(
+            YFlow flow, Set<String> diverseWithFlows, Set<String> diverseWithYFlows, Set<String> diverseWithHaFlows);
 
     /**
-     * Map {@link YFlow} to {@link YFlowDto} with completing diverseFlows and diverseYFlows.
+     * Map {@link YFlow} to {@link YFlowDto} with completing diverseFlows, diverseYFlows and diverseHaFlows.
      */
-    public YFlowDto toYFlowDto(YFlow yFlow, FlowRepository flowRepository) {
+    public YFlowDto toYFlowDto(YFlow yFlow, FlowRepository flowRepository, HaFlowRepository haFlowRepository) {
         Optional<Flow> mainAffinityFlow = yFlow.getSubFlows().stream()
                 .map(YSubFlow::getFlow)
                 .filter(f -> f.getFlowId().equals(f.getAffinityGroupId()))
                 .findFirst();
         Set<String> diverseFlows = new HashSet<>();
         Set<String> diverseYFlows = new HashSet<>();
+        Set<String> diverseHaFlows = new HashSet<>();
         if (mainAffinityFlow.isPresent()) {
             Collection<Flow> diverseWithFlow = getDiverseWithFlow(mainAffinityFlow.get(), flowRepository);
-            diverseFlows = diverseWithFlow.stream()
-                    .filter(f -> f.getYFlowId() == null)
-                    .map(Flow::getFlowId)
-                    .collect(Collectors.toSet());
-            diverseYFlows = diverseWithFlow.stream()
-                    .map(Flow::getYFlowId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
+            diverseFlows = getDiverseFlowIds(diverseWithFlow);
+            diverseYFlows = getDiverseYFlowIds(diverseWithFlow);
+            diverseHaFlows = getDiverseHaFlowIds(mainAffinityFlow.get().getDiverseGroupId(), haFlowRepository);
         }
 
-        return YFlowMapper.INSTANCE.toYFlowDto(yFlow, diverseFlows, diverseYFlows);
+        return YFlowMapper.INSTANCE.toYFlowDto(yFlow, diverseFlows, diverseYFlows, diverseHaFlows);
     }
 
     @Mapping(target = "outerVlanId", ignore = true)
@@ -109,5 +107,32 @@ public abstract class YFlowMapper {
                         .filter(diverseFlow -> flow.getYFlowId() == null
                                 || !flow.getYFlowId().equals(diverseFlow.getYFlowId()))
                         .collect(Collectors.toSet());
+    }
+
+    private Set<String> getDiverseHaFlowIds(String diversityTyGroup, HaFlowRepository haFlowRepository) {
+        if (diversityTyGroup == null) {
+            return Collections.emptySet();
+        }
+        return new HashSet<>(haFlowRepository.findHaFlowsIdByDiverseGroupId(diversityTyGroup));
+    }
+
+    /**
+     * Finds diverse flow ids in the list of diverse flows.
+     */
+    public static Set<String> getDiverseFlowIds(Collection<Flow> diverseFlows) {
+        return diverseFlows.stream()
+                .filter(f -> f.getYFlowId() == null)
+                .map(Flow::getFlowId)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Finds diverse y-flow ids in the list of diverse flows.
+     */
+    public static Set<String> getDiverseYFlowIds(Collection<Flow> diverseWithFlow) {
+        return diverseWithFlow.stream()
+                .map(Flow::getYFlowId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
     }
 }

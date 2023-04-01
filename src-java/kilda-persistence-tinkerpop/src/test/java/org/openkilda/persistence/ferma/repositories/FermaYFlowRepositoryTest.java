@@ -48,7 +48,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class FermaYFlowRepositoryTest extends InMemoryGraphBasedTest {
-    static final String Y_FLOW_ID_1 = "y_flow_1";
     static final String FLOW_ID_1 = "test_flow_1";
     static final String FLOW_ID_2 = "test_flow_2";
     static final String FLOW_ID_3 = "test_flow_3";

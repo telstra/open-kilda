@@ -37,6 +37,7 @@ import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.AbstractBolt;
@@ -64,6 +65,7 @@ import java.util.stream.Collectors;
 public class HaFlowUpdateHubBolt extends AbstractBolt {
     public static final String COMMON_ERROR_MESSAGE = "Couldn't update HA-flow";
     private transient HaFlowRepository haFlowRepository;
+    private transient FlowRepository flowRepository;
     private transient SwitchRepository switchRepository;
 
     public HaFlowUpdateHubBolt(PersistenceManager persistenceManager) {
@@ -73,6 +75,7 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
     @Override
     protected void init() {
         haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
     }
 
@@ -121,7 +124,8 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
             updateHaFlow(haFlow, payload);
             return haFlow;
         });
-        sendHaFlowToNorthBound(key, new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(returnHaFlow)));
+        sendHaFlowToNorthBound(key, new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(
+                returnHaFlow, flowRepository, haFlowRepository)));
     }
 
     private void handleHaFlowPartialUpdate(String key, HaFlowPartialUpdateRequest payload)
@@ -139,7 +143,8 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
             updateHaFlow(haFlow, payload);
             return haFlow;
         });
-        sendHaFlowToNorthBound(key, new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(returnHaFlow)));
+        sendHaFlowToNorthBound(key, new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(
+                returnHaFlow, flowRepository, haFlowRepository)));
     }
 
     private void updateSubFlows(HaFlowPartialUpdateRequest payload, HaFlow haFlow) throws SwitchNotFoundException {

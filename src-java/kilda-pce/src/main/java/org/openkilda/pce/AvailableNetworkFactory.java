@@ -140,19 +140,27 @@ public class AvailableNetworkFactory {
                     .collect(Collectors.toList());
         }
 
-        Collection<PathId> affinityPathIds =
-                flowPathRepository.findPathIdsByFlowAffinityGroupId(parameters.getAffinityGroupId());
+        Set<PathId> affinityPathIds =
+                new HashSet<>(flowPathRepository.findPathIdsByFlowAffinityGroupId(parameters.getAffinityGroupId()));
         flowPaths.forEach(pathId ->
                 flowPathRepository.findById(pathId)
-                        .filter(flowPath -> !affinityPathIds.contains(flowPath.getPathId())
-                                || Objects.equals(flowPath.getFlowId(), parameters.getFlowId()))
-                        //TODO protected path for ha sub flow
+                        .filter(flowPath -> isNeedToAddDiversePenalties(flowPath, affinityPathIds, parameters))
                         .ifPresent(flowPath -> {
                             network.processDiversityGroupForSingleSwitchFlow(flowPath);
                             network.processDiversitySegments(flowPath.getSegments(),
                                     parameters.getTerminatingSwitchIds());
                             network.processDiversitySegmentsWithPop(flowPath.getSegments());
                         }));
+    }
+
+    private boolean isNeedToAddDiversePenalties(FlowPath path, Set<PathId> affinityPathIds, FlowParameters parameters) {
+        if (parameters.isCommonFlow() && Objects.equals(path.getFlowId(), parameters.getFlowId())) {
+            return true; // it is a diverse group for a protected path of a common flow
+        }
+        if (parameters.isHaFlow() && Objects.equals(path.getHaFlowId(), parameters.getHaFlowId())) {
+            return true; // it is a diverse group for a protected path of an ha flow
+        }
+        return !affinityPathIds.contains(path.getPathId()); // affinity group priority is higher then diversity
     }
 
     /**

@@ -205,6 +205,17 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                 .anyMatch(point -> point.getMirrorSwitchId().equals(getDestSwitchId()));
     }
 
+    /**
+     * Returns HA-flow id, if path belongs to an HA-flow, null otherwise.
+     */
+    public String getHaFlowId() {
+        HaFlowPath haFlowPath = getHaFlowPath();
+        if (haFlowPath != null) {
+            return haFlowPath.getHaFlowId();
+        }
+        return null;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

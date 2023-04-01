@@ -28,6 +28,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.model.HaFlow;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
@@ -51,6 +52,7 @@ import java.util.Optional;
 public class HaFlowDeleteHubBolt extends AbstractBolt {
     public static final String COMMON_ERROR_MESSAGE = "Couldn't delete HA-flow";
     private transient HaFlowRepository haFlowRepository;
+    private transient FlowRepository flowRepository;
 
     public HaFlowDeleteHubBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
@@ -59,6 +61,7 @@ public class HaFlowDeleteHubBolt extends AbstractBolt {
     @Override
     protected void init() {
         haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
     }
 
     @Override
@@ -79,7 +82,8 @@ public class HaFlowDeleteHubBolt extends AbstractBolt {
         CommandContext context = getCommandContext();
         Optional<HaFlow> haFlow = haFlowRepository.remove(payload.getHaFlowId());
         if (haFlow.isPresent()) {
-            InfoData response = new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(haFlow.get()));
+            InfoData response = new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(
+                    haFlow.get(), flowRepository, haFlowRepository));
             Message message = new InfoMessage(response, System.currentTimeMillis(), context.getCorrelationId());
             emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(key, message));
         } else {
