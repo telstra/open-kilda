@@ -45,7 +45,6 @@ import java.util.UUID;
 
 @SuperBuilder
 public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGenerator {
-    @NonNull
     protected final MeterId sharedMeterId;
     @NonNull
     protected final UUID externalMeterCommandUuid;
@@ -58,13 +57,16 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
         FlowSpeakerData command = buildFlowIngressCommand(sw, ingressEndpoint);
         result.add(command);
 
+        if (sharedMeterId == null) {
+            return result;
+        }
         if (generateMeterCommand) {
             SpeakerData meterCommand = buildMeter(externalMeterCommandUuid, flowPath, config, sharedMeterId, sw);
             if (meterCommand != null) {
                 result.add(meterCommand);
                 command.getDependsOn().add(externalMeterCommandUuid);
             }
-        } else if (sw.getFeatures().contains(METERS) && sharedMeterId != null) {
+        } else if (sw.getFeatures().contains(METERS)) {
             command.getDependsOn().add(externalMeterCommandUuid);
         }
         return result;
@@ -95,7 +97,9 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
         Instructions instructions = Instructions.builder()
                 .applyActions(actions)
                 .build();
-        addMeterToInstructions(sharedMeterId, sw, instructions);
+        if (sharedMeterId != null) {
+            addMeterToInstructions(sharedMeterId, sw, instructions);
+        }
         return instructions;
     }
 }

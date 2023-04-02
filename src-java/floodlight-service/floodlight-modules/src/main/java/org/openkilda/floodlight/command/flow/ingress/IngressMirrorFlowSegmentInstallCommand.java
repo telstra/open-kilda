@@ -15,27 +15,34 @@
 
 package org.openkilda.floodlight.command.flow.ingress;
 
+import org.openkilda.floodlight.command.SpeakerCommandProcessor;
+import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallMultiTableMirrorFlowModFactory;
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallSingleTableMirrorFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.MirrorConfig;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.Sets;
 import lombok.Getter;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Getter
 @SuppressWarnings("squid:MaximumInheritanceDepth")
-public class IngressMirrorFlowSegmentInstallCommand extends IngressFlowSegmentInstallCommand {
+public class IngressMirrorFlowSegmentInstallCommand extends IngressFlowSegmentCommand {
     @JsonCreator
     public IngressMirrorFlowSegmentInstallCommand(
             @JsonProperty("message_context") MessageContext context,
@@ -62,5 +69,29 @@ public class IngressMirrorFlowSegmentInstallCommand extends IngressFlowSegmentIn
             setFlowModFactory(
                     new IngressFlowSegmentInstallSingleTableMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
         }
+    }
+
+    @Override
+    protected List<Set<SwitchFeature>> getRequiredFeatures() {
+        List<Set<SwitchFeature>> required = super.getRequiredFeatures();
+        if (encapsulation.getType() == FlowEncapsulationType.VXLAN) {
+            required.add(Sets.newHashSet(
+                    SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN, SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN));
+        }
+        if (metadata.isMultiTable()) {
+            required.add(Sets.newHashSet(SwitchFeature.MULTI_TABLE));
+        }
+
+        return required;
+    }
+
+    @Override
+    protected CompletableFuture<FlowSegmentReport> makeExecutePlan(SpeakerCommandProcessor commandProcessor) {
+        return makeInstallPlan(commandProcessor);
+    }
+
+    @Override
+    protected SegmentAction getSegmentAction() {
+        return SegmentAction.INSTALL;
     }
 }

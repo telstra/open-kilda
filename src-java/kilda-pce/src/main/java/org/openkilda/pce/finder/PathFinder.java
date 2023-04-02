@@ -18,7 +18,7 @@ package org.openkilda.pce.finder;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.impl.AvailableNetwork;
-import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.FindOneDirectionPathResult;
 import org.openkilda.pce.model.FindPathResult;
 import org.openkilda.pce.model.WeightFunction;
 
@@ -43,7 +43,7 @@ public interface PathFinder {
      *
      * @return a pair of ordered lists that represents the path from start to end, or an empty list if no path found.
      *     Returns backUpPathComputationWayUsed = true if found path has latency greater than maxLatency.
-     *     Returns empty path if found path has latency greater than latencyLimit.
+     *     Returns an empty path if the found path has latency greater than latencyLimit.
      */
     FindPathResult findPathWithMinWeightAndLatencyLimits(AvailableNetwork network,
                                                          SwitchId startSwitchId, SwitchId endSwitchId,
@@ -64,19 +64,27 @@ public interface PathFinder {
             throws UnroutableFlowException;
 
     /**
-     * Find N (or less) best paths.
+     * Find the best N paths.
+     * N is a number, not greater than count, of all paths that can be found.
      *
-     * @return an list of N (or less) best paths.
+     * @param startSwitchId source switchId
+     * @param endSwitchId destination switchId
+     * @param network available network
+     * @param count find no more than this number of paths
+     * @param weightFunction use this weight function for the path computation
+     * @return a list of the best N paths.
      */
-    List<List<Edge>> findNPathsBetweenSwitches(AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId,
-                                               int count, WeightFunction weightFunction) throws UnroutableFlowException;
+    List<FindOneDirectionPathResult> findNPathsBetweenSwitches(
+            AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId,
+            int count, WeightFunction weightFunction) throws UnroutableFlowException;
 
     /**
-     * Find N (or less) best paths wih max weight restrictions.
+     * Find the best N paths with max weight restrictions.
+     * N is a number, not greater than count, of all paths that can be found.
      *
-     * @return an list of N (or less) best paths.
+     * @return a list of the best N paths.
      */
-    List<List<Edge>> findNPathsBetweenSwitches(
+    List<FindOneDirectionPathResult> findNPathsBetweenSwitches(
             AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count,
             WeightFunction weightFunction, long maxWeight, long backUpMaxWeight) throws UnroutableFlowException;
 }

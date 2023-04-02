@@ -60,6 +60,9 @@ public class AvailableNetworkFactoryTest {
     public static final int DEST_PORT = 31;
     public static final PathId FORWARD_PATH_ID = new PathId("path_id_1");
     public static final PathId REVERSE_PATH_ID = new PathId("path_id_2");
+    public static final PathId PATH_ID_1 = new PathId("flow-path-id1");
+    public static final PathId PATH_ID_2 = new PathId("flow-path-id2");
+    public static final PathId PATH_ID_3 = new PathId("flow-path-id3");
     public static final Switch switchA = Switch.builder().switchId(SWITCH_ID_1).build();
     public static final Switch switchB = Switch.builder().switchId(SWITCH_ID_2).build();
     public static final Switch switchC = Switch.builder().switchId(SWITCH_ID_3).build();
@@ -220,6 +223,164 @@ public class AvailableNetworkFactoryTest {
         assertAvailableNetworkIsCorrect(isl, availableNetwork);
     }
 
+    @Test
+    public void shouldBuildAvailableNetworkReusingBandwidthFromYFlowAndReusePathResources() throws Exception {
+        String yFlowId = "y-flow-id";
+        Flow flow1 = Flow.builder()
+                .flowId("test-id")
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .bandwidth(100)
+                .yFlowId(yFlowId)
+                .build();
+
+        Flow flow2 = Flow.builder()
+                .flowId("test-id-2")
+                .srcSwitch(switchB)
+                .destSwitch(switchC)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .bandwidth(100)
+                .build();
+
+        Flow flow3 = Flow.builder()
+                .flowId("test-id-3")
+                .srcSwitch(switchC)
+                .destSwitch(switchD)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .bandwidth(100)
+                .build();
+
+        IslImmutableView isl1 = getIslView(flow1.getSrcSwitch(), SRC_PORT, flow1.getDestSwitch(), DEST_PORT);
+        IslImmutableView isl2 = getIslView(flow2.getSrcSwitch(), SRC_PORT, flow2.getDestSwitch(), DEST_PORT);
+        IslImmutableView isl3 = getIslView(flow3.getSrcSwitch(), SRC_PORT, flow3.getDestSwitch(), DEST_PORT);
+
+        FlowPath flowPath1 = FlowPath.builder()
+                .pathId(PATH_ID_1)
+                .srcSwitch(flow1.getSrcSwitch())
+                .destSwitch(flow1.getDestSwitch())
+                .build();
+        FlowPath flowPath2 = FlowPath.builder()
+                .pathId(PATH_ID_2)
+                .srcSwitch(flow2.getSrcSwitch())
+                .destSwitch(flow2.getDestSwitch())
+                .build();
+        FlowPath flowPath3 = FlowPath.builder()
+                .pathId(PATH_ID_3)
+                .srcSwitch(flow3.getSrcSwitch())
+                .destSwitch(flow3.getDestSwitch())
+                .build();
+
+
+        when(config.getNetworkStrategy()).thenReturn("SYMMETRIC_COST");
+
+        when(islRepository.findSymmetricActiveByBandwidthAndEncapsulationType(flow1.getBandwidth(),
+                flow1.getEncapsulationType()))
+                .thenReturn(Collections.singletonList(isl1));
+        when(flowPathRepository.findById(PATH_ID_1)).thenReturn(Optional.of(flowPath1));
+        when(flowPathRepository.findById(PATH_ID_2)).thenReturn(Optional.of(flowPath2));
+        when(flowPathRepository.findById(PATH_ID_3)).thenReturn(Optional.of(flowPath3));
+
+
+        when(flowPathRepository.findPathIdsBySharedBandwidthGroupId(yFlowId))
+                .thenReturn(Collections.singleton(PATH_ID_2));
+        when(islRepository.findActiveByPathAndBandwidthAndEncapsulationType(
+                PATH_ID_2, flow2.getBandwidth(), flow2.getEncapsulationType()))
+                .thenReturn(Collections.singletonList(isl2));
+        when(islRepository.findActiveByPathAndBandwidthAndEncapsulationType(
+                PATH_ID_3, flow3.getBandwidth(), flow3.getEncapsulationType()))
+                .thenReturn(Collections.singletonList(isl3));
+
+        AvailableNetwork availableNetwork =
+                availableNetworkFactory.getAvailableNetwork(flow1, Collections.singletonList(PATH_ID_3));
+
+        assertAvailableNetworkIsCorrect(isl1, availableNetwork);
+        assertAvailableNetworkIsCorrect(isl2, availableNetwork);
+        assertAvailableNetworkIsCorrect(isl3, availableNetwork);
+    }
+
+    @Test
+    public void shouldBuildAvailableNetworkReusingOnlyReusePathResources() throws Exception {
+        String yFlowId = "y-flow-id";
+        Flow flow1 = Flow.builder()
+                .flowId("test-id")
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .bandwidth(100)
+                .build();
+
+        Flow flow2 = Flow.builder()
+                .flowId("test-id-2")
+                .srcSwitch(switchB)
+                .destSwitch(switchC)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .bandwidth(100)
+                .build();
+
+        Flow flow3 = Flow.builder()
+                .flowId("test-id-3")
+                .srcSwitch(switchC)
+                .destSwitch(switchD)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .bandwidth(100)
+                .build();
+
+        IslImmutableView isl1 = getIslView(flow1.getSrcSwitch(), SRC_PORT, flow1.getDestSwitch(), DEST_PORT);
+        IslImmutableView isl2 = getIslView(flow2.getSrcSwitch(), SRC_PORT, flow2.getDestSwitch(), DEST_PORT);
+        IslImmutableView isl3 = getIslView(flow3.getSrcSwitch(), SRC_PORT, flow3.getDestSwitch(), DEST_PORT);
+
+        FlowPath flowPath1 = FlowPath.builder()
+                .pathId(PATH_ID_1)
+                .srcSwitch(flow1.getSrcSwitch())
+                .destSwitch(flow1.getDestSwitch())
+                .build();
+        FlowPath flowPath2 = FlowPath.builder()
+                .pathId(PATH_ID_2)
+                .srcSwitch(flow2.getSrcSwitch())
+                .destSwitch(flow2.getDestSwitch())
+                .build();
+        FlowPath flowPath3 = FlowPath.builder()
+                .pathId(PATH_ID_3)
+                .srcSwitch(flow3.getSrcSwitch())
+                .destSwitch(flow3.getDestSwitch())
+                .build();
+
+
+        when(config.getNetworkStrategy()).thenReturn("SYMMETRIC_COST");
+
+        when(islRepository.findSymmetricActiveByBandwidthAndEncapsulationType(flow1.getBandwidth(),
+                flow1.getEncapsulationType()))
+                .thenReturn(Collections.singletonList(isl1));
+        when(flowPathRepository.findById(PATH_ID_1)).thenReturn(Optional.of(flowPath1));
+        when(flowPathRepository.findById(PATH_ID_2)).thenReturn(Optional.of(flowPath2));
+        when(flowPathRepository.findById(PATH_ID_3)).thenReturn(Optional.of(flowPath3));
+
+
+        when(flowPathRepository.findPathIdsBySharedBandwidthGroupId(yFlowId))
+                .thenReturn(Collections.singleton(PATH_ID_2));
+        when(islRepository.findActiveByPathAndBandwidthAndEncapsulationType(
+                PATH_ID_2, flow2.getBandwidth(), flow2.getEncapsulationType()))
+                .thenReturn(Collections.singletonList(isl2));
+        when(islRepository.findActiveByPathAndBandwidthAndEncapsulationType(
+                PATH_ID_3, flow3.getBandwidth(), flow3.getEncapsulationType()))
+                .thenReturn(Collections.singletonList(isl3));
+
+        AvailableNetwork availableNetwork =
+                availableNetworkFactory.getAvailableNetwork(flow1, Collections.singletonList(PATH_ID_3));
+
+        assertAvailableNetworkIsCorrect(isl1, availableNetwork);
+        assertAvailableNetworkIsCorrect(isl3, availableNetwork);
+
+        Node src = availableNetwork.getSwitch(isl2.getSrcSwitchId());
+        assertNotNull(src);
+        assertEquals(0, src.getOutgoingLinks().size());
+
+        Node dst = availableNetwork.getSwitch(isl2.getDestSwitchId());
+        assertNotNull(dst);
+        assertEquals(0, dst.getIncomingLinks().size());
+    }
+
     private static Flow getFlow(boolean ignoreBandwidth) {
         return Flow.builder()
                 .flowId("test-id")
@@ -272,4 +433,5 @@ public class AvailableNetworkFactoryTest {
         assertNotNull(dst);
         assertEquals(1, dst.getIncomingLinks().size());
     }
+
 }

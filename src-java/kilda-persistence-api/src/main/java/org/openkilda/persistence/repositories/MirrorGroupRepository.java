@@ -48,7 +48,7 @@ public interface MirrorGroupRepository extends Repository<MirrorGroup> {
      * @param groupId group ID
      * @return a collection of {@link MirrorGroup}
      */
-    Optional<MirrorGroup> findByGroupId(GroupId groupId);
+    Optional<MirrorGroup> findByGroupIdAndSwitchId(GroupId groupId, SwitchId switchId);
 
     /**
      * Find group by Path Id and Switch Id.

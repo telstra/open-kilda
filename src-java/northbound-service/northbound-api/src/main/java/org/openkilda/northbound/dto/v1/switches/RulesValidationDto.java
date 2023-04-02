@@ -15,12 +15,15 @@
 
 package org.openkilda.northbound.dto.v1.switches;
 
+import org.openkilda.northbound.dto.HexView;
+
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -60,4 +63,7 @@ public class RulesValidationDto implements HexView {
         return toHex(excess);
     }
 
+    public static RulesValidationDto empty() {
+        return new RulesValidationDto(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+    }
 }

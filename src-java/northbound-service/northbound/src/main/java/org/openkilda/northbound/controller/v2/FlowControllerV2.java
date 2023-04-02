@@ -80,7 +80,7 @@ public class FlowControllerV2 extends BaseController {
     public CompletableFuture<FlowResponseV2> updateFlow(@PathVariable(name = "flow_id") String flowId,
                                                         @RequestBody FlowRequestV2 flow) {
         verifyRequest(flow);
-        return flowService.updateFlow(flow);
+        return flowService.updateFlow(flowId, flow);
     }
 
     /**

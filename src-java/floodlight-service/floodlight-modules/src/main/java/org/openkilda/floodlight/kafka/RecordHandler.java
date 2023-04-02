@@ -47,6 +47,7 @@ import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
 import org.openkilda.messaging.AliveRequest;
 import org.openkilda.messaging.AliveResponse;
+import org.openkilda.messaging.Chunkable;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.MessageData;
@@ -78,7 +79,6 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowDumpResponse;
-import org.openkilda.messaging.info.flow.SingleFlowDumpResponse;
 import org.openkilda.messaging.info.group.GroupDumpResponse;
 import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.messaging.info.meter.MeterEntry;
@@ -325,7 +325,6 @@ class RecordHandler implements Runnable {
                     .collect(Collectors.toList());
 
             GroupDumpResponse response = GroupDumpResponse.builder()
-                    .switchId(switchId)
                     .groupSpeakerData(groups)
                     .build();
             sender.accept(response);
@@ -345,7 +344,7 @@ class RecordHandler implements Runnable {
 
     private void doDumpRulesForSwitchManagerRequest(CommandMessage message) {
         processDumpRuleManagerRulesRequest(((DumpRulesForSwitchManagerRequest) message.getData()).getSwitchId(),
-                buildRulesSenderToSwitchManager(message));
+                buildSenderToSwitchManager(message));
     }
 
     private void doDumpRulesForFlowHsRequest(CommandMessage message) {
@@ -590,8 +589,18 @@ class RecordHandler implements Runnable {
     }
 
     private java.util.function.Consumer<MessageData> buildSenderToSwitchManager(Message message) {
-        return buildSenderToTopic(context.getKafkaSwitchManagerTopic(),
-                message.getCorrelationId(), message.getTimestamp());
+        IKafkaProducerService producerService = getKafkaProducer();
+        return data -> {
+            if (data instanceof Chunkable<?>) {
+                List<? extends InfoData> chunks = ((Chunkable<?>) data).split(
+                        context.getKafkaChannel().getConfig().getMessagesBatchSize());
+                producerService.sendChunkedMessageAndTrack(
+                        context.getKafkaSwitchManagerTopic(), message.getCorrelationId(), chunks);
+            } else {
+                buildSenderToTopic(context.getKafkaSwitchManagerTopic(), message.getCorrelationId(),
+                        message.getTimestamp());
+            }
+        };
     }
 
     private java.util.function.Consumer<MessageData> buildSenderToNorthbound(Message message) {
@@ -622,19 +631,6 @@ class RecordHandler implements Runnable {
             SpeakerDataResponse result = new SpeakerDataResponse(messageContext, data);
             producerService.sendMessageAndTrack(context.getKafkaSpeakerFlowHsTopic(),
                     message.getCorrelationId(), result);
-        };
-    }
-
-    private java.util.function.Consumer<MessageData> buildRulesSenderToSwitchManager(Message message) {
-        IKafkaProducerService producerService = getKafkaProducer();
-        return data -> {
-            FlowDumpResponse entries = (FlowDumpResponse) data;
-            List<SingleFlowDumpResponse> result = new ArrayList<>();
-            for (FlowSpeakerData speakerData : entries.getFlowSpeakerData()) {
-                result.add(new SingleFlowDumpResponse(speakerData));
-            }
-            producerService.sendChunkedMessageAndTrack(
-                    context.getKafkaSwitchManagerTopic(), message.getCorrelationId(), result);
         };
     }
 
@@ -687,7 +683,6 @@ class RecordHandler implements Runnable {
                     .collect(Collectors.toList());
 
             MeterDumpResponse response = MeterDumpResponse.builder()
-                    .switchId(switchId)
                     .meterSpeakerData(meters)
                     .build();
             sender.accept(response);

@@ -83,6 +83,10 @@ public class YSubFlow implements CompositeDataEntity<YSubFlowData> {
         this.data = builder.build();
     }
 
+    public boolean isOneSwitchYFlow(SwitchId sharedEndpointSwitchId) {
+        return data.getEndpointSwitchId().equals(sharedEndpointSwitchId);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

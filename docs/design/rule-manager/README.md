@@ -2,7 +2,7 @@
 
 ## Overview
 
-Rule Manager is a separate open-kilda component responsible for building switch rules. The main goal of this component is to encapsulate all rule related logic into one place. All other components (flow CRUD, flow/switch validation and sync, service rules management, etc) should use rule Manager API to build rules.
+Rule Manager is a separate OpenKilda component responsible for building switch rules. The main goal of this component is to gather all rule-related logic in one place. All other components (flow CRUD, flow/switch validation and sync, service rules management, etc.) should use rule Manager API to build rules.
 
 ## Details
 
@@ -17,7 +17,7 @@ Rule Manager doesn't send any commands to anywhere it's responsible only for bui
 ## API
 
 Rule Manager should be able to process two types of requests:
-* Build rules for flow.
+* Build rules for a flow.
 
   Required data: paths with flow, switch properties for used switches.
 
@@ -27,7 +27,7 @@ Rule Manager should be able to process two types of requests:
 
 Rule Manager generates the output in the same format for any request: set of custom commands including dependencies between them.
 Output example in json format:
-~~~
+~~~json
 [
     {
         "command_id": "uuid1",
@@ -87,22 +87,22 @@ Output example in json format:
                 },
                 ...
             ],
-            "instructions": [
-                "apply_actions": [
-                    {
-                        "action_type": "PUSH_VLAN",
-                        "vlan": 234
-                    },
-                    {
-                        "action_type": "GROUP",
-                        "group_id": 2
-                    },
-                    ...
-                ],
-                "go_to_meter": 1001,
-                "go_to_table": 3,
+            "instructions": {
+              "apply_actions": [
+                {
+                  "action_type": "PUSH_VLAN",
+                  "vlan": 234
+                },
+                {
+                  "action_type": "GROUP",
+                  "group_id": 2
+                },
                 ...
-            ]
+              ],
+              "go_to_meter": 1001,
+              "go_to_table": 3,
+              ...
+            }
         },
         "depends_on": ["uuid1", "uuid2"]
     },
@@ -112,7 +112,7 @@ Output example in json format:
 
 Examples of CLI calls:
 
-~~~
+~~~shell
 java -jar rule-manager.jar flow --flow flow.json --network network.json
 java -jar rule-manager.jar switch --switch switch.json --flows flows.json
 ~~~
@@ -121,6 +121,6 @@ java -jar rule-manager.jar switch --switch switch.json --flows flows.json
 
 Floodlight should support custom commands formed by Rule Manager and translate them to OpenFlow representation.
 
-All rule related components (Flow-HS, SwitchManager, NB-worker) should use Rule Manager instead of their own rule-building code.
+All rule-related components (Flow-HS, SwitchManager, NB-worker) should use Rule Manager instead of their own rule-building code.
 
 For more info see [implementation details](implementation-details.md).  

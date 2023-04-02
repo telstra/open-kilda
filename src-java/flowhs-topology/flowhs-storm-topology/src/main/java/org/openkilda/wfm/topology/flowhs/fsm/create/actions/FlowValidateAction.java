@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -33,7 +34,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.validation.FlowValidator;
-import org.openkilda.wfm.topology.flowhs.validation.InvalidFlowException;
 import org.openkilda.wfm.topology.flowhs.validation.UnavailableFlowEndpointException;
 
 import lombok.extern.slf4j.Slf4j;
@@ -65,7 +65,8 @@ public class FlowValidateAction extends
         dashboardLogger.onFlowCreate(request.getFlowId(),
                 request.getSrcSwitch(), request.getSrcPort(), request.getSrcVlan(),
                 request.getDestSwitch(), request.getDestPort(), request.getDestVlan(),
-                request.getDiverseFlowId(), request.getBandwidth());
+                request.getDiverseFlowId(), request.getBandwidth(), request.getPathComputationStrategy(),
+                request.getMaxLatency(), request.getMaxLatencyTier2());
 
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getCreateFlowEnabled();
         if (!isOperationAllowed) {

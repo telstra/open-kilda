@@ -33,7 +33,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.cookie.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
@@ -69,6 +68,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
+import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
@@ -81,6 +81,7 @@ import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -100,6 +101,7 @@ public class SwitchManagerTest {
     private IOFSwitch iofSwitch;
     private SwitchDescription switchDescription;
     private DatapathId dpid;
+    private OFFactory ofFactory = new OFFactoryVer13();
 
     @Before
     public void setUp() throws FloodlightModuleException {

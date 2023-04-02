@@ -17,14 +17,14 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
@@ -35,22 +35,25 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class SkipPathsAndResourcesDeallocationAction
-        extends HistoryRecordingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
-
-    private FlowPathRepository flowPathRepository;
+        extends FlowProcessingWithHistorySupportAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
 
     public SkipPathsAndResourcesDeallocationAction(PersistenceManager persistenceManager) {
-        flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        super(persistenceManager);
     }
 
     @Override
     public void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         if (stateMachine.getEndpointUpdate().isPartialUpdate()) {
-            FlowDumpData dumpData = HistoryMapper.INSTANCE.map(
-                    RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow()),
+
+            Flow originalFlow =  RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
+            originalFlow.setAffinityGroupId(stateMachine.getOriginalAffinityFlowGroup());
+            originalFlow.setDiverseGroupId(stateMachine.getOriginalDiverseFlowGroup());
+
+            FlowDumpData dumpData = HistoryMapper.INSTANCE.map(originalFlow,
                     getFlowPath(stateMachine.getNewPrimaryForwardPath()),
                     getFlowPath(stateMachine.getNewPrimaryReversePath()),
                     DumpType.STATE_BEFORE);
+
             stateMachine.saveActionWithDumpToHistory("New endpoints were stored for flow",
                     format("The flow endpoints were updated for: %s / %s",
                             stateMachine.getTargetFlow().getSrcSwitch(),
@@ -60,7 +63,8 @@ public class SkipPathsAndResourcesDeallocationAction
         }
     }
 
-    private FlowPath getFlowPath(PathId pathId) {
+    @Override
+    protected FlowPath getFlowPath(PathId pathId) {
         return flowPathRepository.findById(pathId).orElse(null);
     }
 }

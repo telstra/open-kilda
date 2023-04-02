@@ -16,6 +16,8 @@
 package org.openkilda.northbound.converter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.nbtopology.response.LagPortDto;
 import org.openkilda.messaging.swmanager.response.LagPortResponse;
@@ -41,23 +43,25 @@ public class LagPortMapperTest {
     @Test
     public void mapLagPortDtoTest() {
         LagPortDto response = new LagPortDto(LOGICAL_PORT_NUMBER_1,
-                Lists.newArrayList(PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2));
+                Lists.newArrayList(PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2), true);
 
         org.openkilda.northbound.dto.v2.switches.LagPortResponse dto = lagMapper.map(response);
         assertEquals(LOGICAL_PORT_NUMBER_1, dto.getLogicalPortNumber());
         assertEquals(PHYSICAL_PORT_NUMBER_1, dto.getPortNumbers().get(0).intValue());
         assertEquals(PHYSICAL_PORT_NUMBER_2, dto.getPortNumbers().get(1).intValue());
+        assertTrue(dto.isLacpReply());
     }
 
     @Test
     public void mapLagResponseTest() {
         LagPortResponse response = new LagPortResponse(LOGICAL_PORT_NUMBER_1,
-                Sets.newHashSet(PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2));
+                Sets.newHashSet(PHYSICAL_PORT_NUMBER_1, PHYSICAL_PORT_NUMBER_2), false);
 
         org.openkilda.northbound.dto.v2.switches.LagPortResponse dto = lagMapper.map(response);
         assertEquals(LOGICAL_PORT_NUMBER_1, dto.getLogicalPortNumber());
         assertEquals(PHYSICAL_PORT_NUMBER_1, dto.getPortNumbers().get(0).intValue());
         assertEquals(PHYSICAL_PORT_NUMBER_2, dto.getPortNumbers().get(1).intValue());
+        assertFalse(dto.isLacpReply());
     }
 
     @TestConfiguration

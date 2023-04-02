@@ -33,7 +33,6 @@ import java.util.List;
 public class GroupInfoDto {
     private Integer groupId;
     private List<BucketDto> groupBuckets;
-
     private List<BucketDto> missingGroupBuckets;
     private List<BucketDto> excessGroupBuckets;
 

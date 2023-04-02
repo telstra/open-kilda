@@ -70,6 +70,7 @@ import org.apache.commons.collections4.map.LazyMap;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -220,7 +221,8 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                                               boolean forceToIgnoreBandwidth, List<PathId> pathsToReuseBandwidth,
                                               FlowPathPair oldPaths, boolean allowOldPaths,
                                               String sharedBandwidthGroupId,
-                                              Predicate<GetPathsResult> whetherCreatePathSegments)
+                                              Predicate<GetPathsResult> whetherCreatePathSegments,
+                                              boolean isProtected)
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         // Lazy initialisable map with reused bandwidth...
         Supplier<Map<IslEndpoints, Long>> reuseBandwidthPerIsl = Suppliers.memoize(() -> {
@@ -259,10 +261,10 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                 if (forceToIgnoreBandwidth) {
                     boolean originalIgnoreBandwidth = flow.isIgnoreBandwidth();
                     flow.setIgnoreBandwidth(true);
-                    potentialPath = pathComputer.getPath(flow);
+                    potentialPath = pathComputer.getPath(flow, Collections.emptyList(), isProtected);
                     flow.setIgnoreBandwidth(originalIgnoreBandwidth);
                 } else {
-                    potentialPath = pathComputer.getPath(flow, pathsToReuseBandwidth);
+                    potentialPath = pathComputer.getPath(flow, pathsToReuseBandwidth, isProtected);
                 }
 
                 boolean newPathFound = isNotSamePath(potentialPath, oldPaths);

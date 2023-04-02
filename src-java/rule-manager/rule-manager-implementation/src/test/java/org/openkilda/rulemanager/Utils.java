@@ -18,6 +18,7 @@ package org.openkilda.rulemanager;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toSet;
 
+import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
@@ -28,9 +29,11 @@ import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
 
+import com.google.common.collect.Lists;
 import lombok.Value;
 import org.junit.Assert;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -42,6 +45,23 @@ public final class Utils {
     public static final int SERVER_42_PORT = 42;
     public static final int SERVER_42_VLAN = 142;
     public static final MacAddress SERVER_42_MAC_ADDRESS = new MacAddress("42:42:42:42:42:42");
+    public static final SwitchId SWITCH_ID = new SwitchId(1L);
+    public static final int LAG_PORT_NUMBER_1 = 1;
+    public static final int LAG_PORT_NUMBER_2 = 2;
+    public static final int LAG_PORT_NUMBER_3 = 3;
+    public static final int PHYS_PORT_1 = 3;
+    public static final int PHYS_PORT_2 = 3;
+    public static final int PHYS_PORT_3 = 3;
+    public static final int PHYS_PORT_4 = 3;
+
+    public static final LagLogicalPort LAG_PORT_1 = new LagLogicalPort(SWITCH_ID,  LAG_PORT_NUMBER_1,
+            Lists.newArrayList(PHYS_PORT_1, PHYS_PORT_2), true);
+    public static final LagLogicalPort LAG_PORT_2 = new LagLogicalPort(SWITCH_ID,  LAG_PORT_NUMBER_2,
+            new ArrayList<Integer>(), true);
+    public static final LagLogicalPort LAG_PORT_3 = new LagLogicalPort(SWITCH_ID,  LAG_PORT_NUMBER_3,
+            Lists.newArrayList(PHYS_PORT_3, PHYS_PORT_4), false);
+    public static final List<LagLogicalPort> LAG_PORTS = Lists.newArrayList(LAG_PORT_1, LAG_PORT_2, LAG_PORT_3);
+
 
     /**
      * Build switch object for tests.
@@ -57,7 +77,7 @@ public final class Utils {
     }
 
     public static Switch buildSwitch(String version, Set<SwitchFeature> features) {
-        return buildSwitch(new SwitchId(1L), version, features);
+        return buildSwitch(SWITCH_ID, version, features);
     }
 
     public static Switch buildSwitch(SwitchId switchId, Set<SwitchFeature> features) {

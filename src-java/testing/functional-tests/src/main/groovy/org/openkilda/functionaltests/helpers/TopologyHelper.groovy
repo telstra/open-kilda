@@ -129,6 +129,10 @@ class TopologyHelper {
         return new TopologyDefinition(topoSwitches, topoLinks, [], TraffGenConfig.defaultConfig())
     }
 
+    Switch getRandomSwitch() {
+        return topology.getActiveSwitches().shuffled().first()
+    }
+
     private static Status switchStateToStatus(SwitchChangeType state) {
         switch (state) {
             case SwitchChangeType.ACTIVATED:

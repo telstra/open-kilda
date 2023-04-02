@@ -15,16 +15,33 @@
 
 package org.openkilda.pce.model;
 
+import org.openkilda.pce.finder.FailReason;
+import org.openkilda.pce.finder.FailReasonType;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode
+@Setter
 public class FindOneDirectionPathResult {
+    public FindOneDirectionPathResult(List<Edge> foundPath, boolean backUpPathComputationWayUsed) {
+        this(foundPath, backUpPathComputationWayUsed, null);
+    }
+
+    public FindOneDirectionPathResult(List<Edge> foundPath, Map<FailReasonType, FailReason> pathNotFoundReasons) {
+        this(foundPath, false, pathNotFoundReasons);
+    }
+
     List<Edge> foundPath;
     boolean backUpPathComputationWayUsed;
+    Map<FailReasonType, FailReason> pathNotFoundReasons;
 }

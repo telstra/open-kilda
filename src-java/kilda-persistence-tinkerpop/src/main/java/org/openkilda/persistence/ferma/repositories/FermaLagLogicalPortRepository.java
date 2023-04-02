@@ -15,6 +15,9 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toSet;
+
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.LagLogicalPort.LagLogicalPortData;
 import org.openkilda.model.SwitchId;
@@ -32,9 +35,12 @@ import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -125,6 +131,21 @@ public class FermaLagLogicalPortRepository
         }
 
         return Optional.empty();
+    }
+
+    @Override
+    public Map<SwitchId, List<LagLogicalPort>> findBySwitchIds(Set<SwitchId> switchIds) {
+        Set<String> graphSwitchIds = switchIds.stream()
+                .map(SwitchIdConverter.INSTANCE::toGraphProperty)
+                .collect(toSet());
+        List<LagLogicalPort> result = new ArrayList<>();
+        framedGraph().traverse(g -> g.V()
+                        .hasLabel(LagLogicalPortFrame.FRAME_LABEL)
+                        .has(LagLogicalPortFrame.SWITCH_ID_PROPERTY, P.within(graphSwitchIds)))
+                .toListExplicit(LagLogicalPortFrame.class).stream()
+                .map(LagLogicalPort::new)
+                .forEach(result::add);
+        return result.stream().collect(groupingBy(LagLogicalPort::getSwitchId, Collectors.toList()));
     }
 
     @Override

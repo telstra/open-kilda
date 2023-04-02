@@ -30,41 +30,44 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Represents computation operations on flow path.
+ * Represents computation operations on flow paths.
  */
 public interface PathComputer {
 
     /**
-     * Gets path between source and destination switches for specified flow. The path is built over available ISLs
+     * Gets a path between source and destination switches for a specified flow. The path is built over available ISLs
      * only.
      *
      * @param flow the {@link Flow} instance
      * @return {@link GetPathsResult} instance
      */
     default GetPathsResult getPath(Flow flow) throws UnroutableFlowException, RecoverableException {
-        return getPath(flow, Collections.emptyList());
+        return getPath(flow, Collections.emptyList(), false);
     }
 
     /**
-     * Gets path between source and destination switch for specified flow.
+     * Gets a path between source and destination switches for a specified flow.
      *
      * @param flow the {@link Flow} instance.
      * @param reusePathsResources    allow already allocated path resources (bandwidth)
      *                               be reused in new path computation.
      * @return {@link GetPathsResult} instance
      */
-    GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources)
+    GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources, boolean isProtected)
             throws UnroutableFlowException, RecoverableException;
 
     /**
-     * Gets N best paths.
+     * Gets the best N paths. N is a number, not greater than the count param, of all paths that can be found.
      *
      * @param srcSwitch source switchId
      * @param dstSwitch destination switchId
+     * @param count calculates no more than this number of paths
      * @param flowEncapsulationType target encapsulation type
+     * @param pathComputationStrategy depending on this strategy, different weight functions are used
+     *                               to determine the best path
      * @param maxLatency max latency
      * @param maxLatencyTier2 max latency tier2
-     * @return an list of N (or less) best paths ordered from best to worst.
+     * @return a list of the best N paths ordered from best to worst.
      */
     List<Path> getNPaths(SwitchId srcSwitch, SwitchId dstSwitch, int count,
                          FlowEncapsulationType flowEncapsulationType, PathComputationStrategy pathComputationStrategy,

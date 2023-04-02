@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -14,6 +14,9 @@
  */
 
 package org.openkilda.model;
+
+import static org.openkilda.model.ConnectedDeviceType.ARP;
+import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.BeanSerializer;
@@ -79,6 +82,16 @@ public class SwitchConnectedDevice implements CompositeDataEntity<SwitchConnecte
 
     public SwitchConnectedDevice(@NonNull SwitchConnectedDeviceData data) {
         this.data = data;
+    }
+
+    public static String buildUniqueLldpIndex(
+            SwitchId switchId, int portNumber, int vlan, String macAddress, String chassisId, String portId) {
+        return String.format("%s_%s_%s_%s_%s_%s_%s", switchId, portNumber, LLDP, vlan, macAddress, chassisId, portId);
+    }
+
+    public static String buildUniqueArpIndex(
+            SwitchId switchId, int portNumber, int vlan, String macAddress, String ipAddress) {
+        return String.format("%s_%s_%s_%s_%s_%s", switchId, portNumber, ARP, vlan, macAddress, ipAddress);
     }
 
     @Override

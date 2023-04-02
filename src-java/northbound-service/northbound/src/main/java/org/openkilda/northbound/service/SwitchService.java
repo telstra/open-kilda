@@ -43,10 +43,13 @@ import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2;
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 import org.openkilda.northbound.dto.v2.switches.SwitchPropertiesDump;
+import org.openkilda.northbound.dto.v2.switches.SwitchValidationResultV2;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -54,12 +57,14 @@ public interface SwitchService {
 
     /**
      * Get all available switches.
+     *
      * @return list of switches.
      */
     CompletableFuture<List<SwitchDto>> getSwitches();
 
     /**
      * Get available switch.
+     *
      * @return switch.
      */
     CompletableFuture<SwitchDto> getSwitch(SwitchId switchId);
@@ -128,6 +133,18 @@ public interface SwitchService {
     CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId);
 
     /**
+     * Validate rules, meters, groups and logical ports installed on a switch against the flows in the database.
+     *
+     * @param switchId switch to validate.
+     * @param includeString validation include filters
+     * @param excludeString validation exclude filters
+     * @return the validation details.
+     */
+    CompletableFuture<SwitchValidationResultV2> validateSwitch(SwitchId switchId,
+                                                               String includeString,
+                                                               String excludeString);
+
+    /**
      * Synchronize (install) missing rules that should be on the switch but exist only in the database.
      *
      * @param switchId switch to synchronize rules on.
@@ -146,6 +163,7 @@ public interface SwitchService {
 
     /**
      * Dumps all meters from the switch.
+     *
      * @param switchId switch datapath id.
      * @return meters dump.
      */
@@ -153,6 +171,7 @@ public interface SwitchService {
 
     /**
      * Removes meter from the switch.
+     *
      * @param switchId switch datapath id.
      * @param meterId meter to be deleted.
      */
@@ -171,7 +190,7 @@ public interface SwitchService {
      * @param portConfig port configuration that needs to apply on port
      * @return portDto
      */
-    CompletableFuture<PortDto> configurePort(SwitchId switchId,  int port, PortConfigurationPayload portConfig);
+    CompletableFuture<PortDto> configurePort(SwitchId switchId, int port, PortConfigurationPayload portConfig);
 
     /**
      * Get a description of the switch ports.
@@ -192,6 +211,7 @@ public interface SwitchService {
 
     /**
      * Get a list of states with reference to time.
+     *
      * @param switchId the switch id.
      * @param port the port number.
      * @param from start date for a search.
@@ -228,6 +248,17 @@ public interface SwitchService {
      * @return list of flows that goes through a particular switch.
      */
     CompletableFuture<List<FlowPayload>> getFlowsForSwitch(SwitchId switchId, Integer port);
+
+    /**
+     * Retrieves a mapping of flows per port for the given switch. If ports are given, returns the output with these
+     * ports only, otherwise returns the output with all ports that have at least one flow going through it.
+     *
+     * @param switchId the switch id
+     * @param ports Optional. Filters the output to contain information about these ports only.
+     * @return a response containing the information about mapping port->[flow]
+     */
+    CompletableFuture<SwitchFlowsPerPortResponse> getFlowsPerPortForSwitch(SwitchId switchId,
+                                                                           Collection<Integer> ports);
 
     /**
      * Get switch properties.

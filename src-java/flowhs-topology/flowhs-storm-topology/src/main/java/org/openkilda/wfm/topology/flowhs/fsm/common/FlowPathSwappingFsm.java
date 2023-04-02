@@ -36,7 +36,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.StateMachine;
+import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,7 +48,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @Slf4j
-public abstract class FlowPathSwappingFsm<T extends StateMachine<T, S, E, C>, S, E, C,
+public abstract class FlowPathSwappingFsm<T extends AbstractStateMachine<T, S, E, C>, S, E, C,
         R extends NorthboundResponseCarrier & HistoryUpdateCarrier, L extends FlowProcessingEventListener>
         extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
     protected final String flowId;
