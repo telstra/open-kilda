@@ -1,7 +1,7 @@
 # WFM (WorkFlow Manager) - Base Topology
 
-This sub-project holds the base classes for Storm topologies that are used to implement
-the workflow management aspects of OpenKilda.
+This subproject holds the base classes for Storm topologies that are used to implement the workflow management 
+aspects of OpenKilda.
 
 # Deployment
 
@@ -10,58 +10,42 @@ To start a specific topology in `local` mode:
 java -cp TOPOLOGY_JAR.FILE:build/dependency-jars/* CLASS --local arguments...
 ```
 
-To submit the topology into storm:
+To submit the topology into Storm:
 ```bash
 storm jar TOPOLOGY_JAR.FILE class --jars "DEPENDENCY_JAR1.FILE,DEPENDENCY_JAR2.FILE" arguments...
 ```
 
 ## Topology CLI arguments
 
-In topology submit command you can pass arguments that will be passed into "main" call. 
-
-Supported arguments list:
-* `--name=NAME` - override topology name. If don't passed topology name constructed from topology class name.
-* `--local` - inform topology that is must run into "local" mode. I.e. submit topology into 
-  org.apache.storm.LocalCluster.
+You can specify the following arguments for topology submit commands:
+* `--name=NAME` - override the topology name. When this parameter is absent, the topology name is constructed using 
+a file name of that topology.
+* `--local` - use the topology in "local" mode: submit topology into `org.apache.storm.LocalCluster`.
 * `--local-execution-time=TIME` - used only in combination with `--local`. Define how long (in seconds) topology will be
-  executed. `TIME` argument parsed as float number.
-* `CONFIG` - path to properties file. This properties will override compiled in properties. You can pass more than one
-  file to pass override on override on override... and so on. 
+  running. `TIME` argument parsed as float number.
+* `CONFIG` - a path to the properties file. These properties will override compiled in properties. You can pass more than one
+  file; each next file overrides properties defined in the previous files. 
 
 ## Configuration
 
-All topology options are defined as properties. There is compiled in JAR set of properties that provide a reasonable
-default values. You can pass more properties files(via CLI) to override this defaults. 
+All topology options are defined as properties. There is a set of properties compiled in JAR that provides default values.
+You can pass more properties files using CLI to override these defaults. 
 
-Properties have different scope that depends from used prefix. Lets show it on option `opentsdb.hosts`.
-* `opentsdb.hosts` - this is `global` scope that will be used by all topologies
-* `$name.opentsdb.hosts` - this is `name` scope.  $name is passed from CLI `--name` argument. Or constructed from
+Properties have different scope that depends on used prefix. Let's take `opentsdb.hosts` as an example:
+* `opentsdb.hosts` - this is the `global` scope that will be used by all topologies
+* `$name.opentsdb.hosts` - this is a `name` scope.  $name is passed from CLI `--name` argument. Or constructed from
   topology class name if `--name` is missing.
-* `defaults.statstopology.opentsdb.hosts` - this `topology` scope. In this scope, option `opentsdb.hosts` will be used 
+* `defaults.statstopology.opentsdb.hosts` - this is a `topology` scope. In this scope, option `opentsdb.hosts` will be used 
   only by StatsTopology. Topology name `statstopology` constructed from topology class name.
   
-Property lookup done in following order: `name scope`, `topology scope`. `global scope`. First found is used. This 
-approach allow to pass options bounded to specific name, to specific topology and unbounded/globally. 
+Properties lookup is done in the following order: `name scope`, `topology scope`. `global scope`. When a property is found,
+lookup is finished. This approach allows to pass options bounded to a specific name, to a specific topology, or used globally. 
 
 # Developers
 
 ## Debugging Tips
 
-A lot of message passing is done through kafka topics.
-
-### WFM Debugging
-
-#### Deploying the Kafka Splitter
-
-* assuming you've built the all-in-one jar, from within `services/wfm`: 
-    * option 1: ``` gradle build -x test ```
-    * option 2: ``` gradle build ```
-* you can deploy the topology (with kilda running):
-    ```
-    storm jar target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar \
-    org.openkilda.wfm.topology.event.OFEventSplitterTopology \
-    --name splitter-1
-    ```
+OpenKilda primarily uses Kafka topics as a messaging carrier.
 
 ### Kafka Debugging
 
@@ -82,14 +66,14 @@ One way to look at what is going on in a topic:
 
 #### Configuring Developer Environment
 
-* On the mac, you can use brew to install storm. That'll give you the `storm` CLI.
-* Ensure you configure ~/.storm/storm.yaml so that it points to your storm cluster.
-    * Normally, this is the kilda cluster.
-    * The storm.yaml file should look like this at a minimum:
+* On Mac, you can use `brew` to install Storm. That'll give you the `storm` CLI.
+* Ensure you configure ~/.storm/storm.yaml so that it points to your Storm cluster.
+    * Normally, this is the OpenKilda cluster.
+    * The storm.yaml file must contain the following line:
         ```
         nimbus.seeds: ["127.0.0.1"]
         ```
-* With the CLI installed, you should be able to run the following kinds of commands:
+* After the Storm CLI is installed, you should be able to run the following kinds of commands:
     ```
     storm list
     storm jar <jar.file> <class> [arguments]  # ie deploy a topology
@@ -97,29 +81,26 @@ One way to look at what is going on in a topic:
     ```
 
 #### Viewing Logs
-Whereas you should be able to look at logs through the storm UI (ie localhost:8888), 
-you can also look at the log files directly on the storm cluster:
+It is possible to access Storm logs using Storm UI (by default localhost:8888/index.html). 
+You can also look at the log files directly on the Storm cluster:
 
 * connect to the supervisor: ```docker-compose exec storm-supervisor /bin/bash```
-* cd to the base of the workers ```cd /opt/storm/logs/workers-artifacts```
-    * __NB: `workers-artifacts` will exist if you've deployed a topology; otherwise maybe.__
+* navigate to logs directory (`workers-artifacts` is created when deploying a topology): ```cd /opt/storm/logs/workers-artifacts```
+  
 
 ## Testing tips
 
 ### Unit tests
 
-Running JUnit target with coverage from the IDE builds coverage and should integrate data with the sources.
+Running JUnit target with coverage from the IDE builds coverage and integrates data with the sources.
 
-The command __gradle test__ builds unit tests and code coverage reports for using by external apps.
-
-Generated reports are stored in:
-* ```target/jacoco``` - jacoco reports
-* ```target/junit``` - junit reports
-* ```target/coverage-reports``` - coverage data files
-
-Jacoco generates a site-package in ```target/jacoco``` directory.
-It could be opened in any browser (```target/jacoco/index.html```).
+There are several gradle tasks in different modules that execute tests and create a report:
+* `test` executes all unit test in this module and creates a report available at `build/reports/tests/index.html`
+* `jacocoTestReport` executes all unit tests in this module with coverage and creates a coverage report available at:
+`build/reports/jacoco/test/html/jacocoTestReport.html`
+* `check`
+* `jacocoTestCoverageVerification`
 
 Junit reports could be used by external services (CI/CD for example) to represent test results.
 
-Generated coverage data from the ```target/coverage-reports``` directory could also be opened in IDE to show the coverage.
+Generated coverage data from the ```target/coverage-reports``` directory could be opened in an IDE to show the coverage.

@@ -1,0 +1,33 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: fkantur
+      changes:
+        - tagDatabase:
+            tag: 025-optimise-switch-connected-device-class
+  - changeSet:
+      id: remove_indexes
+      author: fkantur
+      changes:
+        - sql: "DROP INDEX switch_connected_device.port_number IF EXISTS"
+        - sql: "DROP INDEX switch_connected_device.vlan IF EXISTS"
+        - sql: "DROP INDEX switch_connected_device.mac_address IF EXISTS"
+        - sql: "DROP INDEX switch_connected_device.type IF EXISTS"
+        - sql: "DROP INDEX switch_connected_device.chassis_id IF EXISTS"
+        - sql: "DROP INDEX switch_connected_device.port_id IF EXISTS"
+        - sql: "DROP INDEX switch_connected_device.ip_address IF EXISTS"
+      rollback:
+        - sql: "CREATE INDEX switch_connected_device.port_number NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX switch_connected_device.vlan NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX switch_connected_device.mac_address NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX switch_connected_device.type NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX switch_connected_device.chassis_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX switch_connected_device.port_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX switch_connected_device.ip_address NOTUNIQUE_HASH_INDEX"
+  - changeSet:
+      id: update_oversize
+      author: fkantur
+      changes:
+        - sql: "ALTER CLASS switch_connected_device OVERSIZE 2"
+      rollback:
+        - sql: "ALTER CLASS switch_connected_device OVERSIZE 0"

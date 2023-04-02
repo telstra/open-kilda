@@ -46,6 +46,10 @@ public interface RuleManagerConfig extends Serializable {
     @Default("1")
     int getArpRateLimit(); // rate in packets per second
 
+    @Key("lacp-rate-limit")
+    @Default("100")
+    int getLacpRateLimit(); // rate in packets per second
+
     // Size of packets used for discovery. Used to calculate service meters rate in KBPS
     @Key("disco-packet-size")
     @Default("250")
@@ -58,6 +62,10 @@ public interface RuleManagerConfig extends Serializable {
     @Key("arp-packet-size")
     @Default("100")
     int getArpPacketSize(); // rate in bytes
+
+    @Key("lacp-packet-size")
+    @Default("150")
+    int getLacpPacketSize(); // rate in bytes
 
     @Key("flow-meter-burst-coefficient")
     @Default("1.05")
@@ -91,6 +99,12 @@ public interface RuleManagerConfig extends Serializable {
     @Min(0)
     @Description("This is burst size for ARP rule meters in packets.")
     long getArpMeterBurstSizeInPackets();
+
+    @Key("lacp-meter-burst-size-in-packets")
+    @Default("4096")
+    @Min(0)
+    @Description("This is burst size for LACP rule meters in packets.")
+    long getLacpMeterBurstSizeInPackets();
 
     @Key("flow-ping-magic-src-mac-address")
     @Default("00:26:E1:FF:FF:FE")

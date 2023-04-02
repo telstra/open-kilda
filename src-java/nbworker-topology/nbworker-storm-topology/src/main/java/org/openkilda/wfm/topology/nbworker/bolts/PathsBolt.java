@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
+import org.openkilda.messaging.command.flow.PathValidateRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
@@ -55,6 +56,8 @@ public class PathsBolt extends PersistenceOperationsBolt {
         List<? extends InfoData> result = null;
         if (request instanceof GetPathsRequest) {
             result = getPaths((GetPathsRequest) request);
+        } else if (request instanceof PathValidateRequest) {
+            result = pathService.validatePath((PathValidateRequest) request);
         } else {
             unhandledInput(tuple);
         }
@@ -66,7 +69,7 @@ public class PathsBolt extends PersistenceOperationsBolt {
         try {
             return pathService.getPaths(request.getSrcSwitchId(), request.getDstSwitchId(),
                     request.getEncapsulationType(), request.getPathComputationStrategy(), request.getMaxLatency(),
-                    request.getMaxLatencyTier2());
+                    request.getMaxLatencyTier2(), request.getMaxPathCount());
         } catch (IllegalArgumentException e) {
             throw new MessageException(ErrorType.DATA_INVALID, e.getMessage(), "Bad request.");
         } catch (RecoverableException e) {

@@ -16,16 +16,11 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.YFlowHelper
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.ExamReport
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
-import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
@@ -124,10 +119,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
 
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
-        statsHelper.verifyYFlowWritesMeterStats(yFlow, beforeTraffic, true)
-        yFlow.subFlows.each {
-            statsHelper.verifyFlowWritesStats(it.flowId, beforeTraffic, true)
-        }
+        statsHelper.verifyYFlowWritesStats(yFlow, beforeTraffic, true)
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)

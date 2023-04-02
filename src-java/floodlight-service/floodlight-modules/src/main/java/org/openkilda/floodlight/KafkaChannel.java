@@ -80,7 +80,7 @@ public class KafkaChannel implements IFloodlightModule {
         return formatTopicWithRegion(topics.getSpeakerRegionTopic());
     }
 
-    public String getSpeakerFlowTopic() {
+    public String getSpeakerFlowHsTopic() {
         return formatTopicWithRegion(topics.getSpeakerFlowRegionTopic());
     }
 
@@ -128,7 +128,7 @@ public class KafkaChannel implements IFloodlightModule {
         return formatTopicWithRegion(topics.getTopoSwitchManagerRegionTopic());
     }
 
-    public String getSpeakerFlowHsTopic() {
+    public String getSpeakerFlowHsResponseTopic() {
         return formatTopicWithRegion(topics.getFlowHsSpeakerRegionTopic());
     }
 

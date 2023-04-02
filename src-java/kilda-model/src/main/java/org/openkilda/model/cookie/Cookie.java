@@ -86,6 +86,8 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
             ServiceCookie.ServiceCookieTag.SERVER_42_ISL_RTT_TURNING_COOKIE).getValue();
     public static final long SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE = new ServiceCookie(
             ServiceCookieTag.SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE).getValue();
+    public static final long DROP_SLOW_PROTOCOLS_LOOP_COOKIE = new ServiceCookie(
+            ServiceCookieTag.DROP_SLOW_PROTOCOLS_LOOP_COOKIE).getValue();
 
 
     @JsonCreator

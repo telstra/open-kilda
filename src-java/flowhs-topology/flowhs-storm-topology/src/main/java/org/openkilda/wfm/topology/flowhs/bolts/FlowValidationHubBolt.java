@@ -44,13 +44,11 @@ import org.openkilda.wfm.topology.flowhs.service.FlowValidationHubService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.NonNull;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class FlowValidationHubBolt extends HubBolt implements FlowValidationHubCarrier {
@@ -142,29 +140,12 @@ public class FlowValidationHubBolt extends HubBolt implements FlowValidationHubC
     public void sendNorthboundResponse(@NonNull List<? extends InfoData> messageData) {
         // The validation process sends a response to NB when CommandContext represents a worker response, so
         // we need to use "parent" key to override the CommandContext.correlationId.
-        buildResponseMessages(messageData, currentKey)
-                .forEach(message -> emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(),
-                        new Values(currentKey, message)));
+        sendNorthboundResponses(ChunkedInfoMessage.createChunkedList(messageData, currentKey));
     }
 
     @Override
     public void sendNorthboundResponse(@NonNull Message message) {
         emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
-    }
-
-    private List<Message> buildResponseMessages(List<? extends InfoData> responseData, String requestId) {
-        List<Message> messages = new ArrayList<>(responseData.size());
-        if (CollectionUtils.isEmpty(responseData)) {
-            messages.add(new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId, requestId, 0));
-        } else {
-            int i = 0;
-            for (InfoData data : responseData) {
-                Message message = new ChunkedInfoMessage(data, System.currentTimeMillis(), requestId, i++,
-                        responseData.size());
-                messages.add(message);
-            }
-        }
-        return messages;
     }
 
     @Override

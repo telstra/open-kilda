@@ -22,12 +22,10 @@ import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsReq
 import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
-import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.DataAdapter;
 import org.openkilda.rulemanager.FlowSpeakerData;
@@ -36,62 +34,36 @@ import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.common.converters.FlowRulesConverter;
 import org.openkilda.wfm.topology.flowhs.fsm.common.converters.OfCommandConverter;
+import org.openkilda.wfm.topology.flowhs.utils.YFlowRuleManagerAdapter;
 
-import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 public abstract class YFlowRuleManagerProcessingAction<T extends YFlowProcessingFsm<T, S, E, C, ?, ?>, S, E, C>
         extends YFlowProcessingWithHistorySupportAction<T, S, E, C> {
     protected final RuleManager ruleManager;
+    private final YFlowRuleManagerAdapter ruleManagerAdapter;
 
     protected YFlowRuleManagerProcessingAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
         super(persistenceManager);
         this.ruleManager = ruleManager;
+
+        ruleManagerAdapter = new YFlowRuleManagerAdapter(persistenceManager, ruleManager);
     }
 
     protected Collection<InstallSpeakerCommandsRequest> buildYFlowInstallRequests(YFlow yFlow, CommandContext context) {
-        Map<SwitchId, List<SpeakerData>> speakerData = buildYFlowSpeakerData(yFlow);
-        return FlowRulesConverter.INSTANCE.buildFlowInstallCommands(speakerData, context, Origin.FLOW_HS);
+        return ruleManagerAdapter.buildInstallRequests(yFlow, context);
     }
 
     protected Collection<DeleteSpeakerCommandsRequest> buildYFlowDeleteRequests(YFlow yFlow, CommandContext context) {
-        Map<SwitchId, List<SpeakerData>> speakerData = buildYFlowSpeakerData(yFlow);
-        return FlowRulesConverter.INSTANCE.buildFlowDeleteCommands(speakerData, context, Origin.FLOW_HS);
-    }
-
-    private Map<SwitchId, List<SpeakerData>> buildYFlowSpeakerData(YFlow yFlow) {
-        Set<PathId> pathIds = yFlow.getSubFlows().stream()
-                .map(YSubFlow::getFlow)
-                .flatMap(flow -> Stream.of(flow.getForwardPathId(), flow.getReversePathId(),
-                        flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        Set<SwitchId> switchIds = Sets.newHashSet(yFlow.getSharedEndpoint().getSwitchId(), yFlow.getYPoint(),
-                yFlow.getProtectedPathYPoint());
-        DataAdapter dataAdapter = PersistenceDataAdapter.builder()
-                .persistenceManager(persistenceManager)
-                .switchIds(switchIds)
-                .pathIds(pathIds)
-                .build();
-        List<FlowPath> flowPaths = new ArrayList<>(dataAdapter.getFlowPaths().values());
-
-        return ruleManager.buildRulesForYFlow(flowPaths, dataAdapter).stream()
-                .collect(Collectors.groupingBy(SpeakerData::getSwitchId,
-                        Collectors.mapping(Function.identity(), toList())));
+        return ruleManagerAdapter.buildDeleteRequests(yFlow, context);
     }
 
     protected List<SpeakerData> buildYFlowSpeakerData(SwitchId switchId, Set<PathId> pathIds) {

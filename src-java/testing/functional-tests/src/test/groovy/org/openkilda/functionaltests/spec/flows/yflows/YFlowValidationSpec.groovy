@@ -177,7 +177,7 @@ class YFlowValidationSpec extends HealthCheckSpecification {
                 ],
                 [
                         action     : "synchronize",
-                        actionInMsg: "reroute",
+                        actionInMsg: "sync",
                         method     : { northboundV2.synchronizeYFlow(NON_EXISTENT_FLOW_ID) }
                 ]
         ]

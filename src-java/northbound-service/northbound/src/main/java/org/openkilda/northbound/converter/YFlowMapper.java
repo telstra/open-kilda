@@ -78,6 +78,8 @@ public abstract class YFlowMapper {
     @Mapping(target = "yFlowId", source = "YFlowId")
     @Mapping(target = "yPoint", source = "YPoint")
     @Mapping(target = "protectedPathYPoint", source = "protectedPathYPoint")
+    @Mapping(target = "maxLatency", qualifiedByName = "timeNanosToMillis")
+    @Mapping(target = "maxLatencyTier2", qualifiedByName = "timeNanosToMillis")
     public abstract YFlow toYFlow(YFlowDto flow);
 
     public abstract SubFlow toYFlow(SubFlowDto flow);
@@ -164,11 +166,17 @@ public abstract class YFlowMapper {
 
     @Mapping(target = "type", constant = "CREATE")
     @Mapping(target = "yFlowId", source = "YFlowId")
+    @Mapping(target = "maxLatency", qualifiedByName = "timeMillisToNanos")
+    @Mapping(target = "maxLatencyTier2", qualifiedByName = "timeMillisToNanos")
     public abstract YFlowRequest toYFlowCreateRequest(YFlowCreatePayload source);
 
     @Mapping(target = "type", constant = "UPDATE")
+    @Mapping(target = "maxLatency", qualifiedByName = "timeMillisToNanos")
+    @Mapping(target = "maxLatencyTier2", qualifiedByName = "timeMillisToNanos")
     public abstract YFlowRequest toYFlowUpdateRequest(String yFlowId, YFlowUpdatePayload source);
 
+    @Mapping(target = "maxLatency", qualifiedByName = "timeMillisToNanos")
+    @Mapping(target = "maxLatencyTier2", qualifiedByName = "timeMillisToNanos")
     public abstract YFlowPartialUpdateRequest toYFlowPatchRequest(String yFlowId, YFlowPatchPayload source);
 
     @Mapping(target = "status", ignore = true)

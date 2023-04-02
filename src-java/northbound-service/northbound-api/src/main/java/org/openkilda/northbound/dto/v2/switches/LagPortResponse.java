@@ -30,4 +30,5 @@ import java.util.List;
 public class LagPortResponse {
     private int logicalPortNumber;
     private List<Integer> portNumbers;
+    private boolean lacpReply;
 }

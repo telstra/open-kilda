@@ -27,6 +27,7 @@ import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.model.FlowPatch;
@@ -90,6 +91,8 @@ public class FlowPatchBolt extends AbstractBolt implements FlowOperationsCarrier
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Flow was not found.");
         } catch (IllegalArgumentException e) {
             throw new MessageException(ErrorType.PARAMETERS_INVALID, "Could not update flow", e.getMessage());
+        } catch (InvalidFlowException e) {
+            throw new MessageException(ErrorType.DATA_INVALID, "Invalid flow data", e.getMessage());
         }
     }
 

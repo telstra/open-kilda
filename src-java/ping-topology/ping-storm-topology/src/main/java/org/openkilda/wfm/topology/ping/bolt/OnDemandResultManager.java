@@ -180,7 +180,14 @@ public class OnDemandResultManager extends ResultManager {
                     "Expect exact one Y Flow id in pings group response, got - %s", yFlowIdSet));
         }
 
-        return new YFlowPingResponse(yFlowIdSet.iterator().next(), null, new ArrayList<>(subFlowMap.values()));
+        String error = oneSwitchFlowExists(subFlowMap) ? "One sub flow is one-switch flow" : null;
+
+        return new YFlowPingResponse(yFlowIdSet.iterator().next(), error, new ArrayList<>(subFlowMap.values()));
+    }
+
+    private boolean oneSwitchFlowExists(Map<String, SubFlowPingPayload> subFlowMap) {
+        //map size is odd means that one subflow was not included
+        return subFlowMap.size() % 2 == 1;
     }
 
     private void validateSubFlow(UniSubFlowPingPayload existPayloadPayload, FlowDirection direction,

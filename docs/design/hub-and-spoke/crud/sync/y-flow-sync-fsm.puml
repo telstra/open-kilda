@@ -1,0 +1,63 @@
+@startuml
+title Y-Flow sync FSM state diagram
+
+[*] -> SETUP
+SETUP: enter / fire "error" if y-flow is IN_PROGRESS status
+SETUP: enter / for each subflow fire "error" if subflow is IN_PROGRESS status
+SETUP: enter / set y-flow status to IN_PROGRESS
+SETUP: enter / for each subflow set flow status to IN_PROGRESS
+SETUP: enter / for each subflow apply postponed flow changes
+SETUP --> SYNC: next
+SETUP --> COMMIT_ERROR: error
+
+SYNC: enter / for each subflow launch main path install operation
+SYNC: enter / [have protected path] for each subflow launch protected path install operation
+SYNC --> SYNC_FAIL: sync_fail
+SYNC --> SYNC_Y_RULES: guard_passed
+SYNC --> CANCEL: error
+SYNC --> CANCEL: timeout / report global timeout
+SYNC: path_operation_response / handle path operation response
+SYNC: path_operation_response / fire "sync_fail" on failed path response
+SYNC: path_operation_response / fire "guard_passed" if no more pending path operations
+
+SYNC_Y_RULES: enter / emit y-flow rules speaker install commands
+SYNC_Y_RULES -> COMMIT_SUCCESS: guard_passed
+SYNC_Y_RULES -> COMMIT_ERROR: timeout / report global timeout
+SYNC_Y_RULES -> SYNC_Y_RULES_FAIL: speaker_error_response
+SYNC_Y_RULES: speaker_response / report speaker command success
+SYNC_Y_RULES: speaker_response / fire "guard_passed" if no more pending speaker commands
+
+CANCEL: enter / request cancel path operation for all pending path operations
+CANCEL --> COMMIT_ERROR: guard_passed
+CANCEL: path_operation_response / handle path operation response
+CANCEL: path_operation_response / fire "guard_passed" if no more pending path operations
+CANCEL: error / fire "guard_passed" if no pending path operations
+CANCEL: timeout / report global timeout
+
+SYNC_FAIL: enter / fire "guard_passed" if no pending path operations
+SYNC_FAIL --> COMMIT_ERROR: guard_passed
+SYNC_FAIL --> CANCEL: error
+SYNC_FAIL --> CANCEL: timeout / report global timeout
+SYNC_FAIL: path_operation_response / handle path operation response
+SYNC_FAIL: path_operation_response / fire "guard_passed" if no more pending path operations
+
+SYNC_Y_RULES_FAIL: enter / report speaker command error
+SYNC_Y_RULES_FAIL: enter / fire "guard_passed" if no pending speaker commands
+SYNC_Y_RULES_FAIL -> COMMIT_ERROR: guard_passed | timeout
+SYNC_Y_RULES_FAIL: speaker_response / report speaker command success
+SYNC_Y_RULES_FAIL: speaker_response / fire "guard_passed" if no more pending speaker commands
+SYNC_Y_RULES_FAIL: speaker_error_response / report speaker command error
+SYNC_Y_RULES_FAIL: speaker_error_response / fire "guard_passed" if no more pending speaker commands
+
+COMMIT_SUCCESS: enter / update flow status
+COMMIT_SUCCESS: enter / send success response
+COMMIT_SUCCESS --> FINISHED: next
+COMMIT_SUCCESS --> COMMIT_ERROR: error
+
+COMMIT_ERROR: enter / update flow status
+COMMIT_ERROR: enter / send failed response
+COMMIT_ERROR --> FINISHED_WITH_ERROR: next
+
+FINISHED --> [*]
+FINISHED_WITH_ERROR --> [*]
+@enduml

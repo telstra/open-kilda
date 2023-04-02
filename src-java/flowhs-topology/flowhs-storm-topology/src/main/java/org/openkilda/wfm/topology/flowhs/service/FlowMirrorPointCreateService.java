@@ -17,12 +17,12 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -43,11 +43,12 @@ public class FlowMirrorPointCreateService extends FlowProcessingService<FlowMirr
 
     public FlowMirrorPointCreateService(FlowGenericCarrier carrier, PersistenceManager persistenceManager,
                                         PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
+                                        RuleManager ruleManager,
                                         int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                                         int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
         super(new FlowProcessingFsmRegister<>(), new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
         fsmFactory = new FlowMirrorPointCreateFsm.Factory(carrier, persistenceManager, pathComputer,
-                flowResourcesManager, pathAllocationRetriesLimit, pathAllocationRetryDelay,
+                flowResourcesManager, ruleManager, pathAllocationRetriesLimit, pathAllocationRetryDelay,
                 resourceAllocationRetriesLimit, speakerCommandRetriesLimit);
     }
 
@@ -74,8 +75,8 @@ public class FlowMirrorPointCreateService extends FlowProcessingService<FlowMirr
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
-        log.debug("Received flow command response {}", flowResponse);
+    public void handleAsyncResponse(String key, SpeakerCommandResponse speakerCommandResponse) {
+        log.debug("Received speaker command response {}", speakerCommandResponse);
         FlowMirrorPointCreateFsm fsm = fsmRegister.getFsmByKey(key).orElse(null);
         if (fsm == null) {
             log.warn("Failed to find a FSM: received response with key {} for non pending FSM", key);
@@ -83,14 +84,10 @@ public class FlowMirrorPointCreateService extends FlowProcessingService<FlowMirr
         }
 
         FlowMirrorPointCreateContext context = FlowMirrorPointCreateContext.builder()
-                .speakerFlowResponse(flowResponse)
+                .speakerResponse(speakerCommandResponse)
                 .build();
 
-        if (flowResponse instanceof FlowErrorResponse) {
-            fsmExecutor.fire(fsm, Event.ERROR_RECEIVED, context);
-        } else {
-            fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
-        }
+        fsmExecutor.fire(fsm, Event.RESPONSE_RECEIVED, context);
 
         removeIfFinished(fsm, key);
     }

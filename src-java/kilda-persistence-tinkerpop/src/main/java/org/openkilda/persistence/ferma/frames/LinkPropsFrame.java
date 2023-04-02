@@ -30,6 +30,7 @@ public abstract class LinkPropsFrame extends KildaBaseVertexFrame implements Lin
     public static final String DST_PORT_PROPERTY = "dst_port";
     public static final String COST_PROP_NAME = "cost";
     public static final String MAX_BANDWIDTH_PROP_NAME = "max_bandwidth";
+    public static final String DESCRIPTION_PROP_NAME = "description";
 
     @Override
     @Property(SRC_PORT_PROPERTY)
@@ -82,4 +83,12 @@ public abstract class LinkPropsFrame extends KildaBaseVertexFrame implements Lin
     @Override
     @Property(MAX_BANDWIDTH_PROP_NAME)
     public abstract void setMaxBandwidth(Long maxBandwidth);
+
+    @Override
+    @Property(DESCRIPTION_PROP_NAME)
+    public abstract String getDescription();
+
+    @Override
+    @Property(DESCRIPTION_PROP_NAME)
+    public abstract void setDescription(String description);
 }

@@ -166,7 +166,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                 makeRegionTopics(kafkaTopics.getNetworkControlResponseRegionTopic()),
                 ComponentType.KILDA_NETWORK_REQUEST_KAFKA_SPOUT);
         declareSpeakerToControllerProxy(
-                topology, kafkaTopics.getNetworkControlReponseTopic(),
+                topology, kafkaTopics.getNetworkControlResponseTopic(),
                 ComponentType.KILDA_NETWORK_REQUEST_KAFKA_SPOUT,
                 ComponentType.KILDA_NETWORK_RESPONSE_REPLY_BOLT,
                 output.getKafkaHsOutput());

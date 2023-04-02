@@ -78,6 +78,7 @@ public final class MeterId implements Comparable<MeterId>, Serializable {
      */
     public static final int MAX_SYSTEM_RULE_METER_ID = 31;
 
+    public static final MeterId LACP_REPLY_METER_ID = new MeterId(31);
     public static final long VERIFICATION_BROADCAST_METER_ID =
             defaultCookieToMeterId(VERIFICATION_BROADCAST_RULE_COOKIE);
     public static final long VERIFICATION_UNICAST_METER_ID = defaultCookieToMeterId(VERIFICATION_UNICAST_RULE_COOKIE);

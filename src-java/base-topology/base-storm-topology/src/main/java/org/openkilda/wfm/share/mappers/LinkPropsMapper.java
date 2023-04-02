@@ -52,6 +52,9 @@ public abstract class LinkPropsMapper {
         if (linkProps.getMaxBandwidth() != null) {
             props.put(LinkProps.MAX_BANDWIDTH_PROP_NAME, Long.toString(linkProps.getMaxBandwidth()));
         }
+        if (linkProps.getDescription() != null) {
+            props.put(LinkProps.DESCRIPTION_PROP_NAME, linkProps.getDescription());
+        }
 
         Long created = Optional.ofNullable(linkProps.getTimeCreate()).map(Instant::toEpochMilli).orElse(null);
         Long modified = Optional.ofNullable(linkProps.getTimeModify()).map(Instant::toEpochMilli).orElse(null);
@@ -93,6 +96,9 @@ public abstract class LinkPropsMapper {
                         } catch (NumberFormatException e) {
                             throw new LinkPropsException(format("Bad max bandwidth value '%s'", entry.getValue()), e);
                         }
+                        break;
+                    case LinkProps.DESCRIPTION_PROP_NAME:
+                        dbLinkProps.setDescription(entry.getValue());
                         break;
                     default:
                         log.warn("Unsupported IslProps properties: {}", entry);

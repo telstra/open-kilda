@@ -89,6 +89,6 @@ public class ConsumerContext {
     }
 
     public String getKafkaSpeakerFlowHsTopic() {
-        return kafkaChannel.getSpeakerFlowHsTopic();
+        return kafkaChannel.getSpeakerFlowHsResponseTopic();
     }
 }

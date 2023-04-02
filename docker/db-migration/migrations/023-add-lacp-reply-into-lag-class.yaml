@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: snikitin
+      changes:
+        - tagDatabase:
+            tag: 023-add-lacp-reply-into-lag-class
+
+  - changeSet:
+      id: add_lacp_reply_into_lag_class
+      author: snikitin
+      changes:
+        - sql: "CREATE PROPERTY lag_logical_port.lacp_reply IF NOT EXISTS BOOLEAN"
+        - sql: "UPDATE lag_logical_port SET lacp_reply = true"
+        - sql: "CREATE INDEX lag_logical_port.lacp_reply NOTUNIQUE_HASH_INDEX"
+        - sql: "DROP INDEX lag_logical_port_unique"
+        - sql: "CREATE INDEX lag_logical_port_unique on lag_logical_port (switch_id, logical_port_number, lacp_reply) UNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP INDEX lag_logical_port.lacp_reply"
+        - sql: "DROP INDEX lag_logical_port_unique"
+        - sql: "CREATE INDEX lag_logical_port_unique on lag_logical_port (switch_id, logical_port_number) UNIQUE_HASH_INDEX"
+        - sql: "DROP PROPERTY lag_logical_port.lacp_reply IF EXISTS"

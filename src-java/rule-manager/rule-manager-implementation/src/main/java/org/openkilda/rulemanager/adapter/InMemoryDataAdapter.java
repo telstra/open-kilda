@@ -21,6 +21,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.KildaFeatureToggles;
+import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -31,6 +32,8 @@ import org.openkilda.rulemanager.DataAdapter;
 import lombok.Builder;
 import lombok.Value;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -44,6 +47,7 @@ public class InMemoryDataAdapter implements DataAdapter {
     Map<SwitchId, Switch> switches;
     Map<SwitchId, SwitchProperties> switchProperties;
     Map<SwitchId, Set<Integer>> switchIslPorts;
+    Map<SwitchId, List<LagLogicalPort>> switchLagPorts;
     KildaFeatureToggles featureToggles;
     Map<PathId, YFlow> yFlows;
 
@@ -100,6 +104,15 @@ public class InMemoryDataAdapter implements DataAdapter {
         Set<Integer> result = switchIslPorts.get(switchId);
         if (result == null) {
             throw new IllegalStateException(format("Switch isl ports for '%s' not found.", switchId));
+        }
+        return result;
+    }
+
+    @Override
+    public List<LagLogicalPort> getLagLogicalPorts(SwitchId switchId) {
+        List<LagLogicalPort> result = switchLagPorts.getOrDefault(switchId, Collections.emptyList());
+        if (result == null) {
+            throw new IllegalStateException(format("Switch lag ports for '%s' not found.", switchId));
         }
         return result;
     }

@@ -24,7 +24,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.floodlight.api.BatchCommandProcessor;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.floodlight.service.session.SessionService;
@@ -75,7 +74,7 @@ public class OfBatchExecutorTest {
             .holder(holder)
             .switchFeatures(Collections.emptySet())
             .kafkaKey("kafka-key")
-            .origin(Origin.SW_MANAGER)
+            .sourceTopic("flowhs-topic")
             .build();
 
     @Test
@@ -103,7 +102,7 @@ public class OfBatchExecutorTest {
         executor.executeBatch();
 
         ArgumentCaptor<SpeakerCommandResponse> captor = ArgumentCaptor.forClass(SpeakerCommandResponse.class);
-        verify(batchCommandProcessor).processResponse(captor.capture(), any(String.class), any(Origin.class));
+        verify(batchCommandProcessor).processResponse(captor.capture(), any(String.class), any(String.class));
         assertTrue(captor.getValue().isSuccess());
 
         verifyNoMoreInteractions(batchCommandProcessor);
@@ -133,7 +132,7 @@ public class OfBatchExecutorTest {
         executor.executeBatch();
 
         ArgumentCaptor<SpeakerCommandResponse> captor = ArgumentCaptor.forClass(SpeakerCommandResponse.class);
-        verify(batchCommandProcessor).processResponse(captor.capture(), any(String.class), any(Origin.class));
+        verify(batchCommandProcessor).processResponse(captor.capture(), any(String.class), any(String.class));
         assertFalse(captor.getValue().isSuccess());
 
         verifyNoMoreInteractions(batchCommandProcessor);

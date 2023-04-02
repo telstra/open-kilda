@@ -120,7 +120,7 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
         declarer.declare(new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
         declarer.declareStream(FLOW_HS_STREAM_ID.name(), new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
         declarer.declareStream(FLOW_STATS_STREAM_ID.name(),
-                new Fields(FLOW_ID_FIELD, FLOW_DIRECTION_FIELD, LATENCY_FIELD));
+                new Fields(FLOW_ID_FIELD, FLOW_DIRECTION_FIELD, LATENCY_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,
                 ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
@@ -140,6 +140,7 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
 
     @Override
     public void persistFlowStats(String flowId, String direction, long latency) {
-        emit(FLOW_STATS_STREAM_ID.name(), getCurrentTuple(), new Values(flowId, direction, latency));
+        emit(FLOW_STATS_STREAM_ID.name(), getCurrentTuple(), new Values(flowId, direction, latency,
+                getCommandContext()));
     }
 }

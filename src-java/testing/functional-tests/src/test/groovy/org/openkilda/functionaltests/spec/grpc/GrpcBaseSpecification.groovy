@@ -2,8 +2,8 @@ package org.openkilda.functionaltests.spec.grpc
 
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.model.ContainerName.GRPC_STUB
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
-import static org.openkilda.testing.ConstantsGrpc.GRPC_STUB_CONTAINER_NAME
 
 import org.openkilda.functionaltests.HealthCheckBaseSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -45,7 +45,7 @@ class GrpcBaseSpecification extends HealthCheckBaseSpecification {
         if (profile == "virtual") {
             /* Create fake switch for running test using grpc-stub
             NOTE: The grpc-stub service covers positive test cases only */
-            def grpcStubIp = new DockerHelper(dockerHost).getContainerIp(GRPC_STUB_CONTAINER_NAME)
+            def grpcStubIp = new DockerHelper(dockerHost).getContainerIp(GRPC_STUB)
             new SwitchDto(NON_EXISTENT_SWITCH_ID, grpcStubIp,37040, "host", "desc",  SwitchChangeType.ACTIVATED,
                     false, "of_version", "manufacturer", "hardware", "software", "serial_number", "pop",
                     new SwitchLocationDto(48.860611, 2.337633, "street", "city", "country")) as List

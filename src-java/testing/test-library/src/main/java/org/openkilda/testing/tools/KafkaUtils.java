@@ -15,28 +15,18 @@
 
 package org.openkilda.testing.tools;
 
-import static java.lang.String.format;
-
-import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
-import org.openkilda.floodlight.api.request.rulemanager.GroupCommand;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
-import org.openkilda.floodlight.api.request.rulemanager.MeterCommand;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
-import org.openkilda.floodlight.api.request.rulemanager.Origin;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.rulemanager.FlowSpeakerData;
-import org.openkilda.rulemanager.GroupSpeakerData;
-import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.SpeakerData;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Helper class to build kafka messages.
@@ -57,26 +47,8 @@ public final class KafkaUtils {
                 .messageContext(new MessageContext())
                 .switchId(speakerData.get(0).getSwitchId())
                 .commandId(UUID.randomUUID())
-                .commands(toCommands(speakerData))
-                .origin(Origin.SW_MANAGER)
+                .commands(OfCommand.toOfCommands(speakerData))
                 .build();
-    }
-
-    private static List<OfCommand> toCommands(List<SpeakerData> speakerData) {
-        return speakerData.stream()
-                .map(KafkaUtils::toCommand)
-                .collect(Collectors.toList());
-    }
-
-    private static OfCommand toCommand(SpeakerData speakerData) {
-        if (speakerData instanceof FlowSpeakerData) {
-            return new FlowCommand((FlowSpeakerData) speakerData);
-        } else if (speakerData instanceof MeterSpeakerData) {
-            return new MeterCommand((MeterSpeakerData) speakerData);
-        } else if (speakerData instanceof GroupSpeakerData) {
-            return new GroupCommand((GroupSpeakerData) speakerData);
-        }
-        throw new IllegalStateException(format("Unknown speaker data type %s", speakerData));
     }
 
     /**

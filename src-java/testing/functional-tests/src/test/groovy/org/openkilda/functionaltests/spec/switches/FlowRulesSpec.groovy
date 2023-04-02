@@ -160,8 +160,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
                 ],
                 [// Drop all non-base rules (ie IGNORE), and add base rules back (eg overwrite)
                  deleteRulesAction: DeleteRulesAction.OVERWRITE_DEFAULTS,
-                 rulesDeleted     : flowRulesCount + (s42IsEnabledOnSrcSw ? s42FlowRttIngressForwardCount : 0),
-                 getExpectedRules : { sw, defaultRules -> defaultRules }
+                 rulesDeleted     : srcSwDefaultRules.size(),
+                 getExpectedRules : { sw, defaultRules -> defaultRules + getFlowRules(sw) }
                 ],
                 [// Drop all default rules in single-table mode
                  deleteRulesAction: DeleteRulesAction.REMOVE_DEFAULTS,
@@ -239,13 +239,12 @@ class FlowRulesSpec extends HealthCheckSpecification {
                 ],
                 [// Drop all non-base rules (ie IGNORE), and add base rules back (eg overwrite)
                  deleteRulesAction: DeleteRulesAction.OVERWRITE_DEFAULTS,
-                 rulesDeleted     : flowRulesCount + sharedRulesCount +
-                         (s42IsEnabledOnSrcSw ? s42QinqOuterVlanCount + s42FlowRttIngressForwardCount : 0),
-                 getExpectedRules : { sw, defaultRules ->
-                     def noDefaultSwRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries - defaultRules
-                     defaultRules + noDefaultSwRules.findAll { Cookie.isIngressRulePassThrough(it.cookie) } +
-                         (s42IsEnabledOnSrcSw ? northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
-                             new Cookie(it.cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INPUT } : [])
+                 rulesDeleted     : srcSwDefaultRules.size() + multiTableFlowRulesCount +
+                         (s42IsEnabledOnSrcSw ? s42FlowRttInput : 0),
+                 getExpectedRules : { sw, defaultRules -> defaultRules + getFlowRules(sw) +
+                         northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+                             Cookie.isIngressRulePassThrough(it.cookie)
+                         }
                  }
                 ],
                 [// Drop all default rules

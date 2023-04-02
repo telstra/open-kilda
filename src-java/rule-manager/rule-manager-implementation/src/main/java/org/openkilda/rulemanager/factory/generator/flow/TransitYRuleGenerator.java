@@ -44,7 +44,6 @@ import java.util.UUID;
 
 @SuperBuilder
 public class TransitYRuleGenerator extends TransitRuleGenerator implements MeteredRuleGenerator {
-    @NonNull
     protected final MeterId sharedMeterId;
     @NonNull
     protected final RuleManagerConfig config;
@@ -61,13 +60,16 @@ public class TransitYRuleGenerator extends TransitRuleGenerator implements Meter
         SpeakerData command = buildTransitCommand(sw);
         result.add(command);
 
+        if (sharedMeterId == null) {
+            return result;
+        }
         if (generateMeterCommand) {
             SpeakerData meterCommand = buildMeter(externalMeterCommandUuid, flowPath, config, sharedMeterId, sw);
             if (meterCommand != null) {
                 result.add(meterCommand);
                 command.getDependsOn().add(externalMeterCommandUuid);
             }
-        } else if (sw.getFeatures().contains(METERS) && sharedMeterId != null) {
+        } else if (sw.getFeatures().contains(METERS)) {
             command.getDependsOn().add(externalMeterCommandUuid);
         }
         return result;
@@ -93,7 +95,9 @@ public class TransitYRuleGenerator extends TransitRuleGenerator implements Meter
         Instructions instructions = Instructions.builder()
                 .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(outPort))))
                 .build();
-        addMeterToInstructions(sharedMeterId, sw, instructions);
+        if (sharedMeterId != null) {
+            addMeterToInstructions(sharedMeterId, sw, instructions);
+        }
         return instructions;
     }
 }

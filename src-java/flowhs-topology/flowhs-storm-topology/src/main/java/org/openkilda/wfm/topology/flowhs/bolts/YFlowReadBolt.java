@@ -143,16 +143,8 @@ public class YFlowReadBolt extends AbstractBolt {
     }
 
     private void emitMessages(Tuple input, String requestId, List<? extends InfoData> messageData) {
-        if (messageData.isEmpty()) {
-            Message message = new ChunkedInfoMessage(null, System.currentTimeMillis(), requestId, requestId, 0);
+        for (ChunkedInfoMessage message : ChunkedInfoMessage.createChunkedList(messageData, requestId)) {
             emit(input, new Values(requestId, message));
-        } else {
-            int idx = 0;
-            for (InfoData data : messageData) {
-                Message message = new ChunkedInfoMessage(data, System.currentTimeMillis(), requestId,
-                        idx++, messageData.size());
-                emit(input, new Values(requestId, message));
-            }
         }
     }
 

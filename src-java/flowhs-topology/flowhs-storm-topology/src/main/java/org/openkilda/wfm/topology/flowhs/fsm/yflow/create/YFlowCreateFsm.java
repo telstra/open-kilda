@@ -40,7 +40,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnFinishedActi
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnReceivedInstallResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnReceivedRemoveResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnReceivedValidateResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnSubFlowAllocatedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnSubFlowCreatedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions.OnSubFlowRemovedAction;
@@ -258,10 +257,6 @@ public final class YFlowCreateFsm extends YFlowProcessingFsm<YFlowCreateFsm, Sta
                     .toAmong(State.REVERTING_YFLOW, State.REVERTING_YFLOW)
                     .onEach(Event.ERROR, Event.TIMEOUT);
 
-            builder.internalTransition()
-                    .within(State.VALIDATING_YFLOW_METERS)
-                    .on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedValidateResponseAction(speakerCommandRetriesLimit));
             builder.transitions()
                     .from(State.VALIDATING_YFLOW_METERS)
                     .toAmong(State.YFLOW_METERS_VALIDATED, State.REVERTING_YFLOW, State.REVERTING_YFLOW)

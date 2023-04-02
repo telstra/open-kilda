@@ -24,18 +24,16 @@ import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.FeatureTogglesService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CompletableFuture;
 
+@Slf4j
 @Service
 public class FeatureTogglesServiceImpl implements FeatureTogglesService {
-
-    private final Logger logger = LoggerFactory.getLogger(FeatureTogglesServiceImpl.class);
 
     /**
      * The kafka topic for the nb topology.
@@ -49,7 +47,7 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
     @Override
     public CompletableFuture<FeatureTogglesDto> toggleFeatures(FeatureTogglesDto dto) {
         String correlationId = RequestCorrelationId.getId();
-        logger.debug("Processing request to toggle features, new properties are {}", dto);
+        log.info("API request: Updating feature toggles features, new properties are {}", dto);
         CreateOrUpdateFeatureTogglesRequest request = new CreateOrUpdateFeatureTogglesRequest(dto);
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
 
@@ -59,6 +57,7 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
 
     @Override
     public CompletableFuture<FeatureTogglesDto> getFeatureTogglesState() {
+        log.info("API request: Get feature toggle state");
         String correlationId = RequestCorrelationId.getId();
         GetFeatureTogglesRequest request = new GetFeatureTogglesRequest();
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);

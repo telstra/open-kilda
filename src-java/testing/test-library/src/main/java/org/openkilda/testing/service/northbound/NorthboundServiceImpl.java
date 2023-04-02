@@ -648,7 +648,8 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType flowEncapsulationType,
-                             PathComputationStrategy pathComputationStrategy, Long maxLatency, Long maxLatencyTier2) {
+                             PathComputationStrategy pathComputationStrategy,
+                             Long maxLatency, Long maxLatencyTier2, Integer maxPathCount) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/network/paths");
         if (srcSwitch != null) {
             uriBuilder.queryParam("src_switch", srcSwitch);
@@ -667,6 +668,9 @@ public class NorthboundServiceImpl implements NorthboundService {
         }
         if (maxLatencyTier2 != null) {
             uriBuilder.queryParam("max_latency_tier2", maxLatencyTier2);
+        }
+        if (maxPathCount != null) {
+            uriBuilder.queryParam("max_path_count", maxPathCount);
         }
 
         return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
@@ -747,6 +751,7 @@ public class NorthboundServiceImpl implements NorthboundService {
                 .enableBfd(dto.isEnableBfd())
                 .roundTripStatus(dto.getRoundTripStatus() != null
                         ? IslChangeType.from(dto.getRoundTripStatus().toString()) : null)
+                .description(dto.getDescription())
                 .build();
     }
 }

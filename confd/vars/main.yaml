@@ -51,6 +51,10 @@ kilda_floodlight_flow_ping_magic_src_mac_address: "00:26:E1:FF:FF:FE"
 kilda_floodlight_server42_flow_rtt_udp_port_offset: 5000
 kilda_floodlight_server42_isl_rtt_udp_port_offset: 10000
 kilda_floodlight_server42_isl_rtt_magic_mac_address: "00:26:E1:FF:FF:FD"
+kilda_floodlight_lacp_system_id: "00:00:00:00:00:01"
+kilda_floodlight_lacp_system_priority: 1
+kilda_floodlight_lacp_port_priority: 1
+kilda_floodlight_kafka_messages_chunk_size: 500
 
 kilda_floodlight_ovs_meters_enabled: true
 
@@ -123,6 +127,7 @@ kilda_bfd_interval_ms: 350
 kilda_bfd_multiplier: 3
 
 kilda_pce_network_strategy: "SYMMETRIC_COST"
+kilda_pce_max_path_count: 500
 
 kilda_floodlight_alive_timeout: 10
 kilda_floodlight_alive_interval: 2
@@ -167,12 +172,35 @@ kilda_storm_swmanager_heavy_operation_parallelism: 2
 kilda_storm_isl_latency_parallelism: 4
 kilda_storm_parallelism_level_new: 2
 kilda_storm_parallelism_level: 1
-kilda_storm_flow_hs_parallelism: 2
-kilda_storm_flow_hs_reroute_hub_count_multiplier: 2
-kilda_storm_flowhs_workers: 1
 kilda_storm_parallelism_workers_count: 1
 kilda_storm_history_parallelism: 2
 kilda_storm_stats_parallelism: 2
+
+# Connected devices
+kilda_storm_connected_devices_parallelism: 2
+kilda_storm_connected_devices_packet_bolt_parallelism: 2
+
+# Flow HS
+kilda_storm_flow_hs_parallelism: 2
+kilda_storm_flow_hs_reroute_hub_count_multiplier: 2
+kilda_storm_flowhs_workers: 1
+kilda_storm_flow_hs_flow_create_hub_parallelism: 2
+kilda_storm_flow_hs_flow_delete_hub_parallelism: 2
+kilda_storm_flow_hs_flow_swap_endpoint_hub_parallelism: 2
+kilda_storm_flow_hs_flow_create_mirror_hub_parallelism: 2
+kilda_storm_flow_hs_flow_delete_mirror_hub_parallelism: 2
+kilda_storm_flow_hs_y_flow_create_hub_parallelism: 2
+kilda_storm_flow_hs_y_flow_delete_hub_parallelism: 2
+kilda_storm_flow_hs_y_flow_read_hub_parallelism: 2
+
+# Flow HS kafka bolts
+kilda_storm_flow_hs_history_bolt_parallelism: 2
+kilda_storm_flow_hs_metrics_bolt_parallelism: 2
+kilda_storm_flow_hs_nb_response_sender_parallelism: 2
+kilda_storm_flow_hs_reroute_response_sender_parallelism: 2
+kilda_storm_flow_hs_server42_control_sender_parallelism: 2
+kilda_storm_flow_hs_dump_request_sender_parallelism: 2
+kilda_storm_flow_hs_stats_sender_parallelism: 2
 
 kilda_storm_spout_parallelism: 2
 
@@ -223,5 +251,6 @@ kilda_flow_latency_sla_timeout_seconds: 30
 kilda_flow_latency_sla_threshold_percent: 0.05
 
 kilda_swmanager_of_commands_batch_size: 500
+kilda_swmanager_kafka_chunked_messages_size: 500
 
 #ovs_vxlan: true

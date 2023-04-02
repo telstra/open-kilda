@@ -16,21 +16,26 @@
 package org.openkilda.pce.finder;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.endsWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.FindOneDirectionPathResult;
 import org.openkilda.pce.model.FindPathResult;
 import org.openkilda.pce.model.PathWeight;
 import org.openkilda.pce.model.WeightFunction;
 
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 
@@ -223,21 +228,34 @@ public class BestWeightAndShortestPathFinderTest {
         return network;
     }
 
-    @Test(expected = UnroutableFlowException.class)
-    public void shouldFailWhenPathIsLongerThenAllowedDepth() throws UnroutableFlowException {
+    @Test
+    public void shouldFailWhenPathIsLongerThanAllowedDepth() {
+        int allowedDepth = 1;
         AvailableNetwork network = buildTestNetwork();
+        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(allowedDepth);
 
-        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(1);
-        pathFinder.findPathWithMinWeight(network, SWITCH_ID_D, SWITCH_ID_F, WEIGHT_FUNCTION);
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
+            pathFinder.findPathWithMinWeight(network, SWITCH_ID_D, SWITCH_ID_F, WEIGHT_FUNCTION);
+        });
+
+        MatcherAssert.assertThat(exception.getMessage(),
+                endsWith(FailReasonType.ALLOWED_DEPTH_EXCEEDED + ": Max allowed depth is " + allowedDepth));
     }
 
-    @Test(expected = UnroutableFlowException.class)
-    public void shouldFailWhenPathIsLongerThenAllowedDepthMaxWeightStrategy() throws UnroutableFlowException {
+    @Test
+    public void shouldFailWhenPathIsLongerThanAllowedDepthMaxWeightStrategy() throws UnroutableFlowException {
+        int allowedDepth = 1;
         AvailableNetwork network = buildTestNetwork();
 
-        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(1);
-        pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_D, SWITCH_ID_F, WEIGHT_FUNCTION,
-                Long.MAX_VALUE, Long.MAX_VALUE);
+        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(allowedDepth);
+
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
+            pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_D, SWITCH_ID_F, WEIGHT_FUNCTION,
+                    Long.MAX_VALUE, Long.MAX_VALUE);
+        });
+
+        MatcherAssert.assertThat(exception.getMessage(),
+                endsWith(FailReasonType.ALLOWED_DEPTH_EXCEEDED + ": Max allowed depth is " + allowedDepth));
     }
 
     @Test
@@ -404,13 +422,18 @@ public class BestWeightAndShortestPathFinderTest {
     /**
      * Fail to find a path if all available paths cost more or equal to maxWeight.
      */
-    @Test(expected = UnroutableFlowException.class)
+    @Test
     public void shouldFailIfNoPathLessThanMaxWeightOrBackUpMaxWeight() throws UnroutableFlowException {
         //given 3 paths that cost: 198, 200, 201
         AvailableNetwork network = buildThreePathsNetwork();
         BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(ALLOWED_DEPTH);
         //when: request a path with maxWeight 198
-        pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_1, SWITCH_ID_5, WEIGHT_FUNCTION, 198L, 198L);
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
+            pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_1, SWITCH_ID_5, WEIGHT_FUNCTION,
+                    198L, 198L);
+        });
+
+        MatcherAssert.assertThat(exception.getMessage(), containsString(FailReasonType.MAX_WEIGHT_EXCEEDED.toString()));
         //then: no path found
     }
 
@@ -841,7 +864,7 @@ public class BestWeightAndShortestPathFinderTest {
 
         // Cost is 5
         expectedPaths.add(Lists.newArrayList(SWITCH_ID_A, SWITCH_ID_D, SWITCH_ID_C, SWITCH_ID_F));
-        List<List<Edge>> paths =
+        List<FindOneDirectionPathResult> paths =
                 pathFinder.findNPathsBetweenSwitches(network, SWITCH_ID_A, SWITCH_ID_F, 1, WEIGHT_FUNCTION);
         assertEquals(expectedPaths, convertPaths(paths));
 
@@ -937,9 +960,10 @@ public class BestWeightAndShortestPathFinderTest {
         return network;
     }
 
-    private List<List<SwitchId>> convertPaths(List<List<Edge>> paths) {
+    private List<List<SwitchId>> convertPaths(List<FindOneDirectionPathResult> paths) {
         List<List<SwitchId>> convertedPaths = new ArrayList<>();
-        for (List<Edge> path : paths) {
+        for (FindOneDirectionPathResult pathResult : paths) {
+            List<Edge> path = pathResult.getFoundPath();
             List<SwitchId> convertedPath = getInvolvedSwitches(path);
             convertedPaths.add(convertedPath);
         }

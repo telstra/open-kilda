@@ -17,9 +17,9 @@ package org.openkilda.wfm.topology.switchmanager.mappers;
 
 import static java.lang.String.format;
 
-import org.openkilda.messaging.info.switches.GroupInfoEntry;
-import org.openkilda.messaging.info.switches.GroupInfoEntry.BucketEntry;
-import org.openkilda.messaging.info.switches.GroupInfoEntry.BucketEntry.BucketEntryBuilder;
+import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2;
+import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2.BucketEntry;
+import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2.BucketEntry.BucketEntryBuilder;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
@@ -42,10 +42,10 @@ public class GroupEntryConverter {
     /**
      * Converts group representation.
      */
-    public GroupInfoEntry toGroupEntry(GroupSpeakerData groupSpeakerData) {
-        return GroupInfoEntry.builder()
+    public GroupInfoEntryV2 toGroupEntry(GroupSpeakerData groupSpeakerData) {
+        return GroupInfoEntryV2.builder()
                 .groupId((int) groupSpeakerData.getGroupId().getValue())
-                .groupBuckets(convertBuckets(groupSpeakerData.getBuckets()))
+                .buckets(convertBuckets(groupSpeakerData.getBuckets()))
                 .build();
     }
 

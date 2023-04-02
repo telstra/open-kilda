@@ -23,10 +23,12 @@ import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.configs.SwitchSyncConfig;
 
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -89,8 +91,10 @@ public class SwitchSyncFsmTest {
     }
 
     private SwitchSyncFsm buildFsm(int batchSize) {
-        SwitchValidateRequest request = new SwitchValidateRequest(new SwitchId(1), true, true, true);
-        return new SwitchSyncFsm(null, null, null, request, null, new SwitchSyncConfig(batchSize));
+        SwitchValidateRequest request = new SwitchValidateRequest(new SwitchId(1), true,
+                true, Collections.emptySet());
+        return new SwitchSyncFsm(null, null, null, request, new ValidationResult(
+                null, false, null, null, null, null, null, null, null, null), new SwitchSyncConfig(batchSize));
     }
 
     private FlowSpeakerData buildFlowSpeakerCommandData(UUID... dependsOnUuid) {
