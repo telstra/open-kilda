@@ -741,7 +741,7 @@ public class FlowOperationsService {
         if (diverseGroup == null) {
             return Collections.emptySet();
         }
-        return new HashSet<>(haFlowRepository.findHaFlowsIdByDiverseGroupId(diverseGroup));
+        return new HashSet<>(haFlowRepository.findHaFlowIdsByDiverseGroupId(diverseGroup));
     }
 
     private static boolean isVlanStatisticsEmpty(FlowPatch flowPatch, Flow flow) {

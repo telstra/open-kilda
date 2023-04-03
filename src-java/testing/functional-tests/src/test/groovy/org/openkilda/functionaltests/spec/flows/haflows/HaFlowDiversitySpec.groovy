@@ -15,8 +15,6 @@ import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify the ability to create diverse ha-flows in the system.")
-@Ignore("""HA flow create operation allocates resources, but HA flow delete operation can't deallocate these resources 
-        yet. Need to be unignored when HA flow delete operation will be ready""")
 class HaFlowDiversitySpec extends HealthCheckSpecification {
     @Autowired
     @Shared

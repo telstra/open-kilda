@@ -157,7 +157,7 @@ public abstract class HaFlowMapper {
 
     protected Set<String> getDiverseWithHaFlow(
             String haFlowId, String diversityTyGroup, HaFlowRepository haFlowRepository) {
-        return haFlowRepository.findHaFlowsIdByDiverseGroupId(diversityTyGroup).stream()
+        return haFlowRepository.findHaFlowIdsByDiverseGroupId(diversityTyGroup).stream()
                 .filter(id -> !id.equals(haFlowId))
                 .collect(Collectors.toSet());
     }

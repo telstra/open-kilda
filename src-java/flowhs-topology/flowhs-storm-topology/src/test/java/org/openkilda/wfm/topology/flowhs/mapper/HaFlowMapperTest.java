@@ -164,7 +164,7 @@ public class HaFlowMapperTest {
                         .build()));
 
         when(flowRepository.findByDiverseGroupId(anyString())).thenReturn(new ArrayList<>());
-        when(haFlowRepository.findHaFlowsIdByDiverseGroupId(anyString())).thenReturn(new ArrayList<>());
+        when(haFlowRepository.findHaFlowIdsByDiverseGroupId(anyString())).thenReturn(new ArrayList<>());
 
         HaFlowDto result = mapper.toHaFlowDto(haFlow, flowRepository, haFlowRepository);
         assertEquals(HA_FLOW_ID_1, result.getHaFlowId());
@@ -203,7 +203,7 @@ public class HaFlowMapperTest {
                 .thenReturn(Lists.newArrayList(
                         buildFlow(FLOW_1), buildFlow(FLOW_2),
                         buildYSubFlow(SUB_FLOW_ID_1, Y_FLOW_ID_1), buildYSubFlow(SUB_FLOW_ID_2, Y_FLOW_ID_2)));
-        when(haFlowRepository.findHaFlowsIdByDiverseGroupId(anyString()))
+        when(haFlowRepository.findHaFlowIdsByDiverseGroupId(anyString()))
                 .thenReturn(Lists.newArrayList(HA_FLOW_ID_1, HA_FLOW_ID_2));
 
         HaFlowDto result = mapper.toHaFlowDto(haFlow, flowRepository, haFlowRepository);

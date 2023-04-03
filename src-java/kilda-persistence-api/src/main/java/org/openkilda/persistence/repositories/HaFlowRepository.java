@@ -31,7 +31,7 @@ public interface HaFlowRepository extends Repository<HaFlow> {
 
     Collection<HaFlow> findByEndpoint(SwitchId switchId, int port, int vlan, int innerVLan);
 
-    Collection<String> findHaFlowsIdByDiverseGroupId(String diverseGroupId);
+    Collection<String> findHaFlowIdsByDiverseGroupId(String diverseGroupId);
 
     Optional<String> getOrCreateDiverseHaFlowGroupId(String haFlowId);
 

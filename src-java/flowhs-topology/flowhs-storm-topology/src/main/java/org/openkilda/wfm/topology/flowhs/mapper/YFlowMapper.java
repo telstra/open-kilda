@@ -113,7 +113,7 @@ public abstract class YFlowMapper {
         if (diversityTyGroup == null) {
             return Collections.emptySet();
         }
-        return new HashSet<>(haFlowRepository.findHaFlowsIdByDiverseGroupId(diversityTyGroup));
+        return new HashSet<>(haFlowRepository.findHaFlowIdsByDiverseGroupId(diversityTyGroup));
     }
 
     /**

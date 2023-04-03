@@ -78,7 +78,7 @@ public class YFlowMapperTest {
                 .thenReturn(Lists.newArrayList(
                         buildFlow(FLOW_ID_1), buildFlow(FLOW_ID_2),
                         subFlow, buildYSubFlow(SUB_FLOW_ID_2, Y_FLOW_ID_2)));
-        when(haFlowRepository.findHaFlowsIdByDiverseGroupId(anyString()))
+        when(haFlowRepository.findHaFlowIdsByDiverseGroupId(anyString()))
                 .thenReturn(Lists.newArrayList(HA_FLOW_ID_1, HA_FLOW_ID_2));
 
         YFlowDto result = mapper.toYFlowDto(yFlow, flowRepository, haFlowRepository);

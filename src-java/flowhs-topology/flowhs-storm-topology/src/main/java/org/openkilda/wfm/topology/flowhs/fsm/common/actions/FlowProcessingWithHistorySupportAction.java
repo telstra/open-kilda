@@ -240,7 +240,7 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Set<String> diverseHaFlows = new HashSet<>(
-                haFlowRepository.findHaFlowsIdByDiverseGroupId(flow.getDiverseGroupId()));
+                haFlowRepository.findHaFlowIdsByDiverseGroupId(flow.getDiverseGroupId()));
         InfoData flowData =
                 new FlowResponse(FlowMapper.INSTANCE.map(flow, diverseFlows, diverseYFlows, diverseHaFlows,
                         getFlowMirrorPaths(flow)));

@@ -113,7 +113,7 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
     }
 
     @Override
-    public Collection<String> findHaFlowsIdByDiverseGroupId(String diverseGroupId) {
+    public Collection<String> findHaFlowIdsByDiverseGroupId(String diverseGroupId) {
         if (diverseGroupId == null) {
             return new ArrayList<>();
         }
