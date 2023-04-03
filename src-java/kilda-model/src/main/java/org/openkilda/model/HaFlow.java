@@ -479,7 +479,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
 
         Optional<HaSubFlow> getHaSubFlow(String subFlowId);
 
-        List<HaSubFlow> getHaSubFlows();
+        Collection<HaSubFlow> getHaSubFlows();
 
         void setHaSubFlows(Set<HaSubFlow> haSubFlows);
 
@@ -562,7 +562,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
         }
 
         @Override
-        public List<HaSubFlow> getHaSubFlows() {
+        public Collection<HaSubFlow> getHaSubFlows() {
             return Collections.unmodifiableList(subFlows);
         }
 
