@@ -41,12 +41,12 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class CompleteFlowCreateAction extends
+public class CompleteHaFlowCreateAction extends
         HaFlowProcessingWithHistorySupportAction<HaFlowCreateFsm, State, Event, HaFlowCreateContext> {
     private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public CompleteFlowCreateAction(PersistenceManager persistenceManager,
-                                    FlowOperationsDashboardLogger dashboardLogger) {
+    public CompleteHaFlowCreateAction(PersistenceManager persistenceManager,
+                                      FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
         this.dashboardLogger = dashboardLogger;
     }

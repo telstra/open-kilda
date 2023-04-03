@@ -28,13 +28,13 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class HandleNotCreatedFlowAction extends HistoryRecordingAction<
+public class HandleNotCreatedHaFlowAction extends HistoryRecordingAction<
         HaFlowCreateFsm, State, Event, HaFlowCreateContext> {
     private final HaFlowRepository haFlowRepository;
     private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public HandleNotCreatedFlowAction(PersistenceManager persistenceManager,
-                                      FlowOperationsDashboardLogger dashboardLogger) {
+    public HandleNotCreatedHaFlowAction(PersistenceManager persistenceManager,
+                                        FlowOperationsDashboardLogger dashboardLogger) {
         this.haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
         this.dashboardLogger = dashboardLogger;
     }

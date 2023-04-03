@@ -115,7 +115,7 @@ public abstract class HaFlowMapper {
 
     /**
      * Converts {@link HaFlowRequest} to a few {@link RequestedFlow}.
-     * The methods also insures that all IDs of all subflows are different.
+     * The methods also ensures that all IDs of all subflows are different.
      * If there are several subflows with equal subFLowIds - only one will be left.
      */
     public Collection<RequestedFlow> toRequestedFlows(HaFlowRequest request) {

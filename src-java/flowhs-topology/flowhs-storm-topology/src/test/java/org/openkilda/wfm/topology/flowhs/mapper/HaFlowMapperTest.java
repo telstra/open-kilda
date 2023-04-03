@@ -255,7 +255,7 @@ public class HaFlowMapperTest {
         }
     }
 
-    private static void assertSubFlows(List<HaSubFlow> expectedList, List<HaSubFlowDto> actualSet) {
+    private static void assertSubFlows(Collection<HaSubFlow> expectedList, Collection<HaSubFlowDto> actualSet) {
         assertEquals(expectedList.size(), actualSet.size());
         Map<String, HaSubFlowDto> actualMap = actualSet.stream()
                 .collect(Collectors.toMap(HaSubFlowDto::getFlowId, Function.identity()));

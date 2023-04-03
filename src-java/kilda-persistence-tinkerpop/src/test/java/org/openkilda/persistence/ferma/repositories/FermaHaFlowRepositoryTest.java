@@ -56,7 +56,6 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -357,7 +356,7 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
         assertEquals(newHashSet(expectedPaths), newHashSet(actualPaths));
     }
 
-    private void assertSubFlows(List<HaSubFlow> actualSubFlows, HaSubFlow... expectedSubFlows) {
+    private void assertSubFlows(Collection<HaSubFlow> actualSubFlows, HaSubFlow... expectedSubFlows) {
         assertEquals(expectedSubFlows.length, actualSubFlows.size());
         assertEquals(newHashSet(expectedSubFlows), newHashSet(actualSubFlows));
     }

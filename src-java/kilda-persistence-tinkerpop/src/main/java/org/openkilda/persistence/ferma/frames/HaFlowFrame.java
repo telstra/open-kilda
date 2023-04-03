@@ -310,7 +310,7 @@ public abstract class HaFlowFrame extends KildaBaseVertexFrame implements HaFlow
     }
 
     @Override
-    public List<HaSubFlow> getHaSubFlows() {
+    public Collection<HaSubFlow> getHaSubFlows() {
         if (subFlows == null) {
             subFlows = traverse(v -> v.out(HaFlowFrame.OWNS_SUB_FLOW_EDGE)
                     .hasLabel(HaSubFlowFrame.FRAME_LABEL))

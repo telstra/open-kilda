@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.haflow.create;
 
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
-import org.openkilda.messaging.error.ErrorType;
 
 import lombok.Builder;
 import lombok.Value;
@@ -26,8 +25,5 @@ import lombok.Value;
 @Builder
 public class HaFlowCreateContext {
     HaFlowRequest targetFlow;
-    String subFlowId;
     SpeakerCommandResponse speakerResponse;
-    String error;
-    ErrorType errorType;
 }

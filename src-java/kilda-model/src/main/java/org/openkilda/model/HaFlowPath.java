@@ -35,6 +35,7 @@ import lombok.NonNull;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.Delegate;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.mapstruct.CollectionMappingStrategy;
 import org.mapstruct.Mapper;
@@ -95,7 +96,7 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
         // The reference is used to link sub flow edges back to the path. See {@link #setHaSubFlowEdges(Collection)}.
         ((HaFlowPathDataImpl) data).haFlowPath = this;
 
-        if (subPaths != null && !subPaths.isEmpty()) {
+        if (!CollectionUtils.isEmpty(subPaths)) {
             data.setSubPaths(subPaths);
         }
     }
