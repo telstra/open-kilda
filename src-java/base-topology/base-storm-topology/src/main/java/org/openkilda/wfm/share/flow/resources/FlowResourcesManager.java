@@ -32,6 +32,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
+import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
@@ -45,19 +46,25 @@ import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.map.LRUMap;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Slf4j
 public class FlowResourcesManager {
     private static final int POOL_SIZE = 100;
     public static final char HA_SUB_PATH_BASE_SUFFIX = 'a';
+    // each sub flow uses unique suffix character. Alphabet has only 26 characters.
+    public static final char HA_SUB_FLOW_MAX_COUNT = 26;
 
     private final TransactionManager transactionManager;
     private final FlowMeterRepository flowMeterRepository;
+    private final MirrorGroupRepository mirrorGroupRepository;
 
     private final CookiePool cookiePool;
     private final MirrorGroupIdPool mirrorGroupIdPool;
@@ -73,6 +80,7 @@ public class FlowResourcesManager {
 
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowMeterRepository = repositoryFactory.createFlowMeterRepository();
+        mirrorGroupRepository = repositoryFactory.createMirrorGroupRepository();
 
         this.cookiePool = new CookiePool(persistenceManager, config.getMinFlowCookie(), config.getMaxFlowCookie(),
                 POOL_SIZE);
@@ -131,13 +139,13 @@ public class FlowResourcesManager {
      * Provided two flows are considered as paired (forward and reverse),
      * some resources can be shared among them.
      */
-    public HaFlowResources allocateFlowResources(HaFlow haFlow, SwitchId yPointSwitchId)
+    public HaFlowResources allocateHaFlowResources(HaFlow haFlow, SwitchId yPointSwitchId)
             throws ResourceAllocationException {
         log.debug("Allocate flow resources for {}.", haFlow);
         PathId forwardPathId = generatePathId(haFlow.getHaFlowId());
         PathId reversePathId = generatePathId(haFlow.getHaFlowId());
         try {
-            return allocateResources(haFlow, forwardPathId, reversePathId, yPointSwitchId);
+            return allocateHaResources(haFlow, forwardPathId, reversePathId, yPointSwitchId);
         } catch (ConstraintViolationException | ResourceNotAvailableException ex) {
             throw new ResourceAllocationException("Unable to allocate resources", ex);
         }
@@ -172,8 +180,7 @@ public class FlowResourcesManager {
                 .build();
     }
 
-    @VisibleForTesting
-    HaFlowResources allocateResources(
+    private HaFlowResources allocateHaResources(
             HaFlow haFlow, PathId forwardPathId, PathId reversePathId, SwitchId yPointSwitchId)
             throws ResourceAllocationException {
         HaPathResources.HaPathResourcesBuilder forward = HaPathResources.builder()
@@ -181,9 +188,15 @@ public class FlowResourcesManager {
         HaPathResources.HaPathResourcesBuilder reverse = HaPathResources.builder()
                 .pathId(reversePathId);
         Map<String, PathId> reverseSubPathIds = new HashMap<>();
-        for (int i = 0; i < haFlow.getHaSubFlows().size(); i++) {
+        List<HaSubFlow> subFlows = new ArrayList<>(haFlow.getHaSubFlows());
+        if (subFlows.size() > HA_SUB_FLOW_MAX_COUNT) {
+            throw new IllegalArgumentException(
+                    String.format("Can't allocate resources for more than %s ha sub flows of ha-flow %s",
+                            HA_SUB_FLOW_MAX_COUNT, haFlow.getHaFlowId()));
+        }
+        for (int i = 0; i < subFlows.size(); i++) {
             char suffix = (char) (HA_SUB_PATH_BASE_SUFFIX + i);
-            HaSubFlow subFlow = haFlow.getHaSubFlows().get(i);
+            HaSubFlow subFlow = subFlows.get(i);
             forward.subPathId(subFlow.getHaSubFlowId(), forwardPathId.append("-" + suffix));
             PathId reverseSubPathId = reversePathId.append("-" + suffix);
             reverse.subPathId(subFlow.getHaSubFlowId(), reverseSubPathId);
@@ -277,11 +290,11 @@ public class FlowResourcesManager {
     }
 
     /**
-     * Deallocate the ha-flow path resources.
+     * Deallocate the ha-flow resources.
      * <p/>
      * Shared resources are to be deallocated with no usage checks.
      */
-    public void deallocatePathResources(HaFlowResources resources, SwitchId yPointSwitchId) {
+    public void deallocateHaFlowResources(HaFlowResources resources) {
         log.debug("Deallocate ha-flow resources {}.", resources);
 
         transactionManager.doInTransaction(() -> {
@@ -301,7 +314,7 @@ public class FlowResourcesManager {
                         }
                     });
         });
-        deallocateMirrorGroup(resources.getForward().getPathId(), yPointSwitchId);
+        deallocateHaPathGroup(resources.getForward().getPathId());
     }
 
     /**
@@ -396,6 +409,16 @@ public class FlowResourcesManager {
                     flowMeterRepository.remove(entity);
                     return entity.getMeterId().getValue();
                 });
+    }
+
+    private void deallocateHaPathGroup(PathId haPathId) {
+        List<MirrorGroup> haGroups = mirrorGroupRepository.findByPathId(haPathId)
+                .stream().filter(group -> MirrorGroupType.HA_FLOW == group.getMirrorGroupType())
+                .collect(Collectors.toList());
+        if (haGroups.size() > 1) {
+            log.error("Inconsistent ha group data in DB. HA-path {} has more than one groups: {}", haPathId, haGroups);
+        }
+        haGroups.forEach(mirrorGroupRepository::remove);
     }
 
     private FlowMeter newFlowMeter(SwitchId switchId, String flowId) {

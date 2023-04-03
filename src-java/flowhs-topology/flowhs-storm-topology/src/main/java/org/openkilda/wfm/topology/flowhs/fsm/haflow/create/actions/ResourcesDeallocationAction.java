@@ -78,8 +78,7 @@ public class ResourcesDeallocationAction extends
                     .forEach(haFlowPathRepository::remove);
 
             transactionManager.doInTransaction(() ->
-                    resourcesManager.deallocatePathResources(
-                            resources, stateMachine.getYPointMap().get(resources.getForward().getPathId())));
+                    resourcesManager.deallocateHaFlowResources((resources)));
         }
 
         updateIslsForSegments(removedSegments);

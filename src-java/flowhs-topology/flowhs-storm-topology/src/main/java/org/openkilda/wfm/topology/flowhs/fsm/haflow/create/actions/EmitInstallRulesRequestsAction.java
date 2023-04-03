@@ -76,8 +76,8 @@ public class EmitInstallRulesRequestsAction extends
         }
     }
 
-    private DataAdapter buildDataAdapter(HaFlow haFlow) {
-        Set<PathId> pathIds = new HashSet<>();
+    private DataAdapter buildDataAdapter(HaFlow haFlow, Set<PathId> haPathIds) {
+        Set<PathId> pathIds = new HashSet<>(haPathIds);
         for (SwitchId switchId : haFlow.getEndpointSwitchIds()) {
             pathIds.addAll(flowPathRepository.findByEndpointSwitch(switchId, false).stream()
                     .map(FlowPath::getPathId)
@@ -100,10 +100,15 @@ public class EmitInstallRulesRequestsAction extends
     private List<SpeakerData> buildSpeakerCommands(HaFlowCreateFsm stateMachine) {
         HaFlow haFlow = getHaFlow(stateMachine.getFlowId());
 
-        DataAdapter dataAdapter = buildDataAdapter(haFlow);
+        DataAdapter dataAdapter = buildDataAdapter(haFlow, haFlow.getPathIds());
         List<SpeakerData> result = new ArrayList<>();
         result.addAll(ruleManager.buildRulesHaFlowPath(haFlow.getForwardPath(), true, dataAdapter));
         result.addAll(ruleManager.buildRulesHaFlowPath(haFlow.getReversePath(), true, dataAdapter));
+
+        if (haFlow.getProtectedForwardPath() != null && haFlow.getProtectedForwardPath() != null) {
+            result.addAll(ruleManager.buildRulesHaFlowPath(haFlow.getProtectedForwardPath(), true, dataAdapter));
+            result.addAll(ruleManager.buildRulesHaFlowPath(haFlow.getProtectedReversePath(), true, dataAdapter));
+        }
         return result;
     }
 }

@@ -23,11 +23,11 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
-public class NotifyFlowStatsAction extends
+public class NotifyHaFlowStatsAction extends
         FlowProcessingWithHistorySupportAction<HaFlowCreateFsm, State, Event, HaFlowCreateContext> {
     private FlowGenericCarrier carrier;
 
-    public NotifyFlowStatsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {
+    public NotifyHaFlowStatsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {
         super(persistenceManager);
         this.carrier = carrier;
     }

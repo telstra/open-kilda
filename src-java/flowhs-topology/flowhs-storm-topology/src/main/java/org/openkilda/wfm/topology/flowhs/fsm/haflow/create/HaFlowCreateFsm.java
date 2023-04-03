@@ -21,7 +21,6 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.PathId;
-import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
@@ -36,12 +35,12 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyHaFlowMonitorA
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.CompleteFlowCreateAction;
+import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.CompleteHaFlowCreateAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.EmitInstallRulesRequestsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.FlowValidateAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.HandleNotCreatedFlowAction;
+import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.HaFlowValidateAction;
+import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.HandleNotCreatedHaFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.HandleNotDeallocatedResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.NotifyFlowStatsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.NotifyHaFlowStatsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.OnReceivedResponseAction;
@@ -82,7 +81,6 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
     private HaFlowRequest targetFlow;
     private HaFlowResources primaryResources;
     private HaFlowResources protectedResources;
-    private Map<PathId, SwitchId> yPointMap;
     private boolean pathsBeenAllocated;
     private boolean backUpPrimaryPathComputationWayUsed;
     private boolean backUpProtectedPathComputationWayUsed;
@@ -101,7 +99,6 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
         this.remainRetries = config.getHaFlowCreationRetriesLimit();
         backUpComputationWayUsedMap = new HashMap<>();
         sentCommands = new ArrayList<>();
-        yPointMap = new HashMap<>();
     }
 
     /**
@@ -140,7 +137,7 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
                                                   HaFlowCreateContext context) {
         super.afterTransitionCausedException(fromState, toState, event, context);
         String errorMessage = getLastException().getMessage();
-        if (fromState == State.INITIALIZED || fromState == State.FLOW_VALIDATED) {
+        if (fromState == State.INITIALIZED || fromState == State.HA_FLOW_VALIDATED) {
             ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not create flow",
                     errorMessage);
             Message message = new ErrorMessage(error, getCommandContext().getCreateTime(),
@@ -191,13 +188,13 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
             // validate the ha-flow
             builder.transition()
                     .from(State.INITIALIZED)
-                    .to(State.FLOW_VALIDATED)
+                    .to(State.HA_FLOW_VALIDATED)
                     .on(Event.NEXT)
-                    .perform(new FlowValidateAction(persistenceManager, dashboardLogger));
+                    .perform(new HaFlowValidateAction(persistenceManager, dashboardLogger));
 
             // allocate flow resources
             builder.transition()
-                    .from(State.FLOW_VALIDATED)
+                    .from(State.HA_FLOW_VALIDATED)
                     .to(State.RESOURCES_ALLOCATED)
                     .on(Event.NEXT)
                     .perform(new ResourcesAllocationAction(pathComputer, persistenceManager,
@@ -205,7 +202,7 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
                             resourcesManager));
 
             builder.transitions()
-                    .from(State.FLOW_VALIDATED)
+                    .from(State.HA_FLOW_VALIDATED)
                     .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
@@ -232,7 +229,7 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
             // skip installation on transit and egress rules for one switch flow
             builder.externalTransition()
                     .from(State.INSTALLING_RULES)
-                    .to(State.NOTIFY_FLOW_STATS)
+                    .to(State.NOTIFY_HA_FLOW_STATS)
                     .on(Event.SKIP_RULES_INSTALL);
 
             builder.internalTransition()
@@ -250,15 +247,15 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
 
             builder.transition()
                     .from(State.INSTALLING_RULES)
-                    .to(State.NOTIFY_FLOW_STATS)
+                    .to(State.NOTIFY_HA_FLOW_STATS)
                     .on(Event.RULES_INSTALLED);
 
-            builder.onEntry(State.NOTIFY_FLOW_STATS)
-                    .perform(new NotifyFlowStatsAction(persistenceManager, carrier));
+            builder.onEntry(State.NOTIFY_HA_FLOW_STATS)
+                    .perform(new NotifyHaFlowStatsAction(persistenceManager, carrier));
 
             // install and validate ingress rules
             builder.transitions()
-                    .from(State.NOTIFY_FLOW_STATS)
+                    .from(State.NOTIFY_HA_FLOW_STATS)
                     .toAmong(State.NOTIFY_FLOW_MONITOR)
                     .onEach(Event.NEXT)
                     .perform(new NotifyHaFlowMonitorAction<>(persistenceManager, carrier));
@@ -267,7 +264,7 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
                     .from(State.NOTIFY_FLOW_MONITOR)
                     .toAmong(State.FINISHED)
                     .onEach(Event.NEXT)
-                    .perform(new CompleteFlowCreateAction(persistenceManager, dashboardLogger));
+                    .perform(new CompleteHaFlowCreateAction(persistenceManager, dashboardLogger));
 
             // rules deletion
             builder.transition()
@@ -309,7 +306,7 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
                     .from(State.FAILED)
                     .toFinal(State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
                     .on(Event.NEXT)
-                    .perform(new HandleNotCreatedFlowAction(persistenceManager, dashboardLogger));
+                    .perform(new HandleNotCreatedHaFlowAction(persistenceManager, dashboardLogger));
 
             builder.transition()
                     .from(State.FAILED)
@@ -341,23 +338,23 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger));
         }
 
-        public HaFlowCreateFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId,
+        public HaFlowCreateFsm newInstance(@NonNull CommandContext commandContext, @NonNull String haFlowId,
                                            @NonNull Collection<FlowProcessingEventListener> eventListeners) {
-            HaFlowCreateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
+            HaFlowCreateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, haFlowId,
                     eventListeners, config);
 
             fsm.addTransitionCompleteListener(event ->
-                    log.debug("FlowCreateFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
+                    log.debug("HaFlowCreateFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
 
             if (!eventListeners.isEmpty()) {
                 fsm.addTransitionCompleteListener(event -> {
                     switch (event.getTargetState()) {
                         case FINISHED:
-                            fsm.notifyEventListeners(listener -> listener.onCompleted(flowId));
+                            fsm.notifyEventListeners(listener -> listener.onCompleted(haFlowId));
                             break;
                         case FINISHED_WITH_ERROR:
                             fsm.notifyEventListeners(listener ->
-                                    listener.onFailed(flowId, fsm.getErrorReason(), ErrorType.INTERNAL_ERROR));
+                                    listener.onFailed(haFlowId, fsm.getErrorReason(), ErrorType.INTERNAL_ERROR));
                             break;
                         default:
                             // ignore
@@ -399,7 +396,7 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
 
     public enum State {
         INITIALIZED,
-        FLOW_VALIDATED,
+        HA_FLOW_VALIDATED,
         RESOURCES_ALLOCATED,
         INSTALLING_RULES,
         FINISHED,
@@ -411,7 +408,7 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
         NOTIFY_FLOW_MONITOR,
         NOTIFY_FLOW_MONITOR_WITH_ERROR,
 
-        NOTIFY_FLOW_STATS,
+        NOTIFY_HA_FLOW_STATS,
 
         FAILED,
         FINISHED_WITH_ERROR;

@@ -42,13 +42,13 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class FlowValidateAction extends
+public class HaFlowValidateAction extends
         NbTrackableWithHistorySupportAction<HaFlowCreateFsm, State, Event, HaFlowCreateContext> {
     private final KildaFeatureTogglesRepository featureTogglesRepository;
     private final HaFlowValidator haFlowValidator;
     private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public FlowValidateAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {
+    public HaFlowValidateAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
 
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
@@ -61,7 +61,7 @@ public class FlowValidateAction extends
     protected Optional<Message> performWithResponse(
             State from, State to, Event event, HaFlowCreateContext context, HaFlowCreateFsm stateMachine)
             throws FlowProcessingException {
-        if (!featureTogglesRepository.getOrDefault().getCreateFlowEnabled()) {
+        if (!featureTogglesRepository.getOrDefault().getCreateHaFlowEnabled()) {
             throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "HA-flow create feature is disabled");
         }
         HaFlowRequest request = context.getTargetFlow();

@@ -216,7 +216,7 @@ public class ResourcesAllocationAction extends
 
         transactionManager.doInTransaction(() -> {
             HaFlow haFlow = getHaFlow(stateMachine.getHaFlowId());
-            HaFlowResources haFlowResources = resourcesManager.allocateFlowResources(
+            HaFlowResources haFlowResources = resourcesManager.allocateHaFlowResources(
                     haFlow, paths.getForward().getYPointSwitchId());
             final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
                     .flowEffectiveId(haFlowResources.getUnmaskedCookie());
@@ -244,8 +244,6 @@ public class ResourcesAllocationAction extends
             updateIslsForHaFlowPath(forward);
             updateIslsForHaFlowPath(reverse);
 
-            stateMachine.getYPointMap().put(forward.getHaPathId(), paths.getForward().getYPointSwitchId());
-            stateMachine.getYPointMap().put(reverse.getHaPathId(), paths.getReverse().getYPointSwitchId());
             log.debug("Allocated resources for the ha-flow {}: {}", haFlow.getHaFlowId(), haFlowResources);
             stateMachine.setPrimaryResources(haFlowResources);
         });
@@ -271,7 +269,7 @@ public class ResourcesAllocationAction extends
         transactionManager.doInTransaction(() -> {
             HaFlow haFlow = getHaFlow(haFlowId);
 
-            HaFlowResources haFlowResources = resourcesManager.allocateFlowResources(
+            HaFlowResources haFlowResources = resourcesManager.allocateHaFlowResources(
                     haFlow, protectedPaths.getReverse().getYPointSwitchId());
             final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
                     .flowEffectiveId(haFlowResources.getUnmaskedCookie());
@@ -302,8 +300,6 @@ public class ResourcesAllocationAction extends
             updateIslsForHaFlowPath(forward.getHaPathId());
             updateIslsForHaFlowPath(reverse.getHaPathId());
 
-            stateMachine.getYPointMap().put(forward.getHaPathId(), protectedPaths.getForward().getYPointSwitchId());
-            stateMachine.getYPointMap().put(reverse.getHaPathId(), protectedPaths.getReverse().getYPointSwitchId());
             log.debug("Allocated resources for the flow {}: {}", haFlow.getHaFlowId(), haFlowResources);
             stateMachine.setProtectedResources(haFlowResources);
         });
@@ -313,9 +309,10 @@ public class ResourcesAllocationAction extends
     private List<FlowPath> createForwardSubPaths(
             GetHaPathsResult paths, HaFlow haFlow, HaFlowResources haFlowResources, HaFlowPath forward,
             HaFlowCreateFsm stateMachine) {
+        List<HaSubFlow> subFlows = new ArrayList<>(haFlow.getHaSubFlows());
         List<FlowPath> forwardSubPaths = new ArrayList<>();
-        for (int i = 0; i < haFlow.getHaSubFlows().size(); i++) {
-            HaSubFlow subFlow = haFlow.getHaSubFlows().get(i);
+        for (int i = 0; i < subFlows.size(); i++) {
+            HaSubFlow subFlow = subFlows.get(i);
             Path subPath = paths.getForward().getSubPaths().get(i);
             FlowPath forwardSubPath = flowPathBuilder.buildHaSubPath(
                     haFlow, haFlowResources.getForward().getSubPathResources(subFlow.getHaSubFlowId()), subPath,
@@ -331,9 +328,10 @@ public class ResourcesAllocationAction extends
     private List<FlowPath> createReverseSubPaths(
             GetHaPathsResult paths, HaFlow haFlow, HaFlowResources haFlowResources, HaFlowPath reverse,
             HaFlowCreateFsm stateMachine) {
+        List<HaSubFlow> subFlows = new ArrayList<>(haFlow.getHaSubFlows());
         List<FlowPath> reverseSubPaths = new ArrayList<>();
-        for (int i = 0; i < haFlow.getHaSubFlows().size(); i++) {
-            HaSubFlow subFlow = haFlow.getHaSubFlows().get(i);
+        for (int i = 0; i < subFlows.size(); i++) {
+            HaSubFlow subFlow = subFlows.get(i);
             Path subPath = paths.getReverse().getSubPaths().get(i);
             FlowPath reverseSubPath = flowPathBuilder.buildHaSubPath(
                     haFlow, haFlowResources.getReverse().getSubPathResources(subFlow.getHaSubFlowId()), subPath,
