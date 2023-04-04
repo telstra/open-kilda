@@ -19,6 +19,8 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.SwitchId;
 
+import lombok.NonNull;
+
 import java.util.Collection;
 import java.util.Optional;
 
@@ -33,9 +35,13 @@ public interface HaFlowRepository extends Repository<HaFlow> {
 
     Collection<String> findHaFlowIdsByDiverseGroupId(String diverseGroupId);
 
+    Collection<String> findHaFlowIdsByAffinityGroupId(String affinityGroupId);
+
     Optional<String> getOrCreateDiverseHaFlowGroupId(String haFlowId);
 
     void updateStatus(String haFlowId, FlowStatus flowStatus);
+
+    void updateAffinityFlowGroupId(@NonNull String haFlowId, String affinityGroupId);
 
     Optional<HaFlow> remove(String haFlowId);
 }

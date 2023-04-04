@@ -49,7 +49,7 @@ public abstract class HaFlowProcessingFsm<T extends AbstractStateMachine<T, S, E
     private final Map<UUID, BaseSpeakerCommandsRequest> speakerCommands = new HashMap<>();
 
     @Setter
-    private FlowStatus originalYFlowStatus;
+    private FlowStatus originalHaFlowStatus;
     @Setter
     private HaFlowResources newPrimaryResources;
 

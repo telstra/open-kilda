@@ -72,6 +72,7 @@ import org.openkilda.wfm.topology.flowhs.bolts.FlowValidationHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.HaFlowCreateHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.HaFlowCreateHubBolt.HaFlowCreateConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.HaFlowDeleteHubBolt;
+import org.openkilda.wfm.topology.flowhs.bolts.HaFlowDeleteHubBolt.HaFlowDeleteConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.HaFlowReadBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.HaFlowUpdateHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.RouterBolt;
@@ -193,7 +194,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                         ComponentId.YFLOW_READ_BOLT.name(),
                         ComponentId.YFLOW_VALIDATION_HUB.name(),
                         ComponentId.YFLOW_PATH_SWAP_HUB.name(),
-                        ComponentId.HA_FLOW_CREATE_HUB.name()));
+                        ComponentId.HA_FLOW_CREATE_HUB.name(),
+                        ComponentId.HA_FLOW_DELETE_HUB.name()));
         declareBolt(topologyBuilder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(ComponentId.FLOW_CREATE_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.FLOW_UPDATE_HUB.name(), ZkStreams.ZK.toString())
@@ -214,7 +216,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .allGrouping(ComponentId.YFLOW_READ_BOLT.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.YFLOW_VALIDATION_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.YFLOW_PATH_SWAP_HUB.name(), ZkStreams.ZK.toString())
-                .allGrouping(ComponentId.HA_FLOW_CREATE_HUB.name(), ZkStreams.ZK.toString());
+                .allGrouping(ComponentId.HA_FLOW_CREATE_HUB.name(), ZkStreams.ZK.toString())
+                .allGrouping(ComponentId.HA_FLOW_DELETE_HUB.name(), ZkStreams.ZK.toString());
     }
 
     private void inputSpout(TopologyBuilder topologyBuilder) {
@@ -709,10 +712,28 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     }
 
     private void haFlowDeleteHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
-        HaFlowDeleteHubBolt hubBolt = new HaFlowDeleteHubBolt(persistenceManager);
+        int hubTimeout = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getDeleteHubTimeoutSeconds());
+
+        HaFlowDeleteConfig config = HaFlowDeleteConfig.haFlowDeleteBuilder()
+                .speakerCommandRetriesLimit(topologyConfig.getDeleteSpeakerCommandRetries())
+                .autoAck(true)
+                .timeoutMs(hubTimeout)
+                .requestSenderComponent(ComponentId.FLOW_ROUTER_BOLT.name())
+                .workerComponent(ComponentId.SPEAKER_WORKER.name())
+                .lifeCycleEventComponent(ZooKeeperSpout.SPOUT_ID)
+                .build();
+
+        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        RuleManagerConfig ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
+
+        HaFlowDeleteHubBolt hubBolt = new HaFlowDeleteHubBolt(
+                config, persistenceManager, flowResourcesConfig, ruleManagerConfig);
         declareBolt(topologyBuilder, hubBolt, ComponentId.HA_FLOW_DELETE_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(),
-                        Stream.ROUTER_TO_HA_FLOW_DELETE_HUB.name(), FLOW_FIELD);
+                        Stream.ROUTER_TO_HA_FLOW_DELETE_HUB.name(), FLOW_FIELD)
+                .directGrouping(ComponentId.SPEAKER_WORKER.name(), SPEAKER_WORKER_TO_HUB.name())
+                .allGrouping(ZooKeeperSpout.SPOUT_ID)
+                .directGrouping(CoordinatorBolt.ID);
     }
 
     private void haFlowReadBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
@@ -747,6 +768,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .hubComponent(YFlowSyncHubBolt.BOLT_ID)
                 .hubComponent(ComponentId.YFLOW_PATH_SWAP_HUB.name())
                 .hubComponent(ComponentId.HA_FLOW_CREATE_HUB.name())
+                .hubComponent(ComponentId.HA_FLOW_DELETE_HUB.name())
                 .streamToHub(SPEAKER_WORKER_TO_HUB.name())
                 .build());
         declareBolt(topologyBuilder, speakerWorker, ComponentId.SPEAKER_WORKER.name())
@@ -768,6 +790,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .fieldsGrouping(ComponentId.YFLOW_DELETE_HUB.name(), Stream.HUB_TO_SPEAKER_WORKER.name(), FIELDS_KEY)
                 .fieldsGrouping(ComponentId.YFLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_SPEAKER_WORKER.name(), FIELDS_KEY)
                 .fieldsGrouping(ComponentId.HA_FLOW_CREATE_HUB.name(), Stream.HUB_TO_SPEAKER_WORKER.name(), FIELDS_KEY)
+                .fieldsGrouping(ComponentId.HA_FLOW_DELETE_HUB.name(), Stream.HUB_TO_SPEAKER_WORKER.name(), FIELDS_KEY)
                 .directGrouping(CoordinatorBolt.ID);
     }
 
@@ -842,7 +865,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .fieldsGrouping(ComponentId.YFLOW_VALIDATION_SPEAKER_WORKER.name(),
                         CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
                 .fieldsGrouping(ComponentId.YFLOW_PATH_SWAP_HUB.name(), CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
-                .fieldsGrouping(ComponentId.HA_FLOW_CREATE_HUB.name(), CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
+                .fieldsGrouping(ComponentId.HA_FLOW_CREATE_HUB.name(), CoordinatorBolt.INCOME_STREAM, FIELDS_KEY)
+                .fieldsGrouping(ComponentId.HA_FLOW_DELETE_HUB.name(), CoordinatorBolt.INCOME_STREAM, FIELDS_KEY);
     }
 
     private void northboundOutput(TopologyBuilder topologyBuilder) {
@@ -1006,7 +1030,9 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .fieldsGrouping(
                         ComponentId.YFLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), grouping)
                 .fieldsGrouping(
-                        ComponentId.HA_FLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), grouping);
+                        ComponentId.HA_FLOW_CREATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), grouping)
+                .fieldsGrouping(
+                        ComponentId.HA_FLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), grouping);
     }
 
     @Override
@@ -1030,7 +1056,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.YFLOW_DELETE_HUB.name(), Stream.HUB_TO_METRICS_BOLT.name())
                 .shuffleGrouping(ComponentId.YFLOW_VALIDATION_HUB.name(), Stream.HUB_TO_METRICS_BOLT.name())
                 .shuffleGrouping(ComponentId.YFLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_METRICS_BOLT.name())
-                .shuffleGrouping(ComponentId.HA_FLOW_CREATE_HUB.name(), Stream.HUB_TO_METRICS_BOLT.name());
+                .shuffleGrouping(ComponentId.HA_FLOW_CREATE_HUB.name(), Stream.HUB_TO_METRICS_BOLT.name())
+                .shuffleGrouping(ComponentId.HA_FLOW_DELETE_HUB.name(), Stream.HUB_TO_METRICS_BOLT.name());
     }
 
     private SyncHubBoltBase.SyncHubConfig newSyncHubConfig() {

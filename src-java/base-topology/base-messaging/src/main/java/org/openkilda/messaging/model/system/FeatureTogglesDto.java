@@ -71,6 +71,9 @@ public class FeatureTogglesDto implements Serializable {
     @JsonProperty("modify_ha_flow_enabled")
     private Boolean modifyHaFlowEnabled;
 
+    @JsonProperty("delete_ha_flow_enabled")
+    private Boolean deleteHaFlowEnabled;
+
     @JsonProperty("sync_switch_on_connect")
     private Boolean syncSwitchOnConnect;
 
@@ -94,6 +97,7 @@ public class FeatureTogglesDto implements Serializable {
                              @JsonProperty("modify_y_flow_enabled") Boolean modifyYFlowEnabled,
                              @JsonProperty("create_ha_flow_enabled") Boolean createHaFlowEnabled,
                              @JsonProperty("modify_ha_flow_enabled") Boolean modifyHaFlowEnabled,
+                             @JsonProperty("delete_ha_flow_enabled") Boolean deleteHaFlowEnabled,
                              @JsonProperty("sync_switch_on_connect") Boolean syncSwitchOnConnect,
                              @JsonProperty("discover_new_isls_in_under_maintenance_mode")
                                  Boolean discoverNewIslsInUnderMaintenanceMode) {
@@ -111,6 +115,7 @@ public class FeatureTogglesDto implements Serializable {
         this.modifyYFlowEnabled = modifyYFlowEnabled;
         this.createHaFlowEnabled = createHaFlowEnabled;
         this.modifyHaFlowEnabled = modifyHaFlowEnabled;
+        this.deleteHaFlowEnabled = deleteHaFlowEnabled;
         this.syncSwitchOnConnect = syncSwitchOnConnect;
         this.discoverNewIslsInUnderMaintenanceMode = discoverNewIslsInUnderMaintenanceMode;
     }

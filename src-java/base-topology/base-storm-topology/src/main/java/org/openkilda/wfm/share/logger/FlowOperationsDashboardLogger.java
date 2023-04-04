@@ -66,6 +66,8 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
 
     private static final String HA_FLOW_CREATE_EVENT = "ha_flow_create";
     private static final String HA_FLOW_CREATE_RESULT_EVENT = "ha_flow_create_result";
+    private static final String HA_FLOW_DELETE_EVENT = "ha_flow_delete";
+    private static final String HA_FLOW_DELETE_RESULT_EVENT = "ha_flow_delete_result";
 
     private static final String TAG = "FLOW_OPERATIONS_DASHBOARD";
     private static final String DASHBOARD = "dashboard";
@@ -752,6 +754,43 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put("create-result", "failed");
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed create of the ha-flow %s, reason: %s", haFlowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log an ha-flow-delete event.
+     */
+    public void onHaFlowDelete(String haFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-delete");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_DELETE_EVENT);
+        invokeLogger(Level.INFO, String.format("Delete the ha-flow %s", haFlowId), data);
+    }
+
+    /**
+     * Log a ha-flow-delete-successful event.
+     */
+    public void onSuccessfulHaFlowDelete(String haFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-delete-successful");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_DELETE_RESULT_EVENT);
+        data.put("delete-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful delete of the ha-flow %s", haFlowId), data);
+    }
+
+    /**
+     * Log a flow-delete-failed event.
+     */
+    public void onFailedHaFlowDelete(String haFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-delete-failed");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_DELETE_RESULT_EVENT);
+        data.put("delete-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed delete of the ha-flow %s, reason: %s", haFlowId, failureReason),
                 data);
     }
 }
