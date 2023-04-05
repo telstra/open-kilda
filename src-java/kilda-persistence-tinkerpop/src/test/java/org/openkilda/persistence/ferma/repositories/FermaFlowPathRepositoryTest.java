@@ -626,6 +626,7 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
             FlowPath subPath = buildPath(
                     haPath.getHaPathId().append("_sub_path"), haPath, sharedSwitch, endpointSwitch1);
             flowPathRepository.add(subPath);
+            subPath.setHaSubFlow(subFlows.get(0));
             haPath.setSubPaths(newArrayList(subPath));
         }
 
