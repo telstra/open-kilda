@@ -44,7 +44,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnFinishedWit
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnReceivedInstallResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnReceivedRemoveResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnReceivedResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnReceivedValidateResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnSubFlowAllocatedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnSubFlowReroutedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions.OnTimeoutOperationAction;
@@ -285,10 +284,6 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
                     .on(Event.NEXT)
                     .perform(new ValidateNewMetersAction(persistenceManager));
 
-            builder.internalTransition()
-                    .within(State.VALIDATING_NEW_YFLOW_METERS)
-                    .on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedValidateResponseAction(speakerCommandRetriesLimit));
             builder.transition()
                     .from(State.VALIDATING_NEW_YFLOW_METERS)
                     .to(State.NEW_YFLOW_METERS_VALIDATED)

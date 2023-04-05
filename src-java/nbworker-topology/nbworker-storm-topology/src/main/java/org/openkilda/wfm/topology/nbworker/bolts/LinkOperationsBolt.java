@@ -181,6 +181,9 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                 if (linkPropsToSet.getMaxBandwidth() != null) {
                     linkProps.setMaxBandwidth(linkPropsToSet.getMaxBandwidth());
                 }
+                if (linkPropsToSet.getDescription() != null) {
+                    linkProps.setDescription(linkPropsToSet.getDescription());
+                }
             } else {
                 linkProps = new LinkProps(linkPropsToSet);
                 linkPropsRepository.add(linkProps);
@@ -203,6 +206,9 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                         throw new LinkPropsException("Not enough available bandwidth for operation");
                     }
                     link.setAvailableBandwidth(availableBandwidth);
+                }
+                if (linkPropsToSet.getDescription() != null) {
+                    link.setDescription(linkPropsToSet.getDescription());
                 }
             });
 
@@ -269,6 +275,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                                 - (propsMaxBandwidth - link.getAvailableBandwidth());
                         link.setAvailableBandwidth(availableBandwidth);
                     }
+                    link.setDescription(null);
                 });
 
             }

@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.131.0 (03/04/2023)
+
+### Features:
+-  [#5106](https://github.com/telstra/open-kilda/pull/5106) Issue 5083: add description field to v1 link props (Issue: [#5083](https://github.com/telstra/open-kilda/issues/5083))
+
+### Bug Fixes:
+-  [#5123](https://github.com/telstra/open-kilda/pull/5123) 5075 bugfix - tests added to framework [**tests**]
+-  [#5137](https://github.com/telstra/open-kilda/pull/5137) Fix a typo in error message in PathSpec test [**tests**]
+
+### Improvements:
+-  [#4896](https://github.com/telstra/open-kilda/pull/4896) Revise and update docs (2022/07) [**docs**]
+-  [#4836](https://github.com/telstra/open-kilda/pull/4836) Attempt to fix funcional tests inaccurate error reporting [**tests**]
+-  [#5094](https://github.com/telstra/open-kilda/pull/5094) Improvement/readme description floodlight debug [**docs**]
+-  [#5126](https://github.com/telstra/open-kilda/pull/5126) fix findOverLargeIslands unit test (Issues: [#2910](https://github.com/telstra/open-kilda/issues/2910) [#5118](https://github.com/telstra/open-kilda/issues/5118)) [**tests**]
+-  [#5132](https://github.com/telstra/open-kilda/pull/5132) [TEST] Asynchronous healthcheck [**tests**]
+-  [#4945](https://github.com/telstra/open-kilda/pull/4945) More proper way to serialize kafka data [**storm-topologies**]
+-  [#5109](https://github.com/telstra/open-kilda/pull/5109) tags change for the low priority test [**tests**]
+-  [#5142](https://github.com/telstra/open-kilda/pull/5142) Remove useless actions from Y flow FSMs
+-  [#5143](https://github.com/telstra/open-kilda/pull/5143) Decrease stats pull timeout in Stats topology test
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.130.0...v1.131.0).
+
+### Affected Components:
+stats
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.130.0 (23/03/2023)
 
 ### Features:
@@ -27,7 +58,7 @@ nbworker
 
 ---
 
-## v1.129.1 (16/03/2023)
+## v1.129.1 (21/03/2023)
 
 ### Bug Fixes:
 -  [#5056](https://github.com/telstra/open-kilda/pull/5056) fix yflow is not created without max_bandwidth bug (Issue: [#5039](https://github.com/telstra/open-kilda/issues/5039))
@@ -66,7 +97,7 @@ flow-hs
 
 ---
 
-## v1.128.0 (27/02/2023)
+## v1.128.0 (28/02/2023)
 
 ### Features:
 -  [#5062](https://github.com/telstra/open-kilda/pull/5062) Design for HA-flows (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061)) [**docs**]

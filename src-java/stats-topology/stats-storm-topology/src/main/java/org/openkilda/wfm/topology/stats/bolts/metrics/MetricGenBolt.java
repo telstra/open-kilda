@@ -15,21 +15,17 @@
 
 package org.openkilda.wfm.topology.stats.bolts.metrics;
 
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.stats.service.TimeSeriesMeterEmitter;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.Values;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -54,27 +50,12 @@ public abstract class MetricGenBolt extends AbstractBolt implements TimeSeriesMe
     }
 
     void emitMetric(String metric, long timestamp, Number value, Map<String, String> tag) {
-        try {
-            String formattedMetric = metricFormatter.format(metric);
-            log.trace(
-                    "Emit stats metric point: timestamp={}, metric={}, value={}, tags={}",
-                    timestamp, formattedMetric, value, tag);
-            getOutput().emit(tuple(formattedMetric, timestamp, value, tag));
-        } catch (JsonEncodeException e) {
-            log.error("Error during serialization of datapoint", e);
-        }
-    }
-
-    protected static List<Object> tuple(String metric, long timestamp, Number value, Map<String, String> tag)
-            throws JsonEncodeException {
-        Datapoint datapoint = new Datapoint(metric, timestamp, tag, value);
-        String json;
-        try {
-            json = Utils.MAPPER.writeValueAsString(datapoint);
-        } catch (JsonProcessingException e) {
-            throw new JsonEncodeException(datapoint, e);
-        }
-        return Collections.singletonList(json);
+        String formattedMetric = metricFormatter.format(metric);
+        log.trace(
+                "Emit stats metric point: timestamp={}, metric={}, value={}, tags={}",
+                timestamp, formattedMetric, value, tag);
+        Datapoint datapoint = new Datapoint(formattedMetric, timestamp, tag, value);
+        getOutput().emit(new Values(datapoint));
     }
 
     @Override

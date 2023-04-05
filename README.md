@@ -259,10 +259,11 @@ To check how debugging works we need to:
 - set up a breakpoint,
 - make a call to execute some functionality.
 
-In some cases, we would like to debug two or more components that interact with each other. Suppose we have two components working under Docker 
-and one of them doesn't belong to us and provided as a library. The typical case: WorkflowManager (further WFM) and Apache Storm.
-The approach that is going to be used is almost the same as for northbound but there are nuances.
-First of all, we need to check which version of Storm is used in OpenKilda Controller. For that open ```docker/storm/Dockerfile```
+In some cases, we must have an approach for debugging a deploy process for a couple (or more) components that interact with each other. Let's
+suppose both of them work under docker and some component doesn't belong to us and provided as a library. The typical case:
+WorkflowManager (further WFM) and Storm. The approach that is going to be used is almost the same as for northbound but there are
+nuances.
+First of all, we need to check which version of Storm is used in Open Kilda Controller. For that open ```docker/storm/Dockerfile```
 and find the version of Storm. In our case, the Storm version is ```1.1.0```. To be able to debug Storm we have to clone
 the sources from the GitHub repo ```https://github.com/apache/storm.git``` and switch to the release ```1.1.0```.
 ```git checkout -b 1.1.0 e40d213```. Information about releases can be found here ```https://github.com/apache/storm/releases/```
