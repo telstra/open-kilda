@@ -156,7 +156,7 @@ class HaFlowHelper {
             assert haFlow
             assert haFlow.status == FlowState.UP.toString()
         }
-        haFlow
+        return haFlow
     }
 
     /**
