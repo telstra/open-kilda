@@ -461,6 +461,6 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
 
     @Override
     protected FlowPathData doDetach(FlowPath entity, FlowPathFrame frame) {
-        return FlowPath.FlowPathCloner.INSTANCE.deepCopy(frame, entity.getFlow());
+        return FlowPath.FlowPathCloner.INSTANCE.deepCopy(frame, entity.getFlow(), entity.getHaSubFlow());
     }
 }

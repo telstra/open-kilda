@@ -48,9 +48,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -351,6 +354,11 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
         @Override
         public void setSubPaths(Collection<FlowPath> subPaths) {
             for (FlowPath subPath : subPaths) {
+                if (subPath.getHaSubFlow() == null) {
+                    throw new IllegalArgumentException(
+                            format("Sub path %s must has ha sub flow to be added into ha flow path %s",
+                                    subPath, getHaPathId()));
+                }
                 FlowPathData data = subPath.getData();
                 if (data instanceof FlowPathDataImpl) {
                     ((FlowPathDataImpl) data).haFlowPath = haFlowPath;
@@ -397,9 +405,24 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
 
             copyWithoutSwitchesAndSubPaths(source, result);
             result.setSharedSwitch(new Switch(source.getSharedSwitch()));
-            result.setSubPaths(source.getSubPaths().stream()
-                    .map(path -> new FlowPath(path, null))
-                    .collect(Collectors.toList()));
+
+            Map<String, HaSubFlow> subFlowMap;
+            if (targetHaFlow == null || targetHaFlow.getHaSubFlows() == null) {
+                subFlowMap = new HashMap<>();
+            } else {
+                subFlowMap = targetHaFlow.getHaSubFlows().stream()
+                        .collect(Collectors.toMap(HaSubFlow::getHaSubFlowId, Function.identity()));
+            }
+            List<FlowPath> subPaths = new ArrayList<>();
+            for (FlowPath subPath : source.getSubPaths()) {
+                HaSubFlow targetHaSubFlow = subFlowMap.get(subPath.getHaSubFlowId());
+                if (targetHaSubFlow == null) {
+                    throw new IllegalArgumentException(format("Couldn't copy HaFlowPath %s because target ha-flow has "
+                            + "no ha-subflow %s", source, subPath.getHaSubFlowId()));
+                }
+                subPaths.add(new FlowPath(subPath, null, targetHaSubFlow));
+            }
+            result.setSubPaths(subPaths);
 
             List<HaSubFlow> subFlows = new ArrayList<>();
             for (HaSubFlow subFlow : source.getHaSubFlows()) {
