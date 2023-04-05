@@ -36,9 +36,9 @@ public abstract class YFlowCreateUpdatePayloadBase {
 
     @PositiveOrZero(message = "maximumBandwidth can't be negative")
     long maximumBandwidth;
-    @NotBlank(message = "pathComputationStrategy should be provided")
+    @NotBlank(message = "pathComputationStrategy is required, but was empty.")
     String pathComputationStrategy;
-    @NotBlank(message = "encapsulationType should be provided")
+    @NotBlank(message = "encapsulationType is required, but was empty.")
     String encapsulationType;
 
     @PositiveOrZero(message = "maxLatency can't be negative")
