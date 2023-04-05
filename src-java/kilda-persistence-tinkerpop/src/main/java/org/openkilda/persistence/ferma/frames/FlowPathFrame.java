@@ -347,13 +347,25 @@ public abstract class FlowPathFrame extends KildaBaseVertexFrame implements Flow
 
     @Override
     public HaSubFlow getHaSubFlow() {
-        if (getHaSubFlowId() == null) {
-            return null;
-        }
         if (haSubFlow == null) {
             haSubFlow = HaSubFlowFrame.load(getGraph(), getHaSubFlowId()).map(HaSubFlow::new).orElse(null);
         }
         return haSubFlow;
+    }
+
+    @Override
+    public void setHaSubFlow(HaSubFlow haSubFlow) {
+        if (haSubFlow == null) {
+            setProperty(HA_SUB_FLOW_ID_PROPERTY, null);
+        } else {
+            if (!(haSubFlow.getData() instanceof HaSubFlowFrame)) {
+                // We intentionally don't allow to add transient entities.
+                // A haSubFlow must be added/read via corresponding repository first.
+                throw new IllegalArgumentException("Unable to link to transient ha sub flow " + haSubFlow);
+            }
+            setProperty(HA_SUB_FLOW_ID_PROPERTY, haSubFlow.getHaSubFlowId());
+        }
+        this.haSubFlow = haSubFlow;
     }
 
     @Override

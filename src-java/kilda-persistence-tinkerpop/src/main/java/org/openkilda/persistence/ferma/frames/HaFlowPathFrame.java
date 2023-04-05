@@ -198,6 +198,11 @@ public abstract class HaFlowPathFrame extends KildaBaseVertexFrame implements Ha
     @Override
     public void setSubPaths(Collection<FlowPath> subPaths) {
         for (FlowPath path : subPaths) {
+            if (path.getHaSubFlow() == null) {
+                throw new IllegalArgumentException(
+                        format("Sub path %s must has ha sub flow to be added into ha flow path %s",
+                                path, getHaPathId()));
+            }
             FlowPath.FlowPathData data = path.getData();
             FlowPathFrame frame;
             if (data instanceof FlowPathFrame) {

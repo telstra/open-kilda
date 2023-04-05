@@ -119,7 +119,7 @@ public class FermaHaFlowPathRepository extends FermaGenericRepository<HaFlowPath
     protected void doRemove(HaFlowPathFrame frame) {
         frame.getSubPaths().forEach(subPath -> {
             if (subPath.getData() instanceof FlowPathFrame) {
-                // No need to call the PathSegment repository, as segments already detached along with the path.
+                // No need to call the FlowPath repository, as sub paths already detached along with the path.
                 ((FlowPathFrame) subPath.getData()).remove();
             }
         });
