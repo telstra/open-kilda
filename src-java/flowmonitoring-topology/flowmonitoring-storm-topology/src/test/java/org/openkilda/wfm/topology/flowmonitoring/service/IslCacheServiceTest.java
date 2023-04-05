@@ -83,6 +83,7 @@ public class IslCacheServiceTest extends InMemoryGraphBasedTest {
         createIsl(thirdSwitch, ISL_DST_PORT_2, secondSwitch, ISL_SRC_PORT_2);
 
         service = new IslCacheService(persistenceManager, clock, ISL_RTT_LATENCY_EXPIRATION);
+        service.activate();
     }
 
     @Test

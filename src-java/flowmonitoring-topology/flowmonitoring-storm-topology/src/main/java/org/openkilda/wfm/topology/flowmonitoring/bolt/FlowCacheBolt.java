@@ -86,6 +86,17 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
     }
 
     @Override
+    protected boolean activateAndConfirm() {
+        try {
+            flowCacheService.activate();
+        } catch (Exception e) {
+            log.error(String.format("Error on flow cache initialization: %s", e.getMessage()), e);
+            return false;
+        }
+        return true;
+    }
+
+    @Override
     protected void handleInput(Tuple input) throws PipelineException {
         if (active) {
             if (ComponentId.FLOW_STATE_CACHE_BOLT.name().equals(input.getSourceComponent())) {

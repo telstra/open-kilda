@@ -32,7 +32,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,40 +41,30 @@ public class FlowCacheService {
     private Clock clock;
     private Duration flowRttStatsExpirationTime;
     private FlowCacheBoltCarrier carrier;
-    private boolean active = false;
+    private boolean active;
+    private final Map<String, FlowState> flowStates;
     private final FlowRepository flowRepository;
-
-    private final Map<String, FlowState> flowStates = new HashMap<>();
 
     public FlowCacheService(PersistenceManager persistenceManager, Clock clock,
                             Duration flowRttStatsExpirationTime, FlowCacheBoltCarrier carrier) {
         this.clock = clock;
         this.flowRttStatsExpirationTime = flowRttStatsExpirationTime;
         this.carrier = carrier;
+        flowStates = new HashMap<>();
+        active = false;
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        activate();
     }
 
     private void initCache(FlowRepository flowRepository) {
-        Collection<Flow> flowsAll;
-        try {
-            flowsAll = flowRepository.findAll();
-        } catch (Exception e) {
-            log.error("Unable to fetch flow list from DB. Empty cache is used.", e);
-            return;
-        }
-
-        for (Flow entry : flowsAll) {
+        for (Flow entry : flowRepository.findAll()) {
             if (entry.isOneSwitchFlow()) {
                 continue;
             }
             if (isIncompleteFlow(entry)) {
-                log.warn(
-                        "Flow is incomplete, do not put it into flow cache (flow_id: {}, ctime: {}, mtime: {}",
+                log.warn("Flow is incomplete, do not put it into flow cache (flow_id: {}, ctime: {}, mtime: {}",
                         entry.getFlowId(), entry.getTimeCreate(), entry.getTimeModify());
                 continue;
             }
-
             flowStates.put(entry.getFlowId(), FlowMapper.INSTANCE.toFlowState(entry));
         }
         log.info("Flow cache initialized successfully.");
@@ -172,7 +161,7 @@ public class FlowCacheService {
      * Check if flowState is empty.
      */
     @VisibleForTesting
-    public boolean flowStatesIsEmpty() {
+    protected boolean flowStatesIsEmpty() {
         return flowStates.isEmpty();
     }
 }

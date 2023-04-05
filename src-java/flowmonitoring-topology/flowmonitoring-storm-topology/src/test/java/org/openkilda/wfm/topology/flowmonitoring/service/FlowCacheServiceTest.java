@@ -97,6 +97,7 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
         dummyFactory.makeFlow(new FlowEndpoint(SRC_SWITCH, 8), new FlowEndpoint(SRC_SWITCH, 9));
         Flow flow = createFlow();
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
+        service.activate();
 
         service.processFlowLatencyCheck(flow.getFlowId());
 
@@ -112,6 +113,8 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
     public void shouldRemoveFlowFromCache() {
         Flow flow = createFlow();
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
+        service.activate();
+
         service.removeFlowInfo(flow.getFlowId());
 
         service.processFlowLatencyCheck(flow.getFlowId());
@@ -121,12 +124,14 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
 
     @Test
     public void shouldChangeFlowPathInCache() {
-        Flow flow = createFlow();
         when(clock.instant()).thenReturn(Instant.now());
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
+        service.activate();
 
         Long maxLatency = 100L;
         Long maxLatencyTier2 = 200L;
+
+        Flow flow = createFlow();
         UpdateFlowCommand updateFlowCommand = new UpdateFlowCommand(flow.getFlowId(), FlowPathDto.builder()
                 .id(flow.getFlowId())
                 .forwardPath(Arrays.asList(new PathNodePayload(SRC_SWITCH, IN_PORT, ISL_SRC_PORT_2),
@@ -148,10 +153,12 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
 
     @Test
     public void shouldSendCheckFlowSlaRequests() {
-        Flow flow = createFlow();
         Instant now = Instant.now();
         when(clock.instant()).thenReturn(now);
+
+        Flow flow = createFlow();
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
+        service.activate();
 
         long t0 = (now.getEpochSecond() << 32) + 1234;
         long t1 = (now.getEpochSecond() << 32) + 2345;
@@ -177,6 +184,7 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
     public void serviceActivationDeactivationAndReactivation() {
         createFlow();
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
+        service.activate();
         //check service.flowStates is not empty
         assertFalse(service.flowStatesIsEmpty());
         // deactivate service

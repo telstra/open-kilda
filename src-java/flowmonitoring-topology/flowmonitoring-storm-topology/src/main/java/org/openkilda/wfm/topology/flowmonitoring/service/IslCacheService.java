@@ -42,26 +42,21 @@ public class IslCacheService {
     private Clock clock;
     private Duration islRttLatencyExpiration;
     private Map<Link, LinkState> linkStates;
-    private boolean active = false;
+    private boolean active;
     private final IslRepository islRepository;
 
     public IslCacheService(PersistenceManager persistenceManager, Clock clock, Duration islRttLatencyExpiration) {
         this.clock = clock;
         this.islRttLatencyExpiration = islRttLatencyExpiration;
-
+        active = false;
+        linkStates = new HashMap<>();
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
-        activate();
     }
 
     private void initCache(IslRepository islRepository) {
-        try {
-            linkStates = islRepository.findAll().stream()
-                    .collect(Collectors.toMap(LinkMapper.INSTANCE::toLink, (link) -> LinkState.builder().build()));
-            log.info("Isl cache initialized successfully.");
-        } catch (Exception e) {
-            log.error("Isl cache initialization exception. Empty cache is used.", e);
-            linkStates = new HashMap<>();
-        }
+        linkStates = islRepository.findAll().stream()
+                .collect(Collectors.toMap(LinkMapper.INSTANCE::toLink, (link) -> LinkState.builder().build()));
+        log.info("Isl cache initialized successfully.");
     }
 
     /**
@@ -170,7 +165,7 @@ public class IslCacheService {
      * Check if linkStates is empty.
      */
     @VisibleForTesting
-    public boolean linkStatesIsEmpty() {
+    protected boolean linkStatesIsEmpty() {
         return linkStates.isEmpty();
     }
 }

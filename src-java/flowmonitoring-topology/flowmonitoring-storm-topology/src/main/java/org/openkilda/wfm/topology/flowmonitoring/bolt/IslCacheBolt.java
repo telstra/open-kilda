@@ -57,8 +57,18 @@ public class IslCacheBolt extends AbstractBolt {
     }
 
     protected void init() {
-        super.init();
         islCacheService = newIslCacheService();
+    }
+
+    @Override
+    protected boolean activateAndConfirm() {
+        try {
+            islCacheService.activate();
+        } catch (Exception e) {
+            log.error(String.format("Error on Isl cache initialization: %s", e.getMessage()), e);
+            return false;
+        }
+        return true;
     }
 
     @Override
@@ -114,6 +124,4 @@ public class IslCacheBolt extends AbstractBolt {
     private IslCacheService newIslCacheService() {
         return new IslCacheService(persistenceManager, Clock.systemUTC(), islRttLatencyExpiration);
     }
-
-
 }
