@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import spock.lang.Shared
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -51,6 +53,9 @@ class SwitchSyncSpec extends BaseSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
+    @Shared
+    List<Switch> involvedSwitches = []
+
     @Tidy
     def "Able to synchronize switch without any rule and meter discrepancies (removeExcess=#removeExcess)"() {
         given: "An active switch"
@@ -88,7 +93,7 @@ class SwitchSyncSpec extends BaseSpecification {
         flowHelperV2.addFlow(flow)
 
         and: "Drop all rules an meters from related switches (both default and non-default)"
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
+        involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                 !(it.cookie in sw.defaultCookies)
@@ -166,6 +171,7 @@ class SwitchSyncSpec extends BaseSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Able to synchronize switch (delete excess rules and meters)"() {
         given: "Two active not neighboring switches"
         def switches = topology.getActiveSwitches()
@@ -180,7 +186,7 @@ class SwitchSyncSpec extends BaseSpecification {
         flowHelperV2.addFlow(flow)
 
         and: "Reproduce situation when switches have excess rules and meters"
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
+        involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                 !(it.cookie in sw.defaultCookies)
@@ -302,7 +308,7 @@ class SwitchSyncSpec extends BaseSpecification {
 
         and: "Reproduce situation when switches have missing rules and meters"
         def flowInfoFromDb = database.getFlow(flow.flowId)
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
+        involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
         def transitSwitchIds = involvedSwitches[1..-2]*.dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
@@ -399,10 +405,12 @@ class SwitchSyncSpec extends BaseSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Tags([VIRTUAL, LOW_PRIORITY])
     def "Able to synchronize misconfigured default meter"() {
         given: "An active switch with valid default rules and one misconfigured default meter"
         def sw = topology.activeSwitches.first()
+        involvedSwitches = [sw]
         def broadcastCookieMeterId = MeterId.createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue()
         def meterToManipulate = northbound.getAllMeters(sw.dpId).meterEntries
                 .find{ it.meterId == broadcastCookieMeterId }
@@ -439,6 +447,7 @@ class SwitchSyncSpec extends BaseSpecification {
     def "Able to synchronize misconfigured flow meter"() {
         given: "An active switch with flow on it"
         def sw = topology.activeSwitches.first()
+        involvedSwitches = [sw]
         def flow = flowHelperV2.singleSwitchFlow(sw)
         flowHelperV2.addFlow(flow)
 
@@ -491,6 +500,10 @@ class SwitchSyncSpec extends BaseSpecification {
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    def cleanup() {
+        switchHelper.synchronizeWithRemovingExcessRules(involvedSwitches.collect {it.getDpId()})
     }
 
     @Memoized

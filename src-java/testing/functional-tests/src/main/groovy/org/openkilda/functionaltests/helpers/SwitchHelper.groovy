@@ -663,6 +663,14 @@ class SwitchHelper {
         assert result == switchValidateInfo.asExpected
     }
 
+    static void synchronizeWithRemovingExcessRules(List<SwitchId> switches) {
+        withPool {
+            switches.eachParallel {
+                northbound.get().synchronizeSwitch(it, true)
+            }
+        }
+    }
+
     @Memoized
     static boolean isVxlanEnabled(SwitchId switchId) {
         return getCachedSwProps(switchId).supportedTransitEncapsulation
