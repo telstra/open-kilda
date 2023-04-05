@@ -312,6 +312,7 @@ public class ResourcesAllocationAction extends
                     haFlow.getSharedSwitch(), subFlow.getEndpointSwitch(),
                     forward.getCookie().toBuilder().subType(getSubType(i)).build());
             flowPathRepository.add(forwardSubPath);
+            forwardSubPath.setHaSubFlow(subFlow);
             forwardSubPaths.add(forwardSubPath);
             stateMachine.getBackUpComputationWayUsedMap().put(forwardSubPath.getPathId(), subPath.isBackupPath());
         }
@@ -331,6 +332,7 @@ public class ResourcesAllocationAction extends
                     subFlow.getEndpointSwitch(), haFlow.getSharedSwitch(),
                     reverse.getCookie().toBuilder().subType(getSubType(i)).build());
             flowPathRepository.add(reverseSubPath);
+            reverseSubPath.setHaSubFlow(subFlow);
             reverseSubPaths.add(reverseSubPath);
             stateMachine.getBackUpComputationWayUsedMap().put(reverseSubPath.getPathId(), subPath.isBackupPath());
         }

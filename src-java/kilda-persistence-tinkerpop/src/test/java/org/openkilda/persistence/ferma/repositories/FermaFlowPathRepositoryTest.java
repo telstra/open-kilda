@@ -20,6 +20,7 @@ import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaFlow;
@@ -488,6 +489,50 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         return pathIds;
     }
 
+    @Test
+    public void createFlowPathWithHaSubFlowTest() {
+        FlowPath path = createFlowPath(PATH_ID_1, 1, 1, switchA, switchB);
+        HaSubFlow haSubFlow = FermaModelUtils.buildHaSubFlow(SUB_FLOW_ID_1, switchA, 1, 2, 3, null);
+        haSubFlowRepository.add(haSubFlow);
+        path.setHaSubFlow(haSubFlow);
+
+        Optional<FlowPath> foundPath = flowPathRepository.findById(PATH_ID_1);
+        assertTrue(foundPath.isPresent());
+        assertEquals(PATH_ID_1, foundPath.get().getPathId());
+        assertEquals(SUB_FLOW_ID_1, foundPath.get().getHaSubFlowId());
+        assertEquals(haSubFlow, foundPath.get().getHaSubFlow());
+    }
+
+    @Test
+    public void createFlowPathWithoutHaSubFlowTest() {
+        createFlowPath(PATH_ID_1, 1, 1, switchA, switchB);
+        Optional<FlowPath> foundPath = flowPathRepository.findById(PATH_ID_1);
+        assertTrue(foundPath.isPresent());
+        assertEquals(PATH_ID_1, foundPath.get().getPathId());
+        assertNull(foundPath.get().getHaSubFlowId());
+        assertNull(foundPath.get().getHaSubFlow());
+    }
+
+    @Test
+    public void removeHaSubFlowFromFlowPathTest() {
+        FlowPath path = createFlowPath(PATH_ID_1, 1, 1, switchA, switchB);
+        HaSubFlow haSubFlow = FermaModelUtils.buildHaSubFlow(SUB_FLOW_ID_1, switchA, 1, 2, 3, null);
+        haSubFlowRepository.add(haSubFlow);
+        path.setHaSubFlow(haSubFlow);
+
+        Optional<FlowPath> foundPath = flowPathRepository.findById(PATH_ID_1);
+        assertTrue(foundPath.isPresent());
+        assertEquals(PATH_ID_1, foundPath.get().getPathId());
+        assertEquals(SUB_FLOW_ID_1, foundPath.get().getHaSubFlowId());
+        assertEquals(haSubFlow, foundPath.get().getHaSubFlow());
+
+        foundPath.get().setHaSubFlow(null);
+        Optional<FlowPath> foundPathWithoutHaSubFlow = flowPathRepository.findById(PATH_ID_1);
+        assertTrue(foundPathWithoutHaSubFlow.isPresent());
+        assertEquals(PATH_ID_1, foundPathWithoutHaSubFlow.get().getPathId());
+        assertNull(foundPath.get().getHaSubFlowId());
+        assertNull(foundPath.get().getHaSubFlow());
+    }
 
     private FlowPath createTestFlowPath() {
         FlowPath flowPath = createFlowPath(flow, "_path", 1, 1, switchA, switchB);
@@ -506,8 +551,13 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
 
     private FlowPath createFlowPath(
             Flow flow, String suffixName, long cookie, long meterId, Switch srcSwitch, Switch dstSwitch) {
+        return createFlowPath(new PathId(flow.getFlowId() + suffixName), cookie, meterId, srcSwitch, dstSwitch);
+    }
+
+    private FlowPath createFlowPath(
+            PathId pathId, long cookie, long meterId, Switch srcSwitch, Switch dstSwitch) {
         FlowPath flowPath = FlowPath.builder()
-                .pathId(new PathId(flow.getFlowId() + suffixName))
+                .pathId(pathId)
                 .cookie(new FlowSegmentCookie(cookie))
                 .meterId(new MeterId(meterId))
                 .srcSwitch(srcSwitch)
