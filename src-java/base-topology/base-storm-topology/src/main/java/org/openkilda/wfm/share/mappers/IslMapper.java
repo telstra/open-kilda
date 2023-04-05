@@ -67,7 +67,8 @@ public abstract class IslMapper {
         return new IslInfoData(isl.getLatency(), src, dst, isl.getSpeed(), isl.getAvailableBandwidth(),
                 isl.getMaxBandwidth(), isl.getDefaultMaxBandwidth(), map(isl.getStatus()), map(isl.getActualStatus()),
                 map(isl.getRoundTripStatus()), isl.getCost(), timeCreateMillis, timeModifyMillis,
-                isl.isUnderMaintenance(), bfdProperties.isEnabled(), map(isl.getBfdSessionStatus()), null);
+                isl.isUnderMaintenance(), bfdProperties.isEnabled(), map(isl.getBfdSessionStatus()), null,
+                isl.getDescription());
     }
 
     /**
@@ -98,6 +99,7 @@ public abstract class IslMapper {
                 .actualStatus(map(islInfoData.getActualState()))
                 .roundTripStatus(map(islInfoData.getRoundTripStatus()))
                 .cost(islInfoData.getCost())
+                .description(islInfoData.getDescription())
                 .underMaintenance(islInfoData.isUnderMaintenance())
                 .bfdSessionStatus(map(islInfoData.getBfdSessionStatus()));
 

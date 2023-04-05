@@ -41,6 +41,7 @@ import java.util.Objects;
 public class LinkProps implements CompositeDataEntity<LinkProps.LinkPropsData> {
     public static final String COST_PROP_NAME = "cost";
     public static final String MAX_BANDWIDTH_PROP_NAME = "max_bandwidth";
+    public static final String DESCRIPTION_PROP_NAME = "description";
 
     @Getter
     @Setter
@@ -66,9 +67,16 @@ public class LinkProps implements CompositeDataEntity<LinkProps.LinkPropsData> {
 
     @Builder
     public LinkProps(@NonNull SwitchId srcSwitchId, @NonNull SwitchId dstSwitchId, int srcPort, int dstPort,
-                     Integer cost, Long maxBandwidth) {
-        data = LinkPropsDataImpl.builder().srcSwitchId(srcSwitchId).dstSwitchId(dstSwitchId)
-                .srcPort(srcPort).dstPort(dstPort).cost(cost).maxBandwidth(maxBandwidth).build();
+                     Integer cost, Long maxBandwidth, String description) {
+        data = LinkPropsDataImpl.builder()
+                .srcSwitchId(srcSwitchId)
+                .dstSwitchId(dstSwitchId)
+                .srcPort(srcPort)
+                .dstPort(dstPort)
+                .cost(cost)
+                .maxBandwidth(maxBandwidth)
+                .description(description)
+                .build();
     }
 
     public LinkProps(@NonNull LinkPropsData data) {
@@ -93,13 +101,14 @@ public class LinkProps implements CompositeDataEntity<LinkProps.LinkPropsData> {
                 .append(getMaxBandwidth(), that.getMaxBandwidth())
                 .append(getTimeCreate(), that.getTimeCreate())
                 .append(getTimeModify(), that.getTimeModify())
+                .append(getDescription(), that.getDescription())
                 .isEquals();
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(getSrcPort(), getDstPort(), getSrcSwitchId(), getDstSwitchId(), getCost(),
-                getMaxBandwidth(), getTimeCreate(), getTimeModify());
+                getMaxBandwidth(), getTimeCreate(), getTimeModify(), getDescription());
     }
 
     /**
@@ -137,6 +146,10 @@ public class LinkProps implements CompositeDataEntity<LinkProps.LinkPropsData> {
         Instant getTimeModify();
 
         void setTimeModify(Instant timeModify);
+
+        String getDescription();
+
+        void setDescription(String description);
     }
 
     /**
@@ -156,6 +169,7 @@ public class LinkProps implements CompositeDataEntity<LinkProps.LinkPropsData> {
         Long maxBandwidth;
         Instant timeCreate;
         Instant timeModify;
+        String description;
     }
 
     /**
