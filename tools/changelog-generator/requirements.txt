@@ -13,3 +13,4 @@ requests==2.22.0
 smmap2==2.0.5
 urllib3==1.25.9
 wrapt==1.11.1
+pyOpenSSL==23.1.1
