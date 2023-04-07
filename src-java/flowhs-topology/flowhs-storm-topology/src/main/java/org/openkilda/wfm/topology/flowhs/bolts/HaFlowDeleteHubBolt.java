@@ -106,7 +106,7 @@ public class HaFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
         try {
             service.handleRequest(currentKey, getCommandContext(), request.getHaFlowId());
         } catch (DuplicateKeyException e) {
-            log.error("Failed to handle a request with key {}. {}", currentKey, e.getMessage());
+            log.error("Failed to handle a request due to the duplicated key {}. {}", currentKey, e.getMessage());
         }
     }
 

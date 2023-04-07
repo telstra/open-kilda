@@ -58,7 +58,7 @@ public class ValidateHaFlowAction extends
     protected Optional<Message> performWithResponse(State from, State to, Event event, HaFlowDeleteContext context,
                                                     HaFlowDeleteFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
-        dashboardLogger.onFlowDelete(flowId);
+        dashboardLogger.onHaFlowDelete(flowId);
 
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getDeleteHaFlowEnabled();
         if (!isOperationAllowed) {
