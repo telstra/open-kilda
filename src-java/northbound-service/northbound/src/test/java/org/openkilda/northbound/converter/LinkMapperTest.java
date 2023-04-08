@@ -50,6 +50,7 @@ public class LinkMapperTest {
     public static final long TIME_MODIFY_MILLIS = 9L;
     public static final String BFD_SESSION_STATUS = "UP";
     public static final long PACKET_ID = 10L;
+    public static final String DESCRIPTION = "TEST_LINK_DOWN";
 
     @Autowired
     private LinkMapper linkMapper;
@@ -76,7 +77,8 @@ public class LinkMapperTest {
                 false,
                 true,
                 BFD_SESSION_STATUS,
-                PACKET_ID);
+                PACKET_ID,
+                DESCRIPTION);
 
         LinkDto response = linkMapper.mapResponse(islInfoData);
 
@@ -96,6 +98,7 @@ public class LinkMapperTest {
         assertFalse(response.isUnderMaintenance());
         assertTrue(response.isEnableBfd());
         assertEquals(BFD_SESSION_STATUS, response.getBfdSessionStatus());
+        assertEquals(DESCRIPTION, response.getDescription());
     }
 
     private void assertPathNode(PathNode expected, PathDto actual) {
@@ -109,3 +112,4 @@ public class LinkMapperTest {
         // nothing to define here
     }
 }
+

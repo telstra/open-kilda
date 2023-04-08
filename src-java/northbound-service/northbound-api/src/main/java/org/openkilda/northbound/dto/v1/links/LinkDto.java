@@ -67,4 +67,7 @@ public class LinkDto {
 
     @JsonProperty("path")
     private List<PathDto> path;
+
+    @JsonProperty("description")
+    private String description;
 }
