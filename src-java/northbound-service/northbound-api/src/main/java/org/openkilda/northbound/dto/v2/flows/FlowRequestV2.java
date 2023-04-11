@@ -22,6 +22,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
 
+import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.PositiveOrZero;
 
@@ -33,8 +34,10 @@ public class FlowRequestV2 {
     @NotBlank(message = "flowId should be provided")
     @NonNull
     private String flowId;
+    @Valid
     @NonNull
     private FlowEndpointV2 source;
+    @Valid
     @NonNull
     private FlowEndpointV2 destination;
     @PositiveOrZero(message = "maximumBandwidth can't be negative")

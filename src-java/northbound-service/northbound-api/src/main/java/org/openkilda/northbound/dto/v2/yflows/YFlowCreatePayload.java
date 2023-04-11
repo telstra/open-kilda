@@ -26,6 +26,7 @@ import lombok.Data;
 import lombok.NonNull;
 
 import java.util.List;
+import javax.validation.Valid;
 import javax.validation.constraints.PositiveOrZero;
 
 @Data
@@ -35,6 +36,7 @@ import javax.validation.constraints.PositiveOrZero;
 public class YFlowCreatePayload {
     @JsonProperty("y_flow_id")
     String yFlowId;
+    @Valid
     @NonNull
     YFlowSharedEndpoint sharedEndpoint;
 
@@ -54,6 +56,7 @@ public class YFlowCreatePayload {
     String description;
     boolean allocateProtectedPath;
     String diverseFlowId;
-
+    @Valid
     List<SubFlowUpdatePayload> subFlows;
 }
+

@@ -25,16 +25,21 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
 
+import javax.validation.Valid;
+
 @Data
 @Builder
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
 public class SubFlowUpdatePayload {
     String flowId;
+    @Valid
     @NonNull
     @JsonIgnoreProperties("detect_connected_devices")
     FlowEndpointV2 endpoint;
+    @Valid
     @NonNull
     YFlowSharedEndpointEncapsulation sharedEndpoint;
     String description;
 }
+
