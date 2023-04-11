@@ -25,6 +25,8 @@ import lombok.Data;
 import lombok.NonNull;
 
 import java.util.List;
+import javax.validation.Valid;
+import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.PositiveOrZero;
 
 @Data
@@ -32,12 +34,15 @@ import javax.validation.constraints.PositiveOrZero;
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
 public class YFlowUpdatePayload {
+    @Valid
     @NonNull
     YFlowSharedEndpoint sharedEndpoint;
 
     @PositiveOrZero(message = Constraints.NEGATIVE_MAXIMUM_BANDWIDTH_MESSAGE)
     long maximumBandwidth;
+    @NotBlank(message = Constraints.BLANK_PATH_COMPUTATION_STRATEGY_MESSAGE)
     String pathComputationStrategy;
+    @NotBlank(message = Constraints.BLANK_ENCAPSULATION_TYPE_MESSAGE)
     String encapsulationType;
     @PositiveOrZero(message = Constraints.NEGATIVE_MAX_LATENCY_MESSAGE)
     Long maxLatency;
