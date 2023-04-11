@@ -15,11 +15,14 @@
 
 package org.openkilda.persistence.repositories;
 
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.PathId;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public interface HaFlowPathRepository extends Repository<HaFlowPath> {
     Collection<HaFlowPath> findAll();
@@ -31,6 +34,8 @@ public interface HaFlowPathRepository extends Repository<HaFlowPath> {
     Collection<PathId> findPathIdsByDiverseGroupId(String diverseGroupId);
 
     Collection<PathId> findPathIdsByAffinityGroupId(String affinityGroupId);
+
+    Map<PathId, HaFlow> findHaFlowsByPathIds(Set<PathId> pathIds);
 
     Optional<HaFlowPath> remove(PathId pathId);
 }

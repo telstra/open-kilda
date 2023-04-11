@@ -71,16 +71,17 @@ public class PersistenceDataAdapter implements DataAdapter {
     private final Set<PathId> pathIds;
     private final Set<SwitchId> switchIds;
 
-    private Map<PathId, Flow> flowCache;
-    private Map<PathId, FlowPath> commonFlowPathCache;
-    private Map<PathId, FlowPath> haSubPathPathCache;
+    private Map<PathId, Flow> flowCache; // flow path id to flow map
+    private Map<PathId, FlowPath> commonFlowPathCache; // flow path id to flow path of common flows and y flows map
+    private Map<PathId, FlowPath> haSubPathPathCache; // flow path id to ha-sub path map
     private Map<PathId, FlowTransitEncapsulation> encapsulationCache;
     private Map<SwitchId, Switch> switchCache;
     private Map<SwitchId, SwitchProperties> switchPropertiesCache;
     private Map<SwitchId, Set<Integer>> switchIslPortsCache;
     private Map<SwitchId, List<LagLogicalPort>> switchLagPortsCache;
     private KildaFeatureToggles featureToggles;
-    private Map<PathId, YFlow> yFlowCache;
+    private Map<PathId, YFlow> yFlowCache; // flow path id to y-flow map
+    private Map<PathId, HaFlow> haFlowCache; // ha-path id/ha-sub path to ha-flow map
 
     @Builder.Default
     @Deprecated
@@ -227,6 +228,15 @@ public class PersistenceDataAdapter implements DataAdapter {
 
     @Override
     public HaFlow getHaFlow(PathId pathId) {
-        return null;
+        if (haFlowCache == null) {
+            haFlowCache = new HashMap<>();
+            for (PathId subPathId : getHaFlowSubPaths().keySet()) {
+                FlowPath subPath = getHaFlowSubPaths().get(subPathId);
+                if (subPath != null && subPath.getHaFlowPath() != null && subPath.getHaSubFlow().getHaFlow() != null) {
+                    haFlowCache.put(subPathId, subPath.getHaSubFlow().getHaFlow());
+                }
+            }
+        }
+        return haFlowCache.get(pathId);
     }
 }

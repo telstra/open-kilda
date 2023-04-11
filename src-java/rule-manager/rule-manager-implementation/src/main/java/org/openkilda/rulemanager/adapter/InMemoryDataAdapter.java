@@ -120,7 +120,7 @@ public class InMemoryDataAdapter implements DataAdapter {
     }
 
     @Override
-    public HaFlow getHaFlow(PathId pathId) {
+    public HaFlow getHaFlow(PathId subPathId) {
         return null;
     }
 }

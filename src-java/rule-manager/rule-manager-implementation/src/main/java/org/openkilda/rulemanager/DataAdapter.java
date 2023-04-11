@@ -53,5 +53,8 @@ public interface DataAdapter {
 
     YFlow getYFlow(PathId pathId);
 
-    HaFlow getHaFlow(PathId pathId);
+    /**
+     * Returns HA-flow by sub path id.
+     */
+    HaFlow getHaFlow(PathId subPathId);
 }

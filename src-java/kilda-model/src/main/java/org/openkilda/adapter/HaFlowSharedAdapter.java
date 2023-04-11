@@ -15,43 +15,41 @@
 
 package org.openkilda.adapter;
 
-import org.openkilda.model.DetectConnectedDevices;
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaSubFlow;
 
-public class FlowDestAdapter extends FlowSideAdapter {
-    private final Flow flow;
+public class HaFlowSharedAdapter extends FlowSideAdapter {
+    private final HaFlow haFlow;
+    private final HaSubFlow haSubFlow;
 
-    public FlowDestAdapter(Flow flow) {
-        this.flow = flow;
+    public HaFlowSharedAdapter(HaFlow haFlow, HaSubFlow haSubFlow) {
+        this.haFlow = haFlow;
+        this.haSubFlow = haSubFlow;
     }
 
     @Override
     public FlowEndpoint getEndpoint() {
-        DetectConnectedDevices trackConnectedDevices = flow.getDetectConnectedDevices();
-        return new FlowEndpoint(
-                flow.getDestSwitchId(), flow.getDestPort(), flow.getDestVlan(), flow.getDestInnerVlan(),
-                trackConnectedDevices.isDstLldp() || trackConnectedDevices.isDstSwitchLldp(),
-                trackConnectedDevices.isDstArp() || trackConnectedDevices.isDstSwitchArp());
+        return haFlow.getSharedEndpoint();
     }
 
     @Override
     public boolean isDetectConnectedDevicesLldp() {
-        return flow.getDetectConnectedDevices().isDstLldp();
+        return false;
     }
 
     @Override
     public boolean isDetectConnectedDevicesArp() {
-        return flow.getDetectConnectedDevices().isDstArp();
-    }
-
-    @Override
-    public boolean isOneSwitchFlow() {
-        return flow.isOneSwitchFlow();
+        return false;
     }
 
     @Override
     public boolean isLooped() {
-        return flow.getDestSwitchId().equals(flow.getLoopSwitchId());
+        return false;
+    }
+
+    @Override
+    public boolean isOneSwitchFlow() {
+        return haFlow.getSharedSwitchId().equals(haSubFlow.getEndpointSwitchId());
     }
 }

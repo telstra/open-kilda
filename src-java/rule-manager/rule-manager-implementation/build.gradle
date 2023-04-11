@@ -9,6 +9,7 @@ dependencies {
 
     implementation 'com.google.guava:guava'
     implementation 'org.apache.commons:commons-lang3'
+    implementation 'org.apache.commons:commons-collections4'
     implementation 'org.glassfish:javax.el'
     implementation 'org.hibernate.validator:hibernate-validator'
 

@@ -107,7 +107,7 @@ public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
     List<Action> buildTransformActions(int outerVlan, Set<SwitchFeature> features) {
         List<Integer> currentStack = makeVlanStack(outerVlan);
         List<Integer> targetStack;
-        if (flowPath.isOneSwitchFlow()) {
+        if (flowPath.isOneSwitchPath()) {
             FlowEndpoint egressEndpoint = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
             targetStack = makeVlanStack(egressEndpoint.getOuterVlanId());
         } else if (encapsulation.getType() == TRANSIT_VLAN) {
@@ -119,7 +119,7 @@ public class SingleTableIngressRuleGenerator extends IngressRuleGenerator {
 
         List<Action> transformActions = new ArrayList<>(Utils.makeVlanReplaceActions(currentStack, targetStack));
 
-        if (!flowPath.isOneSwitchFlow() && encapsulation.getType() == VXLAN) {
+        if (!flowPath.isOneSwitchPath() && encapsulation.getType() == VXLAN) {
             transformActions.add(buildPushVxlan(
                     encapsulation.getId(), flowPath.getSrcSwitchId(), flowPath.getDestSwitchId(), VXLAN_UDP_SRC,
                     features));

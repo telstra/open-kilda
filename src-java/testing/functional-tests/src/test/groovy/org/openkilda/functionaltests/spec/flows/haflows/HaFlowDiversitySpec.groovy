@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -24,6 +25,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
 
     @Tidy
     def "Able to create diverse ha-flows"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with three not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
@@ -76,6 +78,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
 
     @Tidy
     def "Able to create ha-flow diverse with common flow"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with two not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
@@ -133,6 +136,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
 
     @Tidy
     def "Able to create ha-flow diverse with y-flow"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with three not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&

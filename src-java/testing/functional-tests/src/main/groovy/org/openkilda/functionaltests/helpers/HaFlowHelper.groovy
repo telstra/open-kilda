@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.helpers
 
-
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
@@ -10,6 +9,7 @@ import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
@@ -19,11 +19,6 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload
-import org.openkilda.northbound.dto.v2.haflows.HaSubFlowUpdatePayload
-import org.openkilda.northbound.dto.v2.yflows.SubFlowUpdatePayload
-import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload
-import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpoint
-import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpointEncapsulation
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -204,6 +199,11 @@ class HaFlowHelper {
             }
         }
         response
+    }
+
+    static Set<SwitchId> getInvolvedSwitches(HaFlow haFlow) {
+        //TODO include transit switches when https://github.com/telstra/open-kilda/issues/5148 will be implemented
+        return [haFlow.subFlows*.endpoint.switchId + haFlow.sharedEndpoint.switchId] as Set
     }
 
     static List<SwitchPortVlan> getBusyEndpoints(List<HaFlowCreatePayload> haFlows) {

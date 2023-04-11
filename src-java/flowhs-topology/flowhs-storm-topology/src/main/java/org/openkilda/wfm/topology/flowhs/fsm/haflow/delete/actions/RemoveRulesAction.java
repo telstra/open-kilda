@@ -85,7 +85,7 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
             }
         }
 
-        DataAdapter adapter = buildDataAdapter(haFlow, haFlowPathIds);
+        DataAdapter adapter = buildDataAdapter(haFlow);
         List<SpeakerData> commands = buildSpeakerCommands(haFlow.getPaths(), adapter);
         Collection<DeleteSpeakerCommandsRequest> deleteRequests = buildHaFlowDeleteRequests(
                 commands, stateMachine.getCommandContext());
@@ -158,8 +158,8 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
                 .collect(Collectors.toMap(FlowPath::getHaSubFlowId, FlowPath::getMeterId));
     }
 
-    private DataAdapter buildDataAdapter(HaFlow haFlow, Set<PathId> haPathIds) {
-        Set<PathId> pathIds = new HashSet<>(haPathIds);
+    private DataAdapter buildDataAdapter(HaFlow haFlow) {
+        Set<PathId> pathIds = new HashSet<>();
         for (SwitchId switchId : haFlow.getEndpointSwitchIds()) {
             pathIds.addAll(flowPathRepository.findByEndpointSwitch(switchId, false).stream()
                     .map(FlowPath::getPathId)

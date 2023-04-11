@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaFlowPath.HaFlowPathData;
 import org.openkilda.model.PathId;
@@ -28,9 +29,13 @@ import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tinkerpop.gremlin.process.traversal.P;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -87,6 +92,21 @@ public class FermaHaFlowPathRepository extends FermaGenericRepository<HaFlowPath
                 .getRawTraversal().toStream()
                 .map(pathId -> PathIdConverter.INSTANCE.toEntityAttribute((String) pathId))
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Map<PathId, HaFlow> findHaFlowsByPathIds(Set<PathId> pathIds) {
+        Set<String> graphPathIds = pathIds.stream()
+                .map(PathIdConverter.INSTANCE::toGraphProperty)
+                .collect(Collectors.toSet());
+        List<? extends HaFlowPathFrame> flowPathFrames = framedGraph().traverse(g -> g.V()
+                        .hasLabel(HaFlowPathFrame.FRAME_LABEL)
+                        .has(HaFlowPathFrame.HA_PATH_ID_PROPERTY, P.within(graphPathIds)))
+                .toListExplicit(HaFlowPathFrame.class);
+        return flowPathFrames.stream()
+                .map(HaFlowPath::new)
+                .filter(path -> path.getHaFlow() != null)
+                .collect(Collectors.toMap(HaFlowPath::getHaPathId, HaFlowPath::getHaFlow));
     }
 
     @Override

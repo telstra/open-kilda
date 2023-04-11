@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -37,6 +38,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid ha-flow can be created [!NO TRAFFIC CHECK!], covered cases: #coveredCases"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         assumeTrue(swT != null, "These cases cannot be covered on given topology: $coveredCases")
         if (coveredCases.toString().contains("qinq")) {
             assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
@@ -58,6 +60,13 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getHaFlow(haFlow.haFlowId) }
         def flowRemoved = true
 
+        and: "And involved switches pass validation"
+        withPool {
+            haFlowHelper.getInvolvedSwitches(haFlow).eachParallel { swId ->
+                assert northboundV2.validateSwitch(swId).isAsExpected()
+            }
+        }
+
         cleanup:
         haFlow && !flowRemoved && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
 
@@ -71,6 +80,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User cannot create a ha-flow with existent ha_flow_id"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
@@ -94,6 +104,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User cannot create a one switch ha-flow"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "A switch"
         def sw = topologyHelper.getRandomSwitch()
 
