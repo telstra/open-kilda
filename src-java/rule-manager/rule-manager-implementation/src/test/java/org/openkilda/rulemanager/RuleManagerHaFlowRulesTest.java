@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,71 +15,37 @@
 
 package org.openkilda.rulemanager;
 
-import static com.google.common.collect.Lists.newArrayList;
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.toMap;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
-import static org.openkilda.rulemanager.Utils.LAG_PORTS;
+import static org.openkilda.rulemanager.OfTable.EGRESS;
+import static org.openkilda.rulemanager.OfTable.INGRESS;
+import static org.openkilda.rulemanager.OfTable.INPUT;
+import static org.openkilda.rulemanager.OfTable.TRANSIT;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
-import static org.openkilda.rulemanager.Utils.buildSwitchProperties;
 
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.GroupId;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaSubFlow;
-import org.openkilda.model.KildaFeatureToggles;
-import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.SwitchProperties;
-import org.openkilda.model.SwitchProperties.RttState;
-import org.openkilda.model.YFlow;
-import org.openkilda.model.YFlow.SharedEndpoint;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSubType;
 import org.openkilda.rulemanager.adapter.InMemoryDataAdapter;
-import org.openkilda.rulemanager.factory.RuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.BfdCatchRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.BroadCastDiscoveryRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.DropDiscoveryLoopRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.TableDefaultRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.TablePassThroughDefaultRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.UniCastDiscoveryRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.UnicastVerificationVxlanRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.arp.ArpIngressRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.arp.ArpInputPreDropRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressOneSwitchRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressVxlanRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.arp.ArpTransitRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.lacp.DropSlowProtocolsLoopRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.lacp.LacpReplyRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.lldp.LldpIngressRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.lldp.LldpInputPreDropRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressOneSwitchRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.lldp.LldpPostIngressVxlanRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.lldp.LldpTransitRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.noviflow.RoundTripLatencyRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.server42.Server42FlowRttOutputVlanRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.server42.Server42FlowRttOutputVxlanRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.server42.Server42FlowRttTurningRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.server42.Server42FlowRttVxlanTurningRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.server42.Server42IslRttInputRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.server42.Server42IslRttOutputRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.service.server42.Server42IslRttTurningRuleGenerator;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -89,27 +55,30 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class RuleManagerHaFlowRulesTest {
 
     public static final String HA_FLOW_ID = "ha_flow_id";
     public static final String SUB_FLOW_1 = "sub_flow_1";
     public static final String SUB_FLOW_2 = "sub_flow_2";
-    private RuleManagerImpl ruleManager;
-    public static final int ISL_PORT = 1;
-
     public static final PathId PATH_ID_1 = new PathId("path_id_1");
-    public static final String FLOW_ID = "flow";
-    public static final MeterId METER_ID = new MeterId(17);
-    public static final int PORT_NUMBER_1 = 1;
-    public static final int PORT_NUMBER_2 = 2;
-    public static final int PORT_NUMBER_3 = 3;
+    public static final PathId PATH_ID_2 = new PathId("path_id_2");
+    public static final PathId PATH_ID_3 = new PathId("path_id_3");
+    public static final PathId PATH_ID_4 = new PathId("path_id_4");
+    public static final PathId PATH_ID_5 = new PathId("path_id_5");
+    public static final PathId PATH_ID_6 = new PathId("path_id_6");
+    public static final MeterId SHARED_POINT_METER_ID = new MeterId(1);
+    public static final MeterId Y_POINT_METER_ID = new MeterId(2);
+    public static final MeterId SUB_FLOW_1_METER_ID = new MeterId(3);
+    public static final MeterId SUB_FLOW_2_METER_ID = new MeterId(4);
+    public static final GroupId GROUP_ID = new GroupId(5);
     public static final Set<SwitchFeature> FEATURES = Sets.newHashSet(
             RESET_COUNTS_FLAG, METERS, NOVIFLOW_PUSH_POP_VXLAN);
     public static final SwitchId SWITCH_ID_1 = new SwitchId(1);
@@ -117,16 +86,18 @@ public class RuleManagerHaFlowRulesTest {
     public static final SwitchId SWITCH_ID_3 = new SwitchId(3);
     public static final SwitchId SWITCH_ID_4 = new SwitchId(4);
     public static final SwitchId SWITCH_ID_5 = new SwitchId(5);
+    public static final SwitchId SWITCH_ID_6 = new SwitchId(6);
+    public static final SwitchId SWITCH_ID_7 = new SwitchId(7);
     public static final Switch SWITCH_1 = buildSwitch(SWITCH_ID_1, FEATURES);
     public static final Switch SWITCH_2 = buildSwitch(SWITCH_ID_2, FEATURES);
     public static final Switch SWITCH_3 = buildSwitch(SWITCH_ID_3, FEATURES);
     public static final Switch SWITCH_4 = buildSwitch(SWITCH_ID_4, FEATURES);
     public static final Switch SWITCH_5 = buildSwitch(SWITCH_ID_5, FEATURES);
+    public static final Switch SWITCH_6 = buildSwitch(SWITCH_ID_6, FEATURES);
+    public static final Switch SWITCH_7 = buildSwitch(SWITCH_ID_7, FEATURES);
 
-    public static final int TRANSIT_VLAN_ID = 14;
-    public static final int BANDWIDTH = 1000;
     public static final FlowTransitEncapsulation VLAN_ENCAPSULATION = new FlowTransitEncapsulation(
-            TRANSIT_VLAN_ID, FlowEncapsulationType.TRANSIT_VLAN);
+            14, FlowEncapsulationType.TRANSIT_VLAN);
 
     public static final FlowSegmentCookie FORWARD_COOKIE = FlowSegmentCookie.builder()
             .direction(FlowPathDirection.FORWARD).flowEffectiveId(1).subType(FlowSubType.SHARED).build();
@@ -142,37 +113,7 @@ public class RuleManagerHaFlowRulesTest {
     public static final FlowSegmentCookie REVERSE_SUB_COOKIE_2 = REVERSE_COOKIE.toBuilder()
             .subType(FlowSubType.HA_SUB_FLOW_2).build();
 
-    public static final FlowSegmentCookie PROTECTED_FORWARD_COOKIE = FlowSegmentCookie.builder()
-            .direction(FlowPathDirection.FORWARD).flowEffectiveId(2).subType(FlowSubType.SHARED).build();
-    public static final FlowSegmentCookie PROTECTED_REVERSE_COOKIE = FlowSegmentCookie.builder()
-            .direction(FlowPathDirection.REVERSE).flowEffectiveId(2).subType(FlowSubType.SHARED).build();
-
-    public static final FlowSegmentCookie PROTECTED_FORWARD_SUB_COOKIE_1 = PROTECTED_FORWARD_COOKIE.toBuilder()
-            .subType(FlowSubType.HA_SUB_FLOW_1).build();
-    public static final FlowSegmentCookie PROTECTED_REVERSE_SUB_COOKIE_1 = PROTECTED_REVERSE_COOKIE.toBuilder()
-            .subType(FlowSubType.HA_SUB_FLOW_1).build();
-    public static final FlowSegmentCookie PROTECTED_FORWARD_SUB_COOKIE_2 = PROTECTED_FORWARD_COOKIE.toBuilder()
-            .subType(FlowSubType.HA_SUB_FLOW_2).build();
-    public static final FlowSegmentCookie PROTECTED_REVERSE_SUB_COOKIE_2 = PROTECTED_REVERSE_COOKIE.toBuilder()
-            .subType(FlowSubType.HA_SUB_FLOW_2).build();
-
-    public static final FlowPath PATH = FlowPath.builder()
-            .pathId(PATH_ID_1)
-            .cookie(FORWARD_COOKIE)
-            .meterId(METER_ID)
-            .srcSwitch(SWITCH_1)
-            .destSwitch(SWITCH_2)
-            .srcWithMultiTable(true)
-            .bandwidth(BANDWIDTH)
-            .segments(newArrayList(PathSegment.builder()
-                    .pathId(PATH_ID_1)
-                    .srcPort(PORT_NUMBER_2)
-                    .srcSwitch(SWITCH_1)
-                    .destPort(PORT_NUMBER_3)
-                    .destSwitch(SWITCH_2)
-                    .srcWithMultiTable(true)
-                    .build()))
-            .build();
+    private RuleManagerImpl ruleManager;
 
     @Before
     public void setup() {
@@ -182,247 +123,507 @@ public class RuleManagerHaFlowRulesTest {
         when(config.getDiscoPacketSize()).thenReturn(250);
         when(config.getFlowPingMagicSrcMacAddress()).thenReturn("00:26:E1:FF:FF:FE");
         when(config.getDiscoveryBcastPacketDst()).thenReturn("00:26:E1:FF:FF:FF");
-
         ruleManager = new RuleManagerImpl(config);
     }
 
     @Test
-    public void buildSharedEndpointYFlowCommands() {
-        DataAdapter adapter = buildYFlowAdapter(new MeterId(17));
-        List<FlowPath> flowPaths = new ArrayList<>();
-        flowPaths.add(PATH);
-        List<SpeakerData> speakerData = ruleManager.buildRulesForYFlow(flowPaths, adapter);
+    public void buildYShapedHaFlowForwardCommands() {
+        HaFlow haFlow = buildYShapedHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> forwardSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getForwardPath(), false, adapter);
 
-        assertEquals(2, speakerData.size());
+        assertEquals(7, forwardSpeakerData.size());
+
+        Map<SwitchId, List<SpeakerData>> forwardCommands = groupBySwitchId(forwardSpeakerData);
+        assertEquals(3, forwardCommands.get(SWITCH_ID_1).size());
+        assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
+        assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_1), INPUT, INGRESS);
+
+        assertEquals(2, forwardCommands.get(SWITCH_ID_2).size());
+        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
+        assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_2)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_2), TRANSIT);
+
+        assertEquals(1, forwardCommands.get(SWITCH_ID_3).size());
+        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_3)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_3), EGRESS);
+
+        assertEquals(1, forwardCommands.get(SWITCH_ID_4).size());
+        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_4)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_4), EGRESS);
     }
 
     @Test
-    public void buildSharedEndpointYFlowCommandsNullMeterId() {
-        DataAdapter adapter = buildYFlowAdapter(null);
-        List<FlowPath> flowPaths = new ArrayList<>();
-        flowPaths.add(PATH);
+    public void buildYShapedHaFlowReverseCommands() {
+        HaFlow haFlow = buildYShapedHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getReversePath(), false, adapter);
 
-        List<SpeakerData> speakerData = ruleManager.buildRulesForYFlow(flowPaths, adapter);
-        assertEquals(1, speakerData.size());
+        assertEquals(10, reverseSpeakerData.size());
+
+        Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS);
+
+        assertEquals(3, switchCommandMap.get(SWITCH_ID_2).size());
+        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_2)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT, TRANSIT);
+
+        assertEquals(3, switchCommandMap.get(SWITCH_ID_3).size());
+        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_3), INPUT, INGRESS);
+
+        assertEquals(3, switchCommandMap.get(SWITCH_ID_4).size());
+        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_4)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_4), INPUT, INGRESS);
     }
 
     @Test
-    public void buildYPointYFlowCommands() {
-        DataAdapter adapter = buildYFlowAdapter(new MeterId(17));
-        FlowPath path = FlowPath.builder()
-                .pathId(PATH_ID_1)
-                .cookie(REVERSE_COOKIE)
-                .meterId(METER_ID)
-                .srcSwitch(SWITCH_2)
-                .destSwitch(SWITCH_1)
-                .srcWithMultiTable(true)
-                .bandwidth(BANDWIDTH)
-                .segments(newArrayList(PathSegment.builder()
-                        .pathId(PATH_ID_1)
-                        .srcPort(PORT_NUMBER_2)
-                        .srcSwitch(SWITCH_1)
-                        .destPort(PORT_NUMBER_3)
-                        .destSwitch(SWITCH_2)
-                        .srcWithMultiTable(true)
-                        .build()))
-                .build();
+    public void buildLongYShapedHaFlowForwardCommands() {
+        HaFlow haFlow = buildLongYShapedHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> forwardSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getForwardPath(), false, adapter);
+        assertEquals(10, forwardSpeakerData.size());
 
-        List<FlowPath> flowPaths = new ArrayList<>();
-        flowPaths.add(path);
+        Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(forwardSpeakerData);
+        assertEquals(3, switchCommandMap.get(SWITCH_ID_1).size());
+        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_1)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_1), INPUT, INGRESS);
 
-        List<SpeakerData> speakerData = ruleManager.buildRulesForYFlow(flowPaths, adapter);
-        assertEquals(2, speakerData.size());
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
+
+        assertEquals(2, switchCommandMap.get(SWITCH_ID_3).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertEquals(1, getGroupCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_3), TRANSIT);
+
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_4).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_4), TRANSIT);
+
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_5).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_5)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_5), EGRESS);
+
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_6).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_6)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_6), TRANSIT);
+
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_7).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_7)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_7), EGRESS);
     }
 
     @Test
-    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInSingleTableMode() {
-        Switch sw = buildSwitch("OF_13", Collections.emptySet());
-        SwitchId switchId = sw.getSwitchId();
-        SwitchProperties switchProperties = buildSwitchProperties(sw, false);
+    public void buildLongYShapedHaFlowReverseCommands() {
+        HaFlow haFlow = buildLongYShapedHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getReversePath(), false, adapter);
+        assertEquals(13, reverseSpeakerData.size());
 
-        List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
-                switchId, buildAdapter(switchId, switchProperties, new HashSet<>(), false, LAG_PORTS));
+        Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS);
 
-        assertEquals(10, generators.size());
-        assertTrue(generators.stream().anyMatch(g -> g instanceof TableDefaultRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof DropDiscoveryLoopRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof BfdCatchRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof RoundTripLatencyRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof UnicastVerificationVxlanRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof DropSlowProtocolsLoopRuleGenerator));
-        assertEquals(2, generators.stream().filter(g -> g instanceof LacpReplyRuleGenerator).count());
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
+
+        assertEquals(3, switchCommandMap.get(SWITCH_ID_3).size());
+        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_3), TRANSIT, TRANSIT);
+
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_4).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_4), TRANSIT);
+
+        assertEquals(3, switchCommandMap.get(SWITCH_ID_5).size());
+        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_5)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_5)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_5), INPUT, INGRESS);
+
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_6).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_6)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_6), TRANSIT);
+
+        assertEquals(3, switchCommandMap.get(SWITCH_ID_7).size());
+        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_7)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_7)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_7), INPUT, INGRESS);
+    }
+
+
+    @Test
+    public void buildISharedDifferentLengthHaFlowForwardCommands() {
+        HaFlow haFlow = buildIShapedDifferentLengthHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> forwardSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getForwardPath(), false, adapter);
+
+        assertEquals(7, forwardSpeakerData.size());
+
+        Map<SwitchId, List<SpeakerData>> forwardCommands = groupBySwitchId(forwardSpeakerData);
+        assertEquals(3, forwardCommands.get(SWITCH_ID_1).size());
+        assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
+        assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_1), INPUT, INGRESS);
+
+        assertEquals(1, forwardCommands.get(SWITCH_ID_2).size());
+        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_2), TRANSIT);
+
+        assertEquals(2, forwardCommands.get(SWITCH_ID_3).size());
+        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_3)));
+        assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_3)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_3), TRANSIT);
+
+        assertEquals(1, forwardCommands.get(SWITCH_ID_4).size());
+        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_4)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_4), EGRESS);
     }
 
     @Test
-    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInMultiTableMode() {
-        Switch sw = buildSwitch("OF_13", Collections.emptySet());
-        SwitchId switchId = sw.getSwitchId();
-        SwitchProperties switchProperties = buildSwitchProperties(sw, true);
+    public void buildIShapedDifferentLengthHaFlowReverseCommands() {
+        HaFlow haFlow = buildIShapedDifferentLengthHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getReversePath(), false, adapter);
 
-        List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
-                switchId, buildAdapter(switchId, switchProperties, new HashSet<>(), false, LAG_PORTS));
+        assertEquals(9, reverseSpeakerData.size());
 
-        assertEquals(21, generators.size());
-        assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof DropDiscoveryLoopRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof BfdCatchRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof RoundTripLatencyRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof UnicastVerificationVxlanRuleGenerator));
+        Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS);
 
-        assertEquals(4, generators.stream().filter(g -> g instanceof TableDefaultRuleGenerator).count());
-        assertEquals(2, generators.stream().filter(g -> g instanceof TablePassThroughDefaultRuleGenerator).count());
-        assertEquals(1, generators.stream().filter(g -> g instanceof DropSlowProtocolsLoopRuleGenerator).count());
-        assertEquals(2, generators.stream().filter(g -> g instanceof LacpReplyRuleGenerator).count());
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
 
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressVxlanRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressOneSwitchRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressVxlanRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressOneSwitchRuleGenerator));
+        assertEquals(4, switchCommandMap.get(SWITCH_ID_3).size());
+        assertEquals(3, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_3), INPUT, INGRESS, TRANSIT);
+
+        assertEquals(3, switchCommandMap.get(SWITCH_ID_4).size());
+        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_4)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_4), INPUT, INGRESS);
     }
 
     @Test
-    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInMultiTableModeWithSwitchArpAndLldp() {
-        Switch sw = buildSwitch("OF_13", Collections.emptySet());
-        SwitchId switchId = sw.getSwitchId();
-        SwitchProperties switchProperties = buildSwitchProperties(sw, true, true, true);
+    public void buildIShapedEqualLengthHaFlowForwardCommands() {
+        HaFlow haFlow = buildIShapedEqualLengthHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> forwardSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getForwardPath(), false, adapter);
 
-        List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
-                switchId, buildAdapter(switchId, switchProperties, new HashSet<>(), false, null));
+        assertEquals(6, forwardSpeakerData.size());
 
-        assertEquals(24, generators.size());
-        assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
+        Map<SwitchId, List<SpeakerData>> forwardCommands = groupBySwitchId(forwardSpeakerData);
+        assertEquals(3, forwardCommands.get(SWITCH_ID_1).size());
+        assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
+        assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_1), INPUT, INGRESS);
 
-        assertEquals(4, generators.stream().filter(g -> g instanceof TableDefaultRuleGenerator).count());
-        assertEquals(2, generators.stream().filter(g -> g instanceof TablePassThroughDefaultRuleGenerator).count());
+        assertEquals(1, forwardCommands.get(SWITCH_ID_2).size());
+        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_2), TRANSIT);
 
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressVxlanRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressOneSwitchRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressVxlanRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressOneSwitchRuleGenerator));
-
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpTransitRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpInputPreDropRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpIngressRuleGenerator));
-
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpTransitRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpInputPreDropRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpIngressRuleGenerator));
+        assertEquals(2, forwardCommands.get(SWITCH_ID_3).size());
+        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_3)));
+        assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_3)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_3), EGRESS);
     }
 
     @Test
-    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInMultiTableModeWithAllRules() {
-        Switch sw = buildSwitch("OF_13", Collections.emptySet());
-        SwitchId switchId = sw.getSwitchId();
-        SwitchProperties switchProperties = buildSwitchProperties(sw, true, true, true, true, RttState.ENABLED);
+    public void buildIShapedEqualLengthHaFlowReverseCommands() {
+        HaFlow haFlow = buildIShapedEqualLengthHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getReversePath(), false, adapter);
 
-        List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
-                switchId, buildAdapter(switchId, switchProperties, Sets.newHashSet(ISL_PORT), true, LAG_PORTS));
+        assertEquals(7, reverseSpeakerData.size());
 
-        assertEquals(37, generators.size());
-        assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
+        Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS);
 
-        assertEquals(4, generators.stream().filter(g -> g instanceof TableDefaultRuleGenerator).count());
-        assertEquals(2, generators.stream().filter(g -> g instanceof TablePassThroughDefaultRuleGenerator).count());
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
 
-        assertEquals(4, generators.stream().filter(g -> g instanceof TableDefaultRuleGenerator).count());
-        assertEquals(2, generators.stream().filter(g -> g instanceof TablePassThroughDefaultRuleGenerator).count());
-
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressVxlanRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpPostIngressOneSwitchRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressVxlanRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpPostIngressOneSwitchRuleGenerator));
-
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpTransitRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpInputPreDropRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof LldpIngressRuleGenerator));
-
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpTransitRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpInputPreDropRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof ArpIngressRuleGenerator));
-
-        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42FlowRttTurningRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42FlowRttVxlanTurningRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42FlowRttOutputVlanRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42FlowRttOutputVxlanRuleGenerator));
-
-        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42IslRttInputRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42IslRttTurningRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof Server42IslRttOutputRuleGenerator));
+        assertEquals(5, switchCommandMap.get(SWITCH_ID_3).size());
+        assertEquals(4, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_3), INPUT, INGRESS, INPUT, INGRESS);
     }
 
-    private DataAdapter buildAdapter(
-            SwitchId switchId, SwitchProperties switchProperties, Set<Integer> islPorts, boolean server42,
-            List<LagLogicalPort> lagLogicalPorts) {
-        Map<SwitchId, SwitchProperties> switchPropertiesMap = new HashMap<>();
-        switchPropertiesMap.put(switchId, switchProperties);
-        Map<SwitchId, Set<Integer>> islMap = new HashMap<>();
-        islMap.putIfAbsent(switchId, islPorts);
-        Map<SwitchId, List<LagLogicalPort>> lagMap = new HashMap<>();
-        if (lagLogicalPorts != null) {
-            lagMap.put(switchId, lagLogicalPorts);
-        }
-        return InMemoryDataAdapter.builder()
-                .switchProperties(switchPropertiesMap)
-                .switchIslPorts(islMap)
-                .featureToggles(KildaFeatureToggles.builder()
-                        .server42FlowRtt(server42)
-                        .server42IslRtt(server42)
-                        .build())
-                .switchLagPorts(lagMap)
-                .build();
+    @Test
+    public void buildIShapedEqualLengthDifferentIslHaFlowForwardCommands() {
+        HaFlow haFlow = buildIShapedEqualLengthDifferentIslsHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> forwardSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getForwardPath(), false, adapter);
+
+        assertEquals(6, forwardSpeakerData.size());
+
+        Map<SwitchId, List<SpeakerData>> forwardCommands = groupBySwitchId(forwardSpeakerData);
+        assertEquals(4, forwardCommands.get(SWITCH_ID_1).size());
+        assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
+        assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_1)));
+        assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_1), INPUT, INGRESS);
+
+        assertEquals(2, forwardCommands.get(SWITCH_ID_2).size());
+        assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_2), EGRESS, EGRESS);
     }
 
-    private void build() {
+    @Test
+    public void buildIShapedEqualLengthDifferentIslHaFlowReverseCommands() {
+        HaFlow haFlow = buildIShapedEqualLengthDifferentIslsHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getReversePath(), false, adapter);
 
-        //
-        //
-        //      1------2-----3
-        //             |
-        //             4
+        assertEquals(9, reverseSpeakerData.size());
+
+        Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
+        assertEquals(3, switchCommandMap.get(SWITCH_ID_1).size());
+        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_1)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS, EGRESS);
+
+        assertEquals(6, switchCommandMap.get(SWITCH_ID_2).size());
+        assertEquals(4, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        assertEquals(2, getMeterCount(switchCommandMap.get(SWITCH_ID_2)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_2), INPUT, INGRESS, INPUT, INGRESS);
+    }
+
+    @Test
+    public void buildIShapedOneSwitchHaFlowForwardCommands() {
+        HaFlow haFlow = buildIShapedOneSwitchHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> forwardSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getForwardPath(), false, adapter);
+
+        assertEquals(6, forwardSpeakerData.size());
+
+        Map<SwitchId, List<SpeakerData>> forwardCommands = groupBySwitchId(forwardSpeakerData);
+        assertEquals(4, forwardCommands.get(SWITCH_ID_1).size());
+        assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
+        assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
+        assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_1)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_1), INPUT, INGRESS);
+
+        assertEquals(1, forwardCommands.get(SWITCH_ID_2).size());
+        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_2), TRANSIT);
+
+        assertEquals(1, forwardCommands.get(SWITCH_ID_3).size());
+        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_3)));
+        assertFlowTables(forwardCommands.get(SWITCH_ID_3), EGRESS);
+    }
+
+    @Test
+    public void buildIShapedOneSwitchHaFlowReverseCommands() {
+        HaFlow haFlow = buildIShapedOneSwitchHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getReversePath(), false, adapter);
+
+        assertEquals(8, reverseSpeakerData.size());
+
+        Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
+        assertEquals(4, switchCommandMap.get(SWITCH_ID_1).size());
+        assertEquals(3, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_1)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_1), INPUT, INGRESS, EGRESS);
+
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
+
+        assertEquals(3, switchCommandMap.get(SWITCH_ID_3).size());
+        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_3), INPUT, INGRESS);
+    }
+
+    private HaFlow buildYShapedHaFlow() {
+        // HA-flow       3
+        //              /
+        //      1------2
+        //              \
+        //               4
 
         HaFlow haFlow = buildHaFlow(SWITCH_1, SWITCH_3, SWITCH_4);
         HaSubFlow subFlow1 = haFlow.getHaSubFlow(SUB_FLOW_1).get();
         HaSubFlow subFlow2 = haFlow.getHaSubFlow(SUB_FLOW_2).get();
-        FlowPath[] subPaths1 = buildSubPathPair(null, null, subFlow1, SWITCH_1, SWITCH_2, SWITCH_3);
-        FlowPath[] subPaths2 = buildSubPathPair(null, null, subFlow2, SWITCH_1, SWITCH_2, SWITCH_4);
+        FlowPath[] subPaths1 = buildSubPathPair(PATH_ID_1, PATH_ID_2, FORWARD_SUB_COOKIE_1, REVERSE_SUB_COOKIE_1,
+                subFlow1, SWITCH_1, SWITCH_2, SWITCH_3);
+        FlowPath[] subPaths2 = buildSubPathPair(PATH_ID_3, PATH_ID_4, FORWARD_SUB_COOKIE_2, REVERSE_SUB_COOKIE_2,
+                subFlow2, SWITCH_1, SWITCH_2, SWITCH_4);
+        setMainPaths(haFlow, PATH_ID_5, PATH_ID_6, subPaths1, subPaths2);
+        setYPoint(haFlow, SWITCH_ID_2);
+        return haFlow;
+    }
 
+    private HaFlow buildLongYShapedHaFlow() {
+        // HA-flow             4-----5
+        //                    /
+        //      1------2-----3
+        //                    \
+        //                     6-----7
 
+        HaFlow haFlow = buildHaFlow(SWITCH_1, SWITCH_5, SWITCH_7);
+        HaSubFlow subFlow1 = haFlow.getHaSubFlow(SUB_FLOW_1).get();
+        HaSubFlow subFlow2 = haFlow.getHaSubFlow(SUB_FLOW_2).get();
+        FlowPath[] subPaths1 = buildSubPathPair(PATH_ID_1, PATH_ID_2, FORWARD_SUB_COOKIE_1, REVERSE_SUB_COOKIE_1,
+                subFlow1, SWITCH_1, SWITCH_2, SWITCH_3, SWITCH_4, SWITCH_5);
+        FlowPath[] subPaths2 = buildSubPathPair(PATH_ID_3, PATH_ID_4, FORWARD_SUB_COOKIE_2, REVERSE_SUB_COOKIE_2,
+                subFlow2, SWITCH_1, SWITCH_2, SWITCH_3, SWITCH_6, SWITCH_7);
+        setMainPaths(haFlow, PATH_ID_5, PATH_ID_6, subPaths1, subPaths2);
+        setYPoint(haFlow, SWITCH_ID_3);
+        return haFlow;
+    }
+
+    private HaFlow buildIShapedDifferentLengthHaFlow() {
+        // HA-flow             4
+        //                    /
+        //      1------2-----3
+        //                   ^
+        //                   Y-point
+
+        HaFlow haFlow = buildHaFlow(SWITCH_1, SWITCH_3, SWITCH_4);
+        HaSubFlow subFlow1 = haFlow.getHaSubFlow(SUB_FLOW_1).get();
+        HaSubFlow subFlow2 = haFlow.getHaSubFlow(SUB_FLOW_2).get();
+        FlowPath[] subPaths1 = buildSubPathPair(PATH_ID_1, PATH_ID_2, FORWARD_SUB_COOKIE_1, REVERSE_SUB_COOKIE_1,
+                subFlow1, SWITCH_1, SWITCH_2, SWITCH_3);
+        FlowPath[] subPaths2 = buildSubPathPair(PATH_ID_3, PATH_ID_4, FORWARD_SUB_COOKIE_2, REVERSE_SUB_COOKIE_2,
+                subFlow2, SWITCH_1, SWITCH_2, SWITCH_3, SWITCH_4);
+        setMainPaths(haFlow, PATH_ID_5, PATH_ID_6, subPaths1, subPaths2);
+        setYPoint(haFlow, SWITCH_ID_3);
+        return haFlow;
+    }
+
+    private HaFlow buildIShapedEqualLengthHaFlow() {
+        // HA-flow
+        //
+        //      1------2-----3
+        //                   ^
+        //                   Y-point
+
+        HaFlow haFlow = buildHaFlow(SWITCH_1, SWITCH_3, SWITCH_3);
+        HaSubFlow subFlow1 = haFlow.getHaSubFlow(SUB_FLOW_1).get();
+        HaSubFlow subFlow2 = haFlow.getHaSubFlow(SUB_FLOW_2).get();
+        FlowPath[] subPaths1 = buildSubPathPair(PATH_ID_1, PATH_ID_2, FORWARD_SUB_COOKIE_1, REVERSE_SUB_COOKIE_1,
+                subFlow1, SWITCH_1, SWITCH_2, SWITCH_3);
+        FlowPath[] subPaths2 = buildSubPathPair(PATH_ID_3, PATH_ID_4, FORWARD_SUB_COOKIE_2, REVERSE_SUB_COOKIE_2,
+                subFlow2, SWITCH_1, SWITCH_2, SWITCH_3);
+        setMainPaths(haFlow, PATH_ID_5, PATH_ID_6, subPaths1, subPaths2);
+        setYPoint(haFlow, SWITCH_ID_3);
+        return haFlow;
+    }
+
+    private HaFlow buildIShapedEqualLengthDifferentIslsHaFlow() {
+        // HA-flow
+        //
+        //      1======2
+        //      ^
+        //      Y-point
+
+        HaFlow haFlow = buildHaFlow(SWITCH_1, SWITCH_2, SWITCH_2);
+        HaSubFlow subFlow1 = haFlow.getHaSubFlow(SUB_FLOW_1).get();
+        HaSubFlow subFlow2 = haFlow.getHaSubFlow(SUB_FLOW_2).get();
+        FlowPath[] subPaths1 = buildSubPathPair(PATH_ID_1, PATH_ID_2, FORWARD_SUB_COOKIE_1, REVERSE_SUB_COOKIE_1,
+                subFlow1, SWITCH_1, SWITCH_2);
+        FlowPath[] subPaths2 = buildSubPathPair(PATH_ID_3, PATH_ID_4, FORWARD_SUB_COOKIE_2, REVERSE_SUB_COOKIE_2,
+                subFlow2, SWITCH_1, SWITCH_2);
+        setMainPaths(haFlow, PATH_ID_5, PATH_ID_6, subPaths1, subPaths2);
+        setYPoint(haFlow, SWITCH_ID_1);
+        return haFlow;
+    }
+
+    private HaFlow buildIShapedOneSwitchHaFlow() {
+        // HA-flow
+        //
+        //      1------2-----3
+        //      ^
+        //  Y-point
+
+        HaFlow haFlow = buildHaFlow(SWITCH_1, SWITCH_1, SWITCH_3);
+        HaSubFlow subFlow1 = haFlow.getHaSubFlow(SUB_FLOW_1).get();
+        HaSubFlow subFlow2 = haFlow.getHaSubFlow(SUB_FLOW_2).get();
+        FlowPath[] subPaths1 = buildSubPathPair(PATH_ID_1, PATH_ID_2, FORWARD_SUB_COOKIE_1, REVERSE_SUB_COOKIE_1,
+                subFlow1, SWITCH_1);
+        FlowPath[] subPaths2 = buildSubPathPair(PATH_ID_3, PATH_ID_4, FORWARD_SUB_COOKIE_2, REVERSE_SUB_COOKIE_2,
+                subFlow2, SWITCH_1, SWITCH_2, SWITCH_3);
+        setMainPaths(haFlow, PATH_ID_5, PATH_ID_6, subPaths1, subPaths2);
+        setYPoint(haFlow, SWITCH_ID_1);
+        return haFlow;
+    }
+
+    private static void setYPoint(HaFlow haFlow, SwitchId switchId3) {
+        haFlow.getForwardPath().setYPointSwitchId(switchId3);
+        haFlow.getReversePath().setYPointSwitchId(switchId3);
     }
 
     private void setMainPaths(HaFlow haFlow, PathId forwardId, PathId reverseId,
                               FlowPath[] firstSubPaths, FlowPath[] secondSubPaths) {
-        HaFlowPath.builder()
+        firstSubPaths[1].setMeterId(SUB_FLOW_1_METER_ID);
+        secondSubPaths[1].setMeterId(SUB_FLOW_2_METER_ID);
+
+        HaFlowPath forwardHaPath = HaFlowPath.builder()
+                .cookie(FORWARD_COOKIE)
+                .sharedPointMeterId(SHARED_POINT_METER_ID)
+                .yPointMeterId(null)
+                .yPointGroupId(GROUP_ID)
                 .haPathId(forwardId)
                 .sharedSwitch(haFlow.getSharedSwitch())
-
                 .build();
+        forwardHaPath.setHaSubFlows(haFlow.getHaSubFlows());
+        forwardHaPath.setSubPaths(Lists.newArrayList(firstSubPaths[0], secondSubPaths[0]));
+        haFlow.setForwardPath(forwardHaPath);
 
-
-
+        HaFlowPath reverseHaPath = HaFlowPath.builder()
+                .cookie(REVERSE_COOKIE)
+                .sharedPointMeterId(null)
+                .yPointMeterId(Y_POINT_METER_ID)
+                .yPointGroupId(null)
+                .haPathId(reverseId)
+                .sharedSwitch(haFlow.getSharedSwitch())
+                .build();
+        reverseHaPath.setHaSubFlows(haFlow.getHaSubFlows());
+        reverseHaPath.setSubPaths(Lists.newArrayList(firstSubPaths[1], secondSubPaths[1]));
+        haFlow.setReversePath(reverseHaPath);
     }
 
-    private FlowPath[] buildSubPathPair(PathId forwardId, PathId reverseId, HaSubFlow haSubFlow, Switch... switches) {
+    private FlowPath[] buildSubPathPair(
+            PathId forwardId, PathId reverseId, FlowSegmentCookie forwardCookie, FlowSegmentCookie reverseCookie,
+            HaSubFlow haSubFlow, Switch... switches) {
         Switch[] reverseSwitches = Arrays.copyOf(switches, switches.length);
         ArrayUtils.reverse(reverseSwitches);
         return new FlowPath[]{
-                buildSubPath(forwardId, haSubFlow, switches),
-                buildSubPath(reverseId, haSubFlow, reverseSwitches)
+                buildSubPath(forwardId, haSubFlow, forwardCookie, switches),
+                buildSubPath(reverseId, haSubFlow, reverseCookie, reverseSwitches)
         };
-    }
-
-    private HaFlowPath buildHaFlowPath(HaFlow haFlow, HaSubFlow haSubFlow, FlowPath subPath1) {
-        return null;
     }
 
     private HaFlow buildHaFlow(Switch sharedSwitch, Switch endpointSwitch1, Switch endpointSwitch2) {
@@ -438,13 +639,13 @@ public class RuleManagerHaFlowRulesTest {
     private HaSubFlow buildHaSubFlow(Switch sw, String subFlowId) {
         return HaSubFlow.builder()
                 .haSubFlowId(subFlowId)
-                .haSubFlowId(HA_FLOW_ID)
                 .endpointSwitch(sw)
                 .build();
     }
 
-    private FlowPath buildSubPath(PathId pathId, HaSubFlow haSubFlow, Switch... switches) {
+    private FlowPath buildSubPath(PathId pathId, HaSubFlow haSubFlow, FlowSegmentCookie cookie, Switch... switches) {
         FlowPath subPath = FlowPath.builder()
+                .cookie(cookie)
                 .pathId(pathId)
                 .srcSwitch(switches[0])
                 .destSwitch(switches[switches.length - 1])
@@ -462,53 +663,68 @@ public class RuleManagerHaFlowRulesTest {
         return subPath;
     }
 
-    private DataAdapter buildYFlowAdapter(MeterId meterId) {
-        SwitchProperties switchProperties = buildSwitchProperties(SWITCH_1, false);
+    private DataAdapter buildAdapter(HaFlow haFlow) {
+        List<FlowPath> subPaths = haFlow.getPaths().stream().flatMap(path -> path.getSubPaths().stream())
+                .collect(Collectors.toList());
 
-        Map<SwitchId, SwitchProperties> switchPropertiesMap = new HashMap<>();
-        switchPropertiesMap.put(SWITCH_ID_1, switchProperties);
-        Map<SwitchId, Set<Integer>> islMap = new HashMap<>();
-        islMap.putIfAbsent(SWITCH_ID_1, new HashSet<>());
-        Map<SwitchId, List<LagLogicalPort>> lagMap = new HashMap<>();
-        lagMap.put(SWITCH_ID_1, LAG_PORTS);
+        Set<Switch> switches = Sets.newHashSet(haFlow.getSharedSwitch());
+        haFlow.getHaSubFlows().stream().map(HaSubFlow::getEndpointSwitch).forEach(switches::add);
+        subPaths.stream()
+                .flatMap(path -> path.getSegments().stream())
+                .flatMap(segment -> Stream.of(segment.getSrcSwitch(), segment.getDestSwitch()))
+                .forEach(switches::add);
 
-        YFlow yFlow = YFlow.builder()
-                .yFlowId("yFlowId")
-                .sharedEndpoint(new SharedEndpoint(SWITCH_ID_1, 1))
-                .yPoint(SWITCH_ID_2)
-                .protectedPathYPoint(SWITCH_ID_2)
-                .sharedEndpointMeterId(meterId)
-                .meterId(meterId)
-                .build();
-        Map<PathId, YFlow> yFlows = new HashMap<>();
-        yFlows.put(PATH_ID_1, yFlow);
+        Map<PathId, HaFlow> haFlowMap = haFlow.getPaths().stream()
+                .collect(Collectors.toMap(HaFlowPath::getHaPathId, HaFlowPath::getHaFlow));
+        for (FlowPath subPath : subPaths) {
+            haFlowMap.put(subPath.getPathId(), subPath.getHaFlowPath().getHaFlow());
+        }
 
-        Map<SwitchId, Switch> switches = new HashMap<>();
-        switches.put(SWITCH_ID_1, SWITCH_1);
-        switches.put(SWITCH_ID_2, SWITCH_2);
-
-        Flow flow = Flow.builder()
-                .flowId("flow")
-                .srcSwitch(buildSwitch(SWITCH_ID_1, Collections.emptySet()))
-                .destSwitch(buildSwitch(SWITCH_ID_2, Collections.emptySet()))
-                .build();
-        flow.setForwardPathId(PATH_ID_1);
-        flow.setReversePathId(PATH_ID_1);
-
-        Map<PathId, Flow> flows = new HashMap<>();
-        flows.put(PATH_ID_1, flow);
-
-        Map<PathId, FlowTransitEncapsulation> transitEncapsulationMap = new HashMap<>();
-        transitEncapsulationMap.put(PATH_ID_1, VLAN_ENCAPSULATION);
+        Map<PathId, FlowTransitEncapsulation> encapsulationMap = new HashMap<>();
+        for (HaFlowPath haFlowPath : haFlow.getPaths()) {
+            encapsulationMap.put(haFlowPath.getHaPathId(), VLAN_ENCAPSULATION);
+        }
 
         return InMemoryDataAdapter.builder()
-                .switchProperties(switchPropertiesMap)
-                .switches(switches)
-                .transitEncapsulations(transitEncapsulationMap)
-                .flows(flows)
-                .switchIslPorts(islMap)
-                .switchLagPorts(lagMap)
-                .yFlows(yFlows)
+                .commonFlowPaths(new HashMap<>())
+                .haFlowSubPaths(subPaths.stream().collect(toMap(FlowPath::getPathId, identity())))
+                .transitEncapsulations(encapsulationMap)
+                .switches(switches.stream().collect(Collectors.toMap(Switch::getSwitchId, identity())))
+                .haFlowMap(haFlowMap)
+                .haFlowPathMap(haFlow.getPaths().stream().collect(toMap(HaFlowPath::getHaPathId, identity())))
                 .build();
+    }
+
+
+    private void assertFlowTables(Collection<SpeakerData> commands, OfTable... expectedTables) {
+        List<OfTable> actualTables = commands.stream()
+                .filter(FlowSpeakerData.class::isInstance)
+                .map(FlowSpeakerData.class::cast)
+                .map(FlowSpeakerData::getTable)
+                .sorted()
+                .collect(Collectors.toList());
+
+        Arrays.sort(expectedTables);
+        assertEquals(Arrays.asList(expectedTables), actualTables);
+    }
+
+    private int getFlowCount(Collection<SpeakerData> commands) {
+        return getCommandCount(commands, FlowSpeakerData.class);
+    }
+
+    private int getMeterCount(Collection<SpeakerData> commands) {
+        return getCommandCount(commands, MeterSpeakerData.class);
+    }
+
+    private int getGroupCount(Collection<SpeakerData> commands) {
+        return getCommandCount(commands, GroupSpeakerData.class);
+    }
+
+    private int getCommandCount(Collection<SpeakerData> commands, Class<? extends SpeakerData> clazz) {
+        return (int) commands.stream().filter(clazz::isInstance).count();
+    }
+
+    private Map<SwitchId, List<SpeakerData>> groupBySwitchId(Collection<SpeakerData> commands) {
+        return commands.stream().collect(Collectors.groupingBy(SpeakerData::getSwitchId));
     }
 }

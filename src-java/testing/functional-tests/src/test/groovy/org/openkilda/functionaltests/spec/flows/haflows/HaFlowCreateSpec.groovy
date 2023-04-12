@@ -16,6 +16,7 @@ import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload
 
 import groovy.util.logging.Slf4j
@@ -40,9 +41,6 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
     def "Valid ha-flow can be created [!NO TRAFFIC CHECK!], covered cases: #coveredCases"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         assumeTrue(swT != null, "These cases cannot be covered on given topology: $coveredCases")
-        if (coveredCases.toString().contains("qinq")) {
-            assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
-        }
 
         when: "Create a ha-flow of certain configuration"
         def haFlow = northboundV2.addHaFlow(haFlowRequest)
@@ -62,7 +60,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
         and: "And involved switches pass validation"
         withPool {
-            haFlowHelper.getInvolvedSwitches(haFlow).eachParallel { swId ->
+            haFlowHelper.getInvolvedSwitches(haFlow).eachParallel { SwitchId swId ->
                 assert northboundV2.validateSwitch(swId).isAsExpected()
             }
         }
@@ -96,6 +94,36 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.to(MessageError).with {
             assert errorMessage == "Could not create ha-flow"
             assertThat(errorDescription).matches(/HA-flow .*? already exists/)
+        }
+
+        cleanup:
+        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+    }
+
+    @Tidy
+    def "User cannot create a ha-flow with equal A-B endpoints and different inner vlans at these endpoints"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
+        given: "A switch triplet with equal A-B endpoint switches"
+        def swT  = topologyHelper.switchTriplets[0]
+        def iShapedSwitchTriplet = new SwitchTriplet(swT.shared, swT.ep1, swT.ep1, swT.pathsEp1, swT.pathsEp1)
+
+        when: "Try to create I-shaped HA-flow request with equal A-B endpoint switches and different innerVlans"
+        def haFlowRequest = haFlowHelper.randomHaFlow(iShapedSwitchTriplet)
+        haFlowRequest.subFlows[0].endpoint.vlanId = 1
+        haFlowRequest.subFlows[0].endpoint.innerVlanId = 2
+        haFlowRequest.subFlows[1].endpoint.vlanId = 3
+        haFlowRequest.subFlows[1].endpoint.innerVlanId = 4
+        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
+
+        then: "Error is received"
+        def exc = thrown(HttpClientErrorException)
+        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.responseBodyAsString.to(MessageError).with {
+            assert errorMessage == "Could not create ha-flow"
+            assertThat(errorDescription).matches("To have ability to use double vlan tagging for both sub flow "
+            + "destination endpoints which are placed on one switch .*? you must set equal inner vlan for both endpoints. "
+            + "Current inner vlans: ${haFlowRequest.subFlows[0].endpoint.innerVlanId} and "
+            + "${haFlowRequest.subFlows[1].endpoint.innerVlanId}.")
         }
 
         cleanup:
@@ -166,8 +194,8 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
                 it.sharedEndpoint.innerVlanId = 124
                 it.subFlows[1].endpoint.portNumber = it.subFlows[0].endpoint.portNumber
                 it.subFlows[0].endpoint.vlanId = 222
-                it.subFlows[1].endpoint.vlanId = 222
-                it.subFlows[0].endpoint.innerVlanId = 333
+                it.subFlows[1].endpoint.vlanId = 333
+                it.subFlows[0].endpoint.innerVlanId = 444
                 it.subFlows[1].endpoint.innerVlanId = 444
             }
             add([swT: swT, haFlow: haFlow, coveredCases: ["se qinq, ep1-ep2 same sw-port, qinq"]])

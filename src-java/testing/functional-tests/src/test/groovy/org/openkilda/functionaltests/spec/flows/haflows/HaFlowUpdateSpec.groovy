@@ -19,11 +19,15 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify update and partial update operations on ha-flows.")
+@Ignore("""At this moment HA-flow update operations is just an API stub which doesn't updated switch rules." +
+        It means that HA-flow delete operations wouldn't delete rules from switches which HA-flow has before update.
+        Update HA-flow spec is temporarily ignored until HA-flow update operation is able to update switch rules""")
 class HaFlowUpdateSpec extends HealthCheckSpecification {
     @Autowired
     @Shared

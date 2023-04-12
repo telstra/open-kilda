@@ -62,7 +62,6 @@ import com.google.common.collect.Sets;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.map.LazyMap;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -297,7 +296,7 @@ public class RuleManagerImpl implements RuleManager {
                 .collect(Collectors.toList());
 
         result.addAll(buildYFlowRulesForSwitch(switchId, adapter));
-        result.addAll(buildHaFlowRulesForSwitch(switchId, adapter));
+        result.addAll(buildHaFlowRulesForSwitch(adapter));
         return result;
     }
 
@@ -434,106 +433,17 @@ public class RuleManagerImpl implements RuleManager {
         return result;
     }
 
-    private List<SpeakerData> buildHaFlowRulesForSwitch(SwitchId switchId, DataAdapter adapter) {
+    private List<SpeakerData> buildHaFlowRulesForSwitch(DataAdapter adapter) {
         List<SpeakerData> result = new ArrayList<>();
-        Map<PathId, UUID> sharedMeterMap = LazyMap.lazyMap(new HashMap<>(), UUID::randomUUID);
+        Map<PathId, HaFlowPath> haFlowPathMap = new HashMap<>();
 
-        for (FlowPath haSubPath : adapter.getHaFlowSubPaths().values()) {
-            result.addAll(buildHaSubPathRulesForSwitch(switchId, haSubPath, sharedMeterMap, adapter));
-        }
-        return result;
-    }
-
-    private List<SpeakerData> buildHaSubPathRulesForSwitch(
-            SwitchId switchId, FlowPath subPath, Map<PathId, UUID> sharedMeterMap, DataAdapter adapter) {
-        List<SpeakerData> result = new ArrayList<>();
-        if (subPath.getHaFlowPathId() == null) {
-            // Just log the error to do not fail whole operation.
-            log.error("Flow sub path {} has no ha-flow path", subPath);
-            return result;
+        for (FlowPath subPath : adapter.getHaFlowSubPaths().values()) {
+            haFlowPathMap.putIfAbsent(subPath.getHaFlowPathId(), adapter.getHaFlowPath(subPath.getHaFlowPathId()));
         }
 
-        HaFlow haFlow = adapter.getHaFlow(subPath.getPathId());
-        HaFlowPath haPath = subPath.getHaFlowPath();
-        SwitchId yPointSwitchId = haPath.getYPointSwitchId();
-        PathId oppositePathId = haFlow.getOppositePathId(haPath.getHaPathId()).orElse(null);
-        FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(haPath.getHaPathId(), oppositePathId);
-
-        // ingress
-        if (!haFlow.isProtectedPath(haPath.getHaPathId())) {
-            if (switchId.equals(FlowSideAdapter.makeIngressAdapter(haFlow, subPath).getEndpoint().getSwitchId())) {
-                if (subPath.isForward()) {
-                    result.addAll(buildForwardIngressHaRules(haFlow, haPath, encapsulation, false, adapter));
-                } else {
-                    MeterId meterId;
-                    UUID sharedMeterUuid = null;
-                    if (subPath.getSrcSwitchId().equals(yPointSwitchId)) {
-                        meterId = haPath.getYPointMeterId();
-                        sharedMeterUuid = sharedMeterMap.get(haPath.getHaPathId());
-                    } else {
-                        meterId = subPath.getMeterId();
-                    }
-                    result.addAll(buildHaIngressRules(haFlow, subPath, encapsulation, false, meterId, new HashSet<>(),
-                            sharedMeterUuid, true, adapter));
-                }
-            }
+        for (HaFlowPath haFlowPath : haFlowPathMap.values()) {
+            result.addAll(buildHaPathRules(haFlowPath, false, true, adapter));
         }
-
-        if (subPath.isOneSwitchPath()) {
-            return result;
-        }
-
-        boolean yPointIsPassed = subPath.getSrcSwitchId().equals(yPointSwitchId);
-
-        // transit
-        for (int i = 1; i < subPath.getSegments().size(); i++) {
-            PathSegment firstSegment = subPath.getSegments().get(i - 1);
-            PathSegment secondSegment = subPath.getSegments().get(i);
-            if (isTargetSegments(switchId, firstSegment, secondSegment)) {
-                if (switchId.equals(yPointSwitchId)) {
-                    if (subPath.isForward()) {
-                        result.addAll(buildYPointForwardTransitHaRules(
-                                haPath, encapsulation, i - 1, haPath.getSubPaths(),
-                                firstSegment.getDestPort(), adapter));
-
-                    } else {
-                        result.addAll(buildTransitHaRules(
-                                subPath, firstSegment, secondSegment, encapsulation, haPath.getYPointMeterId(),
-                                sharedMeterMap.get(haPath.getHaPathId()), true, yPointIsPassed, adapter));
-                    }
-                } else {
-                    boolean sharedSegment = subPath.isForward() != yPointIsPassed;
-                    result.addAll(buildTransitHaRules(subPath, firstSegment, secondSegment, encapsulation, null,
-                            null, false, sharedSegment, adapter));
-                }
-                break;
-            }
-            if (firstSegment.getDestSwitchId().equals(yPointSwitchId)) {
-                yPointIsPassed = true;
-            }
-        }
-
-        // egress
-        if (switchId.equals(FlowSideAdapter.makeEgressAdapter(haFlow, subPath).getEndpoint().getSwitchId())) {
-            if (subPath.isForward()) {
-                if (subPath.getDestSwitchId().equals(yPointSwitchId)) {
-                    result.addAll(buildForwardYPointEgressOrTransitHaRules(
-                            haPath, encapsulation, subPath.getSegments().size() - 1, adapter));
-                } else {
-                    result.addAll(buildHaEgressRules(
-                            haFlow, subPath, encapsulation, false, null, null, false, adapter));
-                }
-            } else {
-                if (subPath.getDestSwitchId().equals(haPath.getYPointSwitchId())) {
-                    result.addAll(buildHaEgressRules(haFlow, subPath, encapsulation, false, haPath.getYPointMeterId(),
-                            sharedMeterMap.get(haPath.getHaPathId()), true, adapter));
-                } else {
-                    result.addAll(buildHaEgressRules(
-                            haFlow, subPath, encapsulation, true, null, null, false, adapter));
-                }
-            }
-        }
-
         return result;
     }
 
@@ -632,52 +542,62 @@ public class RuleManagerImpl implements RuleManager {
     @Override
     public List<SpeakerData> buildRulesHaFlowPath(
             HaFlowPath haPath, boolean filterOutUsedSharedRules, DataAdapter adapter) {
+        return buildHaPathRules(haPath, filterOutUsedSharedRules, false, adapter);
+    }
+
+    private List<SpeakerData> buildHaPathRules(
+            HaFlowPath haPath, boolean filterOutUsedSharedRules, boolean ignoreUnknownSwitches, DataAdapter adapter) {
 
         if (haPath.getSubPaths().size() != 2) {
             throw new IllegalArgumentException(
                     format("HaPath %s must contain 2 sub paths, but found %d", haPath, haPath.getSubPaths().size()));
         }
 
-        HaFlow haFlow = adapter.getHaFlow(haPath.getSubPaths().iterator().next().getPathId());
+        HaFlow haFlow = adapter.getHaFlow(haPath.getHaPathId());
         PathId oppositePathId = haFlow.getOppositePathId(haPath.getHaPathId()).orElse(null);
         FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(haPath.getHaPathId(), oppositePathId);
 
         if (haPath.isForward()) {
-            return buildForwardHaRules(haPath, filterOutUsedSharedRules, adapter, haFlow, encapsulation);
+            return buildForwardHaRules(
+                    haPath, filterOutUsedSharedRules, ignoreUnknownSwitches, haFlow, encapsulation, adapter);
         } else {
-            return buildReverseHaRules(haPath, filterOutUsedSharedRules, adapter, haFlow, encapsulation);
+            return buildReverseHaRules(
+                    haPath, filterOutUsedSharedRules, ignoreUnknownSwitches, haFlow, encapsulation, adapter);
         }
     }
 
+
     private List<SpeakerData> buildForwardHaRules(
-            HaFlowPath haPath, boolean filterOutUsedSharedRules, DataAdapter adapter, HaFlow haFlow,
-            FlowTransitEncapsulation encapsulation) {
+            HaFlowPath haPath, boolean filterOutUsedSharedRules, boolean ignoreUnknownSwitches, HaFlow haFlow,
+            FlowTransitEncapsulation encapsulation, DataAdapter adapter) {
         List<SpeakerData> rules = new ArrayList<>();
         if (!haFlow.isProtectedPath(haPath.getHaPathId())) {
             rules.addAll(buildForwardIngressHaRules(
-                    haFlow, haPath, encapsulation, filterOutUsedSharedRules, adapter));
+                    haFlow, haPath, encapsulation, filterOutUsedSharedRules, ignoreUnknownSwitches, adapter));
         }
 
         if (!haPath.getSharedSwitchId().equals(haPath.getYPointSwitchId())) {
-            rules.addAll(buildForwardSharedHaRules(haPath, adapter, encapsulation));
+            rules.addAll(buildForwardSharedHaRules(haPath, encapsulation, ignoreUnknownSwitches, adapter));
         }
 
         for (FlowPath subPath : haPath.getSubPaths()) {
             rules.addAll(buildForwardHaNotSharedTransitRules(
-                    subPath, haPath.getYPointSwitchId(), encapsulation, adapter));
+                    subPath, haPath.getYPointSwitchId(), encapsulation, ignoreUnknownSwitches, adapter));
             if (!subPath.getDestSwitchId().equals(haPath.getYPointSwitchId())) {
-                rules.addAll(buildHaEgressRules(haFlow, subPath, encapsulation, false, null, null, false, adapter));
+                rules.addAll(buildHaEgressRules(haFlow, subPath, encapsulation, false, null, null, false,
+                        ignoreUnknownSwitches, adapter));
             }
         }
         return rules;
     }
 
     private List<SpeakerData> buildReverseHaRules(
-            HaFlowPath haPath, boolean filterOutUsedSharedRules, DataAdapter adapter, HaFlow haFlow,
-            FlowTransitEncapsulation encapsulation) {
+            HaFlowPath haPath, boolean filterOutUsedSharedRules, boolean ignoreUnknownSwitches, HaFlow haFlow,
+            FlowTransitEncapsulation encapsulation, DataAdapter adapter) {
         List<SpeakerData> rules = new ArrayList<>();
         UUID yPointMeterCommandUuid = UUID.randomUUID();
         boolean sharedMeterWasCreated = false;
+        boolean sharedPathRulesWereCreated = false;
 
         for (FlowPath subPath : haPath.getSubPaths()) {
             Set<FlowSideAdapter> overlappingAdapters = new HashSet<>();
@@ -690,11 +610,12 @@ public class RuleManagerImpl implements RuleManager {
             if (!haFlow.isProtectedPath(haPath.getHaPathId())) {
                 if (subPath.getSrcSwitchId().equals(haPath.getYPointSwitchId())) {
                     rules.addAll(buildHaIngressRules(haFlow, subPath, encapsulation, false, haPath.getYPointMeterId(),
-                            overlappingAdapters, yPointMeterCommandUuid, !sharedMeterWasCreated, adapter));
+                            overlappingAdapters, yPointMeterCommandUuid, !sharedMeterWasCreated, ignoreUnknownSwitches,
+                            adapter));
                     sharedMeterWasCreated = true;
                 } else {
                     rules.addAll(buildHaIngressRules(haFlow, subPath, encapsulation, false, subPath.getMeterId(),
-                            overlappingAdapters, null, true, adapter));
+                            overlappingAdapters, null, true, ignoreUnknownSwitches, adapter));
                 }
             }
 
@@ -705,30 +626,36 @@ public class RuleManagerImpl implements RuleManager {
             boolean yPointIsPassed = subPath.getSrcSwitchId().equals(haPath.getYPointSwitchId());
 
             // reverse transit rule
-            for (int i = 0; i + 1 < subPath.getSegments().size(); i++) {
+            for (int i = 0; i + 1 < subPath.getSegments().size()
+                    && !(yPointIsPassed && sharedPathRulesWereCreated); i++) {
                 PathSegment firstSegment = subPath.getSegments().get(i);
                 PathSegment secondSegment = subPath.getSegments().get(i + 1);
 
                 if (firstSegment.getDestSwitchId().equals(haPath.getYPointSwitchId())) {
                     rules.addAll(buildTransitHaRules(
                             subPath, firstSegment, secondSegment, encapsulation, haPath.getYPointMeterId(),
-                            yPointMeterCommandUuid, !sharedMeterWasCreated, yPointIsPassed, adapter));
+                            yPointMeterCommandUuid, !sharedMeterWasCreated, yPointIsPassed, ignoreUnknownSwitches,
+                            adapter));
                     yPointIsPassed = true;
                     sharedMeterWasCreated = true;
                 } else {
                     rules.addAll(buildTransitHaRules(subPath, firstSegment, secondSegment, encapsulation, null,
-                            null, false, yPointIsPassed, adapter));
+                            null, false, yPointIsPassed, ignoreUnknownSwitches, adapter));
                 }
             }
 
             // reverse egress rule
-            if (subPath.getDestSwitchId().equals(haPath.getYPointSwitchId())) {
-                rules.addAll(buildHaEgressRules(haFlow, subPath, encapsulation, false, haPath.getYPointMeterId(),
-                        yPointMeterCommandUuid, !sharedMeterWasCreated, adapter));
-                sharedMeterWasCreated = true;
-            } else {
-                rules.addAll(buildHaEgressRules(haFlow, subPath, encapsulation, true, null, null, false, adapter));
+            if (!(yPointIsPassed && sharedPathRulesWereCreated)) {
+                if (subPath.getDestSwitchId().equals(haPath.getYPointSwitchId())) {
+                    rules.addAll(buildHaEgressRules(haFlow, subPath, encapsulation, false, haPath.getYPointMeterId(),
+                            yPointMeterCommandUuid, !sharedMeterWasCreated, ignoreUnknownSwitches, adapter));
+                    sharedMeterWasCreated = true;
+                } else {
+                    rules.addAll(buildHaEgressRules(haFlow, subPath, encapsulation, true, null, null, false,
+                            ignoreUnknownSwitches, adapter));
+                }
             }
+            sharedPathRulesWereCreated = true;
         }
         return rules;
     }
@@ -736,11 +663,11 @@ public class RuleManagerImpl implements RuleManager {
     private List<SpeakerData> buildTransitHaRules(
             FlowPath subPath, PathSegment firstSegment, PathSegment secondSegment,
             FlowTransitEncapsulation encapsulation, MeterId meterId, UUID sharedMeterCommandUuid, boolean createMeter,
-            boolean sharedSegment, DataAdapter adapter) {
-        return flowRulesFactory.getTransitHaRuleGenerator(
-                        subPath, encapsulation, firstSegment, secondSegment, sharedSegment, meterId,
-                        sharedMeterCommandUuid, createMeter)
-                .generateCommands(adapter.getSwitch(firstSegment.getDestSwitchId()));
+            boolean sharedSegment, boolean ignoreUnknownSwitches, DataAdapter adapter) {
+        RuleGenerator generator = flowRulesFactory.getTransitHaRuleGenerator(
+                subPath, encapsulation, firstSegment, secondSegment, sharedSegment, meterId,
+                sharedMeterCommandUuid, createMeter);
+        return generateCommands(generator, firstSegment.getDestSwitchId(), ignoreUnknownSwitches, adapter);
     }
 
     /**
@@ -748,54 +675,49 @@ public class RuleManagerImpl implements RuleManager {
      * Shared rules are rules for common transit switches and Y-point switch.
      */
     private List<SpeakerData> buildForwardSharedHaRules(
-            HaFlowPath haPath, DataAdapter adapter, FlowTransitEncapsulation encapsulation) {
+            HaFlowPath haPath, FlowTransitEncapsulation encapsulation, boolean ignoreUnknownSwitches,
+            DataAdapter adapter) {
         List<SpeakerData> rules = new ArrayList<>();
         FlowPath shortestSubPath = getShortestSubPath(haPath.getSubPaths());
         int lastCommonSegmentId = 0;
         for (; lastCommonSegmentId + 1 < shortestSubPath.getSegments().size(); lastCommonSegmentId++) {
             PathSegment firstSegment = shortestSubPath.getSegments().get(lastCommonSegmentId);
             PathSegment secondSegment = shortestSubPath.getSegments().get(lastCommonSegmentId + 1);
-            rules.addAll(buildTransitHaRules(shortestSubPath, firstSegment, secondSegment, encapsulation, null,
-                    null, false, true, adapter));
 
-            if (secondSegment.getDestSwitchId().equals(haPath.getYPointSwitchId())) {
-                lastCommonSegmentId++;
+            if (firstSegment.getDestSwitchId().equals(haPath.getYPointSwitchId())) {
                 break; // end of common transit path
             }
+            rules.addAll(buildTransitHaRules(shortestSubPath, firstSegment, secondSegment, encapsulation, null,
+                    null, false, true, ignoreUnknownSwitches, adapter));
         }
 
-        rules.addAll(buildForwardYPointEgressOrTransitHaRules(haPath, encapsulation, lastCommonSegmentId, adapter));
+        rules.addAll(buildForwardYPointEgressOrTransitHaRules(
+                haPath, encapsulation, lastCommonSegmentId, ignoreUnknownSwitches, adapter));
         return rules;
     }
 
     private List<SpeakerData> buildForwardYPointEgressOrTransitHaRules(
-            HaFlowPath haPath, FlowTransitEncapsulation encapsulation, int lastCommonSegmentId, DataAdapter adapter) {
+            HaFlowPath haPath, FlowTransitEncapsulation encapsulation, int lastCommonSegmentId,
+            boolean ignoreUnknownSwitches, DataAdapter adapter) {
         List<FlowPath> subPaths = haPath.getSubPaths();
         int yPointInPort = getShortestSubPath(subPaths).getSegments().get(lastCommonSegmentId).getDestPort();
 
+        RuleGenerator generator;
         if (subPaths.get(0).getDestSwitchId().equals(subPaths.get(1).getDestSwitchId())
                 && subPaths.get(0).getDestSwitchId().equals(haPath.getYPointSwitchId())) {
-            RuleGenerator generator = flowRulesFactory.getYPointForwardEgressHaRuleGenerator(
+            generator = flowRulesFactory.getYPointForwardEgressHaRuleGenerator(
                     haPath, subPaths, encapsulation, yPointInPort);
-            return generator.generateCommands(adapter.getSwitch(haPath.getYPointSwitchId()));
         } else {
-            return buildYPointForwardTransitHaRules(
-                    haPath, encapsulation, lastCommonSegmentId, subPaths, yPointInPort, adapter);
+            Map<PathId, Integer> outPorts = getHaYPointOutPorts(lastCommonSegmentId, subPaths);
+            generator = flowRulesFactory.getYPointForwardTransitHaRuleGenerator(
+                    haPath, subPaths, encapsulation, yPointInPort, outPorts);
         }
-    }
-
-    private List<SpeakerData> buildYPointForwardTransitHaRules(
-            HaFlowPath haPath, FlowTransitEncapsulation encapsulation, int lastCommonSegmentId, List<FlowPath> subPaths,
-            int yPointInPort, DataAdapter adapter) {
-        Map<PathId, Integer> outPorts = getHaYPointOutPorts(lastCommonSegmentId, subPaths);
-        return flowRulesFactory.getYPointForwardTransitHaRuleGenerator(
-                        haPath, subPaths, encapsulation, yPointInPort, outPorts)
-                .generateCommands(adapter.getSwitch(haPath.getYPointSwitchId()));
+        return generateCommands(generator, haPath.getYPointSwitchId(), ignoreUnknownSwitches, adapter);
     }
 
     private List<SpeakerData> buildForwardIngressHaRules(
             HaFlow haFlow, HaFlowPath haPath, FlowTransitEncapsulation encapsulation, boolean filterOutUsedSharedRules,
-            DataAdapter adapter) {
+            boolean ignoreUnknownSwitches, DataAdapter adapter) {
         Set<FlowSideAdapter> overlappingAdapters = new HashSet<>();
         if (filterOutUsedSharedRules) {
             overlappingAdapters.addAll(getOverlappingMultiTableIngressAdapters(
@@ -805,32 +727,32 @@ public class RuleManagerImpl implements RuleManager {
         if (haPath.getSharedSwitchId().equals(haPath.getYPointSwitchId())) {
             RuleGenerator generator = flowRulesFactory.getYPointForwardIngressHaRuleGenerator(
                     haFlow, haPath, haPath.getSubPaths(), encapsulation, overlappingAdapters);
-            return generator.generateCommands(adapter.getSwitch(haPath.getSharedSwitchId()));
+            return generateCommands(generator, haPath.getSharedSwitchId(), ignoreUnknownSwitches, adapter);
 
         } else {
             FlowPath randomSubPath = haPath.getSubPaths().get(0);
             return buildHaIngressRules(haFlow, randomSubPath, encapsulation, true,
-                    haPath.getSharedPointMeterId(), overlappingAdapters, null, true, adapter);
+                    haPath.getSharedPointMeterId(), overlappingAdapters, null, true, ignoreUnknownSwitches, adapter);
         }
     }
 
     private List<SpeakerData> buildHaIngressRules(
             HaFlow haFlow, FlowPath subPath, FlowTransitEncapsulation encapsulation, boolean sharedPath,
             MeterId meterId, Set<FlowSideAdapter> overlappingAdapters, UUID externalMeterCommandUuid,
-            boolean generateMeterCommand, DataAdapter adapter) {
-        return flowRulesFactory.getIngressHaRuleGenerator(
-                        haFlow, subPath, meterId, encapsulation, sharedPath, overlappingAdapters,
-                        externalMeterCommandUuid, generateMeterCommand)
-                .generateCommands(adapter.getSwitch(subPath.getSrcSwitchId()));
+            boolean generateMeterCommand, boolean ignoreUnknownSwitches, DataAdapter adapter) {
+        RuleGenerator generator = flowRulesFactory.getIngressHaRuleGenerator(
+                haFlow, subPath, meterId, encapsulation, sharedPath, overlappingAdapters,
+                externalMeterCommandUuid, generateMeterCommand);
+        return generateCommands(generator, subPath.getSrcSwitchId(), ignoreUnknownSwitches, adapter);
     }
 
     private List<SpeakerData> buildHaEgressRules(
             HaFlow haFlow, FlowPath subPath, FlowTransitEncapsulation encapsulation, boolean sharedPath,
-            MeterId meterId, UUID externalMeterCommandUuid,
-            boolean generateMeterCommand, DataAdapter adapter) {
-        return flowRulesFactory.getEgressHaRuleGenerator(haFlow, subPath, encapsulation,
-                        sharedPath, meterId, externalMeterCommandUuid, generateMeterCommand)
-                .generateCommands(adapter.getSwitch(subPath.getDestSwitchId()));
+            MeterId meterId, UUID externalMeterCommandUuid, boolean generateMeterCommand, boolean ignoreUnknownSwitches,
+            DataAdapter adapter) {
+        RuleGenerator generator = flowRulesFactory.getEgressHaRuleGenerator(haFlow, subPath, encapsulation,
+                sharedPath, meterId, externalMeterCommandUuid, generateMeterCommand);
+        return generateCommands(generator, subPath.getDestSwitchId(), ignoreUnknownSwitches, adapter);
     }
 
     private Map<PathId, Integer> getHaYPointOutPorts(int lastCommonSegmentId, List<FlowPath> subPaths) {
@@ -846,7 +768,8 @@ public class RuleManagerImpl implements RuleManager {
     }
 
     private List<SpeakerData> buildForwardHaNotSharedTransitRules(
-            FlowPath subPath, SwitchId yPointSwitchId, FlowTransitEncapsulation encapsulation, DataAdapter adapter) {
+            FlowPath subPath, SwitchId yPointSwitchId, FlowTransitEncapsulation encapsulation,
+            boolean ignoreUnknownSwitches, DataAdapter adapter) {
 
         List<PathSegment> segments = subPath.getSegments();
         int lastCommonSegmentId = segments.size() - 1;
@@ -861,7 +784,7 @@ public class RuleManagerImpl implements RuleManager {
             PathSegment firstSegment = subPath.getSegments().get(i);
             PathSegment secondSegment = subPath.getSegments().get(i + 1);
             rules.addAll(buildTransitHaRules(subPath, firstSegment, secondSegment, encapsulation, null, null, false,
-                    false, adapter));
+                    false, ignoreUnknownSwitches, adapter));
         }
         return rules;
     }
@@ -1065,6 +988,23 @@ public class RuleManagerImpl implements RuleManager {
             }
         }
         return result;
+    }
+
+    private List<SpeakerData> generateCommands(
+            RuleGenerator generator, SwitchId switchId, boolean ignoreUnknownSwitch, DataAdapter adapter) {
+        Switch sw = adapter.getSwitch(switchId);
+        if (sw == null) {
+            if (ignoreUnknownSwitch) {
+                log.trace("Skip {} commands generation for switch {} because switch is not found",
+                        generator.getClass().getSimpleName(), switchId);
+                return new ArrayList<>();
+            } else {
+                throw new IllegalArgumentException(format(
+                        "Cand generate commands for %s because switch %s is not found",
+                        generator.getClass().getSimpleName(), switchId));
+            }
+        }
+        return generator.generateCommands(sw);
     }
 
     private static boolean isTargetSegments(SwitchId switchId, PathSegment firstSegment, PathSegment secondSegment) {

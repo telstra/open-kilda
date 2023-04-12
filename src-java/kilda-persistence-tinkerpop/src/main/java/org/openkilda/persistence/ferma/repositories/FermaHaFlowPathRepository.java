@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -107,6 +108,20 @@ public class FermaHaFlowPathRepository extends FermaGenericRepository<HaFlowPath
                 .map(HaFlowPath::new)
                 .filter(path -> path.getHaFlow() != null)
                 .collect(Collectors.toMap(HaFlowPath::getHaPathId, HaFlowPath::getHaFlow));
+    }
+
+    @Override
+    public Map<PathId, HaFlowPath> findByIds(Set<PathId> pathIds) {
+        Set<String> graphPathIds = pathIds.stream()
+                .map(PathIdConverter.INSTANCE::toGraphProperty)
+                .collect(Collectors.toSet());
+        List<? extends HaFlowPathFrame> haFlowPathFrames = framedGraph().traverse(g -> g.V()
+                        .hasLabel(HaFlowPathFrame.FRAME_LABEL)
+                        .has(HaFlowPathFrame.HA_PATH_ID_PROPERTY, P.within(graphPathIds)))
+                .toListExplicit(HaFlowPathFrame.class);
+        return haFlowPathFrames.stream()
+                .map(HaFlowPath::new)
+                .collect(Collectors.toMap(HaFlowPath::getHaPathId, Function.identity()));
     }
 
     @Override

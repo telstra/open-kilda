@@ -37,5 +37,7 @@ public interface HaFlowPathRepository extends Repository<HaFlowPath> {
 
     Map<PathId, HaFlow> findHaFlowsByPathIds(Set<PathId> pathIds);
 
+    Map<PathId, HaFlowPath> findByIds(Set<PathId> pathIds);
+
     Optional<HaFlowPath> remove(PathId pathId);
 }

@@ -203,7 +203,7 @@ class HaFlowHelper {
 
     static Set<SwitchId> getInvolvedSwitches(HaFlow haFlow) {
         //TODO include transit switches when https://github.com/telstra/open-kilda/issues/5148 will be implemented
-        return [haFlow.subFlows*.endpoint.switchId + haFlow.sharedEndpoint.switchId] as Set
+        return haFlow.subFlows*.endpoint.switchId + haFlow.sharedEndpoint.switchId
     }
 
     static List<SwitchPortVlan> getBusyEndpoints(List<HaFlowCreatePayload> haFlows) {

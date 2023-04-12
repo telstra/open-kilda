@@ -19,6 +19,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PathId;
@@ -56,5 +57,7 @@ public interface DataAdapter {
     /**
      * Returns HA-flow by sub path id.
      */
-    HaFlow getHaFlow(PathId subPathId);
+    HaFlow getHaFlow(PathId pathId);
+
+    HaFlowPath getHaFlowPath(PathId haFlowPathId);
 }
