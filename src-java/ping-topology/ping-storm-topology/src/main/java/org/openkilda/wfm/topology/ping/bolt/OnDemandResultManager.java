@@ -22,6 +22,7 @@ import static org.openkilda.messaging.model.FlowDirection.REVERSE;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.FlowPingResponse.FlowPingResponseBuilder;
+import org.openkilda.messaging.info.flow.HaFlowPingResponse;
 import org.openkilda.messaging.info.flow.SubFlowPingPayload;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.info.flow.UniSubFlowPingPayload;
@@ -32,6 +33,7 @@ import org.openkilda.wfm.topology.ping.model.Group;
 import org.openkilda.wfm.topology.ping.model.Group.Type;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -63,6 +65,8 @@ public class OnDemandResultManager extends ResultManager {
             handleFlowResponse(input, group);
         } else if (group.getType() == Type.Y_FLOW) {
             handleYFlowResponse(input, group);
+        } else if (group.getType() == Type.HA_FLOW) {
+            handleHaFlowResponse(input, group);
         } else {
             unhandledInput(input);
         }
@@ -142,6 +146,19 @@ public class OnDemandResultManager extends ResultManager {
         }
     }
 
+    private void handleHaFlowResponse(Tuple input, Group group) throws PipelineException {
+        log.debug("handleHaFlowResponse: group={}", group);
+        try {
+            HaFlowPingResponse response = buildHaFlowPingResponse(group);
+            emit(input, response);
+        } catch (IllegalArgumentException e) {
+            String haFlowId = group.getRecords().stream().map(PingContext::getHaFlowId).filter(Objects::nonNull)
+                    .findFirst().orElse(null);
+            HaFlowPingResponse errorResponse = new HaFlowPingResponse(haFlowId, e.getMessage(), null);
+            emit(input, errorResponse);
+        }
+    }
+
     private YFlowPingResponse buildYFlowPingResponse(Group group) {
         Map<String, SubFlowPingPayload> subFlowMap = new HashMap<>();
         Set<String> yFlowIdSet = new HashSet<>();
@@ -183,6 +200,57 @@ public class OnDemandResultManager extends ResultManager {
         String error = oneSwitchFlowExists(subFlowMap) ? "One sub flow is one-switch flow" : null;
 
         return new YFlowPingResponse(yFlowIdSet.iterator().next(), error, new ArrayList<>(subFlowMap.values()));
+    }
+
+    @VisibleForTesting
+    protected HaFlowPingResponse buildHaFlowPingResponse(Group group) {
+        Map<String, SubFlowPingPayload> subFlowMap = new HashMap<>();
+        Set<String> haFlowIds = new HashSet<>();
+
+        for (PingContext pingContext : group.getRecords()) {
+            if (pingContext.getHaFlowId() == null) {
+                throw new IllegalArgumentException(format("Ping report %s has no haFlowId", pingContext));
+            }
+            haFlowIds.add(pingContext.getHaFlowId());
+
+            checkHaFlowId(haFlowIds);
+
+            SubFlowPingPayload subFlow = subFlowMap.computeIfAbsent(pingContext.getHaSubFlowId(),
+                    mappingFunction -> new SubFlowPingPayload(pingContext.getHaSubFlowId(), null, null));
+
+            switch (pingContext.getDirection()) {
+                case FORWARD:
+                    validateSubFlow(subFlow.getForward(), FORWARD, group, pingContext, subFlow.getFlowId());
+                    subFlow.setForward(makeSubFlowPayload(pingContext));
+                    break;
+                case REVERSE:
+                    validateSubFlow(subFlow.getReverse(), REVERSE, group, pingContext, subFlow.getFlowId());
+                    subFlow.setReverse(makeSubFlowPayload(pingContext));
+                    break;
+                default:
+                    throw new IllegalArgumentException(format("Unsupported %s.%s value",
+                            pingContext.getDirection().getClass().getName(), pingContext.getDirection()));
+            }
+        }
+
+        if (subFlowMap.size() * 2 != group.getRecords().size()) {
+            throw new IllegalArgumentException(format(
+                    "Expect %d unique Flow IDs in ping group responses, but got responses about %d Flows: %s",
+                    group.getRecords().size() / 2, subFlowMap.size(), subFlowMap.keySet()));
+        }
+
+
+
+        String error = oneSwitchFlowExists(subFlowMap) ? "One sub flow is one-switch flow" : null;
+
+        return new HaFlowPingResponse(haFlowIds.iterator().next(), error, new ArrayList<>(subFlowMap.values()));
+    }
+
+    private void checkHaFlowId(Set<String> haFlowIds) {
+        if (haFlowIds.size() != 1) {
+            throw new IllegalArgumentException(format(
+                    "Expect exact one HA Flow id in pings group response, got - %s", haFlowIds));
+        }
     }
 
     private boolean oneSwitchFlowExists(Map<String, SubFlowPingPayload> subFlowMap) {

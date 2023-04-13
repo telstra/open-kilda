@@ -22,6 +22,7 @@ import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
 import org.openkilda.messaging.command.haflow.HaSubFlowPartialUpdateDto;
 import org.openkilda.messaging.command.yflow.FlowPartialUpdateEndpoint;
+import org.openkilda.messaging.info.flow.HaFlowPingResponse;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
 import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
@@ -38,6 +39,7 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPath;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPath.HaFlowProtectedPath;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPingResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload;
@@ -145,6 +147,8 @@ public abstract class HaFlowMapper {
             expression = "java(toHaFlowProtectedPath(source.getProtectedPath(), diverseWithFlows))")
     @Mapping(target = "diverseGroup", expression = "java(toDiverseGroupPayload(source, diverseWithFlows))")
     public abstract HaSubFlowPath toSubFlowPath(FlowPathDto source, List<FlowPathDto> diverseWithFlows);
+
+    public abstract HaFlowPingResult toPingResult(HaFlowPingResponse source);
 
     protected DiverseGroupPayload toDiverseGroupPayload(FlowPathDto source, List<FlowPathDto> diverseWithFlows) {
         OverlappingSegmentsStats segmentsStats = source.getSegmentsStats();

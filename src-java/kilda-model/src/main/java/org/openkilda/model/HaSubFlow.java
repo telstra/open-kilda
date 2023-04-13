@@ -83,6 +83,14 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
         this.data = builder.build();
     }
 
+    /**
+     * check if this sub-flow is one-switch flow.
+     * @return true if this sub-flow is one-switch flow.
+     */
+    public boolean isOneSwitchFlow() {
+        return getEndpointSwitchId().equals(getHaFlow().getSharedSwitchId());
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

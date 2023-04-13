@@ -21,6 +21,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
+import org.openkilda.messaging.command.flow.HaFlowPingRequest;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.command.flow.YFlowPingRequest;
 import org.openkilda.messaging.floodlight.response.PingResponse;
@@ -48,7 +49,8 @@ public class InputRouter extends Abstract {
     public static final Fields STREAM_PING_REQUEST_FIELDS = new Fields(
             FIELD_ID_PING_REQUEST, FIELD_ID_CONTEXT);
     public static final String STREAM_ON_DEMAND_REQUEST_ID = "ping_request";
-    public static final String STREAM_ON_DEMAND_Y_FLOW_REQUEST_ID = "ing_request_y_flow";
+    public static final String STREAM_ON_DEMAND_Y_FLOW_REQUEST_ID = "ping_request_y_flow";
+    public static final String STREAM_ON_DEMAND_HA_FLOW_REQUEST_ID = "ping_request_ha_flow";
     public static final String STREAM_PERIODIC_PING_UPDATE_REQUEST_ID = "periodic_ping_request";
 
     public static final Fields STREAM_ZOOKEEPER_FIELDS = new Fields(ZooKeeperBolt.FIELD_ID_STATE,
@@ -90,6 +92,8 @@ public class InputRouter extends Abstract {
             emit(input, new Values(data), STREAM_ON_DEMAND_REQUEST_ID);
         } else if (data instanceof YFlowPingRequest) {
             emit(input, new Values(data), STREAM_ON_DEMAND_Y_FLOW_REQUEST_ID);
+        } else if (data instanceof HaFlowPingRequest) {
+            emit(input, new Values(data), STREAM_ON_DEMAND_HA_FLOW_REQUEST_ID);
         } else if (data instanceof PeriodicPingCommand) {
             emit(input, new Values(data), STREAM_PERIODIC_PING_UPDATE_REQUEST_ID);
         } else {
@@ -111,6 +115,7 @@ public class InputRouter extends Abstract {
         outputManager.declareStream(STREAM_SPEAKER_PING_RESPONSE_ID, STREAM_SPEAKER_PING_RESPONSE_FIELDS);
         outputManager.declareStream(STREAM_ON_DEMAND_REQUEST_ID, STREAM_PING_REQUEST_FIELDS);
         outputManager.declareStream(STREAM_ON_DEMAND_Y_FLOW_REQUEST_ID, STREAM_PING_REQUEST_FIELDS);
+        outputManager.declareStream(STREAM_ON_DEMAND_HA_FLOW_REQUEST_ID, STREAM_PING_REQUEST_FIELDS);
         outputManager.declareStream(STREAM_PERIODIC_PING_UPDATE_REQUEST_ID, STREAM_PING_REQUEST_FIELDS);
         outputManager.declareStream(STREAM_ZOOKEEPER, STREAM_ZOOKEEPER_FIELDS);
     }
