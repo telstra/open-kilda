@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -19,7 +21,7 @@ import spock.lang.Narrative
 
 @Narrative("Verify that Kilda allows to properly control port state on switches (bring ports up or down).")
 @Tags([SMOKE_SWITCHES])
-class SwitchPortConfigSpec extends HealthCheckSpecification {
+class SwitchPortConfigSpec extends BaseSpecification {
 
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix

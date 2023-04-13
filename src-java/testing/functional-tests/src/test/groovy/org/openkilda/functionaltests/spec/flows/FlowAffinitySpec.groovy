@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_ACTION
@@ -17,7 +19,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
 @Narrative("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/pce-affinity-flows/")
-class FlowAffinitySpec extends HealthCheckSpecification {
+class FlowAffinitySpec extends BaseSpecification {
 
     @Tidy
     def "Can create more than 2 affinity flows"() {

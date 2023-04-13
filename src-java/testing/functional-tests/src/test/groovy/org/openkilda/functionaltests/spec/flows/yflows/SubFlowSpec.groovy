@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS_Y
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -24,7 +26,7 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 @Narrative("Verify different actions for a sub-flow.")
-class SubFlowSpec extends HealthCheckSpecification {
+class SubFlowSpec extends BaseSpecification {
     @Autowired
     @Shared
     YFlowHelper yFlowHelper

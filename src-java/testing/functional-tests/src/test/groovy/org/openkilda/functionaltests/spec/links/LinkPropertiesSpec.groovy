@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -23,7 +25,7 @@ import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
 
-class LinkPropertiesSpec extends HealthCheckSpecification {
+class LinkPropertiesSpec extends BaseSpecification {
     @Autowired @Shared @Qualifier("northboundServiceImpl")
     NorthboundService northboundGlobal
 

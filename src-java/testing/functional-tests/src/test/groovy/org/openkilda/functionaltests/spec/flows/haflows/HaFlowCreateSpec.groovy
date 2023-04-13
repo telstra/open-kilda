@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -30,7 +32,7 @@ import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify create operations on ha-flows.")
-class HaFlowCreateSpec extends HealthCheckSpecification {
+class HaFlowCreateSpec extends BaseSpecification {
     @Autowired
     @Shared
     YFlowHelper yFlowHelper

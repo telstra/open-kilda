@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -59,7 +61,7 @@ Description of fields:
 - proper - meters/rules values are the same on a switch and in db
 """)
 @Tags([SMOKE, SMOKE_SWITCHES])
-class SwitchValidationSpec extends HealthCheckSpecification {
+class SwitchValidationSpec extends BaseSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}")
     String speakerTopic
     @Autowired

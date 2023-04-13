@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -30,7 +32,7 @@ import javax.inject.Provider
 
 @Slf4j
 @Narrative("Verify reroute operations on y-flows.")
-class YFlowRerouteSpec extends HealthCheckSpecification {
+class YFlowRerouteSpec extends BaseSpecification {
     @Autowired
     @Shared
     YFlowHelper yFlowHelper

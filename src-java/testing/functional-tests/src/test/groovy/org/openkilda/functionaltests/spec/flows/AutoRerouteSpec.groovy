@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -48,7 +50,7 @@ import java.util.concurrent.TimeUnit
 
 @Slf4j
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
-class AutoRerouteSpec extends HealthCheckSpecification {
+class AutoRerouteSpec extends BaseSpecification {
 
     @Tidy
     @Tags(SMOKE)
@@ -767,7 +769,7 @@ triggering one more reroute of the current path"
 @Slf4j
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 @Isolated
-class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
+class AutoRerouteIsolatedSpec extends BaseSpecification {
     @Tidy
     //isolation: global toggle flowsRerouteOnIslDiscoveryEnabled is changed
     def "Flow in 'Down' status is rerouted after switchUp event"() {

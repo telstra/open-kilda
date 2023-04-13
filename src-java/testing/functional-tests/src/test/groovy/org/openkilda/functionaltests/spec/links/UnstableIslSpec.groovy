@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
@@ -17,7 +19,7 @@ import org.springframework.beans.factory.annotation.Value
 
 import java.time.Instant
 
-class UnstableIslSpec extends HealthCheckSpecification {
+class UnstableIslSpec extends BaseSpecification {
 
     @Value('${pce.isl.cost.when.unstable}')
     int islUnstableCost

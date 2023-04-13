@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -29,7 +31,7 @@ import java.util.concurrent.TimeUnit
 
 @Tags(HARDWARE) // virtual env doesn't support round trip latency
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
-class RoundTripIslSpec extends HealthCheckSpecification {
+class RoundTripIslSpec extends BaseSpecification {
 
     /*we need this variable because it takes more time to DEACTIVATE a switch
     via the 'knockoutSwitch' method on the stage env*/

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -47,7 +49,7 @@ import javax.inject.Provider
 
 @Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different 
 circumstances: e.g. persisting rules on newly connected switch, installing default rules on new switch etc.""")
-class FlowRulesSpec extends HealthCheckSpecification {
+class FlowRulesSpec extends BaseSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider

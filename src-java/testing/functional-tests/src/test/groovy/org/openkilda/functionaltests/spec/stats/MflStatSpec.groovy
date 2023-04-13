@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.stats
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -33,7 +35,7 @@ import javax.inject.Provider
 @Narrative("""Now we have two FL instances: Management and Statistics.
 - FL Stats: collect statistics only from the switches.
 - FL Management: do the other work and can collect statistics as well when a switch doesn't connect to FL Stats.""")
-class MflStatSpec extends HealthCheckSpecification {
+class MflStatSpec extends BaseSpecification {
 
     @Shared
     @Value('${opentsdb.metric.prefix}')

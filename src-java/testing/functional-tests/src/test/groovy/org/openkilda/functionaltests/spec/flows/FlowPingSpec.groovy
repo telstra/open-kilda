@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -42,7 +44,7 @@ This spec tests all the functionality related to flow pings.
 Flow ping feature sends a 'ping' packet at the one end of the flow, expecting that this packet will 
 be delivered at the other end. 'Pings' the flow in both directions(forward and reverse).
 """)
-class FlowPingSpec extends HealthCheckSpecification {
+class FlowPingSpec extends BaseSpecification {
 
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix

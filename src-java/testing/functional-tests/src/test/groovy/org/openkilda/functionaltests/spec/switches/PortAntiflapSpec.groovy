@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -41,7 +43,7 @@ change status from UP to DOWN only after 'antiflap.min' in case of a single-time
 """)
 @Issue("https://github.com/telstra/open-kilda/issues/1729")
 @Isolated //global 'fl sync' toggle is changed
-class PortAntiflapSpec extends HealthCheckSpecification {
+class PortAntiflapSpec extends BaseSpecification {
 
     @Value('${antiflap.min}')
     int antiflapMin

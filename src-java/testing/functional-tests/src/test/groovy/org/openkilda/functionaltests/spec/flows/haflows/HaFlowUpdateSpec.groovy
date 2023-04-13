@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat
 import static spock.util.matcher.HamcrestSupport.expect
@@ -25,7 +27,7 @@ import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify update and partial update operations on ha-flows.")
-class HaFlowUpdateSpec extends HealthCheckSpecification {
+class HaFlowUpdateSpec extends BaseSpecification {
     @Autowired
     @Shared
     HaFlowHelper haFlowHelper

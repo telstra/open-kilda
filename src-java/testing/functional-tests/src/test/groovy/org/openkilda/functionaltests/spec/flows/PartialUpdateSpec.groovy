@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -45,7 +47,7 @@ Covers PATCH /api/v2/flows/:flowId and PATCH /api/v1/flows/:flowId
 This API allows to partially update a flow, i.e. update a flow without specifying a full flow payload. 
 Depending on changed fields flow will be either updated+rerouted or just have its values changed in database.
 """)
-class PartialUpdateSpec extends HealthCheckSpecification {
+class PartialUpdateSpec extends BaseSpecification {
     def amountOfFlowRules = 2
 
     @Tidy

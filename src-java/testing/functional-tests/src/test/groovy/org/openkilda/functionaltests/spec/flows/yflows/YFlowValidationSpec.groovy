@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
@@ -23,7 +25,7 @@ import spock.lang.Shared
 
 @Narrative("""Verify that missing yFlow rule is detected by switch/flow validations.
 And make sure that the yFlow rule can be installed by syncSw/syncYFlow endpoints.""")
-class YFlowValidationSpec extends HealthCheckSpecification {
+class YFlowValidationSpec extends BaseSpecification {
     @Autowired
     @Shared
     YFlowHelper yFlowHelper

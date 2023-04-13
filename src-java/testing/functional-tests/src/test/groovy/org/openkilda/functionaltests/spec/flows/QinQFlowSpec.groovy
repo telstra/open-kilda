@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeFalse
@@ -42,7 +44,7 @@ import spock.lang.Shared
 import javax.inject.Provider
 
 @Slf4j
-class QinQFlowSpec extends HealthCheckSpecification {
+class QinQFlowSpec extends BaseSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider

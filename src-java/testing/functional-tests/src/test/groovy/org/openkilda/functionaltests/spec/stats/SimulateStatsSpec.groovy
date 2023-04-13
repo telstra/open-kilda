@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.stats
 
-
+import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -29,7 +29,7 @@ In this spec we'll try to simulate certain stats entries by pushing them directl
 they are correctly processed and saved to Otsdb.
 """)
 @Use(TimeCategory)
-class SimulateStatsSpec extends HealthCheckSpecification {
+class SimulateStatsSpec extends BaseSpecification {
 
     //This is Noviflow specific. Per spec, noviflow packet counter will roll over after 2^31
     static final int NOVI_MAX_PACKET_COUNT = Integer.MAX_VALUE

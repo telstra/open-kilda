@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.network
 
+import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -14,7 +15,7 @@ import static org.openkilda.model.FlowEncapsulationType.VXLAN
 import static org.openkilda.model.PathComputationStrategy.COST
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/path-validation/path-validation.md")
-class PathCheckSpec extends HealthCheckSpecification{
+class PathCheckSpec extends BaseSpecification{
 
     @Tidy
     @Tags(SMOKE)

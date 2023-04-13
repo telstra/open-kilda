@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -31,7 +33,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import spock.lang.Unroll
 
-class DefaultRulesSpec extends HealthCheckSpecification {
+class DefaultRulesSpec extends BaseSpecification {
     @Tidy
     @Unroll("Default rules are installed on #sw.hwSwString")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])

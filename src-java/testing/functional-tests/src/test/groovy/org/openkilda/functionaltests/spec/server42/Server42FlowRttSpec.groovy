@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.server42
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -54,7 +56,7 @@ switch timestamps, thus we may see no stats in otsdb if time on switch is incorr
  */
 @ResourceLock(S42_TOGGLE)
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
-class Server42FlowRttSpec extends HealthCheckSpecification {
+class Server42FlowRttSpec extends BaseSpecification {
     @Shared
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix

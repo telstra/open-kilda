@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -50,7 +52,7 @@ flow with protected path, default flow) for a flow with VXLAN encapsulation.
 
 NOTE: A flow with the 'VXLAN' encapsulation is supported on a Noviflow switches.
 So, flow can be created on a Noviflow(src/dst/transit) switches only.""")
-class VxlanFlowSpec extends HealthCheckSpecification {
+class VxlanFlowSpec extends BaseSpecification {
     static Logger logger = LoggerFactory.getLogger(VxlanFlowSpec.class)
 
     @Autowired

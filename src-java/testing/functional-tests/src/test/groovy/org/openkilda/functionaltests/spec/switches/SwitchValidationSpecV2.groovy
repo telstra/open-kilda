@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.DockerHelper
 import org.openkilda.functionaltests.helpers.model.ContainerName
 import spock.lang.Shared
@@ -66,7 +67,7 @@ Description of fields:
 - proper - meters/rules values are the same on a switch and in db
 """)
 @Tags([SMOKE, SMOKE_SWITCHES])
-class SwitchValidationSpecV2 extends HealthCheckSpecification {
+class SwitchValidationSpecV2 extends BaseSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}")
     String speakerTopic
     @Autowired

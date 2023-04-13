@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.BFD_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -30,7 +32,7 @@ import java.util.concurrent.TimeUnit
 Main purpose is to detect ISL failure on switch level, which is times faster than a regular 
 controller-involved discovery mechanism""")
 @Tags([HARDWARE])
-class BfdSpec extends HealthCheckSpecification {
+class BfdSpec extends BaseSpecification {
     @Shared
     BfdProperties defaultBfdProps = new BfdProperties(350, (short)3)
 

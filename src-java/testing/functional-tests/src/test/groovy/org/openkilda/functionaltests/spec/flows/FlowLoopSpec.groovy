@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -46,7 +48,7 @@ import javax.inject.Provider
 terminating switch so any flow traffic is returned to switch-port where it was received. Such flow has 'looped=true'
 flag and supports all flow operations. When the loop removed system should restore the original flow rules.
 Enabling flowLoop in flow history is registered as the 'update' operation.""")
-class FlowLoopSpec extends HealthCheckSpecification {
+class FlowLoopSpec extends BaseSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider

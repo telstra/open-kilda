@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.northbound.dto.v2.yflows.SubFlowPingPayload
 import org.openkilda.northbound.dto.v2.yflows.UniSubFlowPingPayload
@@ -23,7 +24,7 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 @Narrative("""This spec tests 'periodic ping' functionality.""")
-class YFlowPingSpec extends HealthCheckSpecification {
+class YFlowPingSpec extends BaseSpecification {
     @Autowired
     @Shared
     YFlowHelper yFlowHelper

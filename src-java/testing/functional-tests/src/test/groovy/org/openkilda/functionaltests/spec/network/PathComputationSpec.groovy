@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.network
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -15,7 +17,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.junit.jupiter.api.parallel.ResourceLock
 
 @ResourceLock(ResourceLockConstants.DEFAULT_PATH_COMPUTATION)
-class PathComputationSpec extends HealthCheckSpecification {
+class PathComputationSpec extends BaseSpecification {
 
     @Tidy
     def "Default path computation strategy is used when flow does not specify it"() {

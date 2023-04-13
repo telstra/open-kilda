@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -41,7 +43,7 @@ import javax.inject.Provider
 
 @Slf4j
 @Narrative("Verify create operations on y-flows.")
-class YFlowCreateSpec extends HealthCheckSpecification {
+class YFlowCreateSpec extends BaseSpecification {
     @Autowired
     @Shared
     YFlowHelper yFlowHelper

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.configuration
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -33,7 +35,7 @@ Kilda configuration is a special lever that allows to change default flow encaps
 This spec assumes that 'transit_vlan' is always default type
 """)
 @Isolated //kilda config updates
-class ConfigurationSpec extends HealthCheckSpecification {
+class ConfigurationSpec extends BaseSpecification {
     @Shared
     FlowEncapsulationType defaultEncapsulationType = FlowEncapsulationType.TRANSIT_VLAN
 

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -44,7 +46,7 @@ import spock.lang.Ignore
 
 import javax.inject.Provider
 
-class SwapEndpointSpec extends HealthCheckSpecification {
+class SwapEndpointSpec extends BaseSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider

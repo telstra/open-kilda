@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.BaseSpecification
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
@@ -21,7 +22,7 @@ import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify the ability to create diverse y-flows in the system.")
-class YFlowDiversitySpec extends HealthCheckSpecification {
+class YFlowDiversitySpec extends BaseSpecification {
     @Autowired
     @Shared
     YFlowHelper yFlowHelper

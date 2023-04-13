@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -22,7 +24,7 @@ import groovy.time.TimeCategory
 import spock.lang.Ignore
 import spock.lang.Shared
 
-class FlowSyncSpec extends HealthCheckSpecification {
+class FlowSyncSpec extends BaseSpecification {
 
     @Shared
     int flowRulesCount = 2

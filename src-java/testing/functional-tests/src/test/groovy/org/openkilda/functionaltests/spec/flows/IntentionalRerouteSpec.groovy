@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -29,7 +31,7 @@ import javax.inject.Provider
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/reroute")
 @Narrative("Verify that on-demand reroute operations are performed accurately.")
-class IntentionalRerouteSpec extends HealthCheckSpecification {
+class IntentionalRerouteSpec extends BaseSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider

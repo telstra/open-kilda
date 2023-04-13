@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.stats
 
+import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -24,7 +25,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 
 @Tags(LOW_PRIORITY)
 @Narrative("Verify that statistic is collected for different type of Y-flow")
-class YFlowStatSpec extends HealthCheckSpecification {
+class YFlowStatSpec extends BaseSpecification {
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider

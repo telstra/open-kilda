@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.multitable
 
+import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 
@@ -51,7 +52,7 @@ import spock.lang.See
 import javax.inject.Provider
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/multi-table-pipelines")
-class MultitableFlowsSpec extends HealthCheckSpecification {
+class MultitableFlowsSpec extends BaseSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider

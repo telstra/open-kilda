@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.resilience
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -35,7 +37,7 @@ import spock.lang.Shared
 import java.util.concurrent.TimeUnit
 
 @Slf4j
-class RetriesSpec extends HealthCheckSpecification {
+class RetriesSpec extends BaseSpecification {
 
     @Tidy
     def "System retries the reroute (global retry) if it fails to install rules on one of the current target path's switches"() {
@@ -588,7 +590,7 @@ and at least 1 path must remain safe"
 
 @Slf4j
 @Isolated
-class RetriesIsolatedSpec extends HealthCheckSpecification {
+class RetriesIsolatedSpec extends BaseSpecification {
     @Shared int globalTimeout = 30 //global timeout for h&s operation
 
     @Tidy

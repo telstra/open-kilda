@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -49,7 +51,7 @@ A flow has the status degraded in case when the main path is up and the protecte
 
 Main and protected paths can't use the same link.""")
 @Tags([LOW_PRIORITY])
-class ProtectedPathV1Spec extends HealthCheckSpecification {
+class ProtectedPathV1Spec extends BaseSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider

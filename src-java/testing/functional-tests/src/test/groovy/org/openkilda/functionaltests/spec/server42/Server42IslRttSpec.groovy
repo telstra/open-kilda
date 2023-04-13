@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.server42
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
@@ -41,7 +43,7 @@ import spock.lang.Shared
 @Slf4j
 @ResourceLock(S42_TOGGLE)
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
-class Server42IslRttSpec extends HealthCheckSpecification {
+class Server42IslRttSpec extends BaseSpecification {
     @Shared
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix

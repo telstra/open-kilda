@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -23,7 +25,7 @@ import spock.lang.Ignore
 import spock.lang.Narrative
 
 @Narrative("Verify that ISL's bandwidth behaves consistently and does not allow any oversubscribtions etc.")
-class BandwidthSpec extends HealthCheckSpecification {
+class BandwidthSpec extends BaseSpecification {
 
     @Tidy
     @Tags(SMOKE)

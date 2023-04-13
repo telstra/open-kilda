@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -21,7 +22,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 
 @Narrative("Verifies feature to retrieve list of flows passing the switch grouped by port number. Details: #5015")
-class SwitchesFlowsV2Spec extends HealthCheckSpecification {
+class SwitchesFlowsV2Spec extends BaseSpecification {
     @Shared
     String yFlowId
     @Shared

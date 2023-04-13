@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.toggles
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 
@@ -22,7 +24,7 @@ switch is disconnected and there is no ability to reroute".
 BFD toggle is tested in BfdSpec*/
 @Tags([SMOKE, LOW_PRIORITY])
 @Isolated
-class FeatureTogglesSpec extends HealthCheckSpecification {
+class FeatureTogglesSpec extends BaseSpecification {
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
         def flow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -24,7 +26,7 @@ import spock.lang.Narrative
 and deleted once switch is deleted.
 Properties can be read/updated via API '/api/v1/switches/:switch-id/properties'.
 Main purpose of that is to understand which feature is supported by a switch(encapsulation type, multi table)""")
-class SwitchPropertiesSpec extends HealthCheckSpecification {
+class SwitchPropertiesSpec extends BaseSpecification {
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])

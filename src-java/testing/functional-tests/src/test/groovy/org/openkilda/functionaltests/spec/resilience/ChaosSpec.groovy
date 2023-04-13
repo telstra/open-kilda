@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.resilience
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
@@ -23,7 +25,7 @@ import java.util.concurrent.TimeUnit
 
 @Slf4j
 @Narrative("Test system behavior under different factors and events that randomly appear across the topology")
-class ChaosSpec extends HealthCheckSpecification {
+class ChaosSpec extends BaseSpecification {
 
     @Value('${antiflap.cooldown}')
     int antiflapCooldown

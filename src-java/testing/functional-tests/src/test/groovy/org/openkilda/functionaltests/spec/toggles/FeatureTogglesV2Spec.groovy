@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.toggles
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.DEFAULT_FLOW_ENCAP
@@ -43,7 +45,7 @@ flow_latency_monitoring_reactions toggle is tested in FlowMonitoringSpec
 */
 @Tags(SMOKE)
 @Isolated
-class FeatureTogglesV2Spec extends HealthCheckSpecification {
+class FeatureTogglesV2Spec extends BaseSpecification {
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
         def flow = flowHelperV2.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.BaseSpecification
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
@@ -29,7 +30,7 @@ import javax.inject.Provider
 
 @Slf4j
 @Narrative("Verify reroute operations on y-flows.")
-class YFlowProtectedSpec extends HealthCheckSpecification {
+class YFlowProtectedSpec extends BaseSpecification {
     @Autowired
     @Shared
     YFlowHelper yFlowHelper

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
@@ -34,7 +36,7 @@ or 'read-write'(management floodlights). System chooses one 'master' fl between 
 All switch floodlights can be checked via 'GET /api/v2/switches/{switchId}/connections'
 """)
 @Isolated
-class MultiFloodlightsSpec extends HealthCheckSpecification {
+class MultiFloodlightsSpec extends BaseSpecification {
     @Shared ExecutorService executor = Executors.newFixedThreadPool(2)
 
     @Tidy

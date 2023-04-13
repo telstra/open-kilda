@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -13,7 +15,7 @@ import org.openkilda.testing.tools.SoftAssertions
 
 import java.util.concurrent.TimeUnit
 
-class MultiRerouteSpec extends HealthCheckSpecification {
+class MultiRerouteSpec extends BaseSpecification {
 
     @Tidy
     def "Simultaneous reroute of multiple flows should not oversubscribe any ISLs"() {

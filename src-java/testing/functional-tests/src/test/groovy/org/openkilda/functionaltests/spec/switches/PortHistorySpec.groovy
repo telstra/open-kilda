@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -32,7 +34,7 @@ import spock.lang.Shared
 @See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/port-FSM.png",
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/AF-FSM.png"])
 @Narrative("Verify that port history is created for the port up/down actions.")
-class PortHistorySpec extends HealthCheckSpecification {
+class PortHistorySpec extends BaseSpecification {
     @Shared
     //confd/templates/wfm/topology.properties.tmpl => port.antiflap.stats.dumping.interval.seconds = 60
     //it means how often the 'ANTI_FLAP_PERIODIC_STATS' is logged in port history
@@ -266,7 +268,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/AF-FSM.png"])
 @Narrative("Verify that port history is created for the port up/down actions.")
 @Isolated
-class PortHistoryIsolatedSpec extends HealthCheckSpecification {
+class PortHistoryIsolatedSpec extends BaseSpecification {
     @Shared
     def antiflapDumpingInterval = 60
 

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.network
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -17,7 +19,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 
-class PathsSpec extends HealthCheckSpecification {
+class PathsSpec extends BaseSpecification {
 
     @Tidy
     @Tags(SMOKE)

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -18,7 +20,7 @@ import spock.lang.Narrative
 Sometimes an ISL have different port speed on its edges.
 In that case, we need to set ISL capacity and all bandwidth parameters according to minimal speed value.
 Eg. 10G on one side, and 1G on another side, the ISL should have a 1G capacity.""")
-class IslMinPortSpeedSpec extends HealthCheckSpecification {
+class IslMinPortSpeedSpec extends BaseSpecification {
     @Tidy
     @Tags([SMOKE, TOPOLOGY_DEPENDENT])
     def "System sets min port speed for isl capacity"() {

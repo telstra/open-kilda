@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.Assume.assumeNotNull
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -26,7 +28,7 @@ import java.util.concurrent.TimeUnit
 
 @Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
 @Tags([TOPOLOGY_DEPENDENT])
-class IslReplugSpec extends HealthCheckSpecification {
+class IslReplugSpec extends BaseSpecification {
 
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix

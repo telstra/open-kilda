@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -26,7 +28,7 @@ import spock.lang.Shared
 import java.util.concurrent.TimeUnit
 import javax.inject.Provider
 
-class SwitchDeleteSpec extends HealthCheckSpecification {
+class SwitchDeleteSpec extends BaseSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider

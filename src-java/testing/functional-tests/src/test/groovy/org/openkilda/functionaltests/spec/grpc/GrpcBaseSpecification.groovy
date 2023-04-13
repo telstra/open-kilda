@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.grpc
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.model.ContainerName.GRPC_STUB
@@ -23,7 +25,7 @@ import spock.lang.Shared
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/grpc-client")
 @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
 @Slf4j
-class GrpcBaseSpecification extends HealthCheckBaseSpecification {
+class GrpcBaseSpecification extends BaseSpecification {
 
     static Throwable healthCheckError
     static boolean healthCheckRan = false
@@ -34,11 +36,6 @@ class GrpcBaseSpecification extends HealthCheckBaseSpecification {
     GrpcService grpc
     @Value('${docker.host}')
     String dockerHost
-
-    @Override
-    def healthCheck() {
-        assert grpc.getHealthCheck().components["kafka"] == "operational"
-    }
 
     @Memoized
     List<SwitchDto> getNoviflowSwitches() {

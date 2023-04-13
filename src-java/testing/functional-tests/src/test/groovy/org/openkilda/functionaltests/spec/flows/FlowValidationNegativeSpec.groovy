@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
@@ -26,7 +28,7 @@ import spock.lang.Narrative
                  - ingress, transit and egress switches
                  - Single switch, two switch and three+ switch flow spans.
             """)
-class FlowValidationNegativeSpec extends HealthCheckSpecification {
+class FlowValidationNegativeSpec extends BaseSpecification {
 
     @Tidy
     @IterationTag(tags = [SMOKE], iterationNameRegex = /reverse/)

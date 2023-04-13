@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.stats
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -21,7 +23,7 @@ import spock.util.mop.Use
 @Use(TimeCategory)
 @Narrative("Verify that basic stats logging happens.")
 @Tags([SMOKE_SWITCHES])
-class OpenTsdbSpec extends HealthCheckSpecification {
+class OpenTsdbSpec extends BaseSpecification {
 
     @Shared
     @Value('${opentsdb.metric.prefix}')

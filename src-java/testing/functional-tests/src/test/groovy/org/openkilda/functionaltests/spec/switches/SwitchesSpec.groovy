@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -26,7 +28,7 @@ import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 
-class SwitchesSpec extends HealthCheckSpecification {
+class SwitchesSpec extends BaseSpecification {
     @Tidy
     def "System is able to return a list of all switches"() {
         expect: "System can return list of all switches"

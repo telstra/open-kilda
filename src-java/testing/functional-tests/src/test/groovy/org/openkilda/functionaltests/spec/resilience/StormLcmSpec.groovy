@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.resilience
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
@@ -34,7 +36,7 @@ verify their consistency after restart.
  */
 @Tags(VIRTUAL)
 @Isolated
-class StormLcmSpec extends HealthCheckSpecification {
+class StormLcmSpec extends BaseSpecification {
     @Shared
     WfmManipulator wfmManipulator
     @Value('${docker.host}')

@@ -84,7 +84,9 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
         if (profile == "virtual") {
             log.info("Multi table is enabled by default: $useMultitable")
             northbound.updateKildaConfiguration(new KildaConfigurationDto(useMultiTable: useMultitable))
-            buildVirtualEnvironment()
+            Wrappers.benchmark("Build virtual env") {
+                buildVirtualEnvironment()
+            }
             log.info("Virtual topology is successfully created")
         } else if (profile == "hardware") {
             labService.createHwLab(topology)

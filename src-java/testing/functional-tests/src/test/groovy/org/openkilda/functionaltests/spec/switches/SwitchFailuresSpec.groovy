@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -32,7 +34,7 @@ import spock.lang.Narrative
 This spec verifies different situations when Kilda switches suddenly disconnect from the controller.
 Note: For now it is only runnable on virtual env due to no ability to disconnect hardware switches
 """)
-class SwitchFailuresSpec extends HealthCheckSpecification {
+class SwitchFailuresSpec extends BaseSpecification {
 
     @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])

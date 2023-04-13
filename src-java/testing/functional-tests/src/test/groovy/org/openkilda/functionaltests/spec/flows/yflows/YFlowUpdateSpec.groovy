@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 
@@ -29,7 +30,7 @@ import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify update and partial update operations on y-flows.")
-class YFlowUpdateSpec extends HealthCheckSpecification {
+class YFlowUpdateSpec extends BaseSpecification {
     @Autowired @Shared
     YFlowHelper yFlowHelper
 

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.logging
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
@@ -22,7 +24,7 @@ import spock.lang.Shared
 @Slf4j
 @Tags([SMOKE])
 @Narrative("This specification ensures that all logging facilities are up and running after Kilda deployment")
-class CheckLoggingSpec extends HealthCheckSpecification {
+class CheckLoggingSpec extends BaseSpecification {
 
     @Autowired @Shared
     ElasticService elastic

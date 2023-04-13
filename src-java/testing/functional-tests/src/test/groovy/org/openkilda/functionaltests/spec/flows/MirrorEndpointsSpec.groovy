@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeFalse
@@ -55,7 +56,7 @@ import javax.inject.Provider
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-traffic-mirroring")
-class MirrorEndpointsSpec extends HealthCheckSpecification {
+class MirrorEndpointsSpec extends BaseSpecification {
 
     @Shared
     @Value('${opentsdb.metric.prefix}')

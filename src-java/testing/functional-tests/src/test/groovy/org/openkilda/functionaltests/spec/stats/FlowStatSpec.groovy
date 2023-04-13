@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.stats
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -29,7 +31,7 @@ import javax.inject.Provider
 
 @Tags(LOW_PRIORITY)
 @Narrative("Verify that statistic is collected for different type of flow")
-class FlowStatSpec extends HealthCheckSpecification {
+class FlowStatSpec extends BaseSpecification {
     @Shared
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix

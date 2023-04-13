@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.resilience
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.dataflow.Dataflow.task
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
@@ -20,7 +22,7 @@ import spock.lang.Isolated
 import java.util.concurrent.TimeUnit
 
 @Isolated
-class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
+class FloodlightKafkaConnectionSpec extends BaseSpecification {
     static final int PERIODIC_SYNC_TIME = 60
 
     @Value('${floodlight.alive.timeout}')

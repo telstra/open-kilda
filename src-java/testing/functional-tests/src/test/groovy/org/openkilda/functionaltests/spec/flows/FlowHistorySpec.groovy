@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
@@ -40,7 +42,7 @@ import java.util.concurrent.TimeUnit
 @Narrative("""Verify that history records are created for the create/update actions.
 History record is created in case the create/update action is completed successfully.""")
 @Slf4j
-class FlowHistorySpec extends HealthCheckSpecification {
+class FlowHistorySpec extends BaseSpecification {
     @Shared
     Long specStartTime
 

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -65,7 +66,7 @@ import javax.inject.Provider
 Verify ability to detect connected devices per flow endpoint (src/dst). 
 Verify allocated Connected Devices resources and installed rules.""")
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/connected-devices-lldp")
-class ConnectedDevicesSpec extends HealthCheckSpecification {
+class ConnectedDevicesSpec extends BaseSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -41,7 +43,7 @@ path. The cost of paths for diverse flows is calculated in real time and consist
 
 Refer to https://github.com/telstra/open-kilda/issues/1231 for more details.
 """)
-class FlowDiversitySpec extends HealthCheckSpecification {
+class FlowDiversitySpec extends BaseSpecification {
 
     @Value('${diversity.isl.cost}')
     int diversityIslCost

@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import groovy.transform.Memoized
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -32,7 +35,7 @@ import javax.inject.Provider
 
 @Slf4j
 @Narrative("Verify path swap operations on y-flows.")
-class YFlowPathSwapSpec extends HealthCheckSpecification {
+class YFlowPathSwapSpec extends BaseSpecification {
     @Autowired
     @Shared
     YFlowHelper yFlowHelper
@@ -447,6 +450,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
+    @Memoized
     SwitchTriplet findSwitchTripletForYFlowWithProtectedPaths() {
         return topologyHelper.switchTriplets.find {
             def ep1paths = it.pathsEp1.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
@@ -45,7 +47,7 @@ A flow with LATENCY strategy:
     - flow with MAX_LATENCY strategy and 'max-latency' set to 0 should pick path with least latency.
     - flow with MAX_LATENCY strategy and 'max-latency' being unset(null) should pick path with least latency.
 """)
-class MaxLatencySpec extends HealthCheckSpecification {
+class MaxLatencySpec extends BaseSpecification {
     @Shared
     List<PathNode> mainPath, alternativePath
     @Shared

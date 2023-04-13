@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.exception.ExpectedHttpClientErrorException
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.model.PathComputationStrategy
@@ -67,7 +68,7 @@ import javax.inject.Provider
 @Narrative(""""Verify CRUD operations and health of basic vlan flows on different types of switches.
 More specific cases like partialUpdate/protected/diverse etc. are covered in separate specifications
 """)
-class FlowCrudSpec extends HealthCheckSpecification {
+class FlowCrudSpec extends BaseSpecification {
 
     final static Integer IMPOSSIBLY_LOW_LATENCY = 1
     final static Long IMPOSSIBLY_HIGH_BANDWIDTH = Long.MAX_VALUE

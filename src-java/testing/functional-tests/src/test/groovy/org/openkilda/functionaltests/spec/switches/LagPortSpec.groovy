@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.exception.ExpectedHttpClientErrorException
 
 import static groovyx.gpars.GParsPool.withPool
@@ -44,7 +45,7 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST
 @See("https://github.com/telstra/open-kilda/blob/develop/docs/design/LAG-for-ports/README.md")
 @Narrative("Verify that flow can be created on a LAG port.")
 @Tags(HARDWARE)
-class LagPortSpec extends HealthCheckSpecification {
+class LagPortSpec extends BaseSpecification {
     public static final long LACP_METER_ID = LACP_REPLY_METER_ID.value
     public static final String LACP_COOKIE = Cookie.toString(DROP_SLOW_PROTOCOLS_LOOP_COOKIE)
 

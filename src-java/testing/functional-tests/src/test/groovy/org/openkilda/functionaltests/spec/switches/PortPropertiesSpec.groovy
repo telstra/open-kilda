@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -32,7 +34,7 @@ Admin has ability to enable/disable discovery on a specific port on a switch usi
 
 This spec assumes that port discovery property is enabled for all available ports.
 """)
-class PortPropertiesSpec extends HealthCheckSpecification {
+class PortPropertiesSpec extends BaseSpecification {
 
     @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES])

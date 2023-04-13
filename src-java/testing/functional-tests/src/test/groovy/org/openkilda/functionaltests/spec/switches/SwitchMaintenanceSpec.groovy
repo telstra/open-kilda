@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.DEFAULT_COST
@@ -18,7 +20,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition
 
 import java.util.concurrent.TimeUnit
 
-class SwitchMaintenanceSpec extends HealthCheckSpecification {
+class SwitchMaintenanceSpec extends BaseSpecification {
 
     @Tidy
     @Tags(SMOKE)

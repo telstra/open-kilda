@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static org.hamcrest.Matchers.containsInAnyOrder
 import static org.junit.Assert.assertThat
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -21,7 +23,7 @@ System should be able to detect missing, misconfigured, proper and excess defaul
 The real-life usecase is that we should properly detect and distinguish 'duplicate' default rules with the same cookie
 but different match/priority/etc.
 """)
-class DefaultRulesValidationSpec extends HealthCheckSpecification {
+class DefaultRulesValidationSpec extends BaseSpecification {
     //Tests for 'missing' default rules are in `DefaultRulesSpec`
 
     /* For now it is pretty difficult to test misconfigured and excess default rules from functional test level, thus

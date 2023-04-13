@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
@@ -32,7 +34,7 @@ import spock.lang.See
 import java.util.concurrent.TimeUnit
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
-class LinkSpec extends HealthCheckSpecification {
+class LinkSpec extends BaseSpecification {
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
 

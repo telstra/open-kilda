@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.resilience
 
+import org.openkilda.functionaltests.BaseSpecification
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -23,7 +25,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 
 @Slf4j
-class StormHeavyLoadSpec extends HealthCheckSpecification {
+class StormHeavyLoadSpec extends BaseSpecification {
 
     @Value("#{kafkaTopicsConfig.getTopoDiscoTopic()}")
     String topoDiscoTopic
