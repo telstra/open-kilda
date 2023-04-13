@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -56,6 +56,7 @@ import org.openkilda.messaging.command.flow.FlowValidationRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
+import org.openkilda.messaging.command.haflow.HaFlowPathsReadRequest;
 import org.openkilda.messaging.command.haflow.HaFlowReadRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.command.haflow.HaFlowsDumpRequest;
@@ -254,6 +255,9 @@ public class RouterBolt extends AbstractBolt {
                 emitWithContext(ROUTER_TO_HA_FLOW_READ.name(), input, new Values(key, data));
             } else if (data instanceof HaFlowReadRequest) {
                 log.debug("Received a ha-flow read request {} with key {}", data, key);
+                emitWithContext(ROUTER_TO_HA_FLOW_READ.name(), input, new Values(key, data));
+            } else if (data instanceof HaFlowPathsReadRequest) {
+                log.debug("Received a ha-flow paths read request {} with key {}", data, key);
                 emitWithContext(ROUTER_TO_HA_FLOW_READ.name(), input, new Values(key, data));
             } else {
                 unhandledInput(input);
