@@ -20,6 +20,7 @@ import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.PingMeters;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.HaFlow;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -33,16 +34,21 @@ import java.util.UUID;
 @Builder(toBuilder = true)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class PingContext implements Serializable {
+
     public enum Kinds {
         PERIODIC,
         ON_DEMAND,
-        ON_DEMAND_Y_FLOW
+        ON_DEMAND_Y_FLOW,
+        ON_DEMAND_HA_FLOW
     }
 
     private Kinds kind;
     private GroupId group;
 
     private String yFlowId;
+    private HaFlow haFlow;
+    private String haFlowId;
+    private String haSubFlowId;
     private Flow flow;
     private FlowTransitEncapsulation transitEncapsulation;
     private FlowDirection direction;
@@ -60,7 +66,7 @@ public class PingContext implements Serializable {
     }
 
     public String getFlowId() {
-        return flow.getFlowId();
+        return isHaFlow() ? getHaFlowId() : flow.getFlowId();
     }
 
     /**
@@ -118,6 +124,14 @@ public class PingContext implements Serializable {
                     "Unsupported %s.%s value", FlowDirection.class.getName(), direction));
         }
         return value;
+    }
+
+    public String getHaFlowId() {
+        return haFlowId != null ? haFlowId : haFlow.getHaFlowId();
+    }
+
+    public boolean isHaFlow() {
+        return haFlow != null && kind.equals(Kinds.ON_DEMAND_HA_FLOW);
     }
 
     @Override

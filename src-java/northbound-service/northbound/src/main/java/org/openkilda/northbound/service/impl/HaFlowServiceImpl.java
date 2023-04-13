@@ -16,6 +16,7 @@
 package org.openkilda.northbound.service.impl;
 
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.HaFlowPingRequest;
 import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathsReadRequest;
@@ -28,6 +29,7 @@ import org.openkilda.messaging.command.haflow.HaFlowValidationResponse;
 import org.openkilda.messaging.command.haflow.HaFlowsDumpRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
+import org.openkilda.messaging.info.flow.HaFlowPingResponse;
 import org.openkilda.northbound.converter.HaFlowMapper;
 import org.openkilda.northbound.dto.v2.haflows.HaFlow;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
@@ -58,10 +60,14 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class HaFlowServiceImpl implements HaFlowService {
-    private final MessagingChannel messagingChannel;
-    private final HaFlowMapper flowMapper;
     @Value("#{kafkaTopicsConfig.getFlowHsTopic()}")
     private String flowHsTopic;
+
+    @Value("#{kafkaTopicsConfig.getPingTopic()}")
+    private String pingTopic;
+
+    private final MessagingChannel messagingChannel;
+    private final HaFlowMapper flowMapper;
 
     @Autowired
     public HaFlowServiceImpl(MessagingChannel messagingChannel, HaFlowMapper flowMapper) {
@@ -207,7 +213,13 @@ public class HaFlowServiceImpl implements HaFlowService {
 
     @Override
     public CompletableFuture<HaFlowPingResult> pingHaFlow(String haFlowId, HaFlowPingPayload payload) {
-        return null;
+        log.info("API request: Ping ha-flow {}, payload {}", haFlowId, payload);
+        CommandMessage command = new CommandMessage(new HaFlowPingRequest(haFlowId, payload.getTimeoutMillis()),
+                System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(pingTopic, command)
+                .thenApply(HaFlowPingResponse.class::cast)
+                .thenApply(flowMapper::toPingResult);
     }
 
     @Override

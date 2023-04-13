@@ -55,6 +55,7 @@ public class GroupCollector extends Abstract {
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
+        log.debug("Received tuple GroupCollector: {}", input);
         String component = input.getSourceComponent();
         if (TickDeduplicator.BOLT_ID.equals(component)) {
             expire(input);
