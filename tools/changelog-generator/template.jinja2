@@ -24,4 +24,8 @@ For the complete list of changes, check out [the commit log](https://github.com/
 {{ components|join(', ') }}
 {%- endif %}
 
+{% if schema_migration %}
 ### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+{%- endif %}
+
