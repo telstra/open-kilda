@@ -89,20 +89,29 @@ public class FlowPathBuilder {
      * @param flowPath the flow path to evaluate.
      */
     public boolean arePathsOverlapped(Path path, FlowPath flowPath) {
-        Set<Segment> pathSegments = path.getSegments().stream()
-                .map(segment -> segment.toBuilder().latency(0).build())
-                .collect(Collectors.toSet());
-        Set<Segment> flowSegments = flowPath.getSegments().stream()
-                .map(segment -> Segment.builder()
-                        .srcSwitchId(segment.getSrcSwitchId())
-                        .srcPort(segment.getSrcPort())
-                        .destSwitchId(segment.getDestSwitchId())
-                        .destPort(segment.getDestPort())
-                        .latency(0)
-                        .build())
-                .collect(Collectors.toSet());
+        Set<Segment> pathSegments = buildSegmentSet(path);
+        Set<Segment> flowSegments = buildSegmentSet(flowPath);
 
         return !Sets.intersection(pathSegments, flowSegments).isEmpty();
+    }
+
+    /**
+     * Check whether the ha-path and ha-flow path overlap.
+     *
+     * @param haPath the ha-path to evaluate.
+     * @param haFlowPath the ha-flow path to evaluate.
+     */
+    public boolean arePathsOverlapped(HaPath haPath, HaFlowPath haFlowPath) {
+        for (Path subPath : haPath.getSubPaths()) {
+            Set<Segment> pathSegments = buildSegmentSet(subPath);
+            for (FlowPath haFlowSubPath : haFlowPath.getSubPaths()) {
+                Set<Segment> haPathSegments = buildSegmentSet(haFlowSubPath);
+                if (!Sets.intersection(pathSegments, haPathSegments).isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -302,6 +311,28 @@ public class FlowPathBuilder {
         }
 
         return result;
+    }
+
+    private static Set<Segment> buildSegmentSet(FlowPath flowPath) {
+        return flowPath.getSegments().stream()
+                .map(segment -> Segment.builder()
+                        .srcSwitchId(segment.getSrcSwitchId())
+                        .srcPort(segment.getSrcPort())
+                        .destSwitchId(segment.getDestSwitchId())
+                        .destPort(segment.getDestPort())
+                        .build())
+                .collect(Collectors.toSet());
+    }
+
+    private static Set<Segment> buildSegmentSet(Path path) {
+        return path.getSegments().stream()
+                .map(segment -> Segment.builder()
+                        .srcSwitchId(segment.getSrcSwitchId())
+                        .srcPort(segment.getSrcPort())
+                        .destSwitchId(segment.getDestSwitchId())
+                        .destPort(segment.getDestPort())
+                        .build())
+                .collect(Collectors.toSet());
     }
 
     private LazyMap<SwitchId, SwitchProperties> getSwitchProperties(PathId pathId) {

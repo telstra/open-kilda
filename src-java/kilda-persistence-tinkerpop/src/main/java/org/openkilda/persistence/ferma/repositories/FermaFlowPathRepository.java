@@ -50,6 +50,7 @@ import org.apache.tinkerpop.gremlin.structure.Column;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -198,7 +199,7 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
 
     @Override
     public Collection<PathId> findPathIdsByFlowAffinityGroupId(String flowAffinityGroupId) {
-        List<PathId> pathIds = new ArrayList<>(findPathIdsByFlowGroupId(
+        Set<PathId> pathIds = new HashSet<>(findPathIdsByFlowGroupId(
                 FlowFrame.AFFINITY_GROUP_ID_PROPERTY, flowAffinityGroupId));
         pathIds.addAll(findPathIdsByHaFlowGroupId(HaFlowFrame.AFFINITY_GROUP_ID_PROPERTY, flowAffinityGroupId));
         return pathIds;
