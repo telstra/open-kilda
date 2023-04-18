@@ -86,7 +86,7 @@ dependencies {
         exclude group: 'log4j', module: 'log4j'
     }
 
-    api 'io.micrometer:micrometer-core:1.9.2'
+    api 'io.micrometer:micrometer-core:1.10.5'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
     testImplementation 'org.junit.vintage:junit-vintage-engine'

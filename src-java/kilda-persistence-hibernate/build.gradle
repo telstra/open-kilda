@@ -34,7 +34,7 @@ dependencies {
         exclude module: 'jaxb-runtime'
     }
 
-    implementation 'mysql:mysql-connector-java:8.0.29'
+    implementation 'mysql:mysql-connector-java:8.0.32'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

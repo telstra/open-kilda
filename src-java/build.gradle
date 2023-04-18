@@ -44,7 +44,7 @@ subprojects {
             testImplementation 'org.apache.storm:storm-core:1.2.1'
             implementation 'org.apache.storm:storm-kafka-client:1.2.1'
 
-            implementation 'org.squirrelframework:squirrel-foundation:0.3.9'
+            implementation 'org.squirrelframework:squirrel-foundation:0.3.10'
 
             implementation 'com.google.guava:guava:31.1-jre'
             implementation 'net.jodah:failsafe:2.4.0'
@@ -53,7 +53,7 @@ subprojects {
             implementation 'commons-io:commons-io:2.11.0'
             implementation 'commons-codec:commons-codec:1.15'
             implementation 'args4j:args4j:2.33'
-            implementation 'com.google.code.gson:gson:2.9.0'
+            implementation 'com.google.code.gson:gson:2.10.1'
             implementation 'com.fasterxml.uuid:java-uuid-generator:4.0.1'
 
             implementation('org.apache.kafka:kafka-clients') {
@@ -71,10 +71,10 @@ subprojects {
             implementation 'com.sabre.oss.conf4j:conf4j-core:1.0'
             implementation 'com.sabre.oss.conf4j:conf4j-spring-boot:1.0'
 
-            compileOnly 'org.projectlombok:lombok:1.18.24'
-            testCompileOnly 'org.projectlombok:lombok:1.18.24'
-            annotationProcessor 'org.projectlombok:lombok:1.18.24'
-            testAnnotationProcessor 'org.projectlombok:lombok:1.18.24'
+            compileOnly 'org.projectlombok:lombok:1.18.26'
+            testCompileOnly 'org.projectlombok:lombok:1.18.26'
+            annotationProcessor 'org.projectlombok:lombok:1.18.26'
+            testAnnotationProcessor 'org.projectlombok:lombok:1.18.26'
             annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
             testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
 
@@ -87,37 +87,37 @@ subprojects {
             testRuntimeOnly 'org.slf4j:slf4j-simple:1.7.32'
             implementation('org.apache.logging.log4j:log4j-slf4j-impl') {
                 version {
-                    strictly '2.18.0'
+                    strictly '2.20.0'
                 }
             }
             testRuntimeOnly('org.apache.logging.log4j:log4j-slf4j-impl') {
                 version {
-                    strictly '2.18.0'
+                    strictly '2.20.0'
                 }
             }
             implementation('org.apache.logging.log4j:log4j-api') {
                 version {
-                    strictly '2.18.0'
+                    strictly '2.20.0'
                 }
             }
             testRuntimeOnly('org.apache.logging.log4j:log4j-api') {
                 version {
-                    strictly '2.18.0'
+                    strictly '2.20.0'
                 }
             }
             implementation('org.apache.logging.log4j:log4j-core') {
                 version {
-                    strictly '2.18.0'
+                    strictly '2.20.0'
                 }
             }
             testRuntimeOnly('org.apache.logging.log4j:log4j-core') {
                 version {
-                    strictly '2.18.0'
+                    strictly '2.20.0'
                 }
             }
             implementation('org.apache.logging.log4j:log4j-jul') {
                 version {
-                    strictly '2.18.0'
+                    strictly '2.20.0'
                 }
             }
 
@@ -129,7 +129,7 @@ subprojects {
             testImplementation 'org.hamcrest:hamcrest-library:2.2'
             testImplementation 'org.mockito:mockito-junit-jupiter:4.2.0'
             testImplementation 'org.apache.curator:curator-test:2.8.0'
-            testImplementation 'io.netty:netty-all:4.1.79.Final'
+            testImplementation 'io.netty:netty-all:4.1.91.Final'
             testRuntimeOnly 'javax.servlet:javax.servlet-api:3.1.0'
 
             implementation 'javax.validation:validation-api:2.0.1.Final'
@@ -138,21 +138,21 @@ subprojects {
             testImplementation 'org.glassfish:javax.el:3.0.1-b12'
 
             implementation 'org.aspectj:aspectjrt:1.9.7'
-            implementation 'org.mapstruct:mapstruct:1.5.2.Final'
-            implementation 'org.mapstruct:mapstruct-processor:1.5.2.Final'
-            annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.2.Final'
-            testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.5.2.Final'
+            implementation 'org.mapstruct:mapstruct:1.5.4.Final'
+            implementation 'org.mapstruct:mapstruct-processor:1.5.4.Final'
+            annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.4.Final'
+            testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.5.4.Final'
 
-            implementation 'io.grpc:grpc-protobuf:1.47.0'
-            implementation 'io.grpc:grpc-stub:1.47.0'
-            implementation 'io.grpc:grpc-alts:1.47.0'
-            testImplementation 'io.grpc:grpc-testing:1.47.0'
-            implementation 'com.google.protobuf:protobuf-java-util:3.21.2'
+            implementation 'io.grpc:grpc-protobuf:1.54.1'
+            implementation 'io.grpc:grpc-stub:1.54.1'
+            implementation 'io.grpc:grpc-alts:1.54.1'
+            testImplementation 'io.grpc:grpc-testing:1.54.1'
+            implementation 'com.google.protobuf:protobuf-java-util:3.22.3'
 
             implementation 'io.springfox:springfox-swagger2:2.9.2'
             implementation 'io.springfox:springfox-swagger-ui:2.9.2'
 
-            implementation 'com.esotericsoftware:kryo:5.3.0'
+            implementation 'com.esotericsoftware:kryo:5.4.0'
         }
     }
 
