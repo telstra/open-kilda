@@ -103,10 +103,10 @@ public class FlowPathBuilder {
      */
     public boolean arePathsOverlapped(HaPath haPath, HaFlowPath haFlowPath) {
         for (Path subPath : haPath.getSubPaths()) {
-            Set<Segment> pathSegments = buildSegmentSet(subPath);
+            Set<Segment> haPathSegments = buildSegmentSet(subPath);
             for (FlowPath haFlowSubPath : haFlowPath.getSubPaths()) {
-                Set<Segment> haPathSegments = buildSegmentSet(haFlowSubPath);
-                if (!Sets.intersection(pathSegments, haPathSegments).isEmpty()) {
+                Set<Segment> haFlowSegments = buildSegmentSet(haFlowSubPath);
+                if (!Sets.intersection(haPathSegments, haFlowSegments).isEmpty()) {
                     return true;
                 }
             }

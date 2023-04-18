@@ -52,14 +52,14 @@ import java.util.Collections;
 import java.util.Optional;
 
 public class FlowPathBuilderTest {
-    public static final SwitchId SWITCH_ID_1 = new SwitchId(1);
-    public static final SwitchId SWITCH_ID_2 = new SwitchId(2);
-    public static final SwitchId SWITCH_ID_3 = new SwitchId(3);
-    public static final Switch SWITCH_1 = Switch.builder().switchId(SWITCH_ID_1).build();
-    public static final Switch SWITCH_2 = Switch.builder().switchId(SWITCH_ID_2).build();
-    public static final Switch SWITCH_3 = Switch.builder().switchId(SWITCH_ID_3).build();
-    public static final PathId PATH_ID_1 = new PathId("test_path_id");
-    public static final String HA_SUB_FLOW = "ha_sub_flow";
+    private static final SwitchId SWITCH_ID_1 = new SwitchId(1);
+    private static final SwitchId SWITCH_ID_2 = new SwitchId(2);
+    private static final SwitchId SWITCH_ID_3 = new SwitchId(3);
+    private static final Switch SWITCH_1 = Switch.builder().switchId(SWITCH_ID_1).build();
+    private static final Switch SWITCH_2 = Switch.builder().switchId(SWITCH_ID_2).build();
+    private static final Switch SWITCH_3 = Switch.builder().switchId(SWITCH_ID_3).build();
+    private static final PathId PATH_ID_1 = new PathId("test_path_id");
+    private static final String HA_SUB_FLOW = "ha_sub_flow";
 
     private FlowPathBuilder builder;
 
