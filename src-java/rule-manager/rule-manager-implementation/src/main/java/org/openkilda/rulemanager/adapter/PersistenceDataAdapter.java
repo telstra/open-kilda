@@ -19,6 +19,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PathId;
@@ -47,6 +48,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 
@@ -70,7 +72,8 @@ public class PersistenceDataAdapter implements DataAdapter {
     private final Set<SwitchId> switchIds;
 
     private Map<PathId, Flow> flowCache;
-    private Map<PathId, FlowPath> flowPathCache;
+    private Map<PathId, FlowPath> commonFlowPathCache;
+    private Map<PathId, FlowPath> haSubPathPathCache;
     private Map<PathId, FlowTransitEncapsulation> encapsulationCache;
     private Map<SwitchId, Switch> switchCache;
     private Map<SwitchId, SwitchProperties> switchPropertiesCache;
@@ -106,11 +109,32 @@ public class PersistenceDataAdapter implements DataAdapter {
     }
 
     @Override
-    public Map<PathId, FlowPath> getFlowPaths() {
-        if (flowPathCache == null) {
-            flowPathCache = flowPathRepository.findByIds(pathIds);
+    public Map<PathId, FlowPath> getCommonFlowPaths() {
+        if (commonFlowPathCache == null || haSubPathPathCache == null) {
+            fillPathCaches();
         }
-        return flowPathCache;
+        return commonFlowPathCache;
+    }
+
+    @Override
+    public Map<PathId, FlowPath> getHaFlowSubPaths() {
+        if (haSubPathPathCache == null || commonFlowPathCache == null) {
+            fillPathCaches();
+        }
+        return haSubPathPathCache;
+    }
+
+    private void fillPathCaches() {
+        haSubPathPathCache = new HashMap<>();
+        commonFlowPathCache = new HashMap<>();
+        Map<PathId, FlowPath> pathMap = flowPathRepository.findByIds(pathIds);
+        for (Entry<PathId, FlowPath> entry : pathMap.entrySet()) {
+            if (entry.getValue().getHaFlowPathId() == null) {
+                commonFlowPathCache.put(entry.getKey(), entry.getValue());
+            } else {
+                haSubPathPathCache.put(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     @Override
@@ -199,5 +223,10 @@ public class PersistenceDataAdapter implements DataAdapter {
             yFlowCache = flowPathRepository.findYFlowsByPathIds(pathIds);
         }
         return yFlowCache.get(pathId);
+    }
+
+    @Override
+    public HaFlow getHaFlow(PathId pathId) {
+        return null;
     }
 }

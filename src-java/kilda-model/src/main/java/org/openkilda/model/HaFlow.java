@@ -20,10 +20,12 @@ import static java.lang.String.format;
 import org.openkilda.model.HaFlow.HaFlowData;
 import org.openkilda.model.HaFlowPath.HaFlowPathData;
 import org.openkilda.model.HaFlowPath.HaFlowPathDataImpl;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.BeanSerializer;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -252,6 +254,46 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
         if (!haPath.isReverse()) {
             throw new IllegalArgumentException(format("Cookie %s of HA-path %s must have a reverse direction",
                     haPath.getCookie(), haPath.getHaPathId()));
+        }
+    }
+
+    /**
+     * Get up to 3 endpoint switchIds.
+     */
+    public Set<SwitchId> getEndpointSwitchIds() {
+        Set<SwitchId> switchIds = Sets.newHashSet(getSharedSwitchId());
+        for (HaSubFlow subFlow : getHaSubFlows()) {
+            switchIds.add(subFlow.getEndpointSwitchId());
+        }
+        return switchIds;
+    }
+
+    /**
+     * Return opposite pathId to passed pathId.
+     */
+    public Optional<PathId> getOppositePathId(@NonNull PathId pathId) {
+        if (pathId.equals(getForwardPathId()) && getReversePathId() != null) {
+            return Optional.of(getReversePathId());
+        } else if (pathId.equals(getReversePathId()) && getForwardPathId() != null) {
+            return Optional.of(getForwardPathId());
+        } else if (pathId.equals(getProtectedForwardPathId()) && getProtectedReversePathId() != null) {
+            return Optional.of(getProtectedReversePathId());
+        } else if (pathId.equals(getProtectedReversePathId()) && getProtectedForwardPathId() != null) {
+            return Optional.of(getProtectedForwardPathId());
+        } else {
+            // Handling the case of non-active paths.
+            Optional<Long> requestedPathCookie = getPath(pathId)
+                    .map(HaFlowPath::getCookie)
+                    .map(FlowSegmentCookie::getFlowEffectiveId);
+            if (requestedPathCookie.isPresent()) {
+                return getPaths().stream()
+                        .filter(path -> !path.getHaPathId().equals(pathId))
+                        .filter(path -> path.getCookie().getFlowEffectiveId() == requestedPathCookie.get())
+                        .findAny()
+                        .map(HaFlowPath::getHaPathId);
+            } else {
+                throw new IllegalArgumentException(format("Ha flow %s does not have path %s", getHaFlowId(), pathId));
+            }
         }
     }
 

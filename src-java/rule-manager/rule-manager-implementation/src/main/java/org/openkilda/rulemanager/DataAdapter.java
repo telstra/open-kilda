@@ -18,6 +18,7 @@ package org.openkilda.rulemanager;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PathId;
@@ -32,7 +33,9 @@ import java.util.Set;
 
 public interface DataAdapter {
 
-    Map<PathId, FlowPath> getFlowPaths();
+    Map<PathId, FlowPath> getCommonFlowPaths();
+
+    Map<PathId, FlowPath> getHaFlowSubPaths();
 
     Flow getFlow(PathId pathId);
 
@@ -49,4 +52,6 @@ public interface DataAdapter {
     List<LagLogicalPort> getLagLogicalPorts(SwitchId switchId);
 
     YFlow getYFlow(PathId pathId);
+
+    HaFlow getHaFlow(PathId pathId);
 }

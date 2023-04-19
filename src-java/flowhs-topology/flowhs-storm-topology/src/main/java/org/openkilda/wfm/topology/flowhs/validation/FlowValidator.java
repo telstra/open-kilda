@@ -27,6 +27,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.PhysicalPort;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -37,6 +38,8 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
+import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -75,6 +78,8 @@ public class FlowValidator {
 
     private final FlowRepository flowRepository;
     private final YFlowRepository yFlowRepository;
+    private final HaFlowRepository haFlowRepository;
+    private final HaSubFlowRepository haSubFlowRepository;
     private final SwitchRepository switchRepository;
     private final IslRepository islRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
@@ -85,12 +90,35 @@ public class FlowValidator {
     public FlowValidator(PersistenceManager persistenceManager) {
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
+        this.haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
+        this.haSubFlowRepository = persistenceManager.getRepositoryFactory().createHaSubFlowRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
         this.flowMirrorPointsRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPointsRepository();
         this.flowMirrorPathRepository = persistenceManager.getRepositoryFactory().createFlowMirrorPathRepository();
         this.physicalPortRepository = persistenceManager.getRepositoryFactory().createPhysicalPortRepository();
+    }
+
+    /**
+     * Validates the specified flow id.
+     *
+     * @param id - ID of a flow, a y-flow, a ha-flow or a ha-subFlow.
+     * @throws InvalidFlowException is thrown if a flow, a y-flow or ha-flow with specified ID exists.
+     */
+    public void validateFlowIdUniqueness(String id) throws InvalidFlowException {
+        if (flowRepository.exists(id)) {
+            throw new InvalidFlowException(format("Flow %s already exists", id), ErrorType.ALREADY_EXISTS);
+        }
+        if (yFlowRepository.exists(id)) {
+            throw new InvalidFlowException(format("Y-flow %s already exists", id), ErrorType.ALREADY_EXISTS);
+        }
+        if (haFlowRepository.exists(id)) {
+            throw new InvalidFlowException(format("HA-flow %s already exists", id), ErrorType.ALREADY_EXISTS);
+        }
+        if (haSubFlowRepository.exists(id)) {
+            throw new InvalidFlowException(format("HA-subFlow %s already exists", id), ErrorType.ALREADY_EXISTS);
+        }
     }
 
     /**
@@ -169,7 +197,7 @@ public class FlowValidator {
             }
             checkForMultiTableRequirement(descriptor, properties);
             checkFlowForIslConflicts(descriptor);
-            checkFlowForFlowConflicts(flow.getFlowId(), descriptor, bulkUpdateFlowIds);
+            checkFlowForFlowConflicts(flow.getFlowId(), flow.getHaFlowId(), descriptor, bulkUpdateFlowIds);
             checkFlowForSinkEndpointConflicts(descriptor);
             checkFlowForMirrorEndpointConflicts(flow.getFlowId(), descriptor);
             checkFlowForServer42Conflicts(descriptor, properties);
@@ -212,7 +240,7 @@ public class FlowValidator {
     }
 
     @VisibleForTesting
-    void checkFlags(RequestedFlow flow) throws InvalidFlowException  {
+    void checkFlags(RequestedFlow flow) throws InvalidFlowException {
         if (flow.isPinned() && flow.isAllocateProtectedPath()) {
             throw new InvalidFlowException("Flow flags are not valid, unable to process pinned protected flow",
                     ErrorType.DATA_INVALID);
@@ -335,9 +363,16 @@ public class FlowValidator {
         }
     }
 
-    private void checkFlowForFlowConflicts(String flowMirrorId, EndpointDescriptor descriptor)
+    private void checkFlowForFlowConflicts(
+            String flowMirrorId, EndpointDescriptor descriptor) throws InvalidFlowException {
+        checkFlowForFlowConflicts(flowMirrorId, null, descriptor, new HashSet<>());
+    }
+
+    private void checkFlowForFlowConflicts(
+            String flowId, String haFlowId, EndpointDescriptor descriptor, Set<String> bulkUpdateFlowIds)
             throws InvalidFlowException {
-        checkFlowForFlowConflicts(flowMirrorId, descriptor, new HashSet<>());
+        checkFlowForCommonFlowConflicts(flowId, descriptor, bulkUpdateFlowIds);
+        checkFlowForHaFlowConflicts(flowId, haFlowId, descriptor);
     }
 
     /**
@@ -345,7 +380,8 @@ public class FlowValidator {
      *
      * @throws InvalidFlowException is thrown in a case when flow endpoints conflict with existing flows.
      */
-    private void checkFlowForFlowConflicts(String flowId, EndpointDescriptor descriptor, Set<String> bulkUpdateFlowIds)
+    private void checkFlowForCommonFlowConflicts(
+            String flowId, EndpointDescriptor descriptor, Set<String> bulkUpdateFlowIds)
             throws InvalidFlowException {
         final FlowEndpoint endpoint = descriptor.getEndpoint();
 
@@ -373,6 +409,26 @@ public class FlowValidator {
                         entry.getFlowId(), conflict.getName(), conflict.getEndpoint());
                 throw new InvalidFlowException(errorMessage, ErrorType.ALREADY_EXISTS);
             }
+        }
+    }
+
+    /**
+     * Checks a flow for endpoints' conflicts with ha-flows.
+     *
+     * @throws InvalidFlowException is thrown in a case when flow endpoints conflict with existing ha-flows.
+     */
+    private void checkFlowForHaFlowConflicts(String flowId, String haFlowId, EndpointDescriptor descriptor)
+            throws InvalidFlowException {
+        FlowEndpoint endpoint = descriptor.getEndpoint();
+        for (HaFlow entry : haFlowRepository.findByEndpoint(endpoint.getSwitchId(), endpoint.getPortNumber(),
+                endpoint.getOuterVlanId(), endpoint.getInnerVlanId())) {
+            if (haFlowId != null && haFlowId.equals(flowId)) {
+                continue;
+            }
+            String errorMessage = format("Requested flow '%s' conflicts with existing ha-flow '%s'. "
+                            + "Details: requested flow %s endpoint %s is the same as endpoint of existing ha-flow",
+                    flowId, entry.getHaFlowId(), descriptor.getName(), endpoint);
+            throw new InvalidFlowException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
     }
 

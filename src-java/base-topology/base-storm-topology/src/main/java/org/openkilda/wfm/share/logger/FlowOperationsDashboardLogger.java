@@ -64,6 +64,9 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String YFLOW_PATHS_SWAP_EVENT = "y_flow_paths_swap";
     private static final String YFLOW_PATHS_SWAP_RESULT_EVENT = "y_flow_paths_swap_result";
 
+    private static final String HA_FLOW_CREATE_EVENT = "ha_flow_create";
+    private static final String HA_FLOW_CREATE_RESULT_EVENT = "ha_flow_create_result";
+
     private static final String TAG = "FLOW_OPERATIONS_DASHBOARD";
     private static final String DASHBOARD = "dashboard";
 
@@ -537,7 +540,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-create-failed");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_CREATE_RESULT_EVENT);
-        data.put("update-result", "failed");
+        data.put("create-result", "failed");
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed create of the y-flow %s, reason: %s", yFlowId, failureReason),
                 data);
@@ -707,6 +710,48 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put("swap-result", "failed");
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed path swap of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a ha-flow-create event.
+     */
+    public void onHaFlowCreate(
+            String haFlowId, FlowEndpoint sharedEndpoint, List<FlowEndpoint> subFlowEndpoints, long maximumBandwidth,
+            PathComputationStrategy strategy, Long maxLatency, Long maxLatencyTier2) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-create");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_CREATE_EVENT);
+        invokeLogger(Level.INFO, String.format("Create the ha-flow: %s, shared endpoint %s, endpoints (%s), "
+                        + "bandwidth %d, path computation strategy %s, max latency %s, max latency tier2 %s",
+                haFlowId, sharedEndpoint, subFlowEndpoints, maximumBandwidth, strategy, maxLatency,
+                maxLatencyTier2), data);
+    }
+
+    /**
+     * Log a y-flow-create-successful event.
+     */
+    public void onSuccessfulHaFlowCreate(String haFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-create-successful");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_CREATE_RESULT_EVENT);
+        data.put("create-result", "successful");
+        invokeLogger(Level.INFO, String.format("Successful create of the ha-flow %s", haFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-create-failed event.
+     */
+    public void onFailedHaFlowCreate(String haFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-create-failed");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_CREATE_RESULT_EVENT);
+        data.put("create-result", "failed");
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed create of the ha-flow %s, reason: %s", haFlowId, failureReason),
                 data);
     }
 }

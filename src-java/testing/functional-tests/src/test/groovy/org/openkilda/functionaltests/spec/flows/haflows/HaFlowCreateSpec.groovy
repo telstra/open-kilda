@@ -15,21 +15,20 @@ import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload
-import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint
-import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
-import org.openkilda.northbound.dto.v2.haflows.HaSubFlowPatchPayload
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify create operations on ha-flows.")
+@Ignore("""HA flow create operation allocates resources, but HA flow delete operation can't deallocate these resources 
+        yet. Need to be unignored when HA flow delete operation will be ready""")
 class HaFlowCreateSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
@@ -88,8 +87,29 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.CONFLICT
         exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == "Couldn't create HA-flow"
-            assertThat(errorDescription).matches(/Couldn't create ha-flow .*?\. This ha-flow already exist\./)
+            assert errorMessage == "Could not create ha-flow"
+            assertThat(errorDescription).matches(/HA-flow .*? already exists/)
+        }
+
+        cleanup:
+        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+    }
+
+    @Tidy
+    def "User cannot create a one switch ha-flow"() {
+        given: "A switch"
+        def sw = topologyHelper.getRandomSwitch()
+
+        when: "Try to create one switch ha-flow"
+        def haFlowRequest = haFlowHelper.singleSwitchHaFlow(sw)
+        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
+
+        then: "Error is received"
+        def exc = thrown(HttpClientErrorException)
+        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.responseBodyAsString.to(MessageError).with {
+            assert errorMessage == "Could not create ha-flow"
+            assertThat(errorDescription).matches(/The ha-flow .*? is one switch flow\..*?/)
         }
 
         cleanup:
@@ -144,18 +164,6 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
             }
             add([swT: swT, haFlow: haFlow, coveredCases: ["se qinq, ep1-ep2 same sw-port, qinq"]])
         }
-
-        //se-ep1-ep2 same sw (one-switch ha-flow)
-        testData.with {
-            def topo = owner.topology
-            def sw = topo.getActiveSwitches()[0]
-            def swT = owner.topologyHelper.getSwitchTriplets(false, true).find() {
-                it.shared == sw && it.ep1 == sw && it.ep2 == sw
-            }
-            def yFlow = owner.haFlowHelper.singleSwitchHaFlow(sw)
-            add([swT: swT, haFlow: yFlow, coveredCases: ["se-ep1-ep2 same sw (one-switch y-flow)"]])
-        }
-
         return testData
     }
 

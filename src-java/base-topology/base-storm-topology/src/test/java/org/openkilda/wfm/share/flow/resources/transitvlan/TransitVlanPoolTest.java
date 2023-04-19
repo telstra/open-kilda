@@ -39,7 +39,9 @@ import java.util.Set;
 public class TransitVlanPoolTest extends InMemoryGraphBasedTest {
     private static final Switch SWITCH_A = Switch.builder().switchId(new SwitchId("ff:00")).build();
     private static final Switch SWITCH_B = Switch.builder().switchId(new SwitchId("ff:01")).build();
-    private static final Flow FLOW_1 = Flow.builder().flowId("flow_1").srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
+    public static final String FLOW_ID_1 = "flow_1";
+    private static final Flow FLOW_1 = Flow.builder()
+            .flowId(FLOW_ID_1).srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
     private static final Flow FLOW_2 = Flow.builder().flowId("flow_2").srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
     private static final Flow FLOW_3 = Flow.builder().flowId("flow_3").srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
     private static final PathId PATH_ID_1 = new PathId("path_1");
@@ -62,10 +64,8 @@ public class TransitVlanPoolTest extends InMemoryGraphBasedTest {
         transactionManager.doInTransaction(() -> {
             Set<Integer> transitVlans = new HashSet<>();
             for (int i = MIN_TRANSIT_VLAN; i <= MAX_TRANSIT_VLAN; i++) {
-                Flow flow = Flow.builder()
-                        .flowId(format("flow_%d", i)).srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
                 transitVlans.add(transitVlanPool.allocate(
-                        flow,
+                        format("flow_%d", i),
                         new PathId(format("path_%d", i)),
                         new PathId(format("opposite_dummy_%d", i))).getTransitVlan().getVlan());
             }
@@ -78,10 +78,8 @@ public class TransitVlanPoolTest extends InMemoryGraphBasedTest {
     public void vlanPoolFullTest() {
         transactionManager.doInTransaction(() -> {
             for (int i = MIN_TRANSIT_VLAN; i <= MAX_TRANSIT_VLAN + 1; i++) {
-                Flow flow = Flow.builder()
-                        .flowId(format("flow_%d", i)).srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
                 assertTrue(transitVlanPool.allocate(
-                        flow,
+                        format("flow_%d", i),
                         new PathId(format("path_%d", i)),
                         new PathId(format("opposite_dummy_%d", i))).getTransitVlan().getVlan() > 0);
             }
@@ -90,15 +88,13 @@ public class TransitVlanPoolTest extends InMemoryGraphBasedTest {
 
     @Test
     public void gotSameVlanForOppositePath() {
-        Flow flow = Flow.builder().flowId("flow_1").srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
-
         final PathId forwardPathId = new PathId("forward");
         final PathId reversePathId = new PathId("reverse");
         transactionManager.doInTransaction(() -> {
-            TransitVlan forward = transitVlanPool.allocate(flow, forwardPathId, reversePathId)
+            TransitVlan forward = transitVlanPool.allocate(FLOW_ID_1, forwardPathId, reversePathId)
                     .getTransitVlan();
 
-            TransitVlan reverse = transitVlanPool.allocate(flow, reversePathId, forwardPathId)
+            TransitVlan reverse = transitVlanPool.allocate(FLOW_ID_1, reversePathId, forwardPathId)
                     .getTransitVlan();
             Assert.assertEquals(forward, reverse);
         });
@@ -107,9 +103,9 @@ public class TransitVlanPoolTest extends InMemoryGraphBasedTest {
     @Test
     public void deallocateTransitVlanTest() {
         transactionManager.doInTransaction(() -> {
-            transitVlanPool.allocate(FLOW_1, PATH_ID_1, PATH_ID_2);
-            transitVlanPool.allocate(FLOW_2, PATH_ID_2, PATH_ID_1);
-            int vlan = transitVlanPool.allocate(FLOW_3, PATH_ID_3, PATH_ID_3).getTransitVlan().getVlan();
+            transitVlanPool.allocate(FLOW_1.getFlowId(), PATH_ID_1, PATH_ID_2);
+            transitVlanPool.allocate(FLOW_2.getFlowId(), PATH_ID_2, PATH_ID_1);
+            int vlan = transitVlanPool.allocate(FLOW_3.getFlowId(), PATH_ID_3, PATH_ID_3).getTransitVlan().getVlan();
             assertEquals(2, transitVlanRepository.findAll().size());
 
             transitVlanPool.deallocate(PATH_ID_1);

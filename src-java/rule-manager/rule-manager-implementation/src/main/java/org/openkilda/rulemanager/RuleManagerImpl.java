@@ -35,6 +35,7 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.MacAddress;
@@ -128,7 +129,7 @@ public class RuleManagerImpl implements RuleManager {
             return result;
         }
 
-        for (FlowPath overlappingPath : adapter.getFlowPaths().values()) {
+        for (FlowPath overlappingPath : adapter.getCommonFlowPaths().values()) {
             if (overlappingPath.isSrcWithMultiTable()
                     && path.getSrcSwitchId().equals(overlappingPath.getSrcSwitchId())) {
                 Flow overlappingFlow = adapter.getFlow(overlappingPath.getPathId());
@@ -259,7 +260,7 @@ public class RuleManagerImpl implements RuleManager {
     }
 
     private List<SpeakerData> buildFlowRulesForSwitch(SwitchId switchId, DataAdapter adapter) {
-        List<SpeakerData> result = adapter.getFlowPaths().values().stream()
+        List<SpeakerData> result = adapter.getCommonFlowPaths().values().stream()
                 .flatMap(flowPath -> buildFlowRulesForSwitch(switchId, flowPath, adapter).stream())
                 .collect(Collectors.toList());
 
@@ -384,7 +385,7 @@ public class RuleManagerImpl implements RuleManager {
 
         Set<YFlow> yFlows = new HashSet<>();
         Map<String, List<FlowPath>> yFlowIdsWithFlowPaths = new HashMap<>();
-        for (FlowPath flowPath : adapter.getFlowPaths().values()) {
+        for (FlowPath flowPath : adapter.getCommonFlowPaths().values()) {
             YFlow yFlow = adapter.getYFlow(flowPath.getPathId());
             if (yFlow != null) {
                 yFlows.add(yFlow);
@@ -476,7 +477,7 @@ public class RuleManagerImpl implements RuleManager {
 
     @Override
     public List<SpeakerData> buildMirrorPointRules(FlowMirrorPoints mirrorPoints, DataAdapter adapter) {
-        FlowPath flowPath = adapter.getFlowPaths().get(mirrorPoints.getFlowPathId());
+        FlowPath flowPath = adapter.getCommonFlowPaths().get(mirrorPoints.getFlowPathId());
         Flow flow = adapter.getFlow(flowPath.getPathId());
         FlowTransitEncapsulation encapsulation = adapter.getTransitEncapsulation(
                 flowPath.getPathId(), flow.getOppositePathId(flowPath.getPathId()).orElse(null));
@@ -491,6 +492,12 @@ public class RuleManagerImpl implements RuleManager {
 
         }
         return result;
+    }
+
+    @Override
+    public List<SpeakerData> buildRulesHaFlowPath(
+            HaFlowPath haPath, boolean filterOutUsedSharedRules, DataAdapter adapter) {
+        return new ArrayList<>(); // will be added in the next PR
     }
 
     private List<SpeakerData> buildSharedEndpointYFlowCommands(List<FlowPath> flowPaths, DataAdapter adapter) {

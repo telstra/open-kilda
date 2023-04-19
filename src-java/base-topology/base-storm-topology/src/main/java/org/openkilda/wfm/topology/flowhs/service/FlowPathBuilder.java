@@ -19,17 +19,22 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.pce.HaPath;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
+import org.openkilda.wfm.share.flow.resources.HaFlowResources.HaPathResources;
 
 import com.google.common.collect.Sets;
 import lombok.AllArgsConstructor;
@@ -112,8 +117,8 @@ public class FlowPathBuilder {
      */
     public FlowPath buildFlowPath(Flow flow, PathResources pathResources, Path path, FlowSegmentCookie cookie,
                                   boolean forceToIgnoreBandwidth, String sharedBandwidthGroupId) {
-        List<PathSegment> segments = buildPathSegments(pathResources.getPathId(), path, flow.getBandwidth(),
-                flow.isIgnoreBandwidth() || forceToIgnoreBandwidth, sharedBandwidthGroupId);
+        List<PathSegment> segments = buildPathSegments(pathResources.getPathId(), path.getSegments(),
+                flow.getBandwidth(), flow.isIgnoreBandwidth() || forceToIgnoreBandwidth, sharedBandwidthGroupId);
         return buildFlowPath(flow, pathResources, path.getLatency(), path.getSrcSwitchId(), path.getDestSwitchId(),
                 segments, cookie, forceToIgnoreBandwidth, sharedBandwidthGroupId);
     }
@@ -173,21 +178,109 @@ public class FlowPathBuilder {
     }
 
     /**
+     * Build a sub path entity for ha-flow path using provided resources and segments.
+     *
+     * @param haFlow a ha-flow the sub path will be associated with.
+     * @param pathResources resources to be used for the sub path.
+     * @param path network path for the sub path.
+     * @param srcSwitch source switch DB object of the future sub path.
+     * @param dstSwitch destination switch DB object of the future sub path.
+     * @param cookie cookie to be used for the sub path.
+     */
+    public FlowPath buildHaSubPath(
+            HaFlow haFlow, PathResources pathResources, Path path, Switch srcSwitch, Switch dstSwitch,
+            FlowSegmentCookie cookie) {
+
+        if (!srcSwitch.getSwitchId().equals(path.getSrcSwitchId())) {
+            throw new IllegalArgumentException(format(
+                    "Path %s has different source switch id %s than ha-flow %s. Ha-flow endpoint switch id is %s",
+                    pathResources.getPathId(), path.getSrcSwitchId(), haFlow.getHaFlowId(), srcSwitch.getSwitchId()));
+        }
+        if (!dstSwitch.getSwitchId().equals(path.getDestSwitchId())) {
+            throw new IllegalArgumentException(format(
+                    "Path %s has different destination switch id %s than ha-flow %s. Ha-flow endpoint switch id is %s",
+                    pathResources.getPathId(), path.getDestSwitchId(), haFlow.getHaFlowId(), dstSwitch.getSwitchId()));
+        }
+        String sharedBandwidthGroupId = haFlow.getHaFlowId();
+        List<PathSegment> segments = buildPathSegments(pathResources.getPathId(), path.getSegments(),
+                haFlow.getMaximumBandwidth(), haFlow.isIgnoreBandwidth(), sharedBandwidthGroupId);
+
+        return FlowPath.builder()
+                .pathId(pathResources.getPathId())
+                .srcSwitch(srcSwitch)
+                .destSwitch(dstSwitch)
+                .meterId(pathResources.getMeterId())
+                .cookie(cookie)
+                .bandwidth(haFlow.getMaximumBandwidth())
+                .ignoreBandwidth(haFlow.isIgnoreBandwidth())
+                .latency(path.getLatency())
+                .segments(segments)
+                .srcWithMultiTable(true)
+                .destWithMultiTable(true)
+                .sharedBandwidthGroupId(sharedBandwidthGroupId)
+                .build();
+    }
+
+    /**
+     * Build a flow path entity for the flow using provided resources and segments.
+     *
+     * @param haFlow an HA Flow that will be associated with the created HA flow path.
+     * @param pathResources resources to be used for the ha-flow path.
+     * @param haPath ha-path to be used for the ha-flow path.
+     * @param cookie cookie to be used for the ha-flow path.
+     */
+    public HaFlowPath buildHaFlowPath(
+            HaFlow haFlow, HaPathResources pathResources, HaPath haPath, FlowSegmentCookie cookie) {
+
+        if (!haFlow.getSharedSwitchId().equals(haPath.getSharedSwitchId())) {
+            throw new IllegalArgumentException(format("Shared endpoint switch id %s of ha-path %s is not equal to "
+                            + "ha-flow %s shared endpoint switch id %s",
+                    haPath.getSharedSwitchId(), pathResources.getPathId(), haFlow.getHaFlowId(),
+                    haFlow.getSharedSwitchId()));
+        }
+
+        Set<SwitchId> haFlowEndpointSwitchIds = haFlow.getHaSubFlows().stream()
+                .map(HaSubFlow::getEndpointSwitchId).collect(Collectors.toSet());
+        haFlowEndpointSwitchIds.add(haFlow.getSharedSwitchId());
+        for (Path subPath : haPath.getSubPaths()) {
+            for (SwitchId switchId : new SwitchId[] {subPath.getSrcSwitchId(), subPath.getDestSwitchId()}) {
+                if (!haFlowEndpointSwitchIds.contains(switchId)) {
+                    throw new IllegalArgumentException(format("Endpoint switch id %s of ha-sub-path %s is not equal "
+                                    + "to ha-flow %s endpoint switch ids %s",
+                            switchId, subPath, haFlow.getHaFlowId(), haFlowEndpointSwitchIds));
+                }
+            }
+        }
+
+        return HaFlowPath.builder()
+                .haPathId(pathResources.getPathId())
+                .sharedSwitch(haFlow.getSharedSwitch())
+                .yPointSwitchId(haPath.getYPointSwitchId())
+                .cookie(cookie)
+                .sharedPointMeterId(pathResources.getSharedMeterId())
+                .yPointMeterId(pathResources.getYPointMeterId())
+                .yPointGroupId(pathResources.getYPointGroupId())
+                .bandwidth(haFlow.getMaximumBandwidth())
+                .ignoreBandwidth(haFlow.isIgnoreBandwidth())
+                .build();
+    }
+
+    /**
      * Build a path segments using provided path.
      *
      * @param pathId a pathId the segments will be associated with.
-     * @param pathForSegments path to be used for the segments.
+     * @param segments segments to be used for the path.
      * @param bandwidth bandwidth to be used for the segments.
      * @param ignoreBandwidth ignore bandwidth be used for the segments.
      * @param sharedBandwidthGroupId a shared bandwidth group to be set for the segments
      */
-    public List<PathSegment> buildPathSegments(PathId pathId, Path pathForSegments, long bandwidth,
+    public List<PathSegment> buildPathSegments(PathId pathId, List<Segment> segments, long bandwidth,
                                                boolean ignoreBandwidth, String sharedBandwidthGroupId) {
         Map<SwitchId, SwitchProperties> switchProperties = getSwitchProperties(pathId);
 
         List<PathSegment> result = new ArrayList<>();
-        for (int i = 0; i < pathForSegments.getSegments().size(); i++) {
-            Path.Segment segment = pathForSegments.getSegments().get(i);
+        for (int i = 0; i < segments.size(); i++) {
+            Path.Segment segment = segments.get(i);
 
             SwitchProperties srcSwitchProperties = switchProperties.get(segment.getSrcSwitchId());
             SwitchProperties dstSwitchProperties = switchProperties.get(segment.getDestSwitchId());

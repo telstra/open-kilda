@@ -107,6 +107,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                 .server42FlowRtt(true)
                 .server42IslRtt(true)
                 .modifyYFlowEnabled(true)
+                .createHaFlowEnabled(true)
                 .modifyHaFlowEnabled(true)
                 .syncSwitchOnConnect(true)
                 .build()

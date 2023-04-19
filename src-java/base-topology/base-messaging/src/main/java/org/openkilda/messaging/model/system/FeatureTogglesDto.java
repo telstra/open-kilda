@@ -65,6 +65,9 @@ public class FeatureTogglesDto implements Serializable {
     @JsonProperty("modify_y_flow_enabled")
     private Boolean modifyYFlowEnabled;
 
+    @JsonProperty("create_ha_flow_enabled")
+    private Boolean createHaFlowEnabled;
+
     @JsonProperty("modify_ha_flow_enabled")
     private Boolean modifyHaFlowEnabled;
 
@@ -89,6 +92,7 @@ public class FeatureTogglesDto implements Serializable {
                                          Boolean flowLatencyMonitoringReactions,
                              @JsonProperty("server42_isl_rtt") Boolean server42IslRtt,
                              @JsonProperty("modify_y_flow_enabled") Boolean modifyYFlowEnabled,
+                             @JsonProperty("create_ha_flow_enabled") Boolean createHaFlowEnabled,
                              @JsonProperty("modify_ha_flow_enabled") Boolean modifyHaFlowEnabled,
                              @JsonProperty("sync_switch_on_connect") Boolean syncSwitchOnConnect,
                              @JsonProperty("discover_new_isls_in_under_maintenance_mode")
@@ -105,6 +109,7 @@ public class FeatureTogglesDto implements Serializable {
         this.flowLatencyMonitoringReactions = flowLatencyMonitoringReactions;
         this.server42IslRtt = server42IslRtt;
         this.modifyYFlowEnabled = modifyYFlowEnabled;
+        this.createHaFlowEnabled = createHaFlowEnabled;
         this.modifyHaFlowEnabled = modifyHaFlowEnabled;
         this.syncSwitchOnConnect = syncSwitchOnConnect;
         this.discoverNewIslsInUnderMaintenanceMode = discoverNewIslsInUnderMaintenanceMode;
