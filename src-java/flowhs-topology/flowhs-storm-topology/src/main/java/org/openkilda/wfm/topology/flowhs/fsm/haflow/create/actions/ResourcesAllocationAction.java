@@ -257,7 +257,14 @@ public class ResourcesAllocationAction extends
         GetHaPathsResult protectedPaths = pathComputer.getHaPath(tmpFlow, true);
         stateMachine.setBackUpProtectedPathComputationWayUsed(protectedPaths.isBackUpPathComputationWayUsed());
 
-        //TODO check protected overlapping?
+        boolean overlappingProtectedPathFound =
+                flowPathBuilder.arePathsOverlapped(protectedPaths.getForward(), tmpFlow.getForwardPath())
+                        || flowPathBuilder.arePathsOverlapped(protectedPaths.getReverse(), tmpFlow.getReversePath());
+        if (overlappingProtectedPathFound) {
+            log.info("Couldn't find non overlapping protected path. Result ha-flow state: {}", tmpFlow);
+            throw new UnroutableFlowException("Couldn't find non overlapping protected path", tmpFlow.getHaFlowId());
+        }
+
         log.debug("Creating the protected path {} for flow {}", protectedPaths, tmpFlow);
 
         transactionManager.doInTransaction(() -> {
