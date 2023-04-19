@@ -18,11 +18,14 @@ package org.openkilda.wfm.topology.flowhs.mapper;
 import org.openkilda.messaging.command.haflow.HaFlowDto;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
@@ -31,7 +34,9 @@ import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -50,11 +55,21 @@ public abstract class HaFlowMapper {
 
     @Mapping(target = "timeUpdate", source = "haFlow.timeModify")
     @Mapping(target = "sharedEndpoint", source = "haFlow")
-    @Mapping(target = "subFlows", source = "haSubFlows")
-    @Mapping(target = "diverseWithFlows", ignore = true)
-    @Mapping(target = "diverseWithYFlows", ignore = true)
-    @Mapping(target = "diverseWithHaFlows", ignore = true)
-    public abstract HaFlowDto toHaFlowDto(HaFlow haFlow);
+    @Mapping(target = "subFlows", source = "haFlow.haSubFlows")
+    public abstract HaFlowDto toHaFlowDto(
+            HaFlow haFlow, Set<String> diverseWithFlows, Set<String> diverseWithYFlows, Set<String> diverseWithHaFlows);
+
+    /**
+     * Map {@link HaFlow} to {@link HaFlowDto} with completing diverseFlows, diverseYFlows and diverseHaFlows.
+     */
+    public HaFlowDto toHaFlowDto(HaFlow haFlow, FlowRepository flowRepository, HaFlowRepository haFlowRepository) {
+        Collection<Flow> diverseFlows = getDiverseFlows(haFlow.getDiverseGroupId(), flowRepository);
+        Set<String> diverseFlowsIds = YFlowMapper.getDiverseFlowIds(diverseFlows);
+        Set<String> diverseYFlowsIds = YFlowMapper.getDiverseYFlowIds(diverseFlows);
+        Set<String> diverseHaFlowsIds = getDiverseWithHaFlow(
+                haFlow.getHaFlowId(), haFlow.getDiverseGroupId(), haFlowRepository);
+        return toHaFlowDto(haFlow, diverseFlowsIds, diverseYFlowsIds, diverseHaFlowsIds);
+    }
 
     @Mapping(target = "flowId", source = "haSubFlowId")
     @Mapping(target = "endpoint", source = "haSubFlow")
@@ -131,5 +146,19 @@ public abstract class HaFlowMapper {
                         .allocateProtectedPath(request.isAllocateProtectedPath())
                         .build())
                 .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(RequestedFlow::getFlowId))));
+    }
+
+    protected Collection<Flow> getDiverseFlows(String diverseGroup, FlowRepository flowRepository) {
+        if (diverseGroup == null) {
+            return Collections.emptyList();
+        }
+        return flowRepository.findByDiverseGroupId(diverseGroup);
+    }
+
+    protected Set<String> getDiverseWithHaFlow(
+            String haFlowId, String diversityTyGroup, HaFlowRepository haFlowRepository) {
+        return haFlowRepository.findHaFlowIdsByDiverseGroupId(diversityTyGroup).stream()
+                .filter(id -> !id.equals(haFlowId))
+                .collect(Collectors.toSet());
     }
 }

@@ -481,7 +481,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
 
         Collection<HaSubFlow> getHaSubFlows();
 
-        void setHaSubFlows(Set<HaSubFlow> haSubFlows);
+        void setHaSubFlows(Collection<HaSubFlow> haSubFlows);
 
         FlowStatus getStatus();
 
@@ -567,7 +567,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
         }
 
         @Override
-        public void setHaSubFlows(Set<HaSubFlow> subFlows) {
+        public void setHaSubFlows(Collection<HaSubFlow> subFlows) {
             for (HaSubFlow subFlow : this.subFlows) {
                 boolean keepSubFlow = subFlows.stream()
                         .anyMatch(sub -> sub.getHaSubFlowId().equals(subFlow.getHaSubFlowId()));

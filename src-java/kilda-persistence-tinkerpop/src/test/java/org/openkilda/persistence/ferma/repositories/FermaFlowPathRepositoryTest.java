@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
@@ -22,6 +23,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaFlow;
+import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaFlowPath;
+import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaSubFlow;
+import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildPath;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -29,18 +34,26 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YFlow.SharedEndpoint;
+import org.openkilda.model.YSubFlow;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowPathRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 
 import com.google.common.collect.Sets;
 import org.hamcrest.Matchers;
@@ -49,8 +62,11 @@ import org.junit.Test;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
@@ -60,6 +76,8 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
     static final SwitchId TEST_SWITCH_C_ID = new SwitchId(3);
+    static final String GROUP_1 = "group_1";
+    static final String GROUP_2 = "group_2";
     static final int PORT_1 = 1;
     static final int PORT_2 = 2;
     static final int PORT_3 = 3;
@@ -68,7 +86,10 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
 
     FlowPathRepository flowPathRepository;
     FlowRepository flowRepository;
+    HaFlowRepository haFlowRepository;
     HaSubFlowRepository haSubFlowRepository;
+    HaFlowPathRepository haFlowPathRepository;
+    YFlowRepository yFlowRepository;
     SwitchRepository switchRepository;
 
     Switch switchA;
@@ -79,8 +100,11 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
     @Before
     public void setUp() {
         flowRepository = repositoryFactory.createFlowRepository();
-        haSubFlowRepository = repositoryFactory.createHaSubFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
+        haFlowRepository = repositoryFactory.createHaFlowRepository();
+        haSubFlowRepository = repositoryFactory.createHaSubFlowRepository();
+        haFlowPathRepository = repositoryFactory.createHaFlowPathRepository();
+        yFlowRepository = repositoryFactory.createYFlowRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
 
         switchA = createTestSwitch(TEST_SWITCH_A_ID.getId());
@@ -414,6 +438,56 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         assertTrue(pathIds.contains(flowA.getForwardPathId()));
         assertTrue(pathIds.contains(flowA.getReversePathId()));
     }
+    
+    @Test
+    public void findPathIdsByFlowDiverseGroupIdTest() {
+        Flow flowA = createFlow(TEST_FLOW_ID_1, switchA, switchB, GROUP_1, null);
+        createFlow(TEST_FLOW_ID_2, switchA, switchB, GROUP_2, null);
+        createFlow(TEST_FLOW_ID_3, switchA, switchB, null, null);
+        HaFlow haFlowA = createHaFlow(HA_FLOW_ID_1, switchA, switchB, switchC, GROUP_1, null);
+        createHaFlow(HA_FLOW_ID_2, switchA, switchB, switchC, GROUP_2, null);
+        createHaFlow(HA_FLOW_ID_3, switchA, switchB, switchC, null, null);
+        YFlow yFlowA = createYFlow(Y_FLOW_ID_1, switchA, switchB, switchC, GROUP_1, null);
+        createYFlow(Y_FLOW_ID_2, switchA, switchB, switchC, GROUP_2, null);
+        createYFlow(Y_FLOW_ID_3, switchA, switchB, switchC, null, null);
+
+        Collection<PathId> actualPaths = flowPathRepository.findPathIdsByFlowDiverseGroupId(GROUP_1);
+        assertEquals(8, actualPaths.size());
+        assertEquals(collectPathIds(flowA, haFlowA, yFlowA), new HashSet<>(actualPaths));
+    }
+
+    @Test
+    public void findPathIdsByFlowAffinityGroupIdTest() {
+        Flow flowA = createFlow(TEST_FLOW_ID_1, switchA, switchB, null, GROUP_1);
+        createFlow(TEST_FLOW_ID_2, switchA, switchB, null, GROUP_2);
+        createFlow(TEST_FLOW_ID_3, switchA, switchB, null, null);
+        HaFlow haFlowA = createHaFlow(HA_FLOW_ID_1, switchA, switchB, switchC, null, GROUP_1);
+        createHaFlow(HA_FLOW_ID_2, switchA, switchB, switchC, null, GROUP_2);
+        createHaFlow(HA_FLOW_ID_3, switchA, switchB, switchC, null, null);
+        YFlow yFlowA = createYFlow(Y_FLOW_ID_1, switchA, switchB, switchC, null, GROUP_1);
+        createYFlow(Y_FLOW_ID_2, switchA, switchB, switchC, null, GROUP_2);
+        createYFlow(Y_FLOW_ID_3, switchA, switchB, switchC, null, null);
+
+        Collection<PathId> actualPaths = flowPathRepository.findPathIdsByFlowAffinityGroupId(GROUP_1);
+        assertEquals(8, actualPaths.size());
+        assertEquals(collectPathIds(flowA, haFlowA, yFlowA), new HashSet<>(actualPaths));
+    }
+
+    private Set<PathId> collectPathIds(Flow flow, HaFlow haFlow, YFlow yFlow) {
+        Set<PathId> pathIds = flow.getPaths().stream()
+                .map(FlowPath::getPathId)
+                .collect(Collectors.toSet());
+        haFlow.getPaths().stream()
+                .flatMap(p -> p.getSubPaths().stream())
+                .map(FlowPath::getPathId)
+                .forEach(pathIds::add);
+        yFlow.getSubFlows().stream()
+                .map(YSubFlow::getFlow)
+                .flatMap(s -> s.getPaths().stream())
+                .map(FlowPath::getPathId)
+                .forEach(pathIds::add);
+        return pathIds;
+    }
 
     @Test
     public void createFlowPathWithHaSubFlowTest() {
@@ -459,7 +533,6 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         assertNull(foundPath.get().getHaSubFlowId());
         assertNull(foundPath.get().getHaSubFlow());
     }
-
 
     private FlowPath createTestFlowPath() {
         FlowPath flowPath = createFlowPath(flow, "_path", 1, 1, switchA, switchB);
@@ -523,6 +596,72 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
 
         flowPathRepository.add(flowPath);
         return flowPath;
+    }
+
+    private Flow createFlow(
+            String flowId, Switch srcSwitch, Switch dstSwitch, String diverseGroup, String affinityGroup) {
+        Flow flow = buildTestFlow(flowId, srcSwitch, 0, 0, dstSwitch, 0, 0);
+        flow.setDiverseGroupId(diverseGroup);
+        flow.setAffinityGroupId(affinityGroup);
+        flowRepository.add(flow);
+        return flow;
+    }
+
+    private HaFlow createHaFlow(
+            String haFlowId, Switch sharedSwitch, Switch endpointSwitch1, Switch endpointSwitch2,
+            String diverseGroup, String affinityGroup) {
+        List<HaSubFlow> subFlows = newArrayList(
+                buildHaSubFlow(haFlowId + "flow1", endpointSwitch1, PORT_1, VLAN_1, ZERO_INNER_VLAN, DESCRIPTION_1),
+                buildHaSubFlow(haFlowId + "flow2", endpointSwitch2, PORT_2, VLAN_2, INNER_VLAN_2, DESCRIPTION_2));
+        subFlows.forEach(haSubFlowRepository::add);
+
+        List<HaFlowPath> haPaths = newArrayList(
+                buildHaFlowPath(new PathId(haFlowId + "ha_path_1"), 0, null, METER_ID_1, METER_ID_2,
+                        sharedSwitch, endpointSwitch1.getSwitchId(), GROUP_ID_1),
+                buildHaFlowPath(new PathId(haFlowId + "ha_path_2"), 0, null, METER_ID_1, METER_ID_2,
+                        sharedSwitch, endpointSwitch1.getSwitchId(), GROUP_ID_1));
+        for (HaFlowPath haPath : haPaths) {
+            haFlowPathRepository.add(haPath);
+            haPath.setHaSubFlows(subFlows);
+            FlowPath subPath = buildPath(
+                    haPath.getHaPathId().append("_sub_path"), haPath, sharedSwitch, endpointSwitch1);
+            flowPathRepository.add(subPath);
+            subPath.setHaSubFlow(subFlows.get(0));
+            haPath.setSubPaths(newArrayList(subPath));
+        }
+
+        HaFlow haFlow = buildHaFlow(haFlowId, sharedSwitch);
+        haFlow.setDiverseGroupId(diverseGroup);
+        haFlow.setAffinityGroupId(affinityGroup);
+        haFlowRepository.add(haFlow);
+        haFlow.setHaSubFlows(subFlows);
+        haPaths.forEach(haFlow::addPaths);
+        return haFlow;
+    }
+
+    private YFlow createYFlow(
+            String yFlowId, Switch sharedSwitch, Switch endpointSwitch1, Switch endpointSwitch2,
+            String diverseGroup, String affinityGroup) {
+
+        YFlow yFlow = YFlow.builder()
+                .yFlowId(yFlowId)
+                .sharedEndpoint(new SharedEndpoint(sharedSwitch.getSwitchId(), 0))
+                .build();
+        yFlowRepository.add(yFlow);
+
+        List<Flow> subFlows = newArrayList(
+                createFlow(yFlowId + "y_sub_flow1", sharedSwitch, endpointSwitch1, diverseGroup, affinityGroup),
+                createFlow(yFlowId + "y_sub_flow2", sharedSwitch, endpointSwitch2, diverseGroup, affinityGroup));
+
+        for (Flow subFlow : subFlows) {
+            YSubFlow ySubFlow = YSubFlow.builder()
+                    .yFlow(yFlow)
+                    .flow(subFlow)
+                    .endpointSwitchId(subFlow.getDestSwitchId())
+                    .build();
+            yFlow.addSubFlow(ySubFlow);
+        }
+        return yFlow;
     }
 
     private Flow buildTestFlow(String flowId, Switch srcSwitch, int srcPort, int srcVlan,

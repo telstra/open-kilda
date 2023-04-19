@@ -322,7 +322,7 @@ public abstract class HaFlowFrame extends KildaBaseVertexFrame implements HaFlow
     }
 
     @Override
-    public void setHaSubFlows(Set<HaSubFlow> subFlows) {
+    public void setHaSubFlows(Collection<HaSubFlow> subFlows) {
         for (HaSubFlow subFlow : subFlows) {
             HaSubFlow.HaSubFlowData data = subFlow.getData();
             HaSubFlowFrame frame;

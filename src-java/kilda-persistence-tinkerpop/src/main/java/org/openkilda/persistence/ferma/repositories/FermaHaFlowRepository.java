@@ -36,6 +36,7 @@ import org.openkilda.persistence.tx.TransactionManager;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -109,6 +110,20 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
                 .frameExplicit(HaFlowFrame.class)
                 .forEachRemaining(frame -> result.put(frame.getHaFlowId(), new HaFlow(frame)));
         return result.values();
+    }
+
+    @Override
+    public Collection<String> findHaFlowIdsByDiverseGroupId(String diverseGroupId) {
+        if (diverseGroupId == null) {
+            return new ArrayList<>();
+        }
+        return framedGraph().traverse(g -> g.V()
+                        .hasLabel(HaFlowFrame.FRAME_LABEL)
+                        .has(HaFlowFrame.DIVERSE_GROUP_ID_PROPERTY, diverseGroupId)
+                        .values(HaFlowFrame.HA_FLOW_ID_PROPERTY))
+                .getRawTraversal().toStream()
+                .map(String.class::cast)
+                .collect(Collectors.toList());
     }
 
     @Override

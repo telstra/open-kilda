@@ -210,23 +210,6 @@ public class ResourcesAllocationAction extends
         }
     }
 
-    private Optional<String> getOrCreateFlowDiverseGroup(String diverseFlowId) throws FlowNotFoundException {
-        if (StringUtils.isBlank(diverseFlowId)) {
-            return Optional.empty();
-        }
-        Optional<String> groupId;
-        if (yFlowRepository.exists(diverseFlowId)) {
-            groupId = yFlowRepository.getOrCreateDiverseYFlowGroupId(diverseFlowId);
-        } else if (yFlowRepository.isSubFlow(diverseFlowId)) {
-            groupId = flowRepository.findById(diverseFlowId)
-                    .map(Flow::getYFlowId)
-                    .flatMap(yFlowRepository::getOrCreateDiverseYFlowGroupId);
-        } else {
-            groupId = flowRepository.getOrCreateDiverseFlowGroupId(diverseFlowId);
-        }
-        return Optional.of(groupId.orElseThrow(() -> new FlowNotFoundException(diverseFlowId)));
-    }
-
     private Optional<String> getFlowAffinityGroupFromContext(String affinityFlowId) throws FlowNotFoundException {
         if (StringUtils.isNotBlank(affinityFlowId)) {
             return flowRepository.getOrCreateAffinityFlowGroupId(affinityFlowId)

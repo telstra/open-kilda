@@ -17,11 +17,16 @@ package org.openkilda.wfm.topology.flowhs.mapper;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.command.haflow.HaFlowDto;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRequest.Type;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowStatus;
@@ -30,14 +35,19 @@ import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -45,9 +55,14 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class HaFlowMapperTest {
-    private static final String HA_FLOW_ID = "ha_flow_id";
-    private static final String SUB_FLOW_1_NAME = "flow_1";
-    private static final String SUB_FLOW_2_NAME = "flow_2";
+    private static final String HA_FLOW_ID_1 = "ha_flow_id_1";
+    private static final String HA_FLOW_ID_2 = "ha_flow_id_2";
+    private static final String SUB_FLOW_ID_1 = "sub_flow_1";
+    private static final String SUB_FLOW_ID_2 = "sub_flow_2";
+    private static final String Y_FLOW_ID_1 = "y_flow_1";
+    private static final String Y_FLOW_ID_2 = "y_flow_2";
+    private static final String FLOW_1 = "flow_1";
+    private static final String FLOW_2 = "flow_2";
     private static final String FLOW_3 = "flow_3";
     private static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     private static final SwitchId SWITCH_ID_2 = new SwitchId(2);
@@ -74,21 +89,32 @@ public class HaFlowMapperTest {
     private static final String GROUP_1 = "group_1";
     private static final String GROUP_2 = "group_2";
     private static final HaSubFlowDto SUB_FLOW_1 = new HaSubFlowDto(
-            SUB_FLOW_1_NAME, new FlowEndpoint(SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1), FlowStatus.UP, DESC_2,
+            SUB_FLOW_ID_1, new FlowEndpoint(SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1), FlowStatus.UP, DESC_2,
             Instant.MIN, Instant.MAX);
     private static final HaSubFlowDto SUB_FLOW_2 = new HaSubFlowDto(
-            SUB_FLOW_2_NAME, new FlowEndpoint(SWITCH_ID_2, PORT_2, VLAN_2, INNER_VLAN_2), FlowStatus.IN_PROGRESS,
+            SUB_FLOW_ID_2, new FlowEndpoint(SWITCH_ID_2, PORT_2, VLAN_2, INNER_VLAN_2), FlowStatus.IN_PROGRESS,
             DESC_3, Instant.MAX, Instant.MIN);
     private static final FlowEndpoint SHARED_ENDPOINT = new FlowEndpoint(
             SWITCH_ID_3, PORT_3, VLAN_3, INNER_VLAN_3);
 
-
     private final HaFlowMapper mapper = HaFlowMapper.INSTANCE;
+
+    @Mock
+    FlowRepository flowRepository;
+
+    @Mock
+    HaFlowRepository haFlowRepository;
+
+    @Before
+    public void init() {
+        flowRepository = mock(FlowRepository.class);
+        haFlowRepository = mock(HaFlowRepository.class);
+    }
 
     @Test
     public void haFlowRequestMappingTest() {
         HaFlowRequest request = new HaFlowRequest(
-                HA_FLOW_ID, SHARED_ENDPOINT, BANDWIDTH, PathComputationStrategy.COST, FlowEncapsulationType.VXLAN,
+                HA_FLOW_ID_1, SHARED_ENDPOINT, BANDWIDTH, PathComputationStrategy.COST, FlowEncapsulationType.VXLAN,
                 MAX_LATENCY, MAX_LATENCY_TIER_2, true, false, true, PRIORITY, false, DESC_1, true, FLOW_3,
                 Lists.newArrayList(SUB_FLOW_1, SUB_FLOW_2), Type.CREATE);
         request.setSubFlows(Lists.newArrayList(SUB_FLOW_1, SUB_FLOW_2));
@@ -116,11 +142,11 @@ public class HaFlowMapperTest {
     @Test
     public void getResponseTest() {
         HaFlow haFlow = new HaFlow(
-                HA_FLOW_ID, SWITCH_3, PORT_3, VLAN_3, INNER_VLAN_3, BANDWIDTH,
+                HA_FLOW_ID_1, SWITCH_3, PORT_3, VLAN_3, INNER_VLAN_3, BANDWIDTH,
                 PathComputationStrategy.COST, FlowEncapsulationType.VXLAN, MAX_LATENCY, MAX_LATENCY_TIER_2, true, false,
                 true, PRIORITY, false, DESC_1, true, FlowStatus.UP, GROUP_1, GROUP_2);
         haFlow.setHaSubFlows(Sets.newHashSet(
-                HaSubFlow.builder().haSubFlowId(SUB_FLOW_1_NAME)
+                HaSubFlow.builder().haSubFlowId(SUB_FLOW_ID_1)
                         .endpointSwitch(SWITCH_1)
                         .endpointPort(PORT_1)
                         .endpointVlan(VLAN_1)
@@ -128,7 +154,7 @@ public class HaFlowMapperTest {
                         .status(FlowStatus.UP)
                         .description(DESC_2)
                         .build(),
-                HaSubFlow.builder().haSubFlowId(SUB_FLOW_2_NAME)
+                HaSubFlow.builder().haSubFlowId(SUB_FLOW_ID_2)
                         .endpointSwitch(SWITCH_2)
                         .endpointPort(PORT_2)
                         .endpointVlan(VLAN_2)
@@ -137,8 +163,11 @@ public class HaFlowMapperTest {
                         .description(DESC_3)
                         .build()));
 
-        HaFlowDto result = mapper.toHaFlowDto(haFlow);
-        assertEquals(HA_FLOW_ID, result.getHaFlowId());
+        when(flowRepository.findByDiverseGroupId(anyString())).thenReturn(new ArrayList<>());
+        when(haFlowRepository.findHaFlowIdsByDiverseGroupId(anyString())).thenReturn(new ArrayList<>());
+
+        HaFlowDto result = mapper.toHaFlowDto(haFlow, flowRepository, haFlowRepository);
+        assertEquals(HA_FLOW_ID_1, result.getHaFlowId());
         assertEquals(haFlow.getMaximumBandwidth(), result.getMaximumBandwidth());
         assertEquals(haFlow.getPathComputationStrategy(), result.getPathComputationStrategy());
         assertEquals(haFlow.getEncapsulationType(), result.getEncapsulationType());
@@ -156,7 +185,32 @@ public class HaFlowMapperTest {
         assertEquals(haFlow.getSharedPort(), result.getSharedEndpoint().getPortNumber().intValue());
         assertEquals(haFlow.getSharedOuterVlan(), result.getSharedEndpoint().getOuterVlanId());
         assertEquals(haFlow.getSharedInnerVlan(), result.getSharedEndpoint().getInnerVlanId());
+        assertTrue(result.getDiverseWithFlows().isEmpty());
+        assertTrue(result.getDiverseWithYFlows().isEmpty());
+        assertTrue(result.getDiverseWithHaFlows().isEmpty());
         assertSubFlows(haFlow.getHaSubFlows(), result.getSubFlows());
+    }
+
+    @Test
+    public void toHaFlowDtoWithDiversityTest() {
+        HaFlow haFlow = HaFlow.builder()
+                .haFlowId(HA_FLOW_ID_1)
+                .sharedSwitch(SWITCH_1)
+                .diverseGroupId(GROUP_1)
+                .build();
+
+        when(flowRepository.findByDiverseGroupId(anyString()))
+                .thenReturn(Lists.newArrayList(
+                        buildFlow(FLOW_1), buildFlow(FLOW_2),
+                        buildYSubFlow(SUB_FLOW_ID_1, Y_FLOW_ID_1), buildYSubFlow(SUB_FLOW_ID_2, Y_FLOW_ID_2)));
+        when(haFlowRepository.findHaFlowIdsByDiverseGroupId(anyString()))
+                .thenReturn(Lists.newArrayList(HA_FLOW_ID_1, HA_FLOW_ID_2));
+
+        HaFlowDto result = mapper.toHaFlowDto(haFlow, flowRepository, haFlowRepository);
+        assertEquals(HA_FLOW_ID_1, result.getHaFlowId());
+        assertEquals(Sets.newHashSet(FLOW_1, FLOW_2), result.getDiverseWithFlows());
+        assertEquals(Sets.newHashSet(Y_FLOW_ID_1, Y_FLOW_ID_2), result.getDiverseWithYFlows());
+        assertEquals(Sets.newHashSet(HA_FLOW_ID_2), result.getDiverseWithHaFlows());
     }
 
     @Test
@@ -164,14 +218,14 @@ public class HaFlowMapperTest {
         HaSubFlowDto subFlow = new HaSubFlowDto(
                 null, new FlowEndpoint(SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1), FlowStatus.UP, DESC_2,
                 Instant.MIN, Instant.MAX);
-        HaSubFlow result = mapper.toSubFlow(SUB_FLOW_2_NAME, subFlow);
-        assertSubFlow(subFlow, SUB_FLOW_2_NAME, result);
+        HaSubFlow result = mapper.toSubFlow(SUB_FLOW_ID_2, subFlow);
+        assertSubFlow(subFlow, SUB_FLOW_ID_2, result);
     }
 
     @Test
     public void toHaSubFlowTest() {
         HaSubFlowDto subFlow = new HaSubFlowDto(
-                SUB_FLOW_1_NAME, new FlowEndpoint(SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1), FlowStatus.UP, DESC_2,
+                SUB_FLOW_ID_1, new FlowEndpoint(SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1), FlowStatus.UP, DESC_2,
                 Instant.MIN, Instant.MAX);
         HaSubFlow result = mapper.toSubFlow(subFlow);
         assertSubFlow(subFlow, subFlow.getFlowId(), result);
@@ -181,7 +235,7 @@ public class HaFlowMapperTest {
     public void toRequestedFlowsTest() {
         List<HaSubFlowDto> subFlows = Lists.newArrayList(SUB_FLOW_1, SUB_FLOW_2);
         HaFlowRequest request = new HaFlowRequest(
-                HA_FLOW_ID, SHARED_ENDPOINT, BANDWIDTH, PathComputationStrategy.COST, FlowEncapsulationType.VXLAN,
+                HA_FLOW_ID_1, SHARED_ENDPOINT, BANDWIDTH, PathComputationStrategy.COST, FlowEncapsulationType.VXLAN,
                 MAX_LATENCY, MAX_LATENCY_TIER_2, true, false, true, PRIORITY, false, DESC_1, true, FLOW_3,
                 subFlows, Type.CREATE);
         request.setSubFlows(Lists.newArrayList(SUB_FLOW_1, SUB_FLOW_2));
@@ -194,7 +248,7 @@ public class HaFlowMapperTest {
 
         for (HaSubFlowDto subFlow : subFlows) {
             assertSubFlow(
-                    subFlow, HA_FLOW_ID, SHARED_ENDPOINT.getSwitchId(), SHARED_ENDPOINT.getPortNumber(),
+                    subFlow, HA_FLOW_ID_1, SHARED_ENDPOINT.getSwitchId(), SHARED_ENDPOINT.getPortNumber(),
                     SHARED_ENDPOINT.getOuterVlanId(), SHARED_ENDPOINT.getInnerVlanId(),
                     FlowEncapsulationType.VXLAN, BANDWIDTH, true, false, true, false, true, PRIORITY, MAX_LATENCY,
                     MAX_LATENCY_TIER_2, PathComputationStrategy.COST, requestedFlowMap.get(subFlow.getFlowId()));
@@ -258,5 +312,14 @@ public class HaFlowMapperTest {
         assertEquals(maxLatencyTier2, actual.getMaxLatencyTier2());
         assertEquals(strategy, actual.getPathComputationStrategy());
         assertNull(actual.getYFlowId());
+    }
+
+    private static Flow buildFlow(String flowId) {
+        return Flow.builder().flowId(flowId).srcSwitch(SWITCH_1).destSwitch(SWITCH_2).diverseGroupId(GROUP_1).build();
+    }
+
+    private static Flow buildYSubFlow(String flowId, String yFlowId) {
+        return Flow.builder().flowId(flowId).yFlowId(yFlowId).srcSwitch(SWITCH_1).destSwitch(SWITCH_2)
+                .diverseGroupId(GROUP_1).build();
     }
 }

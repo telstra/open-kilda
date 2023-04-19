@@ -136,7 +136,8 @@ public class FlowMapperTest {
     public void testMirrorPointStatusesMapping() {
         Flow flow = buildFlow();
 
-        FlowDto flowDto = FlowMapper.INSTANCE.map(flow, new HashSet<>(), new HashSet<>(), buildFlowMirrorPathList());
+        FlowDto flowDto = FlowMapper.INSTANCE.map(
+                flow, new HashSet<>(), new HashSet<>(), new HashSet<>(), buildFlowMirrorPathList());
 
         assertNotNull(flowDto.getMirrorPointStatuses());
         assertEquals(2, flowDto.getMirrorPointStatuses().size());
