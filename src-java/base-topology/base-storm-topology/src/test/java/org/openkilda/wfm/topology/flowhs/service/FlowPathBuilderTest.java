@@ -79,7 +79,7 @@ public class FlowPathBuilderTest {
     }
 
     @Test
-    public void detectSameSwitchPathsTest() {
+    public void detectSameSwitchPaths() {
         SwitchId switchId = new SwitchId(1);
         Switch switchEntity = Switch.builder().switchId(switchId).build();
 
@@ -99,7 +99,7 @@ public class FlowPathBuilderTest {
     }
 
     @Test
-    public void detectNotSameSwitchPathsTest() {
+    public void detectNotSameSwitchPaths() {
         Path path = Path.builder()
                 .srcSwitchId(SWITCH_ID_1)
                 .destSwitchId(SWITCH_ID_1)
@@ -116,7 +116,7 @@ public class FlowPathBuilderTest {
     }
 
     @Test
-    public void detectSame2SwitchPathsTest() {
+    public void detectSame2SwitchPaths() {
         Path path = Path.builder()
                 .srcSwitchId(SWITCH_ID_1)
                 .destSwitchId(SWITCH_ID_2)
@@ -135,7 +135,7 @@ public class FlowPathBuilderTest {
     }
 
     @Test
-    public void detectDifferenceInPortsFor2SwitchPathsTest() {
+    public void detectDifferenceInPortsFor2SwitchPaths() {
         Path path = Path.builder()
                 .srcSwitchId(SWITCH_ID_1)
                 .destSwitchId(SWITCH_ID_2)
@@ -156,7 +156,7 @@ public class FlowPathBuilderTest {
     }
 
     @Test
-    public void detectSame3SwitchPathsTest() {
+    public void detectSame3SwitchPaths() {
         Path path = Path.builder()
                 .srcSwitchId(SWITCH_ID_1)
                 .destSwitchId(SWITCH_ID_2)
@@ -180,7 +180,7 @@ public class FlowPathBuilderTest {
     }
 
     @Test
-    public void buildFlowPathFor1SwitchPathTest() {
+    public void buildFlowPathFor1SwitchPath() {
         Path path = Path.builder()
                 .srcSwitchId(SWITCH_ID_1)
                 .destSwitchId(SWITCH_ID_1)
@@ -205,7 +205,7 @@ public class FlowPathBuilderTest {
     }
 
     @Test
-    public void buildFlowPathFor2SwitchPathTest() {
+    public void buildFlowPathFor2SwitchPath() {
         Path path = Path.builder()
                 .srcSwitchId(SWITCH_ID_1)
                 .destSwitchId(SWITCH_ID_2)
@@ -232,7 +232,7 @@ public class FlowPathBuilderTest {
     }
 
     @Test
-    public void buildFlowPathFor3SwitchPathTest() {
+    public void buildFlowPathFor3SwitchPath() {
         Path path = Path.builder()
                 .srcSwitchId(SWITCH_ID_1)
                 .destSwitchId(SWITCH_ID_2)
@@ -259,7 +259,7 @@ public class FlowPathBuilderTest {
     }
 
     @Test
-    public void flowPathsOverlappedTest() {
+    public void flowPathsOverlapped() {
         Path path = Path.builder()
                 .srcSwitchId(SWITCH_ID_1)
                 .destSwitchId(SWITCH_ID_3)
@@ -278,7 +278,7 @@ public class FlowPathBuilderTest {
     }
 
     @Test
-    public void flowPathsNotOverlappedTest() {
+    public void flowPathsNotOverlapped() {
         Path path = Path.builder()
                 .srcSwitchId(SWITCH_ID_1)
                 .destSwitchId(SWITCH_ID_3)
@@ -297,7 +297,7 @@ public class FlowPathBuilderTest {
     }
 
     @Test
-    public void haFlowPathsOverlappedTest() {
+    public void haFlowPathsOverlapped() {
         Path path = Path.builder()
                 .srcSwitchId(SWITCH_ID_1)
                 .destSwitchId(SWITCH_ID_3)
@@ -322,7 +322,7 @@ public class FlowPathBuilderTest {
     }
 
     @Test
-    public void haFlowPathsNotOverlappedTest() {
+    public void haFlowPathsNotOverlapped() {
         Path path = Path.builder()
                 .srcSwitchId(SWITCH_ID_1)
                 .destSwitchId(SWITCH_ID_3)
