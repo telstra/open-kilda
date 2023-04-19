@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows.haflows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -18,11 +19,15 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify update and partial update operations on ha-flows.")
+@Ignore("""At this moment HA-flow update operations is just an API stub which doesn't updated switch rules." +
+        It means that HA-flow delete operations wouldn't delete rules from switches which HA-flow has before update.
+        Update HA-flow spec is temporarily ignored until HA-flow update operation is able to update switch rules""")
 class HaFlowUpdateSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
@@ -30,6 +35,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User can update #data.descr of a ha-flow"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
@@ -96,6 +102,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User can update ha-flow where one of subflows has both ends on shared switch"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow where one of subflows has both ends on shared switch"
         def switchTriplet = topologyHelper.getSwitchTriplets(true, true)
                 .find{it.ep1 == it.shared && it.ep2 != it.shared}
@@ -121,6 +128,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User can partially update #data.descr of a ha-flow"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets.find { it.ep1 != it.ep2 }
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
@@ -222,6 +230,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User cannot update a ha-flow #data.descr"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
@@ -279,6 +288,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User cannot partial update a ha-flow with #data.descr"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)

@@ -268,6 +268,10 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
         return switchIds;
     }
 
+    public FlowEndpoint getSharedEndpoint() {
+        return new FlowEndpoint(getSharedSwitchId(), getSharedPort(), getSharedOuterVlan(), getSharedInnerVlan());
+    }
+
     /**
      * Return opposite pathId to passed pathId.
      */

@@ -110,6 +110,17 @@ public class HaFlowValidator {
                             subFlows.get(0).getFlowId(), subFlows.get(1).getFlowId(),
                             subFlows.get(0).getEndpoint(), subFlows.get(1).getEndpoint()), ErrorType.DATA_INVALID);
         }
+        if (subFlows.get(0).getEndpoint().getSwitchId().equals(subFlows.get(1).getEndpoint().getSwitchId())
+                && subFlows.get(0).getEndpoint().getInnerVlanId() != subFlows.get(1).getEndpoint().getInnerVlanId()) {
+            throw new InvalidFlowException(
+                    format("To have ability to use double vlan tagging for both sub flow destination endpoints which "
+                                    + "are placed on one switch %s you must set equal inner vlan for both endpoints. "
+                                    + "Current inner vlans: %s and %s.",
+                            subFlows.get(0).getEndpoint().getSwitchId(),
+                            subFlows.get(0).getEndpoint().getInnerVlanId(),
+                            subFlows.get(1).getEndpoint().getInnerVlanId()),
+                    ErrorType.DATA_INVALID);
+        }
     }
 
     private void checkOneSwitch(HaFlowRequest request) throws InvalidFlowException {
@@ -158,7 +169,7 @@ public class HaFlowValidator {
         ValidatorUtils.validateMaxLatencyAndLatencyTier(
                 yFlowRequest.getMaxLatency(), yFlowRequest.getMaxLatencyTier2());
     }
-    
+
     private void validateSubFlows(Collection<RequestedFlow> flows)
             throws InvalidFlowException, UnavailableFlowEndpointException {
         for (RequestedFlow flow : flows) {

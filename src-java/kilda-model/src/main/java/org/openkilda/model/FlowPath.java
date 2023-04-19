@@ -132,7 +132,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
      *
      * @return true if source and destination switches are the same, otherwise false
      */
-    public boolean isOneSwitchFlow() {
+    public boolean isOneSwitchPath() {
         return getSrcSwitchId().equals(getDestSwitchId());
     }
 

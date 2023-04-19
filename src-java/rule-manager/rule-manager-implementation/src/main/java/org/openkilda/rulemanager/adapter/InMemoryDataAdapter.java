@@ -21,6 +21,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PathId;
@@ -52,6 +53,8 @@ public class InMemoryDataAdapter implements DataAdapter {
     Map<SwitchId, List<LagLogicalPort>> switchLagPorts;
     KildaFeatureToggles featureToggles;
     Map<PathId, YFlow> yFlows;
+    Map<PathId, HaFlow> haFlowMap;
+    Map<PathId, HaFlowPath> haFlowPathMap;
 
     @Override
     public Flow getFlow(PathId pathId) {
@@ -121,6 +124,19 @@ public class InMemoryDataAdapter implements DataAdapter {
 
     @Override
     public HaFlow getHaFlow(PathId pathId) {
-        return null;
+        HaFlow haFlow = haFlowMap.get(pathId);
+        if (haFlow == null) {
+            throw new IllegalStateException(format("Ha-flow for pathId '%s' not found.", pathId));
+        }
+        return haFlow;
+    }
+
+    @Override
+    public HaFlowPath getHaFlowPath(PathId haFlowPathId) {
+        HaFlowPath haFlowPath = haFlowPathMap.get(haFlowPathId);
+        if (haFlowPath == null) {
+            throw new IllegalStateException(format("Ha-flow path '%s' not found.", haFlowPath));
+        }
+        return haFlowPath;
     }
 }

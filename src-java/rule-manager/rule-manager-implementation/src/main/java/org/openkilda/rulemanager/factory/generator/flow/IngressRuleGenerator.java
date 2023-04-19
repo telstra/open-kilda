@@ -15,32 +15,20 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
-import static org.openkilda.rulemanager.MeterFlag.BURST;
-import static org.openkilda.rulemanager.MeterFlag.KBPS;
-import static org.openkilda.rulemanager.MeterFlag.STATS;
-
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
-import org.openkilda.rulemanager.MeterFlag;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.factory.MeteredRuleGenerator;
 
-import com.google.common.collect.Sets;
 import lombok.AllArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.util.HashSet;
 
 @SuperBuilder
 @AllArgsConstructor
 public abstract class IngressRuleGenerator implements MeteredRuleGenerator {
-
-    public static final HashSet<MeterFlag> FLOW_METER_STATS = Sets.newHashSet(KBPS, BURST, STATS);
-
     protected RuleManagerConfig config;
     protected final FlowPath flowPath;
     protected final Flow flow;
     protected final FlowTransitEncapsulation encapsulation;
-
 }
