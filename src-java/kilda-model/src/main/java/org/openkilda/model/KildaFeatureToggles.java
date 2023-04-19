@@ -54,6 +54,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
             .flowLatencyMonitoringReactions(false)
             .server42IslRtt(false)
             .modifyYFlowEnabled(false)
+            .modifyHaFlowEnabled(false)
             .syncSwitchOnConnect(true)
             .discoverNewIslsInUnderMaintenanceMode(false)
             .build();
@@ -87,8 +88,8 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
                                Boolean floodlightRoutePeriodicSync,
                                Boolean flowsRerouteUsingDefaultEncapType, Boolean collectGrpcStats,
                                Boolean server42FlowRtt, Boolean flowLatencyMonitoringReactions,
-                               Boolean server42IslRtt, Boolean modifyYFlowEnabled, Boolean syncSwitchOnConnect,
-                               Boolean discoverNewIslsInUnderMaintenanceMode) {
+                               Boolean server42IslRtt, Boolean modifyYFlowEnabled, Boolean modifyHaFlowEnabled,
+                               Boolean syncSwitchOnConnect, Boolean discoverNewIslsInUnderMaintenanceMode) {
         data = KildaFeatureTogglesDataImpl.builder()
                 .flowsRerouteOnIslDiscoveryEnabled(flowsRerouteOnIslDiscoveryEnabled)
                 .createFlowEnabled(createFlowEnabled).updateFlowEnabled(updateFlowEnabled)
@@ -100,6 +101,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
                 .collectGrpcStats(collectGrpcStats)
                 .flowLatencyMonitoringReactions(flowLatencyMonitoringReactions)
                 .modifyYFlowEnabled(modifyYFlowEnabled)
+                .modifyHaFlowEnabled(modifyHaFlowEnabled)
                 .syncSwitchOnConnect(syncSwitchOnConnect)
                 .discoverNewIslsInUnderMaintenanceMode(discoverNewIslsInUnderMaintenanceMode)
                 .build();
@@ -198,6 +200,10 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
 
         void setModifyYFlowEnabled(Boolean modifyYFlowEnabled);
 
+        Boolean getModifyHaFlowEnabled();
+
+        void setModifyHaFlowEnabled(Boolean modifyYFlowEnabled);
+
         Boolean getSyncSwitchOnConnect();
 
         void setSyncSwitchOnConnect(Boolean syncSwitchOnConnect);
@@ -228,6 +234,7 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
         Boolean flowLatencyMonitoringReactions;
         Boolean server42IslRtt;
         Boolean modifyYFlowEnabled;
+        Boolean modifyHaFlowEnabled;
         Boolean syncSwitchOnConnect;
         Boolean discoverNewIslsInUnderMaintenanceMode;
     }
@@ -293,6 +300,9 @@ public class KildaFeatureToggles implements CompositeDataEntity<KildaFeatureTogg
             }
             if (target.getModifyYFlowEnabled() == null) {
                 target.setModifyYFlowEnabled(source.getModifyYFlowEnabled());
+            }
+            if (target.getModifyHaFlowEnabled() == null) {
+                target.setModifyHaFlowEnabled(source.getModifyHaFlowEnabled());
             }
             if (target.getSyncSwitchOnConnect() == null) {
                 target.setSyncSwitchOnConnect(source.getSyncSwitchOnConnect());

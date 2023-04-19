@@ -16,7 +16,6 @@
 package org.openkilda.model;
 
 import static java.lang.String.format;
-import static org.openkilda.model.FlowEndpoint.makeVlanStack;
 
 import org.openkilda.model.HaFlow.HaFlowData;
 import org.openkilda.model.HaFlowPath.HaFlowPathData;
@@ -24,9 +23,7 @@ import org.openkilda.model.HaFlowPath.HaFlowPathDataImpl;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.BeanSerializer;
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -37,7 +34,6 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.ToString;
-import lombok.Value;
 import lombok.experimental.Delegate;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.mapstruct.CollectionMappingStrategy;
@@ -48,6 +44,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -89,17 +86,20 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
     }
 
     @Builder
-    public HaFlow(@NonNull String haFlowId, @NonNull HaSharedEndpoint sharedEndpoint, long maximumBandwidth,
+    public HaFlow(@NonNull String haFlowId, @NonNull Switch sharedSwitch, int sharedPort, int sharedOuterVlan,
+                  int sharedInnerVlan, long maximumBandwidth,
                   PathComputationStrategy pathComputationStrategy, FlowEncapsulationType encapsulationType,
                   Long maxLatency, Long maxLatencyTier2, boolean ignoreBandwidth, boolean periodicPings,
                   boolean pinned, Integer priority, boolean strictBandwidth, String description,
-                  boolean allocateProtectedPath, FlowStatus status) {
+                  boolean allocateProtectedPath, FlowStatus status, String affinityGroupId, String diverseGroupId) {
         HaFlowDataImpl.HaFlowDataImplBuilder builder = HaFlowDataImpl.builder()
-                .haFlowId(haFlowId).sharedEndpoint(sharedEndpoint).maximumBandwidth(maximumBandwidth)
+                .haFlowId(haFlowId).sharedSwitch(sharedSwitch).sharedPort(sharedPort).sharedOuterVlan(sharedOuterVlan)
+                .sharedInnerVlan(sharedInnerVlan).maximumBandwidth(maximumBandwidth)
                 .pathComputationStrategy(pathComputationStrategy).encapsulationType(encapsulationType)
                 .maxLatency(maxLatency).maxLatencyTier2(maxLatencyTier2).ignoreBandwidth(ignoreBandwidth)
                 .periodicPings(periodicPings).pinned(pinned).priority(priority).strictBandwidth(strictBandwidth)
-                .description(description).allocateProtectedPath(allocateProtectedPath).status(status);
+                .description(description).allocateProtectedPath(allocateProtectedPath).status(status)
+                .affinityGroupId(affinityGroupId).diverseGroupId(diverseGroupId);
 
         data = builder.build();
 
@@ -212,12 +212,22 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
         }
     }
 
-    private void validateEndpoints(HaFlowPath path) {
-        if (!path.getSharedSwitchId().equals(getSharedEndpoint().switchId)) {
-            throw new IllegalArgumentException(format("HA-path %s has the shared endpoint switch ID %s, but %s is "
-                            + "expected", path.getHaPathId(), path.getSharedSwitchId(), getSharedEndpoint().switchId));
+    /**
+     * Checks if the specified path is a protected path.
+     */
+    public boolean isProtectedPath(PathId pathId) {
+        if (pathId == null) {
+            throw new IllegalArgumentException("Path id can't be null");
         }
-        Set<SwitchId> subFlowSwitchIds = getSubFlows().stream()
+        return pathId.equals(getProtectedForwardPathId()) || pathId.equals(getProtectedReversePathId());
+    }
+
+    private void validateEndpoints(HaFlowPath path) {
+        if (!path.getSharedSwitchId().equals(getSharedSwitchId())) {
+            throw new IllegalArgumentException(format("HA-path %s has the shared endpoint switch ID %s, but %s is "
+                            + "expected", path.getHaPathId(), path.getSharedSwitchId(), getSharedSwitchId()));
+        }
+        Set<SwitchId> subFlowSwitchIds = getHaSubFlows().stream()
                 .map(HaSubFlow::getEndpointSwitchId)
                 .collect(Collectors.toSet());
         Set<SwitchId> pathSwitchIds = path.getSubFlowSwitchIds();
@@ -256,7 +266,10 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
         HaFlow that = (HaFlow) o;
         return new EqualsBuilder()
                 .append(getHaFlowId(), that.getHaFlowId())
-                .append(getSharedEndpoint(), that.getSharedEndpoint())
+                .append(getSharedSwitchId(), that.getSharedSwitchId())
+                .append(getSharedPort(), that.getSharedPort())
+                .append(getSharedOuterVlan(), that.getSharedOuterVlan())
+                .append(getSharedInnerVlan(), that.getSharedInnerVlan())
                 .append(getMaximumBandwidth(), that.getMaximumBandwidth())
                 .append(getPathComputationStrategy(), that.getPathComputationStrategy())
                 .append(getEncapsulationType(), that.getEncapsulationType())
@@ -273,8 +286,10 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                 .append(getReversePathId(), that.getReversePathId())
                 .append(getProtectedForwardPathId(), that.getProtectedForwardPathId())
                 .append(getProtectedReversePathId(), that.getProtectedReversePathId())
-                .append(getSubFlows(), that.getSubFlows())
+                .append(getHaSubFlows(), that.getHaSubFlows())
                 .append(getStatus(), that.getStatus())
+                .append(getAffinityGroupId(), that.getAffinityGroupId())
+                .append(getDiverseGroupId(), that.getDiverseGroupId())
                 .append(getTimeCreate(), that.getTimeCreate())
                 .append(getTimeModify(), that.getTimeModify())
                 .isEquals();
@@ -282,11 +297,13 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
 
     @Override
     public int hashCode() {
-        return Objects.hash(getHaFlowId(), getSharedEndpoint(), getMaximumBandwidth(), getPathComputationStrategy(),
+        return Objects.hash(getHaFlowId(), getSharedSwitchId(), getSharedPort(), getSharedOuterVlan(),
+                getSharedInnerVlan(), getMaximumBandwidth(), getPathComputationStrategy(),
                 getEncapsulationType(), getMaxLatency(), getMaxLatencyTier2(), isIgnoreBandwidth(), isPeriodicPings(),
                 isPinned(), getPriority(), isStrictBandwidth(), getDescription(), isAllocateProtectedPath(),
                 getForwardPathId(), getReversePathId(), getProtectedForwardPathId(), getProtectedReversePathId(),
-                getSubFlows(), getStatus(), getTimeCreate(), getTimeModify());
+                getHaSubFlows(), getStatus(), getTimeCreate(), getTimeModify(), getAffinityGroupId(),
+                getDiverseGroupId());
     }
 
     /**
@@ -294,7 +311,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
      */
     public void recalculateStatus() {
         FlowStatus haFlowStatus = null;
-        for (HaSubFlow subFlow : getSubFlows()) {
+        for (HaSubFlow subFlow : getHaSubFlows()) {
             FlowStatus subFlowStatus = subFlow.getStatus();
             if (subFlowStatus == FlowStatus.IN_PROGRESS) {
                 haFlowStatus = FlowStatus.IN_PROGRESS;
@@ -318,9 +335,23 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
 
         void setHaFlowId(String haFlowId);
 
-        HaSharedEndpoint getSharedEndpoint();
+        Switch getSharedSwitch();
 
-        void setSharedEndpoint(HaSharedEndpoint sharedEndpoint);
+        void setSharedSwitch(Switch sharedSwitch);
+
+        SwitchId getSharedSwitchId();
+
+        int getSharedPort();
+
+        void setSharedPort(int port);
+
+        int getSharedOuterVlan();
+
+        void setSharedOuterVlan(int outerVlan);
+
+        int getSharedInnerVlan();
+
+        void setSharedInnerVlan(int innerVlan);
 
         long getMaximumBandwidth();
 
@@ -370,6 +401,14 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
 
         void setAllocateProtectedPath(boolean allocateProtectedPath);
 
+        String getDiverseGroupId();
+
+        void setDiverseGroupId(String diverseGroupId);
+
+        String getAffinityGroupId();
+
+        void setAffinityGroupId(String affinityGroupId);
+
         PathId getForwardPathId();
 
         void setForwardPathId(PathId forwardPathId);
@@ -396,11 +435,11 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
 
         void addPaths(HaFlowPath... paths);
 
-        Optional<HaSubFlow> getSubFlow(String subFlowId);
+        Optional<HaSubFlow> getHaSubFlow(String subFlowId);
 
-        Set<HaSubFlow> getSubFlows();
+        Collection<HaSubFlow> getHaSubFlows();
 
-        void setSubFlows(Set<HaSubFlow> subFlows);
+        void setHaSubFlows(Set<HaSubFlow> haSubFlows);
 
         FlowStatus getStatus();
 
@@ -425,7 +464,10 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
     static final class HaFlowDataImpl implements HaFlowData, Serializable {
         private static final long serialVersionUID = 1L;
         @NonNull String haFlowId;
-        @NonNull HaSharedEndpoint sharedEndpoint;
+        @NonNull Switch sharedSwitch;
+        int sharedPort;
+        int sharedOuterVlan;
+        int sharedInnerVlan;
         PathId forwardPathId;
         PathId reversePathId;
         PathId protectedForwardPathId;
@@ -445,11 +487,13 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
         boolean pinned;
         Integer priority;
         PathComputationStrategy pathComputationStrategy;
+        String affinityGroupId;
+        String diverseGroupId;
 
         @Builder.Default
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
-        Set<HaSubFlow> subFlows = new HashSet<>();
+        List<HaSubFlow> subFlows = new ArrayList<>();
 
         @Builder.Default
         @ToString.Exclude
@@ -464,19 +508,24 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
         HaFlow haFlow;
 
         @Override
-        public Optional<HaSubFlow> getSubFlow(String subFlowId) {
+        public SwitchId getSharedSwitchId() {
+            return sharedSwitch.getSwitchId();
+        }
+
+        @Override
+        public Optional<HaSubFlow> getHaSubFlow(String subFlowId) {
             return subFlows.stream()
                     .filter(subFlow -> subFlow.getHaSubFlowId().equals(subFlowId))
                     .findAny();
         }
 
         @Override
-        public Set<HaSubFlow> getSubFlows() {
-            return Collections.unmodifiableSet(subFlows);
+        public Collection<HaSubFlow> getHaSubFlows() {
+            return Collections.unmodifiableList(subFlows);
         }
 
         @Override
-        public void setSubFlows(Set<HaSubFlow> subFlows) {
+        public void setHaSubFlows(Set<HaSubFlow> subFlows) {
             for (HaSubFlow subFlow : this.subFlows) {
                 boolean keepSubFlow = subFlows.stream()
                         .anyMatch(sub -> sub.getHaSubFlowId().equals(subFlow.getHaSubFlowId()));
@@ -485,7 +534,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                     subFlow.setData(null);
                 }
             }
-            this.subFlows = new HashSet<>(subFlows);
+            this.subFlows = new ArrayList<>(subFlows);
         }
 
         @Override
@@ -541,10 +590,16 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
     public interface HaFlowCloner {
         HaFlowCloner INSTANCE = Mappers.getMapper(HaFlowCloner.class);
 
-        @Mapping(target = "subFlows", ignore = true)
+        @Mapping(target = "haSubFlows", ignore = true)
         @Mapping(target = "paths", ignore = true)
         @Mapping(target = "pathIds", ignore = true)
         void copyWithoutSubFlowsAndPaths(HaFlowData source, @MappingTarget HaFlowData target);
+
+        @Mapping(target = "haSubFlows", ignore = true)
+        @Mapping(target = "paths", ignore = true)
+        @Mapping(target = "pathIds", ignore = true)
+        @Mapping(target = "sharedSwitch", ignore = true)
+        void copyWithoutSwitchSubFlowsAndPaths(HaFlowData source, @MappingTarget HaFlowData target);
 
         /**
          * Performs deep copy of entity data.
@@ -554,8 +609,9 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
         default HaFlowData deepCopy(HaFlowData source, HaFlow targetFlow) {
             HaFlowDataImpl result = new HaFlowDataImpl();
             result.haFlow = targetFlow;
-            copyWithoutSubFlowsAndPaths(source, result);
-            result.setSubFlows(source.getSubFlows().stream()
+            copyWithoutSwitchSubFlowsAndPaths(source, result);
+            result.setSharedSwitch(new Switch(source.getSharedSwitch()));
+            result.setHaSubFlows(source.getHaSubFlows().stream()
                     .map(subFlow -> new HaSubFlow(subFlow, targetFlow))
                     .collect(Collectors.toSet()));
 
@@ -563,31 +619,6 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                     .map(path -> new HaFlowPath(path, targetFlow))
                     .toArray(HaFlowPath[]::new));
             return result;
-        }
-    }
-
-    @Value
-    @EqualsAndHashCode(callSuper = true)
-    public static class HaSharedEndpoint extends NetworkEndpoint {
-        @JsonProperty("outer_vlan_id")
-        int outerVlanId;
-
-        @JsonProperty("inner_vlan_id")
-        int innerVlanId;
-
-        @JsonCreator
-        @Builder(toBuilder = true)
-        public HaSharedEndpoint(
-                @JsonProperty("switch_id") SwitchId switchId,
-                @JsonProperty("port_number") Integer portNumber,
-                @JsonProperty("outer_vlan_id") int outerVlanId,
-                @JsonProperty("inner_vlan_id") int innerVlanId) {
-            super(switchId, portNumber);
-
-            // normalize VLANs representation
-            List<Integer> vlanStack = makeVlanStack(outerVlanId, innerVlanId);
-            this.outerVlanId = vlanStack.size() > 0 ? vlanStack.get(0) : 0;
-            this.innerVlanId = vlanStack.size() > 1 ? vlanStack.get(1) : 0;
         }
     }
 }

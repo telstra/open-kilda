@@ -20,47 +20,56 @@ import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.HaFlow;
-import org.openkilda.model.HaFlow.HaSharedEndpoint;
 import org.openkilda.model.HaSubFlow;
+import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
+
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 @Mapper
 public abstract class HaFlowMapper {
     public static final HaFlowMapper INSTANCE = Mappers.getMapper(HaFlowMapper.class);
 
     @Mapping(target = "status", ignore = true)
+    @Mapping(target = "sharedSwitch", source = "sharedEndpoint.switchId")
+    @Mapping(target = "sharedPort", source = "sharedEndpoint.portNumber")
+    @Mapping(target = "sharedOuterVlan", source = "sharedEndpoint.outerVlanId")
+    @Mapping(target = "sharedInnerVlan", source = "sharedEndpoint.innerVlanId")
+    @Mapping(target = "affinityGroupId", ignore = true)
+    @Mapping(target = "diverseGroupId", ignore = true)
     public abstract HaFlow toHaFlow(HaFlowRequest request);
 
-    @Mapping(target = "timeUpdate", source = "flow.timeModify")
+    @Mapping(target = "timeUpdate", source = "haFlow.timeModify")
+    @Mapping(target = "sharedEndpoint", source = "haFlow")
+    @Mapping(target = "subFlows", source = "haSubFlows")
     @Mapping(target = "diverseWithFlows", ignore = true)
     @Mapping(target = "diverseWithYFlows", ignore = true)
     @Mapping(target = "diverseWithHaFlows", ignore = true)
-    public abstract HaFlowDto toHaFlowDto(HaFlow flow);
-
-    @Mapping(target = "trackLldpConnectedDevices", ignore = true)
-    @Mapping(target = "trackArpConnectedDevices", ignore = true)
-    public abstract FlowEndpoint toEndpoint(HaSharedEndpoint flow);
-
-    public abstract HaSharedEndpoint toEndpoint(FlowEndpoint flow);
+    public abstract HaFlowDto toHaFlowDto(HaFlow haFlow);
 
     @Mapping(target = "flowId", source = "haSubFlowId")
-
     @Mapping(target = "endpoint", source = "haSubFlow")
     @Mapping(target = "timeUpdate", source = "timeModify")
     public abstract HaSubFlowDto toSubFlowDto(HaSubFlow haSubFlow);
 
     @Mapping(target = "haSubFlowId", source = "flowId")
-    @Mapping(target = "endpointSwitchId", source = "endpoint.switchId")
+    @Mapping(target = "endpointSwitch", source = "endpoint.switchId")
     @Mapping(target = "endpointPort", source = "endpoint.portNumber")
     @Mapping(target = "endpointVlan", source = "endpoint.outerVlanId")
     @Mapping(target = "endpointInnerVlan", source = "endpoint.innerVlanId")
     public abstract HaSubFlow toSubFlow(HaSubFlowDto haSubFlow);
 
     @Mapping(target = "haSubFlowId", source = "subFlowId")
-    @Mapping(target = "endpointSwitchId", source = "haSubFlow.endpoint.switchId")
+    @Mapping(target = "endpointSwitch", source = "haSubFlow.endpoint.switchId")
     @Mapping(target = "endpointPort", source = "haSubFlow.endpoint.portNumber")
     @Mapping(target = "endpointVlan", source = "haSubFlow.endpoint.outerVlanId")
     @Mapping(target = "endpointInnerVlan", source = "haSubFlow.endpoint.innerVlanId")
@@ -73,4 +82,54 @@ public abstract class HaFlowMapper {
     @Mapping(target = "trackLldpConnectedDevices", ignore = true)
     @Mapping(target = "trackArpConnectedDevices", ignore = true)
     public abstract FlowEndpoint toSubFlowSharedEndpointEncapsulation(HaSubFlow haSubFlow);
+
+    /**
+     * Convert {@link SwitchId} to {@link Switch} object.
+     */
+    public Switch newSwitch(SwitchId switchId) {
+        if (switchId == null) {
+            return null;
+        }
+        return Switch.builder().switchId(switchId).build();
+    }
+
+    public FlowEndpoint map(HaFlow haFlow) {
+        return new FlowEndpoint(haFlow.getSharedSwitchId(), haFlow.getSharedPort(), haFlow.getSharedOuterVlan(),
+                haFlow.getSharedInnerVlan());
+    }
+
+    /**
+     * Converts {@link HaFlowRequest} to a few {@link RequestedFlow}.
+     * The methods also ensures that all IDs of all subflows are different.
+     * If there are several subflows with equal subFLowIds - only one will be left.
+     */
+    public Collection<RequestedFlow> toRequestedFlows(HaFlowRequest request) {
+        return request.getSubFlows().stream()
+                .map(subFlow -> RequestedFlow.builder()
+                        .flowId(subFlow.getFlowId())
+                        .haFlowId(request.getHaFlowId())
+                        .srcSwitch(request.getSharedEndpoint().getSwitchId())
+                        .srcPort(request.getSharedEndpoint().getPortNumber())
+                        .srcVlan(request.getSharedEndpoint().getOuterVlanId())
+                        .srcInnerVlan(request.getSharedEndpoint().getInnerVlanId())
+                        .destSwitch(subFlow.getEndpoint().getSwitchId())
+                        .destPort(subFlow.getEndpoint().getPortNumber())
+                        .destVlan(subFlow.getEndpoint().getOuterVlanId())
+                        .destInnerVlan(subFlow.getEndpoint().getInnerVlanId())
+                        .detectConnectedDevices(new DetectConnectedDevices())
+                        .description(subFlow.getDescription())
+                        .flowEncapsulationType(request.getEncapsulationType())
+                        .bandwidth(request.getMaximumBandwidth())
+                        .ignoreBandwidth(request.isIgnoreBandwidth())
+                        .strictBandwidth(request.isStrictBandwidth())
+                        .pinned(request.isPinned())
+                        .priority(request.getPriority())
+                        .maxLatency(request.getMaxLatency())
+                        .maxLatencyTier2(request.getMaxLatencyTier2())
+                        .periodicPings(request.isPeriodicPings())
+                        .pathComputationStrategy(request.getPathComputationStrategy())
+                        .allocateProtectedPath(request.isAllocateProtectedPath())
+                        .build())
+                .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(RequestedFlow::getFlowId))));
+    }
 }

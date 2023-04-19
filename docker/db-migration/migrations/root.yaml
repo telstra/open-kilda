@@ -90,3 +90,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 026-add-description-prop.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 027-add-ha-flow-feature-toggle-and-groups.yaml

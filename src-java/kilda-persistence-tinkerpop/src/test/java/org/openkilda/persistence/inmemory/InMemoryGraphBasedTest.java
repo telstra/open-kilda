@@ -52,6 +52,10 @@ public abstract class InMemoryGraphBasedTest {
     public static final String DESCRIPTION_1 = "description_1";
     public static final String DESCRIPTION_2 = "description_2";
     public static final String DESCRIPTION_3 = "description_3";
+    public static final PathId SUB_PATH_ID_1 = new PathId("sub_path_id_1");
+    public static final PathId SUB_PATH_ID_2 = new PathId("sub_path_id_2");
+    public static final PathId SUB_PATH_ID_3 = new PathId("sub_path_id_3");
+    public static final String DIVERSITY_GROUP_1 = "diversity_group_1";
     public static final int PORT_1 = 1;
     public static final int PORT_2 = 2;
     public static final int PORT_3 = 3;
@@ -59,6 +63,7 @@ public abstract class InMemoryGraphBasedTest {
     public static final int VLAN_1 = 5;
     public static final int VLAN_2 = 6;
     public static final int VLAN_3 = 7;
+    public static final int ZERO_INNER_VLAN = 0;
     public static final int INNER_VLAN_1 = 8;
     public static final int INNER_VLAN_2 = 9;
     public static final int INNER_VLAN_3 = 10;

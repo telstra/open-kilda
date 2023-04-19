@@ -109,7 +109,7 @@ public class HaFlowCreateHubBolt extends AbstractBolt {
                 haSubFlowRepository.add(subflow);
             }
             haFlowRepository.add(haFlow);
-            haFlow.setSubFlows(new HashSet<>(subflows));
+            haFlow.setHaSubFlows(new HashSet<>(subflows));
         });
         HaFlowResponse response = new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(haFlow));
         InfoMessage message = new InfoMessage(

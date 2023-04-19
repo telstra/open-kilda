@@ -23,6 +23,8 @@ import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath.FlowPathData;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.GroupId;
+import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -61,7 +63,9 @@ public abstract class FlowPathFrame extends KildaBaseVertexFrame implements Flow
     public static final String OWNS_SEGMENTS_EDGE = "owns";
     public static final String HAS_SEGMENTS_EDGE = "has";
     public static final String PATH_ID_PROPERTY = "path_id";
+    public static final String HA_PATH_ID_PROPERTY = "ha_path_id";
     public static final String FLOW_ID_PROPERTY = "flow_id";
+    public static final String HA_SUB_FLOW_ID_PROPERTY = "ha_sub_flow_id";
     public static final String SRC_SWITCH_ID_PROPERTY = "src_switch_id";
     public static final String DST_SWITCH_ID_PROPERTY = "dst_switch_id";
     public static final String COOKIE_PROPERTY = "cookie";
@@ -74,6 +78,8 @@ public abstract class FlowPathFrame extends KildaBaseVertexFrame implements Flow
     private Switch srcSwitch;
     private Switch destSwitch;
     private Flow flow;
+    private HaFlowPath haFlowPath;
+    private HaSubFlow haSubFlow;
     private List<PathSegment> segments;
     private Set<FlowMirrorPoints> flowMirrorPointsSet;
 
@@ -90,6 +96,15 @@ public abstract class FlowPathFrame extends KildaBaseVertexFrame implements Flow
     @Override
     @Property(FLOW_ID_PROPERTY)
     public abstract String getFlowId();
+
+    @Override
+    @Property(HA_PATH_ID_PROPERTY)
+    @Convert(PathIdConverter.class)
+    public abstract PathId getHaFlowPathId();
+
+    @Override
+    @Property(HA_SUB_FLOW_ID_PROPERTY)
+    public abstract String getHaSubFlowId();
 
     @Override
     @Property(SRC_SWITCH_ID_PROPERTY)
@@ -307,6 +322,50 @@ public abstract class FlowPathFrame extends KildaBaseVertexFrame implements Flow
             }
         }
         return flow;
+    }
+
+    @Override
+    public HaFlowPath getHaFlowPath() {
+        if (haFlowPath == null) {
+            List<? extends HaFlowPathFrame> haPathFrames = traverse(v -> v.in(HaFlowPathFrame.OWNS_PATH_EDGE)
+                    .hasLabel(HaFlowPathFrame.FRAME_LABEL))
+                    .toListExplicit(HaFlowPathFrame.class);
+            if (haPathFrames.size() > 1) {
+                throw new IllegalStateException(
+                        format("The flow path %s with id %s has more than one ha_flow_path references: %s",
+                        getPathId(), getId(), haPathFrames));
+            }
+            haFlowPath = !haPathFrames.isEmpty() ? new HaFlowPath(haPathFrames.get(0)) : null;
+            PathId haPathId = haFlowPath != null ? haFlowPath.getHaPathId() : null;
+            if (!Objects.equals(getHaFlowPathId(), haPathId)) {
+                throw new IllegalStateException(format("The path %s has inconsistent ha_path_id %s / %s",
+                        getId(), getHaFlowPathId(), haPathId));
+            }
+        }
+        return haFlowPath;
+    }
+
+    @Override
+    public HaSubFlow getHaSubFlow() {
+        if (haSubFlow == null) {
+            haSubFlow = HaSubFlowFrame.load(getGraph(), getHaSubFlowId()).map(HaSubFlow::new).orElse(null);
+        }
+        return haSubFlow;
+    }
+
+    @Override
+    public void setHaSubFlow(HaSubFlow haSubFlow) {
+        if (haSubFlow == null) {
+            setProperty(HA_SUB_FLOW_ID_PROPERTY, null);
+        } else {
+            if (!(haSubFlow.getData() instanceof HaSubFlowFrame)) {
+                // We intentionally don't allow to add transient entities.
+                // A haSubFlow must be added/read via corresponding repository first.
+                throw new IllegalArgumentException("Unable to link to transient ha sub flow " + haSubFlow);
+            }
+            setProperty(HA_SUB_FLOW_ID_PROPERTY, haSubFlow.getHaSubFlowId());
+        }
+        this.haSubFlow = haSubFlow;
     }
 
     @Override

@@ -277,7 +277,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
     }
 
     /**
-     * Checks if specified path is protected.
+     * Checks if the specified path is a protected path.
      */
     public boolean isProtectedPath(PathId pathId) {
         if (pathId == null) {
@@ -783,7 +783,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
             target.setSrcSwitch(new Switch(source.getSrcSwitch()));
             target.setDestSwitch(new Switch(source.getDestSwitch()));
             target.addPaths(source.getPaths().stream()
-                    .map(path -> new FlowPath(path, targetFlow))
+                    .map(path -> new FlowPath(path, targetFlow, null))
                     .toArray(FlowPath[]::new));
         }
 
