@@ -109,6 +109,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                 .modifyYFlowEnabled(true)
                 .createHaFlowEnabled(true)
                 .modifyHaFlowEnabled(true)
+                .deleteHaFlowEnabled(true)
                 .syncSwitchOnConnect(true)
                 .build()
         northbound.toggleFeature(features)

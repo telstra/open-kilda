@@ -33,6 +33,7 @@ import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 
@@ -114,12 +115,21 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
 
     @Override
     public Collection<String> findHaFlowIdsByDiverseGroupId(String diverseGroupId) {
-        if (diverseGroupId == null) {
+        return findFlowsIdByGroupId(HaFlowFrame.DIVERSE_GROUP_ID_PROPERTY, diverseGroupId);
+    }
+
+    @Override
+    public Collection<String> findHaFlowIdsByAffinityGroupId(String affinityGroupId) {
+        return findFlowsIdByGroupId(HaFlowFrame.AFFINITY_GROUP_ID_PROPERTY, affinityGroupId);
+    }
+
+    private Collection<String> findFlowsIdByGroupId(String groupIdProperty, String groupId) {
+        if (groupId == null) {
             return new ArrayList<>();
         }
         return framedGraph().traverse(g -> g.V()
                         .hasLabel(HaFlowFrame.FRAME_LABEL)
-                        .has(HaFlowFrame.DIVERSE_GROUP_ID_PROPERTY, diverseGroupId)
+                        .has(groupIdProperty, groupId)
                         .values(HaFlowFrame.HA_FLOW_ID_PROPERTY))
                 .getRawTraversal().toStream()
                 .map(String.class::cast)
@@ -148,6 +158,18 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
                         .toListExplicit(FlowFrame.class)
                         .forEach(haFlowFrame -> {
                             haFlowFrame.setStatus(flowStatus);
+                        }));
+    }
+
+    @Override
+    public void updateAffinityFlowGroupId(@NonNull String haFlowId, String affinityGroupId) {
+        getTransactionManager().doInTransaction(() ->
+                framedGraph().traverse(g -> g.V()
+                                .hasLabel(HaFlowFrame.FRAME_LABEL)
+                                .has(HaFlowFrame.HA_FLOW_ID_PROPERTY, haFlowId))
+                        .toListExplicit(HaFlowFrame.class)
+                        .forEach(haFlowFrame -> {
+                            haFlowFrame.setAffinityGroupId(affinityGroupId);
                         }));
     }
 

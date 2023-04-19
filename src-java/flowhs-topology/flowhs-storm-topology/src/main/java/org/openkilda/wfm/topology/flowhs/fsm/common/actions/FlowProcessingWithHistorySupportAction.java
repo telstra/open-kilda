@@ -30,6 +30,7 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
@@ -102,6 +103,12 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
         return flowRepository.findById(flowId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Flow %s not found", flowId)));
+    }
+
+    protected HaFlow getHaFlow(String haFlowId) {
+        return haFlowRepository.findById(haFlowId)
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                        format("HA-flow %s not found", haFlowId)));
     }
 
     protected FlowPath getFlowPath(Flow flow, PathId pathId) {

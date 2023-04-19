@@ -378,12 +378,6 @@ public class ResourcesAllocationAction extends
                 listener.onFailed(stateMachine.getHaFlowId(), stateMachine.getErrorReason(), errorType));
     }
 
-    protected HaFlow getHaFlow(String haFlowId) {
-        return haFlowRepository.findById(haFlowId)
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                        format("HA-flow %s not found", haFlowId)));
-    }
-
     private FlowSubType getSubType(int id) {
         //TODO find a better way
         switch (id) {
