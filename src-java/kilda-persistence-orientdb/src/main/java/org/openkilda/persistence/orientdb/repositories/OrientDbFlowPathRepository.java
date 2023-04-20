@@ -20,6 +20,8 @@ import static java.lang.String.format;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.ferma.frames.FlowFrame;
 import org.openkilda.persistence.ferma.frames.FlowPathFrame;
+import org.openkilda.persistence.ferma.frames.HaFlowFrame;
+import org.openkilda.persistence.ferma.frames.HaFlowPathFrame;
 import org.openkilda.persistence.ferma.frames.converters.PathIdConverter;
 import org.openkilda.persistence.ferma.repositories.FermaFlowPathRepository;
 import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
@@ -28,6 +30,8 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.apache.tinkerpop.gremlin.orientdb.executor.OGremlinResultSet;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -43,12 +47,18 @@ public class OrientDbFlowPathRepository extends FermaFlowPathRepository {
 
     @Override
     public Collection<PathId> findPathIdsByFlowDiverseGroupId(String flowDiverseGroupId) {
-        return findPathIdsByFlowGroupId(FlowFrame.DIVERSE_GROUP_ID_PROPERTY, flowDiverseGroupId);
+        Set<PathId> pathIds = new HashSet<>(
+                findPathIdsByFlowGroupId(FlowFrame.DIVERSE_GROUP_ID_PROPERTY, flowDiverseGroupId));
+        pathIds.addAll(findPathIdsByHaFlowGroupId(HaFlowFrame.DIVERSE_GROUP_ID_PROPERTY, flowDiverseGroupId));
+        return pathIds;
     }
 
     @Override
     public Collection<PathId> findPathIdsByFlowAffinityGroupId(String flowAffinityGroupId) {
-        return findPathIdsByFlowGroupId(FlowFrame.AFFINITY_GROUP_ID_PROPERTY, flowAffinityGroupId);
+        Set<PathId> pathIds = new HashSet<>(
+                findPathIdsByFlowGroupId(FlowFrame.AFFINITY_GROUP_ID_PROPERTY, flowAffinityGroupId));
+        pathIds.addAll(findPathIdsByHaFlowGroupId(HaFlowFrame.AFFINITY_GROUP_ID_PROPERTY, flowAffinityGroupId));
+        return pathIds;
     }
 
     private Collection<PathId> findPathIdsByFlowGroupId(String groupIdProperty, String flowGroupId) {
@@ -56,6 +66,18 @@ public class OrientDbFlowPathRepository extends FermaFlowPathRepository {
                 format("SELECT %s FROM %s WHERE in('%s').%s = ?",
                         FlowPathFrame.PATH_ID_PROPERTY, FlowPathFrame.FRAME_LABEL,
                         FlowFrame.OWNS_PATHS_EDGE, groupIdProperty), flowGroupId)) {
+            return results.stream()
+                    .map(r -> r.getProperty(FlowPathFrame.PATH_ID_PROPERTY))
+                    .map(pathId -> PathIdConverter.INSTANCE.toEntityAttribute((String) pathId))
+                    .collect(Collectors.toList());
+        }
+    }
+
+    private Collection<PathId> findPathIdsByHaFlowGroupId(String groupIdProperty, String flowGroupId) {
+        try (OGremlinResultSet results = graphSupplier.get().querySql(
+                format("SELECT %s FROM %s WHERE in('%s').in('%s').%s = ?",
+                        FlowPathFrame.PATH_ID_PROPERTY, FlowPathFrame.FRAME_LABEL,
+                        HaFlowPathFrame.OWNS_PATH_EDGE, HaFlowFrame.OWNS_PATHS_EDGE, groupIdProperty), flowGroupId)) {
             return results.stream()
                     .map(r -> r.getProperty(FlowPathFrame.PATH_ID_PROPERTY))
                     .map(pathId -> PathIdConverter.INSTANCE.toEntityAttribute((String) pathId))

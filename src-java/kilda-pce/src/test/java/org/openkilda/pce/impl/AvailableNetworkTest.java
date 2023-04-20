@@ -23,7 +23,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -34,10 +33,12 @@ import org.openkilda.pce.model.Node;
 import org.openkilda.pce.model.PathWeight;
 import org.openkilda.pce.model.WeightFunction;
 
+import com.google.common.collect.Sets;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -62,11 +63,8 @@ public class AvailableNetworkTest {
     private static final SwitchId SRC_SWITCH = new SwitchId("00:00:00:22:3d:6c:00:b8");
     private static final SwitchId DST_SWITCH = new SwitchId("00:00:00:22:3d:5a:04:87");
 
-    private static final Flow DUMMY_FLOW = Flow.builder()
-            .flowId("flow-id")
-            .srcSwitch(Switch.builder().switchId(new SwitchId("1")).build())
-            .destSwitch(Switch.builder().switchId(new SwitchId("2")).build())
-            .build();
+    private static final HashSet<SwitchId> DUMMY_SWITCH_IDS = Sets.newHashSet(
+            new SwitchId("1"), new SwitchId("2"));
 
     @Test
     public void dontAllowDuplicatesTest() {
@@ -236,7 +234,8 @@ public class AvailableNetworkTest {
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);
         network.processDiversitySegments(
-                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 0)), DUMMY_FLOW);
+                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 0)),
+                DUMMY_SWITCH_IDS);
 
         Node srcSwitch = network.getSwitch(SRC_SWITCH);
 
@@ -250,14 +249,9 @@ public class AvailableNetworkTest {
         AvailableNetwork network = new AvailableNetwork();
         addLink(network, SRC_SWITCH, DST_SWITCH, 7, 60, 10, 3);
 
-        Flow flow = Flow.builder()
-                .flowId("flow-id")
-                .srcSwitch(Switch.builder().switchId(SRC_SWITCH).build())
-                .destSwitch(Switch.builder().switchId(DST_SWITCH).build())
-                .build();
-
         network.processDiversitySegments(
-                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 0)), flow);
+                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 0)),
+                Sets.newHashSet(SRC_SWITCH, DST_SWITCH));
 
         Node srcSwitch = network.getSwitch(SRC_SWITCH);
 
@@ -273,7 +267,8 @@ public class AvailableNetworkTest {
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);
         network.processDiversitySegments(
-                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 1)), DUMMY_FLOW);
+                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 1)),
+                DUMMY_SWITCH_IDS);
 
         Node srcSwitch = network.getSwitch(SRC_SWITCH);
 
@@ -317,7 +312,7 @@ public class AvailableNetworkTest {
         addLink(network, switchC, switchD, 3, 3, 10, 3);
         network.processDiversitySegments(asList(
                 buildPathSegment(switchA, switchB, 1, 1, 0),
-                buildPathSegment(switchC, switchD, 3, 3, 0)), DUMMY_FLOW);
+                buildPathSegment(switchC, switchD, 3, 3, 0)), DUMMY_SWITCH_IDS);
 
         Node nodeB = network.getSwitch(switchB);
 
@@ -334,7 +329,7 @@ public class AvailableNetworkTest {
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);
         network.processDiversitySegments(
-                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 1, 2, 0)), DUMMY_FLOW);
+                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 1, 2, 0)), DUMMY_SWITCH_IDS);
 
         Node srcSwitch = network.getSwitch(SRC_SWITCH);
 

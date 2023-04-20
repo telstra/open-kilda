@@ -46,7 +46,7 @@ class YFlowStatSpec extends BaseSpecification {
             it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
                     [it.shared, it.ep1, it.ep2].every { it.traffGens }
         } ?: assumeTrue(false, "No suiting switches found")
-        def yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(switchTriplet))
+        yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(switchTriplet))
         def beforeTraffic = new Date()
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam)

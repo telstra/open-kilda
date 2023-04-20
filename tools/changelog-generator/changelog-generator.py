@@ -89,7 +89,7 @@ def main(github_token, new_version, from_version, git_rev_list):
     improvements = []
     issues = []
     components = set()
-
+    schema_migration: bool = False
     for v in pr_list:
         labels = [l.name for l in v.get_labels()]
         components |= {l[2:].lower() for l in labels if l.startswith("C/")}
@@ -110,6 +110,8 @@ def main(github_token, new_version, from_version, git_rev_list):
         else:
             issues.append(pr)
 
+        if 'DB Migration' in labels:
+            schema_migration = True
     env = Environment(
         loader=FileSystemLoader('./tools/changelog-generator')
     )
@@ -122,8 +124,10 @@ def main(github_token, new_version, from_version, git_rev_list):
                           components=components,
                           from_ver=from_ver,
                           to_ver=to_ver,
+                          schema_migration=schema_migration,
                           date=datetime.date.today().strftime("%d/%m/%Y")))
 
 
 if __name__ == '__main__':
     main(auto_envvar_prefix='CHANGELOG_GENERATOR')
+

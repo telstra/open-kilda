@@ -22,6 +22,9 @@ import com.syncleus.ferma.annotations.Property;
 public abstract class KildaFeatureTogglesFrame extends KildaBaseVertexFrame implements KildaFeatureTogglesData {
     public static final String FRAME_LABEL = "kilda_feature_toggles";
     public static final String UNIQUE_PROPERTY = "unique";
+    public static final String CREATE_HA_FLOW_ENABLED_PROPERTY = "create_ha_flow_enabled";
+    public static final String MODIFY_HA_FLOW_ENABLED_PROPERTY = "modify_ha_flow_enabled";
+    public static final String DELETE_HA_FLOW_ENABLED_PROPERTY = "delete_ha_flow_enabled";
 
     @Override
     @Property("flows_reroute_on_isl_discovery")
@@ -117,6 +120,30 @@ public abstract class KildaFeatureTogglesFrame extends KildaBaseVertexFrame impl
     @Override
     @Property("modify_y_flow_enabled")
     public abstract void setModifyYFlowEnabled(Boolean modifyYFlowEnabled);
+
+    @Override
+    @Property(CREATE_HA_FLOW_ENABLED_PROPERTY)
+    public abstract Boolean getCreateHaFlowEnabled();
+
+    @Override
+    @Property(CREATE_HA_FLOW_ENABLED_PROPERTY)
+    public abstract void setCreateHaFlowEnabled(Boolean createHaFlowEnabled);
+
+    @Override
+    @Property(MODIFY_HA_FLOW_ENABLED_PROPERTY)
+    public abstract Boolean getModifyHaFlowEnabled();
+
+    @Override
+    @Property(MODIFY_HA_FLOW_ENABLED_PROPERTY)
+    public abstract void setModifyHaFlowEnabled(Boolean modifyHaFlowEnabled);
+
+    @Override
+    @Property(DELETE_HA_FLOW_ENABLED_PROPERTY)
+    public abstract Boolean getDeleteHaFlowEnabled();
+
+    @Override
+    @Property(DELETE_HA_FLOW_ENABLED_PROPERTY)
+    public abstract void setDeleteHaFlowEnabled(Boolean modifyHaFlowEnabled);
 
     @Override
     @Property("sync_switch_on_connect")

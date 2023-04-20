@@ -15,124 +15,208 @@
 
 package org.openkilda.wfm.topology.flowhs.bolts;
 
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_METRICS_BOLT;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_RESPONSE_SENDER;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_PING_SENDER;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPEAKER_WORKER;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
+import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
-import org.openkilda.messaging.command.haflow.HaFlowResponse;
-import org.openkilda.messaging.command.haflow.HaSubFlowDto;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.model.FlowStatus;
-import org.openkilda.model.HaFlow;
-import org.openkilda.model.HaSubFlow;
+import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
+import org.openkilda.pce.AvailableNetworkFactory;
+import org.openkilda.pce.PathComputer;
+import org.openkilda.pce.PathComputerConfig;
+import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.HaFlowRepository;
-import org.openkilda.persistence.repositories.HaSubFlowRepository;
-import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.share.hubandspoke.HubBolt;
+import org.openkilda.wfm.share.utils.KeyProvider;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
+import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowCreateService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
-import com.fasterxml.uuid.Generators;
-import com.fasterxml.uuid.NoArgGenerator;
-import com.fasterxml.uuid.impl.UUIDUtil;
-import com.google.common.io.BaseEncoding;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NonNull;
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.HashSet;
-import java.util.Set;
+public class HaFlowCreateHubBolt  extends HubBolt implements FlowGenericCarrier {
+    private final HaFlowCreateConfig config;
+    private final PathComputerConfig pathComputerConfig;
+    private final FlowResourcesConfig flowResourcesConfig;
+    private final RuleManagerConfig ruleManagerConfig;
 
-/**
- * This implementation of the class is temporary.
- * It only works with DB. Switch rules wouldn't be modified.
- * Class is just a stub to give an API for users. It will be modified later.
- */
-public class HaFlowCreateHubBolt extends AbstractBolt {
-    private static final String HA_FLOW_PREFIX = "haf-";
-    private static final char SUB_FLOW_INITIAL_POSTFIX = 'a';
-    public static final String COMMON_ERROR_MESSAGE = "Couldn't create HA-flow";
-    private transient HaFlowRepository haFlowRepository;
-    private transient HaSubFlowRepository haSubFlowRepository;
-    private transient NoArgGenerator flowIdGenerator;
+    private transient HaFlowCreateService service;
+    private String currentKey;
 
-    public HaFlowCreateHubBolt(PersistenceManager persistenceManager) {
-        super(persistenceManager);
+    private LifecycleEvent deferredShutdownEvent;
+
+    public HaFlowCreateHubBolt(
+            @NonNull HaFlowCreateHubBolt.HaFlowCreateConfig config, @NonNull PersistenceManager persistenceManager,
+            @NonNull PathComputerConfig pathComputerConfig, @NonNull FlowResourcesConfig flowResourcesConfig,
+            @NonNull RuleManagerConfig ruleManagerConfig) {
+        super(persistenceManager, config);
+        this.config = config;
+        this.pathComputerConfig = pathComputerConfig;
+        this.flowResourcesConfig = flowResourcesConfig;
+        this.ruleManagerConfig = ruleManagerConfig;
+        enableMeterRegistry("kilda.ha_flow_create", HUB_TO_METRICS_BOLT.name());
     }
 
     @Override
     protected void init() {
-        haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
-        haSubFlowRepository = persistenceManager.getRepositoryFactory().createHaSubFlowRepository();
-        flowIdGenerator = Generators.timeBasedGenerator();
+        FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
+        AvailableNetworkFactory availableNetworkFactory =
+                new AvailableNetworkFactory(pathComputerConfig, persistenceManager.getRepositoryFactory());
+        PathComputer pathComputer =
+                new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
+        RuleManager ruleManager = new RuleManagerImpl(ruleManagerConfig);
+        service = new HaFlowCreateService(this, persistenceManager, pathComputer, resourcesManager,
+                ruleManager, config.getHaFlowCreationRetriesLimit(), config.getPathAllocationRetriesLimit(),
+                config.getPathAllocationRetryDelay(), config.getSpeakerCommandRetriesLimit());
     }
 
     @Override
-    protected void handleInput(Tuple input) throws PipelineException {
-        String key = pullValue(input, MessageKafkaTranslator.FIELD_ID_KEY, String.class);
+    protected boolean deactivate(LifecycleEvent event) {
+        if (service.deactivate()) {
+            return true;
+        }
+        deferredShutdownEvent = event;
+        return false;
+    }
+
+    @Override
+    protected void activate() {
+        service.activate();
+    }
+
+    @Override
+    protected void onRequest(Tuple input) throws PipelineException {
+        currentKey = pullKey(input);
         HaFlowRequest payload = pullValue(input, FIELD_ID_PAYLOAD, HaFlowRequest.class);
         try {
-            handleHaFlowCreate(key, payload);
-        } catch (FlowProcessingException e) {
-            emitErrorMessage(e.getErrorType(), COMMON_ERROR_MESSAGE, e.getMessage());
-        } catch (Exception e) {
-            emitErrorMessage(ErrorType.INTERNAL_ERROR, COMMON_ERROR_MESSAGE, e.getMessage());
+            service.handleRequest(currentKey, getCommandContext(), payload);
+        } catch (DuplicateKeyException e) {
+            log.error("Failed to handle a request with key {}. {}", currentKey, e.getMessage());
         }
     }
 
-    private void handleHaFlowCreate(String key, HaFlowRequest payload) {
-        if (payload.getHaFlowId() == null) {
-            payload.setHaFlowId(generateFlowId());
+    @Override
+    protected void onWorkerResponse(Tuple input) throws PipelineException {
+        String operationKey = pullKey(input);
+        currentKey = KeyProvider.getParentKey(operationKey);
+        SpeakerResponse speakerResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerResponse.class);
+        if (speakerResponse instanceof SpeakerCommandResponse) {
+            service.handleAsyncResponse(currentKey, (SpeakerCommandResponse) speakerResponse);
+        } else {
+            unhandledInput(input);
         }
-        HaFlow haFlow = HaFlowMapper.INSTANCE.toHaFlow(payload);
-
-        Set<HaSubFlow> subflows = new HashSet<>();
-        char postfix = SUB_FLOW_INITIAL_POSTFIX;
-        for (HaSubFlowDto subFlow : payload.getSubFlows()) {
-            String subFlowId = String.format("%s-%c", payload.getHaFlowId(), postfix++);
-            subflows.add(HaFlowMapper.INSTANCE.toSubFlow(subFlowId, subFlow));
-        }
-        persistenceManager.getTransactionManager().doInTransaction(() -> {
-            if (haFlowRepository.exists(payload.getHaFlowId())) {
-                throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,
-                        String.format("Couldn't create ha-flow %s. This ha-flow already exist.",
-                                payload.getHaFlowId()));
-            }
-            for (HaSubFlow subflow : subflows) {
-                subflow.setStatus(FlowStatus.UP);
-                haSubFlowRepository.add(subflow);
-            }
-            haFlowRepository.add(haFlow);
-            haFlow.setSubFlows(new HashSet<>(subflows));
-        });
-        HaFlowResponse response = new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(haFlow));
-        InfoMessage message = new InfoMessage(
-                response, System.currentTimeMillis(), getCommandContext().getCorrelationId());
-        emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(key, message));
     }
 
-    private void emitErrorMessage(ErrorType type, String message, String description) {
-        String requestId = getCommandContext().getCorrelationId();
-        ErrorData errorData = new ErrorData(type, message, description);
-        emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(requestId,
-                new ErrorMessage(errorData, System.currentTimeMillis(), requestId)));
+    @Override
+    public void onTimeout(String key, Tuple tuple) {
+        currentKey = key;
+        service.handleTimeout(key);
     }
 
-    protected String generateFlowId() {
-        byte[] uuidAsBytes = UUIDUtil.asByteArray(flowIdGenerator.generate());
-        String uuidAsBase32 = BaseEncoding.base32().omitPadding().lowerCase().encode(uuidAsBytes);
-        return HA_FLOW_PREFIX + uuidAsBase32;
+    @Override
+    public void sendSpeakerRequest(@NonNull SpeakerRequest command) {
+        String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
+        Values values = new Values(commandKey, command);
+        emitWithContext(HUB_TO_SPEAKER_WORKER.name(), getCurrentTuple(), values);
+    }
+
+    @Override
+    public void sendNorthboundResponse(@NonNull Message message) {
+        emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
+    }
+
+    @Override
+    public void sendHistoryUpdate(@NonNull FlowHistoryHolder historyHolder) {
+        //TODO check history
+        InfoMessage message = new InfoMessage(historyHolder, getCommandContext().getCreateTime(),
+                getCommandContext().getCorrelationId());
+        emitWithContext(Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(historyHolder.getTaskId(), message));
+    }
+
+    @Override
+    public void sendNotifyFlowStats(@NonNull UpdateFlowPathInfo flowPathInfo) {
+        //TODO implement
+    }
+
+    @Override
+    public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
+        //TODO implement
+    }
+
+    @Override
+    public void sendPeriodicPingNotification(String haFlowId, boolean enabled) {
+        //TODO implement periodic pings
+        log.info("Periodic pings are not implemented for ha-flow create operation yet. Skipping for the ha-flow {}",
+                haFlowId);
+    }
+
+    @Override
+    public void cancelTimeoutCallback(String key) {
+        cancelCallback(key);
+    }
+
+    @Override
+    public void sendInactive() {
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
+        deferredShutdownEvent = null;
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
+        declarer.declareStream(HUB_TO_SPEAKER_WORKER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_PING_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(ZkStreams.ZK.toString(),
+                new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
+    }
+
+    @Getter
+    public static class HaFlowCreateConfig extends Config {
+        private final int haFlowCreationRetriesLimit;
+        private final int pathAllocationRetriesLimit;
+        private final int pathAllocationRetryDelay;
+        private final int speakerCommandRetriesLimit;
+
+        @Builder(builderMethodName = "haFlowCreateBuilder", builderClassName = "haFlowCreateBuild")
+        public HaFlowCreateConfig(
+                String requestSenderComponent, String workerComponent, String lifeCycleEventComponent, int timeoutMs,
+                boolean autoAck, int haFlowCreationRetriesLimit, int pathAllocationRetriesLimit,
+                int pathAllocationRetryDelay, int speakerCommandRetriesLimit) {
+            super(requestSenderComponent, workerComponent, lifeCycleEventComponent, timeoutMs, autoAck);
+            this.haFlowCreationRetriesLimit = haFlowCreationRetriesLimit;
+            this.pathAllocationRetriesLimit = pathAllocationRetriesLimit;
+            this.pathAllocationRetryDelay = pathAllocationRetryDelay;
+            this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        }
     }
 }

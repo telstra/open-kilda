@@ -74,7 +74,7 @@ public class CompleteYFlowSwappingAction extends
 
     private Message buildResponseMessage(YFlow yFlow, CommandContext commandContext) {
         YFlowResponse response = YFlowResponse.builder()
-                .yFlow(YFlowMapper.INSTANCE.toYFlowDto(yFlow, flowRepository))
+                .yFlow(YFlowMapper.INSTANCE.toYFlowDto(yFlow, flowRepository, haFlowRepository))
                 .build();
         return new InfoMessage(response, commandContext.getCreateTime(), commandContext.getCorrelationId());
     }

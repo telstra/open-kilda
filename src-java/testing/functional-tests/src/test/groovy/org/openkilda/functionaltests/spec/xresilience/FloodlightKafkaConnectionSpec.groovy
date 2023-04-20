@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.resilience
+package org.openkilda.functionaltests.spec.xresilience
 
 import org.openkilda.functionaltests.BaseSpecification
 

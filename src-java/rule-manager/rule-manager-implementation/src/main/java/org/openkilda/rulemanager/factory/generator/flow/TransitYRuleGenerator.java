@@ -15,8 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
-import static org.openkilda.model.SwitchFeature.METERS;
-
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
@@ -53,25 +51,16 @@ public class TransitYRuleGenerator extends TransitRuleGenerator implements Meter
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
-        if (flowPath.isOneSwitchFlow()) {
+        if (flowPath.isOneSwitchPath()) {
             return new ArrayList<>();
         }
         List<SpeakerData> result = new ArrayList<>();
         SpeakerData command = buildTransitCommand(sw);
         result.add(command);
 
-        if (sharedMeterId == null) {
-            return result;
-        }
-        if (generateMeterCommand) {
-            SpeakerData meterCommand = buildMeter(externalMeterCommandUuid, flowPath, config, sharedMeterId, sw);
-            if (meterCommand != null) {
-                result.add(meterCommand);
-                command.getDependsOn().add(externalMeterCommandUuid);
-            }
-        } else if (sw.getFeatures().contains(METERS)) {
-            command.getDependsOn().add(externalMeterCommandUuid);
-        }
+        buildMeterCommandAndAddDependency(sharedMeterId, flowPath.getBandwidth(), command, externalMeterCommandUuid,
+                config, generateMeterCommand, sw)
+                .ifPresent(result::add);
         return result;
     }
 

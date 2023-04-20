@@ -137,7 +137,7 @@ public class IngressMirrorRuleGenerator extends IngressRuleGenerator {
         }
 
         List<Integer> targetStack;
-        if (flowPath.isOneSwitchFlow()) {
+        if (flowPath.isOneSwitchPath()) {
             targetStack = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint().getVlanStack();
         } else {
             targetStack = new ArrayList<>();
@@ -152,7 +152,7 @@ public class IngressMirrorRuleGenerator extends IngressRuleGenerator {
         Set<Action> actions = new HashSet<>();
 
         // for one switch flow all vlan manipulations were made by ingress rule, not group.
-        if (!flowPath.isOneSwitchFlow()) {
+        if (!flowPath.isOneSwitchPath()) {
             switch (encapsulation.getType()) {
                 case TRANSIT_VLAN:
                     actions.addAll(makeVlanReplaceActions(new ArrayList<>(), makeVlanStack(encapsulation.getId())));

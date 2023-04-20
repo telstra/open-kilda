@@ -397,6 +397,11 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
 
         cleanup:
         yFlowResponse && !exc && yFlowHelper.deleteYFlow(yFlowResponse.YFlowId)
+        Wrappers.wait(WAIT_OFFSET) {
+            /*Sometimes test is too fast, so one of subflows stays in 'In Progress' at this stage.
+            Let's wait for it to be removed */
+            northboundV2.getAllFlows().find {it.getStatus() == FlowState.IN_PROGRESS.toString()} == null
+        }
     }
 
     @Tidy

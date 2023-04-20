@@ -15,25 +15,34 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlow.HaFlowData;
 import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
+import org.openkilda.persistence.ferma.frames.FlowFrame;
 import org.openkilda.persistence.ferma.frames.HaFlowFrame;
 import org.openkilda.persistence.ferma.frames.HaFlowPathFrame;
 import org.openkilda.persistence.ferma.frames.HaSubFlowFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
+import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -80,6 +89,91 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
     }
 
     @Override
+    public Collection<HaFlow> findByEndpoint(SwitchId switchId, int port, int vlan, int innerVLan) {
+        Map<String, HaFlow> result = new HashMap<>();
+        framedGraph().traverse(g -> g.V()
+                        .hasLabel(HaFlowFrame.FRAME_LABEL)
+                        .has(HaFlowFrame.SHARED_ENDPOINT_SWITCH_ID_PROPERTY,
+                                SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
+                        .has(HaFlowFrame.SHARED_ENDPOINT_PORT_PROPERTY, port)
+                        .has(HaFlowFrame.SHARED_ENDPOINT_VLAN_PROPERTY, vlan)
+                        .has(HaFlowFrame.SHARED_ENDPOINT_INNER_VLAN_PROPERTY, innerVLan))
+                .frameExplicit(HaFlowFrame.class)
+                .forEachRemaining(frame -> result.put(frame.getHaFlowId(), new HaFlow(frame)));
+        framedGraph().traverse(g -> g.V()
+                        .hasLabel(HaSubFlowFrame.FRAME_LABEL)
+                        .has(HaSubFlowFrame.ENDPOINT_SWITCH_ID_PROPERTY,
+                                SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
+                        .has(HaSubFlowFrame.ENDPOINT_PORT_PROPERTY, port)
+                        .has(HaSubFlowFrame.ENDPOINT_VLAN_PROPERTY, vlan)
+                        .has(HaSubFlowFrame.ENDPOINT_INNER_VLAN_PROPERTY, innerVLan)
+                        .in(HaFlowFrame.OWNS_SUB_FLOW_EDGE))
+                .frameExplicit(HaFlowFrame.class)
+                .forEachRemaining(frame -> result.put(frame.getHaFlowId(), new HaFlow(frame)));
+        return result.values();
+    }
+
+    @Override
+    public Collection<String> findHaFlowIdsByDiverseGroupId(String diverseGroupId) {
+        return findFlowsIdByGroupId(HaFlowFrame.DIVERSE_GROUP_ID_PROPERTY, diverseGroupId);
+    }
+
+    @Override
+    public Collection<String> findHaFlowIdsByAffinityGroupId(String affinityGroupId) {
+        return findFlowsIdByGroupId(HaFlowFrame.AFFINITY_GROUP_ID_PROPERTY, affinityGroupId);
+    }
+
+    private Collection<String> findFlowsIdByGroupId(String groupIdProperty, String groupId) {
+        if (groupId == null) {
+            return new ArrayList<>();
+        }
+        return framedGraph().traverse(g -> g.V()
+                        .hasLabel(HaFlowFrame.FRAME_LABEL)
+                        .has(groupIdProperty, groupId)
+                        .values(HaFlowFrame.HA_FLOW_ID_PROPERTY))
+                .getRawTraversal().toStream()
+                .map(String.class::cast)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<String> getOrCreateDiverseHaFlowGroupId(String haFlowId) {
+        return getTransactionManager().doInTransaction(() -> findById(haFlowId)
+                .map(haFlow -> {
+                    String groupId = haFlow.getDiverseGroupId();
+                    if (groupId == null) {
+                        groupId = UUID.randomUUID().toString();
+                        haFlow.setDiverseGroupId(groupId);
+                    }
+                    return groupId;
+                }));
+    }
+
+    @Override
+    public void updateStatus(String haFlowId, FlowStatus flowStatus) {
+        getTransactionManager().doInTransaction(() ->
+                framedGraph().traverse(g -> g.V()
+                                .hasLabel(HaFlowFrame.FRAME_LABEL)
+                                .has(HaFlowFrame.HA_FLOW_ID_PROPERTY, haFlowId))
+                        .toListExplicit(FlowFrame.class)
+                        .forEach(haFlowFrame -> {
+                            haFlowFrame.setStatus(flowStatus);
+                        }));
+    }
+
+    @Override
+    public void updateAffinityFlowGroupId(@NonNull String haFlowId, String affinityGroupId) {
+        getTransactionManager().doInTransaction(() ->
+                framedGraph().traverse(g -> g.V()
+                                .hasLabel(HaFlowFrame.FRAME_LABEL)
+                                .has(HaFlowFrame.HA_FLOW_ID_PROPERTY, haFlowId))
+                        .toListExplicit(HaFlowFrame.class)
+                        .forEach(haFlowFrame -> {
+                            haFlowFrame.setAffinityGroupId(affinityGroupId);
+                        }));
+    }
+
+    @Override
     public Optional<HaFlow> remove(String haFlowId) {
         TransactionManager transactionManager = getTransactionManager();
         if (transactionManager.isTxOpen()) {
@@ -101,7 +195,7 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
         HaFlowFrame frame = KildaBaseVertexFrame.addNewFramedVertex(
                 framedGraph(), HaFlowFrame.FRAME_LABEL, HaFlowFrame.class);
         HaFlow.HaFlowCloner.INSTANCE.copyWithoutSubFlowsAndPaths(data, frame);
-        frame.setSubFlows(data.getSubFlows().stream()
+        frame.setHaSubFlows(data.getHaSubFlows().stream()
                 .peek(subFlow -> {
                     if (!(subFlow.getData() instanceof HaSubFlowFrame)) {
                         haSubFlowRepository.add(subFlow);
@@ -124,7 +218,7 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
                 haFlowPathRepository.remove(path);
             }
         });
-        frame.getSubFlows().forEach(subFlow -> {
+        frame.getHaSubFlows().forEach(subFlow -> {
             if (subFlow.getData() instanceof HaSubFlowFrame) {
                 haSubFlowRepository.remove(subFlow);
             }

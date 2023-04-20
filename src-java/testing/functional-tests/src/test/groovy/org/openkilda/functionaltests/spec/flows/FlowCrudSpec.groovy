@@ -1371,10 +1371,11 @@ class FlowCrudSpec extends BaseSpecification {
     def "Unable to update flow with incorrect id in request body"() {
         given:"A flow"
         def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
-        flowHelperV2.addFlow(flow)
+        def oldFlowId = flowHelperV2.addFlow(flow).getFlowId()
+        def newFlowId = "new_flow_id"
 
         when: "Try to update flow with incorrect flow id in request body"
-        northboundV2.updateFlow(flow.flowId, flow.tap {flowId = "new_flow_id"})
+        northboundV2.updateFlow(flow.flowId, flow.tap {flowId = newFlowId})
 
         then: "Bad Request response is returned"
         def error = thrown(HttpClientErrorException)
@@ -1383,7 +1384,9 @@ class FlowCrudSpec extends BaseSpecification {
         errorDetails.errorMessage == "flow_id from body and from path are different"
 
         cleanup:
-        !error && flowHelperV2.deleteFlow(flow.flowId)
+        Wrappers.silent {
+            flowHelperV2.deleteFlow(oldFlowId)
+        }
     }
 
     @Tidy
@@ -1392,9 +1395,10 @@ class FlowCrudSpec extends BaseSpecification {
         given: "A flow"
         def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
         flowHelperV2.addFlow(flow)
+        def newFlowId = "new_flow_id"
 
         when: "Try to update flow with incorrect flow id in request path"
-        northboundV2.updateFlow("new_flow_id", flow.tap { maximumBandwidth = maximumBandwidth + 1 })
+        northboundV2.updateFlow(newFlowId, flow.tap { maximumBandwidth = maximumBandwidth + 1 })
 
         then: "Bad Request response is returned"
         def error = thrown(HttpClientErrorException)
@@ -1403,7 +1407,9 @@ class FlowCrudSpec extends BaseSpecification {
         errorDetails.errorMessage == "flow_id from body and from path are different"
 
         cleanup:
-        !error && flowHelperV2.deleteFlow(flow.flowId)
+        Wrappers.silent {
+            flowHelperV2.deleteFlow(flow.flowId)
+        }
     }
 
     @Ignore ("https://github.com/telstra/open-kilda/issues/5141")

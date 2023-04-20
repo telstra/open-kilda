@@ -45,4 +45,8 @@ public class PathId implements Serializable, Comparable<PathId> {
     public int compareTo(@NonNull PathId pathId) {
         return id.compareTo(pathId.id);
     }
+
+    public PathId append(String suffix) {
+        return new PathId(id + suffix);
+    }
 }

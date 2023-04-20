@@ -27,6 +27,7 @@ import static org.openkilda.rulemanager.Field.ETH_TYPE;
 import static org.openkilda.rulemanager.Field.IP_PROTO;
 import static org.openkilda.rulemanager.Field.UDP_SRC;
 import static org.openkilda.rulemanager.ProtoConstants.Mask.NO_MASK;
+import static org.openkilda.rulemanager.utils.Utils.buildPopVxlan;
 
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
@@ -44,8 +45,6 @@ import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
-import org.openkilda.rulemanager.action.ActionType;
-import org.openkilda.rulemanager.action.PopVxlanAction;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.match.FieldMatch;
@@ -93,11 +92,7 @@ public class UnicastVerificationVxlanRuleGenerator extends MeteredServiceRuleGen
 
     private FlowSpeakerData buildUnicastVerificationRuleVxlan(Switch sw, Cookie cookie) {
         List<Action> actions = new ArrayList<>();
-        if (sw.getFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)) {
-            actions.add(new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW));
-        } else {
-            actions.add(new PopVxlanAction(ActionType.POP_VXLAN_OVS));
-        }
+        actions.add(buildPopVxlan(sw.getSwitchId(), sw.getFeatures()));
         actions.add(new PortOutAction(new PortNumber(SpecialPortType.CONTROLLER)));
         // todo remove unnecessary action
         actions.add(SetFieldAction.builder().field(ETH_DST).value(sw.getSwitchId().toLong()).build());

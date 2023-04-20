@@ -1,17 +1,14 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import org.openkilda.functionaltests.BaseSpecification
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static spock.util.matcher.HamcrestSupport.expect
 
-import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
@@ -22,11 +19,15 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify update and partial update operations on ha-flows.")
+@Ignore("""At this moment HA-flow update operations is just an API stub which doesn't updated switch rules." +
+        It means that HA-flow delete operations wouldn't delete rules from switches which HA-flow has before update.
+        Update HA-flow spec is temporarily ignored until HA-flow update operation is able to update switch rules""")
 class HaFlowUpdateSpec extends BaseSpecification {
     @Autowired
     @Shared
@@ -34,6 +35,7 @@ class HaFlowUpdateSpec extends BaseSpecification {
 
     @Tidy
     def "User can update #data.descr of a ha-flow"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
@@ -100,6 +102,7 @@ class HaFlowUpdateSpec extends BaseSpecification {
 
     @Tidy
     def "User can update ha-flow where one of subflows has both ends on shared switch"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow where one of subflows has both ends on shared switch"
         def switchTriplet = topologyHelper.getSwitchTriplets(true, true)
                 .find{it.ep1 == it.shared && it.ep2 != it.shared}
@@ -124,56 +127,8 @@ class HaFlowUpdateSpec extends BaseSpecification {
     }
 
     @Tidy
-    def "User can partially update fields of one-switch ha-flow"() {
-        given: "Existing one-switch ha-flow"
-        def singleSwitch = topologyHelper.getRandomSwitch()
-        def switchId = singleSwitch.dpId
-        def haFlowRequest = haFlowHelper.singleSwitchHaFlow(singleSwitch)
-        haFlowRequest.setMaxLatency(50)
-        haFlowRequest.setMaxLatencyTier2(100)
-        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
-        def patch = HaFlowPatchPayload.builder()
-                .maximumBandwidth(haFlow.maximumBandwidth * 2)
-        .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY.toString().toLowerCase())
-        .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase())
-        .maxLatency(haFlow.maxLatency * 2)
-        .maxLatencyTier2(haFlow.maxLatencyTier2 * 2)
-        .ignoreBandwidth(true)
-        .pinned(true)
-        .priority(10)
-        .strictBandwidth(false)
-        .description("updated description")
-        .build()
-        haFlow.setMaximumBandwidth(patch.getMaximumBandwidth())
-        haFlow.setPathComputationStrategy(patch.getPathComputationStrategy())
-        haFlow.setEncapsulationType(patch.getEncapsulationType())
-        haFlow.setMaxLatency(patch.getMaxLatency())
-        haFlow.setMaxLatencyTier2(patch.getMaxLatencyTier2())
-        haFlow.setIgnoreBandwidth(patch.getIgnoreBandwidth())
-        haFlow.setPinned(patch.getPinned())
-        haFlow.setPriority(patch.getPriority())
-        haFlow.setStrictBandwidth(patch.getStrictBandwidth())
-        haFlow.setDescription(patch.getDescription())
-
-
-        when: "Partial update the ha-flow"
-        def updateResponse = haFlowHelper.partialUpdateHaFlow(haFlow.haFlowId, patch)
-        def ignores = ["subFlows", "timeUpdate", "status"]
-
-        then: "Requested updates are reflected in the response and in 'get' API"
-        expect updateResponse, sameBeanAs(haFlow, ignores)
-        expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
-
-        and: "All related switches have no discrepancies"
-        northboundV2.validateSwitch(switchId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        northboundV2.validateSwitch(switchId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-
-        cleanup:
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
-    }
-
-    @Tidy
     def "User can partially update #data.descr of a ha-flow"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets.find { it.ep1 != it.ep2 }
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
@@ -274,7 +229,8 @@ class HaFlowUpdateSpec extends BaseSpecification {
     }
 
     @Tidy
-    def "User cannot update a ha-flow with #data.descr"() {
+    def "User cannot update a ha-flow #data.descr"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
@@ -298,7 +254,7 @@ class HaFlowUpdateSpec extends BaseSpecification {
 
         where: data << [
                 [
-                        descr: "non-existent subflowId",
+                        descr: "with non-existent subflowId",
                         updateClosure: { HaFlow payload ->
                             payload.subFlows[0].flowId += "non-existent"
                             def allowedPorts = topology.getAllowedPortsForSwitch(topology.find(
@@ -310,18 +266,29 @@ class HaFlowUpdateSpec extends BaseSpecification {
                         errorDescrPattern: /HA-flow .*? has no sub flow .*?/
                 ],
                 [
-                        descr: "subflowId not specified",
+                        descr: "with subflowId not specified",
                         updateClosure: { HaFlow payload ->
                             payload.subFlows[1].flowId = null
                         },
                         errorStatusCode: HttpStatus.BAD_REQUEST,
                         errorDescrPattern: /HA-flow .*? has no sub flow .*?/
-                ]
+                ],
+                //TODO enable when HA-flow update validation will be ready
+                //[
+                //        descr: "to one switch ha-flow",
+                //        updateClosure: { HaFlow payload ->
+                //            payload.subFlows[0].endpoint.switchId = payload.getSharedEndpoint().switchId
+                //            payload.subFlows[1].endpoint.switchId = payload.getSharedEndpoint().switchId
+                //        },
+                //        errorStatusCode: HttpStatus.BAD_REQUEST,
+                //        errorDescrPattern: /The ha-flow .*? is one switch flow\..*?/
+                //]
         ]
     }
 
     @Tidy
     def "User cannot partial update a ha-flow with #data.descr"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)

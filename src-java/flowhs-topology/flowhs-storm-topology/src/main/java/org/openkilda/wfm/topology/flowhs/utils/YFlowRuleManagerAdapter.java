@@ -74,7 +74,7 @@ public class YFlowRuleManagerAdapter {
                 .switchIds(switchIds)
                 .pathIds(pathIds)
                 .build();
-        List<FlowPath> flowPaths = new ArrayList<>(dataAdapter.getFlowPaths().values());
+        List<FlowPath> flowPaths = new ArrayList<>(dataAdapter.getCommonFlowPaths().values());
 
         return ruleManager.buildRulesForYFlow(flowPaths, dataAdapter);
     }
