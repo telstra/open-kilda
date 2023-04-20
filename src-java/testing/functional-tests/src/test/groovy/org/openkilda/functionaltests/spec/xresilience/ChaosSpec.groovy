@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.resilience
+package org.openkilda.functionaltests.spec.xresilience
 
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -16,7 +16,6 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
@@ -68,7 +67,7 @@ class ChaosSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: remove flows and reset costs"
+        cleanup:
         flows.each { northboundV2.deleteFlow(it.flowId) }
         // Wait for meters deletion from all OF_13 switches since it impacts other tests.
         Wrappers.wait(WAIT_OFFSET * 2 + flowsAmount * RULES_DELETION_TIME) {

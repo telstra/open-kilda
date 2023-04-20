@@ -659,7 +659,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.dst.dpId).empty
 
         when: "Delete the flow with created flowLoop"
-        northboundV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
         def flowIsDeleted = true
 
         then: "FlowLoop rules are deleted"
