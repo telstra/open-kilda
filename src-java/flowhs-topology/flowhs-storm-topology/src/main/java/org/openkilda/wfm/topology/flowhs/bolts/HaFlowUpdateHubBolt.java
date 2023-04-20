@@ -39,6 +39,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
@@ -64,9 +65,11 @@ import java.util.stream.Collectors;
  */
 public class HaFlowUpdateHubBolt extends AbstractBolt {
     public static final String COMMON_ERROR_MESSAGE = "Couldn't update HA-flow";
+    public static final String HA_FLOW_MODIFICATION_IS_DISABLED_MESSAGE = "HA-flow modification is disabled";
     private transient HaFlowRepository haFlowRepository;
     private transient FlowRepository flowRepository;
     private transient SwitchRepository switchRepository;
+    private transient KildaFeatureTogglesRepository kildaFeatureTogglesRepository;
 
     public HaFlowUpdateHubBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
@@ -77,6 +80,7 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
         haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        kildaFeatureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
     }
 
     @Override
@@ -103,6 +107,8 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
 
     private void handleHaFlowUpdate(String key, HaFlowRequest payload) throws SwitchNotFoundException {
         HaFlow returnHaFlow = persistenceManager.getTransactionManager().doInTransaction(() -> {
+            checkHaFlowModificationFeatureToggle();
+
             Optional<HaFlow> foundHaFlow = haFlowRepository.findById(payload.getHaFlowId());
             if (!foundHaFlow.isPresent()) {
                 throw new FlowProcessingException(ErrorType.NOT_FOUND,
@@ -131,6 +137,8 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
     private void handleHaFlowPartialUpdate(String key, HaFlowPartialUpdateRequest payload)
             throws SwitchNotFoundException {
         HaFlow returnHaFlow = persistenceManager.getTransactionManager().doInTransaction(() -> {
+            checkHaFlowModificationFeatureToggle();
+
             Optional<HaFlow> foundHaFlow = haFlowRepository.findById(payload.getHaFlowId());
             if (!foundHaFlow.isPresent()) {
                 throw new FlowProcessingException(ErrorType.NOT_FOUND,
@@ -246,6 +254,12 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
 
     private Switch getSwitch(SwitchId switchId) throws SwitchNotFoundException {
         return switchRepository.findById(switchId).orElseThrow(() -> new SwitchNotFoundException(switchId));
+    }
+
+    private void checkHaFlowModificationFeatureToggle() {
+        if (!kildaFeatureTogglesRepository.getOrDefault().getModifyHaFlowEnabled()) {
+            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, HA_FLOW_MODIFICATION_IS_DISABLED_MESSAGE);
+        }
     }
 
     @Override
