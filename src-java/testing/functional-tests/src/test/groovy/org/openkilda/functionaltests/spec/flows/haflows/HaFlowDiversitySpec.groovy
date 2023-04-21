@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import org.openkilda.functionaltests.helpers.HaPathHelper
 
+import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -22,18 +24,21 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     YFlowHelper yFlowHelper
+    @Autowired
+    @Shared
+    HaPathHelper haPathHelper
 
     @Tidy
     def "Able to create diverse ha-flows"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with three not overlapping paths at least"
-        def swT = topologyHelper.switchTriplets.find {
+        def swT = topologyHelper.switchTriplets.findAll {
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
                     [it.pathsEp1, it.pathsEp2].every {
                         it.collect { pathHelper.getInvolvedIsls(it) }
                                 .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
                     }
-        }
+        }.shuffled().first()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create three ha-flows with diversity enabled"
@@ -57,7 +62,15 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         northboundV2.getHaFlow(haFlow3.haFlowId).diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow2.haFlowId].sort()
 
         and: "All ha-flows have different paths"
-        //TODO add checks when https://github.com/telstra/open-kilda/issues/5148 will be implemented
+        def haFlow1Path, haFlow2Path, haFlow3Path
+        withPool {
+            (haFlow1Path, haFlow2Path, haFlow3Path) = [haFlow1, haFlow2, haFlow3].collectParallel {
+                northboundV2.getHaFlowPaths(it.getHaFlowId())
+            }
+        }
+        assert haPathHelper."get common ISLs"(haFlow1Path, haFlow2Path).isEmpty()
+        assert haPathHelper."get common ISLs"(haFlow2Path, haFlow3Path).isEmpty()
+        assert haPathHelper."get common ISLs"(haFlow1Path, haFlow3Path).isEmpty()
 
         and: "Ha-flows histories contains 'diverse?' information"
         //TODO add checks when history records will be added
