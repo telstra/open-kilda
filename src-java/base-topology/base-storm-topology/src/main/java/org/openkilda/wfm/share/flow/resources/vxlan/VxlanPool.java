@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.share.flow.resources.vxlan;
 
-import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Vxlan;
 import org.openkilda.persistence.PersistenceManager;
@@ -60,16 +59,16 @@ public class VxlanPool implements EncapsulationResourcesProvider<VxlanEncapsulat
      * Allocates a vxlan for the flow path.
      */
     @Override
-    public VxlanEncapsulation allocate(Flow flow, PathId pathId, PathId oppositePathId) {
+    public VxlanEncapsulation allocate(String flowId, PathId pathId, PathId oppositePathId) {
         return get(oppositePathId, null)
-                .orElseGet(() -> allocate(flow, pathId));
+                .orElseGet(() -> allocate(flowId, pathId));
     }
 
     @TransactionRequired
-    private VxlanEncapsulation allocate(Flow flow, PathId pathId) {
+    private VxlanEncapsulation allocate(String flowId, PathId pathId) {
         if (nextVxlan > 0) {
             if (nextVxlan <= maxVxlan && !vxlanRepository.exists(nextVxlan)) {
-                return addVxlan(flow, pathId, nextVxlan++);
+                return addVxlan(flowId, pathId, nextVxlan++);
             } else {
                 nextVxlan = 0;
             }
@@ -84,7 +83,7 @@ public class VxlanPool implements EncapsulationResourcesProvider<VxlanEncapsulat
                         minVxlan + (int) (poolToTake + 1) * poolSize - 1);
                 if (availableVxlan.isPresent()) {
                     nextVxlan = availableVxlan.get();
-                    return addVxlan(flow, pathId, nextVxlan++);
+                    return addVxlan(flowId, pathId, nextVxlan++);
                 }
             }
             // The pool requires full scan.
@@ -95,16 +94,16 @@ public class VxlanPool implements EncapsulationResourcesProvider<VxlanEncapsulat
                     maxVxlan);
             if (availableVxlan.isPresent()) {
                 nextVxlan = availableVxlan.get();
-                return addVxlan(flow, pathId, nextVxlan++);
+                return addVxlan(flowId, pathId, nextVxlan++);
             }
         }
         throw new ResourceNotAvailableException("No vxlan available");
     }
 
-    private VxlanEncapsulation addVxlan(Flow flow, PathId pathId, int vxlan) {
+    private VxlanEncapsulation addVxlan(String flowId, PathId pathId, int vxlan) {
         Vxlan vxlanEntity = Vxlan.builder()
                 .vni(vxlan)
-                .flowId(flow.getFlowId())
+                .flowId(flowId)
                 .pathId(pathId)
                 .build();
         vxlanRepository.add(vxlanEntity);

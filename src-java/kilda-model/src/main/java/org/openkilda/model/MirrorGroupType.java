@@ -33,5 +33,10 @@ public enum MirrorGroupType {
     /**
      * Mirror for checking the integrity of traffic.
      */
-    TRAFFIC_INTEGRITY;
+    TRAFFIC_INTEGRITY,
+
+    /**
+     * HA flow traffic duplication.
+     */
+    HA_FLOW;
 }

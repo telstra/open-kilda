@@ -75,10 +75,10 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
 
 
     @Builder
-    public HaSubFlow(@NonNull String haSubFlowId, FlowStatus status, SwitchId endpointSwitchId,
+    public HaSubFlow(@NonNull String haSubFlowId, FlowStatus status, @NonNull Switch endpointSwitch,
                      int endpointPort, int endpointVlan, int endpointInnerVlan, String description) {
         HaSubFlowDataImpl.HaSubFlowDataImplBuilder builder = HaSubFlowDataImpl.builder().haSubFlowId(haSubFlowId)
-                .status(status).endpointSwitchId(endpointSwitchId).endpointPort(endpointPort)
+                .status(status).endpointSwitch(endpointSwitch).endpointPort(endpointPort)
                 .endpointVlan(endpointVlan).endpointInnerVlan(endpointInnerVlan).description(description);
         this.data = builder.build();
     }
@@ -130,7 +130,9 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
 
         SwitchId getEndpointSwitchId();
 
-        void setEndpointSwitchId(SwitchId endpointSwitchId);
+        Switch getEndpointSwitch();
+
+        void setEndpointSwitch(Switch endpointSwitch);
 
         int getEndpointPort();
 
@@ -173,7 +175,7 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
         @NonNull String haSubFlowId;
         FlowStatus status;
 
-        SwitchId endpointSwitchId;
+        @NonNull Switch endpointSwitch;
         int endpointPort;
         int endpointVlan;
         int endpointInnerVlan;
@@ -185,6 +187,11 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
         @Override
         public String getHaFlowId() {
             return haFlow != null ? haFlow.getHaFlowId() : null;
+        }
+
+        @Override
+        public SwitchId getEndpointSwitchId() {
+            return endpointSwitch.getSwitchId();
         }
     }
 
@@ -198,14 +205,16 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
         void copy(HaSubFlowData source, @MappingTarget HaSubFlowData target);
 
         @Mapping(target = "haFlow", ignore = true)
-        void copyWithoutHaFlow(HaSubFlowData source, @MappingTarget HaSubFlowData target);
+        @Mapping(target = "endpointSwitch", ignore = true)
+        void copyWithoutHaFlowAndSwitch(HaSubFlowData source, @MappingTarget HaSubFlowData target);
 
         /**
          * Performs deep copy of entity data.
          */
         default HaSubFlowData deepCopy(HaSubFlowData source, HaFlow targetHaFlow) {
             HaSubFlowDataImpl result = new HaSubFlowDataImpl();
-            copyWithoutHaFlow(source, result);
+            copyWithoutHaFlowAndSwitch(source, result);
+            result.setEndpointSwitch(new Switch(source.getEndpointSwitch()));
             result.haFlow = targetHaFlow;
             return result;
         }

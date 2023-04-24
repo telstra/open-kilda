@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.resilience
+package org.openkilda.functionaltests.spec.xresilience
 
 import static groovyx.gpars.dataflow.Dataflow.task
 import static org.junit.jupiter.api.Assumptions.assumeTrue

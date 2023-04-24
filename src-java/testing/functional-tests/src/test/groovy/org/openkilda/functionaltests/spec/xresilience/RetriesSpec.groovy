@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.resilience
+package org.openkilda.functionaltests.spec.xresilience
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER

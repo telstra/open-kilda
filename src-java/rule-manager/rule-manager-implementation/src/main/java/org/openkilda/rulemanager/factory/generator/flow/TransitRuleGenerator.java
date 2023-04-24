@@ -45,7 +45,7 @@ public class TransitRuleGenerator extends NotIngressRuleGenerator {
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
-        if (flowPath.isOneSwitchFlow()) {
+        if (flowPath.isOneSwitchPath()) {
             return new ArrayList<>();
         }
 

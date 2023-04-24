@@ -18,6 +18,7 @@ package org.openkilda.model.cookie;
 import org.openkilda.exception.InvalidCookieException;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.bitops.BitField;
+import org.openkilda.model.bitops.NumericEnumField;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.google.common.collect.ImmutableSet;
@@ -32,17 +33,20 @@ public class FlowSegmentCookie extends Cookie {
     static final BitField FLOW_EFFECTIVE_ID_FIELD     = new BitField(0x0000_0000_000F_FFFFL);
     // Can be used for other purposes
     static final BitField STATS_VLAN_ID_FIELD         = new BitField(0x0000_0000_FFF0_0000L);
+    // Can be used for other purposes
+    static final BitField SUB_TYPE_FIELD              = new BitField(0x0000_000F_0000_0000L);
 
     static final BitField FLOW_REVERSE_DIRECTION_FLAG = new BitField(0x2000_0000_0000_0000L);
     static final BitField FLOW_FORWARD_DIRECTION_FLAG = new BitField(0x4000_0000_0000_0000L);
     static final BitField FLOW_LOOP_FLAG              = new BitField(0x0008_0000_0000_0000L);
     static final BitField FLOW_MIRROR_FLAG            = new BitField(0x0004_0000_0000_0000L);
     static final BitField Y_FLOW_FLAG                 = new BitField(0x0002_0000_0000_0000L);
+    static final BitField HA_FLOW_FLAG                = new BitField(0x0001_0000_0000_0000L);
 
     // used by unit tests to check fields intersections
     static final BitField[] ALL_FIELDS = ArrayUtils.addAll(
             CookieBase.ALL_FIELDS, FLOW_FORWARD_DIRECTION_FLAG, FLOW_REVERSE_DIRECTION_FLAG, FLOW_EFFECTIVE_ID_FIELD,
-            FLOW_LOOP_FLAG, FLOW_MIRROR_FLAG, Y_FLOW_FLAG, STATS_VLAN_ID_FIELD);
+            FLOW_LOOP_FLAG, FLOW_MIRROR_FLAG, Y_FLOW_FLAG, HA_FLOW_FLAG, STATS_VLAN_ID_FIELD, SUB_TYPE_FIELD);
 
     private static final Set<CookieType> VALID_TYPES = ImmutableSet.of(
                     CookieType.SERVICE_OR_FLOW_SEGMENT,
@@ -55,7 +59,7 @@ public class FlowSegmentCookie extends Cookie {
     }
 
     public FlowSegmentCookie(FlowPathDirection direction, long flowEffectiveId) {
-        this(CookieType.SERVICE_OR_FLOW_SEGMENT, direction, flowEffectiveId, false, false, false, 0);
+        this(CookieType.SERVICE_OR_FLOW_SEGMENT, direction, flowEffectiveId, false, false, false, 0, null);
     }
 
     FlowSegmentCookie(CookieType type, long value) {
@@ -64,8 +68,8 @@ public class FlowSegmentCookie extends Cookie {
 
     @Builder
     private FlowSegmentCookie(CookieType type, FlowPathDirection direction, long flowEffectiveId, boolean looped,
-                              boolean mirror, boolean yFlow, int statsVlan) {
-        super(makeValue(type, direction, flowEffectiveId, looped, mirror, yFlow, statsVlan), type);
+                              boolean mirror, boolean yFlow, int statsVlan, FlowSubType subType) {
+        super(makeValue(type, direction, flowEffectiveId, looped, mirror, yFlow, statsVlan, subType), type);
     }
 
     @Override
@@ -148,13 +152,18 @@ public class FlowSegmentCookie extends Cookie {
         return getField(Y_FLOW_FLAG) == 1;
     }
 
+    public FlowSubType getFlowSubType() {
+        long longValue = getField(SUB_TYPE_FIELD);
+        return resolveEnum(FlowSubType.values(), longValue).orElse(FlowSubType.INVALID);
+    }
+
     public static FlowSegmentCookieBuilder builder() {
         return new FlowSegmentCookieBuilder()
                 .type(CookieType.SERVICE_OR_FLOW_SEGMENT);
     }
 
     private static long makeValue(CookieType type, FlowPathDirection direction, long flowEffectiveId,
-                                  boolean looped, boolean mirror, boolean yFlow, int statsVlan) {
+                                  boolean looped, boolean mirror, boolean yFlow, int statsVlan, FlowSubType subType) {
         if (!VALID_TYPES.contains(type)) {
             throw new IllegalArgumentException(formatIllegalTypeError(type, VALID_TYPES));
         }
@@ -173,6 +182,9 @@ public class FlowSegmentCookie extends Cookie {
         }
         if (yFlow) {
             result = setField(result, Y_FLOW_FLAG, 1);
+        }
+        if (subType != null) {
+            result = setField(result, SUB_TYPE_FIELD, subType.getValue());
         }
         return result;
     }
@@ -201,6 +213,27 @@ public class FlowSegmentCookie extends Cookie {
 
         long value = setField(0, FLOW_FORWARD_DIRECTION_FLAG, forward);
         return setField(value, FLOW_REVERSE_DIRECTION_FLAG, reverse);
+    }
+
+    // 2 bit long type field
+    public enum FlowSubType implements NumericEnumField {
+        SHARED(0x00),
+        HA_SUB_FLOW_1(0x01),
+        HA_SUB_FLOW_2(0x02),
+
+        // This do not consume any value from allowed address space - you can define another field with -1 value.
+        // (must be last entry)
+        INVALID(-1);
+
+        private final int value;
+
+        FlowSubType(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
     }
 
     /**

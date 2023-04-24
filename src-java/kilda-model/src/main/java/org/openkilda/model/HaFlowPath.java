@@ -17,6 +17,8 @@ package org.openkilda.model;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.FlowPath.FlowPathData;
+import org.openkilda.model.FlowPath.FlowPathDataImpl;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
@@ -33,6 +35,7 @@ import lombok.NonNull;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.Delegate;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.mapstruct.CollectionMappingStrategy;
 import org.mapstruct.Mapper;
@@ -45,7 +48,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -80,7 +83,7 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
      */
     public HaFlowPath(@NonNull HaFlowPath entityToClone, HaFlow haFlow) {
         this();
-        data = HaFlowPathCloner.INSTANCE.deepCopy(entityToClone.getData(), haFlow, this);
+        data = HaFlowPathCloner.INSTANCE.deepCopy(entityToClone.getData(), haFlow);
     }
 
     @Builder
@@ -88,17 +91,16 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
             @NonNull PathId haPathId, @NonNull Switch sharedSwitch, SwitchId yPointSwitchId,
             FlowSegmentCookie cookie, MeterId sharedPointMeterId,
             MeterId yPointMeterId, GroupId yPointGroupId, long bandwidth, boolean ignoreBandwidth,
-            FlowPathStatus status, String sharedBandwidthGroupId, List<PathSegment> segments) {
+            FlowPathStatus status, List<FlowPath> subPaths) {
         data = HaFlowPathDataImpl.builder().haPathId(haPathId).sharedSwitch(sharedSwitch).yPointSwitchId(yPointSwitchId)
                 .cookie(cookie).yPointMeterId(yPointMeterId).sharedPointMeterId(sharedPointMeterId)
-                .yPointGroupId(yPointGroupId).bandwidth(bandwidth)
-                .ignoreBandwidth(ignoreBandwidth).status(status).sharedBandwidthGroupId(sharedBandwidthGroupId)
+                .yPointGroupId(yPointGroupId).bandwidth(bandwidth).ignoreBandwidth(ignoreBandwidth).status(status)
                 .build();
         // The reference is used to link sub flow edges back to the path. See {@link #setHaSubFlowEdges(Collection)}.
         ((HaFlowPathDataImpl) data).haFlowPath = this;
 
-        if (segments != null && !segments.isEmpty()) {
-            data.setSegments(segments);
+        if (!CollectionUtils.isEmpty(subPaths)) {
+            data.setSubPaths(subPaths);
         }
     }
 
@@ -135,38 +137,25 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
 
     /**
      * Sets the bandwidth.
-     * This also updates the corresponding path segments.
+     * This also updates the corresponding sub paths.
      */
     public void setBandwidth(long bandwidth) {
         data.setBandwidth(bandwidth);
-        List<PathSegment> segments = getSegments();
-        if (segments != null) {
-            segments.forEach(segment -> segment.getData().setBandwidth(bandwidth));
+        List<FlowPath> subPaths = getSubPaths();
+        if (subPaths != null) {
+            subPaths.forEach(path -> path.getData().setBandwidth(bandwidth));
         }
     }
 
     /**
      * Sets the ignoreBandwidth flag.
-     * This also updates the corresponding path segments.
+     * This also updates the corresponding sub paths.
      */
     public void setIgnoreBandwidth(boolean ignoreBandwidth) {
         data.setIgnoreBandwidth(ignoreBandwidth);
-        List<PathSegment> segments = getSegments();
-        if (segments != null) {
-            segments.forEach(segment -> segment.getData().setIgnoreBandwidth(ignoreBandwidth));
-        }
-    }
-
-    /**
-     * Sets the sharedBandwidthGroupId.
-     * This also updates the corresponding path segments.
-     */
-    public void setSharedBandwidthGroupId(String sharedBandwidthGroupId) {
-        data.setSharedBandwidthGroupId(sharedBandwidthGroupId);
-
-        List<PathSegment> segments = getSegments();
-        if (segments != null) {
-            segments.forEach(segment -> segment.getData().setSharedBandwidthGroupId(sharedBandwidthGroupId));
+        List<FlowPath> subPaths = getSubPaths();
+        if (subPaths != null) {
+            subPaths.forEach(path -> path.getData().setIgnoreBandwidth(ignoreBandwidth));
         }
     }
 
@@ -175,9 +164,17 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
      * Shared switch id is not included into this set.
      */
     public Set<SwitchId> getSubFlowSwitchIds() {
-        return getHaSubFlowEdges().stream()
-                .map(HaSubFlowEdge::getSubFlowEndpointSwitchId)
+        return getHaSubFlows().stream()
+                .map(HaSubFlow::getEndpointSwitchId)
                 .collect(Collectors.toSet());
+    }
+
+    /**
+     * Checks whether this path is a protected path for the flow.
+     */
+    public boolean isProtected() {
+        HaFlow haFlow = getHaFlow();
+        return haFlow != null && haFlow.isProtectedPath(getHaPathId());
     }
 
     @Override
@@ -201,11 +198,10 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
                 .append(getBandwidth(), that.getBandwidth())
                 .append(isIgnoreBandwidth(), that.isIgnoreBandwidth())
                 .append(getStatus(), that.getStatus())
-                .append(getSegments(), that.getSegments())
-                .append(getHaSubFlowEdges(), that.getHaSubFlowEdges())
+                .append(getSubPaths(), that.getSubPaths())
+                .append(getHaSubFlows(), that.getHaSubFlows())
                 .append(getTimeCreate(), that.getTimeCreate())
                 .append(getTimeModify(), that.getTimeModify())
-                .append(getSharedBandwidthGroupId(), that.getSharedBandwidthGroupId())
                 .build();
     }
 
@@ -213,8 +209,7 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
     public int hashCode() {
         return Objects.hash(getHaPathId(), getHaFlowId(), getSharedSwitchId(), getYPointSwitchId(), getCookie(),
                 getYPointMeterId(), getSharedPointMeterId(), getYPointGroupId(), getBandwidth(),
-                isIgnoreBandwidth(), getStatus(), getSegments(), getHaSubFlowEdges(), getSharedBandwidthGroupId(),
-                getTimeCreate(), getTimeModify());
+                isIgnoreBandwidth(), getStatus(), getSubPaths(), getHaSubFlows(), getTimeCreate(), getTimeModify());
     }
 
     /**
@@ -267,17 +262,13 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
 
         void setStatus(FlowPathStatus status);
 
-        List<PathSegment> getSegments();
+        List<HaSubFlow> getHaSubFlows();
 
-        void setSegments(List<PathSegment> segments);
+        void setHaSubFlows(Collection<HaSubFlow> haSubFlows);
 
-        Set<HaSubFlowEdge> getHaSubFlowEdges();
+        List<FlowPath> getSubPaths();
 
-        void setHaSubFlowEdges(Collection<HaSubFlowEdge> haSubFlowEdges);
-
-        String getSharedBandwidthGroupId();
-
-        void setSharedBandwidthGroupId(String sharedBandwidthGroupId);
+        void setSubPaths(Collection<FlowPath> subPaths);
 
         Instant getTimeCreate();
 
@@ -324,16 +315,16 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
         Instant timeCreate;
         Instant timeModify;
         FlowPathStatus status;
-        String sharedBandwidthGroupId;
         @Builder.Default
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
-        @NonNull List<PathSegment> segments = new ArrayList<>();
+        @NonNull List<FlowPath> subPaths = new ArrayList<>();
 
         @Builder.Default
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
-        @NonNull Set<HaSubFlowEdge> haSubFlowEdges = new HashSet<>();
+        @NonNull
+        List<HaSubFlow> haSubFlows = new ArrayList<>();
 
         // The reference is used to link sub flow edges back to the path. See {@link #setHaSubFlowEdges(Collection)}.
         @Setter(AccessLevel.NONE)
@@ -341,12 +332,6 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
         HaFlowPath haFlowPath;
-
-
-        public void setHaPathId(PathId pathId) {
-            this.haPathId = pathId;
-            segments.forEach(segment -> segment.getData().setPathId(pathId));
-        }
 
         @Override
         public String getHaFlowId() {
@@ -359,44 +344,37 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
         }
 
         @Override
-        public List<PathSegment> getSegments() {
-            return Collections.unmodifiableList(segments);
+        public List<FlowPath> getSubPaths() {
+            return Collections.unmodifiableList(subPaths);
         }
 
         /**
-         * Set the segments.
+         * Set the sub paths.
          */
         @Override
-        public void setSegments(List<PathSegment> segments) {
-            for (int idx = 0; idx < segments.size(); idx++) {
-                PathSegment segment = segments.get(idx);
-                PathSegment.PathSegmentData data = segment.getData();
-                data.setPathId(haPathId);
-                data.setSeqId(idx);
-                data.setIgnoreBandwidth(ignoreBandwidth);
-                data.setBandwidth(bandwidth);
-                data.setSharedBandwidthGroupId(sharedBandwidthGroupId);
-            }
-            this.segments = new ArrayList<>(segments);
-        }
-
-        @Override
-        public Set<HaSubFlowEdge> getHaSubFlowEdges() {
-            return Collections.unmodifiableSet(haSubFlowEdges);
-        }
-
-        @Override
-        public void setHaSubFlowEdges(Collection<HaSubFlowEdge> haSubFlowEdges) {
-            haSubFlowEdges.forEach(edge -> edge.setHaFlowPath(haFlowPath));
-
-            for (HaSubFlowEdge subFlowEdge : this.haSubFlowEdges) {
-                boolean keepSubFlowEdge = haSubFlowEdges.stream().anyMatch(n -> n.equals(subFlowEdge));
-                if (!keepSubFlowEdge) {
-                    // Invalidate the removed entity as a sub-flow-edge can't exist without a ha-subflow and ha-path.
-                    subFlowEdge.setData(null);
+        public void setSubPaths(Collection<FlowPath> subPaths) {
+            for (FlowPath subPath : subPaths) {
+                if (subPath.getHaSubFlow() == null) {
+                    throw new IllegalArgumentException(
+                            format("Sub path %s must has ha sub flow to be added into ha flow path %s",
+                                    subPath, getHaPathId()));
+                }
+                FlowPathData data = subPath.getData();
+                if (data instanceof FlowPathDataImpl) {
+                    ((FlowPathDataImpl) data).haFlowPath = haFlowPath;
                 }
             }
-            this.haSubFlowEdges = new HashSet<>(haSubFlowEdges);
+            this.subPaths = new ArrayList<>(subPaths);
+        }
+
+        @Override
+        public List<HaSubFlow> getHaSubFlows() {
+            return Collections.unmodifiableList(haSubFlows);
+        }
+
+        @Override
+        public void setHaSubFlows(Collection<HaSubFlow> haSubFlows) {
+            this.haSubFlows = new ArrayList<>(haSubFlows);
         }
     }
 
@@ -407,13 +385,13 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
     public interface HaFlowPathCloner {
         HaFlowPathCloner INSTANCE = Mappers.getMapper(HaFlowPathCloner.class);
 
-        @Mapping(target = "haSubFlowEdges", ignore = true)
-        void copyWithoutHaSubFlowEdges(HaFlowPathData source, @MappingTarget HaFlowPathData target);
+        @Mapping(target = "haSubFlows", ignore = true)
+        void copyWithoutHaSubFlows(HaFlowPathData source, @MappingTarget HaFlowPathData target);
 
         @Mapping(target = "sharedSwitch", ignore = true)
-        @Mapping(target = "segments", ignore = true)
-        @Mapping(target = "haSubFlowEdges", ignore = true)
-        void copyWithoutSwitchesAndSegments(HaFlowPathData source, @MappingTarget HaFlowPathData target);
+        @Mapping(target = "subPaths", ignore = true)
+        @Mapping(target = "haSubFlows", ignore = true)
+        void copyWithoutSwitchesAndSubPaths(HaFlowPathData source, @MappingTarget HaFlowPathData target);
 
         /**
          * Performs deep copy of entity data.
@@ -421,30 +399,36 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
          * @param source the path data to copy from.
          * @param targetHaFlow the HA-flow to be referred ({@code HaFlowPathData.getHaFlow()}) by the new path data.
          */
-        default HaFlowPathData deepCopy(
-                HaFlowPathData source, HaFlow targetHaFlow, HaFlowPath targetHaFlowPath) {
+        default HaFlowPathData deepCopy(HaFlowPathData source, HaFlow targetHaFlow) {
             HaFlowPathDataImpl result = new HaFlowPathDataImpl();
             result.haFlow = targetHaFlow;
 
-            copyWithoutSwitchesAndSegments(source, result);
+            copyWithoutSwitchesAndSubPaths(source, result);
             result.setSharedSwitch(new Switch(source.getSharedSwitch()));
-            result.setSegments(source.getSegments().stream()
-                    .map(PathSegment::new)
-                    .collect(Collectors.toList()));
 
-            Map<String, HaSubFlow> subFlowMap = targetHaFlow.getSubFlows().stream()
-                    .collect(Collectors.toMap(HaSubFlow::getHaSubFlowId, Function.identity()));
-
-            Set<HaSubFlowEdge> subFlowEdges = new HashSet<>();
-            for (HaSubFlowEdge subFlowEdge : source.getHaSubFlowEdges()) {
-                HaSubFlow targetHaSubFlow = subFlowMap.get(subFlowEdge.getHaSubFlowId());
+            Map<String, HaSubFlow> subFlowMap;
+            if (targetHaFlow == null || targetHaFlow.getHaSubFlows() == null) {
+                subFlowMap = new HashMap<>();
+            } else {
+                subFlowMap = targetHaFlow.getHaSubFlows().stream()
+                        .collect(Collectors.toMap(HaSubFlow::getHaSubFlowId, Function.identity()));
+            }
+            List<FlowPath> subPaths = new ArrayList<>();
+            for (FlowPath subPath : source.getSubPaths()) {
+                HaSubFlow targetHaSubFlow = subFlowMap.get(subPath.getHaSubFlowId());
                 if (targetHaSubFlow == null) {
                     throw new IllegalArgumentException(format("Couldn't copy HaFlowPath %s because target ha-flow has "
-                            + "no ha-subflow %s", source, subFlowEdge.getHaSubFlowId()));
+                            + "no ha-subflow %s", source, subPath.getHaSubFlowId()));
                 }
-                subFlowEdges.add(new HaSubFlowEdge(subFlowEdge, targetHaFlowPath, targetHaSubFlow));
+                subPaths.add(new FlowPath(subPath, null, targetHaSubFlow));
             }
-            result.setHaSubFlowEdges(subFlowEdges);
+            result.setSubPaths(subPaths);
+
+            List<HaSubFlow> subFlows = new ArrayList<>();
+            for (HaSubFlow subFlow : source.getHaSubFlows()) {
+                subFlows.add(new HaSubFlow(subFlow, targetHaFlow));
+            }
+            result.setHaSubFlows(subFlows);
             return result;
         }
     }

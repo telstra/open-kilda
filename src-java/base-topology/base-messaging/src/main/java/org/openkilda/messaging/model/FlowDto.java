@@ -192,6 +192,9 @@ public class FlowDto implements Serializable {
     @JsonProperty("diverse_with_y_flows")
     private Set<String> diverseWithYFlows;
 
+    @JsonProperty("diverse_with_ha_flows")
+    private Set<String> diverseWithHaFlows;
+
     @JsonProperty("affinity_with")
     private String affinityWith;
 

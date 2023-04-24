@@ -21,7 +21,10 @@ import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.rulemanager.RuleManagerConfig;
@@ -39,6 +42,12 @@ import org.openkilda.rulemanager.factory.generator.flow.SingleTableServer42Ingre
 import org.openkilda.rulemanager.factory.generator.flow.TransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.VlanStatsRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.haflow.EgressHaRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.haflow.IngressHaRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.haflow.TransitHaRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.haflow.YPointForwardEgressHaRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.haflow.YPointForwardIngressHaRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.haflow.YPointForwardTransitHaRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopTransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.mirror.EgressMirrorRuleGenerator;
@@ -46,6 +55,8 @@ import org.openkilda.rulemanager.factory.generator.flow.mirror.IngressMirrorRule
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -88,7 +99,7 @@ public class FlowRulesGeneratorFactory {
      */
     public RuleGenerator getServer42IngressRuleGenerator(
             FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
-            SwitchProperties switchProperties) {
+            SwitchProperties switchProperties, Set<FlowSideAdapter> overlappingIngressAdapters) {
         boolean multiTable = isPathSrcMultiTable(flowPath, flow);
         if (multiTable) {
             return MultiTableServer42IngressRuleGenerator.builder()
@@ -96,6 +107,7 @@ public class FlowRulesGeneratorFactory {
                     .flowPath(flowPath)
                     .flow(flow)
                     .encapsulation(encapsulation)
+                    .overlappingIngressAdapters(overlappingIngressAdapters)
                     .switchProperties(switchProperties)
                     .build();
         } else {
@@ -255,7 +267,7 @@ public class FlowRulesGeneratorFactory {
      */
     public RuleGenerator getTransitRuleGenerator(FlowPath flowPath, FlowTransitEncapsulation encapsulation,
                                                  PathSegment firstSegment, PathSegment secondSegment) {
-        if (flowPath.isOneSwitchFlow()) {
+        if (flowPath.isOneSwitchPath()) {
             throw new IllegalArgumentException(format(
                     "Couldn't create transit rule for path %s because it is one switch path", flowPath.getPathId()));
         }
@@ -282,7 +294,7 @@ public class FlowRulesGeneratorFactory {
                                                           PathSegment firstSegment, PathSegment secondSegment,
                                                           MeterId sharedMeterId, UUID externalMeterCommandUuid,
                                                           boolean generateMeterCommand) {
-        if (flowPath.isOneSwitchFlow()) {
+        if (flowPath.isOneSwitchPath()) {
             throw new IllegalArgumentException(format(
                     "Couldn't create transit rule for path %s because it is one switch path", flowPath.getPathId()));
         }
@@ -303,6 +315,120 @@ public class FlowRulesGeneratorFactory {
                 .sharedMeterId(sharedMeterId)
                 .externalMeterCommandUuid(externalMeterCommandUuid)
                 .generateMeterCommand(generateMeterCommand)
+                .build();
+    }
+
+    /**
+     * Get transit ha rule generator.
+     */
+    public RuleGenerator getTransitHaRuleGenerator(
+            FlowPath subPath, FlowTransitEncapsulation encapsulation, PathSegment firstSegment,
+            PathSegment secondSegment, boolean sharedSegment, MeterId sharedMeterId, UUID externalMeterCommandUuid,
+            boolean generateCreateMeterCommand) {
+        if (subPath.isOneSwitchPath()) {
+            throw new IllegalArgumentException(format(
+                    "Couldn't create ha transit rule for path %s because it is one switch path", subPath.getPathId()));
+        }
+
+        if (!firstSegment.getDestSwitchId().equals(secondSegment.getSrcSwitchId())) {
+            throw new IllegalArgumentException(format(
+                    "Couldn't create ha transit rule for path %s because segments switch ids are different: %s, %s",
+                    subPath.getPathId(), firstSegment.getDestSwitchId(), secondSegment.getSrcSwitchId()));
+        }
+
+        return TransitHaRuleGenerator.builder()
+                .subPath(subPath)
+                .encapsulation(encapsulation)
+                .inPort(firstSegment.getDestPort())
+                .outPort(secondSegment.getSrcPort())
+                .sharedSegment(sharedSegment)
+                .sharedMeterId(sharedMeterId)
+                .externalMeterCommandUuid(externalMeterCommandUuid)
+                .generateCreateMeterCommand(generateCreateMeterCommand)
+                .config(config)
+                .build();
+    }
+
+    /**
+     * Get Y point forward ingress ha rule generator.
+     */
+    public RuleGenerator getYPointForwardIngressHaRuleGenerator(
+            HaFlow haFlow, HaFlowPath haFlowPath, List<FlowPath> subPaths, FlowTransitEncapsulation encapsulation,
+            Set<FlowSideAdapter> overlappingIngressAdapters) {
+        //TODO check one switch sub paths
+        return YPointForwardIngressHaRuleGenerator.builder()
+                .config(config)
+                .haFlow(haFlow)
+                .haFlowPath(haFlowPath)
+                .subPaths(subPaths)
+                .encapsulation(encapsulation)
+                .overlappingIngressAdapters(overlappingIngressAdapters)
+                .build();
+    }
+
+    /**
+     * Get Y point forward transit ha rule generator.
+     */
+    public RuleGenerator getYPointForwardTransitHaRuleGenerator(
+            HaFlowPath haFlowPath, List<FlowPath> subPaths, FlowTransitEncapsulation encapsulation,
+            int inPort, Map<PathId, Integer> outPorts) {
+        return YPointForwardTransitHaRuleGenerator.builder()
+                .haFlowPath(haFlowPath)
+                .subPaths(subPaths)
+                .encapsulation(encapsulation)
+                .inPort(inPort)
+                .outPorts(outPorts)
+                .build();
+    }
+
+    /**
+     * Get Y point forward egress ha rule generator.
+     */
+    public RuleGenerator getYPointForwardEgressHaRuleGenerator(
+            HaFlowPath haFlowPath, List<FlowPath> subPaths, FlowTransitEncapsulation encapsulation, int inPort) {
+        return YPointForwardEgressHaRuleGenerator.builder()
+                .haFlowPath(haFlowPath)
+                .subPaths(subPaths)
+                .encapsulation(encapsulation)
+                .inPort(inPort)
+                .build();
+    }
+
+    /**
+     * Get ingress ha rule generator.
+     */
+    public RuleGenerator getIngressHaRuleGenerator(
+            HaFlow haFlow, FlowPath subPath, MeterId meterId, FlowTransitEncapsulation encapsulation,
+            boolean sharedPath, Set<FlowSideAdapter> overlappingIngressAdapters, UUID externalMeterCommandUuid,
+            boolean generateMeterCommand) {
+        return IngressHaRuleGenerator.builder()
+                .config(config)
+                .haFlow(haFlow)
+                .subPath(subPath)
+                .meterId(meterId)
+                .isSharedPath(sharedPath)
+                .encapsulation(encapsulation)
+                .overlappingIngressAdapters(overlappingIngressAdapters)
+                .externalMeterCommandUuid(externalMeterCommandUuid)
+                .generateCreateMeterCommand(generateMeterCommand)
+                .build();
+    }
+
+    /**
+     * Get egress ha rule generator.
+     */
+    public RuleGenerator getEgressHaRuleGenerator(
+            HaFlow haFlow, FlowPath subPath, FlowTransitEncapsulation encapsulation, boolean isSharedPath,
+            MeterId sharedMeterId, UUID externalMeterCommandUuid, boolean generateCreateMeterCommand) {
+        return EgressHaRuleGenerator.builder()
+                .haFlow(haFlow)
+                .subPath(subPath)
+                .encapsulation(encapsulation)
+                .isSharedPath(isSharedPath)
+                .sharedMeterId(sharedMeterId)
+                .externalMeterCommandUuid(externalMeterCommandUuid)
+                .generateCreateMeterCommand(generateCreateMeterCommand)
+                .config(config)
                 .build();
     }
 
@@ -330,7 +456,7 @@ public class FlowRulesGeneratorFactory {
     }
 
     private boolean isPathSrcMultiTable(FlowPath flowPath, Flow flow) {
-        if (flowPath.isOneSwitchFlow()) {
+        if (flowPath.isOneSwitchPath()) {
             return flowPath.isSrcWithMultiTable();
         }
         ensureEqualMultiTableFlag(flowPath, flow);
@@ -353,7 +479,7 @@ public class FlowRulesGeneratorFactory {
     }
 
     private void checkEgressRulePreRequirements(FlowPath flowPath, Flow flow, String ruleName) {
-        if (flowPath.isOneSwitchFlow()) {
+        if (flowPath.isOneSwitchPath()) {
             throw new IllegalArgumentException(format(
                     "Couldn't create %s rule for flow %s and path %s because it is one switch flow",
                     ruleName, flow.getFlowId(), flowPath.getPathId()));

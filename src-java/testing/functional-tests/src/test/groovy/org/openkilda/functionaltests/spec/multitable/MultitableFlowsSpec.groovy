@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.multitable
 
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 
@@ -1523,9 +1524,11 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
     //TODO: move to wrapper class SwitchList.getGarbageRules() (from test package, not product itself)
     Boolean 'every switch has only expected rules?'(List<Switch> switchesToValidate) {
         return withPool {
-            switchesToValidate.collectParallel {Switch sw -> northboundV2.validateSwitch(sw.dpId).asExpected}.collect()
-        }.every()
-
+            wait(RULES_INSTALLATION_TIME) {
+                assert switchesToValidate.collectParallel { northboundV2.validateSwitch(it.dpId) }
+                        .findAll { !it.asExpected }.isEmpty()
+            }
+        }
     }
 
     //TODO: move to Flow.isPingable() (from test package, not product itself)

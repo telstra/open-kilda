@@ -61,7 +61,7 @@ public class SingleTableServer42IngressRuleGenerator extends Server42IngressRule
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
         if (switchProperties == null || switchProperties.isMultiTable() || !switchProperties.isServer42FlowRtt()
-                || flowPath.isOneSwitchFlow()) {
+                || flowPath.isOneSwitchPath()) {
             return new ArrayList<>();
         }
 

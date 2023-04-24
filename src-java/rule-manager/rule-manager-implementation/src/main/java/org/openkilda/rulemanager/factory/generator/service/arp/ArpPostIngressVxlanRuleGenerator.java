@@ -20,8 +20,7 @@ import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE;
 import static org.openkilda.rulemanager.Constants.ARP_VXLAN_UDP_SRC;
 import static org.openkilda.rulemanager.Constants.VXLAN_UDP_DST;
-import static org.openkilda.rulemanager.action.ActionType.POP_VXLAN_NOVIFLOW;
-import static org.openkilda.rulemanager.action.ActionType.POP_VXLAN_OVS;
+import static org.openkilda.rulemanager.utils.Utils.buildPopVxlan;
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.cookie.Cookie;
@@ -36,7 +35,6 @@ import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
-import org.openkilda.rulemanager.action.PopVxlanAction;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
@@ -75,11 +73,7 @@ public class ArpPostIngressVxlanRuleGenerator extends ArpRuleGenerator {
         }
 
         List<Action> actions = new ArrayList<>();
-        if (sw.getFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)) {
-            actions.add(new PopVxlanAction(POP_VXLAN_NOVIFLOW));
-        } else {
-            actions.add(new PopVxlanAction(POP_VXLAN_OVS));
-        }
+        actions.add(buildPopVxlan(sw.getSwitchId(), sw.getFeatures()));
         actions.add(new PortOutAction(new PortNumber(SpecialPortType.CONTROLLER)));
         Instructions instructions = Instructions.builder()
                 .applyActions(actions)

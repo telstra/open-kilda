@@ -31,14 +31,20 @@ import static org.openkilda.pce.model.PathWeight.Penalty.UNSTABLE;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
+import org.openkilda.pce.GetHaPathsResult;
 import org.openkilda.pce.GetPathsResult;
+import org.openkilda.pce.HaPath;
+import org.openkilda.pce.HaPath.HaPathBuilder;
 import org.openkilda.pce.Path;
+import org.openkilda.pce.Path.Segment;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.exception.RecoverableException;
@@ -55,6 +61,10 @@ import org.openkilda.pce.model.PathWeight.Penalty;
 import org.openkilda.pce.model.WeightFunction;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
@@ -67,7 +77,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -96,15 +105,14 @@ public class InMemoryPathComputer implements PathComputer {
             throws UnroutableFlowException, RecoverableException {
         AvailableNetwork network = availableNetworkFactory.getAvailableNetwork(flow, reusePathsResources);
 
-        return getPath(network, flow, flow.getPathComputationStrategy(), isProtected);
+        return getPath(network, new RequestedPath(flow), isProtected);
     }
 
-    private GetPathsResult getPath(AvailableNetwork network, Flow flow,
-                                   PathComputationStrategy strategy, boolean isProtected)
+    private GetPathsResult getPath(AvailableNetwork network, RequestedPath requestedPath, boolean isProtected)
             throws UnroutableFlowException {
-        if (flow.isOneSwitchFlow()) {
-            log.info("No path computation for one-switch flow");
-            SwitchId singleSwitchId = flow.getSrcSwitchId();
+        if (requestedPath.isOneSwitch()) {
+            log.info("No path computation for one-switch path");
+            SwitchId singleSwitchId = requestedPath.srcSwitchId;
             FindOneDirectionPathResult pathResult = FindOneDirectionPathResult.builder()
                     .foundPath(emptyList()).backUpPathComputationWayUsed(false).build();
             return GetPathsResult.builder()
@@ -114,57 +122,159 @@ public class InMemoryPathComputer implements PathComputer {
                     .build();
         }
 
-        WeightFunction weightFunction = getWeightFunctionByStrategy(strategy, isProtected);
+        WeightFunction weightFunction = getWeightFunctionByStrategy(requestedPath.strategy, isProtected);
         FindPathResult findPathResult;
         try {
-            findPathResult = findPathInNetwork(flow, network, weightFunction, strategy);
+            findPathResult = findPathInNetwork(requestedPath, network, weightFunction, requestedPath.strategy);
         } catch (UnroutableFlowException e) {
             String bandwidthMessage = "";
-            if (flow.getBandwidth() > 0) {
+            if (requestedPath.getBandwidth() > 0) {
                 bandwidthMessage = format(", %s=%s", FailReasonType.MAX_BANDWIDTH,
-                        flow.isIgnoreBandwidth() ? " ignored" : flow.getBandwidth());
+                        requestedPath.isIgnoreBandwidth() ? " ignored" : requestedPath.getBandwidth());
             }
-            throw new UnroutableFlowException(e.getMessage().concat(bandwidthMessage), e, flow.getFlowId(),
-                    flow.isIgnoreBandwidth());
+            throw new UnroutableFlowException(e.getMessage().concat(bandwidthMessage), e, requestedPath.getName(),
+                    requestedPath.isIgnoreBandwidth());
         }
 
-        return convertToGetPathsResult(flow.getSrcSwitchId(), flow.getDestSwitchId(), findPathResult,
-                strategy, flow.getPathComputationStrategy());
+        return convertToGetPathsResult(requestedPath.getSrcSwitchId(), requestedPath.getDstSwitchId(), findPathResult);
     }
 
-    private FindPathResult findPathInNetwork(Flow flow, AvailableNetwork network,
+    @Override
+    public GetHaPathsResult getHaPath(HaFlow haFlow, boolean isProtected)
+            throws UnroutableFlowException, RecoverableException {
+        AvailableNetwork network = availableNetworkFactory.getAvailableNetwork(haFlow, new ArrayList<>());
+
+        if (haFlow.getHaSubFlows() == null || haFlow.getHaSubFlows().size() != 2) {
+            throw new IllegalArgumentException(format("HA-flow %s must have 2 sub flows to find a path, but it "
+                    + "has following sub flows: %s", haFlow.getHaFlowId(), haFlow.getHaSubFlows()));
+        }
+
+        List<GetPathsResult> paths = new ArrayList<>();
+        for (HaSubFlow subFlow : haFlow.getHaSubFlows()) {
+            paths.add(getPath(network, new RequestedPath(haFlow, subFlow), isProtected));
+        }
+
+        return GetHaPathsResult.builder()
+                .forward(unitePathsToHaPath(paths.get(0).getForward(), paths.get(1).getForward(), true))
+                .reverse(unitePathsToHaPath(paths.get(0).getReverse(), paths.get(1).getReverse(), false))
+                .backUpPathComputationWayUsed(
+                        paths.get(0).isBackUpPathComputationWayUsed() || paths.get(1).isBackUpPathComputationWayUsed())
+                .build();
+    }
+
+    private HaPath unitePathsToHaPath(Path firstPath, Path secondPath, boolean forward) {
+        HaPathBuilder haPath = HaPath.builder();
+        if (forward) {
+            if (!firstPath.getSrcSwitchId().equals(secondPath.getSrcSwitchId())) {
+                throw new IllegalArgumentException(format("Forward HA sub paths must have equal source switch."
+                        + "The first sub path: %s, the  second sub path: %s", firstPath, secondPath));
+            }
+            haPath.sharedSwitchId(firstPath.getSrcSwitchId());
+            haPath.yPointSwitchId(findYPointForForwardPaths(firstPath, secondPath));
+        } else {
+            if (!firstPath.getDestSwitchId().equals(secondPath.getDestSwitchId())) {
+                throw new IllegalArgumentException(format("Reverse HA sub paths must have equal destination switch."
+                        + "The first sub path: %s, the  second sub path: %s", firstPath, secondPath));
+            }
+            haPath.sharedSwitchId(firstPath.getDestSwitchId());
+            haPath.yPointSwitchId(findYPointForReversePaths(firstPath, secondPath));
+        }
+
+        haPath.subPaths(Lists.newArrayList(firstPath, secondPath));
+        haPath.latency(Math.max(firstPath.getLatency(), secondPath.getLatency()));
+        haPath.isBackupPath(firstPath.isBackupPath() || secondPath.isBackupPath());
+        haPath.minAvailableBandwidth(Math.min(
+                firstPath.getMinAvailableBandwidth(), secondPath.getMinAvailableBandwidth()));
+        return haPath.build();
+    }
+
+    private static SwitchId findYPointForForwardPaths(Path firstPath, Path secondPath) {
+        if (!firstPath.getSrcSwitchId().equals(secondPath.getSrcSwitchId())) {
+            throw new IllegalArgumentException(format(
+                    "Forward sub paths must have equal src switchId. But switch IDs are different: [%s, %s]",
+                    firstPath.getSrcSwitchId(), secondPath.getSrcSwitchId()));
+        }
+
+        Optional<Integer> id = findLastForwardSharedSegmentId(firstPath.getSegments(), secondPath.getSegments());
+        if (id.isPresent()) {
+            return firstPath.getSegments().get(id.get()).getDestSwitchId();
+        } else {
+            return firstPath.getSrcSwitchId();
+        }
+    }
+
+    private static SwitchId findYPointForReversePaths(Path firstPath, Path secondPath) {
+        if (!firstPath.getDestSwitchId().equals(secondPath.getDestSwitchId())) {
+            throw new IllegalArgumentException(format(
+                    "Reverse sub paths must have equal dst switchId. But switch IDs are different: [%s, %s]",
+                    firstPath.getDestSwitchId(), secondPath.getDestSwitchId()));
+        }
+        Optional<Integer> id = findFirstReverseSharedSegmentId(firstPath.getSegments(), secondPath.getSegments());
+        if (id.isPresent()) {
+            return firstPath.getSegments().get(id.get()).getSrcSwitchId();
+        } else {
+            return firstPath.getDestSwitchId();
+        }
+    }
+
+    private static Optional<Integer> findLastForwardSharedSegmentId(
+            List<Segment> firstSegments, List<Segment> secondSegments) {
+        int i = 0;
+        while (i < firstSegments.size() && i < secondSegments.size()
+                && firstSegments.get(i).areEndpointsEqual(secondSegments.get(i))) {
+            i++;
+        }
+        i--;
+        return i == -1 ? Optional.empty() : Optional.of(i);
+    }
+
+    private static Optional<Integer> findFirstReverseSharedSegmentId(
+            List<Segment> firstSegments, List<Segment> secondSegments) {
+        int i = firstSegments.size() - 1;
+        int j = secondSegments.size() - 1;
+
+        while (i >= 0 && j >= 0 && firstSegments.get(i).areEndpointsEqual(secondSegments.get(j))) {
+            i--;
+            j--;
+        }
+        i++;
+        return i == firstSegments.size() ? Optional.empty() : Optional.of(i);
+    }
+
+    private FindPathResult findPathInNetwork(RequestedPath requestedPath, AvailableNetwork network,
                                              WeightFunction weightFunction,
                                              PathComputationStrategy strategy)
             throws UnroutableFlowException {
 
         if (MAX_LATENCY.equals(strategy)
-                && (flow.getMaxLatency() == null || flow.getMaxLatency() == 0)) {
+                && (requestedPath.getMaxLatency() == null || requestedPath.getMaxLatency() == 0)) {
             strategy = LATENCY;
         }
 
         switch (strategy) {
             case COST:
             case COST_AND_AVAILABLE_BANDWIDTH:
-                return pathFinder.findPathWithMinWeight(network, flow.getSrcSwitchId(),
-                        flow.getDestSwitchId(), weightFunction);
+                return pathFinder.findPathWithMinWeight(network, requestedPath.getSrcSwitchId(),
+                        requestedPath.getDstSwitchId(), weightFunction);
             case LATENCY:
-                long maxLatency = flow.getMaxLatency() == null || flow.getMaxLatency() == 0
-                        ? Long.MAX_VALUE : flow.getMaxLatency();
-                long maxLatencyTier2 = flow.getMaxLatencyTier2() == null || flow.getMaxLatencyTier2() == 0
-                        ? Long.MAX_VALUE : flow.getMaxLatencyTier2();
+                long maxLatency = requestedPath.getMaxLatency() == null || requestedPath.getMaxLatency() == 0
+                        ? Long.MAX_VALUE : requestedPath.getMaxLatency();
+                long maxLatencyTier2 = requestedPath.getMaxLatencyTier2() == null
+                        || requestedPath.getMaxLatencyTier2() == 0
+                        ? Long.MAX_VALUE : requestedPath.getMaxLatencyTier2();
                 if (maxLatencyTier2 < maxLatency) {
                     log.warn("Bad flow params found: maxLatencyTier2 ({}) should be greater than maxLatency ({}). "
                                     + "Put maxLatencyTier2 = maxLatency during path calculation.",
-                            flow.getMaxLatencyTier2(), flow.getMaxLatency());
+                            requestedPath.getMaxLatencyTier2(), requestedPath.getMaxLatency());
                     maxLatencyTier2 = maxLatency;
                 }
-                return pathFinder.findPathWithMinWeightAndLatencyLimits(network, flow.getSrcSwitchId(),
-                        flow.getDestSwitchId(), weightFunction, maxLatency, maxLatencyTier2);
+                return pathFinder.findPathWithMinWeightAndLatencyLimits(network, requestedPath.getSrcSwitchId(),
+                        requestedPath.getDstSwitchId(), weightFunction, maxLatency, maxLatencyTier2);
             case MAX_LATENCY:
                 try {
-                    return pathFinder.findPathWithWeightCloseToMaxWeight(network, flow.getSrcSwitchId(),
-                            flow.getDestSwitchId(), weightFunction, flow.getMaxLatency(),
-                            Optional.ofNullable(flow.getMaxLatencyTier2()).orElse(0L));
+                    return pathFinder.findPathWithWeightCloseToMaxWeight(network, requestedPath.getSrcSwitchId(),
+                            requestedPath.getDstSwitchId(), weightFunction, requestedPath.getMaxLatency(),
+                            Optional.ofNullable(requestedPath.getMaxLatencyTier2()).orElse(0L));
                 } catch (UnroutableFlowException e) {
                     if (e.getFailReason() == null
                             || !e.getFailReason().containsKey(FailReasonType.MAX_WEIGHT_EXCEEDED)) {
@@ -176,11 +286,11 @@ public class InMemoryPathComputer implements PathComputer {
                     String failLatencyReason;
                     if (actualLatency == null) {
                         failLatencyReason = format("Requested path must have latency %sms or lower",
-                                TimeUnit.NANOSECONDS.toMillis(flow.getMaxLatency()));
+                                TimeUnit.NANOSECONDS.toMillis(requestedPath.getMaxLatency()));
                     } else {
                         failLatencyReason = format("Requested path must have latency %sms or lower, "
                                         + "but best path has latency %sms",
-                                TimeUnit.NANOSECONDS.toMillis(flow.getMaxLatency()),
+                                TimeUnit.NANOSECONDS.toMillis(requestedPath.getMaxLatency()),
                                 TimeUnit.NANOSECONDS.toMillis(actualLatency));
                     }
                     reasons.put(FailReasonType.LATENCY_LIMIT, new FailReason(FailReasonType.LATENCY_LIMIT,
@@ -190,7 +300,7 @@ public class InMemoryPathComputer implements PathComputer {
 
                 }
             default:
-                throw new UnsupportedOperationException(String.format("Unsupported strategy type %s", strategy));
+                throw new UnsupportedOperationException(format("Unsupported strategy type %s", strategy));
         }
     }
 
@@ -234,7 +344,7 @@ public class InMemoryPathComputer implements PathComputer {
                         getWeightFunctionByStrategy(pathComputationStrategy, false), maxLatencyNs, maxLatencyTier2Ns);
                 break;
             default:
-                throw new UnsupportedOperationException(String.format(
+                throw new UnsupportedOperationException(format(
                         "Unsupported strategy type %s", pathComputationStrategy));
         }
         Comparator<Path> comparator;
@@ -264,7 +374,7 @@ public class InMemoryPathComputer implements PathComputer {
             case COST_AND_AVAILABLE_BANDWIDTH:
                 return this::weightByCostAndAvailableBandwidth;
             default:
-                throw new UnsupportedOperationException(String.format("Unsupported strategy type %s", strategy));
+                throw new UnsupportedOperationException(format("Unsupported strategy type %s", strategy));
         }
     }
 
@@ -382,15 +492,13 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     private GetPathsResult convertToGetPathsResult(
-            SwitchId srcSwitchId, SwitchId dstSwitchId, FindPathResult findPathResult,
-            PathComputationStrategy strategy, PathComputationStrategy originalStrategy) {
+            SwitchId srcSwitchId, SwitchId dstSwitchId, FindPathResult findPathResult) {
         return GetPathsResult.builder()
                 .forward(convertToPath(srcSwitchId, dstSwitchId, findPathResult.getFoundPath().getLeft(),
                         findPathResult.isBackUpPathComputationWayUsed()))
                 .reverse(convertToPath(dstSwitchId, srcSwitchId, findPathResult.getFoundPath().getRight(),
                         findPathResult.isBackUpPathComputationWayUsed()))
-                .backUpPathComputationWayUsed(findPathResult.isBackUpPathComputationWayUsed()
-                        || !Objects.equals(originalStrategy, strategy))
+                .backUpPathComputationWayUsed(findPathResult.isBackUpPathComputationWayUsed())
                 .build();
     }
 
@@ -400,7 +508,7 @@ public class InMemoryPathComputer implements PathComputer {
 
     private Path convertToPath(SwitchId srcSwitchId, SwitchId dstSwitchId, FindOneDirectionPathResult pathResult) {
         List<Edge> edges = pathResult.getFoundPath();
-        List<Path.Segment> segments = new LinkedList<>();
+        List<Segment> segments = new LinkedList<>();
 
         long latency = 0L;
         long minAvailableBandwidth = Long.MAX_VALUE;
@@ -420,8 +528,8 @@ public class InMemoryPathComputer implements PathComputer {
                 .build();
     }
 
-    private Path.Segment convertToSegment(Edge edge) {
-        return Path.Segment.builder()
+    private Segment convertToSegment(Edge edge) {
+        return Segment.builder()
                 .srcSwitchId(edge.getSrcSwitch().getSwitchId())
                 .srcPort(edge.getSrcPort())
                 .destSwitchId(edge.getDestSwitch().getSwitchId())
@@ -490,5 +598,34 @@ public class InMemoryPathComputer implements PathComputer {
         }
 
         return paths;
+    }
+
+    @Data
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    private static class RequestedPath {
+        SwitchId srcSwitchId;
+        SwitchId dstSwitchId;
+        long bandwidth;
+        boolean ignoreBandwidth;
+        PathComputationStrategy strategy;
+        Long maxLatency;
+        Long maxLatencyTier2;
+        String name;
+
+        RequestedPath(Flow flow) {
+            this(flow.getSrcSwitchId(), flow.getDestSwitchId(), flow.getBandwidth(), flow.isIgnoreBandwidth(),
+                    flow.getPathComputationStrategy(), flow.getMaxLatency(), flow.getMaxLatencyTier2(),
+                    flow.getFlowId());
+        }
+
+        RequestedPath(HaFlow haFlow, HaSubFlow subFlow) {
+            this(haFlow.getSharedSwitchId(), subFlow.getEndpointSwitchId(), haFlow.getMaximumBandwidth(),
+                    haFlow.isIgnoreBandwidth(), haFlow.getPathComputationStrategy(), haFlow.getMaxLatency(),
+                    haFlow.getMaxLatencyTier2(), haFlow.getHaFlowId());
+        }
+
+        public boolean isOneSwitch() {
+            return srcSwitchId.equals(dstSwitchId);
+        }
     }
 }

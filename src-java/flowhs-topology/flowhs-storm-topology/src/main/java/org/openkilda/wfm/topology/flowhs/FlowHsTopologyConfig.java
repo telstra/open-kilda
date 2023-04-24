@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -175,13 +175,13 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("3")
     int getYFlowDeleteSpeakerCommandRetriesLimit();
 
-    @Key("y_flow.read.retries")
+    @Key("flow.read.retries")
     @Default("3")
-    int getYFlowReadRetriesLimit();
+    int getFlowReadRetriesLimit();
 
-    @Key("y_flow.read.retry.delay.ms")
+    @Key("flow.read.retry.delay.ms")
     @Default("100")
-    int getYFlowReadRetryDelayMillis();
+    int getFlowReadRetryDelayMillis();
 
     @Key("y_flow.validation.speaker.timeout.seconds")
     @Default("10")
