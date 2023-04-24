@@ -32,6 +32,7 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
     HaFlowHelper haFlowHelper
 
     @Tidy
+    @Ignore ("functionality is not released yet")
     def "HA-Flow validation should fail in case of missing ha-flow shared rule (#data.description)"() {
         given: "Existing HA-flow"
         def swT = topologyHelper.switchTriplets[0]
@@ -89,7 +90,7 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignore
+    @Ignore("functionality is not released yet")
     @Tags(LOW_PRIORITY)
     def "HA-Flow/flow validation should fail in case of missing subFlow rule (#data.description)"() {
         given: "Existing HA-flow"
