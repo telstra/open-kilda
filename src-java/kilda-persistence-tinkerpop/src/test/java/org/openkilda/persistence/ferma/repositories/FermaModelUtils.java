@@ -78,14 +78,22 @@ public final class FermaModelUtils {
     /**
      * Builds HaFlow object.
      */
+    public static HaFlow buildHaFlow(String flowId, Switch sharedSwitch) {
+        return buildHaFlow(
+                flowId, sharedSwitch, 0, 0, 0, 0, 0, 0, null, 0, null, null, null, true, true, true, true, true);
+    }
+
+    /**
+     * Builds HaFlow object.
+     */
     public static HaFlow buildHaFlow(
-            String flowId, Switch sw, int port, int vlan, int innerVlan, long latency, long latencyTier2,
+            String flowId, Switch sharedSwitch, int port, int vlan, int innerVlan, long latency, long latencyTier2,
             long bandwidth, FlowEncapsulationType encapsulationType, int priority, String description,
             PathComputationStrategy strategy, FlowStatus status, boolean protectedPath, boolean pinned, boolean pings,
             boolean ignoreBandwidth, boolean strictBandwidth) {
         return HaFlow.builder()
                 .haFlowId(flowId)
-                .sharedSwitch(sw)
+                .sharedSwitch(sharedSwitch)
                 .sharedPort(port)
                 .sharedOuterVlan(vlan)
                 .sharedInnerVlan(innerVlan)

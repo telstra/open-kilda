@@ -15,7 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
-import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.rulemanager.utils.Utils.getOutPort;
 import static org.openkilda.rulemanager.utils.Utils.isFullPortEndpoint;
 
@@ -57,18 +56,9 @@ public class SingleTableIngressYRuleGenerator extends SingleTableIngressRuleGene
         FlowSpeakerData command = buildFlowIngressCommand(sw, ingressEndpoint);
         result.add(command);
 
-        if (sharedMeterId == null) {
-            return result;
-        }
-        if (generateMeterCommand) {
-            SpeakerData meterCommand = buildMeter(externalMeterCommandUuid, flowPath, config, sharedMeterId, sw);
-            if (meterCommand != null) {
-                result.add(meterCommand);
-                command.getDependsOn().add(externalMeterCommandUuid);
-            }
-        } else if (sw.getFeatures().contains(METERS)) {
-            command.getDependsOn().add(externalMeterCommandUuid);
-        }
+        buildMeterCommandAndAddDependency(sharedMeterId, flowPath.getBandwidth(), command, externalMeterCommandUuid,
+                config, generateMeterCommand, sw)
+                .ifPresent(result::add);
         return result;
     }
 

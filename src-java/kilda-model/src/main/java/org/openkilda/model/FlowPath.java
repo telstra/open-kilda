@@ -78,8 +78,8 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
      * @param entityToClone the path entity to copy data from.
      * @param flow the flow to be referred ({@code FlowPath.getFlow()}) by the new path.
      */
-    public FlowPath(@NonNull FlowPath entityToClone, Flow flow) {
-        data = FlowPathCloner.INSTANCE.deepCopy(entityToClone.getData(), flow);
+    public FlowPath(@NonNull FlowPath entityToClone, Flow flow, HaSubFlow haSubFlow) {
+        data = FlowPathCloner.INSTANCE.deepCopy(entityToClone.getData(), flow, haSubFlow);
     }
 
     @Builder
@@ -132,7 +132,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
      *
      * @return true if source and destination switches are the same, otherwise false
      */
-    public boolean isOneSwitchFlow() {
+    public boolean isOneSwitchPath() {
         return getSrcSwitchId().equals(getDestSwitchId());
     }
 
@@ -203,6 +203,17 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
     public boolean hasEgressMirror() {
         return getFlowMirrorPointsSet().stream()
                 .anyMatch(point -> point.getMirrorSwitchId().equals(getDestSwitchId()));
+    }
+
+    /**
+     * Returns HA-flow id, if path belongs to an HA-flow, null otherwise.
+     */
+    public String getHaFlowId() {
+        HaFlowPath haFlowPath = getHaFlowPath();
+        if (haFlowPath != null) {
+            return haFlowPath.getHaFlowId();
+        }
+        return null;
     }
 
     @Override
@@ -276,6 +287,8 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         String getHaSubFlowId();
 
         HaSubFlow getHaSubFlow();
+
+        void setHaSubFlow(HaSubFlow haSubFlow);
 
         FlowSegmentCookie getCookie();
 
@@ -373,7 +386,6 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
         HaFlowPath haFlowPath;
-        @Setter(AccessLevel.NONE)
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
         HaSubFlow haSubFlow;
@@ -506,7 +518,8 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         @Mapping(target = "srcSwitch", ignore = true)
         @Mapping(target = "destSwitch", ignore = true)
         @Mapping(target = "segments", ignore = true)
-        void copyWithoutSwitchesAndSegments(FlowPathData source, @MappingTarget FlowPathData target);
+        @Mapping(target = "haSubFlow", ignore = true)
+        void copyWithoutSwitchesHaSubFlowAndSegments(FlowPathData source, @MappingTarget FlowPathData target);
 
         /**
          * Performs deep copy of entity data.
@@ -514,10 +527,11 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
          * @param source the path data to copy from.
          * @param targetFlow the flow to be referred ({@code FlowPathData.getFlow()}) by the new path data.
          */
-        default FlowPathData deepCopy(FlowPathData source, Flow targetFlow) {
+        default FlowPathData deepCopy(FlowPathData source, Flow targetFlow, HaSubFlow targetHaSubFlow) {
             FlowPathDataImpl result = new FlowPathDataImpl();
+            copyWithoutSwitchesHaSubFlowAndSegments(source, result);
             result.flow = targetFlow;
-            copyWithoutSwitchesAndSegments(source, result);
+            result.haSubFlow = targetHaSubFlow;
             result.setSrcSwitch(new Switch(source.getSrcSwitch()));
             result.setDestSwitch(new Switch(source.getDestSwitch()));
             result.setSegments(source.getSegments().stream()

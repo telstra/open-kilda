@@ -30,6 +30,8 @@ import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.FlowFrame;
 import org.openkilda.persistence.ferma.frames.FlowPathFrame;
+import org.openkilda.persistence.ferma.frames.HaFlowFrame;
+import org.openkilda.persistence.ferma.frames.HaFlowPathFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
 import org.openkilda.persistence.ferma.frames.PathSegmentFrame;
 import org.openkilda.persistence.ferma.frames.converters.FlowSegmentCookieConverter;
@@ -48,6 +50,7 @@ import org.apache.tinkerpop.gremlin.structure.Column;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -188,12 +191,18 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
 
     @Override
     public Collection<PathId> findPathIdsByFlowDiverseGroupId(String flowDiverseGroupId) {
-        return findPathIdsByFlowGroupId(FlowFrame.DIVERSE_GROUP_ID_PROPERTY, flowDiverseGroupId);
+        List<PathId> pathIds = new ArrayList<>(findPathIdsByFlowGroupId(
+                FlowFrame.DIVERSE_GROUP_ID_PROPERTY, flowDiverseGroupId));
+        pathIds.addAll(findPathIdsByHaFlowGroupId(HaFlowFrame.DIVERSE_GROUP_ID_PROPERTY, flowDiverseGroupId));
+        return pathIds;
     }
 
     @Override
     public Collection<PathId> findPathIdsByFlowAffinityGroupId(String flowAffinityGroupId) {
-        return findPathIdsByFlowGroupId(FlowFrame.AFFINITY_GROUP_ID_PROPERTY, flowAffinityGroupId);
+        Set<PathId> pathIds = new HashSet<>(findPathIdsByFlowGroupId(
+                FlowFrame.AFFINITY_GROUP_ID_PROPERTY, flowAffinityGroupId));
+        pathIds.addAll(findPathIdsByHaFlowGroupId(HaFlowFrame.AFFINITY_GROUP_ID_PROPERTY, flowAffinityGroupId));
+        return pathIds;
     }
 
     private Collection<PathId> findPathIdsByFlowGroupId(String groupIdProperty, String flowGroupId) {
@@ -201,6 +210,20 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
                 .hasLabel(FlowFrame.FRAME_LABEL)
                 .has(groupIdProperty, flowGroupId)
                 .out(FlowFrame.OWNS_PATHS_EDGE)
+                .hasLabel(FlowPathFrame.FRAME_LABEL)
+                .values(FlowPathFrame.PATH_ID_PROPERTY))
+                .getRawTraversal().toStream()
+                .map(pathId -> PathIdConverter.INSTANCE.toEntityAttribute((String) pathId))
+                .collect(Collectors.toList());
+    }
+
+    private Collection<PathId> findPathIdsByHaFlowGroupId(String groupIdProperty, String flowGroupId) {
+        return framedGraph().traverse(g -> g.V()
+                .hasLabel(HaFlowFrame.FRAME_LABEL)
+                .has(groupIdProperty, flowGroupId)
+                .out(HaFlowFrame.OWNS_PATHS_EDGE)
+                .hasLabel(HaFlowPathFrame.FRAME_LABEL)
+                .out(HaFlowPathFrame.OWNS_PATH_EDGE)
                 .hasLabel(FlowPathFrame.FRAME_LABEL)
                 .values(FlowPathFrame.PATH_ID_PROPERTY))
                 .getRawTraversal().toStream()
@@ -463,6 +486,6 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
 
     @Override
     protected FlowPathData doDetach(FlowPath entity, FlowPathFrame frame) {
-        return FlowPath.FlowPathCloner.INSTANCE.deepCopy(frame, entity.getFlow());
+        return FlowPath.FlowPathCloner.INSTANCE.deepCopy(frame, entity.getFlow(), entity.getHaSubFlow());
     }
 }

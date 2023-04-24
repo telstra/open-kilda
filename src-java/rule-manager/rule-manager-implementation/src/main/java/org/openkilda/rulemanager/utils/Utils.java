@@ -31,16 +31,30 @@ import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.MirrorConfig.MirrorConfigData;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.CookieBase.CookieType;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
+import org.openkilda.model.cookie.PortColourCookie;
+import org.openkilda.rulemanager.Constants;
+import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
+import org.openkilda.rulemanager.Instructions;
+import org.openkilda.rulemanager.OfFlowFlag;
 import org.openkilda.rulemanager.OfMetadata;
+import org.openkilda.rulemanager.OfTable;
+import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PopVlanAction;
+import org.openkilda.rulemanager.action.PopVxlanAction;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.action.PushVlanAction;
 import org.openkilda.rulemanager.action.PushVxlanAction;
@@ -50,7 +64,12 @@ import org.openkilda.rulemanager.group.WatchGroup;
 import org.openkilda.rulemanager.group.WatchPort;
 import org.openkilda.rulemanager.match.FieldMatch;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import lombok.NonNull;
+
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -112,7 +131,7 @@ public final class Utils {
      * Returns port to which packets must be sent by first path switch.
      */
     public static PortNumber getOutPort(FlowPath path, Flow flow) {
-        if (path.isOneSwitchFlow()) {
+        if (path.isOneSwitchPath()) {
             FlowEndpoint endpoint = FlowSideAdapter.makeEgressAdapter(flow, path).getEndpoint();
             if (flow.getSrcPort() == flow.getDestPort()) {
                 // the case of a single switch & same port flow.
@@ -153,6 +172,22 @@ public final class Utils {
                 .udpSrc(udpSrc)
                 .build();
 
+    }
+
+    /**
+     * Builds pop VXLAN action.
+     */
+    public static PopVxlanAction buildPopVxlan(SwitchId switchId, Set<SwitchFeature> features) {
+        ActionType type;
+        if (features.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
+            type = ActionType.POP_VXLAN_NOVIFLOW;
+        } else if (features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+            type = ActionType.POP_VXLAN_OVS;
+        } else {
+            throw new IllegalArgumentException(format("To pop VXLAN switch %s must support one of the following "
+                    + "features: [%s, %s]", switchId, NOVIFLOW_PUSH_POP_VXLAN, KILDA_OVS_PUSH_POP_MATCH_VXLAN));
+        }
+        return new PopVxlanAction(type);
     }
 
     public static OfMetadata mapMetadata(RoutingMetadata metadata) {
@@ -233,6 +268,85 @@ public final class Utils {
     }
 
     /**
+     * Builds flags for a rule.
+     */
+    public static Set<OfFlowFlag> buildRuleFlags(Set<SwitchFeature> features) {
+        if (features.contains(SwitchFeature.RESET_COUNTS_FLAG)) {
+            return Sets.newHashSet(OfFlowFlag.RESET_COUNTERS);
+        }
+        return new HashSet<>();
+    }
+
+    /**
+     * Builds shared flow pre ingress rule.
+     */
+    public static FlowSpeakerData buildSharedFlowPreIngressCommand(Switch sw, FlowEndpoint endpoint) {
+        FlowSharedSegmentCookie cookie = FlowSharedSegmentCookie.builder(SharedSegmentType.QINQ_OUTER_VLAN)
+                .portNumber(endpoint.getPortNumber())
+                .vlanId(endpoint.getOuterVlanId())
+                .build();
+
+        RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(endpoint.getOuterVlanId())
+                .build(sw.getFeatures());
+        Instructions instructions = Instructions.builder()
+                .applyActions(Lists.newArrayList(new PopVlanAction()))
+                .writeMetadata(new OfMetadata(metadata.getValue(), metadata.getMask()))
+                .goToTable(OfTable.INGRESS)
+                .build();
+
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
+                .switchId(endpoint.getSwitchId())
+                .ofVersion(OfVersion.of(sw.getOfVersion()))
+                .cookie(cookie)
+                .table(OfTable.PRE_INGRESS)
+                .priority(Constants.Priority.FLOW_PRIORITY)
+                .match(buildSharedPreIngressMatch(endpoint))
+                .instructions(instructions);
+
+        // TODO add RESET_COUNTERS flag
+        return builder.build();
+    }
+
+    /**
+     * Builds rule for catching packets from customer port.
+     */
+    public static FlowSpeakerData buildCustomerPortSharedCatchCommand(Switch sw, FlowEndpoint endpoint) {
+        PortColourCookie cookie = new PortColourCookie(CookieType.MULTI_TABLE_INGRESS_RULES, endpoint.getPortNumber());
+
+        Instructions instructions = Instructions.builder()
+                .goToTable(OfTable.PRE_INGRESS)
+                .build();
+
+        FlowSpeakerDataBuilder<?, ?> builder = FlowSpeakerData.builder()
+                .switchId(endpoint.getSwitchId())
+                .ofVersion(OfVersion.of(sw.getOfVersion()))
+                .cookie(cookie)
+                .table(OfTable.INPUT)
+                .priority(Priority.INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE)
+                .match(Sets.newHashSet(
+                        FieldMatch.builder().field(Field.IN_PORT).value(endpoint.getPortNumber()).build()))
+                .instructions(instructions);
+
+        return builder.build();
+    }
+
+    /**
+     * Finds shortest sub path.
+     */
+    public static FlowPath getShortestSubPath(@NonNull Collection<FlowPath> subPaths) {
+        if (subPaths.isEmpty()) {
+            throw new IllegalArgumentException("Sub paths collection is empty");
+        }
+        FlowPath shortest = subPaths.iterator().next();
+        for (FlowPath subPath : subPaths) {
+            if (subPath.getSegments().size() < shortest.getSegments().size()) {
+                shortest = subPath;
+            }
+        }
+        return shortest;
+    }
+
+    /**
      * Find Speaker Command Data of specific type.
      */
     public static <C extends SpeakerData> Optional<C> getCommand(
@@ -241,6 +355,12 @@ public final class Utils {
                 .filter(commandType::isInstance)
                 .map(commandType::cast)
                 .findFirst();
+    }
+
+    private static Set<FieldMatch> buildSharedPreIngressMatch(FlowEndpoint endpoint) {
+        return Sets.newHashSet(
+                FieldMatch.builder().field(Field.IN_PORT).value(endpoint.getPortNumber()).build(),
+                FieldMatch.builder().field(Field.VLAN_VID).value(endpoint.getOuterVlanId()).build());
     }
 
     private static Set<FieldMatch> makeDefaultPortIngresMatch(FlowEndpoint endpoint) {

@@ -20,6 +20,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PathId;
@@ -32,6 +33,7 @@ import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
@@ -51,6 +53,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * PersistenceDataAdapter is designed for one-time use. Create new PersistenceDataAdapter for each RuleManager API
@@ -60,6 +63,7 @@ public class PersistenceDataAdapter implements DataAdapter {
 
     private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
+    private final HaFlowPathRepository haFlowPathRepository;
     private final SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final TransitVlanRepository transitVlanRepository;
@@ -71,16 +75,19 @@ public class PersistenceDataAdapter implements DataAdapter {
     private final Set<PathId> pathIds;
     private final Set<SwitchId> switchIds;
 
-    private Map<PathId, Flow> flowCache;
-    private Map<PathId, FlowPath> commonFlowPathCache;
-    private Map<PathId, FlowPath> haSubPathPathCache;
+    private Map<PathId, Flow> flowCache; // flow path id to flow map
+    private Map<PathId, FlowPath> commonFlowPathCache; // flow path id to flow path of common flows and y flows map
+    private Map<PathId, FlowPath> haSubPathPathCache; // flow path id to ha-sub path map
     private Map<PathId, FlowTransitEncapsulation> encapsulationCache;
     private Map<SwitchId, Switch> switchCache;
     private Map<SwitchId, SwitchProperties> switchPropertiesCache;
     private Map<SwitchId, Set<Integer>> switchIslPortsCache;
     private Map<SwitchId, List<LagLogicalPort>> switchLagPortsCache;
     private KildaFeatureToggles featureToggles;
-    private Map<PathId, YFlow> yFlowCache;
+    private Map<PathId, YFlow> yFlowCache; // flow path id to y-flow map
+    private Map<PathId, HaFlow> haFlowCache; // ha-path id/ha-sub path to ha-flow map
+    private Map<PathId, HaFlowPath> haFlowPathCache;
+    private Set<PathId> haFlowPathIds;
 
     @Builder.Default
     @Deprecated
@@ -92,6 +99,7 @@ public class PersistenceDataAdapter implements DataAdapter {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
+        haFlowPathRepository = repositoryFactory.createHaFlowPathRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
@@ -227,6 +235,32 @@ public class PersistenceDataAdapter implements DataAdapter {
 
     @Override
     public HaFlow getHaFlow(PathId pathId) {
-        return null;
+        if (haFlowCache == null) {
+            haFlowCache = haFlowPathRepository.findHaFlowsByPathIds(getHaFlowPathIds());
+            for (PathId subPathId : getHaFlowSubPaths().keySet()) {
+                FlowPath subPath = getHaFlowSubPaths().get(subPathId);
+                if (subPath != null && subPath.getHaFlowPath() != null && subPath.getHaSubFlow().getHaFlow() != null) {
+                    haFlowCache.put(subPathId, subPath.getHaSubFlow().getHaFlow());
+                }
+            }
+        }
+        return haFlowCache.get(pathId);
+    }
+
+    @Override
+    public HaFlowPath getHaFlowPath(PathId haFlowPathId) {
+        if (haFlowPathCache == null) {
+            Set<PathId> haFlowPathIds = getHaFlowPathIds();
+            haFlowPathCache = haFlowPathRepository.findByIds(haFlowPathIds);
+        }
+        return haFlowPathCache.get(haFlowPathId);
+    }
+
+    private Set<PathId> getHaFlowPathIds() {
+        if (haFlowPathIds == null) {
+            haFlowPathIds = getHaFlowSubPaths().values().stream()
+                    .map(FlowPath::getHaFlowPathId).collect(Collectors.toSet());
+        }
+        return haFlowPathIds;
     }
 }

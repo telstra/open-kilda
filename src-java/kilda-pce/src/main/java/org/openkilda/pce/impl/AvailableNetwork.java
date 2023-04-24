@@ -168,7 +168,7 @@ public class AvailableNetwork {
      * Adds diversity weights into {@link AvailableNetwork} based on passed flow path.
      */
     public void processDiversityGroupForSingleSwitchFlow(FlowPath flowPath) {
-        if (flowPath.isOneSwitchFlow()) {
+        if (flowPath.isOneSwitchPath()) {
             getSwitch(flowPath.getDestSwitchId()).increaseDiversityGroupUseCounter();
         }
     }

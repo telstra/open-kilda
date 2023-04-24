@@ -32,6 +32,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.model.HaFlow;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
@@ -52,6 +53,7 @@ import java.util.stream.Collectors;
  */
 public class HaFlowReadBolt extends AbstractBolt {
     private transient HaFlowRepository haFlowRepository;
+    private transient FlowRepository flowRepository;
 
     public HaFlowReadBolt(@NonNull PersistenceManager persistenceManager) {
         super(persistenceManager);
@@ -60,6 +62,7 @@ public class HaFlowReadBolt extends AbstractBolt {
     @Override
     public void init() {
         haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
     }
 
     protected void handleInput(Tuple input) throws Exception {
@@ -85,7 +88,7 @@ public class HaFlowReadBolt extends AbstractBolt {
 
     private List<HaFlowResponse> processHaFlowDumpRequest() {
         return haFlowRepository.findAll().stream()
-                .map(HaFlowMapper.INSTANCE::toHaFlowDto)
+                .map(haFlow -> HaFlowMapper.INSTANCE.toHaFlowDto(haFlow, flowRepository, haFlowRepository))
                 .map(HaFlowResponse::new)
                 .collect(Collectors.toList());
     }
@@ -96,7 +99,7 @@ public class HaFlowReadBolt extends AbstractBolt {
             throw new MessageException(ErrorType.NOT_FOUND, "Couldn't get HA-flow",
                     String.format("HA-flow %s not found.", request.getHaFlowId()));
         }
-        return new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(haFlow.get()));
+        return new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(haFlow.get(), flowRepository, haFlowRepository));
     }
 
     private void emitMessages(Tuple input, String requestId, List<? extends InfoData> messageData) {

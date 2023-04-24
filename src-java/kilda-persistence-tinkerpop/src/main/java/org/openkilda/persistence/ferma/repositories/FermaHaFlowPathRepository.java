@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaFlowPath.HaFlowPathData;
 import org.openkilda.model.PathId;
@@ -28,9 +29,14 @@ import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tinkerpop.gremlin.process.traversal.P;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -90,6 +96,35 @@ public class FermaHaFlowPathRepository extends FermaGenericRepository<HaFlowPath
     }
 
     @Override
+    public Map<PathId, HaFlow> findHaFlowsByPathIds(Set<PathId> pathIds) {
+        Set<String> graphPathIds = pathIds.stream()
+                .map(PathIdConverter.INSTANCE::toGraphProperty)
+                .collect(Collectors.toSet());
+        List<? extends HaFlowPathFrame> flowPathFrames = framedGraph().traverse(g -> g.V()
+                        .hasLabel(HaFlowPathFrame.FRAME_LABEL)
+                        .has(HaFlowPathFrame.HA_PATH_ID_PROPERTY, P.within(graphPathIds)))
+                .toListExplicit(HaFlowPathFrame.class);
+        return flowPathFrames.stream()
+                .map(HaFlowPath::new)
+                .filter(path -> path.getHaFlow() != null)
+                .collect(Collectors.toMap(HaFlowPath::getHaPathId, HaFlowPath::getHaFlow));
+    }
+
+    @Override
+    public Map<PathId, HaFlowPath> findByIds(Set<PathId> pathIds) {
+        Set<String> graphPathIds = pathIds.stream()
+                .map(PathIdConverter.INSTANCE::toGraphProperty)
+                .collect(Collectors.toSet());
+        List<? extends HaFlowPathFrame> haFlowPathFrames = framedGraph().traverse(g -> g.V()
+                        .hasLabel(HaFlowPathFrame.FRAME_LABEL)
+                        .has(HaFlowPathFrame.HA_PATH_ID_PROPERTY, P.within(graphPathIds)))
+                .toListExplicit(HaFlowPathFrame.class);
+        return haFlowPathFrames.stream()
+                .map(HaFlowPath::new)
+                .collect(Collectors.toMap(HaFlowPath::getHaPathId, Function.identity()));
+    }
+
+    @Override
     public Optional<HaFlowPath> remove(PathId haFlowPathId) {
         TransactionManager transactionManager = getTransactionManager();
         if (transactionManager.isTxOpen()) {
@@ -119,7 +154,7 @@ public class FermaHaFlowPathRepository extends FermaGenericRepository<HaFlowPath
     protected void doRemove(HaFlowPathFrame frame) {
         frame.getSubPaths().forEach(subPath -> {
             if (subPath.getData() instanceof FlowPathFrame) {
-                // No need to call the PathSegment repository, as segments already detached along with the path.
+                // No need to call the FlowPath repository, as sub paths already detached along with the path.
                 ((FlowPathFrame) subPath.getData()).remove();
             }
         });

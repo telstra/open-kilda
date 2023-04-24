@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions;
 import static java.lang.String.format;
 
 import org.openkilda.model.PathSegment;
-import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.HaFlowPathRepository;
@@ -30,8 +29,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.model.Segment;
 
-import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -97,20 +96,5 @@ public class ResourcesDeallocationAction extends
                         islRepository.updateAvailableBandwidth(
                                 segment.getSrcSwitchId(), segment.getSrcPort(),
                                 segment.getDstSwitchId(), segment.getDstPort())));
-    }
-
-    @Value
-    private static class Segment {
-        public Segment(PathSegment pathSegment) {
-            this.srcSwitchId = pathSegment.getSrcSwitchId();
-            this.srcPort = pathSegment.getSrcPort();
-            this.dstSwitchId = pathSegment.getDestSwitchId();
-            this.dstPort = pathSegment.getDestPort();
-        }
-
-        SwitchId srcSwitchId;
-        int srcPort;
-        SwitchId dstSwitchId;
-        int dstPort;
     }
 }

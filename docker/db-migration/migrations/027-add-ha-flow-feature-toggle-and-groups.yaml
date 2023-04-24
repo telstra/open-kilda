@@ -21,14 +21,18 @@ databaseChangeLog:
         - sql: "DROP PROPERTY ha_flow.diverse_group_id"
         - sql: "DROP PROPERTY ha_flow.affinity_group_id"
   - changeSet:
-      id: add_ha_path_id_field_in_flow_path_object
+      id: add_ha_fields_into_flow_path_object
       author: snikitin
       changes:
         - sql: "CREATE PROPERTY flow_path.ha_path_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_path.ha_sub_flow_id IF NOT EXISTS STRING"
         - sql: "CREATE INDEX flow_path.ha_path_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_path.ha_sub_flow_id NOTUNIQUE_HASH_INDEX"
       rollback:
         - sql: "DROP INDEX flow_path.ha_path_id"
+        - sql: "DROP INDEX flow_path.ha_sub_flow_id"
         - sql: "DROP PROPERTY flow_path.ha_path_id"
+        - sql: "DROP PROPERTY flow_path.ha_sub_flow_id"
   - changeSet:
       id: change_type_of_ha_sub_flow_description_to_string
       author: snikitin

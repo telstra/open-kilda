@@ -43,8 +43,6 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.HaFlowPathRepository;
-import org.openkilda.persistence.repositories.HaFlowRepository;
-import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
@@ -86,9 +84,7 @@ public class ResourcesAllocationAction extends
     protected final int pathAllocationRetryDelay;
     private final FlowResourcesManager resourcesManager;
     private final IslRepository islRepository;
-    private final HaFlowRepository haFlowRepository;
     private final HaFlowPathRepository haFlowPathRepository;
-    private final HaSubFlowRepository haSubFlowRepository;
 
     private final FlowPathBuilder flowPathBuilder;
 
@@ -102,9 +98,7 @@ public class ResourcesAllocationAction extends
         this.pathAllocationRetryDelay = pathAllocationRetryDelay;
         this.resourcesManager = resourcesManager;
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
-        this.haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
         this.haFlowPathRepository = persistenceManager.getRepositoryFactory().createHaFlowPathRepository();
-        this.haSubFlowRepository = persistenceManager.getRepositoryFactory().createHaSubFlowRepository();
         KildaConfigurationRepository kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
                 .createKildaConfigurationRepository();
 
@@ -166,7 +160,7 @@ public class ResourcesAllocationAction extends
             transactionManager.doInTransaction(() -> {
                 HaFlow haFlow = HaFlowMapper.INSTANCE.toHaFlow(targetFlow);
                 haFlow.setStatus(FlowStatus.IN_PROGRESS);
-                //TODO add diversity group
+                getOrCreateFlowDiverseGroup(targetFlow.getDiverseFlowId()).ifPresent(haFlow::setDiverseGroupId);
                 haFlowRepository.add(haFlow);
 
                 Set<HaSubFlow> subFlows = new HashSet<>();
@@ -263,7 +257,14 @@ public class ResourcesAllocationAction extends
         GetHaPathsResult protectedPaths = pathComputer.getHaPath(tmpFlow, true);
         stateMachine.setBackUpProtectedPathComputationWayUsed(protectedPaths.isBackUpPathComputationWayUsed());
 
-        //TODO check protected overlapping?
+        boolean overlappingProtectedPathFound =
+                flowPathBuilder.arePathsOverlapped(protectedPaths.getForward(), tmpFlow.getForwardPath())
+                        || flowPathBuilder.arePathsOverlapped(protectedPaths.getReverse(), tmpFlow.getReversePath());
+        if (overlappingProtectedPathFound) {
+            log.info("Couldn't find non overlapping protected path. Result ha-flow state: {}", tmpFlow);
+            throw new UnroutableFlowException("Couldn't find non overlapping protected path", tmpFlow.getHaFlowId());
+        }
+
         log.debug("Creating the protected path {} for flow {}", protectedPaths, tmpFlow);
 
         transactionManager.doInTransaction(() -> {
@@ -278,7 +279,6 @@ public class ResourcesAllocationAction extends
                     haFlow, haFlowResources.getForward(), protectedPaths.getForward(),
                     cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build());
             forward.setStatus(FlowPathStatus.IN_PROGRESS);
-            //TODO check shared group
             forward.setSubPaths(createForwardSubPaths(protectedPaths, haFlow, haFlowResources, forward, stateMachine));
             haFlowPathRepository.add(forward);
             forward.setHaSubFlows(haFlow.getHaSubFlows());
@@ -319,6 +319,7 @@ public class ResourcesAllocationAction extends
                     haFlow.getSharedSwitch(), subFlow.getEndpointSwitch(),
                     forward.getCookie().toBuilder().subType(getSubType(i)).build());
             flowPathRepository.add(forwardSubPath);
+            forwardSubPath.setHaSubFlow(subFlow);
             forwardSubPaths.add(forwardSubPath);
             stateMachine.getBackUpComputationWayUsedMap().put(forwardSubPath.getPathId(), subPath.isBackupPath());
         }
@@ -338,6 +339,7 @@ public class ResourcesAllocationAction extends
                     subFlow.getEndpointSwitch(), haFlow.getSharedSwitch(),
                     reverse.getCookie().toBuilder().subType(getSubType(i)).build());
             flowPathRepository.add(reverseSubPath);
+            reverseSubPath.setHaSubFlow(subFlow);
             reverseSubPaths.add(reverseSubPath);
             stateMachine.getBackUpComputationWayUsedMap().put(reverseSubPath.getPathId(), subPath.isBackupPath());
         }
@@ -363,9 +365,8 @@ public class ResourcesAllocationAction extends
     }
 
     private Message buildResponseMessage(HaFlow haFlow, CommandContext commandContext) {
-        //TODO add diverse into response
         HaFlowResponse response = HaFlowResponse.builder()
-                .haFlow(HaFlowMapper.INSTANCE.toHaFlowDto(haFlow))
+                .haFlow(HaFlowMapper.INSTANCE.toHaFlowDto(haFlow, flowRepository, haFlowRepository))
                 .build();
         return new InfoMessage(response, commandContext.getCreateTime(), commandContext.getCorrelationId());
     }
@@ -382,12 +383,6 @@ public class ResourcesAllocationAction extends
         // Notify about failed allocation.
         stateMachine.notifyEventListeners(listener ->
                 listener.onFailed(stateMachine.getHaFlowId(), stateMachine.getErrorReason(), errorType));
-    }
-
-    protected HaFlow getHaFlow(String haFlowId) {
-        return haFlowRepository.findById(haFlowId)
-                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                        format("HA-flow %s not found", haFlowId)));
     }
 
     private FlowSubType getSubType(int id) {

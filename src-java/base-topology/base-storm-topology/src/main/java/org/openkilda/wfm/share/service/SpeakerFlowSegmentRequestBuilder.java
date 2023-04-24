@@ -355,13 +355,13 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
 
         if (lastSegment != null) {
             if (doEgress) {
-                requests.addAll(makeEgressSegmentRequests(context, path, encapsulation, lastSegment, egressSide,
+                requests.addAll(makeEgressSegmentRequests(context, flow, path, encapsulation, lastSegment, egressSide,
                         ingressSide, mirrorContext));
             }
         } else if (flow.isOneSwitchFlow()) {
             // one switch flow (path without path segments)
-            requests.addAll(makeOneSwitchRequest(context, path, ingressSide, egressSide, rulesContext, mirrorContext,
-                    flow.getVlanStatistics()));
+            requests.addAll(makeOneSwitchRequest(context, flow, path, ingressSide, egressSide, rulesContext,
+                    mirrorContext, flow.getVlanStatistics()));
             if (singleSwitchLoopRuleRequired(flow)) {
                 requests.add(makeSingleSwitchIngressLoopRequest(context, path, ingressSide));
             }
@@ -507,10 +507,9 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     }
 
     private List<FlowSegmentRequestFactory> makeEgressSegmentRequests(
-            CommandContext context, FlowPath path, FlowTransitEncapsulation encapsulation,
+            CommandContext context, Flow flow, FlowPath path, FlowTransitEncapsulation encapsulation,
             PathSegment segment, FlowSideAdapter flowSide, FlowSideAdapter ingressFlowSide,
             MirrorContext mirrorContext) {
-        Flow flow = flowSide.getFlow();
         PathSegmentSide segmentSide = makePathSegmentDestSide(segment);
 
         UUID commandId = commandIdGenerator.generate();
@@ -554,9 +553,8 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     }
 
     private List<FlowSegmentRequestFactory> makeOneSwitchRequest(
-            CommandContext context, FlowPath path, FlowSideAdapter ingressSide, FlowSideAdapter egressSide,
+            CommandContext context, Flow flow, FlowPath path, FlowSideAdapter ingressSide, FlowSideAdapter egressSide,
             RulesContext rulesContext, MirrorContext mirrorContext, Set<Integer> statVlans) {
-        Flow flow = ingressSide.getFlow();
 
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());

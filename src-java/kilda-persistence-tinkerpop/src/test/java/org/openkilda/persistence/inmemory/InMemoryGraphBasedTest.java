@@ -45,6 +45,10 @@ public abstract class InMemoryGraphBasedTest {
     public static final PathId PATH_ID_3 = new PathId("path_3");
     public static final String HA_FLOW_ID_1 = "test_ha_flow_1";
     public static final String HA_FLOW_ID_2 = "test_ha_flow_2";
+    public static final String HA_FLOW_ID_3 = "test_ha_flow_3";
+    public static final String Y_FLOW_ID_1 = "test_y_flow_1";
+    public static final String Y_FLOW_ID_2 = "test_y_flow_2";
+    public static final String Y_FLOW_ID_3 = "test_y_flow_3";
     public static final String SUB_FLOW_ID_1 = "test_sub_flow_1";
     public static final String SUB_FLOW_ID_2 = "test_sub_flow_2";
     public static final String SUB_FLOW_ID_3 = "test_sub_flow_3";

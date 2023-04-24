@@ -209,13 +209,13 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
 
         haFlowPathRepository.add(haPath1);
         haPath1.setSubPaths(Lists.newArrayList(
-                createPathWithSegments(SUB_PATH_ID_1, haPath1, switch1, switch2, switch3),
-                createPathWithSegments(SUB_PATH_ID_2, haPath1, switch1, switch3, switch2)));
+                createPathWithSegments(SUB_PATH_ID_1, haPath1, subFlow1, switch1, switch2, switch3),
+                createPathWithSegments(SUB_PATH_ID_2, haPath1, subFlow2, switch1, switch3, switch2)));
         haPath1.setHaSubFlows(Lists.newArrayList(subFlow1, subFlow2));
 
         haFlowPathRepository.add(haPath2);
         haPath2.setSubPaths(Lists.newArrayList(
-                createPathWithSegments(SUB_PATH_ID_3, haPath2, switch3, switch2, switch1)));
+                createPathWithSegments(SUB_PATH_ID_3, haPath2, subFlow1, switch3, switch2, switch1)));
         haPath2.setHaSubFlows(Lists.newArrayList(subFlow2, subFlow1));
         haFlow1.addPaths(haPath1, haPath2);
 
@@ -391,10 +391,11 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
     }
 
     private FlowPath createPathWithSegments(
-            PathId pathId, HaFlowPath haFlowPath, Switch switch1, Switch switch2, Switch switch3) {
+            PathId pathId, HaFlowPath haFlowPath, HaSubFlow haSubFlow, Switch switch1, Switch switch2, Switch switch3) {
         FlowPath path = buildPath(pathId, haFlowPath, switch1, switch3);
         flowPathRepository.add(path);
         path.setSegments(buildSegments(path.getPathId(), switch1, switch2, switch3));
+        path.setHaSubFlow(haSubFlow);
         return path;
     }
 }

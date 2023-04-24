@@ -485,24 +485,33 @@ public class FlowValidator {
 
     @VisibleForTesting
     void checkDiverseFlow(RequestedFlow targetFlow) throws InvalidFlowException {
+        String affinityGroup;
         Flow diverseFlow = flowRepository.findById(targetFlow.getDiverseFlowId()).orElse(null);
-        if (diverseFlow == null) {
-            YFlow diverseYFlow = yFlowRepository.findById(targetFlow.getDiverseFlowId())
-                    .orElseThrow(() ->
-                            new InvalidFlowException(format("Failed to find diverse flow id %s",
-                                    targetFlow.getDiverseFlowId()), ErrorType.PARAMETERS_INVALID));
-            diverseFlow = diverseYFlow.getSubFlows().stream()
-                    .map(YSubFlow::getFlow)
-                    .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
-                    .findFirst()
-                    .orElseThrow(() ->
-                            new InvalidFlowException(
-                                    format("Failed to find main affinity flow for diverse y-flow id %s",
-                                            targetFlow.getDiverseFlowId()), ErrorType.INTERNAL_ERROR));
+        if (diverseFlow != null) {
+            affinityGroup = diverseFlow.getAffinityGroupId();
+        } else {
+            YFlow diverseYFlow = yFlowRepository.findById(targetFlow.getDiverseFlowId()).orElse(null);
+            if (diverseYFlow != null) {
+                Flow diverseYSubFlow = diverseYFlow.getSubFlows().stream()
+                        .map(YSubFlow::getFlow)
+                        .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
+                        .findFirst()
+                        .orElseThrow(() ->
+                                new InvalidFlowException(
+                                        format("Failed to find main affinity flow for diverse y-flow id %s",
+                                                targetFlow.getDiverseFlowId()), ErrorType.INTERNAL_ERROR));
+                affinityGroup = diverseYSubFlow.getAffinityGroupId();
+            } else {
+                if (!haFlowRepository.exists(targetFlow.getDiverseFlowId())) {
+                    throw new InvalidFlowException(format("Failed to find diverse flow id %s",
+                            targetFlow.getDiverseFlowId()), ErrorType.PARAMETERS_INVALID);
+                }
+                affinityGroup = null;
+            }
         }
 
-        if (StringUtils.isNotBlank(diverseFlow.getAffinityGroupId())) {
-            String diverseFlowId = diverseFlow.getAffinityGroupId();
+        if (StringUtils.isNotBlank(affinityGroup)) {
+            String diverseFlowId = affinityGroup;
             diverseFlow = flowRepository.findById(diverseFlowId)
                     .orElseThrow(() ->
                             new InvalidFlowException(format("Failed to find diverse flow id %s", diverseFlowId),
@@ -641,7 +650,7 @@ public class FlowValidator {
             return;
         }
 
-        if (! switchProperties.isMultiTable()) {
+        if (!switchProperties.isMultiTable()) {
             final String errorMessage = format(
                     "Flow's %s endpoint is double VLAN tagged, switch %s is not capable to support such endpoint "
                             + "encapsulation.",

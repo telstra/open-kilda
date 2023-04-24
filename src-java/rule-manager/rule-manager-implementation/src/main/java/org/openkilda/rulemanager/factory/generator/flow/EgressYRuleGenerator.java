@@ -15,7 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
-import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.rulemanager.utils.Utils.checkAndBuildEgressEndpoint;
 
 import org.openkilda.model.FlowEndpoint;
@@ -54,7 +53,7 @@ public class EgressYRuleGenerator extends EgressRuleGenerator implements Metered
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
-        if (flowPath.isOneSwitchFlow() || flowPath.getSegments().isEmpty()) {
+        if (flowPath.isOneSwitchPath() || flowPath.getSegments().isEmpty()) {
             throw new IllegalStateException("Y-flow rules can't be created for a one-switch flow");
         }
         List<SpeakerData> result = new ArrayList<>();
@@ -63,15 +62,9 @@ public class EgressYRuleGenerator extends EgressRuleGenerator implements Metered
         SpeakerData command = buildEgressCommand(sw, lastSegment.getDestPort(), endpoint);
         result.add(command);
 
-        if (generateMeterCommand) {
-            SpeakerData meterCommand = buildMeter(externalMeterCommandUuid, flowPath, config, sharedMeterId, sw);
-            if (meterCommand != null) {
-                result.add(meterCommand);
-                command.getDependsOn().add(externalMeterCommandUuid);
-            }
-        } else if (sw.getFeatures().contains(METERS) && sharedMeterId != null) {
-            command.getDependsOn().add(externalMeterCommandUuid);
-        }
+        buildMeterCommandAndAddDependency(sharedMeterId, flowPath.getBandwidth(), command, externalMeterCommandUuid,
+                config, generateMeterCommand, sw)
+                .ifPresent(result::add);
         return result;
     }
 

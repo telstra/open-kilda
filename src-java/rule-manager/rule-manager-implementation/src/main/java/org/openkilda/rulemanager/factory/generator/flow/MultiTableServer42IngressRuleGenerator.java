@@ -84,7 +84,7 @@ public class MultiTableServer42IngressRuleGenerator extends Server42IngressRuleG
     public List<SpeakerData> generateCommands(Switch sw) {
         List<SpeakerData> result = new ArrayList<>();
         if (switchProperties == null || !switchProperties.isMultiTable() || !switchProperties.isServer42FlowRtt()
-                || flowPath.isOneSwitchFlow()) {
+                || flowPath.isOneSwitchPath()) {
             return result;
         }
 
