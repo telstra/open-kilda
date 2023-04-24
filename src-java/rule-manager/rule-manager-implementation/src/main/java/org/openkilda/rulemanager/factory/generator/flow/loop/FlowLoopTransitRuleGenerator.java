@@ -56,7 +56,7 @@ public class FlowLoopTransitRuleGenerator extends NotIngressRuleGenerator {
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
-        if (flowPath.isOneSwitchFlow() || !flow.isLooped()) {
+        if (flowPath.isOneSwitchPath() || !flow.isLooped()) {
             return new ArrayList<>();
         }
         if (!sw.getSwitchId().equals(flow.getLoopSwitchId())) {

@@ -54,6 +54,7 @@ public class YFlowDto implements Serializable {
     SwitchId protectedPathYPoint;
     Set<String> diverseWithFlows;
     Set<String> diverseWithYFlows;
+    Set<String> diverseWithHaFlows;
     List<SubFlowDto> subFlows;
     Instant timeCreate;
     Instant timeUpdate;

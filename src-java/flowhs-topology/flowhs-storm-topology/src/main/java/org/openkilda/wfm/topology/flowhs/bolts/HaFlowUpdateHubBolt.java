@@ -33,13 +33,17 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
-import org.openkilda.model.HaFlow.HaSharedEndpoint;
 import org.openkilda.model.HaSubFlow;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
+import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
@@ -61,7 +65,11 @@ import java.util.stream.Collectors;
  */
 public class HaFlowUpdateHubBolt extends AbstractBolt {
     public static final String COMMON_ERROR_MESSAGE = "Couldn't update HA-flow";
+    public static final String HA_FLOW_MODIFICATION_IS_DISABLED_MESSAGE = "HA-flow modification is disabled";
     private transient HaFlowRepository haFlowRepository;
+    private transient FlowRepository flowRepository;
+    private transient SwitchRepository switchRepository;
+    private transient KildaFeatureTogglesRepository kildaFeatureTogglesRepository;
 
     public HaFlowUpdateHubBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
@@ -70,6 +78,9 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
     @Override
     protected void init() {
         haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        kildaFeatureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
     }
 
     @Override
@@ -86,21 +97,25 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
                 unhandledInput(input);
             }
         } catch (FlowProcessingException e) {
-            emitErrorMessage(e.getErrorType(), COMMON_ERROR_MESSAGE,  e.getMessage());
+            emitErrorMessage(e.getErrorType(), COMMON_ERROR_MESSAGE, e.getMessage());
+        } catch (SwitchNotFoundException e) {
+            emitErrorMessage(ErrorType.NOT_FOUND, COMMON_ERROR_MESSAGE, e.getMessage());
         } catch (Exception e) {
             emitErrorMessage(ErrorType.INTERNAL_ERROR, COMMON_ERROR_MESSAGE, e.getMessage());
         }
     }
 
-    private void handleHaFlowUpdate(String key, HaFlowRequest payload) {
+    private void handleHaFlowUpdate(String key, HaFlowRequest payload) throws SwitchNotFoundException {
         HaFlow returnHaFlow = persistenceManager.getTransactionManager().doInTransaction(() -> {
+            checkHaFlowModificationFeatureToggle();
+
             Optional<HaFlow> foundHaFlow = haFlowRepository.findById(payload.getHaFlowId());
             if (!foundHaFlow.isPresent()) {
                 throw new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("HA-flow %s not found.", payload.getHaFlowId()));
             }
             HaFlow haFlow = foundHaFlow.get();
-            Map<String, HaSubFlow> subFlowMap = haFlow.getSubFlows().stream()
+            Map<String, HaSubFlow> subFlowMap = haFlow.getHaSubFlows().stream()
                     .collect(Collectors.toMap(HaSubFlow::getHaSubFlowId, Function.identity()));
 
             for (HaSubFlowDto subFlowPayload : payload.getSubFlows()) {
@@ -115,11 +130,15 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
             updateHaFlow(haFlow, payload);
             return haFlow;
         });
-        sendHaFlowToNorthBound(key, new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(returnHaFlow)));
+        sendHaFlowToNorthBound(key, new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(
+                returnHaFlow, flowRepository, haFlowRepository)));
     }
 
-    private void handleHaFlowPartialUpdate(String key, HaFlowPartialUpdateRequest payload) {
+    private void handleHaFlowPartialUpdate(String key, HaFlowPartialUpdateRequest payload)
+            throws SwitchNotFoundException {
         HaFlow returnHaFlow = persistenceManager.getTransactionManager().doInTransaction(() -> {
+            checkHaFlowModificationFeatureToggle();
+
             Optional<HaFlow> foundHaFlow = haFlowRepository.findById(payload.getHaFlowId());
             if (!foundHaFlow.isPresent()) {
                 throw new FlowProcessingException(ErrorType.NOT_FOUND,
@@ -132,11 +151,12 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
             updateHaFlow(haFlow, payload);
             return haFlow;
         });
-        sendHaFlowToNorthBound(key, new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(returnHaFlow)));
+        sendHaFlowToNorthBound(key, new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(
+                returnHaFlow, flowRepository, haFlowRepository)));
     }
 
-    private void updateSubFlows(HaFlowPartialUpdateRequest payload, HaFlow haFlow) {
-        Map<String, HaSubFlow> subFlowMap = haFlow.getSubFlows().stream()
+    private void updateSubFlows(HaFlowPartialUpdateRequest payload, HaFlow haFlow) throws SwitchNotFoundException {
+        Map<String, HaSubFlow> subFlowMap = haFlow.getHaSubFlows().stream()
                 .collect(Collectors.toMap(HaSubFlow::getHaSubFlowId, Function.identity()));
 
         for (HaSubFlowPartialUpdateDto subFlowPayload : payload.getSubFlows()) {
@@ -150,8 +170,13 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
         }
     }
 
-    private void updateHaFlow(HaFlow target, HaFlowRequest source) {
-        target.setSharedEndpoint(HaFlowMapper.INSTANCE.toEndpoint(source.getSharedEndpoint()));
+    private void updateHaFlow(HaFlow target, HaFlowRequest source) throws SwitchNotFoundException {
+        if (source.getSharedEndpoint() != null) {
+            target.setSharedSwitch(getSwitch(source.getSharedEndpoint().getSwitchId()));
+            target.setSharedPort(source.getSharedEndpoint().getPortNumber());
+            target.setSharedOuterVlan(source.getSharedEndpoint().getOuterVlanId());
+            target.setSharedInnerVlan(source.getSharedEndpoint().getInnerVlanId());
+        }
         target.setMaximumBandwidth(source.getMaximumBandwidth());
         target.setPathComputationStrategy(source.getPathComputationStrategy());
         target.setEncapsulationType(source.getEncapsulationType());
@@ -166,7 +191,7 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
         target.setAllocateProtectedPath(source.isAllocateProtectedPath());
     }
 
-    private void updateHaFlow(HaFlow target, HaFlowPartialUpdateRequest source) {
+    private void updateHaFlow(HaFlow target, HaFlowPartialUpdateRequest source) throws SwitchNotFoundException {
         updateSharedEndpoint(target, source.getSharedEndpoint());
         Optional.ofNullable(source.getMaximumBandwidth()).ifPresent(target::setMaximumBandwidth);
         Optional.ofNullable(source.getPathComputationStrategy()).ifPresent(target::setPathComputationStrategy);
@@ -182,30 +207,33 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
         Optional.ofNullable(source.getAllocateProtectedPath()).ifPresent(target::setAllocateProtectedPath);
     }
 
-    private void updateSharedEndpoint(HaFlow targetHaFlow, FlowPartialUpdateEndpoint source) {
-        HaSharedEndpoint targetEndpoint = targetHaFlow.getSharedEndpoint();
+    private void updateSharedEndpoint(HaFlow targetHaFlow, FlowPartialUpdateEndpoint source)
+            throws SwitchNotFoundException {
         if (source == null) {
             return;
         }
-        SwitchId switchId = Optional.ofNullable(source.getSwitchId()).orElse(targetEndpoint.getSwitchId());
-        int port = Optional.ofNullable(source.getPortNumber()).orElse(targetEndpoint.getPortNumber());
-        int vlanId = Optional.ofNullable(source.getVlanId()).orElse(targetEndpoint.getOuterVlanId());
-        int innerVlanId = Optional.ofNullable(source.getInnerVlanId()).orElse(targetEndpoint.getInnerVlanId());
-        targetHaFlow.setSharedEndpoint(new HaSharedEndpoint(switchId, port, vlanId, innerVlanId));
+        if (source.getSwitchId() != null) {
+            targetHaFlow.setSharedSwitch(getSwitch(source.getSwitchId()));
+        }
+        Optional.ofNullable(source.getPortNumber()).ifPresent(targetHaFlow::setSharedPort);
+        Optional.ofNullable(source.getVlanId()).ifPresent(targetHaFlow::setSharedOuterVlan);
+        Optional.ofNullable(source.getInnerVlanId()).ifPresent(targetHaFlow::setSharedInnerVlan);
     }
 
-    private void updateSubFlow(HaSubFlow target, HaSubFlowDto source) {
+    private void updateSubFlow(HaSubFlow target, HaSubFlowDto source) throws SwitchNotFoundException {
         target.setDescription(source.getDescription());
-        target.setEndpointSwitchId(source.getEndpoint().getSwitchId());
+        target.setEndpointSwitch(getSwitch(source.getEndpoint().getSwitchId()));
         target.setEndpointPort(source.getEndpoint().getPortNumber());
         target.setEndpointVlan(source.getEndpoint().getOuterVlanId());
         target.setEndpointInnerVlan(source.getEndpoint().getInnerVlanId());
         target.setStatus(FlowStatus.UP);
     }
 
-    private void updateSubFlow(HaSubFlow target, HaSubFlowPartialUpdateDto source) {
+    private void updateSubFlow(HaSubFlow target, HaSubFlowPartialUpdateDto source) throws SwitchNotFoundException {
+        if (source.getEndpoint().getSwitchId() != null) {
+            target.setEndpointSwitch(getSwitch(source.getEndpoint().getSwitchId()));
+        }
         Optional.ofNullable(source.getDescription()).ifPresent(target::setDescription);
-        Optional.ofNullable(source.getEndpoint().getSwitchId()).ifPresent(target::setEndpointSwitchId);
         Optional.ofNullable(source.getEndpoint().getPortNumber()).ifPresent(target::setEndpointPort);
         Optional.ofNullable(source.getEndpoint().getVlanId()).ifPresent(target::setEndpointVlan);
         Optional.ofNullable(source.getEndpoint().getInnerVlanId()).ifPresent(target::setEndpointInnerVlan);
@@ -222,6 +250,16 @@ public class HaFlowUpdateHubBolt extends AbstractBolt {
         ErrorData errorData = new ErrorData(type, message, description);
         emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(requestId,
                 new ErrorMessage(errorData, System.currentTimeMillis(), requestId)));
+    }
+
+    private Switch getSwitch(SwitchId switchId) throws SwitchNotFoundException {
+        return switchRepository.findById(switchId).orElseThrow(() -> new SwitchNotFoundException(switchId));
+    }
+
+    private void checkHaFlowModificationFeatureToggle() {
+        if (!kildaFeatureTogglesRepository.getOrDefault().getModifyHaFlowEnabled()) {
+            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, HA_FLOW_MODIFICATION_IS_DISABLED_MESSAGE);
+        }
     }
 
     @Override

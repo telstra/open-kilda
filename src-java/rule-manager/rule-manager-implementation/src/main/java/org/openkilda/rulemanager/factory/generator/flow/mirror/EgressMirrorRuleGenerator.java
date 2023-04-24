@@ -54,7 +54,7 @@ public class EgressMirrorRuleGenerator extends EgressRuleGenerator {
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
         List<SpeakerData> result = new ArrayList<>();
-        if (flowPath.isOneSwitchFlow() || flowPath.getSegments().isEmpty()) {
+        if (flowPath.isOneSwitchPath() || flowPath.getSegments().isEmpty()) {
             return result;
         }
 

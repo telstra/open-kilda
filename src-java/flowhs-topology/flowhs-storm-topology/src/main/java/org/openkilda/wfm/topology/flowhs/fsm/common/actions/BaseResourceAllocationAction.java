@@ -276,10 +276,10 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                     if (createFoundPath) {
                         boolean ignoreBandwidth = forceToIgnoreBandwidth || flow.isIgnoreBandwidth();
                         List<PathSegment> forwardSegments = flowPathBuilder.buildPathSegments(newForwardPathId,
-                                potentialPath.getForward(), flow.getBandwidth(), ignoreBandwidth,
+                                potentialPath.getForward().getSegments(), flow.getBandwidth(), ignoreBandwidth,
                                 sharedBandwidthGroupId);
                         List<PathSegment> reverseSegments = flowPathBuilder.buildPathSegments(newReversePathId,
-                                potentialPath.getReverse(), flow.getBandwidth(), ignoreBandwidth,
+                                potentialPath.getReverse().getSegments(), flow.getBandwidth(), ignoreBandwidth,
                                 sharedBandwidthGroupId);
 
                         transactionManager.doInTransaction(() -> {

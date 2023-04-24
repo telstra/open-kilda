@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaSubFlow.HaSubFlowData;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.ferma.frames.converters.Convert;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
@@ -43,6 +44,7 @@ public abstract class HaSubFlowFrame extends KildaBaseVertexFrame implements HaS
     public static final String DESCRIPTION_PROPERTY = "description";
 
     private HaFlow haFlow;
+    private Switch endpointSwitch;
 
     @Override
     @Property(HA_FLOW_ID_PROPERTY)
@@ -68,11 +70,6 @@ public abstract class HaSubFlowFrame extends KildaBaseVertexFrame implements HaS
     @Property(ENDPOINT_SWITCH_ID_PROPERTY)
     @Convert(SwitchIdConverter.class)
     public abstract SwitchId getEndpointSwitchId();
-
-    @Override
-    @Property(ENDPOINT_SWITCH_ID_PROPERTY)
-    @Convert(SwitchIdConverter.class)
-    public abstract void setEndpointSwitchId(SwitchId endpointSwitchId);
 
     @Override
     @Property(ENDPOINT_PORT_PROPERTY)
@@ -120,6 +117,22 @@ public abstract class HaSubFlowFrame extends KildaBaseVertexFrame implements HaS
             }
         }
         return haFlow;
+    }
+
+    @Override
+    public Switch getEndpointSwitch() {
+        if (endpointSwitch == null) {
+            String switchId = getProperty(ENDPOINT_SWITCH_ID_PROPERTY);
+            endpointSwitch = SwitchFrame.load(getGraph(), switchId).map(Switch::new).orElse(null);
+        }
+        return endpointSwitch;
+    }
+
+    @Override
+    public void setEndpointSwitch(Switch endpointSwitch) {
+        this.endpointSwitch = endpointSwitch;
+        String switchId = SwitchIdConverter.INSTANCE.toGraphProperty(endpointSwitch.getSwitchId());
+        setProperty(ENDPOINT_SWITCH_ID_PROPERTY, switchId);
     }
 
     public static Optional<HaSubFlowFrame> load(FramedGraph graph, String haSubFlowId) {

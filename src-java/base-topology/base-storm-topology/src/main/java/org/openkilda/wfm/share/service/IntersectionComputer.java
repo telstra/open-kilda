@@ -159,7 +159,7 @@ public class IntersectionComputer {
     }
 
     private void handleTargetPath(FlowPath path) {
-        if (path.isOneSwitchFlow()) {
+        if (path.isOneSwitchPath()) {
             targetPathSwitches.add(path.getSrcSwitchId());
         } else {
             path.getSegments().forEach(segment -> {
@@ -173,7 +173,7 @@ public class IntersectionComputer {
     private void handleAnotherPath(FlowPath path) {
         Set<SwitchId> switches = new HashSet<>();
         Set<Edge> edges = new HashSet<>();
-        if (path.isOneSwitchFlow()) {
+        if (path.isOneSwitchPath()) {
             switches.add(path.getSrcSwitchId());
         } else {
             path.getSegments().forEach(segment -> {

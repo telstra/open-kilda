@@ -61,10 +61,8 @@ public class VxlanPoolTest extends InMemoryGraphBasedTest {
         transactionManager.doInTransaction(() -> {
             Set<Integer> vxlans = new HashSet<>();
             for (int i = MIN_VXLAN; i <= MAX_VXLAN; i++) {
-                Flow flow = Flow.builder()
-                        .flowId(format("flow_%d", i)).srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
                 vxlans.add(vxlanPool.allocate(
-                        flow,
+                        format("flow_%d", i),
                         new PathId(format("path_%d", i)),
                         new PathId(format("opposite_dummy_%d", i))).getVxlan().getVni());
             }
@@ -78,9 +76,7 @@ public class VxlanPoolTest extends InMemoryGraphBasedTest {
     public void vxlanPoolFullTest() {
         transactionManager.doInTransaction(() -> {
             for (int i = MIN_VXLAN; i <= MAX_VXLAN + 1; i++) {
-                Flow flow = Flow.builder()
-                        .flowId(format("flow_%d", i)).srcSwitch(SWITCH_A).destSwitch(SWITCH_B).build();
-                assertTrue(vxlanPool.allocate(flow, new PathId(format("path_%d", i)),
+                assertTrue(vxlanPool.allocate(format("flow_%d", i), new PathId(format("path_%d", i)),
                         new PathId(format("op_path_%d", i))).getVxlan().getVni() > 0);
             }
         });
@@ -89,9 +85,9 @@ public class VxlanPoolTest extends InMemoryGraphBasedTest {
     @Test
     public void deallocateVxlanTest() {
         transactionManager.doInTransaction(() -> {
-            vxlanPool.allocate(FLOW_1, PATH_ID_1, PATH_ID_2);
-            vxlanPool.allocate(FLOW_2, PATH_ID_2, PATH_ID_1);
-            int vni = vxlanPool.allocate(FLOW_3, PATH_ID_3, PATH_ID_3).getVxlan().getVni();
+            vxlanPool.allocate(FLOW_1.getFlowId(), PATH_ID_1, PATH_ID_2);
+            vxlanPool.allocate(FLOW_2.getFlowId(), PATH_ID_2, PATH_ID_1);
+            int vni = vxlanPool.allocate(FLOW_3.getFlowId(), PATH_ID_3, PATH_ID_3).getVxlan().getVni();
             assertEquals(2, vxlanRepository.findAll().size());
 
             vxlanPool.deallocate(PATH_ID_1);

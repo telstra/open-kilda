@@ -24,6 +24,7 @@ import static org.openkilda.rulemanager.Constants.Priority.SERVER_42_FLOW_RTT_OU
 import static org.openkilda.rulemanager.Constants.SERVER_42_FLOW_RTT_REVERSE_UDP_PORT;
 import static org.openkilda.rulemanager.Constants.SERVER_42_FLOW_RTT_REVERSE_UDP_VXLAN_PORT;
 import static org.openkilda.rulemanager.Constants.VXLAN_UDP_DST;
+import static org.openkilda.rulemanager.utils.Utils.buildPopVxlan;
 
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.Switch;
@@ -40,8 +41,6 @@ import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
-import org.openkilda.rulemanager.action.ActionType;
-import org.openkilda.rulemanager.action.PopVxlanAction;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.action.PushVlanAction;
 import org.openkilda.rulemanager.action.SetFieldAction;
@@ -80,7 +79,7 @@ public class Server42FlowRttOutputVxlanRuleGenerator implements RuleGenerator {
         }
 
         List<Action> actions = new ArrayList<>();
-        actions.add(buildPopVxlanAction(features));
+        actions.add(buildPopVxlan(sw.getSwitchId(), features));
         if (server42Vlan > 0) {
             actions.add(new PushVlanAction());
             actions.add(SetFieldAction.builder().field(Field.VLAN_VID).value(server42Vlan).build());
@@ -129,13 +128,5 @@ public class Server42FlowRttOutputVxlanRuleGenerator implements RuleGenerator {
                 .oxmSrcHeader(OpenFlowOxms.NOVIFLOW_TX_TIMESTAMP)
                 .oxmDstHeader(OpenFlowOxms.NOVIFLOW_UDP_PAYLOAD_OFFSET)
                 .build();
-    }
-
-    private static Action buildPopVxlanAction(Set<SwitchFeature> features) {
-        if (features.contains(NOVIFLOW_PUSH_POP_VXLAN)) {
-            return new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW);
-        } else {
-            return new PopVxlanAction(ActionType.POP_VXLAN_OVS);
-        }
     }
 }

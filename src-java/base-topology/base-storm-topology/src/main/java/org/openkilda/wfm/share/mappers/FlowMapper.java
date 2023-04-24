@@ -84,18 +84,19 @@ public abstract class FlowMapper {
      * Convert {@link Flow} to {@link FlowDto} with diverse flow ids and mirror paths.
      */
     public FlowDto map(Flow flow, Set<String> diverseWith, Set<String> diverseWithYFlows,
-                       List<FlowMirrorPath> flowMirrorPaths) {
-        return map(flow, diverseWith, diverseWithYFlows, flowMirrorPaths, FlowStats.EMPTY);
+                       Set<String> diverseWithHaFlows, List<FlowMirrorPath> flowMirrorPaths) {
+        return map(flow, diverseWith, diverseWithYFlows, diverseWithHaFlows, flowMirrorPaths, FlowStats.EMPTY);
     }
 
     /**
      * Convert {@link Flow} to {@link FlowDto} with diverse flow ids, mirror paths and flow properties.
      */
     public FlowDto map(Flow flow, Set<String> diverseWith, Set<String> diverseWithYFlows,
-                       List<FlowMirrorPath> flowMirrorPaths, FlowStats flowStats) {
+                       Set<String> diverseWithHaFlows, List<FlowMirrorPath> flowMirrorPaths, FlowStats flowStats) {
         FlowDto flowDto = map(flow);
         flowDto.setDiverseWith(diverseWith);
         flowDto.setDiverseWithYFlows(diverseWithYFlows);
+        flowDto.setDiverseWithHaFlows(diverseWithHaFlows);
         flowDto.setMirrorPointStatuses(map(flowMirrorPaths));
         flowDto.setForwardLatency(flowStats.getForwardLatency());
         flowDto.setReverseLatency(flowStats.getReverseLatency());

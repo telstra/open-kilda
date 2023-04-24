@@ -72,7 +72,7 @@ public abstract class YFlowRuleManagerProcessingAction<T extends YFlowProcessing
                 .switchIds(singleton(switchId))
                 .pathIds(pathIds)
                 .build();
-        List<FlowPath> flowPaths = new ArrayList<>(dataAdapter.getFlowPaths().values());
+        List<FlowPath> flowPaths = new ArrayList<>(dataAdapter.getCommonFlowPaths().values());
 
         List<SpeakerData> speakerData = ruleManager.buildRulesForYFlow(flowPaths, dataAdapter);
         return speakerData.stream()

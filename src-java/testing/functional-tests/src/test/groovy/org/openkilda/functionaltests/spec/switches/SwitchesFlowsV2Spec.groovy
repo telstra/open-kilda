@@ -146,7 +146,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         switchHelper.getFlowsV2(switchUnderTest, [freePort]).getFlowsByPort().isEmpty()
 
         cleanup:
-        Wrappers.silent(northboundV2.deleteMirrorPoint(flowId, mirrorEndpoint.getMirrorPointId()))
+        Wrappers.silent {northboundV2.deleteMirrorPoint(flowId, mirrorEndpoint.getMirrorPointId())}
     }
 
     @Tidy
@@ -175,6 +175,9 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         then: "Ports used by subflows on the switch are in response"
         flows.flowsByPort.collectMany { it.value }*.flowId
                 .containsAll(yFlow.subFlows*.flowId)
+
+        cleanup:
+        yFlow && yFlowHelper.deleteYFlow(yFlow.getYFlowId())
     }
 
     def cleanupSpec() {

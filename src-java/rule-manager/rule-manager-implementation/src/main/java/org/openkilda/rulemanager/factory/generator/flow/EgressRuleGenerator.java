@@ -15,11 +15,9 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
-import static java.lang.String.format;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
-import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
+import static org.openkilda.rulemanager.utils.Utils.buildPopVxlan;
 import static org.openkilda.rulemanager.utils.Utils.checkAndBuildEgressEndpoint;
 
 import org.openkilda.model.Flow;
@@ -37,8 +35,6 @@ import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
-import org.openkilda.rulemanager.action.ActionType;
-import org.openkilda.rulemanager.action.PopVxlanAction;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.utils.Utils;
 
@@ -59,7 +55,7 @@ public class EgressRuleGenerator extends NotIngressRuleGenerator {
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
-        if (flowPath.isOneSwitchFlow() || flowPath.getSegments().isEmpty()) {
+        if (flowPath.isOneSwitchPath() || flowPath.getSegments().isEmpty()) {
             return new ArrayList<>();
         }
 
@@ -93,15 +89,7 @@ public class EgressRuleGenerator extends NotIngressRuleGenerator {
     protected List<Action> buildTransformActions(FlowEndpoint egressEndpoint, Switch sw) {
         List<Action> result = new ArrayList<>();
         if (VXLAN.equals(encapsulation.getType())) {
-            if (sw.getFeatures().contains(NOVIFLOW_PUSH_POP_VXLAN)) {
-                result.add(new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW));
-            } else if (sw.getFeatures().contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-                result.add(new PopVxlanAction(ActionType.POP_VXLAN_OVS));
-            } else {
-                throw new IllegalArgumentException(format("Switch %s must support one of following features to pop "
-                        + "VXLAN: [%s, %s]", sw.getSwitchId(), NOVIFLOW_PUSH_POP_VXLAN,
-                        KILDA_OVS_PUSH_POP_MATCH_VXLAN));
-            }
+            result.add(buildPopVxlan(sw.getSwitchId(), sw.getFeatures()));
         }
 
         List<Integer> targetVlanStack = egressEndpoint.getVlanStack();

@@ -16,24 +16,24 @@
 package org.openkilda.persistence.ferma.repositories;
 
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.HaFlow;
-import org.openkilda.model.HaFlow.HaSharedEndpoint;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaSubFlow;
-import org.openkilda.model.HaSubFlowEdge;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
-import com.google.common.collect.Sets;
+import com.google.common.collect.Lists;
 
-import java.util.Set;
+import java.util.List;
 
 public final class FermaModelUtils {
     private FermaModelUtils() {
@@ -43,14 +43,13 @@ public final class FermaModelUtils {
      * Builds HaFlowPath object.
      */
     public static HaFlowPath buildHaFlowPath(
-            PathId pathId, long bandwidth, FlowSegmentCookie cookie, String sharedGroupId, MeterId sharedMeterId,
+            PathId pathId, long bandwidth, FlowSegmentCookie cookie, MeterId sharedMeterId,
             MeterId yPointMeterId, Switch sharedSwitch, SwitchId yPointSwitchId, GroupId yPointGroupId) {
         return HaFlowPath.builder()
                 .haPathId(pathId)
                 .bandwidth(bandwidth)
                 .ignoreBandwidth(true)
                 .cookie(cookie)
-                .sharedBandwidthGroupId(sharedGroupId)
                 .sharedPointMeterId(sharedMeterId)
                 .yPointMeterId(yPointMeterId)
                 .sharedSwitch(sharedSwitch)
@@ -61,34 +60,13 @@ public final class FermaModelUtils {
     }
 
     /**
-     * Builds HaSubFlowEdge object.
-     */
-    public static HaSubFlowEdge buildHaSubFlowEdge(String haFlowId, HaSubFlow haSubFlow, MeterId meterId) {
-        return HaSubFlowEdge.builder()
-                .haFlowId(haFlowId)
-                .haSubFlow(haSubFlow)
-                .meterId(meterId)
-                .build();
-    }
-
-    /**
-     * Builds HaSubFlowEdge objects.
-     */
-    public static Set<HaSubFlowEdge> buildHaSubFlowEdges(
-            String haFLowId, HaSubFlow subFlow1, HaSubFlow subFlow2, MeterId meterId1, MeterId meterId2) {
-        HaSubFlowEdge edge1 = buildHaSubFlowEdge(haFLowId, subFlow1, meterId1);
-        HaSubFlowEdge edge2 = buildHaSubFlowEdge(haFLowId, subFlow2, meterId2);
-        return Sets.newHashSet(edge1, edge2);
-    }
-
-    /**
      * Builds HaSubFlow object.
      */
     public static HaSubFlow buildHaSubFlow(
-            String subFlowId, SwitchId switchId, int port, int vlan, int innerVlan, String description) {
+            String subFlowId, Switch sw, int port, int vlan, int innerVlan, String description) {
         return HaSubFlow.builder()
                 .haSubFlowId(subFlowId)
-                .endpointSwitchId(switchId)
+                .endpointSwitch(sw)
                 .endpointPort(port)
                 .endpointVlan(vlan)
                 .endpointInnerVlan(innerVlan)
@@ -100,14 +78,25 @@ public final class FermaModelUtils {
     /**
      * Builds HaFlow object.
      */
+    public static HaFlow buildHaFlow(String flowId, Switch sharedSwitch) {
+        return buildHaFlow(
+                flowId, sharedSwitch, 0, 0, 0, 0, 0, 0, null, 0, null, null, null, true, true, true, true, true);
+    }
+
+    /**
+     * Builds HaFlow object.
+     */
     public static HaFlow buildHaFlow(
-            String flowId, SwitchId switchId, int port, int vlan, int innerVlan, long latency, long latencyTier2,
+            String flowId, Switch sharedSwitch, int port, int vlan, int innerVlan, long latency, long latencyTier2,
             long bandwidth, FlowEncapsulationType encapsulationType, int priority, String description,
             PathComputationStrategy strategy, FlowStatus status, boolean protectedPath, boolean pinned, boolean pings,
             boolean ignoreBandwidth, boolean strictBandwidth) {
         return HaFlow.builder()
                 .haFlowId(flowId)
-                .sharedEndpoint(new HaSharedEndpoint(switchId, port, vlan, innerVlan))
+                .sharedSwitch(sharedSwitch)
+                .sharedPort(port)
+                .sharedOuterVlan(vlan)
+                .sharedInnerVlan(innerVlan)
                 .maxLatency(latency)
                 .maxLatencyTier2(latencyTier2)
                 .maximumBandwidth(bandwidth)
@@ -122,5 +111,29 @@ public final class FermaModelUtils {
                 .ignoreBandwidth(ignoreBandwidth)
                 .strictBandwidth(strictBandwidth)
                 .build();
+    }
+
+    /**
+     * Builds FlowPath object.
+     */
+    public static FlowPath buildPath(
+            PathId pathId, HaFlowPath haFlowPath, Switch srcSwitch, Switch dstSwitch) {
+        return FlowPath.builder()
+                .pathId(pathId)
+                .srcSwitch(srcSwitch)
+                .destSwitch(dstSwitch)
+                .haFlowPath(haFlowPath)
+                .build();
+    }
+
+    /**
+     * Builds 2 PathSegment objects.
+     */
+    public static List<PathSegment> buildSegments(PathId pathId, Switch switch1, Switch switch2, Switch switch3) {
+        PathSegment segment1 = PathSegment.builder()
+                .pathId(pathId).srcSwitch(switch1).destSwitch(switch3).build();
+        PathSegment segment2 = PathSegment.builder()
+                .pathId(pathId).srcSwitch(switch3).destSwitch(switch2).build();
+        return Lists.newArrayList(segment1, segment2);
     }
 }
