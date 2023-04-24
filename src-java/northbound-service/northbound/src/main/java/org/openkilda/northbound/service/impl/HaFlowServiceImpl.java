@@ -18,6 +18,8 @@ package org.openkilda.northbound.service.impl;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
+import org.openkilda.messaging.command.haflow.HaFlowPathsReadRequest;
+import org.openkilda.messaging.command.haflow.HaFlowPathsResponse;
 import org.openkilda.messaging.command.haflow.HaFlowReadRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.command.haflow.HaFlowResponse;
@@ -54,11 +56,10 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class HaFlowServiceImpl implements HaFlowService {
-    @Value("#{kafkaTopicsConfig.getFlowHsTopic()}")
-    private String flowHsTopic;
-
     private final MessagingChannel messagingChannel;
     private final HaFlowMapper flowMapper;
+    @Value("#{kafkaTopicsConfig.getFlowHsTopic()}")
+    private String flowHsTopic;
 
     @Autowired
     public HaFlowServiceImpl(MessagingChannel messagingChannel, HaFlowMapper flowMapper) {
@@ -115,7 +116,13 @@ public class HaFlowServiceImpl implements HaFlowService {
 
     @Override
     public CompletableFuture<HaFlowPaths> getHaFlowPaths(String haFlowId) {
-        return null;
+        log.info("API request: Get ha-flow paths: {}", haFlowId);
+        HaFlowPathsReadRequest readPathsRequest = new HaFlowPathsReadRequest(haFlowId);
+        CommandMessage request = new CommandMessage(readPathsRequest, System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(flowHsTopic, request)
+                .thenApply(HaFlowPathsResponse.class::cast)
+                .thenApply(flowMapper::toHaFlowPaths);
     }
 
     @Override

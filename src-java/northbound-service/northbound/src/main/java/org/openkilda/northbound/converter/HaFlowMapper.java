@@ -17,11 +17,17 @@ package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.command.haflow.HaFlowDto;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
+import org.openkilda.messaging.command.haflow.HaFlowPathsResponse;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
 import org.openkilda.messaging.command.haflow.HaSubFlowPartialUpdateDto;
 import org.openkilda.messaging.command.yflow.FlowPartialUpdateEndpoint;
+import org.openkilda.messaging.model.FlowPathDto;
+import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
+import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
+import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
@@ -29,15 +35,24 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlow;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPath;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPath.HaFlowProtectedPath;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.haflows.HaSubFlowPath;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowUpdatePayload;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.List;
+import java.util.Map;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring",
         uses = {FlowEncapsulationTypeMapper.class, FlowStatusMapper.class, PathComputationStrategyMapper.class,
@@ -98,4 +113,70 @@ public abstract class HaFlowMapper {
     public abstract FlowEndpoint toFlowEndpoint(HaFlowSharedEndpoint endpoint);
 
     public abstract FlowPartialUpdateEndpoint toFlowEndpoint(HaFlowPatchEndpoint endpoint);
+
+    @Mapping(target = "sharedPath", source = "sharedPath", resultType = HaFlowPath.class)
+    @Mapping(target = "subFlowPaths",
+            expression = "java(toSubFlowPaths(source.getSubFlowPaths(), source.getDiverseWithFlows()))")
+    public abstract HaFlowPaths toHaFlowPaths(HaFlowPathsResponse source);
+
+    protected List<HaSubFlowPath> toSubFlowPaths(List<FlowPathDto> subFlowPaths,
+                                                 Map<String, List<FlowPathDto>> diverseWithFlows) {
+        return subFlowPaths.stream()
+                .map(f -> toSubFlowPath(f, diverseWithFlows.get(f.getId())))
+                .collect(Collectors.toList());
+    }
+
+    @Mapping(target = "forward", source = "forwardPath")
+    @Mapping(target = "reverse", source = "reversePath")
+    @Mapping(target = "protectedPath", expression = "java(toHaFlowProtectedPath(source.getProtectedPath(), null))")
+    @Mapping(target = "diverseGroup", expression = "java(toDiverseGroupPayload(source, null))")
+    public abstract HaFlowPath toHaFlowPath(FlowPathDto source);
+
+    @Mapping(target = "forward", source = "source.forwardPath")
+    @Mapping(target = "reverse", source = "source.reversePath")
+    @Mapping(target = "diverseGroup", expression = "java(toDiverseGroupPayload(source, diverseWithFlows))")
+    public abstract HaFlowProtectedPath toHaFlowProtectedPath(FlowProtectedPathDto source,
+                                                              List<FlowPathDto> diverseWithFlows);
+
+    @Mapping(target = "flowId", source = "source.id")
+    @Mapping(target = "reverse", source = "source.reversePath")
+    @Mapping(target = "forward", source = "source.forwardPath")
+    @Mapping(target = "protectedPath",
+            expression = "java(toHaFlowProtectedPath(source.getProtectedPath(), diverseWithFlows))")
+    @Mapping(target = "diverseGroup", expression = "java(toDiverseGroupPayload(source, diverseWithFlows))")
+    public abstract HaSubFlowPath toSubFlowPath(FlowPathDto source, List<FlowPathDto> diverseWithFlows);
+
+    protected DiverseGroupPayload toDiverseGroupPayload(FlowPathDto source, List<FlowPathDto> diverseWithFlows) {
+        OverlappingSegmentsStats segmentsStats = source.getSegmentsStats();
+        if (segmentsStats != null) {
+            return DiverseGroupPayload.builder()
+                    .overlappingSegments(segmentsStats)
+                    .otherFlows(diverseWithFlows != null
+                            ? toGroupPaths(diverseWithFlows, FlowPathDto::isPrimaryPathCorrespondStat) : null)
+                    .build();
+        }
+        return null;
+    }
+
+    protected DiverseGroupPayload toDiverseGroupPayload(FlowProtectedPathDto source,
+                                                        List<FlowPathDto> diverseWithFlows) {
+        if (source != null) {
+            OverlappingSegmentsStats segmentsStats = source.getSegmentsStats();
+            if (segmentsStats != null) {
+                return DiverseGroupPayload.builder()
+                        .overlappingSegments(segmentsStats)
+                        .otherFlows(diverseWithFlows != null
+                                ? toGroupPaths(diverseWithFlows, e -> !e.isPrimaryPathCorrespondStat()) : null)
+                        .build();
+            }
+        }
+        return null;
+    }
+
+    private List<GroupFlowPathPayload> toGroupPaths(List<FlowPathDto> paths, Predicate<FlowPathDto> predicate) {
+        return paths.stream()
+                .filter(predicate)
+                .map(pathMapper::mapGroupFlowPathPayload)
+                .collect(Collectors.toList());
+    }
 }
