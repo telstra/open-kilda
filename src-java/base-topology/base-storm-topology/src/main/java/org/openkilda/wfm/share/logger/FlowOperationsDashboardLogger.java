@@ -64,8 +64,18 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String YFLOW_PATHS_SWAP_EVENT = "y_flow_paths_swap";
     private static final String YFLOW_PATHS_SWAP_RESULT_EVENT = "y_flow_paths_swap_result";
 
+    private static final String HA_FLOW_CREATE_EVENT = "ha_flow_create";
+    private static final String HA_FLOW_CREATE_RESULT_EVENT = "ha_flow_create_result";
+    private static final String HA_FLOW_DELETE_EVENT = "ha_flow_delete";
+    private static final String HA_FLOW_DELETE_RESULT_EVENT = "ha_flow_delete_result";
+
     private static final String TAG = "FLOW_OPERATIONS_DASHBOARD";
     private static final String DASHBOARD = "dashboard";
+
+    public static final String DELETE_RESULT = "delete-result";
+    public static final String SUCCESSFUL_RESULT = "successful";
+
+    public static final String FAILED_RESULT = "failed";
 
     public FlowOperationsDashboardLogger(Logger logger) {
         super(logger);
@@ -170,7 +180,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-create-successful");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, CREATE_RESULT_EVENT);
-        data.put("create-result", "successful");
+        data.put("create-result", SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful create of the flow %s", flowId), data);
     }
 
@@ -182,7 +192,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-create-failed");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, CREATE_RESULT_EVENT);
-        data.put("update-result", "failed");
+        data.put("update-result", FAILED_RESULT);
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed create of the flow %s, reason: %s", flowId, failureReason),
                 data);
@@ -246,7 +256,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-update-successful");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, UPDATE_RESULT_EVENT);
-        data.put("update-result", "successful");
+        data.put("update-result", SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful update of the flow %s", flowId), data);
     }
 
@@ -258,7 +268,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-update-failed");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, UPDATE_RESULT_EVENT);
-        data.put("update-result", "failed");
+        data.put("update-result", FAILED_RESULT);
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed update of the flow %s, reason: %s", flowId, failureReason),
                 data);
@@ -294,7 +304,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-delete-successful");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, DELETE_RESULT_EVENT);
-        data.put("delete-result", "successful");
+        data.put(DELETE_RESULT, SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful delete of the flow %s", flowId), data);
     }
 
@@ -306,7 +316,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-delete-failed");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, DELETE_RESULT_EVENT);
-        data.put("delete-result", "failed");
+        data.put(DELETE_RESULT, FAILED_RESULT);
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed delete of the flow %s, reason: %s", flowId, failureReason),
                 data);
@@ -331,7 +341,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-sync-success");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_SYNC_EVENT);
-        data.put("sync-result", "successful");
+        data.put("sync-result", SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Flow \"%s\" SYNC success", flowId), data);
     }
 
@@ -343,7 +353,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-sync-failed");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_SYNC_EVENT);
-        data.put("sync-result", "failed");
+        data.put("sync-result", FAILED_RESULT);
         invokeLogger(
                 Level.INFO, String.format(
                         "Flow \"%s\" SYNC failed - %d of %d path have failed to sync",
@@ -393,7 +403,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-reroute-successful");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, REROUTE_RESULT_EVENT);
-        data.put("reroute-result", "successful");
+        data.put("reroute-result", SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful reroute of the flow %s", flowId), data);
     }
 
@@ -405,7 +415,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-reroute-failed");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, REROUTE_RESULT_EVENT);
-        data.put("reroute-result", "failed");
+        data.put("reroute-result", FAILED_RESULT);
         data.put("failure-reason", failureReason);
         invokeLogger(
                 Level.WARN, String.format("Failed reroute of the flow %s, reason: %s", flowId, failureReason), data);
@@ -436,7 +446,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-mirror-point-create-successful");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_MIRROR_POINT_CREATE_RESULT_EVENT);
-        data.put("flow-mirror-point-create-result", "successful");
+        data.put("flow-mirror-point-create-result", SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful create a mirror point for the flow %s: source switch %s, "
                         + "destination endpoint %s_%d_%d, direction %s",
                 flowId, srcSwitch, destSwitch, destPort, destVlan, direction), data);
@@ -452,7 +462,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-mirror-point-create-failed");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_MIRROR_POINT_CREATE_RESULT_EVENT);
-        data.put("flow-mirror-point-create-result", "failed");
+        data.put("flow-mirror-point-create-result", FAILED_RESULT);
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed create a mirror point for the flow %s: source switch %s, "
                         + "destination endpoint %s_%d_%d, direction %s, reason: %s",
@@ -481,7 +491,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-mirror-point-delete-successful");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_MIRROR_POINT_DELETE_RESULT_EVENT);
-        data.put("delete-result", "successful");
+        data.put(DELETE_RESULT, SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful delete of the flow mirror point %s for the flow %s",
                 flowMirrorPointId, flowId), data);
     }
@@ -495,7 +505,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-mirror-point-delete-failed");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, FLOW_MIRROR_POINT_DELETE_RESULT_EVENT);
-        data.put("delete-result", "failed");
+        data.put(DELETE_RESULT, FAILED_RESULT);
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed delete of the flow mirror point %s for the flow %s, reason: %s",
                 flowMirrorPointId, flowId, failureReason), data);
@@ -525,7 +535,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-create-successful");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_CREATE_RESULT_EVENT);
-        data.put("create-result", "successful");
+        data.put("create-result", SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful create of the y-flow %s", yFlowId), data);
     }
 
@@ -537,7 +547,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-create-failed");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_CREATE_RESULT_EVENT);
-        data.put("update-result", "failed");
+        data.put("create-result", FAILED_RESULT);
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed create of the y-flow %s, reason: %s", yFlowId, failureReason),
                 data);
@@ -567,7 +577,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-update-successful");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_UPDATE_RESULT_EVENT);
-        data.put("update-result", "successful");
+        data.put("update-result", SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful update of the y-flow %s", yFlowId), data);
     }
 
@@ -579,7 +589,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-update-failed");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_UPDATE_RESULT_EVENT);
-        data.put("update-result", "failed");
+        data.put("update-result", FAILED_RESULT);
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed update of the y-flow %s, reason: %s", yFlowId, failureReason),
                 data);
@@ -606,7 +616,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-reroute-successful");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_REROUTE_RESULT_EVENT);
-        data.put("reroute-result", "successful");
+        data.put("reroute-result", SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful reroute of the y-flow %s", yFlowId), data);
     }
 
@@ -618,7 +628,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-reroute-failed");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_REROUTE_RESULT_EVENT);
-        data.put("reroute-result", "failed");
+        data.put("reroute-result", FAILED_RESULT);
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed reroute of the y-flow %s, reason: %s", yFlowId, failureReason),
                 data);
@@ -655,7 +665,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-delete-successful");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_DELETE_RESULT_EVENT);
-        data.put("delete-result", "successful");
+        data.put(DELETE_RESULT, SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful delete of the y-flow %s", yFlowId), data);
     }
 
@@ -667,7 +677,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-delete-failed");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_DELETE_RESULT_EVENT);
-        data.put("delete-result", "failed");
+        data.put(DELETE_RESULT, FAILED_RESULT);
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed delete of the y-flow %s, reason: %s", yFlowId, failureReason),
                 data);
@@ -692,7 +702,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-paths-swap-successful");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_PATHS_SWAP_RESULT_EVENT);
-        data.put("swap-result", "successful");
+        data.put("swap-result", SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful path swap of the y-flow %s", yFlowId), data);
     }
 
@@ -704,9 +714,88 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-paths-swap-failed");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_PATHS_SWAP_RESULT_EVENT);
-        data.put("swap-result", "failed");
+        data.put("swap-result", FAILED_RESULT);
         data.put("failure-reason", failureReason);
         invokeLogger(Level.WARN, String.format("Failed path swap of the y-flow %s, reason: %s", yFlowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log a ha-flow-create event.
+     */
+    public void onHaFlowCreate(
+            String haFlowId, FlowEndpoint sharedEndpoint, List<FlowEndpoint> subFlowEndpoints, long maximumBandwidth,
+            PathComputationStrategy strategy, Long maxLatency, Long maxLatencyTier2) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-create");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_CREATE_EVENT);
+        invokeLogger(Level.INFO, String.format("Create the ha-flow: %s, shared endpoint %s, endpoints (%s), "
+                        + "bandwidth %d, path computation strategy %s, max latency %s, max latency tier2 %s",
+                haFlowId, sharedEndpoint, subFlowEndpoints, maximumBandwidth, strategy, maxLatency,
+                maxLatencyTier2), data);
+    }
+
+    /**
+     * Log a y-flow-create-successful event.
+     */
+    public void onSuccessfulHaFlowCreate(String haFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-create-successful");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_CREATE_RESULT_EVENT);
+        data.put("create-result", SUCCESSFUL_RESULT);
+        invokeLogger(Level.INFO, String.format("Successful create of the ha-flow %s", haFlowId), data);
+    }
+
+    /**
+     * Log a y-flow-create-failed event.
+     */
+    public void onFailedHaFlowCreate(String haFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-create-failed");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_CREATE_RESULT_EVENT);
+        data.put("create-result", FAILED_RESULT);
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed create of the ha-flow %s, reason: %s", haFlowId, failureReason),
+                data);
+    }
+
+    /**
+     * Log an ha-flow-delete event.
+     */
+    public void onHaFlowDelete(String haFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-delete");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_DELETE_EVENT);
+        invokeLogger(Level.INFO, String.format("Delete the ha-flow %s", haFlowId), data);
+    }
+
+    /**
+     * Log a ha-flow-delete-successful event.
+     */
+    public void onSuccessfulHaFlowDelete(String haFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-delete-successful");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_DELETE_RESULT_EVENT);
+        data.put(DELETE_RESULT, SUCCESSFUL_RESULT);
+        invokeLogger(Level.INFO, String.format("Successful delete of the ha-flow %s", haFlowId), data);
+    }
+
+    /**
+     * Log a flow-delete-failed event.
+     */
+    public void onFailedHaFlowDelete(String haFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-delete-failed");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_DELETE_RESULT_EVENT);
+        data.put(DELETE_RESULT, FAILED_RESULT);
+        data.put("failure-reason", failureReason);
+        invokeLogger(Level.WARN, String.format("Failed delete of the ha-flow %s, reason: %s", haFlowId, failureReason),
                 data);
     }
 }

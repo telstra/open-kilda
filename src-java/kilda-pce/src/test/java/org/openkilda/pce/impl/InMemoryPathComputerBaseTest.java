@@ -15,10 +15,12 @@
 
 package org.openkilda.pce.impl;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static java.lang.String.format;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -39,6 +41,8 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.PathComputationStrategy;
@@ -50,7 +54,9 @@ import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.pce.AvailableNetworkFactory;
+import org.openkilda.pce.GetHaPathsResult;
 import org.openkilda.pce.GetPathsResult;
+import org.openkilda.pce.HaPath;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
 import org.openkilda.pce.PathComputer;
@@ -68,11 +74,12 @@ import org.openkilda.pce.model.WeightFunction;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
@@ -84,11 +91,26 @@ import org.junit.rules.ExpectedException;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
+    public static final String HA_FLOW_ID = "ha_flow_id";
+    public static final String HA_SUB_FLOW_ID_1 = "ha_sub_flow_id_1";
+    public static final String HA_SUB_FLOW_ID_2 = "ha_sub_flow_id_2";
+    public static final SwitchId SWITCH_ID_A = new SwitchId("A");
+    public static final SwitchId SWITCH_ID_B = new SwitchId("B");
+    public static final SwitchId SWITCH_ID_C = new SwitchId("C");
+    public static final SwitchId SWITCH_ID_D = new SwitchId("D");
+    public static final SwitchId SWITCH_ID_E = new SwitchId("E");
+    public static final SwitchId SWITCH_ID_F = new SwitchId("F");
+    public static final SwitchId SWITCH_ID_G = new SwitchId("10");
+    public static final SwitchId SWITCH_ID_H = new SwitchId("11");
+    public static final SwitchId SWITCH_ID_Z = new SwitchId("12");
     public static SwitchId SWITCH_1 = new SwitchId(1);
     public static SwitchId SWITCH_2 = new SwitchId(2);
     public static String TEST_FLOW_ID = "existed-flow";
@@ -98,6 +120,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     static IslRepository islRepository;
     static FlowRepository flowRepository;
     static FlowPathRepository flowPathRepository;
+    static HaFlowPathRepository haFlowPathRepository;
 
     static PathComputerConfig config;
 
@@ -114,6 +137,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         islRepository = repositoryFactory.createIslRepository();
         flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
+        haFlowPathRepository = repositoryFactory.createHaFlowPathRepository();
 
         config = new PropertiesBasedConfigurationProvider().getConfiguration(PathComputerConfig.class);
 
@@ -340,6 +364,126 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         assertSortedByLatencyAndBandwidth(foundPaths);
     }
 
+    @Test
+    public void findHaFlowYShape() throws UnroutableFlowException, RecoverableException {
+        createTestTopologyForAffinityTesting();
+        for (PathComputationStrategy strategy : PathComputationStrategy.values()) {
+            runFindHaFlowYShape(strategy);
+        }
+    }
+
+    private void runFindHaFlowYShape(PathComputationStrategy strategy)
+            throws UnroutableFlowException, RecoverableException {
+        HaFlow haFlow = buildHaFlow(SWITCH_ID_H, SWITCH_ID_C, SWITCH_ID_D);
+        haFlow.setPathComputationStrategy(strategy);
+        GetHaPathsResult haPath = pathComputerFactory.getPathComputer().getHaPath(haFlow, false);
+
+        assertFalse(haPath.isBackUpPathComputationWayUsed());
+        assertHaPath(haPath.getForward(), SWITCH_ID_Z, SWITCH_ID_H, true, SWITCH_ID_C, SWITCH_ID_D);
+        assertHaPath(haPath.getReverse(), SWITCH_ID_Z, SWITCH_ID_H, false, SWITCH_ID_C, SWITCH_ID_D);
+
+        assertSegmentSwitchIds(newArrayList(SWITCH_ID_H, SWITCH_ID_Z, SWITCH_ID_C),
+                haPath.getForward().getSubPaths().get(0).getSegments());
+        assertSegmentSwitchIds(newArrayList(SWITCH_ID_H, SWITCH_ID_Z, SWITCH_ID_D),
+                haPath.getForward().getSubPaths().get(1).getSegments());
+
+        assertSegmentSwitchIds(newArrayList(SWITCH_ID_C, SWITCH_ID_Z, SWITCH_ID_H),
+                haPath.getReverse().getSubPaths().get(0).getSegments());
+        assertSegmentSwitchIds(newArrayList(SWITCH_ID_D, SWITCH_ID_Z, SWITCH_ID_H),
+                haPath.getReverse().getSubPaths().get(1).getSegments());
+    }
+
+    @Test
+    public void findHaFlowIShape() throws UnroutableFlowException, RecoverableException {
+        createTestTopologyForAffinityTesting();
+        for (PathComputationStrategy strategy : PathComputationStrategy.values()) {
+            runFindHaFlowIShape(strategy);
+        }
+    }
+
+    private void runFindHaFlowIShape(PathComputationStrategy strategy)
+            throws UnroutableFlowException, RecoverableException {
+        HaFlow haFlow = buildHaFlow(SWITCH_ID_B, SWITCH_ID_H, SWITCH_ID_H);
+        haFlow.setPathComputationStrategy(strategy);
+        GetHaPathsResult haPath = pathComputerFactory.getPathComputer().getHaPath(haFlow, false);
+
+        assertFalse(haPath.isBackUpPathComputationWayUsed());
+        assertHaPath(haPath.getForward(), SWITCH_ID_H, SWITCH_ID_B, true, SWITCH_ID_H);
+        assertHaPath(haPath.getReverse(), SWITCH_ID_H, SWITCH_ID_B, false, SWITCH_ID_H);
+
+        assertSegmentSwitchIds(newArrayList(SWITCH_ID_B, SWITCH_ID_F, SWITCH_ID_H),
+                haPath.getForward().getSubPaths().get(0).getSegments());
+        assertSegmentSwitchIds(newArrayList(SWITCH_ID_B, SWITCH_ID_F, SWITCH_ID_H),
+                haPath.getForward().getSubPaths().get(1).getSegments());
+
+        assertSegmentSwitchIds(newArrayList(SWITCH_ID_H, SWITCH_ID_F, SWITCH_ID_B),
+                haPath.getReverse().getSubPaths().get(0).getSegments());
+        assertSegmentSwitchIds(newArrayList(SWITCH_ID_H, SWITCH_ID_F, SWITCH_ID_B),
+                haPath.getReverse().getSubPaths().get(1).getSegments());
+    }
+
+    @Test
+    public void findHaFlowIShapeDifferentLength() throws UnroutableFlowException, RecoverableException {
+        createTestTopologyForAffinityTesting();
+        for (PathComputationStrategy strategy : PathComputationStrategy.values()) {
+            runFindHaFlowIShapeDifferentLength(strategy);
+        }
+    }
+
+    private void runFindHaFlowIShapeDifferentLength(PathComputationStrategy strategy)
+            throws UnroutableFlowException, RecoverableException {
+        HaFlow haFlow = buildHaFlow(SWITCH_ID_B, SWITCH_ID_F, SWITCH_ID_H);
+        haFlow.setPathComputationStrategy(strategy);
+        GetHaPathsResult haPath = pathComputerFactory.getPathComputer().getHaPath(haFlow, false);
+
+        assertFalse(haPath.isBackUpPathComputationWayUsed());
+        assertHaPath(haPath.getForward(), SWITCH_ID_F, SWITCH_ID_B, true, SWITCH_ID_F, SWITCH_ID_H);
+        assertHaPath(haPath.getReverse(), SWITCH_ID_F, SWITCH_ID_B, false, SWITCH_ID_F, SWITCH_ID_H);
+
+        assertSegmentSwitchIds(newArrayList(SWITCH_ID_B, SWITCH_ID_F),
+                haPath.getForward().getSubPaths().get(0).getSegments());
+        assertSegmentSwitchIds(newArrayList(SWITCH_ID_B, SWITCH_ID_F, SWITCH_ID_H),
+                haPath.getForward().getSubPaths().get(1).getSegments());
+
+        assertSegmentSwitchIds(newArrayList(SWITCH_ID_F, SWITCH_ID_B),
+                haPath.getReverse().getSubPaths().get(0).getSegments());
+        assertSegmentSwitchIds(newArrayList(SWITCH_ID_H, SWITCH_ID_F, SWITCH_ID_B),
+                haPath.getReverse().getSubPaths().get(1).getSegments());
+    }
+
+    private static void assertSegmentSwitchIds(List<SwitchId> expectedSwitchIds, List<Segment> actualSegments) {
+        assertEquals(expectedSwitchIds.size(), actualSegments.size() + 1);
+        for (int i = 0; i < actualSegments.size(); i++) {
+            assertEquals(expectedSwitchIds.get(i), actualSegments.get(i).getSrcSwitchId());
+            assertEquals(expectedSwitchIds.get(i + 1), actualSegments.get(i).getDestSwitchId());
+        }
+    }
+
+    private static void assertHaPath(HaPath haPath, SwitchId yPointSwitchIs, SwitchId sharedSwitchId, boolean isForward,
+                                     SwitchId... subSwitchIds) {
+        assertEquals(yPointSwitchIs, haPath.getYPointSwitchId());
+        assertEquals(sharedSwitchId, haPath.getSharedSwitchId());
+        Set<SwitchId> endpointSwitchIds = new HashSet<>();
+        for (Path subPath : haPath.getSubPaths()) {
+            endpointSwitchIds.add(isForward ? subPath.getDestSwitchId() : subPath.getSrcSwitchId());
+        }
+        assertEquals(Sets.newHashSet(Arrays.asList(subSwitchIds)), endpointSwitchIds);
+    }
+
+    private HaFlow buildHaFlow(SwitchId sharedSwitchId, SwitchId subSwitchId1, SwitchId subSwitchId2) {
+        HaFlow haFlow = HaFlow.builder()
+                .haFlowId(HA_FLOW_ID)
+                .sharedSwitch(getSwitchById(sharedSwitchId))
+                .sharedPort(PORT_1)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .build();
+
+        haFlow.setHaSubFlows(Sets.newHashSet(
+                HaSubFlow.builder().haSubFlowId(HA_SUB_FLOW_ID_1).endpointSwitch(getSwitchById(subSwitchId1)).build(),
+                HaSubFlow.builder().haSubFlowId(HA_SUB_FLOW_ID_2).endpointSwitch(getSwitchById(subSwitchId2)).build()));
+        return haFlow;
+    }
+
     private PathComputer mockPathComputerWithoutMaxWeight() throws UnroutableFlowException {
         PathFinder pathFinderMock = mock(PathFinder.class);
         when(pathFinderMock.findNPathsBetweenSwitches(
@@ -364,7 +508,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         List<Edge> path4 = createPath(100, 100);
         List<Edge> path5 = createPath(1, 1);
 
-        return Lists.newArrayList(
+        return newArrayList(
                 new FindOneDirectionPathResult(path1, false),
                 new FindOneDirectionPathResult(path2, false),
                 new FindOneDirectionPathResult(path3, false),
@@ -395,7 +539,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     }
 
     private ArrayList<Edge> createPath(long availableBandwidth, long latency) {
-        return Lists.newArrayList(Edge.builder()
+        return newArrayList(Edge.builder()
                 .srcSwitch(new Node(SWITCH_1, ""))
                 .destSwitch(new Node(SWITCH_2, ""))
                 .availableBandwidth(availableBandwidth)
@@ -571,15 +715,15 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     // |   |     \ |
     // G - H - - - Z
     void createTestTopologyForAffinityTesting() {
-        final Switch nodeA = createSwitch("00:0A");
-        final Switch nodeB = createSwitch("00:0B");
-        final Switch nodeC = createSwitch("00:0C");
-        final Switch nodeD = createSwitch("00:0D");
-        final Switch nodeE = createSwitch("00:0E");
-        final Switch nodeF = createSwitch("00:0F");
-        final Switch nodeG = createSwitch("00:01");
-        final Switch nodeH = createSwitch("00:02");
-        final Switch nodeZ = createSwitch("00:03");
+        final Switch nodeA = createSwitch(SWITCH_ID_A);
+        final Switch nodeB = createSwitch(SWITCH_ID_B);
+        final Switch nodeC = createSwitch(SWITCH_ID_C);
+        final Switch nodeD = createSwitch(SWITCH_ID_D);
+        final Switch nodeE = createSwitch(SWITCH_ID_E);
+        final Switch nodeF = createSwitch(SWITCH_ID_F);
+        final Switch nodeG = createSwitch(SWITCH_ID_G);
+        final Switch nodeH = createSwitch(SWITCH_ID_H);
+        final Switch nodeZ = createSwitch(SWITCH_ID_Z);
 
         IslStatus status = IslStatus.ACTIVE;
         int cost = 100;
@@ -650,7 +794,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult affinityPath = pathComputer.getPath(flow);
 
-        List<Segment> segments = affinityPath.getForward().getSegments();
+        List<Path.Segment> segments = affinityPath.getForward().getSegments();
         assertEquals(new SwitchId("00:0B"), segments.get(1).getSrcSwitchId());
         assertEquals(new SwitchId("00:0B"), segments.get(0).getDestSwitchId());
     }
@@ -662,23 +806,23 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
                 .flowId("new-flow")
                 .affinityGroupId(TEST_FLOW_ID)
                 .bandwidth(10)
-                .srcSwitch(getSwitchById("00:0E"))
-                .destSwitch(getSwitchById("00:0F"))
+                .srcSwitch(getSwitchById(SWITCH_ID_E))
+                .destSwitch(getSwitchById(SWITCH_ID_F))
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .pathComputationStrategy(pathComputationStrategy)
                 .build();
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult affinityPath = pathComputer.getPath(flow);
 
-        List<Segment> segments = affinityPath.getForward().getSegments();
+        List<Path.Segment> segments = affinityPath.getForward().getSegments();
         assertEquals(3, segments.size());
-        assertEquals(new SwitchId("00:0E"), segments.get(0).getSrcSwitchId());
-        assertEquals(new SwitchId("00:0A"), segments.get(1).getSrcSwitchId());
-        assertEquals(new SwitchId("00:0B"), segments.get(2).getSrcSwitchId());
+        assertEquals(SWITCH_ID_E, segments.get(0).getSrcSwitchId());
+        assertEquals(SWITCH_ID_A, segments.get(1).getSrcSwitchId());
+        assertEquals(SWITCH_ID_B, segments.get(2).getSrcSwitchId());
 
-        assertEquals(new SwitchId("00:0A"), segments.get(0).getDestSwitchId());
-        assertEquals(new SwitchId("00:0B"), segments.get(1).getDestSwitchId());
-        assertEquals(new SwitchId("00:0F"), segments.get(2).getDestSwitchId());
+        assertEquals(SWITCH_ID_A, segments.get(0).getDestSwitchId());
+        assertEquals(SWITCH_ID_B, segments.get(1).getDestSwitchId());
+        assertEquals(SWITCH_ID_F, segments.get(2).getDestSwitchId());
     }
 
     void affinityPathShouldSplitAsCloseAsPossibleToDestination(PathComputationStrategy pathComputationStrategy)
@@ -689,23 +833,23 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
                 .flowId("new-flow")
                 .affinityGroupId(TEST_FLOW_ID)
                 .bandwidth(10)
-                .srcSwitch(getSwitchById("00:0A"))
-                .destSwitch(getSwitchById("00:03"))
+                .srcSwitch(getSwitchById(SWITCH_ID_A))
+                .destSwitch(getSwitchById(SWITCH_ID_Z))
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .pathComputationStrategy(pathComputationStrategy)
                 .build();
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult affinityPath = pathComputer.getPath(flow);
 
-        List<Segment> segments = affinityPath.getForward().getSegments();
+        List<Path.Segment> segments = affinityPath.getForward().getSegments();
         assertEquals(3, segments.size());
-        assertEquals(new SwitchId("00:0A"), segments.get(0).getSrcSwitchId());
-        assertEquals(new SwitchId("00:0B"), segments.get(1).getSrcSwitchId());
-        assertEquals(new SwitchId("00:0C"), segments.get(2).getSrcSwitchId());
+        assertEquals(SWITCH_ID_A, segments.get(0).getSrcSwitchId());
+        assertEquals(SWITCH_ID_B, segments.get(1).getSrcSwitchId());
+        assertEquals(SWITCH_ID_C, segments.get(2).getSrcSwitchId());
 
-        assertEquals(new SwitchId("00:0B"), segments.get(0).getDestSwitchId());
-        assertEquals(new SwitchId("00:0C"), segments.get(1).getDestSwitchId());
-        assertEquals(new SwitchId("00:03"), segments.get(2).getDestSwitchId());
+        assertEquals(SWITCH_ID_B, segments.get(0).getDestSwitchId());
+        assertEquals(SWITCH_ID_C, segments.get(1).getDestSwitchId());
+        assertEquals(SWITCH_ID_Z, segments.get(2).getDestSwitchId());
     }
 
     void affinityOvercomeDiversity(PathComputationStrategy pathComputationStrategy)
@@ -723,8 +867,8 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
                 .affinityGroupId(TEST_FLOW_ID)
                 .diverseGroupId(diversityGroup)
                 .bandwidth(10)
-                .srcSwitch(getSwitchById("00:0A"))
-                .destSwitch(getSwitchById("00:03"))
+                .srcSwitch(getSwitchById(SWITCH_ID_A))
+                .destSwitch(getSwitchById(SWITCH_ID_Z))
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .pathComputationStrategy(pathComputationStrategy)
                 .build();
@@ -737,16 +881,16 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult affinityPath = pathComputer.getPath(flowB);
 
-        List<Segment> segments = affinityPath.getForward().getSegments();
+        List<Path.Segment> segments = affinityPath.getForward().getSegments();
         assertEquals(3, segments.size());
-        assertEquals(new SwitchId("00:0A"), segments.get(0).getSrcSwitchId());
-        assertEquals(new SwitchId("00:0B"), segments.get(0).getDestSwitchId());
+        assertEquals(SWITCH_ID_A, segments.get(0).getSrcSwitchId());
+        assertEquals(SWITCH_ID_B, segments.get(0).getDestSwitchId());
 
-        assertEquals(new SwitchId("00:0B"), segments.get(1).getSrcSwitchId());
-        assertEquals(new SwitchId("00:0C"), segments.get(1).getDestSwitchId());
+        assertEquals(SWITCH_ID_B, segments.get(1).getSrcSwitchId());
+        assertEquals(SWITCH_ID_C, segments.get(1).getDestSwitchId());
 
-        assertEquals(new SwitchId("00:0C"), segments.get(2).getSrcSwitchId());
-        assertEquals(new SwitchId("00:03"), segments.get(2).getDestSwitchId());
+        assertEquals(SWITCH_ID_C, segments.get(2).getSrcSwitchId());
+        assertEquals(SWITCH_ID_Z, segments.get(2).getDestSwitchId());
     }
 
     void createDiamond(IslStatus pathBstatus, IslStatus pathCstatus, int pathBcost, int pathCcost,
@@ -805,7 +949,11 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     }
 
     Switch createSwitch(String name) {
-        Switch sw = Switch.builder().switchId(new SwitchId(name)).status(SwitchStatus.ACTIVE)
+        return createSwitch(new SwitchId(name));
+    }
+
+    Switch createSwitch(SwitchId switchId) {
+        Switch sw = Switch.builder().switchId(switchId).status(SwitchStatus.ACTIVE)
                 .build();
         switchRepository.add(sw);
 
@@ -859,8 +1007,12 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
     }
 
     Switch getSwitchById(String id) {
-        return switchRepository.findById(new SwitchId(id))
-                .orElseThrow(() -> new IllegalArgumentException(format("Switch %s not found", id)));
+        return getSwitchById(new SwitchId(id));
+    }
+
+    Switch getSwitchById(SwitchId switchId) {
+        return switchRepository.findById(switchId)
+                .orElseThrow(() -> new IllegalArgumentException(format("Switch %s not found", switchId)));
     }
 
     @Test

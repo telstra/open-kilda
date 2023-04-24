@@ -51,6 +51,7 @@ import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowStatsRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
@@ -104,6 +105,7 @@ public class FlowOperationsService {
     private final FlowPathRepository flowPathRepository;
     private final SwitchConnectedDeviceRepository switchConnectedDeviceRepository;
     private final YFlowRepository yFlowRepository;
+    private final HaFlowRepository haFlowRepository;
 
     public FlowOperationsService(RepositoryFactory repositoryFactory, TransactionManager transactionManager) {
         this.islRepository = repositoryFactory.createIslRepository();
@@ -113,6 +115,7 @@ public class FlowOperationsService {
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.switchConnectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
+        this.haFlowRepository = repositoryFactory.createHaFlowRepository();
         this.transactionManager = transactionManager;
     }
 
@@ -713,9 +716,10 @@ public class FlowOperationsService {
                 .map(Flow::getYFlowId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+        Set<String> diverseHaFlows = getDiverseWithHaFlow(flow.getDiverseGroupId());
 
-        return new FlowResponse(
-                FlowMapper.INSTANCE.map(flow, diverseFlows, diverseYFlows, getFlowMirrorPaths(flow), flowStats));
+        return new FlowResponse(FlowMapper.INSTANCE.map(
+                        flow, diverseFlows, diverseYFlows, diverseHaFlows, getFlowMirrorPaths(flow), flowStats));
     }
 
     /**
@@ -731,6 +735,13 @@ public class FlowOperationsService {
                         .filter(diverseFlow -> !flow.getFlowId().equals(diverseFlow.getFlowId())
                                 || (flow.getYFlowId() != null && !flow.getYFlowId().equals(diverseFlow.getYFlowId())))
                         .collect(Collectors.toSet());
+    }
+
+    private Set<String> getDiverseWithHaFlow(String diverseGroup) {
+        if (diverseGroup == null) {
+            return Collections.emptySet();
+        }
+        return new HashSet<>(haFlowRepository.findHaFlowIdsByDiverseGroupId(diverseGroup));
     }
 
     private static boolean isVlanStatisticsEmpty(FlowPatch flowPatch, Flow flow) {

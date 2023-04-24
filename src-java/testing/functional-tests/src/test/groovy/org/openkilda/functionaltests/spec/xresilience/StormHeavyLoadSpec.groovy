@@ -1,4 +1,4 @@
-package org.openkilda.functionaltests.spec.resilience
+package org.openkilda.functionaltests.spec.xresilience
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE

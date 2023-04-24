@@ -60,6 +60,7 @@ public class RequestedFlow {
     private SwitchId loopSwitchId;
 
     private String yFlowId;
+    private String haFlowId;
 
     private Set<Integer> vlanStatistics;
 

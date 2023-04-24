@@ -1,0 +1,44 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: snikitin
+      changes:
+        - tagDatabase:
+            tag: 027-add-ha-flow-feature-toggle
+  - changeSet:
+      id: add_ha_flow_affinity_and_diverse_groups
+      author: snikitin
+      changes:
+        - sql: "CREATE PROPERTY ha_flow.diverse_group_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow.affinity_group_id IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX ha_flow.diverse_group_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX ha_flow.affinity_group_id NOTUNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP INDEX ha_flow.diverse_group_id"
+        - sql: "DROP INDEX ha_flow.affinity_group_id"
+        - sql: "UPDATE ha_flow REMOVE diverse_group_id"
+        - sql: "UPDATE ha_flow REMOVE affinity_group_id"
+        - sql: "DROP PROPERTY ha_flow.diverse_group_id"
+        - sql: "DROP PROPERTY ha_flow.affinity_group_id"
+  - changeSet:
+      id: add_ha_fields_into_flow_path_object
+      author: snikitin
+      changes:
+        - sql: "CREATE PROPERTY flow_path.ha_path_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_path.ha_sub_flow_id IF NOT EXISTS STRING"
+        - sql: "CREATE INDEX flow_path.ha_path_id NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_path.ha_sub_flow_id NOTUNIQUE_HASH_INDEX"
+      rollback:
+        - sql: "DROP INDEX flow_path.ha_path_id"
+        - sql: "DROP INDEX flow_path.ha_sub_flow_id"
+        - sql: "DROP PROPERTY flow_path.ha_path_id"
+        - sql: "DROP PROPERTY flow_path.ha_sub_flow_id"
+  - changeSet:
+      id: change_type_of_ha_sub_flow_description_to_string
+      author: snikitin
+      changes:
+        - sql: "DROP PROPERTY ha_subflow.description"
+        - sql: "CREATE PROPERTY ha_subflow.description IF NOT EXISTS STRING"
+      rollback:
+        - sql: "DROP PROPERTY ha_subflow.description"
+        - sql: "CREATE PROPERTY ha_subflow.description IF NOT EXISTS INTEGER"

@@ -18,6 +18,7 @@ package org.openkilda.pce;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
@@ -55,6 +56,15 @@ public interface PathComputer {
      */
     GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources, boolean isProtected)
             throws UnroutableFlowException, RecoverableException;
+
+    /**
+     * Gets a ha-path for specified haflow.
+     *
+     * @param haFlow the {@link HaFlow} instance.
+     * @param isProtected true if need to find protected path.
+     * @return {@link GetPathsResult} instance
+     */
+    GetHaPathsResult getHaPath(HaFlow haFlow, boolean isProtected) throws UnroutableFlowException, RecoverableException;
 
     /**
      * Gets the best N paths. N is a number, not greater than the count param, of all paths that can be found.

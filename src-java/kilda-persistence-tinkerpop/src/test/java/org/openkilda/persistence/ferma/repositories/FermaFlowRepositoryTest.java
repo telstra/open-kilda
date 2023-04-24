@@ -538,7 +538,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     @Test
     public void shouldCreateFlowGroupIdForFlow() {
         Flow flow = createTestFlow(TEST_FLOW_ID, switchA, switchB);
-        flow.setDiverseGroupId(TEST_DIVERSE_GROUP_ID);
+        assertNull(flow.getDiverseGroupId());
 
         Optional<String> groupOptional = flowRepository.getOrCreateDiverseFlowGroupId(TEST_FLOW_ID);
 

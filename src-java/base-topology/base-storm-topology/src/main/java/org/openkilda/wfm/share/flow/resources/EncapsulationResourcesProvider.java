@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.share.flow.resources;
 
-import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
 
 import java.util.Optional;
@@ -26,7 +25,7 @@ public interface EncapsulationResourcesProvider<T extends EncapsulationResources
      *
      * @return allocated resources.
      */
-    T allocate(Flow flow, PathId pathId, PathId oppositePathId) throws ResourceNotAvailableException;
+    T allocate(String flowId, PathId pathId, PathId oppositePathId) throws ResourceNotAvailableException;
 
     /**
      * Deallocates flow encapsulation resources of the path.

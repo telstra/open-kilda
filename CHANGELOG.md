@@ -1,6 +1,35 @@
 # Changelog
 
-## v1.131.0 (03/04/2023)
+## v1.132.0 (24/04/2023)
+
+### Features:
+-  [#5120](https://github.com/telstra/open-kilda/pull/5120) HA flows Part 7: Add H&S create operation (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+-  [#5154](https://github.com/telstra/open-kilda/pull/5154) HA flows Part 8: Add ability to create diverse HA flow (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+-  [#5156](https://github.com/telstra/open-kilda/pull/5156) HA flows Part 9: Add H&S delete operation (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+-  [#5161](https://github.com/telstra/open-kilda/pull/5161) HA flows Part 10: Add OF rules (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+-  [#5166](https://github.com/telstra/open-kilda/pull/5166) Fix incorrect HA-flow protected path allocation (Issue: [#5165](https://github.com/telstra/open-kilda/issues/5165))
+-  [#5149](https://github.com/telstra/open-kilda/pull/5149) HA flows Part 6: Modify the way of storing HA-flow data in DB (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+
+### Bug Fixes:
+-  [#5171](https://github.com/telstra/open-kilda/pull/5171) Add HA-flow feature toggle for Update operation (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+
+### Improvements:
+-  [#4833](https://github.com/telstra/open-kilda/pull/4833) Do not expose storm ports
+-  [#5158](https://github.com/telstra/open-kilda/pull/5158) Add db migration instructions into changelog generator Based on Labels
+-  [#5168](https://github.com/telstra/open-kilda/pull/5168) [TEST] Improve post-test cleanups [**tests**]
+-  [#4596](https://github.com/telstra/open-kilda/pull/4596) rsync requirement during build added to README [**docs**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.131.0...v1.132.0).
+
+### Affected Components:
+flow-hs
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
+## v1.131.0 (05/04/2023)
 
 ### Features:
 -  [#5106](https://github.com/telstra/open-kilda/pull/5106) Issue 5083: add description field to v1 link props (Issue: [#5083](https://github.com/telstra/open-kilda/issues/5083))

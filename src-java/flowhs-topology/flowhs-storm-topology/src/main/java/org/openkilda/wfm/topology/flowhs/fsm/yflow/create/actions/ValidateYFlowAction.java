@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.create.actions;
 
-import static java.lang.String.format;
-
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.YFlowRequest;
@@ -26,7 +24,6 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -48,7 +45,6 @@ import java.util.stream.Collectors;
 public class ValidateYFlowAction extends
         NbTrackableWithHistorySupportAction<YFlowCreateFsm, State, Event, YFlowCreateContext> {
     private final KildaFeatureTogglesRepository featureTogglesRepository;
-    private final YFlowRepository yFlowRepository;
     private final YFlowValidator yFlowValidator;
     private final FlowOperationsDashboardLogger dashboardLogger;
 
@@ -56,7 +52,6 @@ public class ValidateYFlowAction extends
         super(persistenceManager);
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
-        yFlowRepository = repositoryFactory.createYFlowRepository();
         yFlowValidator = new YFlowValidator(persistenceManager);
         this.dashboardLogger = dashboardLogger;
     }
@@ -72,17 +67,8 @@ public class ValidateYFlowAction extends
             throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "Y-flow create feature is disabled");
         }
 
-        if (flowRepository.exists(yFlowId)) {
-            throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,
-                    format("Flow %s already exists", yFlowId));
-        }
-
-        if (yFlowRepository.exists(yFlowId)) {
-            throw new FlowProcessingException(ErrorType.ALREADY_EXISTS,
-                    format("Y-flow %s already exists", yFlowId));
-        }
-
         try {
+            yFlowValidator.validateFlowIdUniqueness(yFlowId);
             yFlowValidator.validate(targetFlow);
         } catch (InvalidFlowException e) {
             throw new FlowProcessingException(e.getType(), e.getMessage(), e);

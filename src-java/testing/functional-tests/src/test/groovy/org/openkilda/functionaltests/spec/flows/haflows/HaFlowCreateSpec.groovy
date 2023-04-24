@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -15,11 +16,8 @@ import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.v2.haflows.HaFlow
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload
-import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint
-import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
-import org.openkilda.northbound.dto.v2.haflows.HaSubFlowPatchPayload
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -41,10 +39,8 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid ha-flow can be created [!NO TRAFFIC CHECK!], covered cases: #coveredCases"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         assumeTrue(swT != null, "These cases cannot be covered on given topology: $coveredCases")
-        if (coveredCases.toString().contains("qinq")) {
-            assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
-        }
 
         when: "Create a ha-flow of certain configuration"
         def haFlow = northboundV2.addHaFlow(haFlowRequest)
@@ -62,6 +58,13 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getHaFlow(haFlow.haFlowId) }
         def flowRemoved = true
 
+        and: "And involved switches pass validation"
+        withPool {
+            haFlowHelper.getInvolvedSwitches(haFlow).eachParallel { SwitchId swId ->
+                assert northboundV2.validateSwitch(swId).isAsExpected()
+            }
+        }
+
         cleanup:
         haFlow && !flowRemoved && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
 
@@ -75,6 +78,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User cannot create a ha-flow with existent ha_flow_id"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
@@ -88,8 +92,60 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.CONFLICT
         exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == "Couldn't create HA-flow"
-            assertThat(errorDescription).matches(/Couldn't create ha-flow .*?\. This ha-flow already exist\./)
+            assert errorMessage == "Could not create ha-flow"
+            assertThat(errorDescription).matches(/HA-flow .*? already exists/)
+        }
+
+        cleanup:
+        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+    }
+
+    @Tidy
+    def "User cannot create a ha-flow with equal A-B endpoints and different inner vlans at these endpoints"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
+        given: "A switch triplet with equal A-B endpoint switches"
+        def swT  = topologyHelper.switchTriplets[0]
+        def iShapedSwitchTriplet = new SwitchTriplet(swT.shared, swT.ep1, swT.ep1, swT.pathsEp1, swT.pathsEp1)
+
+        when: "Try to create I-shaped HA-flow request with equal A-B endpoint switches and different innerVlans"
+        def haFlowRequest = haFlowHelper.randomHaFlow(iShapedSwitchTriplet)
+        haFlowRequest.subFlows[0].endpoint.vlanId = 1
+        haFlowRequest.subFlows[0].endpoint.innerVlanId = 2
+        haFlowRequest.subFlows[1].endpoint.vlanId = 3
+        haFlowRequest.subFlows[1].endpoint.innerVlanId = 4
+        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
+
+        then: "Error is received"
+        def exc = thrown(HttpClientErrorException)
+        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.responseBodyAsString.to(MessageError).with {
+            assert errorMessage == "Could not create ha-flow"
+            assertThat(errorDescription).matches("To have ability to use double vlan tagging for both sub flow "
+            + "destination endpoints which are placed on one switch .*? you must set equal inner vlan for both endpoints. "
+            + "Current inner vlans: ${haFlowRequest.subFlows[0].endpoint.innerVlanId} and "
+            + "${haFlowRequest.subFlows[1].endpoint.innerVlanId}.")
+        }
+
+        cleanup:
+        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+    }
+
+    @Tidy
+    def "User cannot create a one switch ha-flow"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
+        given: "A switch"
+        def sw = topologyHelper.getRandomSwitch()
+
+        when: "Try to create one switch ha-flow"
+        def haFlowRequest = haFlowHelper.singleSwitchHaFlow(sw)
+        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
+
+        then: "Error is received"
+        def exc = thrown(HttpClientErrorException)
+        exc.statusCode == HttpStatus.BAD_REQUEST
+        exc.responseBodyAsString.to(MessageError).with {
+            assert errorMessage == "Could not create ha-flow"
+            assertThat(errorDescription).matches(/The ha-flow .*? is one switch flow\..*?/)
         }
 
         cleanup:
@@ -138,24 +194,12 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
                 it.sharedEndpoint.innerVlanId = 124
                 it.subFlows[1].endpoint.portNumber = it.subFlows[0].endpoint.portNumber
                 it.subFlows[0].endpoint.vlanId = 222
-                it.subFlows[1].endpoint.vlanId = 222
-                it.subFlows[0].endpoint.innerVlanId = 333
+                it.subFlows[1].endpoint.vlanId = 333
+                it.subFlows[0].endpoint.innerVlanId = 444
                 it.subFlows[1].endpoint.innerVlanId = 444
             }
             add([swT: swT, haFlow: haFlow, coveredCases: ["se qinq, ep1-ep2 same sw-port, qinq"]])
         }
-
-        //se-ep1-ep2 same sw (one-switch ha-flow)
-        testData.with {
-            def topo = owner.topology
-            def sw = topo.getActiveSwitches()[0]
-            def swT = owner.topologyHelper.getSwitchTriplets(false, true).find() {
-                it.shared == sw && it.ep1 == sw && it.ep2 == sw
-            }
-            def yFlow = owner.haFlowHelper.singleSwitchHaFlow(sw)
-            add([swT: swT, haFlow: yFlow, coveredCases: ["se-ep1-ep2 same sw (one-switch y-flow)"]])
-        }
-
         return testData
     }
 

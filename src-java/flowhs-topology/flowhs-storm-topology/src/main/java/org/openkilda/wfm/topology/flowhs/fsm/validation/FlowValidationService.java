@@ -204,7 +204,7 @@ public class FlowValidationService {
         EncapsulationId encapsulationId = null;
 
         if (!flow.isOneSwitchFlow()) {
-            Optional<EncapsulationResources> encapsulationResources =
+            Optional<? extends EncapsulationResources> encapsulationResources =
                     flowResourcesManager.getEncapsulationResources(flowPath.getPathId(), oppositePath.getPathId(),
                             flow.getEncapsulationType());
             if (encapsulationResources.isPresent()) {

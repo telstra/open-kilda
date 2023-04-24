@@ -34,6 +34,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
@@ -60,6 +61,7 @@ import java.util.stream.Collectors;
 public class YFlowReadService {
     private final YFlowRepository yFlowRepository;
     private final FlowRepository flowRepository;
+    private final HaFlowRepository haFlowRepository;
     private final FlowPathRepository flowPathRepository;
     private final TransactionManager transactionManager;
     private final int readOperationRetriesLimit;
@@ -70,6 +72,7 @@ public class YFlowReadService {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         yFlowRepository = repositoryFactory.createYFlowRepository();
         flowRepository = repositoryFactory.createFlowRepository();
+        haFlowRepository = repositoryFactory.createHaFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         transactionManager = persistenceManager.getTransactionManager();
         this.readOperationRetriesLimit = readOperationRetriesLimit;
@@ -93,7 +96,7 @@ public class YFlowReadService {
         Collection<YFlow> yFlows = transactionManager.doInTransaction(getReadOperationRetryPolicy(),
                 yFlowRepository::findAll);
         return yFlows.stream()
-                .map(flow -> YFlowMapper.INSTANCE.toYFlowDto(flow, flowRepository))
+                .map(flow -> YFlowMapper.INSTANCE.toYFlowDto(flow, flowRepository, haFlowRepository))
                 .map(YFlowResponse::new)
                 .collect(Collectors.toList());
     }
@@ -104,7 +107,7 @@ public class YFlowReadService {
     public YFlowResponse getYFlow(@NonNull String yFlowId) throws FlowNotFoundException {
         return transactionManager.doInTransaction(getReadOperationRetryPolicy(), () ->
                         yFlowRepository.findById(yFlowId))
-                .map(flow -> YFlowMapper.INSTANCE.toYFlowDto(flow, flowRepository))
+                .map(flow -> YFlowMapper.INSTANCE.toYFlowDto(flow, flowRepository, haFlowRepository))
                 .map(YFlowResponse::new)
                 .orElseThrow(() -> new FlowNotFoundException(yFlowId));
     }

@@ -1,4 +1,6 @@
-package org.openkilda.functionaltests.spec.resilience
+package org.openkilda.functionaltests.spec.xresilience
+
+import org.openkilda.model.IslStatus
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -138,9 +140,8 @@ class StormLcmSpec extends HealthCheckSpecification {
         srcBlockData && lockKeeper.reviveSwitch(islUnderTest.srcSwitch, srcBlockData)
         dstBlockData && lockKeeper.reviveSwitch(islUnderTest.dstSwitch, dstBlockData)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-            def allIsls = northbound.getAllLinks()
-            assert islUtils.getIslInfo(allIsls, islUnderTest).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(allIsls, islUnderTest.reversed).get().state == IslChangeType.DISCOVERED
+            assert database.getIsls(topology.getIsls()).every {it.status == IslStatus.ACTIVE}
+            assert northbound.getAllLinks().every {it.state == IslChangeType.DISCOVERED}
         }
     }
 }

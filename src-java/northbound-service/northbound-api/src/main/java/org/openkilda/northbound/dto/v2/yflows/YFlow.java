@@ -62,6 +62,7 @@ public class YFlow {
     Set<String> diverseWithFlows;
     @JsonProperty("diverse_with_y_flows")
     Set<String> diverseWithYFlows;
+    Set<String> diverseWithHaFlows;
 
     List<SubFlow> subFlows;
 

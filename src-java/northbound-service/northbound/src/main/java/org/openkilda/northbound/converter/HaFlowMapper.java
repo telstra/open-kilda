@@ -52,10 +52,10 @@ public abstract class HaFlowMapper {
     public abstract HaFlow toHaFlow(HaFlowDto flow);
 
     @Mapping(target = "vlanId", source = "outerVlanId")
-    public abstract BaseFlowEndpointV2 toFlowEndpointV2(FlowEndpoint endpoint);
+    public abstract HaFlowSharedEndpoint toHaFlowSharedEndpoint(FlowEndpoint endpoint);
 
     @Mapping(target = "vlanId", source = "outerVlanId")
-    public abstract HaFlowSharedEndpoint toYFlowSharedEndpoint(FlowEndpoint endpoint);
+    public abstract BaseFlowEndpointV2 toBaseEndpoint(FlowEndpoint endpoint);
 
     @Mapping(target = "type", constant = "CREATE")
     @Mapping(target = "maxLatency", qualifiedByName = "timeMillisToNanos")

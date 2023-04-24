@@ -19,15 +19,9 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
-import org.openkilda.model.PathId;
-import org.openkilda.model.SwitchId;
-
-import lombok.Getter;
-import lombok.NonNull;
+import org.openkilda.model.HaFlow;
 
 public abstract class FlowSideAdapter {
-    @Getter
-    protected final Flow flow;
 
     /**
      * Determine "forward" direction for provided flow/path pair and create adapter to access source endpoint.
@@ -37,6 +31,17 @@ public abstract class FlowSideAdapter {
             return new FlowSourceAdapter(flow);
         } else {
             return new FlowDestAdapter(flow);
+        }
+    }
+
+    /**
+     * Determine "forward" direction for provided ha-flow/sub path pair and create adapter to access ingress endpoint.
+     */
+    public static FlowSideAdapter makeIngressAdapter(HaFlow haFlow, FlowPath subPath) {
+        if (subPath.getCookie().getDirection() == FlowPathDirection.FORWARD) {
+            return new HaFlowSharedAdapter(haFlow, subPath.getHaSubFlow());
+        } else {
+            return new HaFlowSubFlowAdapter(haFlow, subPath.getHaSubFlow());
         }
     }
 
@@ -52,23 +57,14 @@ public abstract class FlowSideAdapter {
     }
 
     /**
-     * Determine flow side by switchId and produce corresponding side-adapter.
+     * Determine "forward" direction for provided ha-flow/sub path pair and create adapter to access egress endpoint.
      */
-    public static FlowSideAdapter makeAdapter(SwitchId switchId, Flow flow) {
-        if (flow.isOneSwitchFlow()) {
-            throw new IllegalArgumentException("Unable to determine flow side for one-switch-flow by switch endpoint");
-        } else if (switchId.equals(flow.getSrcSwitchId())) {
-            return new FlowSourceAdapter(flow);
-        } else if (switchId.equals(flow.getDestSwitchId())) {
-            return new FlowDestAdapter(flow);
+    public static FlowSideAdapter makeEgressAdapter(HaFlow haFlow, FlowPath subPath) {
+        if (subPath.getCookie().getDirection() == FlowPathDirection.FORWARD) {
+            return new HaFlowSubFlowAdapter(haFlow, subPath.getHaSubFlow());
         } else {
-            throw new IllegalArgumentException(String.format(
-                    "Unable to map switch %s on any flow side of %s", switchId, flow));
+            return new HaFlowSharedAdapter(haFlow, subPath.getHaSubFlow());
         }
-    }
-
-    protected FlowSideAdapter(Flow flow) {
-        this.flow = flow;
     }
 
     public abstract FlowEndpoint getEndpoint();
@@ -77,11 +73,7 @@ public abstract class FlowSideAdapter {
 
     public abstract boolean isDetectConnectedDevicesArp();
 
-    public abstract boolean isPrimaryEgressPath(@NonNull PathId pathId);
-
     public abstract boolean isLooped();
 
-    public boolean isOneSwitchFlow() {
-        return flow.getSrcSwitchId().equals(flow.getDestSwitchId());
-    }
+    public abstract boolean isOneSwitchFlow();
 }
