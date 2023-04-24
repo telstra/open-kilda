@@ -84,15 +84,15 @@ public final class FlowRequestV2Validator {
 
     private static Optional<String> validateFlowRequestV2MaxLatency(FlowRequestV2 flowRequestV2) {
         //validate MaxLatency is non-negative
-        if (flowRequestV2.getMaxLatency() < 0) {
+        if (flowRequestV2.getMaxLatency() != null && flowRequestV2.getMaxLatency() < 0) {
             return Optional.of("MaxLatency must be non-negative");
         }
         return Optional.empty();
     }
 
     private static Optional<String> validateFlowRequestV2MaxLatencyTier2(FlowRequestV2 flowRequestV2) {
-        //validate MaxLatencyTier2 is non-negative
-        if (flowRequestV2.getMaxLatencyTier2() < 0) {
+        //validate MaxLatencyTier2 is not null and non-negative
+        if (flowRequestV2.getMaxLatencyTier2() != null && flowRequestV2.getMaxLatencyTier2() < 0) {
             return Optional.of("MaxLatencyTier2 must be non-negative");
         }
         return Optional.empty();
