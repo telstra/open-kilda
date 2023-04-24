@@ -24,14 +24,12 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NonNull;
 
 
 @Data
 @JsonNaming(value = SnakeCaseStrategy.class)
 @EqualsAndHashCode(callSuper = true)
 public class FlowEndpointV2 extends BaseFlowEndpointV2 {
-    @NonNull
     @JsonProperty("detect_connected_devices")
     private DetectConnectedDevicesV2 detectConnectedDevices;
 
@@ -76,3 +74,4 @@ public class FlowEndpointV2 extends BaseFlowEndpointV2 {
         }
     }
 }
+

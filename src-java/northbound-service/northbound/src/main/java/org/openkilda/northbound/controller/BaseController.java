@@ -18,6 +18,7 @@ package org.openkilda.northbound.controller;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.error.MessageException;
+import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiResponse;
@@ -42,8 +43,11 @@ public class BaseController {
                 .map(Optional::get)
                 .toArray(String[]::new);
         if (defects.length != 0) {
-            String errorDescription = "Errors:\n" + String.join("\n", defects);
-            throw new MessageException(ErrorType.DATA_INVALID, "Invalid request payload", errorDescription);
+            String errorDescription = "Errors:" + System.getProperty("line.separator")
+                    + String.join(System.getProperty("line.separator"), defects);
+            throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    "Invalid request payload", errorDescription);
         }
     }
 }
+

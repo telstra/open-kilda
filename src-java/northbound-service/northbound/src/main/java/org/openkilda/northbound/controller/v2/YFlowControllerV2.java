@@ -29,6 +29,8 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.northbound.service.YFlowService;
+import org.openkilda.northbound.validator.YFlowCreatePayloadValidator;
+import org.openkilda.northbound.validator.YFlowUpdatePayloadValidator;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -58,7 +60,8 @@ public class YFlowControllerV2 extends BaseController {
     @ApiOperation(value = "Creates a new Y-flow", response = YFlow.class)
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CompletableFuture<YFlow> createYFlow(@Valid @RequestBody YFlowCreatePayload flow) {
+    public CompletableFuture<YFlow> createYFlow(@RequestBody YFlowCreatePayload flow) {
+        exposeBodyValidationResults(YFlowCreatePayloadValidator.validateYFlowCreatePayload(flow));
         return flowService.createYFlow(flow);
     }
 
@@ -87,7 +90,8 @@ public class YFlowControllerV2 extends BaseController {
     @PutMapping(value = "/{y_flow_id:.+}")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<YFlow> updateYFlow(@PathVariable(name = "y_flow_id") String yFlowId,
-                                                @Valid @RequestBody YFlowUpdatePayload flow) {
+                                                @RequestBody YFlowUpdatePayload flow) {
+        exposeBodyValidationResults(YFlowUpdatePayloadValidator.validateYFlowUpdatePayload(flow));
         return flowService.updateYFlow(yFlowId, flow);
     }
 
@@ -152,3 +156,4 @@ public class YFlowControllerV2 extends BaseController {
         return flowService.swapYFlowPaths(yFlowId);
     }
 }
+

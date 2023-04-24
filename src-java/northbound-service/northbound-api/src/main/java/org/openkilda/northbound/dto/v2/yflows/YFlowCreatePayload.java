@@ -15,19 +15,14 @@
 
 package org.openkilda.northbound.dto.v2.yflows;
 
-import org.openkilda.northbound.dto.utils.Constraints;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NonNull;
 
 import java.util.List;
-import javax.validation.Valid;
-import javax.validation.constraints.PositiveOrZero;
 
 @Data
 @Builder
@@ -36,17 +31,11 @@ import javax.validation.constraints.PositiveOrZero;
 public class YFlowCreatePayload {
     @JsonProperty("y_flow_id")
     String yFlowId;
-    @Valid
-    @NonNull
     YFlowSharedEndpoint sharedEndpoint;
-
-    @PositiveOrZero(message = Constraints.NEGATIVE_MAXIMUM_BANDWIDTH_MESSAGE)
     long maximumBandwidth;
     String pathComputationStrategy;
     String encapsulationType;
-    @PositiveOrZero(message = Constraints.NEGATIVE_MAX_LATENCY_MESSAGE)
     Long maxLatency;
-    @PositiveOrZero(message = Constraints.NEGATIVE_MAX_LATENCY_TIER_2_MESSAGE)
     Long maxLatencyTier2;
     boolean ignoreBandwidth;
     boolean periodicPings;
@@ -56,7 +45,6 @@ public class YFlowCreatePayload {
     String description;
     boolean allocateProtectedPath;
     String diverseFlowId;
-    @Valid
     List<SubFlowUpdatePayload> subFlows;
 }
 
