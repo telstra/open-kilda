@@ -25,6 +25,7 @@ import org.openkilda.wfm.topology.flowmonitoring.mapper.LinkMapper;
 import org.openkilda.wfm.topology.flowmonitoring.model.Link;
 import org.openkilda.wfm.topology.flowmonitoring.model.LinkState;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Clock;
@@ -41,23 +42,41 @@ public class IslCacheService {
     private Clock clock;
     private Duration islRttLatencyExpiration;
     private Map<Link, LinkState> linkStates;
+    private boolean active;
+    private final IslRepository islRepository;
 
     public IslCacheService(PersistenceManager persistenceManager, Clock clock, Duration islRttLatencyExpiration) {
         this.clock = clock;
         this.islRttLatencyExpiration = islRttLatencyExpiration;
-
-        IslRepository islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
-        initCache(islRepository);
+        active = false;
+        linkStates = new HashMap<>();
+        islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
     }
 
     private void initCache(IslRepository islRepository) {
-        try {
-            linkStates = islRepository.findAll().stream()
-                    .collect(Collectors.toMap(LinkMapper.INSTANCE::toLink, (link) -> LinkState.builder().build()));
-            log.info("Isl cache initialized successfully.");
-        } catch (Exception e) {
-            log.error("Isl cache initialization exception. Empty cache is used.", e);
-            linkStates = new HashMap<>();
+        linkStates = islRepository.findAll().stream()
+                .collect(Collectors.toMap(LinkMapper.INSTANCE::toLink, (link) -> LinkState.builder().build()));
+        log.info("Isl cache initialized successfully.");
+    }
+
+    /**
+     * Activate the service. Init cache.
+     */
+    public void activate() {
+        if (!active) {
+            initCache(islRepository);
+            active = true;
+        }
+    }
+
+    /**
+     * Deactivate the service. Clears cache.
+     */
+    public void deactivate() {
+        if (active) {
+            linkStates.clear();
+            log.info("Isl cache cleared.");
+            active = false;
         }
     }
 
@@ -140,5 +159,13 @@ public class IslCacheService {
                 .filter(link -> link.srcEquals(switchId, port))
                 .collect(Collectors.toList())
                 .forEach(link -> linkStates.remove(link));
+    }
+
+    /**
+     * Check if linkStates is empty.
+     */
+    @VisibleForTesting
+    protected boolean linkStatesIsEmpty() {
+        return linkStates.isEmpty();
     }
 }

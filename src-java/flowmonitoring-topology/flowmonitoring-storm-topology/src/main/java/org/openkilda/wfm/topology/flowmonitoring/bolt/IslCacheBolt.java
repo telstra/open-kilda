@@ -22,6 +22,7 @@ import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.LINK_
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.REQUEST_ID_FIELD;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.IslDataSplitterBolt.INFO_DATA_FIELD;
 
+import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslChangedInfoData;
 import org.openkilda.messaging.info.event.IslOneWayLatency;
@@ -56,8 +57,18 @@ public class IslCacheBolt extends AbstractBolt {
     }
 
     protected void init() {
-        super.init();
         islCacheService = newIslCacheService();
+    }
+
+    @Override
+    protected boolean activateAndConfirm() {
+        try {
+            islCacheService.activate();
+        } catch (Exception e) {
+            log.error(String.format("Error on Isl cache initialization: %s", e.getMessage()), e);
+            return false;
+        }
+        return true;
     }
 
     @Override
@@ -94,6 +105,12 @@ public class IslCacheBolt extends AbstractBolt {
         } else {
             unhandledInput(input);
         }
+    }
+
+    @Override
+    protected boolean deactivate(LifecycleEvent event) {
+        islCacheService.deactivate();
+        return true;
     }
 
     @Override

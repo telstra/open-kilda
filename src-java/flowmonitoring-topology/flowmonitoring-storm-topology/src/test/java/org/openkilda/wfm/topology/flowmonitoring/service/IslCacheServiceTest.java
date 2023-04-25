@@ -16,6 +16,8 @@
 package org.openkilda.wfm.topology.flowmonitoring.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.IslStatus.ACTIVE;
 
@@ -81,6 +83,7 @@ public class IslCacheServiceTest extends InMemoryGraphBasedTest {
         createIsl(thirdSwitch, ISL_DST_PORT_2, secondSwitch, ISL_SRC_PORT_2);
 
         service = new IslCacheService(persistenceManager, clock, ISL_RTT_LATENCY_EXPIRATION);
+        service.activate();
     }
 
     @Test
@@ -175,6 +178,20 @@ public class IslCacheServiceTest extends InMemoryGraphBasedTest {
                 .build()).getNano();
 
         assertEquals(rttLatency, actual);
+    }
+
+    @Test
+    public void serviceActivationDeactivationAndReactivation() {
+        //check service.linkStates is not empty
+        assertFalse(service.linkStatesIsEmpty());
+        // deactivate service
+        service.deactivate();
+        //check service.linkStates is empty
+        assertTrue(service.linkStatesIsEmpty());
+        // reactivate service
+        service.activate();
+        //check service.linkStates is not empty
+        assertFalse(service.linkStatesIsEmpty());
     }
 
     private void createIsl(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort) {
