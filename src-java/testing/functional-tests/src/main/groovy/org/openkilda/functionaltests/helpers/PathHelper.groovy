@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests.helpers
 
 import groovy.util.logging.Slf4j
+import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats
+
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath
@@ -296,6 +298,26 @@ class PathHelper {
      */
     int getCost(List<PathNode> path) {
         return getInvolvedIsls(path).sum { database.getIslCost(it) } as int
+    }
+
+    /**
+     * Returns expected statistics for overlapping segments (switches and isls) of two flows
+     * @param baseFlow flow to be taken as base of comparison
+     * @param comparedFlow flow to be compared (one from 'other_flows' list)
+     * @return object with expected overlapping statistics
+     */
+    OverlappingSegmentsStats getOverlappingSegmentStats(List<PathNodePayload> baseFlow,
+                                                        List<List<PathNodePayload>> comparedFlows) {
+        def baseFlowSwitches = getInvolvedSwitchesV2(baseFlow)
+        def comparedFlowSwitches = comparedFlows.collect {getInvolvedSwitchesV2(it)}.flatten() as Set
+        def baseFlowIsls = baseFlow.size() > 1 ? getInvolvedIsls(convert(baseFlow)) : []
+        def comparedFlowIsls = comparedFlows.collect {getInvolvedIsls(convert(it))}.flatten() as Set
+        def intersectingSwitchSize = baseFlowSwitches.intersect(comparedFlowSwitches).size()
+        def intersectingIslSize = baseFlowIsls.intersect(comparedFlowIsls).size()
+        return new OverlappingSegmentsStats(intersectingIslSize,
+                intersectingSwitchSize,
+                intersectingIslSize ? intersectingIslSize / baseFlowIsls.size() * 100 as int : 0,
+                intersectingSwitchSize / baseFlowSwitches.size() * 100 as int,)
     }
 
     List<String> 'get path check errors'(List<PathNode> path,

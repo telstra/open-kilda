@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -19,11 +20,8 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
-import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.See
 
@@ -317,94 +315,19 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         [flow1, flow2, flow3].each { flowHelperV2.addFlow(it) }
 
         when: "Get flow path for all flows"
-        def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect { northbound.getFlowPath(it.flowId) }
-
+        FlowPathPayload flow1Path, flow2Path, flow3Path
+        withPool {
+            (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collectParallel { northbound.getFlowPath(it.flowId) }
+        }
         then: "Flow path response for all flows has correct overlapping segments stats"
-        def flow2SwitchCount = pathHelper.getInvolvedSwitches(PathHelper.convert(flow2Path)).size()
-        def flow3SwitchCount = pathHelper.getInvolvedSwitches(PathHelper.convert(flow3Path)).size()
-        def expectedValuesMap = [
-                diverseGroup: [
-                        (flow1.flowId): [islCount: 0, switchCount: 2, islPercent: 0, switchPercent: 100],
-                        (flow2.flowId): [islCount     : 0, switchCount: 2, islPercent: 0,
-                                     switchPercent: (2 * 100 / flow2SwitchCount).toInteger()],
-                        (flow3.flowId): [islCount     : 0, switchCount: 2, islPercent: 0,
-                                     switchPercent: (2 * 100 / flow3SwitchCount).toInteger()]
-                ],
-                otherFlows  : [
-                        (flow1.flowId): [
-                                (flow2.flowId): [islCount: 0, switchCount: 2, islPercent: 0, switchPercent: 100],
-                                (flow3.flowId): [islCount: 0, switchCount: 2, islPercent: 0, switchPercent: 100]
-                        ],
-                        (flow2.flowId): [
-                                (flow1.flowId): [islCount     : 0, switchCount: 2, islPercent: 0,
-                                             switchPercent: (2 * 100 / flow2SwitchCount).toInteger()],
-                                (flow3.flowId): [islCount     : 0, switchCount: 2, islPercent: 0,
-                                             switchPercent: (2 * 100 / flow2SwitchCount).toInteger()]
-                        ],
-                        (flow3.flowId): [
-                                (flow1.flowId): [islCount     : 0, switchCount: 2, islPercent: 0,
-                                             switchPercent: (2 * 100 / flow3SwitchCount).toInteger()],
-                                (flow2.flowId): [islCount     : 0, switchCount: 2, islPercent: 0,
-                                             switchPercent: (2 * 100 / flow3SwitchCount).toInteger()]
-                        ]
-                ]
-        ]
-        verifySegmentsStats([flow1Path, flow2Path, flow3Path], expectedValuesMap)
+        verifySegmentsStats([flow1Path, flow2Path, flow3Path],
+                expectedThreeFlowsPathIntersectionValuesMap(flow1Path, flow2Path, flow3Path))
 
         cleanup: "Delete flows"
         [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tidy
-    @Issue("https://github.com/telstra/open-kilda/issues/2072")
-    @Ignore("Functionality is currently not supported yet")
-    def "Able to get flow paths with correct overlapping segments stats (single-switch flows)"() {
-        given: "Two active switches"
-        def (Switch sw1, Switch sw2) = topology.getActiveSwitches()[0..1]
-
-        and: "Create two single-switch flows with diversity enabled on the first switch"
-        def flow1 = flowHelperV2.singleSwitchFlow(sw1, false)
-        def flow2 = flowHelperV2.singleSwitchFlow(sw1, false, [flow1]).tap { it.diverseFlowId = flow1.flowId }
-        [flow1, flow2].each { flowHelperV2.addFlow(it) }
-
-        and: "Create the third single-switch flow with diversity enabled on the second switch"
-        def flow3 = flowHelperV2.singleSwitchFlow(sw2, false).tap { it.diverseFlowId = flow2.flowId }
-        flowHelperV2.addFlow(flow3)
-
-        when: "Get flow path for all flows"
-        def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect { northbound.getFlowPath(it.flowId) }
-
-        then: "Flow path response for all flows has correct overlapping segments stats"
-        def expectedValuesMap = [
-                diverseGroup: [
-                        (flow1.flowId): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100],
-                        (flow2.flowId): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100],
-                        (flow3.flowId): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0]
-                ],
-                otherFlows  : [
-                        (flow1.flowId): [
-                                (flow2.flowId): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100],
-                                (flow3.flowId): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0]
-                        ],
-                        (flow2.flowId): [
-                                (flow1.flowId): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100],
-                                (flow3.flowId): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0]
-                        ],
-                        (flow3.flowId): [
-                                (flow1.flowId): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0],
-                                (flow2.flowId): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0]
-                        ]
-                ]
-        ]
-        verifySegmentsStats([flow1Path, flow2Path, flow3Path], expectedValuesMap)
-
-        cleanup: "Delete flows"
-        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
-    }
-
-    @Tidy
-    @Issue("https://github.com/telstra/open-kilda/issues/2072")
-    @Ignore("Functionality is currently not supported yet")
     def "Able to get flow paths with correct overlapping segments stats (casual + single-switch flows)"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getNotNeighboringSwitchPair()
@@ -415,45 +338,59 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         and: "Create a single-switch with diversity enabled on the source switch of the first flow"
         def flow2 = flowHelperV2.singleSwitchFlow(switchPair.src, false, [flow1]).tap { it.diverseFlowId = flow1.flowId }
-        flow2 = flowHelperV2.addFlow(flow2)
+        flowHelperV2.addFlow(flow2)
 
         and: "Create a single-switch with diversity enabled on the destination switch of the first flow"
         def flow3 = flowHelperV2.singleSwitchFlow(switchPair.dst, false, [flow1]).tap { it.diverseFlowId = flow2.flowId }
         flowHelperV2.addFlow(flow3)
 
         when: "Get flow path for all flows"
-        def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect { northbound.getFlowPath(it.flowId) }
+        FlowPathPayload flow1Path, flow2Path, flow3Path
+        withPool {
+            (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collectParallel { northbound.getFlowPath(it.flowId) }
+        }
 
         then: "Flow path response for all flows has correct overlapping segments stats"
-        def flow1SwitchCount = pathHelper.getInvolvedSwitches(PathHelper.convert(flow1Path)).size()
-        def expectedValuesMap = [
-                diverseGroup: [
-                        (flow1.flowId): [islCount     : 0, switchCount: 2, islPercent: 0,
-                                     switchPercent: (2 * 100 / flow1SwitchCount).toInteger()],
-                        (flow2.flowId): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100],
-                        (flow3.flowId): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100]
-                ],
-                otherFlows  : [
-                        (flow1.flowId): [
-                                (flow2.flowId): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100],
-                                (flow3.flowId): [islCount: 0, switchCount: 1, islPercent: 0, switchPercent: 100]
-                        ],
-                        (flow2.flowId): [
-                                (flow1.flowId): [islCount     : 0, switchCount: 1, islPercent: 0,
-                                             switchPercent: (2 * 100 / flow1SwitchCount).toInteger()],
-                                (flow3.flowId): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0]
-                        ],
-                        (flow3.flowId): [
-                                (flow1.flowId): [islCount     : 0, switchCount: 1, islPercent: 0,
-                                             switchPercent: (2 * 100 / flow1SwitchCount).toInteger()],
-                                (flow2.flowId): [islCount: 0, switchCount: 0, islPercent: 0, switchPercent: 0]
-                        ]
-                ]
-        ]
-        verifySegmentsStats([flow1Path, flow2Path, flow3Path], expectedValuesMap)
+        verifySegmentsStats([flow1Path, flow2Path, flow3Path],
+                expectedThreeFlowsPathIntersectionValuesMap(flow1Path, flow2Path, flow3Path))
 
         cleanup: "Delete flows"
-        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
+        withPool {
+            [flow1, flow2, flow3].eachParallel { it && flowHelperV2.deleteFlow(it.flowId) }
+        }
+    }
+
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "Able to update flow to become diverse and single-switch"() {
+        given: "Three switches"
+        def switches = topologyHelper.getSwitchTriplets().find {it.shared != it.ep1 && it.shared != it.ep2 && it.ep1 != it.ep2}
+
+        and: "Create two flows starting from the same switch"
+        def flow1 = flowHelperV2.randomFlow(switches.shared, switches.ep1, false)
+        def flow2 = flowHelperV2.randomFlow(switches.shared, switches.ep2, false, [flow1])
+        withPool {
+            [flow1, flow2].eachParallel { flowHelperV2.addFlow(it) }
+        }
+        def flow1Path, flow2Path
+        withPool {
+            (flow1Path, flow2Path) = [flow1, flow2].collectParallel {
+                PathHelper.convert(northbound.getFlowPath(it.flowId))
+            }
+        }
+
+        when: "Update the second flow to become diverse and single-switch"
+        FlowResponseV2 updateResponse = flowHelperV2.updateFlow(flow2.flowId,
+                flow2.tap { it.diverseFlowId = flow1.flowId
+                it.destination = flowHelperV2.getFlowEndpoint(switches.shared, false)})
+
+        then: "Update response contains information about diverse flow"
+        updateResponse.diverseWith == [flow1.flowId] as Set
+
+        cleanup: "Delete flows"
+        withPool {
+            [flow1, flow2].eachParallel { it && flowHelperV2.deleteFlow(it.flowId) }
+        }
     }
 
     @Tidy
@@ -495,23 +432,52 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         flowPaths.each { flow ->
             with(flow.diverseGroupPayload) { diverseGroup ->
                 verifyAll(diverseGroup.overlappingSegments) {
-                    islCount == expectedValuesMap["diverseGroup"][flow.id]["islCount"]
-                    switchCount == expectedValuesMap["diverseGroup"][flow.id]["switchCount"]
-                    islPercent == expectedValuesMap["diverseGroup"][flow.id]["islPercent"]
-                    switchPercent == expectedValuesMap["diverseGroup"][flow.id]["switchPercent"]
+                    it == expectedValuesMap["diverseGroup"][flow.id]
                 }
                 with(diverseGroup.otherFlows) { otherFlows ->
                     assert (flowPaths*.id - flow.id).containsAll(otherFlows*.id)
                     otherFlows.each { otherFlow ->
                         verifyAll(otherFlow.segmentsStats) {
-                            islCount == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["islCount"]
-                            switchCount == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["switchCount"]
-                            islPercent == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["islPercent"]
-                            switchPercent == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["switchPercent"]
+                            it == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]
                         }
                     }
                 }
             }
         }
+    }
+
+    def expectedThreeFlowsPathIntersectionValuesMap(FlowPathPayload flow1Path,
+                                                    FlowPathPayload flow2Path,
+                                                    FlowPathPayload flow3Path) {
+        return [
+                diverseGroup: [
+                        (flow1Path.id): pathHelper.getOverlappingSegmentStats(flow1Path.getForwardPath(),
+                                [flow2Path.getForwardPath(), flow3Path.getForwardPath()]),
+                        (flow2Path.id): pathHelper.getOverlappingSegmentStats(flow2Path.getForwardPath(),
+                                [flow1Path.getForwardPath(), flow3Path.getForwardPath()]),
+                        (flow3Path.id): pathHelper.getOverlappingSegmentStats(flow3Path.getForwardPath(),
+                                [flow1Path.getForwardPath(), flow2Path.getForwardPath()])
+                ],
+                otherFlows  : [
+                        (flow1Path.id): [
+                                (flow2Path.id): pathHelper.getOverlappingSegmentStats(
+                                        flow1Path.getForwardPath(), [flow2Path.getForwardPath()]),
+                                (flow3Path.id): pathHelper.getOverlappingSegmentStats(
+                                        flow1Path.getForwardPath(), [flow3Path.getForwardPath()])
+                        ],
+                        (flow2Path.id): [
+                                (flow1Path.id): pathHelper.getOverlappingSegmentStats(
+                                        flow2Path.getForwardPath(), [flow1Path.getForwardPath()]),
+                                (flow3Path.id): pathHelper.getOverlappingSegmentStats(
+                                        flow2Path.getForwardPath(), [flow3Path.getForwardPath()])
+                        ],
+                        (flow3Path.id): [
+                                (flow1Path.id): pathHelper.getOverlappingSegmentStats(
+                                        flow3Path.getForwardPath(), [flow1Path.getForwardPath()]),
+                                (flow2Path.id): pathHelper.getOverlappingSegmentStats(
+                                        flow3Path.getForwardPath(), [flow2Path.getForwardPath()])
+                        ]
+                ]
+        ]
     }
 }
