@@ -37,16 +37,16 @@ import java.util.stream.Stream;
         @ApiResponse(code = 500, response = MessageError.class, message = "General error"),
         @ApiResponse(code = 503, response = MessageError.class, message = "Service unavailable")})
 public class BaseController {
-    protected void exposeBodyValidationResults(Stream<Optional<String>> defectStream) {
+    protected void exposeBodyValidationResults(Stream<Optional<String>> defectStream, final String errorMsg) {
         String[] defects = defectStream
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toArray(String[]::new);
         if (defects.length != 0) {
-            String errorDescription = "Errors:" + System.getProperty("line.separator")
-                    + String.join(System.getProperty("line.separator"), defects);
+            String errorDescription = "Errors: "
+                    + String.join(", ", defects);
             throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(), ErrorType.DATA_INVALID,
-                    "Invalid request payload", errorDescription);
+                    errorMsg, errorDescription);
         }
     }
 }

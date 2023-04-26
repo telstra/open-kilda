@@ -69,7 +69,7 @@ public class FlowControllerV2 extends BaseController {
     @PostMapping
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> createFlow(@RequestBody FlowRequestV2 flow) {
-        exposeBodyValidationResults(FlowRequestV2Validator.validateFlowRequestV2(flow));
+        exposeBodyValidationResults(FlowRequestV2Validator.validateFlowRequestV2(flow), "Could not create flow");
         return flowService.createFlow(flow);
     }
 
@@ -78,7 +78,7 @@ public class FlowControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> updateFlow(@PathVariable(name = "flow_id") String flowId,
                                                         @RequestBody FlowRequestV2 flow) {
-        exposeBodyValidationResults(FlowRequestV2Validator.validateFlowRequestV2(flow));
+        exposeBodyValidationResults(FlowRequestV2Validator.validateFlowRequestV2(flow), "Could not update flow");
         return flowService.updateFlow(flowId, flow);
     }
 

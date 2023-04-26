@@ -57,11 +57,15 @@ public class YFlowControllerV2 extends BaseController {
     @Autowired
     private YFlowService flowService;
 
+    /**
+     * Creates a new Y-flow.
+     */
     @ApiOperation(value = "Creates a new Y-flow", response = YFlow.class)
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CompletableFuture<YFlow> createYFlow(@RequestBody YFlowCreatePayload flow) {
-        exposeBodyValidationResults(YFlowCreatePayloadValidator.validateYFlowCreatePayload(flow));
+        exposeBodyValidationResults(YFlowCreatePayloadValidator.validateYFlowCreatePayload(flow), 
+                "Could not create y-flow");
         return flowService.createYFlow(flow);
     }
 
@@ -85,13 +89,17 @@ public class YFlowControllerV2 extends BaseController {
     public CompletableFuture<YFlowPaths> getYFlowPaths(@PathVariable(name = "y_flow_id") String yFlowId) {
         return flowService.getYFlowPaths(yFlowId);
     }
-
+    
+    /**
+     * Update Y-flow.
+     */
     @ApiOperation(value = "Updates Y-flow", response = YFlow.class)
     @PutMapping(value = "/{y_flow_id:.+}")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<YFlow> updateYFlow(@PathVariable(name = "y_flow_id") String yFlowId,
                                                 @RequestBody YFlowUpdatePayload flow) {
-        exposeBodyValidationResults(YFlowUpdatePayloadValidator.validateYFlowUpdatePayload(flow));
+        exposeBodyValidationResults(YFlowUpdatePayloadValidator.validateYFlowUpdatePayload(flow),
+                "Could not update y-flow");
         return flowService.updateYFlow(yFlowId, flow);
     }
 
