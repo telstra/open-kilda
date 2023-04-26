@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.error.link.LinkPropertiesNotUpdatedExpectedError
+
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -8,7 +10,6 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.fixture.TestFixture
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto
@@ -17,7 +18,6 @@ import org.openkilda.testing.service.northbound.NorthboundService
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
 
@@ -79,11 +79,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Can't create/update link props"
-        errorDetails.errorDescription == "Bad ${key.replace("_"," ")} value '$nonNumericValue'"
-
+        new LinkPropertiesNotUpdatedExpectedError(~/Bad ${key.replace("_"," ")} value \'$nonNumericValue\'/).matches(exc)
         where:
         key << ["cost", "max_bandwidth"]
     }

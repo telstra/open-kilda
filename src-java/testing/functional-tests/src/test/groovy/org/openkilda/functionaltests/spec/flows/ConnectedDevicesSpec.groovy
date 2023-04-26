@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
+import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotUpdatedExpectedError
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -27,7 +30,6 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Flow
 import org.openkilda.model.FlowEncapsulationType
@@ -51,7 +53,6 @@ import groovy.transform.AutoClone
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
@@ -313,8 +314,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-
+        new FlowNotFoundExpectedError(flow.getFlowId(), ~/Could not get connected devices for non existent flow/).matches(e)
         cleanup: "Restore initial switch properties"
         flow && !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
         initialProps && restoreSwitchProperties(sw.dpId, initialProps)
@@ -1006,10 +1006,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Bad request error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-        e.responseBodyAsString.to(MessageError).errorMessage == "Illegal switch properties combination for switch " +
-                "$sw.dpId. '$propertyToTurnOn' property can be set to 'true' only if 'multiTable' property is 'true'."
-
+        new SwitchPropertiesNotUpdatedExpectedError("Illegal switch properties combination for switch ${sw.getDpId()}." +
+                " '${propertyToTurnOn}' property can be set to 'true' only if 'multiTable' property is 'true'.").matches(e)
         cleanup:
         !e && switchHelper.updateSwitchProperties(sw, initSwitchProperties)
 
@@ -1035,10 +1033,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Bad request error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-        e.responseBodyAsString.to(MessageError).errorDescription == "Catching of LLDP/ARP packets supported only on " +
-                "switches with enabled 'multiTable' switch feature. This feature is disabled on switch $sw.dpId."
-
+        new FlowNotCreatedExpectedError(~/Catching of LLDP\/ARP packets supported only on \
+switches with enabled 'multiTable' switch feature. This feature is disabled on switch $sw.dpId./).matches(e)
         cleanup: "Restore switch props"
         flow && !e && flowHelperV2.deleteFlow(flow.flowId)
         SwitchHelper.updateSwitchProperties(sw, initProps)
@@ -1062,13 +1058,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Error is returned, stating that this operation cannot be performed"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-        e.responseBodyAsString.to(MessageError).errorDescription == "Failed to update switch properties."
-        e.responseBodyAsString.to(MessageError).errorMessage == "Illegal switch properties combination for switch $sw.dpId. " +
+        new SwitchPropertiesNotUpdatedExpectedError("Illegal switch properties combination for switch $sw.dpId. " +
                 "Detect Connected Devices feature is turn on for following flows [$flow.flowId]. " +
                 "For correct work of this feature switch property 'multiTable' must be set to 'true' " +
-                "Please disable detecting of connected devices via LLDP for each flow before set 'multiTable' property to 'false'"
-
+                "Please disable detecting of connected devices via LLDP for each flow before set 'multiTable' property to 'false'").matches(e)
         cleanup: "Restore switch props"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         initProps && SwitchHelper.updateSwitchProperties(sw, initProps)

@@ -647,6 +647,12 @@ class SwitchHelper {
         reviveSwitch(sw, flResourceAddress, false)
     }
 
+    static void removeExcessRules(List<SwitchId> switches) {
+        withPool {
+            switches.eachParallel {northbound.get().synchronizeSwitch(it, true)}
+        }
+    }
+
     static void verifySectionInSwitchValidationInfo(SwitchValidationV2ExtendedResult switchValidateInfo,
                                                     List<String> sections = ["groups", "meters", "logical_ports", "rules"]) {
         sections.each { String section ->
