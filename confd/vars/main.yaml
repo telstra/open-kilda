@@ -192,6 +192,10 @@ kilda_storm_flow_hs_flow_delete_mirror_hub_parallelism: 2
 kilda_storm_flow_hs_y_flow_create_hub_parallelism: 2
 kilda_storm_flow_hs_y_flow_delete_hub_parallelism: 2
 kilda_storm_flow_hs_y_flow_read_hub_parallelism: 2
+kilda_storm_flow_hs_ha_flow_create_hub_parallelism: 2
+kilda_storm_flow_hs_ha_flow_update_hub_parallelism: 2
+kilda_storm_flow_hs_ha_flow_delete_hub_parallelism: 2
+kilda_storm_flow_hs_ha_flow_read_hub_parallelism: 2
 
 # Flow HS kafka bolts
 kilda_storm_flow_hs_history_bolt_parallelism: 2
@@ -201,6 +205,9 @@ kilda_storm_flow_hs_reroute_response_sender_parallelism: 2
 kilda_storm_flow_hs_server42_control_sender_parallelism: 2
 kilda_storm_flow_hs_dump_request_sender_parallelism: 2
 kilda_storm_flow_hs_stats_sender_parallelism: 2
+kilda_storm_flow_hs_ping_sender_parallelism: 2
+kilda_storm_flow_hs_monitoring_sender_parallelism: 2
+kilda_storm_flow_hs_speaker_request_sender_parallelism: 2
 
 kilda_storm_spout_parallelism: 2
 

@@ -1,7 +1,10 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.extension.tags.Tags
 
+import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
@@ -186,135 +189,94 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def yFlow3 = yFlowHelper.addYFlow(yFlowRequest3)
 
         then: "Get flow path for all y-flows"
-        def yFlow1Paths = northboundV2.getYFlowPaths(yFlow1.YFlowId)
-        def yFlow2Paths = northboundV2.getYFlowPaths(yFlow2.YFlowId)
-        def yFlow3Paths = northboundV2.getYFlowPaths(yFlow3.YFlowId)
-
-        def yFlow1SwitchCount = pathHelper.getInvolvedSwitches(PathHelper.convert(yFlow1Paths.subFlowPaths[0].forward)).size()
-        def yFlow2SwitchCount = pathHelper.getInvolvedSwitches(PathHelper.convert(yFlow2Paths.subFlowPaths[0].forward)).size()
-        def yFlow3SwitchCount = pathHelper.getInvolvedSwitches(PathHelper.convert(yFlow3Paths.subFlowPaths[0].forward)).size()
-        def yFlow1n2OverlapSwitchCount = Math.min(yFlow1SwitchCount, yFlow2SwitchCount)
-        def yFlow1n3OverlapSwitchCount = Math.min(yFlow1SwitchCount, yFlow3SwitchCount)
-        def yFlow2n3OverlapSwitchCount = Math.min(yFlow2SwitchCount, yFlow3SwitchCount)
-
-        def yFlow1SharedIsls = pathHelper.getInvolvedIsls(PathHelper.convert(yFlow1Paths.sharedPath.forward)).size()
-        def yFlow2SharedIsls = pathHelper.getInvolvedIsls(PathHelper.convert(yFlow2Paths.sharedPath.forward)).size()
-        def yFlow3SharedIsls = pathHelper.getInvolvedIsls(PathHelper.convert(yFlow3Paths.sharedPath.forward)).size()
+        YFlowPaths yFlow1Paths, yFlow2Paths, yFlow3Paths
+        withPool {
+            (yFlow1Paths, yFlow2Paths, yFlow3Paths) = [yFlow1, yFlow2, yFlow3].collectParallel { northboundV2.getYFlowPaths(it.yFlowId) }
+        }
 
         and: "All y-flow paths have diverse group information"
-
-        def yFlow1n2OverlapSwPercentOf1 = (100 * yFlow1n2OverlapSwitchCount / yFlow1SwitchCount).toInteger()
-        def yFlow1n3OverlapSwPercentOf1 = (100 * yFlow1n3OverlapSwitchCount / yFlow1SwitchCount).toInteger()
-        def yFlow1ExpectedValues = [
-                diverseGroup: [
-                        (yFlow1.subFlows[0].flowId): [islCount: yFlow1SharedIsls, switchCount: yFlow1SwitchCount, islPercent: 100, switchPercent: 100],
-                        (yFlow1.subFlows[1].flowId): [islCount: yFlow1SharedIsls, switchCount: yFlow1SwitchCount, islPercent: 100, switchPercent: 100]
-                ],
-                otherFlows  : [
-                        (yFlow1.subFlows[0].flowId): [
-                                (yFlow1.subFlows[1].flowId): [islCount: yFlow1SharedIsls, switchCount: yFlow1SwitchCount, islPercent: 100, switchPercent: 100],
-                                (yFlow2.subFlows[0].flowId): [islCount: 0, switchCount: yFlow1n2OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n2OverlapSwPercentOf1],
-                                (yFlow2.subFlows[1].flowId): [islCount: 0, switchCount: yFlow1n2OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n2OverlapSwPercentOf1],
-                                (yFlow3.subFlows[0].flowId): [islCount: 0, switchCount: yFlow1n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n3OverlapSwPercentOf1],
-                                (yFlow3.subFlows[1].flowId): [islCount: 0, switchCount: yFlow1n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n3OverlapSwPercentOf1]
-                        ],
-                        (yFlow1.subFlows[1].flowId): [
-                                (yFlow1.subFlows[0].flowId): [islCount: yFlow1SharedIsls, switchCount: yFlow1SwitchCount, islPercent: 100, switchPercent: 100],
-                                (yFlow2.subFlows[0].flowId): [islCount: 0, switchCount: yFlow1n2OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n2OverlapSwPercentOf1],
-                                (yFlow2.subFlows[1].flowId): [islCount: 0, switchCount: yFlow1n2OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n2OverlapSwPercentOf1],
-                                (yFlow3.subFlows[0].flowId): [islCount: 0, switchCount: yFlow1n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n3OverlapSwPercentOf1],
-                                (yFlow3.subFlows[1].flowId): [islCount: 0, switchCount: yFlow1n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n3OverlapSwPercentOf1]
-                        ]
-                ]
-        ]
+        def yFlow1ExpectedValues = expectedThreeYFlowsPathIntersectionValuesMap(yFlow1Paths, yFlow2Paths, yFlow3Paths)
         verifySegmentsStats(yFlow1Paths, yFlow1ExpectedValues)
 
-        def yFlow1n2OverlapSwPercentOf2 = (100 * yFlow1n2OverlapSwitchCount / yFlow2SwitchCount).toInteger()
-        def yFlow2n3OverlapSwPercentOf2 = (100 * yFlow2n3OverlapSwitchCount / yFlow2SwitchCount).toInteger()
-        def yFlow2ExpectedValues = [
-                diverseGroup: [
-                        (yFlow2.subFlows[0].flowId): [islCount: yFlow2SharedIsls, switchCount: yFlow2SwitchCount, islPercent: 100, switchPercent: 100],
-                        (yFlow2.subFlows[1].flowId): [islCount: yFlow2SharedIsls, switchCount: yFlow2SwitchCount, islPercent: 100, switchPercent: 100]
-                ],
-                otherFlows  : [
-                        (yFlow2.subFlows[0].flowId): [
-                                (yFlow1.subFlows[0].flowId): [islCount: 0, switchCount: yFlow1n2OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n2OverlapSwPercentOf2],
-                                (yFlow1.subFlows[1].flowId): [islCount: 0, switchCount: yFlow1n2OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n2OverlapSwPercentOf2],
-                                (yFlow2.subFlows[1].flowId): [islCount: yFlow2SharedIsls, switchCount: yFlow2SwitchCount, islPercent: 100, switchPercent: 100],
-                                (yFlow3.subFlows[0].flowId): [islCount: 0, switchCount: yFlow2n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow2n3OverlapSwPercentOf2],
-                                (yFlow3.subFlows[1].flowId): [islCount: 0, switchCount: yFlow2n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow2n3OverlapSwPercentOf2]
-                        ],
-                        (yFlow2.subFlows[1].flowId): [
-                                (yFlow1.subFlows[0].flowId): [islCount: 0, switchCount: yFlow1n2OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n2OverlapSwPercentOf2],
-                                (yFlow1.subFlows[1].flowId): [islCount: 0, switchCount: yFlow1n2OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n2OverlapSwPercentOf2],
-                                (yFlow2.subFlows[0].flowId): [islCount: yFlow2SharedIsls, switchCount: yFlow2SwitchCount, islPercent: 100, switchPercent: 100],
-                                (yFlow3.subFlows[0].flowId): [islCount: 0, switchCount: yFlow2n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow2n3OverlapSwPercentOf2],
-                                (yFlow3.subFlows[1].flowId): [islCount: 0, switchCount: yFlow2n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow2n3OverlapSwPercentOf2]
-                        ]
-                ]
-        ]
+        def yFlow2ExpectedValues = expectedThreeYFlowsPathIntersectionValuesMap(yFlow2Paths, yFlow1Paths, yFlow3Paths)
         verifySegmentsStats(yFlow2Paths, yFlow2ExpectedValues)
 
-        def yFlow1n3OverlapSwPercentOf3 = (100 * yFlow1n3OverlapSwitchCount / yFlow3SwitchCount).toInteger()
-        def yFlow2n3OverlapSwPercentOf3 = (100 * yFlow2n3OverlapSwitchCount / yFlow3SwitchCount).toInteger()
-        def yFlow3ExpectedValues = [
-                diverseGroup: [
-                        (yFlow3.subFlows[0].flowId): [islCount: yFlow3SharedIsls, switchCount: yFlow3SwitchCount, islPercent: 100, switchPercent: 100],
-                        (yFlow3.subFlows[1].flowId): [islCount: yFlow3SharedIsls, switchCount: yFlow3SwitchCount, islPercent: 100, switchPercent: 100],
-                ],
-                otherFlows  : [
-                        (yFlow3.subFlows[0].flowId): [
-                                (yFlow1.subFlows[0].flowId): [islCount: 0, switchCount: yFlow1n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n3OverlapSwPercentOf3],
-                                (yFlow1.subFlows[1].flowId): [islCount: 0, switchCount: yFlow1n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n3OverlapSwPercentOf3],
-                                (yFlow2.subFlows[0].flowId): [islCount: 0, switchCount: yFlow2n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow2n3OverlapSwPercentOf3],
-                                (yFlow2.subFlows[1].flowId): [islCount: 0, switchCount: yFlow2n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow2n3OverlapSwPercentOf3],
-                                (yFlow3.subFlows[1].flowId): [islCount: yFlow3SharedIsls, switchCount: yFlow3SwitchCount, islPercent: 100, switchPercent: 100]
-                        ],
-                        (yFlow3.subFlows[1].flowId): [
-                                (yFlow1.subFlows[0].flowId): [islCount: 0, switchCount: yFlow1n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n3OverlapSwPercentOf3],
-                                (yFlow1.subFlows[1].flowId): [islCount: 0, switchCount: yFlow1n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow1n3OverlapSwPercentOf3],
-                                (yFlow2.subFlows[0].flowId): [islCount: 0, switchCount: yFlow2n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow2n3OverlapSwPercentOf3],
-                                (yFlow2.subFlows[1].flowId): [islCount: 0, switchCount: yFlow2n3OverlapSwitchCount, islPercent: 0, switchPercent: yFlow2n3OverlapSwPercentOf3],
-                                (yFlow3.subFlows[0].flowId): [islCount: yFlow3SharedIsls, switchCount: yFlow3SwitchCount, islPercent: 100, switchPercent: 100]
-                        ]
-                ]
-        ]
+        def yFlow3ExpectedValues = expectedThreeYFlowsPathIntersectionValuesMap(yFlow3Paths, yFlow1Paths, yFlow2Paths)
         verifySegmentsStats(yFlow3Paths, yFlow3ExpectedValues)
 
         then: "Get flow path for sub-flows"
-        def yFlow1s1Path = northbound.getFlowPath(yFlow1.subFlows[0].flowId)
-        def yFlow1s2Path = northbound.getFlowPath(yFlow1.subFlows[1].flowId)
+        FlowPathPayload yFlow1s1Path, yFlow1s2Path, yFlow2s1Path, yFlow2s2Path, yFlow3s1Path, yFlow3s2Path
+        withPool {
+            (yFlow1s1Path, yFlow1s2Path, yFlow2s1Path, yFlow2s2Path, yFlow3s1Path, yFlow3s2Path) =
+                    [yFlow1.subFlows[0], yFlow1.subFlows[1],
+                     yFlow2.subFlows[0], yFlow2.subFlows[1],
+                     yFlow3.subFlows[0], yFlow3.subFlows[1]].collectParallel { northbound.getFlowPath(it.flowId) }
+        }
         verifySegmentsStats([yFlow1s1Path, yFlow1s2Path], yFlow1ExpectedValues)
-
-        def yFlow2s1Path = northbound.getFlowPath(yFlow2.subFlows[0].flowId)
-        def yFlow2s2Path = northbound.getFlowPath(yFlow2.subFlows[1].flowId)
         verifySegmentsStats([yFlow2s1Path, yFlow2s2Path], yFlow2ExpectedValues)
-
-        def yFlow3s1Path = northbound.getFlowPath(yFlow3.subFlows[0].flowId)
-        def yFlow3s2Path = northbound.getFlowPath(yFlow3.subFlows[1].flowId)
         verifySegmentsStats([yFlow3s1Path, yFlow3s2Path], yFlow3ExpectedValues)
 
         cleanup:
-        [yFlow1, yFlow2, yFlow3].each { it && yFlowHelper.deleteYFlow(it.YFlowId) }
+        withPool {
+            [yFlow1, yFlow2, yFlow3].eachParallel { it && yFlowHelper.deleteYFlow(it.YFlowId) }
+        }
+
     }
 
+    @Tidy
+    @Tags([LOW_PRIORITY])
+    def "Able to get y-flow paths with correct overlapping segments stats with one-switch y-flow"() {
+        given: "Three switches"
+        def swT = topologyHelper.switchTriplets.find {
+            it.shared != it.ep1 && it.shared != it.ep2 && it.ep1 != it.ep2
+        }
+        assumeTrue(swT != null, "Unable to find suitable switches")
+
+        when: "Create y-flow"
+        def yFlowRequest1 = yFlowHelper.randomYFlow(swT, false)
+        def yFlow1 = yFlowHelper.addYFlow(yFlowRequest1)
+
+        and: "Create one-switch y-flows on shared and ep1 switches in the same diversity group"
+        def yFlowRequest2 = yFlowHelper.singleSwitchYFlow(swT.getShared(), false, [yFlowRequest1])
+                .tap { it.diverseFlowId = yFlow1.YFlowId }
+        def yFlow2 = yFlowHelper.addYFlow(yFlowRequest2)
+        def yFlowRequest3 = yFlowHelper.singleSwitchYFlow(swT.getShared(), false, [yFlowRequest1, yFlowRequest2])
+                .tap { it.diverseFlowId = yFlow1.YFlowId }
+        def yFlow3 = yFlowHelper.addYFlow(yFlowRequest3)
+
+        and: "Get flow paths for all y-flows"
+        YFlowPaths yFlow1Paths, yFlow2Paths, yFlow3Paths
+        withPool {
+            (yFlow1Paths, yFlow2Paths, yFlow3Paths) = [yFlow1, yFlow2, yFlow3]
+                    .collectParallel { northboundV2.getYFlowPaths(it.YFlowId) }
+        }
+
+        then: 'All YFlows have correct diverse group information'
+        def yFlow1ExpectedValues = expectedThreeYFlowsPathIntersectionValuesMap(yFlow1Paths, yFlow2Paths, yFlow3Paths)
+        verifySegmentsStats(yFlow1Paths, yFlow1ExpectedValues)
+
+        def yFlow2ExpectedValues = expectedThreeYFlowsPathIntersectionValuesMap(yFlow2Paths, yFlow1Paths, yFlow3Paths)
+        verifySegmentsStats(yFlow2Paths, yFlow2ExpectedValues)
+
+        def yFlow3ExpectedValues = expectedThreeYFlowsPathIntersectionValuesMap(yFlow3Paths, yFlow1Paths, yFlow2Paths)
+        verifySegmentsStats(yFlow3Paths, yFlow3ExpectedValues)
+
+        cleanup:
+        withPool {
+            [yFlow1, yFlow2, yFlow3].eachParallel { it && yFlowHelper.deleteYFlow(it.YFlowId) }
+        }
+    }
 
     void verifySegmentsStats(YFlowPaths yFlowPaths, Map expectedValuesMap) {
         yFlowPaths.subFlowPaths.each { flow ->
             flow.diverseGroup && with(flow.diverseGroup) { diverseGroup ->
                 verifyAll(diverseGroup.overlappingSegments) {
-                    islCount == expectedValuesMap["diverseGroup"][flow.flowId]["islCount"]
-                    switchCount == expectedValuesMap["diverseGroup"][flow.flowId]["switchCount"]
-                    islPercent == expectedValuesMap["diverseGroup"][flow.flowId]["islPercent"]
-                    switchPercent == expectedValuesMap["diverseGroup"][flow.flowId]["switchPercent"]
+                    it == expectedValuesMap["diverseGroup"][flow.flowId]
                 }
                 with(diverseGroup.otherFlows) { otherFlows ->
                     otherFlows.each { otherFlow ->
                         verifyAll(otherFlow.segmentsStats) {
-                            islCount == expectedValuesMap["otherFlows"][flow.flowId][otherFlow.id]["islCount"]
-                            switchCount == expectedValuesMap["otherFlows"][flow.flowId][otherFlow.id]["switchCount"]
-                            islPercent == expectedValuesMap["otherFlows"][flow.flowId][otherFlow.id]["islPercent"]
-                            switchPercent == expectedValuesMap["otherFlows"][flow.flowId][otherFlow.id]["switchPercent"]
+                            it == expectedValuesMap["otherFlows"][flow.flowId][otherFlow.id]
                         }
                     }
                 }
@@ -326,23 +288,76 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         flowPaths.each { flow ->
             with(flow.diverseGroupPayload) { diverseGroup ->
                 verifyAll(diverseGroup.overlappingSegments) {
-                    islCount == expectedValuesMap["diverseGroup"][flow.id]["islCount"]
-                    switchCount == expectedValuesMap["diverseGroup"][flow.id]["switchCount"]
-                    islPercent == expectedValuesMap["diverseGroup"][flow.id]["islPercent"]
-                    switchPercent == expectedValuesMap["diverseGroup"][flow.id]["switchPercent"]
+                    it == expectedValuesMap["diverseGroup"][flow.id]
                 }
                 with(diverseGroup.otherFlows) { otherFlows ->
                     otherFlows.each { otherFlow ->
                         verifyAll(otherFlow.segmentsStats) {
-                            islCount == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["islCount"]
-                            switchCount == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["switchCount"]
-                            islPercent == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["islPercent"]
-                            switchPercent == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["switchPercent"]
+                            it == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]
                         }
                     }
                 }
             }
         }
+    }
+
+    def expectedThreeYFlowsPathIntersectionValuesMap(YFlowPaths yFlowUnderTest,
+                                                     YFlowPaths yFlow2Paths,
+                                                     YFlowPaths yFlow3Paths) {
+        return [
+                diverseGroup: [
+                        (yFlowUnderTest.subFlowPaths[0].flowId): pathHelper.getOverlappingSegmentStats(
+                                yFlowUnderTest.subFlowPaths[0].forward,
+                                [yFlowUnderTest.subFlowPaths[1].forward,
+                                 yFlow2Paths.subFlowPaths[0].forward,
+                                 yFlow2Paths.subFlowPaths[1].forward,
+                                 yFlow3Paths.subFlowPaths[0].forward,
+                                 yFlow3Paths.subFlowPaths[1].forward]),
+                        (yFlowUnderTest.subFlowPaths[1].flowId): pathHelper.getOverlappingSegmentStats(
+                                yFlowUnderTest.subFlowPaths[1].forward,
+                                [yFlowUnderTest.subFlowPaths[0].forward,
+                                 yFlow2Paths.subFlowPaths[0].forward,
+                                 yFlow2Paths.subFlowPaths[1].forward,
+                                 yFlow3Paths.subFlowPaths[0].forward,
+                                 yFlow3Paths.subFlowPaths[1].forward])
+                ],
+                otherFlows  : [
+                        (yFlowUnderTest.subFlowPaths[0].flowId): [
+                                (yFlowUnderTest.subFlowPaths[1].flowId): pathHelper.getOverlappingSegmentStats(
+                                        yFlowUnderTest.subFlowPaths[0].forward,
+                                        [yFlowUnderTest.subFlowPaths[1].forward]),
+                                (yFlow2Paths.subFlowPaths[0].flowId)   : pathHelper.getOverlappingSegmentStats(
+                                        yFlowUnderTest.subFlowPaths[0].forward,
+                                        [yFlow2Paths.subFlowPaths[0].forward]),
+                                (yFlow2Paths.subFlowPaths[1].flowId)   : pathHelper.getOverlappingSegmentStats(
+                                        yFlowUnderTest.subFlowPaths[0].forward,
+                                        [yFlow2Paths.subFlowPaths[1].forward]),
+                                (yFlow3Paths.subFlowPaths[0].flowId)   : pathHelper.getOverlappingSegmentStats(
+                                        yFlowUnderTest.subFlowPaths[0].forward,
+                                        [yFlow3Paths.subFlowPaths[0].forward]),
+                                (yFlow3Paths.subFlowPaths[1].flowId)   : pathHelper.getOverlappingSegmentStats(
+                                        yFlowUnderTest.subFlowPaths[0].forward,
+                                        [yFlow3Paths.subFlowPaths[1].forward])
+                        ],
+                        (yFlowUnderTest.subFlowPaths[1].flowId): [
+                                (yFlowUnderTest.subFlowPaths[0].flowId): pathHelper.getOverlappingSegmentStats(
+                                        yFlowUnderTest.subFlowPaths[1].forward,
+                                        [yFlowUnderTest.subFlowPaths[0].forward]),
+                                (yFlow2Paths.subFlowPaths[0].flowId)   : pathHelper.getOverlappingSegmentStats(
+                                        yFlowUnderTest.subFlowPaths[1].forward,
+                                        [yFlow2Paths.subFlowPaths[0].forward]),
+                                (yFlow2Paths.subFlowPaths[1].flowId)   : pathHelper.getOverlappingSegmentStats(
+                                        yFlowUnderTest.subFlowPaths[1].forward,
+                                        [yFlow2Paths.subFlowPaths[1].forward]),
+                                (yFlow3Paths.subFlowPaths[0].flowId)   : pathHelper.getOverlappingSegmentStats(
+                                        yFlowUnderTest.subFlowPaths[1].forward,
+                                        [yFlow3Paths.subFlowPaths[0].forward]),
+                                (yFlow3Paths.subFlowPaths[1].flowId)   : pathHelper.getOverlappingSegmentStats(
+                                        yFlowUnderTest.subFlowPaths[1].forward,
+                                        [yFlow3Paths.subFlowPaths[1].forward])
+                        ]
+                ]
+        ]
     }
 
 }
