@@ -1,5 +1,10 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotFoundExpectedError
+import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotUpdatedExpectedError
+
+import java.util.regex.Pattern
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -10,13 +15,11 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 
 import groovy.transform.AutoClone
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
@@ -80,10 +83,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        e.responseBodyAsString.to(MessageError).errorMessage ==
-                "Switch properties for switch id '$NON_EXISTENT_SWITCH_ID' not found."
-
+        new SwitchPropertiesNotFoundExpectedError(NON_EXISTENT_SWITCH_ID, ~/Failed to get switch properties./).matches(e)
         when: "Try to update switch properties info for non-existing switch"
         def switchProperties = new SwitchPropertiesDto()
         switchProperties.multiTable = true
@@ -92,10 +92,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.NOT_FOUND
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Switch properties for switch id '$NON_EXISTENT_SWITCH_ID' not found."
-    }
+        new SwitchPropertiesNotFoundExpectedError(NON_EXISTENT_SWITCH_ID, ~/Failed to update switch properties./).matches(exc)    }
 
     @Tidy
     def "Informative error is returned when trying to update switch properties with incorrect information"() {
@@ -109,14 +106,15 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage == errorMessage
-
+        expectedError.matches(exc)
         where:
-        supportedTransitEncapsulation | errorMessage
-        ["test"]                      | "Unable to parse request payload"
-        []                            | "Supported transit encapsulations should not be null or empty"
-        null                          | "Supported transit encapsulations should not be null or empty"
+        supportedTransitEncapsulation | expectedError
+        ["test"]                      | new SwitchPropertiesNotUpdatedExpectedError("Unable to parse request payload",
+                ~/No enum constant org.openkilda.messaging.payload.flow.FlowEncapsulationType.TEST/)
+        []                            | new SwitchPropertiesNotUpdatedExpectedError(
+                "Supported transit encapsulations should not be null or empty")
+        null                          | new SwitchPropertiesNotUpdatedExpectedError(
+                "Supported transit encapsulations should not be null or empty")
     }
 
     @Tidy
@@ -137,9 +135,8 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage == String.format(data.error, sw.dpId)
-
+        new SwitchPropertiesNotUpdatedExpectedError(String.format(data.error, sw.dpId),
+        data.description ?: SwitchPropertiesNotUpdatedExpectedError.getDescriptionPattern()).matches(exc)
         where:
         data << [
                 new PropertiesData(desc: "enable server42_flow_rtt property without server42_port property",
@@ -163,17 +160,20 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
                 new PropertiesData(desc: "set invalid server42_port property",
                         multiTable: true, server42FlowRtt: true, server42Port: -1, server42MacAddress: null,
                         server42Vlan: 15,
-                        error: "Property 'server42_port' for switch %s has invalid value '-1'. Port must be positive"),
+                        error: "Property 'server42_port' for switch %s has invalid value '-1'. Port must be positive",
+                        description: ~/Invalid server 42 Port/),
 
                 new PropertiesData(desc: "set invalid server42mac_address property",
                         multiTable: false, server42FlowRtt: false, server42Port: null, server42MacAddress: "INVALID",
                         server42Vlan: 15,
-                        error: "Property 'server42_mac_address' for switch %s has invalid value 'INVALID'."),
+                        error: "Property 'server42_mac_address' for switch %s has invalid value 'INVALID'.",
+                        description: ~/Invalid server 42 Mac Address/),
 
                 new PropertiesData(desc: "set invalid server42_vlan property",
                         multiTable: false, server42FlowRtt: false, server42Port: null, server42MacAddress: null,
                         server42Vlan: -1,
-                        error: "Property 'server42_vlan' for switch %s has invalid value '-1'. Vlan must be in range [0, 4095]"),
+                        error: "Property 'server42_vlan' for switch %s has invalid value '-1'. Vlan must be in range [0, 4095]",
+                        description: ~/Invalid server 42 Vlan/),
 
                 new PropertiesData(desc: "enable server42_isl_rtt property without server42_port property",
                         multiTable: true, server42IslRtt: "ENABLED", server42Port: null, server42MacAddress: "42:42:42:42:42:42",
@@ -193,6 +193,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         Integer server42Port, server42Vlan
         String server42MacAddress, desc, error
         String server42IslRtt
+        Pattern description = null
     }
 
     @Tidy
@@ -210,11 +211,8 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Illegal switch properties combination for switch $sw.dpId. 'switchLldp' property " +
-                "can be set to 'true' only if 'multiTable' property is 'true'."
-
+        new SwitchPropertiesNotUpdatedExpectedError("Illegal switch properties combination for switch $sw.dpId. " +
+                "'switchLldp' property can be set to 'true' only if 'multiTable' property is 'true'.").matches(exc)
         cleanup:
         !exc && switchHelper.updateSwitchProperties(sw, initSwitchProperties)
     }
@@ -234,11 +232,8 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Illegal switch properties combination for switch $sw.dpId. 'switchArp' property " +
-                "can be set to 'true' only if 'multiTable' property is 'true'."
-
+        new SwitchPropertiesNotUpdatedExpectedError("Illegal switch properties combination for switch $sw.dpId. " +
+                "'switchArp' property can be set to 'true' only if 'multiTable' property is 'true'.").matches(exc)
         cleanup:
         !exc && switchHelper.updateSwitchProperties(sw, initSwitchProperties)
     }
@@ -259,11 +254,9 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-        e.responseBodyAsString.to(MessageError).errorDescription ==
-                "Switch $sw.dpId must support at least one of the next features: [NOVIFLOW_PUSH_POP_VXLAN, " +
-                "KILDA_OVS_PUSH_POP_MATCH_VXLAN]"
-
+        new SwitchPropertiesNotUpdatedExpectedError("Failed to update switch properties.",
+                ~/Switch $sw.dpId must support at least one of the next features: \[NOVIFLOW_PUSH_POP_VXLAN, \
+KILDA_OVS_PUSH_POP_MATCH_VXLAN\]/).matches(e)
         cleanup:
         !e && SwitchHelper.updateSwitchProperties(sw, initProps)
     }

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.grpc
 
+import org.openkilda.functionaltests.error.WrongLicenseKeyExpectedError
+
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -28,9 +30,7 @@ class LicenseSpec extends GrpcBaseSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Invalid license key."
-
+        new WrongLicenseKeyExpectedError().matches(exc)
         where:
         sw << getNoviflowSwitches()
     }

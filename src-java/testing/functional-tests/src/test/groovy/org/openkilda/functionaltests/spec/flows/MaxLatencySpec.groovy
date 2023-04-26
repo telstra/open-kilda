@@ -1,29 +1,27 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExpectedError
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.StatusInfo
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/pce/design.md",
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/pce/max-latency-issue/README.md"])
@@ -112,11 +110,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
 
         then: "Flow is not created, error returned describing that no paths found"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        def errorDetails = e.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription.startsWith("Not enough bandwidth or no path found. Can't find a path")
-
+        new FlowNotCreatedWithMissingPathExpectedError(~/Not enough bandwidth or no path found. Can't find a path/).matches(e)
         cleanup:
         !e && flowHelperV2.deleteFlow(flow.flowId)
 
@@ -331,11 +325,7 @@ but satisfies max_latency_tier2"
 
         then: "Flow is not created, human readable error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        def errorDetails = e.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription.startsWith("Not enough bandwidth or no path found. Can't find a path")
-
+        new FlowNotCreatedWithMissingPathExpectedError(~/Not enough bandwidth or no path found. Can't find a path/).matches(e)
         cleanup:
         !e && flowHelperV2.deleteFlow(flow.flowId)
     }

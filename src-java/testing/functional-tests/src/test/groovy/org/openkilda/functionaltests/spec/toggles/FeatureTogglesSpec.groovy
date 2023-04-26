@@ -1,14 +1,16 @@
 package org.openkilda.functionaltests.spec.toggles
 
+import org.openkilda.functionaltests.error.flow.FlowForbiddenToCreateExpectedError
+import org.openkilda.functionaltests.error.flow.FlowForbiddenToDeleteExpectedError
+import org.openkilda.functionaltests.error.flow.FlowForbiddenToUpdateExpectedError
+
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Isolated
 import spock.lang.Narrative
@@ -36,12 +38,7 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.FORBIDDEN
-        with(e.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not create flow"
-            errorDescription == "Flow create feature is disabled"
-        }
-
+        new FlowForbiddenToCreateExpectedError(~/Flow create feature is disabled/).matches(e)
         and: "Update of previously existing flow is still possible"
         flowHelper.updateFlow(flow.id, flow.tap { it.description = it.description + "updated" })
 
@@ -65,11 +62,7 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.FORBIDDEN
-        def errorDetails = e.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not update flow"
-        errorDetails.errorDescription == "Flow update feature is disabled"
-
+        new FlowForbiddenToUpdateExpectedError(~/Flow update feature is disabled/).matches(e)
         and: "Creating new flow is still possible"
         def newFlow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
         flowHelper.addFlow(newFlow)
@@ -94,11 +87,7 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.FORBIDDEN
-        def errorDetails = e.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not delete flow"
-        errorDetails.errorDescription == "Flow delete feature is disabled"
-
+        new FlowForbiddenToDeleteExpectedError(~/Flow delete feature is disabled/).matches(e)
         and: "Creating new flow is still possible"
         def newFlow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
         flowHelper.addFlow(newFlow)

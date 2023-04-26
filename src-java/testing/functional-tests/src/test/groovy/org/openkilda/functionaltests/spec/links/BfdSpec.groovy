@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.error.link.LinkBfdNotSetExpectedError
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.BFD_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -363,8 +365,7 @@ class BfdSpec extends HealthCheckSpecification {
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-
+        new LinkBfdNotSetExpectedError(data.expectedDescription).matches(e)
         cleanup:
         !e && northboundV2.deleteLinkBfd(isl)
 
@@ -372,11 +373,13 @@ class BfdSpec extends HealthCheckSpecification {
         data << [
                 [
                         descr: "too small interval",
-                        props: new BfdProperties(99, (short)1)
+                        props: new BfdProperties(99, (short)1),
+                        expectedDescription: ~/Errors: Invalid BFD interval value: 99 < 100/
                 ],
                 [
                         descr: "too small multiplier",
-                        props: new BfdProperties(100, (short)0)
+                        props: new BfdProperties(100, (short)0),
+                        expectedDescription: ~/Errors: Invalid BFD multiplier value: 0 < 1/
                 ]
         ]
     }

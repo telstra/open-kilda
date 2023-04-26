@@ -157,7 +157,7 @@ public class HaFlowValidator {
             }
         }
         throw new InvalidFlowException(
-                format("The ha-flow %s is one switch flow. At lease one of subflow endpoint switch id must differ "
+                format("The ha-flow %s is one switch flow. At least one of subflow endpoint switch id must differ "
                                 + "from shared endpoint switch id %s",
                         request.getHaFlowId(), request.getSharedEndpoint().getSwitchId()),
                 ErrorType.DATA_INVALID);

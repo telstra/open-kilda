@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeFalse
@@ -21,7 +24,6 @@ import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
@@ -35,7 +37,6 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
 
@@ -341,9 +342,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Could not create flow"
-
+        new FlowNotCreatedExpectedError(~/Flow\'s source endpoint is double VLAN tagged, switch ${swP.getSrc().getDpId()}\
+ is not capable to support such endpoint encapsulation./).matches(exc)
         cleanup: "Revert system to original state"
         !exc && northboundV2.deleteFlow(flow.flowId)
         northbound.updateSwitchProperties(swP.src.dpId, initSrcSwProps)
@@ -367,16 +367,14 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Could not create flow"
-
+        new FlowNotCreatedExpectedError(expectedErrorDescription).matches(exc)
         cleanup:
         !exc && flowHelper.deleteFlow(flow.flowId)
 
         where:
-        srcInnerVlanId | dstInnerVlanId
-        4096           | 10
-        10             | -1
+        srcInnerVlanId | dstInnerVlanId | expectedErrorDescription
+        4096           | 10             | ~/Errors: InnerVlanId must be less than 4095/
+        10             | -1             | ~/Errors: InnerVlanId must be non-negative/
     }
 
     /** System doesn't allow to create a flow with innerVlan and without vlan at the same time.
@@ -532,13 +530,12 @@ class QinQFlowSpec extends HealthCheckSpecification {
         conflictFlow.source.vlanId = conflictVlan
         conflictFlow.source.innerVlanId = conflictInnerVlanId
         conflictFlow.source.portNumber = flow.source.portNumber
-        northboundV2.addFlow(flow)
+        flowHelperV2.addFlow(conflictFlow)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.CONFLICT
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Could not create flow"
-
+        new FlowNotCreatedWithConflictExpectedError(~/Requested flow \'${conflictFlow.getFlowId()}\' conflicts with\
+ existing flow \'${flow.getFlowId()}\'./).matches(exc)
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
         !exc && northboundV2.deleteFlow(conflictFlow.flowId)

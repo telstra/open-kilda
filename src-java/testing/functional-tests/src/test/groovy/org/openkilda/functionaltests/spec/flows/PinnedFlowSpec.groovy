@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.error.PinnedFlowNotReroutedExpectedError
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
@@ -15,8 +17,6 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
@@ -224,12 +224,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.UNPROCESSABLE_ENTITY
-        with(e.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not reroute flow"
-            errorDescription == "Can't reroute pinned flow"
-        }
-
+        new PinnedFlowNotReroutedExpectedError().matches(e)
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
