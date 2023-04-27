@@ -97,7 +97,7 @@ public class OfMeterConverter {
      * Convert Meter Install Command.
      *
      * @param commandData data
-     * @param ofFactory factory
+     * @param ofFactory   factory
      * @return mod
      */
     public OFMeterMod convertInstallMeterCommand(MeterSpeakerData commandData, OFFactory ofFactory) {
@@ -139,7 +139,7 @@ public class OfMeterConverter {
      * Convert Meter Delete Command.
      *
      * @param commandData data
-     * @param ofFactory factory
+     * @param ofFactory   factory
      * @return mod
      */
     public OFMeterMod convertDeleteMeterCommand(MeterSpeakerData commandData, OFFactory ofFactory) {
@@ -164,7 +164,12 @@ public class OfMeterConverter {
     }
 
     /**
-     * Convert meter stats reply.
+     * Converts the given OFMeterConfigStatsReply to a list of MeterSpeakerData objects.
+     *
+     * @param statsReply The OFMeterConfigStatsReply to convert.
+     * @param inaccurate A boolean value indicating whether the statistics are accurate or not.
+     * @param switchId   The ID of the switch that generated the statistics.
+     * @return A List of MeterSpeakerData objects representing the statistics.
      */
     public List<MeterSpeakerData> convertToMeterSpeakerData(OFMeterConfigStatsReply statsReply,
                                                             boolean inaccurate, SwitchId switchId) {
