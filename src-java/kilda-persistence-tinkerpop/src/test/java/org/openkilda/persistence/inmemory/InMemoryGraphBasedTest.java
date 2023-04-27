@@ -60,6 +60,7 @@ public abstract class InMemoryGraphBasedTest {
     public static final PathId SUB_PATH_ID_2 = new PathId("sub_path_id_2");
     public static final PathId SUB_PATH_ID_3 = new PathId("sub_path_id_3");
     public static final String DIVERSITY_GROUP_1 = "diversity_group_1";
+    public static final int PORT_0 = 0;
     public static final int PORT_1 = 1;
     public static final int PORT_2 = 2;
     public static final int PORT_3 = 3;
