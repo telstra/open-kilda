@@ -34,10 +34,14 @@ public final class YFlowSharedEndpointEncapsulationValidator {
      */
     public static Stream<Optional<String>> validateBaseFlowEndpointV2(
             YFlowSharedEndpointEncapsulation flowSharedEndpointEncapsulation) {
-        return Stream.of(
-                validateBaseFlowEndpointV2VlanId(flowSharedEndpointEncapsulation),
-                validateBaseFlowEndpointV2InnerVlanId(flowSharedEndpointEncapsulation));
+        if (flowSharedEndpointEncapsulation != null) {
+            return Stream.of(
+                    validateBaseFlowEndpointV2VlanId(flowSharedEndpointEncapsulation),
+                    validateBaseFlowEndpointV2InnerVlanId(flowSharedEndpointEncapsulation));
+        }
+        return Stream.empty();
     }
+    
 
     private static Optional<String> validateBaseFlowEndpointV2VlanId(
             YFlowSharedEndpointEncapsulation flowSharedEndpointEncapsulation) {

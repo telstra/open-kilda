@@ -31,10 +31,14 @@ public final class YFlowSharedEndpointValidator {
      * @param sharedEndpoint yFlowSharedEndpoint
      */
     public static Stream<Optional<String>> validateYFlowSharedEndpoint(YFlowSharedEndpoint sharedEndpoint) {
-        return Stream.of(
-                validateYFlowSharedEndpointSwitchId(sharedEndpoint),
-                validateYFlowSharedEndpointPortNumber(sharedEndpoint));
+        if (sharedEndpoint != null) {
+            return Stream.of(
+                    validateYFlowSharedEndpointSwitchId(sharedEndpoint),
+                    validateYFlowSharedEndpointPortNumber(sharedEndpoint));
+        }
+        return Stream.empty();
     }
+
 
     /**
      * Validate yFlowSharedEndpoint switchId.

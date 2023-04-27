@@ -34,13 +34,16 @@ public final class SubFlowUpdatePayloadValidator {
      * @param subFlowUpdatePayload subFlowUpdatePayload
      */
     public static Stream<Optional<String>> validateSubFlowUpdatePayload(SubFlowUpdatePayload subFlowUpdatePayload) {
-        return Stream.concat(Stream.concat(Stream.of(
-                                validateSubFlowEndpoint(subFlowUpdatePayload)),
-                        validateFlowEndpointV2(subFlowUpdatePayload.getEndpoint())),
-                YFlowSharedEndpointEncapsulationValidator.validateBaseFlowEndpointV2(
-                        subFlowUpdatePayload.getSharedEndpoint()));
+        if (subFlowUpdatePayload != null) {
+            return Stream.concat(Stream.concat(Stream.of(
+                                    validateSubFlowEndpoint(subFlowUpdatePayload)),
+                            validateFlowEndpointV2(subFlowUpdatePayload.getEndpoint())),
+                    YFlowSharedEndpointEncapsulationValidator.validateBaseFlowEndpointV2(
+                            subFlowUpdatePayload.getSharedEndpoint()));
+        }
+        return Stream.empty();
     }
-
+    
     private static Optional<String> validateSubFlowEndpoint(SubFlowUpdatePayload subFlowUpdatePayload) {
         //validate subflow endpoint is not null
         if (subFlowUpdatePayload.getEndpoint() == null) {
