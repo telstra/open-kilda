@@ -19,6 +19,7 @@ import org.openkilda.messaging.command.haflow.HaFlowDto;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathsResponse;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
+import org.openkilda.messaging.command.haflow.HaFlowValidationResponse;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
 import org.openkilda.messaging.command.haflow.HaSubFlowPartialUpdateDto;
 import org.openkilda.messaging.command.yflow.FlowPartialUpdateEndpoint;
@@ -40,6 +41,7 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowPath.HaFlowProtectedPath;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowPath;
@@ -56,7 +58,7 @@ import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring",
         uses = {FlowEncapsulationTypeMapper.class, FlowStatusMapper.class, PathComputationStrategyMapper.class,
-                TimeMapper.class, PingMapper.class},
+                TimeMapper.class, PingMapper.class, FlowDirectionMapper.class},
         imports = {FlowEndpointPayload.class, FlowEndpointV2.class})
 public abstract class HaFlowMapper {
     @Autowired
@@ -179,4 +181,12 @@ public abstract class HaFlowMapper {
                 .map(pathMapper::mapGroupFlowPathPayload)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Converts a HaFlowValidationResponse to a HaFlowValidationResult.
+     *
+     * @param source the HaFlowValidationResponse to be converted.
+     * @return the HaFlowValidationResult.
+     */
+    public abstract HaFlowValidationResult toValidationResult(HaFlowValidationResponse source);
 }
