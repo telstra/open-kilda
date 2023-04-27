@@ -5,6 +5,7 @@ COPY . /
 
 RUN \
     export DEBIAN_FRONTEND=noninteractive && \
+    echo "deb http://archive.debian.org/debian stretch main" > /etc/apt/sources.list && \
     apt -y update && \
     apt -y install net-tools telnet netcat && \
     rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*

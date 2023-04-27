@@ -339,7 +339,7 @@ class FlowHelperV2 {
      *
      * @param useTraffgenPorts whether to try finding a traffgen port
      */
-    private FlowEndpointV2 getFlowEndpoint(Switch sw, boolean useTraffgenPorts = true) {
+    FlowEndpointV2 getFlowEndpoint(Switch sw, boolean useTraffgenPorts = true) {
         getFlowEndpoint(sw, [], useTraffgenPorts)
     }
 
@@ -349,7 +349,7 @@ class FlowHelperV2 {
      * @param excludePorts list of ports that should not be picked
      * @param useTraffgenPorts if true, will try to use a port attached to a traffgen
      */
-    private FlowEndpointV2 getFlowEndpoint(Switch sw, List<Integer> excludePorts,
+    FlowEndpointV2 getFlowEndpoint(Switch sw, List<Integer> excludePorts,
             boolean useTraffgenPorts = true) {
         def ports = topology.getAllowedPortsForSwitch(sw) - excludePorts
         int port = ports[random.nextInt(ports.size())]
