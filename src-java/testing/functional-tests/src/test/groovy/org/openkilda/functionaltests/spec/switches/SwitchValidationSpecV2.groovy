@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.switches
 
 import org.openkilda.functionaltests.helpers.DockerHelper
 import org.openkilda.functionaltests.helpers.model.ContainerName
+import org.openkilda.messaging.model.FlowDirectionType
 import spock.lang.Shared
 import spock.lang.Unroll
 
@@ -294,6 +295,9 @@ misconfigured"
             totalSwitchRules += northbound.getSwitchRules(swId).flowEntries.size()
             totalSwitchMeters += northbound.getAllMeters(swId).meterEntries.size()
         }
+        def expectedRulesCount = [
+                flowHelperV2.getFlowRulesCountBySwitch(flow, true, involvedSwitches.size()),
+                flowHelperV2.getFlowRulesCountBySwitch(flow, false, involvedSwitches.size())]
         def flowValidateResponse = northbound.validateFlow(flow.flowId)
         flowValidateResponse.eachWithIndex { direction, i ->
             assert direction.discrepancies.size() == 2
@@ -314,7 +318,8 @@ misconfigured"
             switchHelper.verifyBurstSizeIsCorrect(sw, newBurstSize, burst.expectedValue.toLong())
             switchHelper.verifyBurstSizeIsCorrect(sw, switchBurstSize, burst.actualValue.toLong())
 
-            assert direction.flowRulesTotal == 2
+            assert direction.flowRulesTotal == (FlowDirectionType.FORWARD.toString() == direction.direction ?
+                    expectedRulesCount[0] : expectedRulesCount[1])
             assert direction.switchRulesTotal == totalSwitchRules
             assert direction.flowMetersTotal == 1
             assert direction.switchMetersTotal == totalSwitchMeters
@@ -1049,9 +1054,9 @@ misconfigured"
         database.setSwitchFeatures(aSwitch.getDpId(), originalFeatures)
 
         where:
-        apiVersion  | iface
-        "V2"        | northboundV2
-        "V1"        | northbound
+        apiVersion | iface
+        "V2"       | northboundV2
+        "V1"       | northbound
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {

@@ -87,7 +87,8 @@ public class SwitchDataProvider {
                     List<MeterSpeakerData> switchMeters = new ArrayList<>();
                     if (replies != null) {
                         replies.forEach(reply -> switchMeters.addAll(
-                                OfMeterConverter.INSTANCE.convertToMeterSpeakerData(reply, inaccurate)));
+                                OfMeterConverter.INSTANCE.convertToMeterSpeakerData(reply, inaccurate,
+                                        new SwitchId(iofSwitch.getId().getLong()))));
                     }
                     return CompletableFuture.completedFuture(switchMeters);
                 })

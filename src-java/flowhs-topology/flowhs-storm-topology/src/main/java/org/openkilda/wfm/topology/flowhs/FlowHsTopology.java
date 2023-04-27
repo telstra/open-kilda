@@ -242,18 +242,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
     private void flowCreateHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         int hubTimeout = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getCreateHubTimeoutSeconds());
-
-        FlowCreateConfig config = FlowCreateConfig.flowCreateBuilder()
-                .flowCreationRetriesLimit(topologyConfig.getCreateHubRetries())
-                .pathAllocationRetriesLimit(topologyConfig.getPathAllocationRetriesLimit())
-                .pathAllocationRetryDelay(topologyConfig.getPathAllocationRetryDelay())
-                .speakerCommandRetriesLimit(topologyConfig.getCreateSpeakerCommandRetries())
-                .autoAck(true)
-                .timeoutMs(hubTimeout)
-                .requestSenderComponent(ComponentId.FLOW_ROUTER_BOLT.name())
-                .workerComponent(ComponentId.SPEAKER_WORKER.name())
-                .lifeCycleEventComponent(ZooKeeperSpout.SPOUT_ID)
-                .build();
+        FlowCreateConfig config = getFlowCreateConfig(hubTimeout);
 
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
@@ -264,6 +253,20 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .directGrouping(ComponentId.SPEAKER_WORKER.name(), Stream.SPEAKER_WORKER_TO_HUB.name())
                 .allGrouping(ZooKeeperSpout.SPOUT_ID)
                 .directGrouping(CoordinatorBolt.ID);
+    }
+
+    private FlowCreateConfig getFlowCreateConfig(int hubTimeout) {
+        return FlowCreateConfig.flowCreateBuilder()
+                .flowCreationRetriesLimit(topologyConfig.getCreateHubRetries())
+                .pathAllocationRetriesLimit(topologyConfig.getPathAllocationRetriesLimit())
+                .pathAllocationRetryDelay(topologyConfig.getPathAllocationRetryDelay())
+                .speakerCommandRetriesLimit(topologyConfig.getCreateSpeakerCommandRetries())
+                .autoAck(true)
+                .timeoutMs(hubTimeout)
+                .requestSenderComponent(ComponentId.FLOW_ROUTER_BOLT.name())
+                .workerComponent(ComponentId.SPEAKER_WORKER.name())
+                .lifeCycleEventComponent(ZooKeeperSpout.SPOUT_ID)
+                .build();
     }
 
     private void flowUpdateHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
@@ -454,10 +457,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .timeoutMs(hubTimeout)
                 .build();
 
-        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
-        FlowValidationHubBolt hubBolt = new FlowValidationHubBolt(config, persistenceManager, flowResourcesConfig,
-                topologyConfig.getFlowMeterMinBurstSizeInKbits(),
-                topologyConfig.getFlowMeterBurstCoefficient());
+        FlowValidationHubBolt hubBolt = new FlowValidationHubBolt(config,
+                configurationProvider.getConfiguration(RuleManagerConfig.class), persistenceManager);
         declareBolt(topologyBuilder, hubBolt, ComponentId.FLOW_VALIDATION_HUB.name())
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(),
                         Stream.ROUTER_TO_FLOW_VALIDATION_HUB.name(), FIELDS_KEY)
@@ -469,18 +470,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
     private void yFlowCreateHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         int hubTimeout = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getCreateHubTimeoutSeconds());
-
-        FlowCreateConfig config = FlowCreateConfig.flowCreateBuilder()
-                .flowCreationRetriesLimit(topologyConfig.getCreateHubRetries())
-                .pathAllocationRetriesLimit(topologyConfig.getPathAllocationRetriesLimit())
-                .pathAllocationRetryDelay(topologyConfig.getPathAllocationRetryDelay())
-                .speakerCommandRetriesLimit(topologyConfig.getCreateSpeakerCommandRetries())
-                .autoAck(true)
-                .timeoutMs(hubTimeout)
-                .requestSenderComponent(ComponentId.FLOW_ROUTER_BOLT.name())
-                .workerComponent(ComponentId.SPEAKER_WORKER.name())
-                .lifeCycleEventComponent(ZooKeeperSpout.SPOUT_ID)
-                .build();
+        FlowCreateConfig config = getFlowCreateConfig(hubTimeout);
 
         YFlowCreateConfig yFlowCreateConfig = YFlowCreateConfig.builder()
                 .speakerCommandRetriesLimit(topologyConfig.getYFlowCreateSpeakerCommandRetriesLimit())
@@ -640,8 +630,9 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .build();
 
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
-
-        YFlowValidationHubBolt hubBolt = new YFlowValidationHubBolt(config, persistenceManager, flowResourcesConfig,
+        YFlowValidationHubBolt hubBolt = new YFlowValidationHubBolt(config,
+                configurationProvider.getConfiguration(RuleManagerConfig.class),
+                persistenceManager, flowResourcesConfig,
                 topologyConfig.getFlowMeterMinBurstSizeInKbits(),
                 topologyConfig.getFlowMeterBurstCoefficient());
         declareBolt(topologyBuilder, hubBolt, ComponentId.YFLOW_VALIDATION_HUB.name())

@@ -29,9 +29,9 @@ import org.openkilda.messaging.command.flow.FlowValidationRequest;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.error.PipelineException;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
@@ -53,32 +53,25 @@ import java.util.List;
 
 public class FlowValidationHubBolt extends HubBolt implements FlowValidationHubCarrier {
 
-    private final FlowResourcesConfig flowResourcesConfig;
-    private final long flowMeterMinBurstSizeInKbits;
-    private final double flowMeterBurstCoefficient;
+    private final RuleManagerConfig ruleManagerConfig;
 
     private transient FlowValidationHubService service;
     private String currentKey;
 
     private LifecycleEvent deferredShutdownEvent;
 
-    public FlowValidationHubBolt(@NonNull Config config, @NonNull PersistenceManager persistenceManager,
-                                 @NonNull FlowResourcesConfig flowResourcesConfig,
-                                 long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
+    public FlowValidationHubBolt(@NonNull Config config, RuleManagerConfig ruleManagerConfig,
+                                 @NonNull PersistenceManager persistenceManager) {
         super(persistenceManager, config);
 
-        this.flowResourcesConfig = flowResourcesConfig;
-        this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
-        this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
+        this.ruleManagerConfig = ruleManagerConfig;
 
         enableMeterRegistry("kilda.flow_validation", HUB_TO_METRICS_BOLT.name());
     }
 
     @Override
     public void init() {
-        FlowResourcesManager flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
-        service = new FlowValidationHubService(this, persistenceManager, flowResourcesManager,
-                flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
+        service = new FlowValidationHubService(this, persistenceManager, new RuleManagerImpl(ruleManagerConfig));
     }
 
     @Override

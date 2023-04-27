@@ -35,6 +35,9 @@ public class FlowValidationDto {
     @JsonProperty("flow_id")
     private String flowId;
 
+    @JsonProperty("direction")
+    private String direction;
+
     @JsonProperty("as_expected")
     private Boolean asExpected;
 

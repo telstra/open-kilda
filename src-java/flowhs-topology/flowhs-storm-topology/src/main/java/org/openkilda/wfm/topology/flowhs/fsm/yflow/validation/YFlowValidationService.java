@@ -19,9 +19,9 @@ import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 
 import org.openkilda.messaging.command.yflow.YFlowDiscrepancyDto;
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
 import org.openkilda.messaging.info.flow.PathDiscrepancyEntity;
-import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -48,10 +48,10 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class YFlowValidationService {
@@ -79,20 +79,17 @@ public class YFlowValidationService {
      * Validate y-flow.
      */
     public YFlowDiscrepancyDto validateYFlowResources(String yFlowId,
-                                                      List<SwitchFlowEntries> actualSwitchFlowEntries,
-                                                      List<SwitchMeterEntries> actualSwitchMeterEntries)
+                                                      List<FlowDumpResponse> actualFlowDumpEntries,
+                                                      List<MeterDumpResponse> actualMeterDumpEntries)
             throws FlowNotFoundException, SwitchNotFoundException {
 
-        Map<SwitchId, List<SimpleSwitchRule>> actualRules = new HashMap<>();
-        for (SwitchFlowEntries switchRulesEntries : actualSwitchFlowEntries) {
-            SwitchMeterEntries switchMeters = actualSwitchMeterEntries.stream()
-                    .filter(meterEntries -> switchRulesEntries.getSwitchId().equals(meterEntries.getSwitchId()))
-                    .findFirst()
-                    .orElse(null);
-            List<SimpleSwitchRule> simpleSwitchRules = simpleSwitchRuleConverter
-                    .convertSwitchFlowEntriesToSimpleSwitchRules(switchRulesEntries, switchMeters, null);
-            actualRules.put(switchRulesEntries.getSwitchId(), simpleSwitchRules);
-        }
+
+        Map<SwitchId, List<SimpleSwitchRule>> actualRules
+                = simpleSwitchRuleConverter.convertSpeakerDataToSimpleSwitchRulesAndGroupBySwitchId(
+                Stream.concat(actualFlowDumpEntries.stream().flatMap(e -> e.getFlowSpeakerData().stream()),
+                                actualMeterDumpEntries.stream().flatMap(e -> e.getMeterSpeakerData().stream()))
+                        .collect(Collectors.toList()));
+
 
         YFlow yFlow = yFlowRepository.findById(yFlowId)
                 .orElseThrow(() -> new FlowNotFoundException(yFlowId));
