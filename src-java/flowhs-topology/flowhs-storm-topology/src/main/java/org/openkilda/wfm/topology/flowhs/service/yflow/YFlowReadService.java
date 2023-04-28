@@ -125,6 +125,9 @@ public class YFlowReadService {
             Set<FlowPath> protectedReversePaths = new HashSet<>();
             List<FlowPathDto> subFlowPathDtos = new ArrayList<>();
             Map<String, List<FlowPathDto>> diverseWithFlows = new HashMap<>();
+            Set<String> subFlowIds = yFlow.getSubFlows().stream()
+                    .map(f -> f.getFlow().getFlowId())
+                    .collect(Collectors.toSet());
 
             for (YSubFlow subFlow : yFlow.getSubFlows()) {
                 Flow flow = subFlow.getFlow();
@@ -146,14 +149,18 @@ public class YFlowReadService {
 
                 String diverseGroupId = flow.getDiverseGroupId();
                 if (diverseGroupId != null) {
-                    Collection<FlowPath> flowPathsInDiverseGroup = flowPathRepository.findByFlowGroupId(diverseGroupId);
+                    Collection<FlowPath> flowPathsInDiverseGroup = flowPathRepository.findByFlowGroupId(diverseGroupId)
+                            .stream()
+                            .filter(p -> !subFlowIds.contains(p.getFlowId()))
+                            .collect(Collectors.toList());
+
                     IntersectionComputer primaryIntersectionComputer = new IntersectionComputer(
                             flow.getFlowId(), flow.getForwardPathId(), flow.getReversePathId(),
                             flowPathsInDiverseGroup);
                     pathDtoBuilder.segmentsStats(primaryIntersectionComputer.getOverlappingStats());
 
                     Collection<Flow> flowsInDiverseGroup = flowRepository.findByDiverseGroupId(diverseGroupId).stream()
-                            .filter(f -> !flow.getFlowId().equals(f.getFlowId()))
+                            .filter(f -> !subFlowIds.contains(f.getFlowId()))
                             .collect(Collectors.toList());
 
                     List<FlowPathDto> groupFlowsWithOverlappingStats = new ArrayList<>();
