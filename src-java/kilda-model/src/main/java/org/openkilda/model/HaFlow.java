@@ -25,6 +25,7 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.serializers.BeanSerializer;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -84,7 +85,8 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
      * @param entityToClone the HA-flow entity to copy entity data from.
      */
     public HaFlow(@NonNull HaFlow entityToClone) {
-        data = HaFlowCloner.INSTANCE.deepCopy(entityToClone.getData(), this);
+        this();
+        HaFlowCloner.INSTANCE.deepCopy(entityToClone.getData(), (HaFlowDataImpl) data, this);
     }
 
     @Builder
@@ -227,7 +229,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
     private void validateEndpoints(HaFlowPath path) {
         if (!path.getSharedSwitchId().equals(getSharedSwitchId())) {
             throw new IllegalArgumentException(format("HA-path %s has the shared endpoint switch ID %s, but %s is "
-                            + "expected", path.getHaPathId(), path.getSharedSwitchId(), getSharedSwitchId()));
+                    + "expected", path.getHaPathId(), path.getSharedSwitchId(), getSharedSwitchId()));
         }
         Set<SwitchId> subFlowSwitchIds = getHaSubFlows().stream()
                 .map(HaSubFlow::getEndpointSwitchId)
@@ -299,6 +301,66 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                 throw new IllegalArgumentException(format("Ha flow %s does not have path %s", getHaFlowId(), pathId));
             }
         }
+    }
+
+    /**
+     * Gets path IDs of primary sub paths.
+     */
+    public Collection<PathId> getPrimarySubPathIds() {
+        return getSubPathIds(Lists.newArrayList(getForwardPath(), getReversePath()));
+    }
+
+    /**
+     * Gets path IDs of protected sub paths.
+     */
+    public Collection<PathId> getProtectedSubPathIds() {
+        return getSubPathIds(Lists.newArrayList(getProtectedForwardPath(), getProtectedReversePath()));
+    }
+
+    /**
+     * Gets path IDs of all sub paths.
+     * This method can return not only primary and protected sub paths.
+     * For example during update/reroute operations HA-flow can temporally have more sub paths.
+     */
+    public Collection<PathId> getSubPathIds() {
+        return getSubPathIds(getPaths());
+    }
+
+    private Collection<PathId> getSubPathIds(Collection<HaFlowPath> haPaths) {
+        List<PathId> subPathIds = new ArrayList<>();
+        if (haPaths == null) {
+            return subPathIds;
+        }
+        for (HaFlowPath haPath : haPaths) {
+            if (haPath != null) {
+                for (FlowPath subPath : haPath.getSubPaths()) {
+                    subPathIds.add(subPath.getPathId());
+                }
+            }
+        }
+        return subPathIds;
+    }
+
+    /**
+     * Gets sub path byt its path ID.
+     */
+    public Optional<FlowPath> getSubPath(PathId pathId) {
+        //TODO maybe improve performance?
+        Collection<HaFlowPath> haPaths = getPaths();
+        if (haPaths == null) {
+            return Optional.empty();
+        }
+
+        for (HaFlowPath haPath : haPaths) {
+            if (haPath.getSubPaths() != null) {
+                for (FlowPath subPath : haPath.getSubPaths()) {
+                    if (subPath.getPathId().equals(pathId)) {
+                        return Optional.of(subPath);
+                    }
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     @Override
@@ -652,18 +714,25 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
          *
          * @param source the HA-flow to copy from.
          */
-        default HaFlowData deepCopy(HaFlowData source, HaFlow targetFlow) {
-            HaFlowDataImpl result = new HaFlowDataImpl();
-            result.haFlow = targetFlow;
-            copyWithoutSwitchSubFlowsAndPaths(source, result);
-            result.setSharedSwitch(new Switch(source.getSharedSwitch()));
-            result.setHaSubFlows(source.getHaSubFlows().stream()
+        default void deepCopy(HaFlowData source, HaFlowDataImpl target, HaFlow targetFlow) {
+            target.haFlow = targetFlow;
+            copyWithoutSwitchSubFlowsAndPaths(source, target);
+            target.setSharedSwitch(new Switch(source.getSharedSwitch()));
+            target.setHaSubFlows(source.getHaSubFlows().stream()
                     .map(subFlow -> new HaSubFlow(subFlow, targetFlow))
-                    .collect(Collectors.toSet()));
+                    .collect(Collectors.toList()));
 
-            result.addPaths(source.getPaths().stream()
+            target.addPaths(source.getPaths().stream()
                     .map(path -> new HaFlowPath(path, targetFlow))
                     .toArray(HaFlowPath[]::new));
+        }
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default HaFlowData deepCopy(HaFlowData source, HaFlow targetFlow) {
+            HaFlowDataImpl result = new HaFlowDataImpl();
+            deepCopy(source, result, targetFlow);
             return result;
         }
     }

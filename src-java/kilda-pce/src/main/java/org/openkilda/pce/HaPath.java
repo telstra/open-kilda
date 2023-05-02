@@ -22,13 +22,13 @@ import lombok.NonNull;
 import lombok.Value;
 
 import java.io.Serializable;
-import java.util.List;
+import java.util.Map;
 
 @Value
 @Builder
 public class HaPath implements Serializable {
     private static final long serialVersionUID = 1L;
-    @NonNull List<Path> subPaths;
+    @NonNull Map<String, Path> subPaths;
     @NonNull SwitchId sharedSwitchId;
     @NonNull SwitchId yPointSwitchId;
     long latency;

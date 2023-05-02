@@ -16,12 +16,11 @@
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions;
 
 import static java.lang.String.format;
+import static org.openkilda.wfm.topology.flowhs.utils.SpeakerRequestHelper.keepOnlyFailedCommands;
 
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
-import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.common.converters.OfCommandConverter;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
@@ -29,10 +28,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class OnReceivedResponseAction
@@ -76,11 +73,7 @@ public class OnReceivedResponseAction
                                         + "Retrying (attempt %d)",
                                 actionName, commandId, response.getSwitchId(), uuid, message, retries)));
 
-                List<OfCommand> failedCommands = request.getCommands().stream()
-                        .filter(ofCommand -> response.getFailedCommandIds().containsKey(ofCommand.getUuid()))
-                        .collect(Collectors.toList());
-                request.getCommands().clear();
-                request.getCommands().addAll(OfCommandConverter.INSTANCE.removeExcessDependencies(failedCommands));
+                keepOnlyFailedCommands(request, response.getFailedCommandIds().keySet());
                 stateMachine.getCarrier().sendSpeakerRequest(request);
             } else {
                 stateMachine.removePendingCommand(commandId);

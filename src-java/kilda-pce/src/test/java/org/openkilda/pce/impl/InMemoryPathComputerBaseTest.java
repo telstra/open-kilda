@@ -383,14 +383,14 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         assertHaPath(haPath.getReverse(), SWITCH_ID_Z, SWITCH_ID_H, false, SWITCH_ID_C, SWITCH_ID_D);
 
         assertSegmentSwitchIds(newArrayList(SWITCH_ID_H, SWITCH_ID_Z, SWITCH_ID_C),
-                haPath.getForward().getSubPaths().get(0).getSegments());
+                haPath.getForward().getSubPaths().get(HA_SUB_FLOW_ID_1).getSegments());
         assertSegmentSwitchIds(newArrayList(SWITCH_ID_H, SWITCH_ID_Z, SWITCH_ID_D),
-                haPath.getForward().getSubPaths().get(1).getSegments());
+                haPath.getForward().getSubPaths().get(HA_SUB_FLOW_ID_2).getSegments());
 
         assertSegmentSwitchIds(newArrayList(SWITCH_ID_C, SWITCH_ID_Z, SWITCH_ID_H),
-                haPath.getReverse().getSubPaths().get(0).getSegments());
+                haPath.getReverse().getSubPaths().get(HA_SUB_FLOW_ID_1).getSegments());
         assertSegmentSwitchIds(newArrayList(SWITCH_ID_D, SWITCH_ID_Z, SWITCH_ID_H),
-                haPath.getReverse().getSubPaths().get(1).getSegments());
+                haPath.getReverse().getSubPaths().get(HA_SUB_FLOW_ID_2).getSegments());
     }
 
     @Test
@@ -412,14 +412,14 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         assertHaPath(haPath.getReverse(), SWITCH_ID_H, SWITCH_ID_B, false, SWITCH_ID_H);
 
         assertSegmentSwitchIds(newArrayList(SWITCH_ID_B, SWITCH_ID_F, SWITCH_ID_H),
-                haPath.getForward().getSubPaths().get(0).getSegments());
+                haPath.getForward().getSubPaths().get(HA_SUB_FLOW_ID_1).getSegments());
         assertSegmentSwitchIds(newArrayList(SWITCH_ID_B, SWITCH_ID_F, SWITCH_ID_H),
-                haPath.getForward().getSubPaths().get(1).getSegments());
+                haPath.getForward().getSubPaths().get(HA_SUB_FLOW_ID_2).getSegments());
 
         assertSegmentSwitchIds(newArrayList(SWITCH_ID_H, SWITCH_ID_F, SWITCH_ID_B),
-                haPath.getReverse().getSubPaths().get(0).getSegments());
+                haPath.getReverse().getSubPaths().get(HA_SUB_FLOW_ID_1).getSegments());
         assertSegmentSwitchIds(newArrayList(SWITCH_ID_H, SWITCH_ID_F, SWITCH_ID_B),
-                haPath.getReverse().getSubPaths().get(1).getSegments());
+                haPath.getReverse().getSubPaths().get(HA_SUB_FLOW_ID_2).getSegments());
     }
 
     @Test
@@ -441,14 +441,14 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         assertHaPath(haPath.getReverse(), SWITCH_ID_F, SWITCH_ID_B, false, SWITCH_ID_F, SWITCH_ID_H);
 
         assertSegmentSwitchIds(newArrayList(SWITCH_ID_B, SWITCH_ID_F),
-                haPath.getForward().getSubPaths().get(0).getSegments());
+                haPath.getForward().getSubPaths().get(HA_SUB_FLOW_ID_1).getSegments());
         assertSegmentSwitchIds(newArrayList(SWITCH_ID_B, SWITCH_ID_F, SWITCH_ID_H),
-                haPath.getForward().getSubPaths().get(1).getSegments());
+                haPath.getForward().getSubPaths().get(HA_SUB_FLOW_ID_2).getSegments());
 
         assertSegmentSwitchIds(newArrayList(SWITCH_ID_F, SWITCH_ID_B),
-                haPath.getReverse().getSubPaths().get(0).getSegments());
+                haPath.getReverse().getSubPaths().get(HA_SUB_FLOW_ID_1).getSegments());
         assertSegmentSwitchIds(newArrayList(SWITCH_ID_H, SWITCH_ID_F, SWITCH_ID_B),
-                haPath.getReverse().getSubPaths().get(1).getSegments());
+                haPath.getReverse().getSubPaths().get(HA_SUB_FLOW_ID_2).getSegments());
     }
 
     private static void assertSegmentSwitchIds(List<SwitchId> expectedSwitchIds, List<Segment> actualSegments) {
@@ -464,7 +464,7 @@ public class InMemoryPathComputerBaseTest extends InMemoryGraphBasedTest {
         assertEquals(yPointSwitchIs, haPath.getYPointSwitchId());
         assertEquals(sharedSwitchId, haPath.getSharedSwitchId());
         Set<SwitchId> endpointSwitchIds = new HashSet<>();
-        for (Path subPath : haPath.getSubPaths()) {
+        for (Path subPath : haPath.getSubPaths().values()) {
             endpointSwitchIds.add(isForward ? subPath.getDestSwitchId() : subPath.getSrcSwitchId());
         }
         assertEquals(Sets.newHashSet(Arrays.asList(subSwitchIds)), endpointSwitchIds);

@@ -201,8 +201,8 @@ class HaFlowHelper {
         response
     }
 
-    Set<SwitchId> getInvolvedSwitches(HaFlow haFlow) {
-        return (List<SwitchId>) haPathHelper.getInvolvedIsls(northboundV2.getHaFlowPaths(haFlow.getHaFlowId()))
+    Set<SwitchId> getInvolvedSwitches(String haFlowId) {
+        return (List<SwitchId>) haPathHelper.getInvolvedIsls(northboundV2.getHaFlowPaths(haFlowId))
                 .collect { [it.getSrcSwitch().getDpId(), it.getDstSwitch().getDpId()] }.flatten().unique()
     }
 
@@ -256,8 +256,12 @@ class HaFlowHelper {
         allowedPorts[random.nextInt(allowedPorts.size())]
     }
 
-    private int randomVlan() {
-        return allowedVlans[random.nextInt(allowedVlans.size())]
+    int randomVlan(excludeVlan = null) {
+        Integer vlan
+        do {
+            vlan = allowedVlans[random.nextInt(allowedVlans.size())]
+        } while (vlan == excludeVlan)
+        return vlan
     }
 
     private String generateDescription() {
