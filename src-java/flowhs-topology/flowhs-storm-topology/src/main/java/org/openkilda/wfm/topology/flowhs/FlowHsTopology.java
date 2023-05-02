@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -74,6 +74,7 @@ import org.openkilda.wfm.topology.flowhs.bolts.HaFlowCreateHubBolt.HaFlowCreateC
 import org.openkilda.wfm.topology.flowhs.bolts.HaFlowDeleteHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.HaFlowDeleteHubBolt.HaFlowDeleteConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.HaFlowReadBolt;
+import org.openkilda.wfm.topology.flowhs.bolts.HaFlowReadBolt.HaFlowReadConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.HaFlowUpdateHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.RouterBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.SpeakerWorkerBolt;
@@ -195,7 +196,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                         ComponentId.YFLOW_VALIDATION_HUB.name(),
                         ComponentId.YFLOW_PATH_SWAP_HUB.name(),
                         ComponentId.HA_FLOW_CREATE_HUB.name(),
-                        ComponentId.HA_FLOW_DELETE_HUB.name()));
+                        ComponentId.HA_FLOW_DELETE_HUB.name(),
+                        ComponentId.HA_FLOW_READ_BOLT.name()));
         declareBolt(topologyBuilder, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
                 .allGrouping(ComponentId.FLOW_CREATE_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.FLOW_UPDATE_HUB.name(), ZkStreams.ZK.toString())
@@ -217,7 +219,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .allGrouping(ComponentId.YFLOW_VALIDATION_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.YFLOW_PATH_SWAP_HUB.name(), ZkStreams.ZK.toString())
                 .allGrouping(ComponentId.HA_FLOW_CREATE_HUB.name(), ZkStreams.ZK.toString())
-                .allGrouping(ComponentId.HA_FLOW_DELETE_HUB.name(), ZkStreams.ZK.toString());
+                .allGrouping(ComponentId.HA_FLOW_DELETE_HUB.name(), ZkStreams.ZK.toString())
+                .allGrouping(ComponentId.HA_FLOW_READ_BOLT.name(), ZkStreams.ZK.toString());
     }
 
     private void inputSpout(TopologyBuilder topologyBuilder) {
@@ -615,8 +618,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
     private void yFlowReadBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         YFlowReadConfig yFlowReadConfig = YFlowReadConfig.builder()
-                .readOperationRetriesLimit(topologyConfig.getYFlowReadRetriesLimit())
-                .readOperationRetryDelay(Duration.ofMillis(topologyConfig.getYFlowReadRetryDelayMillis()))
+                .readOperationRetriesLimit(topologyConfig.getFlowReadRetriesLimit())
+                .readOperationRetryDelay(Duration.ofMillis(topologyConfig.getFlowReadRetryDelayMillis()))
                 .lifeCycleEventComponent(ZooKeeperSpout.SPOUT_ID)
                 .build();
 
@@ -737,9 +740,15 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     }
 
     private void haFlowReadBolt(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
-        HaFlowReadBolt bolt = new HaFlowReadBolt(persistenceManager);
+        HaFlowReadConfig config = HaFlowReadConfig.builder()
+                .readOperationRetriesLimit(topologyConfig.getFlowReadRetriesLimit())
+                .readOperationRetryDelay(Duration.ofMillis(topologyConfig.getFlowReadRetryDelayMillis()))
+                .lifeCycleEventComponent(ZooKeeperSpout.SPOUT_ID)
+                .build();
+        HaFlowReadBolt bolt = new HaFlowReadBolt(config, persistenceManager);
         declareBolt(topologyBuilder, bolt, ComponentId.HA_FLOW_READ_BOLT.name())
-                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), Stream.ROUTER_TO_HA_FLOW_READ.name(), FIELDS_KEY);
+                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), Stream.ROUTER_TO_HA_FLOW_READ.name(), FIELDS_KEY)
+                .allGrouping(ZooKeeperSpout.SPOUT_ID);
     }
 
     private void speakerSpout(TopologyBuilder topologyBuilder) {

@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.133.0 (02/05/2023)
+
+### Features:
+-  [#5167](https://github.com/telstra/open-kilda/pull/5167) Add GET HA-Flow Paths API endpoint (Issue: [#5148](https://github.com/telstra/open-kilda/issues/5148))
+-  [#5139](https://github.com/telstra/open-kilda/pull/5139) Add HA-flow related parallelism options into FlowHs topology (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061)) [**configuration**]
+
+### Bug Fixes:
+-  [#4886](https://github.com/telstra/open-kilda/pull/4886) Handling RequestRejectedException and proper logging of correlation_id (Issue: [#4305](https://github.com/telstra/open-kilda/issues/4305)) [**northbound**]
+-  [#5178](https://github.com/telstra/open-kilda/pull/5178) fix logstash container build (Issue: [#5177](https://github.com/telstra/open-kilda/issues/5177))
+
+### Improvements:
+-  [#5144](https://github.com/telstra/open-kilda/pull/5144) add flow monitoring cache activation and deactivation (Issue: [#5117](https://github.com/telstra/open-kilda/issues/5117))
+
+### Other changes:
+-  [#5129](https://github.com/telstra/open-kilda/pull/5129) #2072: Add single-switch flow into diversity group tests (Issue: [#2072](https://github.com/telstra/open-kilda/issues/2072)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.132.0...v1.133.0).
+
+### Affected Components:
+nb, flow-monitor
+
+---
+
 ## v1.132.0 (24/04/2023)
 
 ### Features:
