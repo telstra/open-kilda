@@ -73,7 +73,7 @@ public class CompleteHaFlowPathRemovalAction extends
             haFlowPathRepository.remove(haFlowPathId);
         }
         updateIslsForSegments(removedSegments);
-        //TODO save info about removed paths into history
+        // TODO save info about removed paths into history https://github.com/telstra/open-kilda/issues/5169
     }
 
     private void updateIslsForSegments(List<PathSegment> pathSegments) {

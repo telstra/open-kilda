@@ -301,6 +301,45 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
         }
     }
 
+    /**
+     * Gets path IDs of all sub paths.
+     */
+    public Collection<PathId> getSubPathIds() {
+        List<PathId> subPathIds = new ArrayList<>();
+        Collection<HaFlowPath> haPaths = getPaths();
+        if (haPaths == null) {
+            return subPathIds;
+        }
+        for (HaFlowPath haPath : haPaths) {
+            for (FlowPath subPath : haPath.getSubPaths()) {
+                subPathIds.add(subPath.getPathId());
+            }
+        }
+        return subPathIds;
+    }
+
+    /**
+     * Gets sub path byt its path ID.
+     */
+    public Optional<FlowPath> getSubPath(PathId pathId) {
+        //TODO maybe improve performance?
+        Collection<HaFlowPath> haPaths = getPaths();
+        if (haPaths == null) {
+            return Optional.empty();
+        }
+
+        for (HaFlowPath haPath : haPaths) {
+            if (haPath.getSubPaths() != null) {
+                for (FlowPath subPath : haPath.getSubPaths()) {
+                    if (subPath.getPathId().equals(pathId)) {
+                        return Optional.of(subPath);
+                    }
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

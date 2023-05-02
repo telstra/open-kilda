@@ -37,6 +37,8 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources.HaPathResources;
+import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaFlowPathIds;
+import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaFlowPathIds.HaFlowPathIdsBuilder;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanPool;
 import org.openkilda.wfm.share.flow.resources.vxlan.VxlanPool;
 import org.openkilda.wfm.share.utils.PoolManager;
@@ -46,8 +48,7 @@ import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.map.LRUMap;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -136,16 +137,27 @@ public class FlowResourcesManager {
      * Tries to allocate resources for the HA flow paths. The method doesn't initialize a transaction.
      * It requires an external transaction to cover allocation failures.
      * <p/>
-     * Provided two flows are considered as paired (forward and reverse),
+     * Provided two paths are considered as paired (forward and reverse),
      * some resources can be shared among them.
      */
     public HaFlowResources allocateHaFlowResources(HaFlow haFlow, SwitchId yPointSwitchId)
             throws ResourceAllocationException {
+        HaPathIdsPair haPathIdsPair = generateHaPathIds(haFlow.getHaFlowId(), haFlow.getHaSubFlows());
+        return allocateHaFlowResources(haFlow, yPointSwitchId, haPathIdsPair);
+    }
+
+    /**
+     * Tries to allocate resources for the HA flow paths. The method doesn't initialize a transaction.
+     * It requires an external transaction to cover allocation failures.
+     * <p/>
+     * Provided two paths are considered as paired (forward and reverse),
+     * some resources can be shared among them.
+     */
+    public HaFlowResources allocateHaFlowResources(HaFlow haFlow, SwitchId yPointSwitchId, HaPathIdsPair haPathIdsPair)
+            throws ResourceAllocationException {
         log.debug("Allocate flow resources for {}.", haFlow);
-        PathId forwardPathId = generatePathId(haFlow.getHaFlowId());
-        PathId reversePathId = generatePathId(haFlow.getHaFlowId());
         try {
-            return allocateHaResources(haFlow, forwardPathId, reversePathId, yPointSwitchId);
+            return allocateHaResources(haFlow, haPathIdsPair, yPointSwitchId);
         } catch (ConstraintViolationException | ResourceNotAvailableException ex) {
             throw new ResourceAllocationException("Unable to allocate resources", ex);
         }
@@ -181,26 +193,20 @@ public class FlowResourcesManager {
     }
 
     private HaFlowResources allocateHaResources(
-            HaFlow haFlow, PathId forwardPathId, PathId reversePathId, SwitchId yPointSwitchId)
+            HaFlow haFlow, HaPathIdsPair haPathIdsPair, SwitchId yPointSwitchId)
             throws ResourceAllocationException {
+        PathId forwardPathId = haPathIdsPair.getForward().getHaPathId();
+        PathId reversePathId = haPathIdsPair.getReverse().getHaPathId();
+
         HaPathResources.HaPathResourcesBuilder forward = HaPathResources.builder()
                 .pathId(forwardPathId);
         HaPathResources.HaPathResourcesBuilder reverse = HaPathResources.builder()
                 .pathId(reversePathId);
-        Map<String, PathId> reverseSubPathIds = new HashMap<>();
-        List<HaSubFlow> subFlows = new ArrayList<>(haFlow.getHaSubFlows());
-        if (subFlows.size() > HA_SUB_FLOW_MAX_COUNT) {
-            throw new IllegalArgumentException(
-                    String.format("Can't allocate resources for more than %s ha sub flows of ha-flow %s",
-                            HA_SUB_FLOW_MAX_COUNT, haFlow.getHaFlowId()));
-        }
-        for (int i = 0; i < subFlows.size(); i++) {
-            char suffix = (char) (HA_SUB_PATH_BASE_SUFFIX + i);
-            HaSubFlow subFlow = subFlows.get(i);
-            forward.subPathId(subFlow.getHaSubFlowId(), forwardPathId.append("-" + suffix));
-            PathId reverseSubPathId = reversePathId.append("-" + suffix);
-            reverse.subPathId(subFlow.getHaSubFlowId(), reverseSubPathId);
-            reverseSubPathIds.put(subFlow.getHaSubFlowId(), reverseSubPathId);
+
+        for (HaSubFlow subFlow : haFlow.getHaSubFlows()) {
+            String subFlowId = subFlow.getHaSubFlowId();
+            forward.subPathId(subFlowId, haPathIdsPair.getForward().getSubPathId(subFlowId));
+            reverse.subPathId(subFlowId, haPathIdsPair.getReverse().getSubPathId(subFlowId));
         }
 
         if (haFlow.getMaximumBandwidth() > 0L) {
@@ -212,7 +218,7 @@ public class FlowResourcesManager {
                 reverse.subPathMeter(subFlow.getHaSubFlowId(),
                         allocatePathMeter(
                                 subFlow.getEndpointSwitchId(), subFlow.getHaSubFlowId(),
-                                reverseSubPathIds.get(subFlow.getHaSubFlowId())));
+                                haPathIdsPair.getReverse().getSubPathId(subFlow.getHaSubFlowId())));
             }
         }
 
@@ -246,6 +252,32 @@ public class FlowResourcesManager {
 
     public PathId generatePathId(String flowId) {
         return new PathId(format("%s_%s", flowId, UUID.randomUUID()));
+    }
+
+    /**
+     * Generates new path IDs for HA-flow.
+     */
+    public HaPathIdsPair generateHaPathIds(String haFlowId, Collection<HaSubFlow> subFlows) {
+        if (subFlows.size() > HA_SUB_FLOW_MAX_COUNT) {
+            throw new IllegalArgumentException(
+                    String.format("Can't allocate resources for more than %s ha sub flows of ha-flow %s",
+                            HA_SUB_FLOW_MAX_COUNT, haFlowId));
+        }
+        PathId forwardPathId = generatePathId(haFlowId);
+        PathId reversePathId = generatePathId(haFlowId);
+        HaFlowPathIdsBuilder forwardBuilder = HaFlowPathIds.builder().haPathId(forwardPathId);
+        HaFlowPathIdsBuilder reverseBuilder = HaFlowPathIds.builder().haPathId(reversePathId);
+
+        char suffix = HA_SUB_PATH_BASE_SUFFIX;
+        for (HaSubFlow haSubFlow : subFlows) {
+            forwardBuilder.subPathId(haSubFlow.getHaSubFlowId(), forwardPathId.append("-" + suffix));
+            reverseBuilder.subPathId(haSubFlow.getHaSubFlowId(), reversePathId.append("-" + suffix));
+            suffix++;
+        }
+        return HaPathIdsPair.builder()
+                .forward(forwardBuilder.build())
+                .reverse(reverseBuilder.build())
+                .build();
     }
 
     /**

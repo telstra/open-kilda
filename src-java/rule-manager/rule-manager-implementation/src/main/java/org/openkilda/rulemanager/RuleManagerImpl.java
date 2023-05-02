@@ -134,9 +134,14 @@ public class RuleManagerImpl implements RuleManager {
     private Set<FlowSideAdapter> getOverlappingMultiTableIngressAdapters(
             HaFlow haFlow, FlowPath subPath, DataAdapter adapter) {
         FlowEndpoint endpoint = makeIngressAdapter(haFlow, subPath).getEndpoint();
-        Set<PathId> excludePathIds = Sets.newHashSet(subPath.getPathId());
-        haFlow.getForwardPath().getSubPaths().forEach(path -> excludePathIds.add(path.getPathId()));
-        haFlow.getReversePath().getSubPaths().forEach(path -> excludePathIds.add(path.getPathId()));
+        Set<PathId> excludePathIds = new HashSet<>();
+        for (PathId haFlowSubPathId : adapter.getHaFlowSubPaths().keySet()) {
+            HaFlow haFlowOfSubPath = adapter.getHaFlow(haFlowSubPathId);
+            if (haFlowOfSubPath != null && haFlowOfSubPath.getHaFlowId().equals(haFlow.getHaFlowId())) {
+                excludePathIds.add(haFlowSubPathId);
+            }
+        }
+
         return getOverlappingMultiTableIngressAdapters(endpoint, true, excludePathIds, adapter);
     }
 
@@ -442,7 +447,9 @@ public class RuleManagerImpl implements RuleManager {
         }
 
         for (HaFlowPath haFlowPath : haFlowPathMap.values()) {
-            result.addAll(buildHaPathRules(haFlowPath, false, true, adapter));
+            HaFlow haFlow = adapter.getHaFlow(haFlowPath.getHaPathId());
+            result.addAll(buildRulesHaFlowPath(haFlowPath, false, true,
+                    !haFlow.isProtectedPath(haFlowPath.getHaPathId()), true, adapter));
         }
         return result;
     }
@@ -542,11 +549,15 @@ public class RuleManagerImpl implements RuleManager {
     @Override
     public List<SpeakerData> buildRulesHaFlowPath(
             HaFlowPath haPath, boolean filterOutUsedSharedRules, DataAdapter adapter) {
-        return buildHaPathRules(haPath, filterOutUsedSharedRules, false, adapter);
+        HaFlow haFlow = adapter.getHaFlow(haPath.getHaPathId());
+        return buildRulesHaFlowPath(haPath, filterOutUsedSharedRules, false,
+                !haFlow.isProtectedPath(haPath.getHaPathId()), true,  adapter);
     }
 
-    private List<SpeakerData> buildHaPathRules(
-            HaFlowPath haPath, boolean filterOutUsedSharedRules, boolean ignoreUnknownSwitches, DataAdapter adapter) {
+    @Override
+    public List<SpeakerData> buildRulesHaFlowPath(
+            HaFlowPath haPath, boolean filterOutUsedSharedRules, boolean ignoreUnknownSwitches, boolean ingress,
+            boolean nonIngress, DataAdapter adapter) {
 
         if (haPath.getSubPaths().size() != 2) {
             throw new IllegalArgumentException(
@@ -559,23 +570,28 @@ public class RuleManagerImpl implements RuleManager {
 
         if (haPath.isForward()) {
             return buildForwardHaRules(
-                    haPath, filterOutUsedSharedRules, ignoreUnknownSwitches, haFlow, encapsulation, adapter);
+                    haPath, filterOutUsedSharedRules, ignoreUnknownSwitches, ingress, nonIngress, haFlow,
+                    encapsulation, adapter);
         } else {
             return buildReverseHaRules(
-                    haPath, filterOutUsedSharedRules, ignoreUnknownSwitches, haFlow, encapsulation, adapter);
+                    haPath, filterOutUsedSharedRules, ignoreUnknownSwitches, ingress, nonIngress, haFlow, encapsulation,
+                    adapter);
         }
     }
 
 
     private List<SpeakerData> buildForwardHaRules(
-            HaFlowPath haPath, boolean filterOutUsedSharedRules, boolean ignoreUnknownSwitches, HaFlow haFlow,
-            FlowTransitEncapsulation encapsulation, DataAdapter adapter) {
+            HaFlowPath haPath, boolean filterOutUsedSharedRules, boolean ignoreUnknownSwitches, boolean ingress,
+            boolean nonIngress, HaFlow haFlow, FlowTransitEncapsulation encapsulation, DataAdapter adapter) {
         List<SpeakerData> rules = new ArrayList<>();
-        if (!haFlow.isProtectedPath(haPath.getHaPathId())) {
+        if (ingress) {
             rules.addAll(buildForwardIngressHaRules(
                     haFlow, haPath, encapsulation, filterOutUsedSharedRules, ignoreUnknownSwitches, adapter));
         }
 
+        if (!nonIngress) {
+            return rules;
+        }
         if (!haPath.getSharedSwitchId().equals(haPath.getYPointSwitchId())) {
             rules.addAll(buildForwardSharedHaRules(haPath, encapsulation, ignoreUnknownSwitches, adapter));
         }
@@ -592,22 +608,22 @@ public class RuleManagerImpl implements RuleManager {
     }
 
     private List<SpeakerData> buildReverseHaRules(
-            HaFlowPath haPath, boolean filterOutUsedSharedRules, boolean ignoreUnknownSwitches, HaFlow haFlow,
-            FlowTransitEncapsulation encapsulation, DataAdapter adapter) {
+            HaFlowPath haPath, boolean filterOutUsedSharedRules, boolean ignoreUnknownSwitches, boolean ingress,
+            boolean nonIngress, HaFlow haFlow, FlowTransitEncapsulation encapsulation, DataAdapter adapter) {
         List<SpeakerData> rules = new ArrayList<>();
         UUID yPointMeterCommandUuid = UUID.randomUUID();
         boolean sharedMeterWasCreated = false;
         boolean sharedPathRulesWereCreated = false;
 
         for (FlowPath subPath : haPath.getSubPaths()) {
-            Set<FlowSideAdapter> overlappingAdapters = new HashSet<>();
-            if (filterOutUsedSharedRules) {
-                overlappingAdapters.addAll(getOverlappingMultiTableIngressAdapters(
-                        haFlow, haPath.getSubPaths().get(0), adapter));
-            }
 
             // reverse ingress rule
-            if (!haFlow.isProtectedPath(haPath.getHaPathId())) {
+            if (ingress) {
+                Set<FlowSideAdapter> overlappingAdapters = new HashSet<>();
+                if (filterOutUsedSharedRules) {
+                    overlappingAdapters.addAll(getOverlappingMultiTableIngressAdapters(
+                            haFlow, haPath.getSubPaths().get(0), adapter));
+                }
                 if (subPath.getSrcSwitchId().equals(haPath.getYPointSwitchId())) {
                     rules.addAll(buildHaIngressRules(haFlow, subPath, encapsulation, false, haPath.getYPointMeterId(),
                             overlappingAdapters, yPointMeterCommandUuid, !sharedMeterWasCreated, ignoreUnknownSwitches,
@@ -619,6 +635,9 @@ public class RuleManagerImpl implements RuleManager {
                 }
             }
 
+            if (!nonIngress) {
+                continue;
+            }
             if (subPath.isOneSwitchPath()) {
                 continue; // one switch path has only ingress rules
             }

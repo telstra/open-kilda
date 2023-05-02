@@ -77,4 +77,20 @@ public interface RuleManager {
      * @return list of rules, meters and groups.
      */
     List<SpeakerData> buildRulesHaFlowPath(HaFlowPath haPath, boolean filterOutUsedSharedRules, DataAdapter adapter);
+
+    /**
+     * Builds all required rules, meters and groups for flow path.
+     *
+     * @param haPath target ha-flow path
+     * @param filterOutUsedSharedRules if False - all path shared rules (QinQ, server42 QinQ, etc.)
+     *                                 will be included in result list.
+     *                                 If True - path shared rule will be included in result list only if this
+     *                                 rule is NOT used by any other overlapping path.
+     * @param adapter adapter with all needed data. All overlapping paths and flows for parameter
+     *                filterOutUsedSharedRules must be presented in this adapter
+     * @return list of rules, meters and groups.
+     */
+    List<SpeakerData> buildRulesHaFlowPath(
+            HaFlowPath haPath, boolean filterOutUsedSharedRules, boolean ignoreUnknownSwitches, boolean ingress,
+            boolean nonIngress, DataAdapter adapter);
 }

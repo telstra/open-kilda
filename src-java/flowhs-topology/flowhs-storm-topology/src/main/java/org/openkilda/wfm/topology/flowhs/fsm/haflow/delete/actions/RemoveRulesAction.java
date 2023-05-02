@@ -118,7 +118,7 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
         }
 
         EncapsulationResources encapsulationResources = resourcesManager.getEncapsulationResources(
-                    forwardPath.getHaPathId(), reversePath.getHaPathId(), flow.getEncapsulationType()).orElse(null);
+                forwardPath.getHaPathId(), reversePath.getHaPathId(), flow.getEncapsulationType()).orElse(null);
         return HaFlowResources.builder()
                 .unmaskedCookie(forwardPath.getCookie().getFlowEffectiveId())
                 .forward(HaPathResources.builder()
@@ -159,7 +159,7 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
     }
 
     private DataAdapter buildDataAdapter(HaFlow haFlow) {
-        Set<PathId> pathIds = new HashSet<>();
+        Set<PathId> pathIds = new HashSet<>(haFlow.getSubPathIds());
         for (SwitchId switchId : haFlow.getEndpointSwitchIds()) {
             pathIds.addAll(flowPathRepository.findByEndpointSwitch(switchId, false).stream()
                     .map(FlowPath::getPathId)

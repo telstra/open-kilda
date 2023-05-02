@@ -28,6 +28,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 @Builder
@@ -58,5 +59,18 @@ public class HaFlowRequest extends CommandData {
     public enum Type {
         CREATE,
         UPDATE
+    }
+
+    /**
+     * Gets HA-sub flow but its id.
+     */
+    public HaSubFlowDto getHaSubFlow(String haSubFlowId) {
+        for (HaSubFlowDto subFlow : subFlows) {
+            if (haSubFlowId.equals(subFlow.getFlowId())) {
+                return subFlow;
+            }
+        }
+        throw new IllegalArgumentException(String.format("HA-sub flow %s not found. Valida ha-sub flows are: %s",
+                haSubFlowId, subFlows.stream().map(HaSubFlowDto::getFlowId).collect(Collectors.toList())));
     }
 }

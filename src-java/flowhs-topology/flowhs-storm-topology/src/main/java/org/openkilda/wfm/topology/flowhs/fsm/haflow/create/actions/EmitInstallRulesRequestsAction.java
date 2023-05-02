@@ -77,7 +77,7 @@ public class EmitInstallRulesRequestsAction extends
     }
 
     private DataAdapter buildDataAdapter(HaFlow haFlow) {
-        Set<PathId> pathIds = new HashSet<>();
+        Set<PathId> pathIds = new HashSet<>(haFlow.getSubPathIds());
         for (SwitchId switchId : haFlow.getEndpointSwitchIds()) {
             pathIds.addAll(flowPathRepository.findByEndpointSwitch(switchId, false).stream()
                     .map(FlowPath::getPathId)

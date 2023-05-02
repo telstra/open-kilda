@@ -67,5 +67,4 @@ public abstract class BaseSpeakerCommandsRequest extends SpeakerRequest {
     }
 
     public abstract void process(BatchCommandProcessor processor, String key);
-
 }

@@ -21,17 +21,16 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowProcessingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.converters.FlowRulesConverter;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
-import java.util.List;
 
 @Slf4j
-public abstract class HaFlowRuleManagerProcessingAction<T extends HaFlowProcessingFsm<T, S, E, C, ?, ?>, S, E, C>
-        extends HaFlowProcessingWithHistorySupportAction<T, S, E, C> {
+public abstract class HaFlowRuleManagerProcessingAction<T extends FlowProcessingWithHistorySupportFsm<
+        T, S, E, C, ?, ?>, S, E, C> extends HaFlowProcessingWithHistorySupportAction<T, S, E, C> {
     protected final RuleManager ruleManager;
 
     protected HaFlowRuleManagerProcessingAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
@@ -40,12 +39,12 @@ public abstract class HaFlowRuleManagerProcessingAction<T extends HaFlowProcessi
     }
 
     protected Collection<InstallSpeakerCommandsRequest> buildHaFlowInstallRequests(
-            List<SpeakerData> speakerData, CommandContext context) {
+            Collection<SpeakerData> speakerData, CommandContext context) {
         return FlowRulesConverter.INSTANCE.buildFlowInstallCommands(speakerData, context);
     }
 
     protected Collection<DeleteSpeakerCommandsRequest> buildHaFlowDeleteRequests(
-            List<SpeakerData> speakerData, CommandContext context) {
+            Collection<SpeakerData> speakerData, CommandContext context) {
         return  FlowRulesConverter.INSTANCE.buildFlowDeleteCommands(speakerData, context);
     }
 }

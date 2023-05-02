@@ -47,7 +47,7 @@ public final class FlowRulesConverter {
      * Build a list of InstallSpeakerCommandsRequest from the provided speakerData.
      */
     public Collection<InstallSpeakerCommandsRequest> buildFlowInstallCommands(
-            List<SpeakerData> speakerData, CommandContext context) {
+            Collection<SpeakerData> speakerData, CommandContext context) {
         return groupBySwitchId(speakerData).entrySet().stream()
                 .map(entry -> {
                     List<OfCommand> ofCommands = OfCommandConverter.INSTANCE.toOfCommands(entry.getValue());
@@ -75,7 +75,7 @@ public final class FlowRulesConverter {
      * Build a list of ModifySpeakerCommandsRequest from the provided speakerData.
      */
     public Collection<ModifySpeakerCommandsRequest> buildFlowModifyCommands(
-            List<SpeakerData> speakerData, CommandContext context) {
+            Collection<SpeakerData> speakerData, CommandContext context) {
         return groupBySwitchId(speakerData).entrySet().stream()
                 .map(entry -> {
                     List<OfCommand> ofCommands = OfCommandConverter.INSTANCE.toOfCommands(entry.getValue());
@@ -104,7 +104,7 @@ public final class FlowRulesConverter {
      * NOTICE: the given dependencies are reversed as required for deletion.
      */
     public Collection<DeleteSpeakerCommandsRequest> buildFlowDeleteCommands(
-            List<SpeakerData> speakerData, CommandContext context) {
+            Collection<SpeakerData> speakerData, CommandContext context) {
         return groupBySwitchId(speakerData).entrySet().stream()
                 .map(entry -> {
                     List<OfCommand> ofCommands = OfCommandConverter.INSTANCE.toOfCommands(entry.getValue());
@@ -127,7 +127,7 @@ public final class FlowRulesConverter {
     /**
      * Group commands by switchId.
      */
-    private Map<SwitchId, List<SpeakerData>> groupBySwitchId(List<SpeakerData> list) {
+    private Map<SwitchId, List<SpeakerData>> groupBySwitchId(Collection<SpeakerData> list) {
         return list.stream()
                 .collect(Collectors.groupingBy(SpeakerData::getSwitchId,
                         Collectors.mapping(Function.identity(), toList())));
