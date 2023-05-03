@@ -59,9 +59,6 @@ import java.util.stream.Stream;
 @Slf4j
 public class FlowResourcesManager {
     private static final int POOL_SIZE = 100;
-    public static final char HA_SUB_PATH_BASE_SUFFIX = 'a';
-    // each sub flow uses unique suffix character. Alphabet has only 26 characters.
-    public static final char HA_SUB_FLOW_MAX_COUNT = 26;
 
     private final TransactionManager transactionManager;
     private final FlowMeterRepository flowMeterRepository;
@@ -258,21 +255,12 @@ public class FlowResourcesManager {
      * Generates new path IDs for HA-flow.
      */
     public HaPathIdsPair generateHaPathIds(String haFlowId, Collection<HaSubFlow> subFlows) {
-        if (subFlows.size() > HA_SUB_FLOW_MAX_COUNT) {
-            throw new IllegalArgumentException(
-                    String.format("Can't allocate resources for more than %s ha sub flows of ha-flow %s",
-                            HA_SUB_FLOW_MAX_COUNT, haFlowId));
-        }
-        PathId forwardPathId = generatePathId(haFlowId);
-        PathId reversePathId = generatePathId(haFlowId);
-        HaFlowPathIdsBuilder forwardBuilder = HaFlowPathIds.builder().haPathId(forwardPathId);
-        HaFlowPathIdsBuilder reverseBuilder = HaFlowPathIds.builder().haPathId(reversePathId);
+        HaFlowPathIdsBuilder forwardBuilder = HaFlowPathIds.builder().haPathId(generatePathId(haFlowId));
+        HaFlowPathIdsBuilder reverseBuilder = HaFlowPathIds.builder().haPathId(generatePathId(haFlowId));
 
-        char suffix = HA_SUB_PATH_BASE_SUFFIX;
         for (HaSubFlow haSubFlow : subFlows) {
-            forwardBuilder.subPathId(haSubFlow.getHaSubFlowId(), forwardPathId.append("-" + suffix));
-            reverseBuilder.subPathId(haSubFlow.getHaSubFlowId(), reversePathId.append("-" + suffix));
-            suffix++;
+            forwardBuilder.subPathId(haSubFlow.getHaSubFlowId(), generatePathId(haFlowId));
+            reverseBuilder.subPathId(haSubFlow.getHaSubFlowId(), generatePathId(haFlowId));
         }
         return HaPathIdsPair.builder()
                 .forward(forwardBuilder.build())

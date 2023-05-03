@@ -84,7 +84,7 @@ public class EmitRemoveRulesRequestsAction extends
 
         // emitting
         Collection<BaseSpeakerCommandsRequest> speakerCommands = new ArrayList<>(FlowRulesConverter.INSTANCE
-                .buildFlowInstallCommands(installSpeakerCommands, stateMachine.getCommandContext()));
+                .buildFlowInstallCommands(installSpeakerCommands, stateMachine.getCommandContext(), true));
         speakerCommands.addAll(FlowRulesConverter.INSTANCE.buildFlowModifyCommands(
                 modifySpeakerCommands, stateMachine.getCommandContext()));
         speakerCommands.addAll(FlowRulesConverter.INSTANCE.buildFlowDeleteCommands(

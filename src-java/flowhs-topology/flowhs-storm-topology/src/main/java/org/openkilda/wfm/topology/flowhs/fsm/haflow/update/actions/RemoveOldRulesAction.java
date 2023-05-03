@@ -99,7 +99,10 @@ public class RemoveOldRulesAction extends
 
     // TODO remove code duplicates
     private DataAdapter buildDataAdapter(HaFlow haFlow, HaFlowUpdateFsm stateMachine) {
-        Set<PathId> pathIds = newHashSet(haFlow.getSubPathIds());
+        Set<PathId> pathIds = newHashSet(stateMachine.getOldPrimaryPathIds().getAllSubPathIds());
+        if (stateMachine.getOldProtectedPathIds() != null) {
+            pathIds.addAll(stateMachine.getOldProtectedPathIds().getAllSubPathIds());
+        }
         for (SwitchId switchId : haFlow.getEndpointSwitchIds()) {
             pathIds.addAll(flowPathRepository.findByEndpointSwitch(switchId, false).stream()
                     .map(FlowPath::getPathId)
@@ -109,9 +112,9 @@ public class RemoveOldRulesAction extends
         Set<SwitchId> switchIds = new HashSet<>();
         if (stateMachine.getPartialUpdateEndpoints().isEmpty()) {
             switchIds.addAll(haFlow.getEndpointSwitchIds());
-            switchIds.addAll(getSubPathSwitchIds(haFlow, stateMachine.getNewPrimaryPathIds().getAllSubPathIds()));
+            switchIds.addAll(getSubPathSwitchIds(stateMachine.getNewPrimaryPathIds().getAllSubPathIds()));
             if (stateMachine.getNewProtectedPathIds() != null) {
-                switchIds.addAll(getSubPathSwitchIds(haFlow, stateMachine.getNewProtectedPathIds().getAllSubPathIds()));
+                switchIds.addAll(getSubPathSwitchIds(stateMachine.getNewProtectedPathIds().getAllSubPathIds()));
             }
         } else {
             switchIds.addAll(stateMachine.getPartialUpdateEndpoints());
@@ -120,12 +123,11 @@ public class RemoveOldRulesAction extends
         return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false);
     }
 
-    private Set<SwitchId> getSubPathSwitchIds(HaFlow haFlow, Collection<PathId> subPathIds) {
+    private Set<SwitchId> getSubPathSwitchIds(Collection<PathId> subPathIds) {
         Set<SwitchId> switchIds = new HashSet<>();
         for (PathId subPathId : subPathIds) {
-            FlowPath subPath = haFlow.getSubPath(subPathId)
-                    .orElseThrow(() -> new IllegalStateException(format("New ha-sub path %s of ha-flow %s not found",
-                            subPathId, haFlow.getHaFlowId())));
+            FlowPath subPath = flowPathRepository.findById(subPathId)
+                    .orElseThrow(() -> new IllegalStateException(format("HA-sub path %s not found", subPathId)));
             for (PathSegment segment : subPath.getSegments()) {
                 switchIds.add(segment.getSrcSwitchId());
                 switchIds.add(segment.getDestSwitchId());

@@ -76,7 +76,7 @@ public class RevertNewRulesAction extends HaFlowRuleManagerProcessingAction<
         removeCommands.addAll(buildProtectedRemoveCommands(stateMachine, haFlow));
 
         stateMachine.getRemoveCommands().clear();
-        buildHaFlowInstallRequests(removeCommands, stateMachine.getCommandContext())
+        buildHaFlowDeleteRequests(removeCommands, stateMachine.getCommandContext())
                 .forEach(request -> {
                     stateMachine.getRemoveCommands().put(request.getCommandId(), request);
                     stateMachine.addPendingCommand(request.getCommandId(), request.getSwitchId());

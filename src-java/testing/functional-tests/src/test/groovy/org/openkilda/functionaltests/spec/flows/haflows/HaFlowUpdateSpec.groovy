@@ -25,9 +25,6 @@ import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify update and partial update operations on ha-flows.")
-@Ignore("""At this moment HA-flow update operations is just an API stub which doesn't updated switch rules." +
-        It means that HA-flow delete operations wouldn't delete rules from switches which HA-flow has before update.
-        Update HA-flow spec is temporarily ignored until HA-flow update operation is able to update switch rules""")
 class HaFlowUpdateSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
@@ -40,7 +37,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
-        def oldSharedSwitch = haFlow.sharedEndpoint.switchId
         haFlow.tap(data.updateClosure)
         def update = haFlowHelper.convertToUpdate(haFlow)
 
@@ -127,6 +123,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore("""HA-flow partial update is not implemented yet""")
     def "User can partially update #data.descr of a ha-flow"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
@@ -273,20 +270,20 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                         errorStatusCode: HttpStatus.BAD_REQUEST,
                         errorDescrPattern: /HA-flow .*? has no sub flow .*?/
                 ],
-                //TODO enable when HA-flow update validation will be ready
-                //[
-                //        descr: "to one switch ha-flow",
-                //        updateClosure: { HaFlow payload ->
-                //            payload.subFlows[0].endpoint.switchId = payload.getSharedEndpoint().switchId
-                //            payload.subFlows[1].endpoint.switchId = payload.getSharedEndpoint().switchId
-                //        },
-                //        errorStatusCode: HttpStatus.BAD_REQUEST,
-                //        errorDescrPattern: /The ha-flow .*? is one switch flow\..*?/
-                //]
+                [
+                        descr: "to one switch ha-flow",
+                        updateClosure: { HaFlow payload ->
+                            payload.subFlows[0].endpoint.switchId = payload.getSharedEndpoint().switchId
+                            payload.subFlows[1].endpoint.switchId = payload.getSharedEndpoint().switchId
+                        },
+                         errorStatusCode: HttpStatus.BAD_REQUEST,
+                        errorDescrPattern: /The ha-flow .*? is one switch flow\..*?/
+                ]
         ]
     }
 
     @Tidy
+    @Ignore("""HA-flow partial update is not implemented yet""")
     def "User cannot partial update a ha-flow with #data.descr"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"

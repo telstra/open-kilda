@@ -296,7 +296,7 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
             builder.internalTransition().within(State.REVERTING_NEW_RULES).on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedRevertResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.REVERTING_NEW_RULES).to(State.NEW_RULES_REVERTED)
-                    .on(Event.RULES_REMOVED)
+                    .on(Event.RULES_REVERTED)
                     .perform(new SkipPathsAndResourcesDeallocationAction(persistenceManager));
             builder.transitions().from(State.REVERTING_NEW_RULES)
                     .toAmong(State.NEW_RULES_REVERTED, State.NEW_RULES_REVERTED)

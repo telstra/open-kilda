@@ -47,11 +47,11 @@ public final class FlowRulesConverter {
      * Build a list of InstallSpeakerCommandsRequest from the provided speakerData.
      */
     public Collection<InstallSpeakerCommandsRequest> buildFlowInstallCommands(
-            Collection<SpeakerData> speakerData, CommandContext context) {
+            Collection<SpeakerData> speakerData, CommandContext context, boolean failIfExist) {
         return groupBySwitchId(speakerData).entrySet().stream()
                 .map(entry -> {
                     List<OfCommand> ofCommands = OfCommandConverter.INSTANCE.toOfCommands(entry.getValue());
-                    return buildFlowInstallCommand(entry.getKey(), ofCommands, context);
+                    return buildFlowInstallCommand(entry.getKey(), ofCommands, context, failIfExist);
                 })
                 .collect(Collectors.toList());
     }
@@ -59,8 +59,8 @@ public final class FlowRulesConverter {
     /**
      * Build a InstallSpeakerCommandsRequest from the provided OF commands.
      */
-    public InstallSpeakerCommandsRequest buildFlowInstallCommand(SwitchId switchId, List<OfCommand> ofCommands,
-                                                                 CommandContext context) {
+    public InstallSpeakerCommandsRequest buildFlowInstallCommand(
+            SwitchId switchId, List<OfCommand> ofCommands, CommandContext context, boolean failIfExist) {
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
         return InstallSpeakerCommandsRequest.builder()
@@ -68,6 +68,7 @@ public final class FlowRulesConverter {
                 .switchId(switchId)
                 .commandId(commandId)
                 .commands(ofCommands)
+                .failIfExists(failIfExist)
                 .build();
     }
 

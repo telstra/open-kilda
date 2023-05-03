@@ -27,6 +27,7 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
@@ -42,6 +43,7 @@ import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources;
+import org.openkilda.wfm.share.flow.resources.HaFlowResources.HaPathResources;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaFlowPathIds;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
@@ -224,8 +226,8 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
                     haFlow, haFlowResources.getForward(), haPaths.getForward(),
                     cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build(),
                     forceToIgnoreBandwidth);
-            newForwardPath.setSubPaths(createForwardSubPaths(haPaths, haFlow, haFlowResources, newForwardPath,
-                    forceToIgnoreBandwidth));
+            newForwardPath.setSubPaths(createSubPaths(haPaths.getForward(), haFlow, haFlowResources.getForward(),
+                    newForwardPath, forceToIgnoreBandwidth));
             log.debug("Persisting new forward path {}", newForwardPath);
             haFlowPathRepository.add(newForwardPath);
             newForwardPath.setHaSubFlows(haFlow.getHaSubFlows());
@@ -234,8 +236,8 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
                     haFlow, haFlowResources.getReverse(), haPaths.getReverse(),
                     cookieBuilder.direction(FlowPathDirection.REVERSE).subType(FlowSubType.SHARED).build(),
                     forceToIgnoreBandwidth);
-            newReversePath.setSubPaths(createReverseSubPaths(haPaths, haFlow, haFlowResources, newReversePath,
-                    forceToIgnoreBandwidth));
+            newReversePath.setSubPaths(createSubPaths(haPaths.getReverse(), haFlow, haFlowResources.getReverse(),
+                    newReversePath, forceToIgnoreBandwidth));
             log.debug("Persisting new reverse path {}", newForwardPath);
             haFlowPathRepository.add(newReversePath);
             newReversePath.setHaSubFlows(haFlow.getHaSubFlows());
@@ -245,46 +247,28 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
         });
     }
 
-    private List<FlowPath> createForwardSubPaths(
-            GetHaPathsResult paths, HaFlow haFlow, HaFlowResources haFlowResources, HaFlowPath forward,
+    private List<FlowPath> createSubPaths(
+            HaPath haPath, HaFlow haFlow, HaPathResources haPathResources, HaFlowPath haFlowPath,
             boolean forceIgnoreBandwidth) {
-        Map<String, FlowSubType> subTypeMap = flowPathBuilder.buildSubTypeMap(haFlow.getHaSubFlows());
-        List<PathSegment> forwardSegments = pathSegmentRepository.findByPathId(
-                haFlowResources.getForward().getPathId());
-        List<FlowPath> forwardSubPaths = new ArrayList<>();
-        for (HaSubFlow subFlow : haFlow.getHaSubFlows()) {
-            Path subPath = paths.getForward().getSubPaths().get(subFlow.getHaSubFlowId());
-            FlowPath forwardSubPath = flowPathBuilder.buildHaSubPath(
-                    haFlow, haFlowResources.getForward().getSubPathResources(subFlow.getHaSubFlowId()), subPath,
-                    haFlow.getSharedSwitch(), subFlow.getEndpointSwitch(),
-                    forward.getCookie().toBuilder().subType(subTypeMap.get(subFlow.getHaSubFlowId())).build(),
-                    forwardSegments, forceIgnoreBandwidth);
-            flowPathRepository.add(forwardSubPath);
-            forwardSubPath.setHaSubFlow(subFlow);
-            forwardSubPaths.add(forwardSubPath);
-        }
-        return forwardSubPaths;
-    }
 
-    private List<FlowPath> createReverseSubPaths(
-            GetHaPathsResult paths, HaFlow haFlow, HaFlowResources haFlowResources, HaFlowPath reverse,
-            boolean forceIgnoreBandwidth) {
         Map<String, FlowSubType> subTypeMap = flowPathBuilder.buildSubTypeMap(haFlow.getHaSubFlows());
-        List<PathSegment> reverseSegments = pathSegmentRepository.findByPathId(
-                haFlowResources.getReverse().getPathId());
-        List<FlowPath> reverseSubPaths = new ArrayList<>();
+        List<FlowPath> subPaths = new ArrayList<>();
         for (HaSubFlow subFlow : haFlow.getHaSubFlows()) {
-            Path subPath = paths.getReverse().getSubPaths().get(subFlow.getHaSubFlowId());
-            FlowPath reverseSubPath = flowPathBuilder.buildHaSubPath(
-                    haFlow, haFlowResources.getReverse().getSubPathResources(subFlow.getHaSubFlowId()), subPath,
-                    subFlow.getEndpointSwitch(), haFlow.getSharedSwitch(),
-                    reverse.getCookie().toBuilder().subType(subTypeMap.get(subFlow.getHaSubFlowId())).build(),
-                    reverseSegments, forceIgnoreBandwidth);
-            flowPathRepository.add(reverseSubPath);
-            reverseSubPath.setHaSubFlow(subFlow);
-            reverseSubPaths.add(reverseSubPath);
+            Path path = haPath.getSubPaths().get(subFlow.getHaSubFlowId());
+            List<PathSegment> segments = pathSegmentRepository.findByPathId(
+                    haPathResources.getSubPathIds().get(subFlow.getHaSubFlowId()));
+            Switch srcSwitch = haFlowPath.isForward() ? haFlowPath.getSharedSwitch() : subFlow.getEndpointSwitch();
+            Switch dstSwitch = haFlowPath.isForward() ? subFlow.getEndpointSwitch() : haFlowPath.getSharedSwitch();
+            FlowPath subPath = flowPathBuilder.buildHaSubPath(
+                    haFlow, haPathResources.getSubPathResources(subFlow.getHaSubFlowId()), path,
+                    srcSwitch, dstSwitch,
+                    haFlowPath.getCookie().toBuilder().subType(subTypeMap.get(subFlow.getHaSubFlowId())).build(),
+                    segments, forceIgnoreBandwidth);
+            flowPathRepository.add(subPath);
+            subPath.setHaSubFlow(subFlow);
+            subPaths.add(subPath);
         }
-        return reverseSubPaths;
+        return subPaths;
     }
 
     protected void saveAllocationActionWithDumpsToHistory(

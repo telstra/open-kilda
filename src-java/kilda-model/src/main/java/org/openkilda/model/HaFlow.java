@@ -84,7 +84,8 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
      * @param entityToClone the HA-flow entity to copy entity data from.
      */
     public HaFlow(@NonNull HaFlow entityToClone) {
-        data = HaFlowCloner.INSTANCE.deepCopy(entityToClone.getData(), this);
+        this();
+        HaFlowCloner.INSTANCE.deepCopy(entityToClone.getData(), (HaFlowDataImpl) data, this);
     }
 
     @Builder
@@ -691,18 +692,25 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
          *
          * @param source the HA-flow to copy from.
          */
-        default HaFlowData deepCopy(HaFlowData source, HaFlow targetFlow) {
-            HaFlowDataImpl result = new HaFlowDataImpl();
-            result.haFlow = targetFlow;
-            copyWithoutSwitchSubFlowsAndPaths(source, result);
-            result.setSharedSwitch(new Switch(source.getSharedSwitch()));
-            result.setHaSubFlows(source.getHaSubFlows().stream()
+        default void deepCopy(HaFlowData source, HaFlowDataImpl target, HaFlow targetFlow) {
+            target.haFlow = targetFlow;
+            copyWithoutSwitchSubFlowsAndPaths(source, target);
+            target.setSharedSwitch(new Switch(source.getSharedSwitch()));
+            target.setHaSubFlows(source.getHaSubFlows().stream()
                     .map(subFlow -> new HaSubFlow(subFlow, targetFlow))
-                    .collect(Collectors.toSet()));
+                    .collect(Collectors.toList()));
 
-            result.addPaths(source.getPaths().stream()
+            target.addPaths(source.getPaths().stream()
                     .map(path -> new HaFlowPath(path, targetFlow))
                     .toArray(HaFlowPath[]::new));
+        }
+
+        /**
+         * Performs deep copy of entity data.
+         */
+        default HaFlowData deepCopy(HaFlowData source, HaFlow targetFlow) {
+            HaFlowDataImpl result = new HaFlowDataImpl();
+            deepCopy(source, result, targetFlow);
             return result;
         }
     }

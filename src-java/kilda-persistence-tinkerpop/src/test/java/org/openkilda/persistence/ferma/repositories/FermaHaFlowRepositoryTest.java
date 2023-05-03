@@ -20,6 +20,7 @@ import static com.google.common.collect.Sets.newHashSet;
 import static java.util.function.Function.identity;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -237,6 +238,34 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
         assertEquals(0, haSubFlowRepository.findAll().size());
         assertEquals(0, pathSegmentRepository.findByPathId(haPath1.getHaPathId()).size());
         assertEquals(0, pathSegmentRepository.findByPathId(haPath2.getHaPathId()).size());
+    }
+
+    @Test
+    public void makeDetachedHaFlowCopy() {
+        createHaFlowWithSubFlows(haFlow1);
+
+        haFlowPathRepository.add(haPath1);
+        haPath1.setSubPaths(Lists.newArrayList(
+                createPathWithSegments(SUB_PATH_ID_1, haPath1, subFlow1, switch1, switch2, switch3),
+                createPathWithSegments(SUB_PATH_ID_2, haPath1, subFlow2, switch1, switch3, switch2)));
+        haPath1.setHaSubFlows(Lists.newArrayList(subFlow1, subFlow2));
+
+        haFlowPathRepository.add(haPath2);
+        haPath2.setSubPaths(Lists.newArrayList(
+                createPathWithSegments(SUB_PATH_ID_3, haPath2, subFlow1, switch3, switch2, switch1)));
+        haPath2.setHaSubFlows(Lists.newArrayList(subFlow2, subFlow1));
+        haFlow1.addPaths(haPath1, haPath2);
+
+        HaFlow detachedHaFlow = new HaFlow(haFlow1);
+        assertEquals(haFlow1, detachedHaFlow);
+
+        detachedHaFlow.setMaxLatency(12357L);
+
+        Optional<HaFlow> foundHaFlow = haFlowRepository.findById(haFlow1.getHaFlowId());
+        assertTrue(foundHaFlow.isPresent());
+        // field must not be changed in DB
+        assertEquals(haFlow1.getMaxLatency(), foundHaFlow.get().getMaxLatency());
+        assertNotEquals(detachedHaFlow.getMaxLatency(), foundHaFlow.get().getMaxLatency());
     }
 
     @Test

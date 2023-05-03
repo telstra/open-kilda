@@ -57,7 +57,7 @@ public class UpdateFlowStatusAction extends
             HaFlow haFlow = getHaFlow(stateMachine.getHaFlowId());
 
             Map<String, FlowStatus> subFlowMap = new HashMap<>();
-            FlowStatus haFlowStatus = FlowStatus.UP;
+            FlowStatus newHaFlowStatusStatus = FlowStatus.UP;
             FlowPathStatus primaryPathStatus = FlowPathStatus.ACTIVE;
 
             List<FlowPath> primarySubPaths = new ArrayList<>(haFlow.getForwardPath().getSubPaths());
@@ -67,7 +67,7 @@ public class UpdateFlowStatusAction extends
                 if (isBackUpStrategyUsed(subPath.getPathId(), stateMachine)) {
                     subPath.setStatus(FlowPathStatus.DEGRADED);
                     subFlowMap.put(subPath.getHaSubFlowId(), FlowStatus.DEGRADED);
-                    haFlowStatus = FlowStatus.DEGRADED;
+                    newHaFlowStatusStatus = FlowStatus.DEGRADED;
                     primaryPathStatus = FlowPathStatus.DEGRADED;
                 } else {
                     subPath.setStatus(FlowPathStatus.ACTIVE);
@@ -87,7 +87,7 @@ public class UpdateFlowStatusAction extends
                     if (isBackUpStrategyUsed(subPath.getPathId(), stateMachine)) {
                         subPath.setStatus(FlowPathStatus.DEGRADED);
                         subFlowMap.put(subPath.getHaSubFlowId(), FlowStatus.DEGRADED);
-                        haFlowStatus = FlowStatus.DEGRADED;
+                        newHaFlowStatusStatus = FlowStatus.DEGRADED;
                         protectedPathStatus = FlowPathStatus.DEGRADED;
                     } else {
                         subPath.setStatus(FlowPathStatus.ACTIVE);
@@ -102,13 +102,13 @@ public class UpdateFlowStatusAction extends
                 subFlow.setStatus(subFlowMap.getOrDefault(subFlow.getHaSubFlowId(), FlowStatus.UP));
             }
 
-            if (haFlowStatus != stateMachine.getOriginalHaFlow().getStatus()) {
-                dashboardLogger.onHaFlowStatusUpdate(stateMachine.getHaFlowId(), haFlowStatus);
-                haFlow.setStatus(haFlowStatus);
+            if (newHaFlowStatusStatus != haFlow.getStatus()) {
+                dashboardLogger.onHaFlowStatusUpdate(stateMachine.getHaFlowId(), newHaFlowStatusStatus);
+                haFlow.setStatus(newHaFlowStatusStatus);
             }
 
-            stateMachine.setNewFlowStatus(haFlowStatus);
-            return haFlowStatus;
+            stateMachine.setNewFlowStatus(newHaFlowStatusStatus);
+            return newHaFlowStatusStatus;
         });
 
         stateMachine.saveActionToHistory(format("The ha-flow status was set to %s", resultStatus));

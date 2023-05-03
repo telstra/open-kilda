@@ -31,7 +31,6 @@ import org.openkilda.wfm.share.flow.resources.HaFlowResources;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources.HaPathResources;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaFlowPathIds;
-import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaPathIdsPairBuilder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
@@ -69,22 +68,17 @@ public class SwapFlowPathsAction extends
             transactionManager.doInTransaction(() -> {
                 HaFlow haFlow = getHaFlow(stateMachine.getHaFlowId());
 
-                HaPathIdsPairBuilder haPathIdsPairBuilder = HaPathIdsPair.builder();
                 HaFlowPath oldForward = haFlow.getForwardPath();
                 if (oldForward != null) {
-                    haPathIdsPairBuilder.forward(buildPathIds(oldForward));
                     saveAndSetInProgressStatuses(oldForward, stateMachine);
                 }
 
                 HaFlowPath oldReverse = haFlow.getReversePath();
                 if (oldReverse != null) {
-                    haPathIdsPairBuilder.reverse(buildPathIds(oldReverse));
                     saveAndSetInProgressStatuses(oldReverse, stateMachine);
                 }
 
                 if (oldForward != null || oldReverse != null) {
-                    stateMachine.setOldPrimaryPathIds(haPathIdsPairBuilder.build());
-
                     FlowEncapsulationType oldFlowEncapsulationType =
                             stateMachine.getOriginalHaFlow().getEncapsulationType();
                     HaFlowResources oldResources = buildHaResources(
@@ -109,22 +103,17 @@ public class SwapFlowPathsAction extends
         transactionManager.doInTransaction(() -> {
             HaFlow haFlow = getHaFlow(stateMachine.getHaFlowId());
 
-            HaPathIdsPairBuilder haPathIdsPairBuilder = HaPathIdsPair.builder();
             HaFlowPath oldForward = haFlow.getProtectedForwardPath();
             if (oldForward != null) {
-                haPathIdsPairBuilder.forward(buildPathIds(oldForward));
                 saveAndSetInProgressStatuses(oldForward, stateMachine);
             }
 
             HaFlowPath oldReverse = haFlow.getProtectedReversePath();
             if (oldReverse != null) {
-                haPathIdsPairBuilder.reverse(buildPathIds(oldReverse));
                 saveAndSetInProgressStatuses(oldReverse, stateMachine);
             }
 
             if (oldForward != null || oldReverse != null) {
-                stateMachine.setOldProtectedPathIds(haPathIdsPairBuilder.build());
-
                 FlowEncapsulationType oldFlowEncapsulationType =
                         stateMachine.getOriginalHaFlow().getEncapsulationType();
                 HaFlowResources oldProtectedResources = buildHaResources(
@@ -173,13 +162,6 @@ public class SwapFlowPathsAction extends
                 .encapsulationResources(encapsulationResources)
                 .subPathIds(buildSubPathIdMap(haFlowPath.getSubPaths()))
                 .subPathMeters(buildSubPathMeterIdMap(haFlowPath.getSubPaths()))
-                .build();
-    }
-
-    private static HaFlowPathIds buildPathIds(HaFlowPath haFlowPath) {
-        return HaFlowPathIds.builder()
-                .haPathId(haFlowPath.getHaPathId())
-                .subPathIds(buildSubPathIdMap(haFlowPath.getSubPaths()))
                 .build();
     }
 

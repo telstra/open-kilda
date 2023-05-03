@@ -80,18 +80,18 @@ public abstract class BaseReceivedResponseAction extends
                                         actionName, commandId, uuid, response.getSwitchId(), message)));
 
             }
+        }
 
-            if (stateMachine.getPendingCommands().isEmpty()) {
-                if (stateMachine.getFailedCommands().isEmpty()) {
-                    log.debug("Received responses for all pending {} commands of the ha-flow {}",
-                            actionName, stateMachine.getHaFlowId());
-                    stateMachine.fire(successfulEvent);
-                } else {
-                    String errorMessage = format("Received error response(s) for %d %s commands",
-                            stateMachine.getFailedCommands().size(), actionName);
-                    stateMachine.saveErrorToHistory(errorMessage);
-                    stateMachine.fireError(errorMessage);
-                }
+        if (stateMachine.getPendingCommands().isEmpty()) {
+            if (stateMachine.getFailedCommands().isEmpty()) {
+                log.debug("Received responses for all pending {} commands of the ha-flow {}",
+                        actionName, stateMachine.getHaFlowId());
+                stateMachine.fire(successfulEvent);
+            } else {
+                String errorMessage = format("Received error response(s) for %d %s commands",
+                        stateMachine.getFailedCommands().size(), actionName);
+                stateMachine.saveErrorToHistory(errorMessage);
+                stateMachine.fireError(errorMessage);
             }
         }
     }

@@ -80,7 +80,7 @@ public class EmitUpdateRulesRequestsAction extends
 
         // emitting
         Collection<BaseSpeakerCommandsRequest> speakerCommands = new ArrayList<>(FlowRulesConverter.INSTANCE
-                .buildFlowInstallCommands(installSpeakerCommands, stateMachine.getCommandContext()));
+                .buildFlowInstallCommands(installSpeakerCommands, stateMachine.getCommandContext(), true));
         speakerCommands.addAll(FlowRulesConverter.INSTANCE.buildFlowModifyCommands(
                 modifySpeakerCommands, stateMachine.getCommandContext()));
 

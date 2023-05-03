@@ -42,14 +42,12 @@ public class RevertFlowAction extends
             State from, State to, Event event, HaFlowUpdateContext context, HaFlowUpdateFsm stateMachine) {
         transactionManager.doInTransaction(() -> {
             HaFlow haFlow = getHaFlow(stateMachine.getHaFlowId());
-            revertFlow(haFlow, stateMachine);
+            revertFlow(haFlow, stateMachine.getOriginalHaFlow());
             stateMachine.saveActionToHistory("The ha-flow was reverted");
         });
     }
 
-    private void revertFlow(HaFlow haFlow, HaFlowUpdateFsm stateMachine) {
-        HaFlow originalHaFlow = stateMachine.getOriginalHaFlow();
-
+    private void revertFlow(HaFlow haFlow, HaFlow originalHaFlow) {
         Switch sharedSwitch = getSwitch(originalHaFlow.getSharedEndpoint().getSwitchId());
         haFlow.setSharedSwitch(sharedSwitch);
         haFlow.setSharedPort(originalHaFlow.getSharedEndpoint().getPortNumber());

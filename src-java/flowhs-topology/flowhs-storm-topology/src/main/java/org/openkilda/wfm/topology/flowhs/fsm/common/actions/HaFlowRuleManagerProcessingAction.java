@@ -40,7 +40,7 @@ public abstract class HaFlowRuleManagerProcessingAction<T extends FlowProcessing
 
     protected Collection<InstallSpeakerCommandsRequest> buildHaFlowInstallRequests(
             Collection<SpeakerData> speakerData, CommandContext context) {
-        return FlowRulesConverter.INSTANCE.buildFlowInstallCommands(speakerData, context);
+        return FlowRulesConverter.INSTANCE.buildFlowInstallCommands(speakerData, context, false);
     }
 
     protected Collection<DeleteSpeakerCommandsRequest> buildHaFlowDeleteRequests(
