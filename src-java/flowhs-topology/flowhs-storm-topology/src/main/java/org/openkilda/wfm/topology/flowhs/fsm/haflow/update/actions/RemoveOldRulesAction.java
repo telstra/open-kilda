@@ -60,24 +60,22 @@ public class RemoveOldRulesAction extends
         HaFlow originalHaFlow = stateMachine.getOriginalHaFlow();
         DataAdapter dataAdapter = buildDataAdapter(originalHaFlow, stateMachine);
 
-        boolean isPartialUpdate = !stateMachine.getPartialUpdateEndpoints().isEmpty();
-
         HaFlowPath forwardPath = getHaFlowPath(originalHaFlow, originalHaFlow.getForwardPathId());
         List<SpeakerData> commands = new ArrayList<>(ruleManager.buildRulesHaFlowPath(
-                forwardPath, true, isPartialUpdate, true, true, dataAdapter));
+                forwardPath, true, false, true, true, dataAdapter));
 
         HaFlowPath reversePath = getHaFlowPath(originalHaFlow, originalHaFlow.getReversePathId());
         commands.addAll(ruleManager.buildRulesHaFlowPath(
-                reversePath, true, isPartialUpdate, true, true, dataAdapter));
+                reversePath, true, false, true, true, dataAdapter));
 
         if (originalHaFlow.isAllocateProtectedPath()) {
             HaFlowPath protectedForwardPath = getHaFlowPath(originalHaFlow, originalHaFlow.getProtectedForwardPathId());
             commands.addAll(ruleManager.buildRulesHaFlowPath(
-                    protectedForwardPath, true, isPartialUpdate, false, true, dataAdapter));
+                    protectedForwardPath, true, false, false, true, dataAdapter));
 
             HaFlowPath protectedReversePath = getHaFlowPath(originalHaFlow, originalHaFlow.getProtectedReversePathId());
             commands.addAll(ruleManager.buildRulesHaFlowPath(
-                    protectedReversePath, true, isPartialUpdate, false, true, dataAdapter));
+                    protectedReversePath, true, false, false, true, dataAdapter));
         }
 
         stateMachine.clearPendingAndRetriedAndFailedCommands();
@@ -110,14 +108,10 @@ public class RemoveOldRulesAction extends
         }
 
         Set<SwitchId> switchIds = new HashSet<>();
-        if (stateMachine.getPartialUpdateEndpoints().isEmpty()) {
-            switchIds.addAll(originalHaFlow.getEndpointSwitchIds());
-            switchIds.addAll(getSubPathSwitchIds(stateMachine.getOldPrimaryPathIds().getAllSubPathIds()));
-            if (stateMachine.getOldProtectedPathIds() != null) {
-                switchIds.addAll(getSubPathSwitchIds(stateMachine.getOldProtectedPathIds().getAllSubPathIds()));
-            }
-        } else {
-            switchIds.addAll(stateMachine.getPartialUpdateEndpoints());
+        switchIds.addAll(originalHaFlow.getEndpointSwitchIds());
+        switchIds.addAll(getSubPathSwitchIds(stateMachine.getOldPrimaryPathIds().getAllSubPathIds()));
+        if (stateMachine.getOldProtectedPathIds() != null) {
+            switchIds.addAll(getSubPathSwitchIds(stateMachine.getOldProtectedPathIds().getAllSubPathIds()));
         }
 
         Map<PathId, HaFlow> additionalHaFlowMap = buildHaFlowMap(

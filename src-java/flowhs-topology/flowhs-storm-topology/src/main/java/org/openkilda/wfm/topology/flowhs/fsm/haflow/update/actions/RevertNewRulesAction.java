@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions;
 
-import static com.google.common.collect.Sets.newHashSet;
-
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
@@ -93,20 +91,12 @@ public class RevertNewRulesAction extends HaFlowRuleManagerProcessingAction<
             HaFlowPath newReverse = getHaFlowPath(
                     haFlow, stateMachine.getNewPrimaryPathIds().getReverse().getHaPathId());
 
-            boolean ignoreUnknownSwitches;
-            DataAdapter dataAdapter;
-            if (stateMachine.getPartialUpdateEndpoints().isEmpty()) {
-                ignoreUnknownSwitches = false;
-                dataAdapter = buildDataAdapterForNewRulesFullUpdate(haFlow, newForward, newReverse, stateMachine);
-            } else {
-                ignoreUnknownSwitches = true;
-                dataAdapter = buildDataAdapterForNewRulesWithPartialUpdate(
-                        stateMachine.getNewPrimaryPathIds(), stateMachine);
-            }
+            DataAdapter dataAdapter = buildDataAdapterForNewRulesFullUpdate(
+                    haFlow, newForward, newReverse, stateMachine);
             removeCommands.addAll(ruleManager.buildRulesHaFlowPath(
-                    newForward, true, ignoreUnknownSwitches, true, true, dataAdapter));
+                    newForward, true, false, true, true, dataAdapter));
             removeCommands.addAll(ruleManager.buildRulesHaFlowPath(
-                    newReverse, true, ignoreUnknownSwitches, true, true, dataAdapter));
+                    newReverse, true, false, true, true, dataAdapter));
         }
         return removeCommands;
     }
@@ -119,21 +109,13 @@ public class RevertNewRulesAction extends HaFlowRuleManagerProcessingAction<
             HaFlowPath newReverse = getHaFlowPath(
                     haFlow, stateMachine.getNewProtectedPathIds().getReverse().getHaPathId());
 
-            boolean ignoreUnknownSwitches;
-            DataAdapter dataAdapter;
-            if (stateMachine.getPartialUpdateEndpoints().isEmpty()) {
-                ignoreUnknownSwitches = false;
-                dataAdapter = buildDataAdapterForNewRulesFullUpdate(haFlow, newForward, newReverse, stateMachine);
-            } else {
-                ignoreUnknownSwitches = true;
-                dataAdapter = buildDataAdapterForNewRulesWithPartialUpdate(
-                        stateMachine.getNewProtectedPathIds(), stateMachine);
-            }
+            DataAdapter dataAdapter = buildDataAdapterForNewRulesFullUpdate(
+                    haFlow, newForward, newReverse, stateMachine);
 
             revertCommands.addAll(ruleManager.buildRulesHaFlowPath(
-                    newForward, true, ignoreUnknownSwitches, false, true, dataAdapter));
+                    newForward, true, false, false, true, dataAdapter));
             revertCommands.addAll(ruleManager.buildRulesHaFlowPath(
-                    newReverse, true, ignoreUnknownSwitches, false, true, dataAdapter));
+                    newReverse, true, false, false, true, dataAdapter));
         }
         return revertCommands;
     }
@@ -172,19 +154,6 @@ public class RevertNewRulesAction extends HaFlowRuleManagerProcessingAction<
                 stateMachine.getOldPrimaryPathIds(), stateMachine.getOldProtectedPathIds());
 
         return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false, additionalHaFlowMap);
-    }
-
-    private DataAdapter buildDataAdapterForNewRulesWithPartialUpdate(
-            HaPathIdsPair newPathIdsPair, HaFlowUpdateFsm stateMachine) {
-        Set<PathId> pathIds = newHashSet(newPathIdsPair.getForward().getSubPathIds().values());
-        pathIds.addAll(newPathIdsPair.getReverse().getSubPathIds().values());
-        for (SwitchId switchId : stateMachine.getPartialUpdateEndpoints()) {
-            flowPathRepository.findByEndpointSwitch(switchId, false).stream()
-                    .map(FlowPath::getPathId)
-                    .forEach(pathIds::add);
-        }
-
-        return new PersistenceDataAdapter(persistenceManager, pathIds, stateMachine.getPartialUpdateEndpoints(), false);
     }
 
     private DataAdapter buildDataAdapterForNewRulesFullUpdate(

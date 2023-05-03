@@ -49,11 +49,6 @@ public class RevertPathsSwapAction extends
     @Override
     protected void perform(
             State from, State to, Event event, HaFlowUpdateContext context, HaFlowUpdateFsm stateMachine) {
-        if (!stateMachine.getPartialUpdateEndpoints().isEmpty()) {
-            stateMachine.saveActionToHistory("Skip paths swap revert");
-            return;
-        }
-
         transactionManager.doInTransaction(() -> {
             HaFlow haFlow = getHaFlow(stateMachine.getHaFlowId());
             updatePrimaryPaths(stateMachine, haFlow);

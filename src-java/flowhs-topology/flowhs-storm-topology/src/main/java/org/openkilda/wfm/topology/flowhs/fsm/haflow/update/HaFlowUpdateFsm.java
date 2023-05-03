@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.haflow.update;
 
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
@@ -57,7 +56,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertFlowSta
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertNewRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertPathsSwapAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertResourceAllocationAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.SkipPathsAndResourcesDeallocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.SwapFlowPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.UpdateFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.UpdateHaFlowAction;
@@ -78,8 +76,6 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Getter
@@ -89,13 +85,11 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
         FlowGenericCarrier, FlowProcessingEventListener> {
     private HaFlowRequest targetHaFlow;
     private FlowStatus newFlowStatus;
-    private final Set<SwitchId> partialUpdateEndpoints;
 
     public HaFlowUpdateFsm(@NonNull CommandContext commandContext, @NonNull FlowGenericCarrier carrier,
                            @NonNull String flowId,
                            @NonNull Collection<FlowProcessingEventListener> eventListeners) {
         super(Event.NEXT, Event.ERROR, commandContext, carrier, flowId, eventListeners);
-        partialUpdateEndpoints = new HashSet<>();
     }
 
     @Override
@@ -144,9 +138,6 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
             builder.transitions().from(State.FLOW_UPDATED)
                     .toAmong(State.REVERTING_FLOW, State.REVERTING_FLOW)
                     .onEach(Event.TIMEOUT, Event.ERROR);
-            builder.transition().from(State.FLOW_UPDATED).to(State.RESOURCE_ALLOCATION_COMPLETED)
-                    .on(Event.UPDATE_ENDPOINT_RULES_ONLY)
-                    .perform(new PostResourceAllocationAction(persistenceManager));
 
             builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.PROTECTED_RESOURCES_ALLOCATED)
                     .on(Event.NEXT)
@@ -170,16 +161,14 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
                     .perform(new BuildNewRulesAction(persistenceManager, ruleManager));
             builder.transitions().from(State.RESOURCE_ALLOCATION_COMPLETED)
                     .toAmong(State.NEW_RULES_REVERTED, State.NEW_RULES_REVERTED)
-                    .onEach(Event.TIMEOUT, Event.ERROR)
-                    .perform(new SkipPathsAndResourcesDeallocationAction(persistenceManager));
+                    .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.transition().from(State.BUILDING_RULES).to(State.INSTALLING_NON_INGRESS_RULES)
                     .on(Event.NEXT)
                     .perform(new InstallNonIngressRulesAction(persistenceManager, ruleManager));
             builder.transitions().from(State.BUILDING_RULES)
                     .toAmong(State.NEW_RULES_REVERTED, State.NEW_RULES_REVERTED)
-                    .onEach(Event.TIMEOUT, Event.ERROR)
-                    .perform(new SkipPathsAndResourcesDeallocationAction(persistenceManager));
+                    .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.INSTALLING_NON_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedInstallResponseAction(config.getSpeakerCommandRetriesLimit()));
@@ -237,8 +226,7 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
             builder.internalTransition().within(State.REMOVING_OLD_RULES).on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedRemoveResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.REMOVING_OLD_RULES).to(State.OLD_RULES_REMOVED)
-                    .on(Event.RULES_REMOVED)
-                    .perform(new SkipPathsAndResourcesDeallocationAction(persistenceManager));
+                    .on(Event.RULES_REMOVED);
             builder.transitions().from(State.REMOVING_OLD_RULES)
                     .toAmong(State.OLD_RULES_REMOVED, State.OLD_RULES_REMOVED)
                     .onEach(Event.TIMEOUT, Event.ERROR)
@@ -247,8 +235,6 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
             builder.transition().from(State.OLD_RULES_REMOVED)
                     .to(State.NOTIFY_FLOW_STATS_ON_REMOVED_PATHS).on(Event.NEXT)
                     .perform(new NotifyHaFlowStatsOnRemovedPathsAction<>(persistenceManager, carrier));
-            builder.transition().from(State.OLD_RULES_REMOVED).to(State.UPDATING_FLOW_STATUS)
-                    .on(Event.UPDATE_ENDPOINT_RULES_ONLY);
 
             builder.transition().from(State.NOTIFY_FLOW_STATS_ON_REMOVED_PATHS)
                     .to(State.OLD_PATHS_REMOVAL_COMPLETED)
@@ -296,16 +282,15 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
             builder.internalTransition().within(State.REVERTING_NEW_RULES).on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedRevertResponseAction(config.getSpeakerCommandRetriesLimit()));
             builder.transition().from(State.REVERTING_NEW_RULES).to(State.NEW_RULES_REVERTED)
-                    .on(Event.RULES_REVERTED)
-                    .perform(new SkipPathsAndResourcesDeallocationAction(persistenceManager));
+                    .on(Event.RULES_REVERTED);
             builder.transitions().from(State.REVERTING_NEW_RULES)
                     .toAmong(State.NEW_RULES_REVERTED, State.NEW_RULES_REVERTED)
                     .onEach(Event.TIMEOUT, Event.ERROR)
                     .perform(new HandleNotCompletedCommandsAction());
 
-            builder.transitions().from(State.NEW_RULES_REVERTED)
-                    .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_FLOW)
-                    .onEach(Event.NEXT, Event.UPDATE_ENDPOINT_RULES_ONLY);
+            builder.transition().from(State.NEW_RULES_REVERTED)
+                    .to(State.REVERTING_ALLOCATED_RESOURCES)
+                    .on(Event.NEXT);
 
             builder.onEntry(State.REVERTING_ALLOCATED_RESOURCES)
                     .perform(reportErrorAction);
@@ -433,8 +418,6 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
 
     public enum Event {
         NEXT,
-
-        UPDATE_ENDPOINT_RULES_ONLY,
 
         NO_PATH_FOUND,
 

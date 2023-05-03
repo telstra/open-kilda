@@ -65,29 +65,27 @@ public class BuildNewRulesAction
         List<SpeakerData> ingressCommands = new ArrayList<>();
         List<SpeakerData> nonIngressCommands = new ArrayList<>();
 
-        boolean ignoreUnknownSwitches = !stateMachine.getPartialUpdateEndpoints().isEmpty();
-
         HaFlowPath forwardPath = getHaFlowPath(haFlow, stateMachine.getNewPrimaryPathIds().getForward().getHaPathId());
         List<SpeakerData> forwardCommands = ruleManager.buildRulesHaFlowPath(
-                forwardPath, true, ignoreUnknownSwitches, true, true, dataAdapter);
+                forwardPath, true, false, true, true, dataAdapter);
         groupCommands(forwardCommands, ingressCommands, nonIngressCommands,
                 newHashSet(forwardPath.getSharedSwitchId()));
 
         HaFlowPath reversePath = getHaFlowPath(haFlow, stateMachine.getNewPrimaryPathIds().getReverse().getHaPathId());
         List<SpeakerData> reverseCommands = ruleManager.buildRulesHaFlowPath(
-                reversePath, true, ignoreUnknownSwitches, true, true, dataAdapter);
+                reversePath, true, false, true, true, dataAdapter);
         groupCommands(reverseCommands, ingressCommands, nonIngressCommands, reversePath.getSubFlowSwitchIds());
 
         if (stateMachine.getNewProtectedPathIds() != null) {
             HaFlowPath protectedForwardPath = getHaFlowPath(
                     haFlow, stateMachine.getNewProtectedPathIds().getForward().getHaPathId());
             nonIngressCommands.addAll(ruleManager.buildRulesHaFlowPath(
-                    protectedForwardPath, true, ignoreUnknownSwitches, false, true, dataAdapter));
+                    protectedForwardPath, true, false, false, true, dataAdapter));
 
             HaFlowPath protectedReversePath = getHaFlowPath(
                     haFlow, stateMachine.getNewProtectedPathIds().getReverse().getHaPathId());
             nonIngressCommands.addAll(ruleManager.buildRulesHaFlowPath(
-                    protectedReversePath, true, ignoreUnknownSwitches, false, true, dataAdapter));
+                    protectedReversePath, true, false, false, true, dataAdapter));
         }
 
         buildHaFlowInstallRequests(ingressCommands, stateMachine.getCommandContext(), true)
@@ -106,14 +104,10 @@ public class BuildNewRulesAction
         }
 
         Set<SwitchId> switchIds = new HashSet<>();
-        if (stateMachine.getPartialUpdateEndpoints().isEmpty()) {
-            switchIds.addAll(haFlow.getEndpointSwitchIds());
-            switchIds.addAll(getSubPathSwitchIds(haFlow, stateMachine.getNewPrimaryPathIds().getAllSubPathIds()));
-            if (stateMachine.getNewProtectedPathIds() != null) {
-                switchIds.addAll(getSubPathSwitchIds(haFlow, stateMachine.getNewProtectedPathIds().getAllSubPathIds()));
-            }
-        } else {
-            switchIds.addAll(stateMachine.getPartialUpdateEndpoints());
+        switchIds.addAll(haFlow.getEndpointSwitchIds());
+        switchIds.addAll(getSubPathSwitchIds(haFlow, stateMachine.getNewPrimaryPathIds().getAllSubPathIds()));
+        if (stateMachine.getNewProtectedPathIds() != null) {
+            switchIds.addAll(getSubPathSwitchIds(haFlow, stateMachine.getNewProtectedPathIds().getAllSubPathIds()));
         }
 
         HaFlow updatedHaFlow = copyHaFlowWithPathIds(
