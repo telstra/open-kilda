@@ -19,6 +19,7 @@ import org.openkilda.model.MacAddress;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.factory.generator.flow.haflow.SkipEgressPingRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.BfdCatchRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.BroadCastDiscoveryRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.DropDiscoveryLoopRuleGenerator;
@@ -356,5 +357,14 @@ public class ServiceRulesGeneratorFactory {
      */
     public DropSlowProtocolsLoopRuleGenerator getDropSlowProtocolsLoopRuleGenerator() {
         return DropSlowProtocolsLoopRuleGenerator.builder().build();
+    }
+
+    /**
+     * Get skip egress ping rule generator.
+     */
+    public SkipEgressPingRuleGenerator getSkipEgressPingRuleGenerator() {
+        return SkipEgressPingRuleGenerator.builder()
+                .flowPingMagicSrcMacAddress(config.getFlowPingMagicSrcMacAddress())
+                .build();
     }
 }

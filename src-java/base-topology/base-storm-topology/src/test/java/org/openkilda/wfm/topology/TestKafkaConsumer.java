@@ -65,7 +65,7 @@ public class TestKafkaConsumer extends Thread {
     }
 
     /**
-     * Starts kafka consumer.
+     * Starts Kafka consumer.
      * */
     public void run() {
         System.out.println("Starting Kafka Consumer for " + topic);
@@ -105,10 +105,10 @@ public class TestKafkaConsumer extends Thread {
     }
 
     /**
-     * Polls messages from kafka until expectedCount is reached.
+     * Polls messages from Kafka until expectedCount is reached.
      *
      * @param expectedCount expected count of messages
-     * @param clazz         class of messages
+     * @param clazz class of messages
      * @return list of messages
      */
     public <T> List<T> assertNAndPoll(final int expectedCount, Class<T> clazz) {

@@ -239,8 +239,6 @@ public class OnDemandResultManager extends ResultManager {
                     group.getRecords().size() / 2, subFlowMap.size(), subFlowMap.keySet()));
         }
 
-
-
         String error = oneSwitchFlowExists(subFlowMap) ? "One sub flow is one-switch flow" : null;
 
         return new HaFlowPingResponse(haFlowIds.iterator().next(), error, new ArrayList<>(subFlowMap.values()));
