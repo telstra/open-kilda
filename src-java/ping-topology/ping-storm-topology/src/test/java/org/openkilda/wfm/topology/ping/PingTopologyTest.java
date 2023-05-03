@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.ping;
 
 import static java.lang.String.format;
 import static org.apache.storm.utils.Utils.sleep;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaFlowPath;
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaSubFlow;

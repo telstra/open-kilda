@@ -199,6 +199,7 @@ public class RuleManagerImpl implements RuleManager {
         generators.add(serviceRulesFactory.getBfdCatchRuleGenerator());
         generators.add(serviceRulesFactory.getRoundTripLatencyRuleGenerator());
         generators.add(serviceRulesFactory.getUnicastVerificationVxlanRuleGenerator());
+        generators.add(serviceRulesFactory.getSkipEgressPingRuleGenerator());
 
         SwitchProperties switchProperties = adapter.getSwitchProperties(switchId);
         if (switchProperties.isMultiTable()) {
