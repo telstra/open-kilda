@@ -49,12 +49,15 @@ public class UpdateSubFlowsAction extends HistoryRecordingAction<YFlowUpdateFsm,
         requestedFlows.forEach(requestedFlow -> {
             String subFlowId = requestedFlow.getFlowId();
             stateMachine.addSubFlow(subFlowId);
-            stateMachine.addUpdatingSubFlow(subFlowId);
-            stateMachine.notifyEventListeners(listener ->
-                    listener.onSubFlowProcessingStart(yFlowId, subFlowId));
-            CommandContext flowContext = stateMachine.getCommandContext().fork(subFlowId);
-            requestedFlow.setDiverseFlowId(stateMachine.getDiverseFlowId());
-            flowUpdateService.startFlowUpdating(flowContext, requestedFlow, yFlowId);
+            if (requestedFlow.getFlowId().equals(stateMachine.getMainAffinityFlowId())) {
+                stateMachine.addUpdatingSubFlow(subFlowId);
+                stateMachine.notifyEventListeners(listener ->
+                        listener.onSubFlowProcessingStart(yFlowId, subFlowId));
+                CommandContext flowContext = stateMachine.getCommandContext().fork(subFlowId);
+                requestedFlow.setDiverseFlowId(stateMachine.getDiverseFlowId());
+                flowUpdateService.startFlowUpdating(flowContext, requestedFlow, yFlowId);
+            }
         });
     }
 }
+
