@@ -60,4 +60,3 @@ public class UpdateSubFlowsAction extends HistoryRecordingAction<YFlowUpdateFsm,
         });
     }
 }
-
