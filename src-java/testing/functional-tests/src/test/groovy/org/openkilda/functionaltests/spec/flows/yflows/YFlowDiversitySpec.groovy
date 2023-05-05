@@ -267,6 +267,51 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
+    def "Able to get Y-Flow paths with with diversity part when flows become diverse after partial update"() {
+        given: "Switches with three not overlapping paths at least"
+        def swT = topologyHelper.switchTriplets.find {
+            [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
+                    [it.pathsEp1, it.pathsEp2].every {
+                        it.collect { pathHelper.getInvolvedIsls(it) }
+                                .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
+                    }
+        }
+        assumeTrue(swT != null, "Unable to find suitable switches")
+
+        and: "Create two Y-Flows"
+        def yFlow1Request = yFlowHelper.randomYFlow(swT, false)
+        def yFlow1 = yFlowHelper.addYFlow(yFlow1Request)
+        def yFlow2Request = yFlowHelper.randomYFlow(swT, false)
+        def yFlow2 = yFlowHelper.addYFlow(yFlow2Request)
+        def allSubFlowsIds = yFlow1.subFlows*.flowId + yFlow2.subFlows*.flowId as Set
+
+
+        when: "Partially update Y-Flow to become diverse with another one"
+        yFlowHelper.partialUpdateYFlow(yFlow1.getYFlowId(), YFlowPatchPayload.builder()
+                .diverseFlowId(yFlow2.getYFlowId())
+                .build())
+
+        and: "Request paths for both Y-Flows"
+        YFlowPaths yFlow1Paths, yFlow2Paths
+        withPool {
+            (yFlow1Paths, yFlow2Paths) = [yFlow1, yFlow2]
+                    .collectParallel { northboundV2.getYFlowPaths(it.YFlowId) }
+        }
+
+        then: "Path request contain all the subflows in diverse group"
+        "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow1Paths, allSubFlowsIds)
+        "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow2Paths, allSubFlowsIds)
+
+
+        cleanup:
+        withPool {
+            [yFlow1, yFlow2].eachParallel{
+                it && yFlowHelper.deleteYFlow(it.getYFlowId())
+            }
+        }
+    }
+
     void verifySegmentsStats(YFlowPaths yFlowPaths, Map expectedValuesMap) {
         yFlowPaths.subFlowPaths.each { flow ->
             flow.diverseGroup && with(flow.diverseGroup) { diverseGroup ->
@@ -358,6 +403,15 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
                         ]
                 ]
         ]
+    }
+
+    def "assert that sub-flows paths have all expected flow ids in 'other flows' section"(YFlowPaths yFlowPaths,
+                                                                                           Set<String> expectedFlowIds){
+        assert yFlowPaths.subFlowPaths[0].diverseGroup.otherFlows*.id as Set
+                == expectedFlowIds - yFlowPaths.subFlowPaths[0].getFlowId()
+        assert yFlowPaths.subFlowPaths[1].diverseGroup.otherFlows*.id as Set
+                == expectedFlowIds - yFlowPaths.subFlowPaths[1].getFlowId()
+        return true
     }
 
 }
