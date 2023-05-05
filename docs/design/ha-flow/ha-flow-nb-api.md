@@ -256,42 +256,113 @@ Request body is ignored, response body is the same to the read operation.
 ## Read paths
 
 REST endpoint: `GET /v2/ha-flows/{ha_flow_id}/paths`
+NOTE: response body is incomplete. Information about diversity flows must be included into this response. 
+The format of diversity paths is under discussion right now. 
 
 Response body:
 
 ```json
 {
-  "shared_path": {
-    "nodes": [
-      {
-        "port_no": 0,
-        "segment_latency": 0,
-        "switch_id": "00:00:00:00:00:00:00:08"
+   "shared_path": {
+      "forward": [
+         {
+          "switch_id": "00:00:00:00:00:00:00:02",
+          "input_port": 10,
+          "output_port": 7
+         }
+      ],
+      "reverse": [
+         {
+            "switch_id": "00:00:00:00:00:00:00:02",
+            "input_port": 10,
+            "output_port": 7
+         }
+      ],
+      "protected_path": {
+         "forward": [
+            {
+               "switch_id": "00:00:00:00:00:00:00:02",
+               "input_port": 10,
+               "output_port": 7
+            }
+         ],
+         "reverse": [
+            {
+               "switch_id": "00:00:00:00:00:00:00:02",
+               "input_port": 10,
+               "output_port": 7
+            }
+         ]
       }
-    ]
-  },
-  "sub_flow_paths": [
-    {
-      "flow_id": "fAAAAAAAAAAAAAAA",
-      "nodes": [
-        {
-          "port_no": 0,
-          "segment_latency": 0,
-          "switch_id": "00:00:00:00:00:00:00:09"
-        }
-      ]
-    },
-    {
-      "flow_id": "fAAAAAAAAAAAAAAB",
-      "nodes": [
-        {
-          "port_no": 0,
-          "segment_latency": 0,
-          "switch_id": "00:00:00:00:00:00:00:09"
-        }
-      ]
-    }
-  ]
+   },
+   "sub_flow_paths": [
+      {
+         "flow_id": "fAAAAAAAAAAAAAAA",
+         "forward": [
+            {
+               "switch_id": "00:00:00:00:00:00:00:02",
+               "input_port": 10,
+               "output_port": 7
+            }
+         ],
+         "reverse": [
+            {
+               "switch_id": "00:00:00:00:00:00:00:02",
+               "input_port": 10,
+               "output_port": 7
+            }
+         ],
+         "protected_path": {
+            "forward": [
+               {
+                  "switch_id": "00:00:00:00:00:00:00:02",
+                  "input_port": 10,
+                  "output_port": 7
+               }
+            ],
+            "reverse": [
+               {
+                  "switch_id": "00:00:00:00:00:00:00:02",
+                  "input_port": 10,
+                  "output_port": 7
+               }
+            ]
+         }
+      },
+      {
+         "flow_id": "fBBBBBBBBBBBB",
+         "forward": [
+            {
+               "switch_id": "00:00:00:00:00:00:00:02",
+               "input_port": 10,
+               "output_port": 7
+            }
+         ],
+         "reverse": [
+            {
+               "switch_id": "00:00:00:00:00:00:00:02",
+               "input_port": 10,
+               "output_port": 7
+            }
+         ],
+         "protected_path": {
+            "forward": [
+               {
+                  "switch_id": "00:00:00:00:00:00:00:02",
+                  "input_port": 10,
+                  "output_port": 7
+               }
+            ],
+            "reverse": [
+               {
+                  "switch_id": "00:00:00:00:00:00:00:02",
+                  "input_port": 10,
+                  "output_port": 7
+               }
+            ]
+         }
+      }
+   ]
 }
 ```
 
