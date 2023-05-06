@@ -44,6 +44,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
         when: "Create a ha-flow of certain configuration"
         def haFlow = northboundV2.addHaFlow(haFlowRequest)
+        def involvedSwitches = haFlowHelper.getInvolvedSwitches(haFlow)
 
         then: "Y-flow is created and has UP status"
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
@@ -60,7 +61,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
         and: "And involved switches pass validation"
         withPool {
-            haFlowHelper.getInvolvedSwitches(haFlow).eachParallel { SwitchId swId ->
+            involvedSwitches.eachParallel { SwitchId swId ->
                 assert northboundV2.validateSwitch(swId).isAsExpected()
             }
         }

@@ -47,7 +47,7 @@ class HaFlowHelper {
     @Qualifier("islandNb")
     NorthboundService northbound
     @Autowired
-    PathHelper pathHelper
+    HaPathHelper haPathHelper
 
     def random = new Random()
     def faker = new Faker()
@@ -201,9 +201,9 @@ class HaFlowHelper {
         response
     }
 
-    static Set<SwitchId> getInvolvedSwitches(HaFlow haFlow) {
-        //TODO include transit switches when https://github.com/telstra/open-kilda/issues/5148 will be implemented
-        return haFlow.subFlows*.endpoint.switchId + haFlow.sharedEndpoint.switchId
+    Set<SwitchId> getInvolvedSwitches(HaFlow haFlow) {
+        return (List<SwitchId>) haPathHelper.getInvolvedIsls(northboundV2.getHaFlowPaths(haFlow.getHaFlowId()))
+                .collect { [it.getSrcSwitch().getDpId(), it.getDstSwitch().getDpId()] }.flatten().unique()
     }
 
     static List<SwitchPortVlan> getBusyEndpoints(List<HaFlowCreatePayload> haFlows) {
