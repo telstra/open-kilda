@@ -213,7 +213,7 @@ public class ResourcesAllocationAction extends
 
             HaFlowPath forward = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getForward(), paths.getForward(),
-                    cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build(), false);
+                    cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build());
             forward.setSubPaths(createForwardSubPaths(paths, haFlow, haFlowResources, forward, stateMachine));
             haFlowPathRepository.add(forward);
             forward.setHaSubFlows(haFlow.getHaSubFlows());
@@ -222,7 +222,7 @@ public class ResourcesAllocationAction extends
 
             HaFlowPath reverse = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getReverse(), paths.getReverse(),
-                    cookieBuilder.direction(FlowPathDirection.REVERSE).subType(FlowSubType.SHARED).build(), false);
+                    cookieBuilder.direction(FlowPathDirection.REVERSE).subType(FlowSubType.SHARED).build());
             reverse.setSubPaths(createReverseSubPaths(paths, haFlow, haFlowResources, reverse, stateMachine));
             haFlowPathRepository.add(reverse);
             reverse.setHaSubFlows(haFlow.getHaSubFlows());
@@ -271,7 +271,7 @@ public class ResourcesAllocationAction extends
 
             HaFlowPath forward = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getForward(), protectedPaths.getForward(),
-                    cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build(), false);
+                    cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build());
             forward.setSubPaths(createForwardSubPaths(protectedPaths, haFlow, haFlowResources, forward, stateMachine));
             haFlowPathRepository.add(forward);
             forward.setHaSubFlows(haFlow.getHaSubFlows());
@@ -281,7 +281,7 @@ public class ResourcesAllocationAction extends
 
             HaFlowPath reverse = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getReverse(), protectedPaths.getReverse(),
-                    cookieBuilder.direction(FlowPathDirection.REVERSE).subType(FlowSubType.SHARED).build(), false);
+                    cookieBuilder.direction(FlowPathDirection.REVERSE).subType(FlowSubType.SHARED).build());
             reverse.setSubPaths(createReverseSubPaths(protectedPaths, haFlow, haFlowResources, reverse, stateMachine));
             haFlowPathRepository.add(reverse);
             reverse.setHaSubFlows(haFlow.getHaSubFlows());

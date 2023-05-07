@@ -85,7 +85,7 @@ public class AllocateProtectedResourcesAction extends
 
         log.debug("Finding a new protected paths for ha-flow {}", haFlowId);
         GetHaPathsResult allocatedPaths = allocatePathPair(haFlow, newPathIdsPair,
-                false, pathIdsToReuse, oldPaths, true,
+                pathIdsToReuse, oldPaths,
                 stateMachine.getSharedBandwidthGroupId(), testNonOverlappingPath, true);
         if (allocatedPaths == null) {
             throw new ResourceAllocationException("Unable to allocate protected ha-path");
@@ -104,7 +104,7 @@ public class AllocateProtectedResourcesAction extends
                 haFlow, allocatedPaths.getForward().getYPointSwitchId(), newPathIdsPair);
         stateMachine.setNewProtectedResources(haFlowResources);
 
-        HaFlowPathPair createdPaths = createHaFlowPathPair(haFlowId, haFlowResources, allocatedPaths, false);
+        HaFlowPathPair createdPaths = createHaFlowPathPair(haFlowId, haFlowResources, allocatedPaths);
         log.debug("New protected ha-path has been created: {}", createdPaths);
 
         saveAllocationActionWithDumpsToHistory(stateMachine, haFlow, PATHS_TYPE, createdPaths);

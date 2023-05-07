@@ -75,7 +75,7 @@ public class AllocatePrimaryResourcesAction extends
 
         log.debug("Finding a new primary path for ha-flow {}", haFlowId);
         GetHaPathsResult allocatedPaths = allocatePathPair(haFlow, newPathIdsPair,
-                false, pathIdsToReuse, oldPaths, true,
+                pathIdsToReuse, oldPaths,
                 stateMachine.getSharedBandwidthGroupId(), path -> true, false);
         if (allocatedPaths == null) {
             throw new ResourceAllocationException("Unable to allocate ha-paths");
@@ -89,7 +89,7 @@ public class AllocatePrimaryResourcesAction extends
                 haFlow, allocatedPaths.getForward().getYPointSwitchId(), newPathIdsPair);
         stateMachine.setNewPrimaryResources(haFlowResources);
 
-        HaFlowPathPair createdPaths = createHaFlowPathPair(haFlowId, haFlowResources, allocatedPaths, false);
+        HaFlowPathPair createdPaths = createHaFlowPathPair(haFlowId, haFlowResources, allocatedPaths);
         log.debug("New primary ha-path has been created: {}", createdPaths);
 
         saveAllocationActionWithDumpsToHistory(stateMachine, haFlow, PATHS_TYPE, createdPaths);
