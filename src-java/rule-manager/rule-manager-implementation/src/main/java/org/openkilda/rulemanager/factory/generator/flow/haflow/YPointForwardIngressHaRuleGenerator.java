@@ -32,6 +32,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
@@ -181,15 +182,15 @@ public class YPointForwardIngressHaRuleGenerator implements MeteredRuleGenerator
 
     private List<Integer> getTargetPreGroupVlanStack() {
         FlowPath shortestSubPath = getShortestSubPath(subPaths);
-
+        HaSubFlow haSubFlow = haFlow.getHaSubFlowOrThrowException(shortestSubPath.getHaSubFlowId());
         if (shortestSubPath.isOneSwitchPath()) {
-            if (shortestSubPath.getHaSubFlow().getEndpointInnerVlan() != 0) {
-                return makeVlanStack(shortestSubPath.getHaSubFlow().getEndpointInnerVlan());
+            if (haSubFlow.getEndpointInnerVlan() != 0) {
+                return makeVlanStack(haSubFlow.getEndpointInnerVlan());
             }
             if (encapsulation.getType() == VXLAN) {
                 return new ArrayList<>();
             }
-            if (haFlow.getSharedInnerVlan() == 0 && shortestSubPath.getHaSubFlow().getEndpointVlan() == 0) {
+            if (haFlow.getSharedInnerVlan() == 0 && haSubFlow.getEndpointVlan() == 0) {
                 return new ArrayList<>();
             }
             return makeVlanStack(encapsulation.getId());
@@ -203,8 +204,9 @@ public class YPointForwardIngressHaRuleGenerator implements MeteredRuleGenerator
     private Bucket buildBucket(FlowPath subPath, List<Integer> currentVlanStack, Set<SwitchFeature> features) {
         List<Integer> targetStack;
         if (subPath.isOneSwitchPath()) {
+            HaSubFlow haSubFlow = haFlow.getHaSubFlowOrThrowException(subPath.getHaSubFlowId());
             targetStack = makeVlanStack(
-                    subPath.getHaSubFlow().getEndpointInnerVlan(), subPath.getHaSubFlow().getEndpointVlan());
+                    haSubFlow.getEndpointInnerVlan(), haSubFlow.getEndpointVlan());
         } else if (encapsulation.getType() == TRANSIT_VLAN) {
             targetStack = makeVlanStack(encapsulation.getId());
         } else {
@@ -251,10 +253,11 @@ public class YPointForwardIngressHaRuleGenerator implements MeteredRuleGenerator
 
     private PortNumber getOutPort(FlowPath subPath) {
         if (subPath.isOneSwitchPath()) {
-            if (haFlow.getSharedPort() == subPath.getHaSubFlow().getEndpointPort()) {
+            HaSubFlow haSubFlow = haFlow.getHaSubFlowOrThrowException(subPath.getHaSubFlowId());
+            if (haFlow.getSharedPort() == haSubFlow.getEndpointPort()) {
                 return new PortNumber(SpecialPortType.IN_PORT);
             } else {
-                return new PortNumber(subPath.getHaSubFlow().getEndpointPort());
+                return new PortNumber(haSubFlow.getEndpointPort());
             }
         } else {
             return new PortNumber(subPath.getSegments().get(0).getSrcPort());

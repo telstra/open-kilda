@@ -75,15 +75,15 @@ public abstract class HaFlowRuleManagerProcessingAction<T extends FlowProcessing
 
     protected HaFlow copyHaFlowWithPathIds(
             HaFlow sourceHaFlow, HaPathIdsPair primaryPathIds, HaPathIdsPair protectedPathIds) {
-        HaFlow updatedHaFlow = new HaFlow(sourceHaFlow);
+        HaFlow haFlow = new HaFlow(sourceHaFlow);
         if (primaryPathIds != null) {
-            updatedHaFlow.setForwardPathId(primaryPathIds.getForward().getHaPathId());
-            updatedHaFlow.setReversePathId(primaryPathIds.getReverse().getHaPathId());
+            haFlow.setForwardPath(haFlow.getPathOrThrowException(primaryPathIds.getForward().getHaPathId()));
+            haFlow.setReversePath(haFlow.getPathOrThrowException(primaryPathIds.getReverse().getHaPathId()));
         }
         if (protectedPathIds != null) {
-            updatedHaFlow.setProtectedForwardPathId(protectedPathIds.getForward().getHaPathId());
-            updatedHaFlow.setProtectedReversePathId(protectedPathIds.getReverse().getHaPathId());
+            haFlow.setProtectedForwardPath(haFlow.getPathOrThrowException(protectedPathIds.getForward().getHaPathId()));
+            haFlow.setProtectedReversePath(haFlow.getPathOrThrowException(protectedPathIds.getReverse().getHaPathId()));
         }
-        return updatedHaFlow;
+        return haFlow;
     }
 }

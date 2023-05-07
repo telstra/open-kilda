@@ -716,16 +716,17 @@ public class RuleManagerImpl implements RuleManager {
             boolean ignoreUnknownSwitches, DataAdapter adapter) {
         List<FlowPath> subPaths = haPath.getSubPaths();
         int yPointInPort = getShortestSubPath(subPaths).getSegments().get(lastCommonSegmentId).getDestPort();
+        HaFlow haFlow = adapter.getHaFlow(haPath.getHaPathId());
 
         RuleGenerator generator;
         if (subPaths.get(0).getDestSwitchId().equals(subPaths.get(1).getDestSwitchId())
                 && subPaths.get(0).getDestSwitchId().equals(haPath.getYPointSwitchId())) {
             generator = flowRulesFactory.getYPointForwardEgressHaRuleGenerator(
-                    haPath, subPaths, encapsulation, yPointInPort);
+                    haFlow, haPath, subPaths, encapsulation, yPointInPort);
         } else {
             Map<PathId, Integer> outPorts = getHaYPointOutPorts(lastCommonSegmentId, subPaths);
             generator = flowRulesFactory.getYPointForwardTransitHaRuleGenerator(
-                    haPath, subPaths, encapsulation, yPointInPort, outPorts);
+                    haFlow, haPath, subPaths, encapsulation, yPointInPort, outPorts);
         }
         return generateCommands(generator, haPath.getYPointSwitchId(), ignoreUnknownSwitches, adapter);
     }

@@ -363,6 +363,16 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
         return Optional.empty();
     }
 
+    public HaFlowPath getPathOrThrowException(PathId pathId) {
+        return getPath(pathId).orElseThrow(() -> new IllegalArgumentException(
+                format("HA-flow %s has no HA-path %s", getHaFlowId(), pathId)));
+    }
+
+    public HaSubFlow getHaSubFlowOrThrowException(String haSubFlowId) {
+        return getHaSubFlow(haSubFlowId).orElseThrow(() -> new IllegalArgumentException(
+                format("HA-flow %s has no HA-sub flow %s", getHaFlowId(), haSubFlowId)));
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

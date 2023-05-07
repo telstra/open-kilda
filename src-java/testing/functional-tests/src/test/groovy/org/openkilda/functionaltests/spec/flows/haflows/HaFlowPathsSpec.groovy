@@ -43,6 +43,7 @@ class HaFlowPathsSpec extends HealthCheckSpecification {
     @Tidy
     @Tags(LOW_PRIORITY)
     def "Meaningful error is returned when requested paths for non-existing HA flow"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         when: "Request paths for non-existing HA flow"
         def flowId = "non-existing flow"
         northboundV2.getHaFlowPaths(flowId)
@@ -50,7 +51,5 @@ class HaFlowPathsSpec extends HealthCheckSpecification {
         then: "Meaningful error is returned"
         def actualException = thrown(HttpClientErrorException)
         new ExpectedHttpClientErrorException(NOT_FOUND, ~/HA-flow ${flowId} not found\./).equals(actualException)
-
     }
-
 }

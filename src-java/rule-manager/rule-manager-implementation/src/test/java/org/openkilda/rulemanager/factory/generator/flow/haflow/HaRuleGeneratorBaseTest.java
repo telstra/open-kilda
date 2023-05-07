@@ -45,6 +45,7 @@ import org.openkilda.rulemanager.ProtoConstants.IpProto;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.match.FieldMatch;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.junit.Before;
 
@@ -60,7 +61,8 @@ public class HaRuleGeneratorBaseTest {
     protected static final PathId PATH_ID_2 = new PathId("path_id_2");
     protected static final PathId PATH_ID_3 = new PathId("path_id_3");
     protected static final String HA_FLOW_ID = "ha_flow";
-    protected static final String HA_SUB_FLOW_ID = "sub_flow";
+    protected static final String HA_SUB_FLOW_ID_1 = "sub_flow_1";
+    protected static final String HA_SUB_FLOW_ID_2 = "sub_flow_2";
     protected static final int PORT_NUMBER_1 = 1;
     protected static final int PORT_NUMBER_2 = 2;
     protected static final int PORT_NUMBER_3 = 3;
@@ -105,13 +107,6 @@ public class HaRuleGeneratorBaseTest {
     protected static final FlowSegmentCookie SHARED_FORWARD_COOKIE = FORWARD_COOKIE.toBuilder()
             .subType(FlowSubType.SHARED)
             .build();
-    protected static final HaFlow HA_FLOW = HaFlow.builder()
-            .haFlowId(HA_FLOW_ID)
-            .sharedSwitch(SWITCH_1)
-            .sharedPort(PORT_NUMBER_1)
-            .sharedOuterVlan(OUTER_VLAN_ID_2)
-            .sharedInnerVlan(INNER_VLAN_ID_2)
-            .build();
 
     protected static final double BURST_COEFFICIENT = 1.05;
     public static final long BANDWIDTH = 1234;
@@ -141,33 +136,36 @@ public class HaRuleGeneratorBaseTest {
     }
 
     protected static HaSubFlow buildHaSubFlow(int outerVlan, int innerVlan) {
+        return buildHaSubFlow(HA_SUB_FLOW_ID_1, outerVlan, innerVlan, PORT_NUMBER_4);
+    }
+
+    protected static HaSubFlow buildHaSubFlow(String haSubFlowId, int outerVlan, int innerVlan, int port) {
         return HaSubFlow.builder()
-                .haSubFlowId(HA_SUB_FLOW_ID)
+                .haSubFlowId(haSubFlowId)
                 .endpointSwitch(SWITCH_2)
-                .endpointPort(PORT_NUMBER_4)
+                .endpointPort(port)
                 .endpointVlan(outerVlan)
                 .endpointInnerVlan(innerVlan)
                 .build();
     }
 
-    protected static FlowPath buildSubPath(int outerVlan, int innerVlan) {
-        return buildSubPath(SWITCH_1, SWITCH_2, FORWARD_COOKIE, outerVlan, innerVlan);
+    protected static FlowPath buildSubPath(HaSubFlow haSubFlow) {
+        return buildSubPath(SWITCH_1, SWITCH_2, FORWARD_COOKIE, haSubFlow);
     }
 
     protected static FlowPath buildSubPath(
-            Switch srcSwitch, Switch dstSwitch, FlowSegmentCookie cookie, int outerVlan, int innerVlan) {
-        return buildSubPath(PATH_ID_1, srcSwitch, dstSwitch, cookie, outerVlan, innerVlan);
+            Switch srcSwitch, Switch dstSwitch, FlowSegmentCookie cookie, HaSubFlow haSubFlow) {
+        return buildSubPath(PATH_ID_1, srcSwitch, dstSwitch, cookie, haSubFlow);
     }
 
     protected static FlowPath buildSubPath(
-            PathId pathId, Switch srcSwitch, Switch dstSwitch, FlowSegmentCookie cookie, int outerVlan,
-            int innerVlan) {
-        return buildSubPath(pathId, srcSwitch, dstSwitch, PORT_NUMBER_2, cookie, outerVlan, innerVlan);
+            PathId pathId, Switch srcSwitch, Switch dstSwitch, FlowSegmentCookie cookie, HaSubFlow haSubFlow) {
+        return buildSubPath(pathId, srcSwitch, dstSwitch, PORT_NUMBER_2, cookie, haSubFlow);
     }
 
     protected static FlowPath buildSubPath(
-            PathId pathId, Switch srcSwitch, Switch dstSwitch, int srcPort, FlowSegmentCookie cookie, int outerVlan,
-            int innerVlan) {
+            PathId pathId, Switch srcSwitch, Switch dstSwitch, int srcPort, FlowSegmentCookie cookie,
+            HaSubFlow haSubFlow) {
         List<PathSegment> segments = new ArrayList<>();
         if (!srcSwitch.getSwitchId().equals(dstSwitch.getSwitchId())) {
             segments.add(PathSegment.builder()
@@ -188,7 +186,19 @@ public class HaRuleGeneratorBaseTest {
                 .bandwidth(BANDWIDTH)
                 .segments(segments)
                 .build();
-        path.setHaSubFlow(buildHaSubFlow(outerVlan, innerVlan));
+        path.setHaSubFlow(haSubFlow);
         return path;
+    }
+
+    protected static HaFlow buildHaFlow(int outerSubFlowVlan, int innerSubFlowVlan) {
+        HaFlow haFlow = HaFlow.builder()
+                .haFlowId(HA_FLOW_ID)
+                .sharedSwitch(SWITCH_1)
+                .sharedPort(PORT_NUMBER_1)
+                .sharedOuterVlan(OUTER_VLAN_ID_2)
+                .sharedInnerVlan(INNER_VLAN_ID_2)
+                .build();
+        haFlow.setHaSubFlows(Lists.newArrayList(buildHaSubFlow(outerSubFlowVlan, innerSubFlowVlan)));
+        return haFlow;
     }
 }

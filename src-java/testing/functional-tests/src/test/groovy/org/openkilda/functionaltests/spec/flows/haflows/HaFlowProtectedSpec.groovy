@@ -28,6 +28,7 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
 
     @Tidy
     def "Able to enable protected path on an HA-flow"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "A simple HA-flow"
         def swT = topologyHelper.switchTriplets.find {
             if (it.ep1 == it.ep2 || it.ep1 == it.shared || it.ep2 == it.shared) {
