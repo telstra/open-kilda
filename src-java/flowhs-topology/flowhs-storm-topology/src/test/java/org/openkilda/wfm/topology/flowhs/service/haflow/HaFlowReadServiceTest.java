@@ -21,7 +21,7 @@ import static org.junit.Assert.fail;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.messaging.command.haflow.HaFlowResponse;
 import org.openkilda.wfm.error.FlowNotFoundException;
-import org.openkilda.wfm.topology.flowhs.service.AbstractYFlowTest;
+import org.openkilda.wfm.topology.flowhs.service.AbstractHaFlowTest;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -29,7 +29,7 @@ import org.junit.Test;
 import java.time.Duration;
 import java.util.List;
 
-public class HaFlowReadServiceTest extends AbstractYFlowTest<FlowSegmentRequest> {
+public class HaFlowReadServiceTest extends AbstractHaFlowTest<FlowSegmentRequest> {
     private static HaFlowReadService haFlowReadService;
 
     @BeforeClass

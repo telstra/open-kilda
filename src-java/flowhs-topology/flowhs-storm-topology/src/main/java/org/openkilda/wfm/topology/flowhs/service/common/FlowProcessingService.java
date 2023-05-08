@@ -22,6 +22,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.CommandContext;
@@ -38,6 +39,7 @@ public abstract class FlowProcessingService<T extends AbstractStateMachine<T, ?,
     protected final R carrier;
     protected final FlowRepository flowRepository;
     protected final YFlowRepository yFlowRepository;
+    protected final HaFlowRepository haFlowRepository;
 
     protected FlowProcessingService(@NonNull F fsmRegister,
                                     @NonNull FsmExecutor<T, ?, E, C> fsmExecutor,
@@ -48,6 +50,7 @@ public abstract class FlowProcessingService<T extends AbstractStateMachine<T, ?,
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowRepository = repositoryFactory.createFlowRepository();
         yFlowRepository = repositoryFactory.createYFlowRepository();
+        haFlowRepository = repositoryFactory.createHaFlowRepository();
     }
 
     /**

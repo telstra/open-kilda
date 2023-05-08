@@ -21,7 +21,6 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -138,7 +137,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignore("""HA-flow partial update is not implemented yet""")
     def "User can partially update #data.descr of a ha-flow"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
@@ -154,6 +152,13 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         then: "Requested updates are reflected in the response and in 'get' API"
         expect updateResponse, sameBeanAs(haFlow, ignores)
         expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
+
+        and: "And involved switches pass validation"
+        withPool {
+            haFlowHelper.getInvolvedSwitches(haFlow.haFlowId).eachParallel { SwitchId switchId ->
+                assert northboundV2.validateSwitch(switchId).isAsExpected()
+            }
+        }
 
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
@@ -184,6 +189,22 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                                 it.endpoint.portNumber = allowedPorts[0]
                             }
                             patchBuilder.subFlows(subFlows)
+                            return patchBuilder.build()
+                        }
+                ],
+                [
+                        descr: "sub flow vlan on only one sub flow",
+                        buildPatchRequest: { HaFlow payload ->
+                            def subFlow = payload.subFlows[0]
+                            def newVlan = subFlow.endpoint.vlanId + 1
+                            def patchBuilder = HaFlowPatchPayload.builder()
+                                    .subFlows([HaSubFlowPatchPayload.builder()
+                                                       .flowId(subFlow.flowId)
+                                                       .endpoint(HaFlowPatchEndpoint.builder()
+                                                               .vlanId(newVlan)
+                                                               .build())
+                                                       .build()])
+                            subFlow.endpoint.vlanId = newVlan
                             return patchBuilder.build()
                         }
                 ],
@@ -312,7 +333,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignore("""HA-flow partial update is not implemented yet""")
     def "User cannot partial update a ha-flow with #data.descr"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
@@ -320,6 +340,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
         def patch = data.buildPatchRequest(haFlow)
+        def involvedSwitchIds = haFlowHelper.getInvolvedSwitches(haFlow.haFlowId)
 
         when: "Try to partial update the ha-flow with invalid payload"
         northboundV2.partialUpdateHaFlow(haFlow.haFlowId, patch)
@@ -330,6 +351,13 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.to(MessageError).with {
             assert errorMessage == data.errorMessage
             assertThat(errorDescription).matches(data.errorDescrPattern)
+        }
+
+        and: "And involved switches pass validation"
+        withPool {
+            involvedSwitchIds.eachParallel { SwitchId switchId ->
+                assert northboundV2.validateSwitch(switchId).isAsExpected()
+            }
         }
 
         cleanup:
@@ -354,10 +382,80 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                         errorStatusCode: HttpStatus.BAD_REQUEST,
                         errorMessage: "Couldn't update HA-flow",
                         errorDescrPattern: /HA-flow .*? has no sub flow .*?/
+                ],
+                [
+                        descr: "switch conflict in request",
+                        buildPatchRequest: { HaFlow payload ->
+                            def subFlow1 = payload.subFlows[0];
+                            def subFlow2 = payload.subFlows[1];
+                            def endpoint = HaFlowPatchEndpoint.builder()
+                                    .switchId(subFlow1.endpoint.switchId)
+                                    .portNumber(subFlow1.endpoint.portNumber)
+                                    .vlanId(subFlow1.endpoint.vlanId + 1)
+                                    .innerVlanId(0)
+                                    .build();
+                            return HaFlowPatchPayload.builder()
+                                    .subFlows([HaSubFlowPatchPayload.builder()
+                                                       .flowId(subFlow1.flowId)
+                                                       .endpoint(endpoint)
+                                                       .build(),
+                                               HaSubFlowPatchPayload.builder()
+                                                       .flowId(subFlow2.flowId)
+                                                       .endpoint(endpoint)
+                                                       .build()])
+                                    .build()
+                        },
+                        errorStatusCode: HttpStatus.BAD_REQUEST,
+                        errorMessage: "Couldn't update HA-flow",
+                        errorDescrPattern: /The sub-flows .* and .* have endpoint conflict: .*/
+                ],
+                [
+                        descr: "switch conflict after update",
+                        buildPatchRequest: { HaFlow payload ->
+                            def subFlow1 = payload.subFlows[0];
+                            def subFlow2 = payload.subFlows[1];
+                            return HaFlowPatchPayload.builder()
+                                    .subFlows([
+                                            HaSubFlowPatchPayload.builder()
+                                                    .flowId(subFlow2.flowId)
+                                                    .endpoint(HaFlowPatchEndpoint.builder()
+                                                            .switchId(subFlow1.endpoint.switchId)
+                                                            .portNumber(subFlow1.endpoint.portNumber)
+                                                            .vlanId(subFlow1.endpoint.vlanId)
+                                                            .innerVlanId(subFlow1.endpoint.innerVlanId)
+                                                            .build())
+                                                    .build()])
+                                    .build()
+                        },
+                        errorStatusCode  : HttpStatus.BAD_REQUEST,
+                        errorMessage     : "Couldn't update HA-flow",
+                        errorDescrPattern: /The sub-flows .* and .* have endpoint conflict: .*/
+                ],
+                [
+                        descr: "different inner vlans of sub flows on one switch",
+                        buildPatchRequest: { HaFlow payload ->
+                            def subFlow1 = payload.subFlows[0];
+                            def subFlow2 = payload.subFlows[1];
+                            return HaFlowPatchPayload.builder()
+                                    .subFlows([
+                                            HaSubFlowPatchPayload.builder()
+                                                    .flowId(subFlow2.flowId)
+                                                    .endpoint(HaFlowPatchEndpoint.builder()
+                                                            .switchId(subFlow1.endpoint.switchId)
+                                                            .portNumber(subFlow1.endpoint.portNumber)
+                                                            .vlanId(subFlow1.endpoint.vlanId)
+                                                            .innerVlanId(subFlow1.endpoint.innerVlanId + 1)
+                                                            .build())
+                                                    .build()])
+                                    .build()
+                        },
+                        errorStatusCode  : HttpStatus.BAD_REQUEST,
+                        errorMessage     : "Couldn't update HA-flow",
+                        errorDescrPattern: "To have ability to use double vlan tagging for both sub flow destination " +
+                                "endpoints which are placed on one switch .* you must set equal inner vlan for both endpoints.*"
                 ]
         ]
     }
-
 
     static <T> CustomisableMatcher<T> sameBeanAs(final T expected, List<String> ignores) {
         def matcher = sameBeanAs(expected)

@@ -117,7 +117,6 @@ public class HaFlowMapperTest {
                 HA_FLOW_ID_1, SHARED_ENDPOINT, BANDWIDTH, PathComputationStrategy.COST, FlowEncapsulationType.VXLAN,
                 MAX_LATENCY, MAX_LATENCY_TIER_2, true, false, true, PRIORITY, false, DESC_1, true, FLOW_3,
                 Lists.newArrayList(SUB_FLOW_1, SUB_FLOW_2), Type.CREATE);
-        request.setSubFlows(Lists.newArrayList(SUB_FLOW_1, SUB_FLOW_2));
         HaFlow result = mapper.toHaFlow(request);
         assertEquals(request.getHaFlowId(), result.getHaFlowId());
         assertEquals(request.getMaximumBandwidth(), result.getMaximumBandwidth());
@@ -140,28 +139,35 @@ public class HaFlowMapperTest {
     }
 
     @Test
+    public void haFlowRequestToHaFlowAndBack() {
+        HaFlow haFlow = buildHaFlow();
+        HaFlowRequest request = mapper.toHaFlowRequest(haFlow, FLOW_3, Type.UPDATE);
+
+        assertEquals(haFlow.getHaFlowId(), request.getHaFlowId());
+        assertEquals(haFlow.getSharedSwitchId(), request.getSharedEndpoint().getSwitchId());
+        assertEquals(haFlow.getSharedPort(), request.getSharedEndpoint().getPortNumber().intValue());
+        assertEquals(haFlow.getSharedOuterVlan(), request.getSharedEndpoint().getOuterVlanId());
+        assertEquals(haFlow.getSharedInnerVlan(), request.getSharedEndpoint().getInnerVlanId());
+        assertEquals(haFlow.getMaximumBandwidth(), request.getMaximumBandwidth());
+        assertEquals(haFlow.getPathComputationStrategy(), request.getPathComputationStrategy());
+        assertEquals(haFlow.getEncapsulationType(), request.getEncapsulationType());
+        assertEquals(haFlow.getMaxLatency(), request.getMaxLatency());
+        assertEquals(haFlow.getMaxLatencyTier2(), request.getMaxLatencyTier2());
+        assertEquals(haFlow.isIgnoreBandwidth(), request.isIgnoreBandwidth());
+        assertEquals(haFlow.isPeriodicPings(), request.isPeriodicPings());
+        assertEquals(haFlow.isPinned(), request.isPinned());
+        assertEquals(haFlow.getPriority(), request.getPriority());
+        assertEquals(haFlow.isStrictBandwidth(), request.isStrictBandwidth());
+        assertEquals(haFlow.getDescription(), request.getDescription());
+        assertEquals(haFlow.isAllocateProtectedPath(), request.isAllocateProtectedPath());
+        assertEquals(FLOW_3, request.getDiverseFlowId());
+        assertEquals(Type.UPDATE, request.getType());
+        assertSubFlows(haFlow.getHaSubFlows(), request.getSubFlows());
+    }
+
+    @Test
     public void getResponseTest() {
-        HaFlow haFlow = new HaFlow(
-                HA_FLOW_ID_1, SWITCH_3, PORT_3, VLAN_3, INNER_VLAN_3, BANDWIDTH,
-                PathComputationStrategy.COST, FlowEncapsulationType.VXLAN, MAX_LATENCY, MAX_LATENCY_TIER_2, true, false,
-                true, PRIORITY, false, DESC_1, true, FlowStatus.UP, GROUP_1, GROUP_2);
-        haFlow.setHaSubFlows(Sets.newHashSet(
-                HaSubFlow.builder().haSubFlowId(SUB_FLOW_ID_1)
-                        .endpointSwitch(SWITCH_1)
-                        .endpointPort(PORT_1)
-                        .endpointVlan(VLAN_1)
-                        .endpointInnerVlan(INNER_VLAN_1)
-                        .status(FlowStatus.UP)
-                        .description(DESC_2)
-                        .build(),
-                HaSubFlow.builder().haSubFlowId(SUB_FLOW_ID_2)
-                        .endpointSwitch(SWITCH_2)
-                        .endpointPort(PORT_2)
-                        .endpointVlan(VLAN_2)
-                        .endpointInnerVlan(INNER_VLAN_2)
-                        .status(FlowStatus.UP)
-                        .description(DESC_3)
-                        .build()));
+        HaFlow haFlow = buildHaFlow();
 
         when(flowRepository.findByDiverseGroupId(anyString())).thenReturn(new ArrayList<>());
         when(haFlowRepository.findHaFlowIdsByDiverseGroupId(anyString())).thenReturn(new ArrayList<>());
@@ -253,6 +259,31 @@ public class HaFlowMapperTest {
                     FlowEncapsulationType.VXLAN, BANDWIDTH, true, false, true, false, true, PRIORITY, MAX_LATENCY,
                     MAX_LATENCY_TIER_2, PathComputationStrategy.COST, requestedFlowMap.get(subFlow.getFlowId()));
         }
+    }
+
+    private static HaFlow buildHaFlow() {
+        HaFlow haFlow = new HaFlow(
+                HA_FLOW_ID_1, SWITCH_3, PORT_3, VLAN_3, INNER_VLAN_3, BANDWIDTH,
+                PathComputationStrategy.COST, FlowEncapsulationType.VXLAN, MAX_LATENCY, MAX_LATENCY_TIER_2, true, false,
+                true, PRIORITY, false, DESC_1, true, FlowStatus.UP, GROUP_1, GROUP_2);
+        haFlow.setHaSubFlows(Sets.newHashSet(
+                HaSubFlow.builder().haSubFlowId(SUB_FLOW_ID_1)
+                        .endpointSwitch(SWITCH_1)
+                        .endpointPort(PORT_1)
+                        .endpointVlan(VLAN_1)
+                        .endpointInnerVlan(INNER_VLAN_1)
+                        .status(FlowStatus.UP)
+                        .description(DESC_2)
+                        .build(),
+                HaSubFlow.builder().haSubFlowId(SUB_FLOW_ID_2)
+                        .endpointSwitch(SWITCH_2)
+                        .endpointPort(PORT_2)
+                        .endpointVlan(VLAN_2)
+                        .endpointInnerVlan(INNER_VLAN_2)
+                        .status(FlowStatus.UP)
+                        .description(DESC_3)
+                        .build()));
+        return haFlow;
     }
 
     private static void assertSubFlows(Collection<HaSubFlow> expectedList, Collection<HaSubFlowDto> actualSet) {

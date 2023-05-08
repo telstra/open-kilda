@@ -120,16 +120,16 @@ public class FermaYFlowRepository extends FermaGenericRepository<YFlow, YFlowDat
     }
 
     @Override
+    public Optional<String> getDiverseYFlowGroupId(String yFlowId) {
+        return getTransactionManager().doInTransaction(() -> findById(yFlowId)
+                .map(FermaYFlowRepository::getDiverseGroupId));
+    }
+
+    @Override
     public Optional<String> getOrCreateDiverseYFlowGroupId(String yFlowId) {
         return getTransactionManager().doInTransaction(() -> findById(yFlowId)
                 .map(yFlow -> {
-                    String groupId = yFlow.getSubFlows().stream()
-                            .map(YSubFlow::getFlow)
-                            .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
-                            .findFirst()
-                            .orElseThrow(() -> new IllegalStateException(
-                                    format("Y-flow %s has no sub-flow with an affinity group defined.", yFlowId)))
-                            .getDiverseGroupId();
+                    String groupId = getDiverseGroupId(yFlow);
                     if (groupId == null) {
                         groupId = UUID.randomUUID().toString();
                     }
@@ -140,6 +140,15 @@ public class FermaYFlowRepository extends FermaGenericRepository<YFlow, YFlowDat
                 }));
     }
 
+    private static String getDiverseGroupId(YFlow yFlow) {
+        return yFlow.getSubFlows().stream()
+                .map(YSubFlow::getFlow)
+                .filter(flow -> flow.getFlowId().equals(flow.getAffinityGroupId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        format("Y-flow %s has no sub-flow with an affinity group defined.", yFlow.getYFlowId())))
+                .getDiverseGroupId();
+    }
 
     @Override
     protected YFlowFrame doAdd(YFlowData data) {

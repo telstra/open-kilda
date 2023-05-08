@@ -16,6 +16,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload
@@ -202,7 +203,11 @@ class HaFlowHelper {
     }
 
     Set<SwitchId> getInvolvedSwitches(String haFlowId) {
-        return (List<SwitchId>) haPathHelper.getInvolvedIsls(northboundV2.getHaFlowPaths(haFlowId))
+        return getInvolvedSwitches(northboundV2.getHaFlowPaths(haFlowId))
+    }
+
+    Set<SwitchId> getInvolvedSwitches(HaFlowPaths haFlowPaths) {
+        return (List<SwitchId>) haPathHelper.getInvolvedIsls(haFlowPaths)
                 .collect { [it.getSrcSwitch().getDpId(), it.getDstSwitch().getDpId()] }.flatten().unique()
     }
 

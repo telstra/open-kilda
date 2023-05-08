@@ -29,7 +29,11 @@ import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
@@ -41,6 +45,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.RuleManagerImpl;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -51,6 +56,7 @@ import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowUpdateService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -69,6 +75,7 @@ import org.apache.storm.tuple.Values;
  * Class is just a stub to give an API for users. It will be modified later.
  */
 public class HaFlowUpdateHubBolt extends HubBolt implements FlowGenericCarrier {
+    public static final String HA_FLOW_UPDATE_ERROR = "Couldn't update HA-flow";
     private final HaFlowUpdateConfig config;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
@@ -121,11 +128,22 @@ public class HaFlowUpdateHubBolt extends HubBolt implements FlowGenericCarrier {
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = pullKey(input);
-        HaFlowRequest payload = pullValue(input, FIELD_ID_PAYLOAD, HaFlowRequest.class);
+        CommandData payload = pullValue(input, FIELD_ID_PAYLOAD, CommandData.class);
         try {
-            service.handleUpdateRequest(currentKey, getCommandContext(), payload);
+            if (payload instanceof HaFlowRequest) {
+                service.handleUpdateRequest(currentKey, getCommandContext(), (HaFlowRequest) payload);
+            } else if (payload instanceof HaFlowPartialUpdateRequest) {
+                service.handlePartialUpdateRequest(
+                        currentKey, getCommandContext(), (HaFlowPartialUpdateRequest) payload);
+            } else {
+                unhandledInput(input);
+            }
         } catch (DuplicateKeyException e) {
             log.error("Failed to handle a request with key {}. {}", currentKey, e.getMessage());
+        } catch (FlowProcessingException e) {
+            sendErrorResponse(e, e.getErrorType());
+        } catch (Exception e) {
+            sendErrorResponse(e, ErrorType.INTERNAL_ERROR);
         }
     }
 
@@ -210,6 +228,14 @@ public class HaFlowUpdateHubBolt extends HubBolt implements FlowGenericCarrier {
         declarer.declareStream(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(ZkStreams.ZK.toString(),
                 new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
+    }
+
+    private void sendErrorResponse(Exception exception, ErrorType errorType) {
+        ErrorData errorData = new ErrorData(errorType, HA_FLOW_UPDATE_ERROR, exception.getMessage());
+        CommandContext commandContext = getCommandContext();
+        ErrorMessage errorMessage = new ErrorMessage(errorData, commandContext.getCreateTime(),
+                commandContext.getCorrelationId());
+        sendNorthboundResponse(errorMessage);
     }
 
     @Getter
