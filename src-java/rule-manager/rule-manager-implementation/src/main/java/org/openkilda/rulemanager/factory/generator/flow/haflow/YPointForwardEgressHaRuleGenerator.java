@@ -24,7 +24,9 @@ import static org.openkilda.rulemanager.utils.Utils.makeVlanReplaceActions;
 
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.Constants.Priority;
@@ -58,6 +60,7 @@ import java.util.stream.Collectors;
 @SuperBuilder
 public class YPointForwardEgressHaRuleGenerator extends NotIngressRuleGenerator {
 
+    private final HaFlow haFlow;
     private final List<FlowPath> subPaths;
     private final int inPort;
     private final HaFlowPath haFlowPath;
@@ -113,10 +116,11 @@ public class YPointForwardEgressHaRuleGenerator extends NotIngressRuleGenerator 
     }
 
     private Bucket buildBucket(FlowPath subPath, List<Integer> currentVlanStack) {
+        HaSubFlow haSubFlow = haFlow.getHaSubFlowOrThrowException(subPath.getHaSubFlowId());
         List<Integer> targetStack = makeVlanStack(
-                subPath.getHaSubFlow().getEndpointInnerVlan(), subPath.getHaSubFlow().getEndpointVlan());
+                haSubFlow.getEndpointInnerVlan(), haSubFlow.getEndpointVlan());
         Set<Action> actions = new HashSet<>(makeVlanReplaceActions(currentVlanStack, targetStack));
-        actions.add(new PortOutAction(new PortNumber(subPath.getHaSubFlow().getEndpointPort())));
+        actions.add(new PortOutAction(new PortNumber(haSubFlow.getEndpointPort())));
         return Bucket.builder()
                 .watchGroup(WatchGroup.ANY)
                 .watchPort(WatchPort.ANY)
@@ -142,8 +146,8 @@ public class YPointForwardEgressHaRuleGenerator extends NotIngressRuleGenerator 
     }
 
     private List<Integer> getTargetPreGroupVlanStack(SwitchId switchId) {
-        List<Integer> endpointVlanStack1 = makeDstVlanStack(subPaths.get(0));
-        List<Integer> endpointVlanStack2 = makeDstVlanStack(subPaths.get(1));
+        List<Integer> endpointVlanStack1 = makeDstVlanStack(subPaths.get(0).getHaSubFlowId());
+        List<Integer> endpointVlanStack2 = makeDstVlanStack(subPaths.get(1).getHaSubFlowId());
 
         if (endpointVlanStack1.size() == 2 && endpointVlanStack2.size() == 2
                 && !Objects.equals(endpointVlanStack1.get(0), endpointVlanStack2.get(0))) {
@@ -174,8 +178,9 @@ public class YPointForwardEgressHaRuleGenerator extends NotIngressRuleGenerator 
         return targetVlanStack;
     }
 
-    private List<Integer> makeDstVlanStack(FlowPath subPath) {
-        return makeVlanStack(subPath.getHaSubFlow().getEndpointInnerVlan(), subPath.getHaSubFlow().getEndpointVlan());
+    private List<Integer> makeDstVlanStack(String haSubFlowId) {
+        HaSubFlow haSubFlow = haFlow.getHaSubFlowOrThrowException(haSubFlowId);
+        return makeVlanStack(haSubFlow.getEndpointInnerVlan(), haSubFlow.getEndpointVlan());
     }
 
     private void validateSubPaths(Switch sw) {

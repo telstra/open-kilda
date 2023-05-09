@@ -15,256 +15,220 @@
 
 package org.openkilda.wfm.topology.flowhs.bolts;
 
-import static java.lang.String.format;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_METRICS_BOLT;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_RESPONSE_SENDER;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_PING_SENDER;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPEAKER_WORKER;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
+import org.openkilda.bluegreen.LifecycleEvent;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
+import org.openkilda.floodlight.api.response.SpeakerResponse;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
-import org.openkilda.messaging.command.haflow.HaFlowResponse;
-import org.openkilda.messaging.command.haflow.HaSubFlowDto;
-import org.openkilda.messaging.command.haflow.HaSubFlowPartialUpdateDto;
-import org.openkilda.messaging.command.yflow.FlowPartialUpdateEndpoint;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.model.FlowStatus;
-import org.openkilda.model.HaFlow;
-import org.openkilda.model.HaSubFlow;
-import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchId;
+import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
+import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
+import org.openkilda.pce.AvailableNetworkFactory;
+import org.openkilda.pce.PathComputer;
+import org.openkilda.pce.PathComputerConfig;
+import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.HaFlowRepository;
-import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
-import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.error.PipelineException;
-import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.share.hubandspoke.HubBolt;
+import org.openkilda.wfm.share.utils.KeyProvider;
+import org.openkilda.wfm.share.zk.ZkStreams;
+import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
-import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
+import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowUpdateService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NonNull;
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * This implementation of the class is temporary.
  * It only works with DB. Switch rules wouldn't be modified.
  * Class is just a stub to give an API for users. It will be modified later.
  */
-public class HaFlowUpdateHubBolt extends AbstractBolt {
-    public static final String COMMON_ERROR_MESSAGE = "Couldn't update HA-flow";
-    public static final String HA_FLOW_MODIFICATION_IS_DISABLED_MESSAGE = "HA-flow modification is disabled";
-    private transient HaFlowRepository haFlowRepository;
-    private transient FlowRepository flowRepository;
-    private transient SwitchRepository switchRepository;
-    private transient KildaFeatureTogglesRepository kildaFeatureTogglesRepository;
+public class HaFlowUpdateHubBolt extends HubBolt implements FlowGenericCarrier {
+    private final HaFlowUpdateConfig config;
+    private final PathComputerConfig pathComputerConfig;
+    private final FlowResourcesConfig flowResourcesConfig;
+    private final RuleManagerConfig ruleManagerConfig;
 
-    public HaFlowUpdateHubBolt(PersistenceManager persistenceManager) {
-        super(persistenceManager);
+    private transient HaFlowUpdateService service;
+    private String currentKey;
+
+    private LifecycleEvent deferredShutdownEvent;
+
+    public HaFlowUpdateHubBolt(
+            @NonNull HaFlowUpdateHubBolt.HaFlowUpdateConfig config, @NonNull PersistenceManager persistenceManager,
+            @NonNull PathComputerConfig pathComputerConfig, @NonNull FlowResourcesConfig flowResourcesConfig,
+            @NonNull RuleManagerConfig ruleManagerConfig) {
+        super(persistenceManager, config);
+        this.config = config;
+        this.pathComputerConfig = pathComputerConfig;
+        this.flowResourcesConfig = flowResourcesConfig;
+        this.ruleManagerConfig = ruleManagerConfig;
+        enableMeterRegistry("kilda.ha_flow_update", HUB_TO_METRICS_BOLT.name());
     }
 
     @Override
     protected void init() {
-        haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
-        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        kildaFeatureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
+        FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
+        AvailableNetworkFactory availableNetworkFactory =
+                new AvailableNetworkFactory(pathComputerConfig, persistenceManager.getRepositoryFactory());
+        PathComputer pathComputer =
+                new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
+        RuleManager ruleManager = new RuleManagerImpl(ruleManagerConfig);
+        service = new HaFlowUpdateService(this, persistenceManager, pathComputer, resourcesManager,
+                ruleManager, config.getPathAllocationRetriesLimit(), config.getPathAllocationRetryDelay(),
+                config.getResourceAllocationRetriesLimit(), config.getSpeakerCommandRetriesLimit());
     }
 
     @Override
-    protected void handleInput(Tuple input) throws PipelineException {
-        String key = pullValue(input, MessageKafkaTranslator.FIELD_ID_KEY, String.class);
-        CommandData payload = pullValue(input, FIELD_ID_PAYLOAD, CommandData.class);
+    protected boolean deactivate(LifecycleEvent event) {
+        if (service.deactivate()) {
+            return true;
+        }
+        deferredShutdownEvent = event;
+        return false;
+    }
 
+    @Override
+    protected void activate() {
+        service.activate();
+    }
+
+    @Override
+    protected void onRequest(Tuple input) throws PipelineException {
+        currentKey = pullKey(input);
+        HaFlowRequest payload = pullValue(input, FIELD_ID_PAYLOAD, HaFlowRequest.class);
         try {
-            if (payload instanceof HaFlowRequest) {
-                handleHaFlowUpdate(key, (HaFlowRequest) payload);
-            } else if (payload instanceof HaFlowPartialUpdateRequest) {
-                handleHaFlowPartialUpdate(key, (HaFlowPartialUpdateRequest) payload);
-            } else {
-                unhandledInput(input);
-            }
-        } catch (FlowProcessingException e) {
-            emitErrorMessage(e.getErrorType(), COMMON_ERROR_MESSAGE, e.getMessage());
-        } catch (SwitchNotFoundException e) {
-            emitErrorMessage(ErrorType.NOT_FOUND, COMMON_ERROR_MESSAGE, e.getMessage());
-        } catch (Exception e) {
-            emitErrorMessage(ErrorType.INTERNAL_ERROR, COMMON_ERROR_MESSAGE, e.getMessage());
+            service.handleUpdateRequest(currentKey, getCommandContext(), payload);
+        } catch (DuplicateKeyException e) {
+            log.error("Failed to handle a request with key {}. {}", currentKey, e.getMessage());
         }
     }
 
-    private void handleHaFlowUpdate(String key, HaFlowRequest payload) throws SwitchNotFoundException {
-        HaFlow returnHaFlow = persistenceManager.getTransactionManager().doInTransaction(() -> {
-            checkHaFlowModificationFeatureToggle();
-
-            Optional<HaFlow> foundHaFlow = haFlowRepository.findById(payload.getHaFlowId());
-            if (!foundHaFlow.isPresent()) {
-                throw new FlowProcessingException(ErrorType.NOT_FOUND,
-                        format("HA-flow %s not found.", payload.getHaFlowId()));
-            }
-            HaFlow haFlow = foundHaFlow.get();
-            Map<String, HaSubFlow> subFlowMap = haFlow.getHaSubFlows().stream()
-                    .collect(Collectors.toMap(HaSubFlow::getHaSubFlowId, Function.identity()));
-
-            for (HaSubFlowDto subFlowPayload : payload.getSubFlows()) {
-                HaSubFlow subFlow = subFlowMap.get(subFlowPayload.getFlowId());
-                if (subFlow == null) {
-                    throw new FlowProcessingException(ErrorType.DATA_INVALID,
-                            format("HA-flow %s has no sub flow %s",
-                                    payload.getHaFlowId(), subFlowPayload.getFlowId()));
-                }
-                updateSubFlow(subFlow, subFlowPayload);
-            }
-            updateHaFlow(haFlow, payload);
-            return haFlow;
-        });
-        sendHaFlowToNorthBound(key, new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(
-                returnHaFlow, flowRepository, haFlowRepository)));
-    }
-
-    private void handleHaFlowPartialUpdate(String key, HaFlowPartialUpdateRequest payload)
-            throws SwitchNotFoundException {
-        HaFlow returnHaFlow = persistenceManager.getTransactionManager().doInTransaction(() -> {
-            checkHaFlowModificationFeatureToggle();
-
-            Optional<HaFlow> foundHaFlow = haFlowRepository.findById(payload.getHaFlowId());
-            if (!foundHaFlow.isPresent()) {
-                throw new FlowProcessingException(ErrorType.NOT_FOUND,
-                        format("HA-flow %s not found.", payload.getHaFlowId()));
-            }
-            HaFlow haFlow = foundHaFlow.get();
-            if (payload.getSubFlows() != null) {
-                updateSubFlows(payload, haFlow);
-            }
-            updateHaFlow(haFlow, payload);
-            return haFlow;
-        });
-        sendHaFlowToNorthBound(key, new HaFlowResponse(HaFlowMapper.INSTANCE.toHaFlowDto(
-                returnHaFlow, flowRepository, haFlowRepository)));
-    }
-
-    private void updateSubFlows(HaFlowPartialUpdateRequest payload, HaFlow haFlow) throws SwitchNotFoundException {
-        Map<String, HaSubFlow> subFlowMap = haFlow.getHaSubFlows().stream()
-                .collect(Collectors.toMap(HaSubFlow::getHaSubFlowId, Function.identity()));
-
-        for (HaSubFlowPartialUpdateDto subFlowPayload : payload.getSubFlows()) {
-            HaSubFlow subFlow = subFlowMap.get(subFlowPayload.getFlowId());
-            if (subFlow == null) {
-                throw new FlowProcessingException(ErrorType.DATA_INVALID,
-                        format("HA-flow %s has no sub flow %s",
-                                payload.getHaFlowId(), subFlowPayload.getFlowId()));
-            }
-            updateSubFlow(subFlow, subFlowPayload);
+    @Override
+    protected void onWorkerResponse(Tuple input) throws PipelineException {
+        String operationKey = pullKey(input);
+        currentKey = KeyProvider.getParentKey(operationKey);
+        SpeakerResponse speakerResponse = pullValue(input, FIELD_ID_PAYLOAD, SpeakerResponse.class);
+        if (speakerResponse instanceof SpeakerCommandResponse) {
+            service.handleAsyncResponse(currentKey, (SpeakerCommandResponse) speakerResponse);
+        } else {
+            unhandledInput(input);
         }
     }
 
-    private void updateHaFlow(HaFlow target, HaFlowRequest source) throws SwitchNotFoundException {
-        if (source.getSharedEndpoint() != null) {
-            target.setSharedSwitch(getSwitch(source.getSharedEndpoint().getSwitchId()));
-            target.setSharedPort(source.getSharedEndpoint().getPortNumber());
-            target.setSharedOuterVlan(source.getSharedEndpoint().getOuterVlanId());
-            target.setSharedInnerVlan(source.getSharedEndpoint().getInnerVlanId());
-        }
-        target.setMaximumBandwidth(source.getMaximumBandwidth());
-        target.setPathComputationStrategy(source.getPathComputationStrategy());
-        target.setEncapsulationType(source.getEncapsulationType());
-        target.setMaxLatency(source.getMaxLatency());
-        target.setMaxLatencyTier2(source.getMaxLatencyTier2());
-        target.setIgnoreBandwidth(source.isIgnoreBandwidth());
-        target.setPeriodicPings(source.isPeriodicPings());
-        target.setPinned(source.isPinned());
-        target.setPriority(source.getPriority());
-        target.setStrictBandwidth(source.isStrictBandwidth());
-        target.setDescription(source.getDescription());
-        target.setAllocateProtectedPath(source.isAllocateProtectedPath());
+    @Override
+    public void onTimeout(String key, Tuple tuple) {
+        currentKey = key;
+        service.handleTimeout(key);
     }
 
-    private void updateHaFlow(HaFlow target, HaFlowPartialUpdateRequest source) throws SwitchNotFoundException {
-        updateSharedEndpoint(target, source.getSharedEndpoint());
-        Optional.ofNullable(source.getMaximumBandwidth()).ifPresent(target::setMaximumBandwidth);
-        Optional.ofNullable(source.getPathComputationStrategy()).ifPresent(target::setPathComputationStrategy);
-        Optional.ofNullable(source.getEncapsulationType()).ifPresent(target::setEncapsulationType);
-        Optional.ofNullable(source.getMaxLatency()).ifPresent(target::setMaxLatency);
-        Optional.ofNullable(source.getMaxLatencyTier2()).ifPresent(target::setMaxLatencyTier2);
-        Optional.ofNullable(source.getIgnoreBandwidth()).ifPresent(target::setIgnoreBandwidth);
-        Optional.ofNullable(source.getPeriodicPings()).ifPresent(target::setPeriodicPings);
-        Optional.ofNullable(source.getPinned()).ifPresent(target::setPinned);
-        Optional.ofNullable(source.getPriority()).ifPresent(target::setPriority);
-        Optional.ofNullable(source.getStrictBandwidth()).ifPresent(target::setStrictBandwidth);
-        Optional.ofNullable(source.getDescription()).ifPresent(target::setDescription);
-        Optional.ofNullable(source.getAllocateProtectedPath()).ifPresent(target::setAllocateProtectedPath);
+    @Override
+    public void sendSpeakerRequest(@NonNull SpeakerRequest command) {
+        String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
+        Values values = new Values(commandKey, command);
+        emitWithContext(HUB_TO_SPEAKER_WORKER.name(), getCurrentTuple(), values);
     }
 
-    private void updateSharedEndpoint(HaFlow targetHaFlow, FlowPartialUpdateEndpoint source)
-            throws SwitchNotFoundException {
-        if (source == null) {
-            return;
-        }
-        if (source.getSwitchId() != null) {
-            targetHaFlow.setSharedSwitch(getSwitch(source.getSwitchId()));
-        }
-        Optional.ofNullable(source.getPortNumber()).ifPresent(targetHaFlow::setSharedPort);
-        Optional.ofNullable(source.getVlanId()).ifPresent(targetHaFlow::setSharedOuterVlan);
-        Optional.ofNullable(source.getInnerVlanId()).ifPresent(targetHaFlow::setSharedInnerVlan);
+    @Override
+    public void sendNorthboundResponse(@NonNull Message message) {
+        emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
     }
 
-    private void updateSubFlow(HaSubFlow target, HaSubFlowDto source) throws SwitchNotFoundException {
-        target.setDescription(source.getDescription());
-        target.setEndpointSwitch(getSwitch(source.getEndpoint().getSwitchId()));
-        target.setEndpointPort(source.getEndpoint().getPortNumber());
-        target.setEndpointVlan(source.getEndpoint().getOuterVlanId());
-        target.setEndpointInnerVlan(source.getEndpoint().getInnerVlanId());
-        target.setStatus(FlowStatus.UP);
-    }
-
-    private void updateSubFlow(HaSubFlow target, HaSubFlowPartialUpdateDto source) throws SwitchNotFoundException {
-        if (source.getEndpoint().getSwitchId() != null) {
-            target.setEndpointSwitch(getSwitch(source.getEndpoint().getSwitchId()));
-        }
-        Optional.ofNullable(source.getDescription()).ifPresent(target::setDescription);
-        Optional.ofNullable(source.getEndpoint().getPortNumber()).ifPresent(target::setEndpointPort);
-        Optional.ofNullable(source.getEndpoint().getVlanId()).ifPresent(target::setEndpointVlan);
-        Optional.ofNullable(source.getEndpoint().getInnerVlanId()).ifPresent(target::setEndpointInnerVlan);
-    }
-
-    private void sendHaFlowToNorthBound(String key, InfoData response) {
-        InfoMessage message = new InfoMessage(response, System.currentTimeMillis(),
+    @Override
+    public void sendHistoryUpdate(@NonNull FlowHistoryHolder historyHolder) {
+        //TODO check history https://github.com/telstra/open-kilda/issues/5169
+        InfoMessage message = new InfoMessage(historyHolder, getCommandContext().getCreateTime(),
                 getCommandContext().getCorrelationId());
-        emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(key, message));
+        emitWithContext(Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(historyHolder.getTaskId(), message));
     }
 
-    private void emitErrorMessage(ErrorType type, String message, String description) {
-        String requestId = getCommandContext().getCorrelationId();
-        ErrorData errorData = new ErrorData(type, message, description);
-        emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(requestId,
-                new ErrorMessage(errorData, System.currentTimeMillis(), requestId)));
+    @Override
+    public void sendNotifyFlowStats(@NonNull UpdateFlowPathInfo flowPathInfo) {
+        //TODO implement https://github.com/telstra/open-kilda/issues/5182
     }
 
-    private Switch getSwitch(SwitchId switchId) throws SwitchNotFoundException {
-        return switchRepository.findById(switchId).orElseThrow(() -> new SwitchNotFoundException(switchId));
+    public void sendNotifyFlowStats(RemoveFlowPathInfo flowPathInfo) {
+        //TODO implement https://github.com/telstra/open-kilda/issues/5182
     }
 
-    private void checkHaFlowModificationFeatureToggle() {
-        if (!kildaFeatureTogglesRepository.getOrDefault().getModifyHaFlowEnabled()) {
-            throw new FlowProcessingException(ErrorType.NOT_PERMITTED, HA_FLOW_MODIFICATION_IS_DISABLED_MESSAGE);
-        }
+    @Override
+    public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
+        //TODO implement https://github.com/telstra/open-kilda/issues/5172
+    }
+
+    @Override
+    public void sendPeriodicPingNotification(String haFlowId, boolean enabled) {
+        //TODO implement periodic pings https://github.com/telstra/open-kilda/issues/5153
+        log.info("Periodic pings are not implemented for ha-flow update operation yet. Skipping for the ha-flow {}",
+                haFlowId);
+    }
+
+    @Override
+    public void cancelTimeoutCallback(String key) {
+        cancelCallback(key);
+    }
+
+    @Override
+    public void sendInactive() {
+        getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
+        deferredShutdownEvent = null;
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
+        declarer.declareStream(HUB_TO_SPEAKER_WORKER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_PING_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(ZkStreams.ZK.toString(),
+                new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
+    }
+
+    @Getter
+    public static class HaFlowUpdateConfig extends Config {
+        private final int pathAllocationRetriesLimit;
+        private final int pathAllocationRetryDelay;
+        private final int resourceAllocationRetriesLimit;
+        private final int speakerCommandRetriesLimit;
+
+        @Builder(builderMethodName = "haFlowUpdateBuilder", builderClassName = "haFlowUpdateBuild")
+        public HaFlowUpdateConfig(
+                String requestSenderComponent, String workerComponent, String lifeCycleEventComponent, int timeoutMs,
+                boolean autoAck, int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
+                int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
+            super(requestSenderComponent, workerComponent, lifeCycleEventComponent, timeoutMs, autoAck);
+            this.pathAllocationRetriesLimit = pathAllocationRetriesLimit;
+            this.pathAllocationRetryDelay = pathAllocationRetryDelay;
+            this.resourceAllocationRetriesLimit = resourceAllocationRetriesLimit;
+            this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        }
     }
 }

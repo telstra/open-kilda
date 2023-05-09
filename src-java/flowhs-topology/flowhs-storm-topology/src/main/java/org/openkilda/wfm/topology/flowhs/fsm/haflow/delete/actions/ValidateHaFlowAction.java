@@ -18,15 +18,12 @@ package org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.actions;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.command.haflow.HaFlowResponse;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -35,7 +32,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
-import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -80,13 +76,6 @@ public class ValidateHaFlowAction extends
 
         stateMachine.saveNewEventToHistory("HA-flow was validated successfully", FlowEventData.Event.DELETE);
         return Optional.of(buildResponseMessage(resultHaFlow, stateMachine.getCommandContext()));
-    }
-
-    private Message buildResponseMessage(HaFlow haFlow, CommandContext commandContext) {
-        HaFlowResponse response = HaFlowResponse.builder()
-                .haFlow(HaFlowMapper.INSTANCE.toHaFlowDto(haFlow, flowRepository, haFlowRepository))
-                .build();
-        return new InfoMessage(response, commandContext.getCreateTime(), commandContext.getCorrelationId());
     }
 
     @Override

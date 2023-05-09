@@ -83,6 +83,10 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
     static final int PORT_3 = 3;
     public static final int VLAN_1 = 3;
     public static final int VLAN_2 = 4;
+    private static final FlowSegmentCookie COOKIE_1 = FlowSegmentCookie.builder()
+            .flowEffectiveId(1).direction(FlowPathDirection.FORWARD).build();
+    private static final FlowSegmentCookie COOKIE_2 = FlowSegmentCookie.builder()
+            .flowEffectiveId(2).direction(FlowPathDirection.FORWARD).build();
 
     FlowPathRepository flowPathRepository;
     FlowRepository flowRepository;
@@ -267,6 +271,24 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
                 containsInAnyOrder(flow.getForwardPath(), flow.getProtectedForwardPath()));
         assertThat(flowPathRepository.findBySrcSwitch(switchB.getSwitchId(), true),
                 containsInAnyOrder(flow.getReversePath(), flow.getProtectedReversePath()));
+    }
+
+    @Test
+    public void findHaProtectedPathsBySrcSwitchIncludeProtected() {
+        HaFlow haFlow = createHaFlow(HA_FLOW_ID_1, switchA, switchB, switchC, null, null);
+        Collection<FlowPath> foundSubPaths = flowPathRepository.findBySrcSwitch(switchA.getSwitchId(), true);
+
+        assertEquals(2, foundSubPaths.size());
+        assertEquals(new HashSet<>(haFlow.getSubPathIds()), getSubPathIds(foundSubPaths));
+    }
+
+    @Test
+    public void findHaProtectedPathsBySrcSwitchNotIncludeProtected() {
+        HaFlow haFlow = createHaFlow(HA_FLOW_ID_1, switchA, switchB, switchC, null, null);
+        Collection<FlowPath> foundSubPaths = flowPathRepository.findBySrcSwitch(switchA.getSwitchId(), false);
+
+        assertEquals(1, foundSubPaths.size());
+        assertEquals(getSubPathIds(haFlow.getForwardPath().getSubPaths()), getSubPathIds(foundSubPaths));
     }
 
     @Test
@@ -474,9 +496,7 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
     }
 
     private Set<PathId> collectPathIds(Flow flow, HaFlow haFlow, YFlow yFlow) {
-        Set<PathId> pathIds = flow.getPaths().stream()
-                .map(FlowPath::getPathId)
-                .collect(Collectors.toSet());
+        Set<PathId> pathIds = getSubPathIds(flow.getPaths());
         haFlow.getPaths().stream()
                 .flatMap(p -> p.getSubPaths().stream())
                 .map(FlowPath::getPathId)
@@ -616,9 +636,9 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         subFlows.forEach(haSubFlowRepository::add);
 
         List<HaFlowPath> haPaths = newArrayList(
-                buildHaFlowPath(new PathId(haFlowId + "ha_path_1"), 0, null, METER_ID_1, METER_ID_2,
+                buildHaFlowPath(new PathId(haFlowId + "ha_path_1"), 0, COOKIE_1, METER_ID_1, METER_ID_2,
                         sharedSwitch, endpointSwitch1.getSwitchId(), GROUP_ID_1),
-                buildHaFlowPath(new PathId(haFlowId + "ha_path_2"), 0, null, METER_ID_1, METER_ID_2,
+                buildHaFlowPath(new PathId(haFlowId + "ha_path_2"), 0, COOKIE_2, METER_ID_1, METER_ID_2,
                         sharedSwitch, endpointSwitch1.getSwitchId(), GROUP_ID_1));
         for (HaFlowPath haPath : haPaths) {
             haFlowPathRepository.add(haPath);
@@ -635,7 +655,8 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         haFlow.setAffinityGroupId(affinityGroup);
         haFlowRepository.add(haFlow);
         haFlow.setHaSubFlows(subFlows);
-        haPaths.forEach(haFlow::addPaths);
+        haFlow.setForwardPath(haPaths.get(0));
+        haFlow.setProtectedForwardPath(haPaths.get(1));
         return haFlow;
     }
 
@@ -767,5 +788,9 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         reverseProtectedFlowPath.setSegments(Collections.singletonList(reverseSegment));
 
         return flow;
+    }
+
+    private static Set<PathId> getSubPathIds(Collection<FlowPath> paths) {
+        return paths.stream().map(FlowPath::getPathId).collect(Collectors.toSet());
     }
 }

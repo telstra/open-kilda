@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static spock.util.matcher.HamcrestSupport.expect
@@ -9,6 +10,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.messaging.error.MessageError
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
@@ -25,9 +27,6 @@ import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify update and partial update operations on ha-flows.")
-@Ignore("""At this moment HA-flow update operations is just an API stub which doesn't updated switch rules." +
-        It means that HA-flow delete operations wouldn't delete rules from switches which HA-flow has before update.
-        Update HA-flow spec is temporarily ignored until HA-flow update operation is able to update switch rules""")
 class HaFlowUpdateSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
@@ -40,7 +39,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
-        def oldSharedSwitch = haFlow.sharedEndpoint.switchId
         haFlow.tap(data.updateClosure)
         def update = haFlowHelper.convertToUpdate(haFlow)
 
@@ -52,6 +50,13 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         then: "Requested updates are reflected in the response and in 'get' API"
         expect updateResponse, sameBeanAs(haFlow, ignores)
         expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
+
+        and: "And involved switches pass validation"
+        withPool {
+            haFlowHelper.getInvolvedSwitches(haFlow.haFlowId).eachParallel { SwitchId switchId ->
+                assert northboundV2.validateSwitch(switchId).isAsExpected()
+            }
+        }
 
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
@@ -116,17 +121,24 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         when: "Update the ha-flow"
         def updateResponse = haFlowHelper.updateHaFlow(haFlow.haFlowId, update)
         def ignores = ["subFlows.timeUpdate", "subFlows.status", "timeUpdate", "status"]
-//                       "subFlows.description" /* https://github.com/telstra/open-kilda/issues/4984 */]
 
         then: "Requested updates are reflected in the response and in 'get' API"
         expect updateResponse, sameBeanAs(haFlow, ignores)
         expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
+
+        and: "And involved switches pass validation"
+        withPool {
+            haFlowHelper.getInvolvedSwitches(haFlow.haFlowId).eachParallel { SwitchId switchId ->
+                assert northboundV2.validateSwitch(switchId).isAsExpected()
+            }
+        }
 
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
 
     @Tidy
+    @Ignore("""HA-flow partial update is not implemented yet""")
     def "User can partially update #data.descr of a ha-flow"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
@@ -237,6 +249,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
         haFlow.tap(data.updateClosure)
         def update = haFlowHelper.convertToUpdate(haFlow)
+        def involvedSwitchIds = haFlowHelper.getInvolvedSwitches(haFlow.haFlowId)
 
         when: "Try to update the ha-flow with invalid payload"
         northboundV2.updateHaFlow(haFlow.haFlowId, update)
@@ -247,6 +260,13 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.to(MessageError).with {
             assert errorMessage == "Couldn't update HA-flow"
             assertThat(errorDescription).matches(data.errorDescrPattern)
+        }
+
+        and: "And involved switches pass validation"
+        withPool {
+            involvedSwitchIds.eachParallel { SwitchId switchId ->
+                assert northboundV2.validateSwitch(switchId).isAsExpected()
+            }
         }
 
         cleanup:
@@ -261,9 +281,10 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                                     payload.subFlows[0].endpoint.switchId)) - payload.subFlows[0].endpoint.portNumber -
                                     payload.subFlows[1].endpoint.portNumber
                             payload.subFlows[0].endpoint.portNumber = allowedPorts[0]
+                            setRandomVlans(payload) // to do not conflict with existing sub flows
                         },
                         errorStatusCode: HttpStatus.BAD_REQUEST,
-                        errorDescrPattern: /HA-flow .*? has no sub flow .*?/
+                        errorDescrPattern: /Invalid sub flow IDs: .*?\. Valid sub flows IDs are:.*?/
                 ],
                 [
                         descr: "with subflowId not specified",
@@ -271,22 +292,27 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                             payload.subFlows[1].flowId = null
                         },
                         errorStatusCode: HttpStatus.BAD_REQUEST,
-                        errorDescrPattern: /HA-flow .*? has no sub flow .*?/
+                        errorDescrPattern: /The sub-flow of ha-flow .*? has no sub-flow id provided.*?/
                 ],
-                //TODO enable when HA-flow update validation will be ready
-                //[
-                //        descr: "to one switch ha-flow",
-                //        updateClosure: { HaFlow payload ->
-                //            payload.subFlows[0].endpoint.switchId = payload.getSharedEndpoint().switchId
-                //            payload.subFlows[1].endpoint.switchId = payload.getSharedEndpoint().switchId
-                //        },
-                //        errorStatusCode: HttpStatus.BAD_REQUEST,
-                //        errorDescrPattern: /The ha-flow .*? is one switch flow\..*?/
-                //]
+                [
+                        descr: "to one switch ha-flow",
+                        updateClosure: { HaFlow payload ->
+                            payload.subFlows[0].endpoint.switchId = payload.getSharedEndpoint().switchId
+                            payload.subFlows[1].endpoint.switchId = payload.getSharedEndpoint().switchId
+                        },
+                         errorStatusCode: HttpStatus.BAD_REQUEST,
+                        errorDescrPattern: /The ha-flow .*? is one switch flow\..*?/
+                ]
         ]
     }
 
+    private void setRandomVlans(HaFlow payload) {
+        payload.sharedEndpoint.vlanId = haFlowHelper.randomVlan(payload.sharedEndpoint.vlanId)
+        payload.subFlows.forEach { it.endpoint.vlanId = haFlowHelper.randomVlan(it.endpoint.vlanId) }
+    }
+
     @Tidy
+    @Ignore("""HA-flow partial update is not implemented yet""")
     def "User cannot partial update a ha-flow with #data.descr"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"

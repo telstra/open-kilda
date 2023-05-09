@@ -29,7 +29,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseResourceAllocationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
@@ -45,7 +45,7 @@ import java.util.function.Predicate;
 
 @Slf4j
 public class AllocateProtectedResourcesAction extends
-        BaseResourceAllocationAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+        BaseFlowResourceAllocationAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     public AllocateProtectedResourcesAction(PersistenceManager persistenceManager,
                                             int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
                                             int resourceAllocationRetriesLimit,

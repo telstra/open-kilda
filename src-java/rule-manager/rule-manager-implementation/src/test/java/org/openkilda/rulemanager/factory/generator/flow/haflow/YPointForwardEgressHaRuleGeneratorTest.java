@@ -17,12 +17,16 @@ package org.openkilda.rulemanager.factory.generator.flow.haflow;
 
 import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
 import static org.openkilda.rulemanager.Utils.getCommand;
 
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.rulemanager.Constants;
@@ -45,6 +49,7 @@ import org.openkilda.rulemanager.action.PopVxlanAction;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.action.PushVlanAction;
 import org.openkilda.rulemanager.action.SetFieldAction;
+import org.openkilda.rulemanager.factory.RuleGenerator;
 import org.openkilda.rulemanager.group.Bucket;
 import org.openkilda.rulemanager.group.GroupType;
 import org.openkilda.rulemanager.group.WatchGroup;
@@ -361,40 +366,52 @@ public class YPointForwardEgressHaRuleGeneratorTest extends HaRuleGeneratorBaseT
         assertGroup(groupCommand, firstExpectedActions, secondExpectedActions);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void nullSubPathsTest() {
-        buildGenerator(null).generateCommands(SWITCH_1);
+        Exception exception = assertThrows(IllegalArgumentException.class,
+                () -> buildGenerator(null).generateCommands(SWITCH_1));
+        assertTrue(exception.getMessage().contains("can't be null"));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void emptySubPathsTest() {
-        buildGenerator(new ArrayList<>()).generateCommands(SWITCH_1);
+        Exception exception = assertThrows(IllegalArgumentException.class,
+                () -> buildGenerator(new ArrayList<>()).generateCommands(SWITCH_1));
+        assertTrue(exception.getMessage().contains("require 2 sub paths"));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void singleSubPathsTest() {
-        buildGenerator(Lists.newArrayList(buildSubPath(0, 0))).generateCommands(SWITCH_1);
+        Exception exception = assertThrows(IllegalArgumentException.class,
+                () -> buildGenerator(Lists.newArrayList(buildSubPath(null))).generateCommands(SWITCH_1));
+        assertTrue(exception.getMessage().contains("require 2 sub paths"));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void differentDestinationSubPathsTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, FORWARD_COOKIE, 0, 0);
-        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_1, SWITCH_3, FORWARD_COOKIE_2, 0, 0);
-        buildGenerator(Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
+        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, FORWARD_COOKIE, null);
+        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_1, SWITCH_3, FORWARD_COOKIE_2, null);
+        RuleGenerator generator = buildGenerator(Lists.newArrayList(subPath1, subPath2));
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> generator.generateCommands(SWITCH_2));
+        assertTrue(exception.getMessage().contains("different destination switch"));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void oneSwitchSubPathsTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, FORWARD_COOKIE, 0, 0);
-        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_1, SWITCH_1, FORWARD_COOKIE_2, 0, 0);
-        buildGenerator(Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
+        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, FORWARD_COOKIE, null);
+        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_2, SWITCH_2, FORWARD_COOKIE_2, null);
+        RuleGenerator generator = buildGenerator(Lists.newArrayList(subPath1, subPath2));
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> generator.generateCommands(SWITCH_2));
+        assertTrue(exception.getMessage().contains("must be multi switch paths"));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void reverseSubPathTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, REVERSE_COOKIE, 0, 0);
-        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_1, SWITCH_2, FORWARD_COOKIE_2, 0, 0);
-        buildGenerator(Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
+        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, REVERSE_COOKIE, null);
+        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_1, SWITCH_2, FORWARD_COOKIE_2, null);
+        Exception exception = assertThrows(IllegalArgumentException.class,
+                () -> buildGenerator(Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2));
+        assertTrue(exception.getMessage().contains("must have forward direction"));
     }
 
     private static Set<FieldMatch> buildExpectedVlanMatch() {
@@ -446,12 +463,17 @@ public class YPointForwardEgressHaRuleGeneratorTest extends HaRuleGeneratorBaseT
     private YPointForwardEgressHaRuleGenerator buildGenerator(
             FlowTransitEncapsulation encapsulation, int firstSubPathOuterVlan, int firstSubPathInnerVlan,
             int secondSubPathOuterVlan, int secondSubPathInnerVLan) {
-        FlowPath subPath1 = buildSubPath(
-                PATH_ID_1, FORWARD_COOKIE, firstSubPathOuterVlan, firstSubPathInnerVlan, PORT_NUMBER_3);
-        FlowPath subPath2 = buildSubPath(
-                PATH_ID_2, FORWARD_COOKIE_2, secondSubPathOuterVlan, secondSubPathInnerVLan, PORT_NUMBER_4);
+        HaSubFlow haSubFlow1 = buildHaSubFlow(
+                HA_SUB_FLOW_ID_1, firstSubPathOuterVlan, firstSubPathInnerVlan, PORT_NUMBER_3);
+        HaSubFlow haSubFlow2 = buildHaSubFlow(
+                HA_SUB_FLOW_ID_2, secondSubPathOuterVlan, secondSubPathInnerVLan, PORT_NUMBER_4);
+        HaFlow haFlow = buildHaFlow(0, 0);
+        haFlow.setHaSubFlows(Lists.newArrayList(haSubFlow1, haSubFlow2));
+        FlowPath subPath1 = buildSubPath(PATH_ID_1, FORWARD_COOKIE, haSubFlow1);
+        FlowPath subPath2 = buildSubPath(PATH_ID_2, FORWARD_COOKIE_2, haSubFlow2);
 
         return YPointForwardEgressHaRuleGenerator.builder()
+                .haFlow(haFlow)
                 .subPaths(Lists.newArrayList(subPath1, subPath2))
                 .inPort(PORT_NUMBER_1)
                 .haFlowPath(HA_FLOW_PATH)
@@ -468,9 +490,7 @@ public class YPointForwardEgressHaRuleGeneratorTest extends HaRuleGeneratorBaseT
                 .build();
     }
 
-    private FlowPath buildSubPath(PathId pathId, FlowSegmentCookie cookie, int outerVlan, int innerVlan, int port) {
-        FlowPath subPath = buildSubPath(pathId, SWITCH_1, SWITCH_2, cookie, outerVlan, innerVlan);
-        subPath.getHaSubFlow().setEndpointPort(port);
-        return subPath;
+    private FlowPath buildSubPath(PathId pathId, FlowSegmentCookie cookie, HaSubFlow haSubFlow) {
+        return buildSubPath(pathId, SWITCH_1, SWITCH_2, cookie, haSubFlow);
     }
 }

@@ -26,7 +26,13 @@ class HaPathHelper{
 
     Set<Isl> getInvolvedIsls(HaFlowPaths haFlowPaths) {
         return haFlowPaths.getSubFlowPaths()
-                .collect {pathHelper.getInvolvedIsls(convert(it.getForward()))}
+                .collect {
+                    def isls = pathHelper.getInvolvedIsls(convert(it.getForward()))
+                    if (it.protectedPath) {
+                        isls += pathHelper.getInvolvedIsls(convert(it.protectedPath.forward))
+                    }
+                    isls
+                }
         .flatten() as Set
     }
 }

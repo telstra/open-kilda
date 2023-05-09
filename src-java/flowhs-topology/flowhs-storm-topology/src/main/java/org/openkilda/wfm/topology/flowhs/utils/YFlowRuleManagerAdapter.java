@@ -51,7 +51,7 @@ public class YFlowRuleManagerAdapter {
 
     public Collection<InstallSpeakerCommandsRequest> buildInstallRequests(YFlow yFlow, CommandContext context) {
         List<SpeakerData> speakerData = buildSpeakerData(yFlow);
-        return FlowRulesConverter.INSTANCE.buildFlowInstallCommands(speakerData, context);
+        return FlowRulesConverter.INSTANCE.buildFlowInstallCommands(speakerData, context, true);
     }
 
     public Collection<DeleteSpeakerCommandsRequest> buildDeleteRequests(YFlow yFlow, CommandContext context) {

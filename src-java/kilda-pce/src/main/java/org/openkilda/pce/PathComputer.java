@@ -64,7 +64,21 @@ public interface PathComputer {
      * @param isProtected true if need to find protected path.
      * @return {@link GetPathsResult} instance
      */
-    GetHaPathsResult getHaPath(HaFlow haFlow, boolean isProtected) throws UnroutableFlowException, RecoverableException;
+    default GetHaPathsResult getHaPath(HaFlow haFlow, boolean isProtected)
+            throws UnroutableFlowException, RecoverableException {
+        return getHaPath(haFlow, Collections.emptyList(), isProtected);
+    }
+
+    /**
+     * Gets a ha-path for specified haflow.
+     *
+     * @param haFlow the {@link HaFlow} instance.
+     * @param reuseSubPathsResources allow already allocated path resources (bandwidth)
+     *                               be reused in new path computation.
+     * @return {@link GetHaPathsResult} instance
+     */
+    GetHaPathsResult getHaPath(HaFlow haFlow, Collection<PathId> reuseSubPathsResources, boolean isProtected)
+            throws UnroutableFlowException, RecoverableException;
 
     /**
      * Gets the best N paths. N is a number, not greater than the count param, of all paths that can be found.

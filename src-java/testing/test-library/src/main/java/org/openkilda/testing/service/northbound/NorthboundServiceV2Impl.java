@@ -15,6 +15,8 @@
 
 package org.openkilda.testing.service.northbound;
 
+import static org.openkilda.messaging.model.ValidationFilter.FLOW_INFO;
+
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.network.PathValidationPayload;
@@ -523,11 +525,8 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
 
     @Override
     public SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId) {
-        log.debug("Switch validating '{}'", switchId);
-        SwitchValidationResultV2 result = Objects.requireNonNull(restTemplate.exchange(
-                "/api/v2/switches/{switch_id}/validate", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResultV2.class, switchId).getBody());
-        return new SwitchValidationV2ExtendedResult(switchId, result);
+        // FLOW_INFO requires additional DB-queries and computations so should by excluded by default
+        return validateSwitch(switchId, null, FLOW_INFO.name());
     }
 
     @Override
