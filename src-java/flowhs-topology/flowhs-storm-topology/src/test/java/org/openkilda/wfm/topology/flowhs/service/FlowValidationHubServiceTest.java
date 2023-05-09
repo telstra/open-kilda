@@ -20,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.flow.FlowValidationRequest;
 import org.openkilda.messaging.command.switches.DumpGroupsForFlowHsRequest;
@@ -28,38 +29,40 @@ import org.openkilda.messaging.command.switches.DumpRulesForFlowHsRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchGroupEntries;
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
+import org.openkilda.messaging.info.group.GroupDumpResponse;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.model.SwitchId;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.FlowValidationService;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.FlowValidationTestBase;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Set;
 
 public class FlowValidationHubServiceTest extends FlowValidationTestBase {
     private static final String TEST_KEY = "test_key";
 
-    private static FlowResourcesManager flowResourcesManager;
     private static FlowValidationService flowValidationService;
+    private static RuleManagerConfig ruleManagerConfig;
     private FlowValidationHubService flowValidationHubService;
 
     @BeforeClass
     public static void setUpOnce() {
         FlowValidationTestBase.setUpOnce();
-        flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
-        flowValidationService = new FlowValidationService(persistenceManager, flowResourcesManager,
-                MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+        ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
+        flowValidationService = new FlowValidationService(persistenceManager, new RuleManagerImpl(ruleManagerConfig));
     }
 
     @Test
@@ -86,9 +89,11 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             public void sendNorthboundResponse(List<? extends InfoData> message) {
                 assertEquals(4, message.size());
                 try {
+                    Set<SwitchId> switchIdSet =
+                            Sets.newHashSet(flowValidationService.getSwitchIdListByFlowId(TEST_FLOW_ID_A));
                     assertEquals(flowValidationService
-                            .validateFlow(TEST_FLOW_ID_A, getSwitchFlowEntriesWithTransitVlan(),
-                                    getSwitchMeterEntries(), getSwitchGroupEntries()), message);
+                            .validateFlow(TEST_FLOW_ID_A, getFlowDumpResponseWithTransitVlan(),
+                                    getMeterDumpResponses(), getSwitchGroupEntries(), switchIdSet), message);
                 } catch (FlowNotFoundException | SwitchNotFoundException e) {
                     //tested in the FlowValidationServiceTest
                 }
@@ -109,20 +114,20 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
 
             }
         };
-        flowValidationHubService = new FlowValidationHubService(carrier, persistenceManager, flowResourcesManager,
-                MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+        flowValidationHubService = new FlowValidationHubService(carrier, persistenceManager,
+                new RuleManagerImpl(ruleManagerConfig));
 
         buildTransitVlanFlow("");
         flowValidationHubService.handleFlowValidationRequest(TEST_KEY, new CommandContext(),
                 new FlowValidationRequest(TEST_FLOW_ID_A));
-        for (SwitchFlowEntries switchFlowEntries : getSwitchFlowEntriesWithTransitVlan()) {
-            flowValidationHubService.handleAsyncResponse(TEST_KEY, switchFlowEntries);
-        }
-        for (SwitchMeterEntries switchMeterEntries : getSwitchMeterEntries()) {
-            flowValidationHubService.handleAsyncResponse(TEST_KEY, switchMeterEntries);
-        }
-        for (SwitchGroupEntries switchGroupEntries : getSwitchGroupEntries()) {
-            flowValidationHubService.handleAsyncResponse(TEST_KEY, switchGroupEntries);
+
+        List<MessageData> responses = Lists.newArrayList();
+        responses.addAll(getFlowDumpResponseWithTransitVlan());
+        responses.addAll(getMeterDumpResponses());
+        responses.addAll(getSwitchGroupEntries());
+
+        for (MessageData response : responses) {
+            flowValidationHubService.handleAsyncResponse(TEST_KEY, response);
         }
     }
 
@@ -166,8 +171,8 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
 
             }
         };
-        flowValidationHubService = new FlowValidationHubService(carrier, persistenceManager, flowResourcesManager,
-                MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+        flowValidationHubService = new FlowValidationHubService(carrier, persistenceManager,
+                new RuleManagerImpl(ruleManagerConfig));
 
         buildTransitVlanFlow("");
         flowValidationHubService.handleFlowValidationRequest(TEST_KEY, new CommandContext(),
@@ -215,8 +220,8 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             }
         };
 
-        flowValidationHubService = new FlowValidationHubService(carrier, persistenceManager, flowResourcesManager,
-                MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+        flowValidationHubService = new FlowValidationHubService(carrier, persistenceManager,
+                new RuleManagerImpl(ruleManagerConfig));
 
         buildTransitVlanFlow("");
         flowValidationHubService.handleFlowValidationRequest(TEST_KEY, new CommandContext(),
@@ -226,13 +231,13 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
                 new FlowValidationRequest(TEST_FLOW_ID_A));
         transactionManager.doInTransaction(() ->
                 flowRepository.remove(flowRepository.findById(TEST_FLOW_ID_A).get()));
-        for (SwitchFlowEntries switchFlowEntries : getSwitchFlowEntriesWithTransitVlan()) {
+        for (FlowDumpResponse switchFlowEntries : getFlowDumpResponseWithTransitVlan()) {
             flowValidationHubService.handleAsyncResponse(TEST_KEY, switchFlowEntries);
         }
-        for (SwitchMeterEntries switchMeterEntries : getSwitchMeterEntries()) {
+        for (MeterDumpResponse switchMeterEntries : getMeterDumpResponses()) {
             flowValidationHubService.handleAsyncResponse(TEST_KEY, switchMeterEntries);
         }
-        for (SwitchGroupEntries switchGroupEntries : getSwitchGroupEntries()) {
+        for (GroupDumpResponse switchGroupEntries : getSwitchGroupEntries()) {
             flowValidationHubService.handleAsyncResponse(TEST_KEY, switchGroupEntries);
         }
     }

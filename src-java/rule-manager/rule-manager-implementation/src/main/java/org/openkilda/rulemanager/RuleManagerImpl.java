@@ -96,9 +96,9 @@ public class RuleManagerImpl implements RuleManager {
             if (filterOutUsedSharedRules) {
                 overlappingAdapters = getOverlappingMultiTableIngressAdapters(flowPath, adapter);
             }
-            buildIngressCommands(adapter.getSwitch(flowPath.getSrcSwitchId()), flowPath, flow, encapsulation,
-                    overlappingAdapters, adapter.getSwitchProperties(flowPath.getSrcSwitchId()),
-                    adapter.getFeatureToggles());
+            result.addAll(buildIngressCommands(adapter.getSwitch(flowPath.getSrcSwitchId()), flowPath, flow,
+                    encapsulation, overlappingAdapters, adapter.getSwitchProperties(flowPath.getSrcSwitchId()),
+                    adapter.getFeatureToggles()));
         }
 
         if (flowPath.isOneSwitchPath()) {
@@ -115,7 +115,7 @@ public class RuleManagerImpl implements RuleManager {
                     flowPath, encapsulation, firstSegment, secondSegment));
         }
 
-        if (flow.isLooped()) {
+        if (flow.isLooped() && !flow.isProtectedPath(flowPath.getPathId())) {
             Switch loopedSwitch = adapter.getSwitch(flow.getLoopSwitchId());
             result.addAll(buildTransitLoopCommands(loopedSwitch, flowPath, flow, encapsulation));
         }

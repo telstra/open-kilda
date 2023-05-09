@@ -28,6 +28,8 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.yflow.YFlowValidationRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -58,6 +60,7 @@ import java.util.List;
 public class YFlowValidationHubBolt extends HubBolt implements YFlowValidationHubCarrier {
 
     private final FlowResourcesConfig flowResourcesConfig;
+    private final RuleManagerConfig ruleManagerConfig;
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
 
@@ -67,14 +70,17 @@ public class YFlowValidationHubBolt extends HubBolt implements YFlowValidationHu
 
     private LifecycleEvent deferredShutdownEvent;
 
-    public YFlowValidationHubBolt(@NonNull Config yFlowValidationConfig, @NonNull PersistenceManager persistenceManager,
+    public YFlowValidationHubBolt(@NonNull Config yFlowValidationConfig, RuleManagerConfig ruleManagerConfig,
+                                  @NonNull PersistenceManager persistenceManager,
                                   @NonNull FlowResourcesConfig flowResourcesConfig,
-                                  long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
+                                  long flowMeterMinBurstSizeInKbits,
+                                  double flowMeterBurstCoefficient) {
         super(persistenceManager, yFlowValidationConfig);
 
         this.flowResourcesConfig = flowResourcesConfig;
         this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
         this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
+        this.ruleManagerConfig = ruleManagerConfig;
 
         enableMeterRegistry("kilda.y_flow_validation", HUB_TO_METRICS_BOLT.name());
     }
@@ -84,7 +90,7 @@ public class YFlowValidationHubBolt extends HubBolt implements YFlowValidationHu
         FlowResourcesManager flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         flowValidationHubService = new FlowValidationHubService(
                 new FlowValidationHubCarrierIsolatingResponsesAndLifecycleEvents(this),
-                persistenceManager, flowResourcesManager, flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient);
+                persistenceManager, new RuleManagerImpl(ruleManagerConfig));
         YFlowValidationService yFlowValidationService = new YFlowValidationService(persistenceManager,
                 flowResourcesManager, flowMeterMinBurstSizeInKbits,
                 flowMeterBurstCoefficient);

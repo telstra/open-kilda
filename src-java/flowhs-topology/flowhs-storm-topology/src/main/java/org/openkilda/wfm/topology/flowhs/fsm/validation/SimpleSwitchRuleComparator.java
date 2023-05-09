@@ -21,12 +21,15 @@ import org.openkilda.model.Switch;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 
+import com.google.common.collect.Sets;
 import lombok.NonNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 public class SimpleSwitchRuleComparator {
     private final SwitchRepository switchRepository;
@@ -139,7 +142,12 @@ public class SimpleSwitchRuleComparator {
                     discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterBurstSize",
                             String.valueOf(expected.getMeterBurstSize()), String.valueOf(matched.getMeterBurstSize())));
                 }
-                if (!Arrays.equals(matched.getMeterFlags(), expected.getMeterFlags())) {
+                Set<String> matchedFlags = Optional.ofNullable(matched.getMeterFlags())
+                        .map(Sets::newHashSet).orElse(Sets.newHashSet());
+                Set<String> expectedFlags = Optional.ofNullable(expected.getMeterFlags())
+                        .map(Sets::newHashSet).orElse(Sets.newHashSet());
+
+                if (!matchedFlags.equals(expectedFlags)) {
                     discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterFlags",
                             Arrays.toString(expected.getMeterFlags()), Arrays.toString(matched.getMeterFlags())));
                 }
