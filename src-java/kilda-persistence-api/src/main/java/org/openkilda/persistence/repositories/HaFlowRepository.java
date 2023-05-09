@@ -37,6 +37,8 @@ public interface HaFlowRepository extends Repository<HaFlow> {
 
     Collection<String> findHaFlowIdsByAffinityGroupId(String affinityGroupId);
 
+    Optional<String> getDiverseHaFlowGroupId(String haFlowId);
+
     Optional<String> getOrCreateDiverseHaFlowGroupId(String haFlowId);
 
     void updateStatus(String haFlowId, FlowStatus flowStatus);

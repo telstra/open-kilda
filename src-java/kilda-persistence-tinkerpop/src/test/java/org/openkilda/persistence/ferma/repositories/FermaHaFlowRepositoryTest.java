@@ -330,6 +330,16 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
     }
 
     @Test
+    public void getDiverseHaFlowGroupId() {
+        createHaFlow(haFlow1);
+        haFlow1.setDiverseGroupId(DIVERSITY_GROUP_1);
+        Optional<String> groupOptional = haFlowRepository.getDiverseHaFlowGroupId(haFlow1.getHaFlowId());
+
+        assertTrue(groupOptional.isPresent());
+        assertEquals(DIVERSITY_GROUP_1, groupOptional.get());
+    }
+
+    @Test
     public void updateHaFLowStatusTest() {
         createHaFlow(haFlow1);
         for (FlowStatus status : FlowStatus.values()) {
