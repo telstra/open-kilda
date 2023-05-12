@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult
+
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
@@ -199,6 +201,10 @@ class HaFlowHelper {
             }
         }
         response
+    }
+
+    HaFlowValidationResult validate(String haFlowId) {
+        return northboundV2.validateHaFlow(haFlowId)
     }
 
     static Set<SwitchId> getInvolvedSwitches(HaFlow haFlow) {
