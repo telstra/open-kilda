@@ -18,6 +18,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload
@@ -203,13 +204,17 @@ class HaFlowHelper {
         response
     }
 
-    HaFlowValidationResult validate(String haFlowId) {
-        return northboundV2.validateHaFlow(haFlowId)
+    Set<SwitchId> getInvolvedSwitches(String haFlowId) {
+        return getInvolvedSwitches(northboundV2.getHaFlowPaths(haFlowId))
     }
 
-    static Set<SwitchId> getInvolvedSwitches(HaFlow haFlow) {
-        //TODO include transit switches when https://github.com/telstra/open-kilda/issues/5148 will be implemented
-        return haFlow.subFlows*.endpoint.switchId + haFlow.sharedEndpoint.switchId
+    Set<SwitchId> getInvolvedSwitches(HaFlowPaths haFlowPaths) {
+        return (List<SwitchId>) haPathHelper.getInvolvedIsls(haFlowPaths)
+                .collect { [it.getSrcSwitch().getDpId(), it.getDstSwitch().getDpId()] }.flatten().unique()
+    }
+
+    HaFlowValidationResult validate(String haFlowId) {
+        return northboundV2.validateHaFlow(haFlowId)
     }
 
     static List<SwitchPortVlan> getBusyEndpoints(List<HaFlowCreatePayload> haFlows) {
@@ -262,8 +267,12 @@ class HaFlowHelper {
         allowedPorts[random.nextInt(allowedPorts.size())]
     }
 
-    private int randomVlan() {
-        return allowedVlans[random.nextInt(allowedVlans.size())]
+    int randomVlan(excludeVlan = null) {
+        Integer vlan
+        do {
+            vlan = allowedVlans[random.nextInt(allowedVlans.size())]
+        } while (vlan == excludeVlan)
+        return vlan
     }
 
     private String generateDescription() {

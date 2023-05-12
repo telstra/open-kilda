@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.bolts;
 
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_METRICS_BOLT;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_RESPONSE_SENDER;
@@ -31,6 +32,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
+import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.RuleManagerConfig;
@@ -142,7 +144,7 @@ public class HaFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
 
     @Override
     public void sendHistoryUpdate(@NonNull FlowHistoryHolder historyHolder) {
-        //TODO check history
+        //TODO check history https://github.com/telstra/open-kilda/issues/5169
         InfoMessage message = new InfoMessage(historyHolder, getCommandContext().getCreateTime(),
                 getCommandContext().getCorrelationId());
         emitWithContext(Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), getCurrentTuple(),
@@ -151,17 +153,22 @@ public class HaFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
 
     @Override
     public void sendNotifyFlowStats(@NonNull RemoveFlowPathInfo flowPathInfo) {
-        //TODO implement
+        //TODO implement https://github.com/telstra/open-kilda/issues/5182
+    }
+
+    @Override
+    public void sendNotifyFlowStats(UpdateFlowPathInfo flowPathInfo) {
+        //TODO implement https://github.com/telstra/open-kilda/issues/5182
     }
 
     @Override
     public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
-        //TODO implement
+        //TODO implement https://github.com/telstra/open-kilda/issues/5172
     }
 
     @Override
     public void sendPeriodicPingNotification(String haFlowId, boolean enabled) {
-        //TODO implement periodic pings
+        //TODO implement periodic pings https://github.com/telstra/open-kilda/issues/5153
         log.info("Periodic pings are not implemented for ha-flow delete operation yet. Skipping for the ha-flow {}",
                 haFlowId);
     }
@@ -185,6 +192,7 @@ public class HaFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
         declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_PING_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(ZkStreams.ZK.toString(),
                 new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
     }

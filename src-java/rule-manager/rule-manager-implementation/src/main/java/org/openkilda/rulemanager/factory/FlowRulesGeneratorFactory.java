@@ -370,9 +370,10 @@ public class FlowRulesGeneratorFactory {
      * Get Y point forward transit ha rule generator.
      */
     public RuleGenerator getYPointForwardTransitHaRuleGenerator(
-            HaFlowPath haFlowPath, List<FlowPath> subPaths, FlowTransitEncapsulation encapsulation,
+            HaFlow haFlow, HaFlowPath haFlowPath, List<FlowPath> subPaths, FlowTransitEncapsulation encapsulation,
             int inPort, Map<PathId, Integer> outPorts) {
         return YPointForwardTransitHaRuleGenerator.builder()
+                .haFlow(haFlow)
                 .haFlowPath(haFlowPath)
                 .subPaths(subPaths)
                 .encapsulation(encapsulation)
@@ -385,8 +386,10 @@ public class FlowRulesGeneratorFactory {
      * Get Y point forward egress ha rule generator.
      */
     public RuleGenerator getYPointForwardEgressHaRuleGenerator(
-            HaFlowPath haFlowPath, List<FlowPath> subPaths, FlowTransitEncapsulation encapsulation, int inPort) {
+            HaFlow haFlow, HaFlowPath haFlowPath, List<FlowPath> subPaths, FlowTransitEncapsulation encapsulation,
+            int inPort) {
         return YPointForwardEgressHaRuleGenerator.builder()
+                .haFlow(haFlow)
                 .haFlowPath(haFlowPath)
                 .subPaths(subPaths)
                 .encapsulation(encapsulation)

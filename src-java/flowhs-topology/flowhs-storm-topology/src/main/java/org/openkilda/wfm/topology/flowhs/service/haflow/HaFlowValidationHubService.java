@@ -31,10 +31,10 @@ import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.validation.HaFlowValidationFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.validation.HaFlowValidationFsm.Event;
+import org.openkilda.wfm.topology.flowhs.service.FlowValidationEventListener;
 import org.openkilda.wfm.topology.flowhs.service.FlowValidationHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
 import org.openkilda.wfm.topology.flowhs.service.common.FsmBasedProcessingService;
-import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +43,7 @@ import java.util.Collections;
 
 @Slf4j
 public class HaFlowValidationHubService extends FsmBasedProcessingService<HaFlowValidationFsm, Event, Object,
-        FlowProcessingFsmRegister<HaFlowValidationFsm>, ProcessingEventListener> {
+        FlowProcessingFsmRegister<HaFlowValidationFsm>, FlowValidationEventListener> {
     private final FlowValidationHubCarrier carrier;
     private final HaFlowValidationFsm.Factory haFsmFactory;
 
@@ -59,9 +59,9 @@ public class HaFlowValidationHubService extends FsmBasedProcessingService<HaFlow
     /**
      * Handles the flow validation request by starting the flow validation process.
      *
-     * @param key            the key associated with the request
+     * @param key the key associated with the request
      * @param commandContext the command context
-     * @param request        the ha-flow validation request object containing the flow ID
+     * @param request the ha-flow validation request object containing the flow ID
      * @throws DuplicateKeyException if there is a duplicate key found during the process
      */
     public void handleFlowValidationRequest(@NonNull String key, @NonNull CommandContext commandContext,
@@ -78,7 +78,7 @@ public class HaFlowValidationHubService extends FsmBasedProcessingService<HaFlow
             throw new DuplicateKeyException(key, "There's another active FSM with the same key");
         }
 
-        HaFlowValidationFsm fsm = haFsmFactory.newInstance(haFlowId, commandContext);
+        HaFlowValidationFsm fsm = haFsmFactory.newInstance(haFlowId, commandContext, eventListeners);
         fsmRegister.registerFsm(key, fsm);
 
         fsm.start();
@@ -142,7 +142,7 @@ public class HaFlowValidationHubService extends FsmBasedProcessingService<HaFlow
      * known, and it identifies the FSM to handle the response.
      *
      * @param flowId the flow identifier.
-     * @param data   the async response from the worker.
+     * @param data the async response from the worker.
      * @throws UnknownKeyException if the key cannot be retrieved from the FSM register.
      */
     public void handleAsyncResponseByFlowId(@NonNull String flowId, @NonNull MessageData data)

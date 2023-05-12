@@ -112,6 +112,10 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
                 getEndpointVlan(), getEndpointInnerVlan(), getDescription(), getTimeCreate(), getTimeModify());
     }
 
+    public FlowEndpoint getEndpoint() {
+        return new FlowEndpoint(getEndpointSwitchId(), getEndpointPort(), getEndpointVlan(), getEndpointInnerVlan());
+    }
+
     /**
      * Defines persistable data of the sub-flow.
      */

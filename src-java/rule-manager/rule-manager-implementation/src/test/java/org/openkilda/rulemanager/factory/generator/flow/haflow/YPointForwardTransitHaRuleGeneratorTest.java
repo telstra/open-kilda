@@ -22,7 +22,9 @@ import static org.openkilda.rulemanager.Utils.getCommand;
 
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -266,22 +268,22 @@ public class YPointForwardTransitHaRuleGeneratorTest extends HaRuleGeneratorBase
 
     @Test(expected = IllegalArgumentException.class)
     public void equalDestinationSubPathsTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, FORWARD_COOKIE, 0, 0);
-        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_1, SWITCH_2, FORWARD_COOKIE_2, 0, 0);
+        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, FORWARD_COOKIE, null);
+        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_1, SWITCH_2, FORWARD_COOKIE_2, null);
         buildGenerator(Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void oneSwitchSubPathsTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, FORWARD_COOKIE, 0, 0);
-        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_3, SWITCH_3, FORWARD_COOKIE_2, 0, 0);
+        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, FORWARD_COOKIE, null);
+        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_3, SWITCH_3, FORWARD_COOKIE_2, null);
         buildGenerator(Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void reverseSubPathTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, REVERSE_COOKIE, 0, 0);
-        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_1, SWITCH_3, FORWARD_COOKIE_2, 0, 0);
+        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, REVERSE_COOKIE, null);
+        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_1, SWITCH_3, FORWARD_COOKIE_2, null);
         buildGenerator(Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
     }
 
@@ -336,15 +338,23 @@ public class YPointForwardTransitHaRuleGeneratorTest extends HaRuleGeneratorBase
     private YPointForwardTransitHaRuleGenerator buildGenerator(
             FlowTransitEncapsulation encapsulation, Switch firstDstSwitch, Switch secondDstSwitch,
             int firstSubPathOuterVlan, int firstSubPathInnerVlan) {
+        HaSubFlow haSubFlow1 = buildHaSubFlow(
+                HA_SUB_FLOW_ID_1, firstSubPathOuterVlan, firstSubPathInnerVlan, PORT_NUMBER_3);
+        HaSubFlow haSubFlow2 = buildHaSubFlow(
+                HA_SUB_FLOW_ID_2, OUTER_VLAN_ID_2, INNER_VLAN_ID_2, PORT_NUMBER_3);
+        HaFlow haFlow = buildHaFlow(0, 0);
+        haFlow.setHaSubFlows(Lists.newArrayList(haSubFlow1, haSubFlow2));
+
         FlowPath subPath1 = buildSubPath(
-                PATH_ID_1, SWITCH_1, firstDstSwitch, FORWARD_COOKIE, firstSubPathOuterVlan, firstSubPathInnerVlan);
+                PATH_ID_1, SWITCH_1, firstDstSwitch, FORWARD_COOKIE, haSubFlow1);
         FlowPath subPath2 = buildSubPath(
-                PATH_ID_2, SWITCH_1, secondDstSwitch, FORWARD_COOKIE_2, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+                PATH_ID_2, SWITCH_1, secondDstSwitch, FORWARD_COOKIE_2, haSubFlow2);
 
         Map<PathId, Integer> outPorts = new HashMap<>();
         outPorts.put(subPath1.getPathId(), PORT_NUMBER_2);
         outPorts.put(subPath2.getPathId(), PORT_NUMBER_3);
         return YPointForwardTransitHaRuleGenerator.builder()
+                .haFlow(haFlow)
                 .subPaths(Lists.newArrayList(subPath1, subPath2))
                 .inPort(PORT_NUMBER_1)
                 .outPorts(outPorts)

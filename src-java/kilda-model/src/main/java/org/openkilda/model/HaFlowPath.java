@@ -170,6 +170,15 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
     }
 
     /**
+     * Returns set of ha-flow endpoint switch ids.
+     */
+    public Set<SwitchId> getEndpointSwitchIds() {
+        Set<SwitchId> result = getSubFlowSwitchIds();
+        result.add(getSharedSwitchId());
+        return result;
+    }
+
+    /**
      * Checks whether this path is a protected path for the flow.
      */
     public boolean isProtected() {

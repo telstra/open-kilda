@@ -60,7 +60,7 @@ public class RevertSharedEndpointRulesAction extends UpdateSharedEndpointRulesAc
                 stateMachine.getOldPrimaryPaths());
         InstallSpeakerCommandsRequest installRequest =
                 FlowRulesConverter.INSTANCE.buildFlowInstallCommand(sharedEndpoint, installOfCommands,
-                        stateMachine.getCommandContext());
+                        stateMachine.getCommandContext(), true);
         stateMachine.addInstallSpeakerCommand(installRequest.getCommandId(), installRequest);
 
         List<OfCommand> deleteOfCommands = stateMachine.getInstallNewYFlowOfCommands();

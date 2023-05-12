@@ -33,6 +33,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -727,9 +728,12 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
 
     @Test
     public void buildPortOverlappedTest() {
+        HaFlow fakeHaFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+        fakeHaFlow.setHaSubFlows(newArrayList(buildHaSubFlow(0, 0)));
+        FlowPath fake = buildSubPath(PATH_ID_3, SWITCH_2, SWITCH_3, PORT_NUMBER_1, REVERSE_COOKIE,
+                fakeHaFlow.getHaSubFlows().iterator().next());
+        HashSet<FlowSideAdapter> overlapping = newHashSet(FlowSideAdapter.makeIngressAdapter(fakeHaFlow, fake));
         HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        FlowPath fake = buildSubPath(PATH_ID_3, SWITCH_2, SWITCH_3, PORT_NUMBER_1, REVERSE_COOKIE, 0, 0);
-        HashSet<FlowSideAdapter> overlapping = newHashSet(FlowSideAdapter.makeIngressAdapter(haFlow, fake));
         YPointForwardIngressHaRuleGenerator generator = buildGenerator(
                 haFlow, HA_FLOW_PATH, VLAN_ENCAPSULATION, SWITCH_2, SWITCH_3, 0, 0, overlapping);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
@@ -754,7 +758,6 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
         assertMeterCommand(meterCommand);
     }
 
-
     @Test(expected = IllegalArgumentException.class)
     public void nullSubPathsTest() {
         HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
@@ -769,22 +772,22 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
 
     @Test(expected = IllegalArgumentException.class)
     public void oneSubFlowTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_3, FORWARD_COOKIE, 0, 0);
+        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_3, FORWARD_COOKIE, null);
         HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         buildGenerator(haFlow, Lists.newArrayList(subPath1)).generateCommands(SWITCH_2);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void incorrectSwitchTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_2, FORWARD_COOKIE, 0, 0);
+        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_2, FORWARD_COOKIE, null);
         HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         buildGenerator(haFlow, Lists.newArrayList(subPath1)).generateCommands(SWITCH_2);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void reverseSubPathTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_3, FORWARD_COOKIE, 0, 0);
-        FlowPath subPath2 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_2, REVERSE_COOKIE, 0, 0);
+        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_3, FORWARD_COOKIE, null);
+        FlowPath subPath2 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_2, REVERSE_COOKIE, null);
         HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         buildGenerator(haFlow, Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
     }
@@ -879,11 +882,13 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
             HaFlow haFlow, FlowTransitEncapsulation encapsulation, Switch firstDstSwitch,
             Switch secondDstSwitch, int firstSubPathOuterVlan, int firstSubPathInnerVlan) {
 
+        HaFlow fakeHaFlow = buildHaFlow(haFlow.getSharedSwitch(), haFlow.getSharedOuterVlan(), 15);
+        fakeHaFlow.setHaSubFlows(newArrayList(buildHaSubFlow(0, 0)));
         FlowPath fakePath = buildSubPath(haFlow.getSharedSwitch(), SWITCH_3, FORWARD_COOKIE_2,
-                haFlow.getSharedOuterVlan(), 15);
+                fakeHaFlow.getHaSubFlows().iterator().next());
         return buildGenerator(haFlow, YPointForwardIngressHaRuleGeneratorTest.HA_FLOW_PATH, encapsulation,
                 firstDstSwitch, secondDstSwitch, firstSubPathOuterVlan,
-                firstSubPathInnerVlan, newHashSet(FlowSideAdapter.makeIngressAdapter(haFlow, fakePath)));
+                firstSubPathInnerVlan, newHashSet(FlowSideAdapter.makeIngressAdapter(fakeHaFlow, fakePath)));
     }
 
     private YPointForwardIngressHaRuleGenerator buildGenerator(
@@ -891,10 +896,13 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
             Switch secondDstSwitch, int firstSubPathOuterVlan, int firstSubPathInnerVlan,
             Set<FlowSideAdapter> overlappingAdapters) {
 
+        HaSubFlow subFlow1 = buildHaSubFlow(firstSubPathOuterVlan, firstSubPathInnerVlan);
+        HaSubFlow subFlow2 = buildHaSubFlow(OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        haFlow.setHaSubFlows(newArrayList(subFlow1, subFlow2));
         FlowPath subPath1 = buildSubPath(PATH_ID_1, haFlow.getSharedSwitch(), firstDstSwitch, PORT_NUMBER_2,
-                FORWARD_COOKIE, firstSubPathOuterVlan, firstSubPathInnerVlan);
+                FORWARD_COOKIE, subFlow1);
         FlowPath subPath2 = buildSubPath(PATH_ID_2, haFlow.getSharedSwitch(), secondDstSwitch, PORT_NUMBER_3,
-                FORWARD_COOKIE_2, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+                FORWARD_COOKIE_2, subFlow2);
 
         return YPointForwardIngressHaRuleGenerator.builder()
                 .config(config)

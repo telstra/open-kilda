@@ -49,6 +49,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public class FlowPathBuilderTest {
@@ -306,7 +308,7 @@ public class FlowPathBuilderTest {
                 .build();
 
         HaPath haPath = HaPath.builder().sharedSwitchId(SWITCH_ID_1).yPointSwitchId(SWITCH_ID_2)
-                .subPaths(singletonList(path)).build();
+                .subPaths(buildPathMap(HA_SUB_FLOW, path)).build();
         FlowPath subPath = FlowPath.builder()
                 .srcSwitch(SWITCH_1)
                 .destSwitch(SWITCH_2)
@@ -331,7 +333,7 @@ public class FlowPathBuilderTest {
                 .build();
 
         HaPath haPath = HaPath.builder().sharedSwitchId(SWITCH_ID_1).yPointSwitchId(SWITCH_ID_2)
-                .subPaths(singletonList(path)).build();
+                .subPaths(buildPathMap(HA_SUB_FLOW, path)).build();
         FlowPath subPath = FlowPath.builder()
                 .srcSwitch(SWITCH_1)
                 .destSwitch(SWITCH_2)
@@ -373,5 +375,11 @@ public class FlowPathBuilderTest {
                 .destSwitchId(dstSwitchId)
                 .destPort(dstPort)
                 .build();
+    }
+
+    private Map<String, Path> buildPathMap(String subFlowId, Path path) {
+        Map<String, Path> map = new HashMap<>();
+        map.put(subFlowId, path);
+        return map;
     }
 }

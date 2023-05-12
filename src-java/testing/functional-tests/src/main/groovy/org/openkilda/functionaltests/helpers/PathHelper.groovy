@@ -1,11 +1,16 @@
 package org.openkilda.functionaltests.helpers
 
-import groovy.util.logging.Slf4j
-import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats
+import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
+import static org.openkilda.model.FlowEncapsulationType.VXLAN
+import static org.openkilda.model.PathComputationStrategy.COST
+import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH
+import static org.openkilda.model.PathComputationStrategy.LATENCY
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath
+import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats
 import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.messaging.payload.network.PathValidationPayload
 import org.openkilda.model.FlowEncapsulationType
@@ -19,6 +24,8 @@ import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.IslUtils
+
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Scope
@@ -26,13 +33,6 @@ import org.springframework.stereotype.Component
 
 import java.util.AbstractMap.SimpleEntry
 import java.util.stream.Collectors
-
-import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
-import static org.openkilda.model.FlowEncapsulationType.VXLAN
-import static org.openkilda.model.PathComputationStrategy.COST
-import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH
-import static org.openkilda.model.PathComputationStrategy.LATENCY
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 /**
  * Holds utility methods for working with flow paths.
@@ -264,7 +264,11 @@ class PathHelper {
 
     List<Switch> getInvolvedYSwitches(YFlowPaths yFlowPaths) {
         return yFlowPaths.subFlowPaths.collectMany { subFlowPath ->
-            getInvolvedSwitchesV2(subFlowPath.forward)
+            def switches = getInvolvedSwitchesV2(subFlowPath.forward)
+            if (subFlowPath.protectedPath != null) {
+                switches += getInvolvedSwitchesV2(subFlowPath.protectedPath.forward)
+            }
+            switches
         }.unique()
     }
 
@@ -274,6 +278,16 @@ class PathHelper {
 
     List<Switch> getInvolvedSwitchesV2(List<PathNodePayload> nodes) {
         return nodes.collect { it.switchId }.unique().collect { topology.find(it) }
+    }
+
+    List<Switch> getInvolvedHaSwitches(String haFlowId) {
+        return northboundV2.getHaFlowPaths(haFlowId).subFlowPaths.collectMany { subFlowPath ->
+            def switches = getInvolvedSwitchesV2(subFlowPath.forward)
+            if (subFlowPath.protectedPath != null) {
+                switches += getInvolvedSwitchesV2(subFlowPath.protectedPath.forward)
+            }
+            switches
+        }.unique()
     }
 
     /**

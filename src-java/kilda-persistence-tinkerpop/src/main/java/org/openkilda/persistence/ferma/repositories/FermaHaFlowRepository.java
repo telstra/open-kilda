@@ -137,6 +137,12 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
     }
 
     @Override
+    public Optional<String> getDiverseHaFlowGroupId(String haFlowId) {
+        return getTransactionManager().doInTransaction(() -> findById(haFlowId)
+                .map(HaFlow::getDiverseGroupId));
+    }
+
+    @Override
     public Optional<String> getOrCreateDiverseHaFlowGroupId(String haFlowId) {
         return getTransactionManager().doInTransaction(() -> findById(haFlowId)
                 .map(haFlow -> {

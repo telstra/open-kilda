@@ -276,14 +276,26 @@ public final class HaFlowValidationFsm extends NbTrackableFlowProcessingFsm<HaFl
             builder.defineFinalState(FINISHED_WITH_ERROR);
         }
 
-        public HaFlowValidationFsm newInstance(@NonNull String flowId, @NonNull CommandContext commandContext) {
+        public HaFlowValidationFsm newInstance(@NonNull String flowId, @NonNull CommandContext commandContext,
+                                               @NonNull Collection<FlowValidationEventListener> eventListeners) {
             HaFlowValidationFsm fsm = builder.newStateMachine(INITIALIZED, commandContext, carrier, flowId,
-                    persistenceManager, ruleManager);
+                    persistenceManager, eventListeners, ruleManager);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("The HaFlowValidationFsm, transition to {} on {}",
                             event.getTargetState(), event.getCause()));
 
+            if (!eventListeners.isEmpty()) {
+                fsm.addTransitionCompleteListener(event -> {
+                    switch (event.getTargetState()) {
+                        case FINISHED_WITH_ERROR:
+                            fsm.notifyEventListeners(listener -> listener.onFailedValidation(flowId));
+                            break;
+                        default:
+                            // ignore
+                    }
+                });
+            }
 
             MeterRegistryHolder.getRegistry().ifPresent(registry -> {
                 Sample sample = LongTaskTimer.builder("fsm.active_execution")
