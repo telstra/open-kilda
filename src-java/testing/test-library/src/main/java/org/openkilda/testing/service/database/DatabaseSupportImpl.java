@@ -45,7 +45,6 @@ import org.openkilda.persistence.ferma.frames.IslFrame;
 import org.openkilda.persistence.ferma.frames.SwitchFrame;
 import org.openkilda.persistence.orientdb.OrientDbContextExtension;
 import org.openkilda.persistence.orientdb.OrientDbPersistenceImplementation;
-import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;

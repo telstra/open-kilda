@@ -50,7 +50,7 @@ class HaFlowHelper {
     @Qualifier("islandNb")
     NorthboundService northbound
     @Autowired
-    PathHelper pathHelper
+    HaPathHelper haPathHelper
 
     def random = new Random()
     def faker = new Faker()
