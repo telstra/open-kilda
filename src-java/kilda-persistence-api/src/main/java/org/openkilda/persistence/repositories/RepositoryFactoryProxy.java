@@ -21,6 +21,9 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventActionRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventDumpRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventRepository;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
 
 public class RepositoryFactoryProxy implements RepositoryFactory {
@@ -98,6 +101,21 @@ public class RepositoryFactoryProxy implements RepositoryFactory {
     @Override
     public FlowEventDumpRepository createFlowEventDumpRepository() {
         return resolve(FlowEventDumpRepository.class).createFlowEventDumpRepository();
+    }
+
+    @Override
+    public HaFlowEventRepository createHaFlowEventRepository() {
+        return resolve(HaFlowEventRepository.class).createHaFlowEventRepository();
+    }
+
+    @Override
+    public HaFlowEventDumpRepository createHaFlowEventDumpRepository() {
+        return resolve(HaFlowEventDumpRepository.class).createHaFlowEventDumpRepository();
+    }
+
+    @Override
+    public HaFlowEventActionRepository createHaFlowEventActionRepository() {
+        return resolve(HaFlowEventActionRepository.class).createHaFlowEventActionRepository();
     }
 
     @Override

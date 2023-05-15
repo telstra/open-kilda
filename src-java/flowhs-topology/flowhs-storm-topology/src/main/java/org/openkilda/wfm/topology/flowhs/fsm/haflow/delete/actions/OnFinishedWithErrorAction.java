@@ -36,6 +36,6 @@ public class OnFinishedWithErrorAction
     @Override
     public void perform(State from, State to, Event event, HaFlowDeleteContext context, HaFlowDeleteFsm stateMachine) {
         dashboardLogger.onFailedHaFlowDelete(stateMachine.getHaFlowId(), stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to delete the ha-flow", stateMachine.getErrorReason());
+        stateMachine.saveHaFlowActionToHistory("Failed to delete the HA-flow", stateMachine.getErrorReason());
     }
 }

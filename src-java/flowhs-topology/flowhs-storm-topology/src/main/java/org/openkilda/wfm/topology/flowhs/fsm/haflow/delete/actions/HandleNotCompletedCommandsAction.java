@@ -33,7 +33,7 @@ public class HandleNotCompletedCommandsAction extends
     @Override
     public void perform(State from, State to, Event event, HaFlowDeleteContext context, HaFlowDeleteFsm stateMachine) {
         for (UUID commandId : stateMachine.getPendingCommands().keySet()) {
-            stateMachine.saveErrorToHistory("Command is not finished yet",
+            stateMachine.saveHaFlowErrorToHistory("Command is not finished yet",
                     format("Completing the revert operation although the remove command may not be "
                                     + "finished yet: commandId %s, switch %s", commandId,
                             stateMachine.getPendingCommands().get(commandId)));

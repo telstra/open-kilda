@@ -25,12 +25,12 @@ import java.time.Instant;
 
 @Value
 @Builder
-public class FlowEventData implements Serializable {
-    private String flowId;
-    private Initiator initiator;
-    private Event event;
-    private String details;
-    private Instant time;
+public class FlowEventData implements EventData, Serializable {
+    String flowId;
+    Initiator initiator;
+    Event event;
+    String details;
+    Instant time;
 
     @Getter
     public enum Initiator {
@@ -53,6 +53,6 @@ public class FlowEventData implements Serializable {
         FLOW_MIRROR_POINT_CREATE("Flow mirror point creating"),
         FLOW_MIRROR_POINT_DELETE("Flow mirror point deleting");
 
-        private String description;
+        private final String description;
     }
 }

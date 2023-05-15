@@ -50,7 +50,8 @@ public class RemoveHaFlowAction extends
             return haFlow.getAffinityGroupId();
         });
 
-        stateMachine.saveActionToHistory("HA-flow was removed", String.format("The ha-flow %s was removed", haFlowId));
+        stateMachine.saveHaFlowActionToHistory("HA-flow was removed",
+                String.format("The ha-flow %s was removed", haFlowId));
         updateFlowGroups(haFlowId, affinityGroup);
     }
 

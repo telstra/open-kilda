@@ -62,7 +62,7 @@ public class EmitInstallRulesRequestsAction extends
                 speakerCommands, stateMachine.getCommandContext());
 
         if (installRequests.isEmpty()) {
-            stateMachine.saveActionToHistory("No requests to install ha-flow rules");
+            stateMachine.saveHaFlowActionToHistory("No requests to install HA-flow rules");
             stateMachine.fire(Event.SKIP_RULES_INSTALL);
         } else {
             // emitting
@@ -72,7 +72,7 @@ public class EmitInstallRulesRequestsAction extends
                 stateMachine.addPendingCommand(request.getCommandId(), request.getSwitchId());
             });
 
-            stateMachine.saveActionToHistory("Commands for installing ha-flow rules have been sent");
+            stateMachine.saveHaFlowActionToHistory("Commands for installing HA-flow rules have been sent");
         }
     }
 

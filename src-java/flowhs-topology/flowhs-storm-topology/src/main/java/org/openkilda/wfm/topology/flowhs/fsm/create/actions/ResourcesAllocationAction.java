@@ -51,8 +51,8 @@ import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.share.history.model.DumpType;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
-import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -265,7 +265,7 @@ public class ResourcesAllocationAction extends
     }
 
     private void allocateMainPath(FlowCreateFsm stateMachine) throws UnroutableFlowException,
-            RecoverableException, ResourceAllocationException {
+            RecoverableException {
         GetPathsResult paths = pathComputer.getPath(getFlow(stateMachine.getFlowId()));
         stateMachine.setBackUpPrimaryPathComputationWayUsed(paths.isBackUpPathComputationWayUsed());
 
@@ -306,7 +306,7 @@ public class ResourcesAllocationAction extends
     }
 
     private void allocateProtectedPath(FlowCreateFsm stateMachine) throws UnroutableFlowException,
-            RecoverableException, ResourceAllocationException, FlowNotFoundException {
+            RecoverableException, FlowNotFoundException {
         String flowId = stateMachine.getFlowId();
         Flow tmpFlow = getFlow(flowId);
         if (!tmpFlow.isAllocateProtectedPath()) {

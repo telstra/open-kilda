@@ -37,6 +37,6 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowCreateFsm, St
         //TODO periodic pings
         //TODO activate flow monitoring
         dashboardLogger.onSuccessfulHaFlowCreate(stateMachine.getHaFlowId());
-        stateMachine.saveActionToHistory("HA-flow was created successfully");
+        stateMachine.saveHaFlowActionToHistory("HA-flow was created successfully");
     }
 }

@@ -62,7 +62,7 @@ public class OnReceivedResponseAction
 
         if (response.isSuccess()) {
             stateMachine.removePendingCommand(commandId);
-            stateMachine.saveActionToHistory(format("%s rules were %sed", command.get().getCommands().size(),
+            stateMachine.saveHaFlowActionToHistory(format("%s rules were %sed", command.get().getCommands().size(),
                             actionName),
                     format("%s rules were %sed: switch %s", command.get().getCommands().size(),
                             actionName, response.getSwitchId()));
@@ -71,7 +71,7 @@ public class OnReceivedResponseAction
             int retries = stateMachine.doRetryForCommand(commandId);
             if (retries <= speakerCommandRetriesLimit && request != null) {
                 response.getFailedCommandIds().forEach((uuid, message) ->
-                        stateMachine.saveErrorToHistory(format(FAILED_TO_APPLY_RULE_MESSAGE, actionName), format(
+                        stateMachine.saveHaFlowErrorToHistory(format(FAILED_TO_APPLY_RULE_MESSAGE, actionName), format(
                                 "Failed to %s the rule: commandId %s, switch %s, uuid %s. Error %s. "
                                         + "Retrying (attempt %d)",
                                 actionName, commandId, response.getSwitchId(), uuid, message, retries)));
@@ -86,7 +86,7 @@ public class OnReceivedResponseAction
                 stateMachine.removePendingCommand(commandId);
 
                 response.getFailedCommandIds().forEach((uuid, message) ->
-                        stateMachine.saveErrorToHistory(format(FAILED_TO_APPLY_RULE_MESSAGE, actionName), format(
+                        stateMachine.saveHaFlowActionToHistory(format(FAILED_TO_APPLY_RULE_MESSAGE, actionName), format(
                                 "Failed to %s the rule: commandId %s, switch %s, uuid %s. Error: %s",
                                 actionName, commandId, response.getSwitchId(), uuid, message)));
 
@@ -102,7 +102,7 @@ public class OnReceivedResponseAction
             } else {
                 String errorMessage = format("Received error response(s) for %d %s commands",
                         stateMachine.getFailedCommands().size(), actionName);
-                stateMachine.saveErrorToHistory(errorMessage);
+                stateMachine.saveHaFlowErrorToHistory(errorMessage);
                 stateMachine.fireError(errorMessage);
             }
         }

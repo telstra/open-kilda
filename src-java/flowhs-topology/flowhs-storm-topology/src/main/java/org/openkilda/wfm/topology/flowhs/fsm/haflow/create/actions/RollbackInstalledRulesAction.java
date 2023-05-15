@@ -48,7 +48,7 @@ public class RollbackInstalledRulesAction extends
                 stateMachine.getSentCommands(), stateMachine.getCommandContext());
 
         if (deleteRequests.isEmpty()) {
-            stateMachine.saveActionToHistory("No need to rollback ha-flow rules");
+            stateMachine.saveHaFlowActionToHistory("No need to rollback ha-flow rules");
             stateMachine.fire(Event.RULES_REMOVED);
         } else {
             // emitting
@@ -58,7 +58,7 @@ public class RollbackInstalledRulesAction extends
                 stateMachine.addPendingCommand(request.getCommandId(), request.getSwitchId());
             });
 
-            stateMachine.saveActionToHistory("Commands for rolling back ha-flow rules have been sent");
+            stateMachine.saveHaFlowActionToHistory("Commands for rolling back ha-flow rules have been sent");
         }
     }
 }

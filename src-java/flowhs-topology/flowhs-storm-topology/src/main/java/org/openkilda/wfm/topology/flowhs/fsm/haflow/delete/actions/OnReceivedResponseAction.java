@@ -58,14 +58,14 @@ public class OnReceivedResponseAction extends HistoryRecordingAction<
 
         if (response.isSuccess()) {
             stateMachine.removePendingCommand(commandId);
-            stateMachine.saveActionToHistory("Rule was deleted",
+            stateMachine.saveHaFlowActionToHistory("Rule was deleted",
                     format("The rule was removed: switch %s", response.getSwitchId()));
         } else {
             Optional<BaseSpeakerCommandsRequest> command = stateMachine.getSpeakerCommand(commandId);
             int attempt = stateMachine.doRetryForCommand(commandId);
             if (attempt <= speakerCommandRetriesLimit && command.isPresent()) {
                 response.getFailedCommandIds().forEach((uuid, message) ->
-                        stateMachine.saveErrorToHistory(FAILED_TO_REMOVE_RULE_ACTION,
+                        stateMachine.saveHaFlowErrorToHistory(FAILED_TO_REMOVE_RULE_ACTION,
                                 format("Failed to remove the rule: commandId %s, ruleId %s, switch %s. "
                                                 + "Error: %s. Retrying (attempt %d)",
                                         commandId, uuid, response.getSwitchId(), message, attempt)));
@@ -82,7 +82,7 @@ public class OnReceivedResponseAction extends HistoryRecordingAction<
                 stateMachine.addFailedCommand(commandId, response);
                 stateMachine.removePendingCommand(commandId);
                 response.getFailedCommandIds().forEach((uuid, message) ->
-                        stateMachine.saveErrorToHistory(FAILED_TO_REMOVE_RULE_ACTION,
+                        stateMachine.saveHaFlowErrorToHistory(FAILED_TO_REMOVE_RULE_ACTION,
                                 format("Failed to remove the rule: commandId %s, ruleId %s, switch %s. Error: %s",
                                         commandId, uuid, response.getSwitchId(), message)));
             }
@@ -96,7 +96,7 @@ public class OnReceivedResponseAction extends HistoryRecordingAction<
             } else {
                 String errorMessage = format("Received error response(s) for %d remove commands",
                         stateMachine.getFailedCommands().size());
-                stateMachine.saveErrorToHistory(errorMessage);
+                stateMachine.saveHaFlowErrorToHistory(errorMessage);
                 stateMachine.fireError(errorMessage);
             }
         }

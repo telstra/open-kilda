@@ -36,6 +36,6 @@ public class OnFinishedWithErrorAction extends HistoryRecordingAction<
     @Override
     public void perform(State from, State to, Event event, HaFlowCreateContext context, HaFlowCreateFsm stateMachine) {
         dashboardLogger.onFailedHaFlowCreate(stateMachine.getHaFlowId(), stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to create the ha-flow", stateMachine.getErrorReason());
+        stateMachine.saveHaFlowActionToHistory("Failed to create the HA-flow", stateMachine.getErrorReason());
     }
 }

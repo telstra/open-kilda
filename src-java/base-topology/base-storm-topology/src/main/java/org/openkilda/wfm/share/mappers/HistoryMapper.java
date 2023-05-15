@@ -20,12 +20,18 @@ import org.openkilda.messaging.payload.history.FlowDumpPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
 import org.openkilda.messaging.payload.history.FlowStatusTimestampsEntry;
+import org.openkilda.messaging.payload.history.HaFlowDumpPayload;
+import org.openkilda.messaging.payload.history.HaFlowHistoryEntry;
+import org.openkilda.messaging.payload.history.HaFlowHistoryPayload;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.MirrorPointStatus;
 import org.openkilda.model.PathId;
@@ -37,12 +43,19 @@ import org.openkilda.model.history.FlowEvent;
 import org.openkilda.model.history.FlowEventAction;
 import org.openkilda.model.history.FlowEventDump;
 import org.openkilda.model.history.FlowStatusView;
+import org.openkilda.model.history.HaFlowEvent;
+import org.openkilda.model.history.HaFlowEventAction;
+import org.openkilda.model.history.HaFlowEventDump;
+import org.openkilda.model.history.HaFlowEventDump.HaFlowEventDumpDataImpl;
 import org.openkilda.model.history.PortEvent;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
+import org.openkilda.wfm.share.history.model.DumpType;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
-import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
+import org.openkilda.wfm.share.history.model.HaFlowDumpData;
+import org.openkilda.wfm.share.history.model.HaFlowEventData;
+import org.openkilda.wfm.share.history.model.HaFlowHistoryData;
 import org.openkilda.wfm.share.history.model.PortEventData;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -95,7 +108,7 @@ public abstract class HistoryMapper {
     public abstract FlowEventDump map(FlowDumpData dump);
 
     /**
-     * Note: you have to additionally set {@link org.openkilda.wfm.share.history.model.FlowDumpData.DumpType}
+     * Note: you have to additionally set {@link DumpType}
      * to the dump data.
      */
     public FlowDumpData map(Flow flow, FlowPath forward, FlowPath reverse, DumpType dumpType) {
@@ -106,7 +119,7 @@ public abstract class HistoryMapper {
     }
 
     /**
-     * Note: you have to additionally set {@link org.openkilda.wfm.share.history.model.FlowDumpData.DumpType}
+     * Note: you have to additionally set {@link DumpType}
      * to the dump data.
      */
     public FlowDumpData map(Flow flow, FlowResources resources, DumpType dumpType) {
@@ -167,6 +180,74 @@ public abstract class HistoryMapper {
         return pathId.getId();
     }
 
+    @Mapping(source = "haFlowEventData.initiator", target = "actor")
+    @Mapping(source = "haFlowEventData.event.description", target = "action")
+    @Mapping(source = "time", target = "timestamp")
+    @Mapping(target = "taskId", ignore = true)
+    public abstract HaFlowEvent map(HaFlowEventData haFlowEventData);
+
+    @Mapping(source = "time", target = "timestamp")
+    @Mapping(source = "description", target = "details")
+    @Mapping(target = "taskId", ignore = true)
+    @Mapping(target = "data", ignore = true)
+    public abstract HaFlowEventAction map(HaFlowHistoryData haFlowHistoryData);
+
+    // TODO investigate: there is some problem in mapping this enum
+    @Mapping(target = "dumpType", ignore = true)
+    public abstract HaFlowEventDumpDataImpl map(HaFlowDumpData haFlowDumpData);
+
+    @Mapping(source = "payloads", target = "payloads")
+    @Mapping(source = "dumps", target = "dumps")
+    @Mapping(source = "flowEvent.timestamp", target = "time")
+    @Mapping(target = "timestampIso",
+            expression = "java(flowEvent.getTimestamp().atOffset(ZoneOffset.UTC).toString())")
+    public abstract HaFlowHistoryEntry map(
+            HaFlowEvent flowEvent, List<HaFlowHistoryPayload> payloads, List<HaFlowDumpPayload> dumps);
+
+    public abstract HaFlowDumpPayload toHaFlowDumpPayload(HaFlowEventDump haFlowEventDump);
+
+    @Mapping(target = "timestampIso",
+            expression = "java(haFlowEventAction.getTimestamp().atOffset(ZoneOffset.UTC).toString())")
+    public abstract HaFlowHistoryPayload toHaFlowHistoryPayload(HaFlowEventAction haFlowEventAction);
+
+    @Mapping(source = "correlationId", target = "taskId")
+    @Mapping(source = "dumpType", target = "dumpType")
+    @Mapping(source = "haFlow.timeCreate", target = "flowTimeCreate")
+    @Mapping(source = "haFlow.timeModify", target = "flowTimeModify")
+    @Mapping(target = "paths", expression = "java(mapHaFlowPaths(haFlow.getPaths()))")
+    @Mapping(target = "haSubFlows", expression = "java(mapHaSubFlows(haFlow.getHaSubFlows()))")
+    public abstract HaFlowDumpData toHaFlowDumpData(HaFlow haFlow, String correlationId, DumpType dumpType);
+
+    /**
+     * maps HaSubFlows to a human-readable string representation.
+     * @param haSubFlows source HaSubflows
+     * @return string representation
+     */
+    public String mapHaSubFlows(Collection<HaSubFlow> haSubFlows) {
+        return haSubFlows.stream()
+                .map(this::mapHaSubFlowToString)
+                .collect(Collectors.joining(", "));
+    }
+
+    /**
+     * maps HaFlowPaths to a human-readable string representation.
+     * @param paths source HaFlowPath
+     * @return string representation
+     */
+    public String mapHaFlowPaths(Collection<HaFlowPath> paths) {
+        return paths.stream()
+                .map(this::mapHaFlowPathToString)
+                .collect(Collectors.joining(", "));
+    }
+
+    private String mapHaSubFlowToString(HaSubFlow haSubFlow) {
+        return haSubFlow.toString();
+    }
+
+    private String mapHaFlowPathToString(HaFlowPath haFlowPath) {
+        return haFlowPath.toString();
+    }
+
     @Mapping(source = "flow.srcSwitch.switchId", target = "sourceSwitch")
     @Mapping(source = "flow.destSwitch.switchId", target = "destinationSwitch")
     @Mapping(source = "flow.srcPort", target = "sourcePort")
@@ -202,7 +283,7 @@ public abstract class HistoryMapper {
     protected abstract FlowDumpPayload generatedMap(FlowEventDump dump);
 
     /**
-     * Note: you have to additionally set {@link org.openkilda.wfm.share.history.model.FlowDumpData.DumpType}
+     * Note: you have to additionally set {@link DumpType}
      * to the dump data.
      */
     @Mapping(source = "flow.srcSwitch.switchId", target = "sourceSwitch")

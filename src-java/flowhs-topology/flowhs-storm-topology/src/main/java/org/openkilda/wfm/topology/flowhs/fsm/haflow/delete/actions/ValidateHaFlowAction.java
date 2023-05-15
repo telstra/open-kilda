@@ -27,7 +27,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.history.model.FlowEventData;
+import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -78,7 +78,8 @@ public class ValidateHaFlowAction extends
             return haFlow;
         });
 
-        stateMachine.saveNewEventToHistory("HA-flow was validated successfully", FlowEventData.Event.DELETE);
+        stateMachine.saveNewHaFlowEventToHistory("HA-flow was validated successfully",
+                HaFlowEventData.Event.DELETE);
         return Optional.of(buildResponseMessage(resultHaFlow, stateMachine.getCommandContext()));
     }
 

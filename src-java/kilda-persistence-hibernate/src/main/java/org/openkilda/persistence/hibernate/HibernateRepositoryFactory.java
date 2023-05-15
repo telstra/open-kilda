@@ -54,6 +54,9 @@ import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventActionRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventDumpRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventRepository;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
 
 public class HibernateRepositoryFactory implements RepositoryFactory {
@@ -131,6 +134,21 @@ public class HibernateRepositoryFactory implements RepositoryFactory {
     @Override
     public FlowEventDumpRepository createFlowEventDumpRepository() {
         return new HibernateHistoryFlowEventDumpRepository(implementation, makeFlowEventRepository());
+    }
+
+    @Override
+    public HaFlowEventRepository createHaFlowEventRepository() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public HaFlowEventDumpRepository createHaFlowEventDumpRepository() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public HaFlowEventActionRepository createHaFlowEventActionRepository() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

@@ -15,10 +15,9 @@
 
 package org.openkilda.northbound.controller.v2;
 
-import static java.lang.String.format;
-
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
@@ -33,11 +32,11 @@ import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.service.FlowService;
+import org.openkilda.northbound.utils.flowhistory.FlowHistoryHelper;
 
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -52,16 +51,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 
 @RestController
 @RequestMapping("/v2/flows")
 public class FlowControllerV2 extends BaseController {
-    private static final int DEFAULT_MAX_HISTORY_RECORD_COUNT = 100;
 
     @Autowired
     private FlowService flowService;
@@ -232,31 +231,36 @@ public class FlowControllerV2 extends BaseController {
                     + "`maxCount` is infinite (all records in time interval will be returned). "
                     + "Otherwise default value of `maxCount` will be equal to 100. In This case response will contain "
                     + "header 'Content-Range'.")
+            @RequestParam(value = "max_count", required = false)
+            @Min(1)
+            @Max(Integer.MAX_VALUE)
+            Optional<Integer> optionalMaxCount) {
+
+        return FlowHistoryHelper
+                .getFlowStatuses(flowService, flowId, optionalTimeFrom, optionalTimeTo, optionalMaxCount);
+    }
+
+    /**
+     * Gets flow history.
+     */
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+    @ApiOperation(value = "Gets history for flow", response = FlowHistoryEntry.class, responseContainer = "List")
+    @GetMapping(path = "/{flow_id}/history")
+    public CompletableFuture<ResponseEntity<List<FlowHistoryEntry>>> getHistory(
+            @PathVariable("flow_id") String flowId,
+            @ApiParam(value = "default: 0 (1 January 1970 00:00:00).")
+            @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalTimeFrom,
+            @ApiParam(value = "default: now.")
+            @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTimeTo,
+            @ApiParam(value = "Return at most N latest records. "
+                    + "Default: if `timeFrom` or/and `timeTo` parameters are presented default value of "
+                    + "`maxCount` is infinite (all records in time interval will be returned). "
+                    + "Otherwise default value of `maxCount` will be equal to 100. In This case response will contain "
+                    + "header 'Content-Range'.")
             @RequestParam(value = "max_count", required = false) Optional<Integer> optionalMaxCount) {
-        int maxCount = optionalMaxCount.orElseGet(() -> {
-            if (optionalTimeFrom.isPresent() || optionalTimeTo.isPresent()) {
-                return Integer.MAX_VALUE;
-            } else {
-                return DEFAULT_MAX_HISTORY_RECORD_COUNT;
-            }
-        });
 
-        Long timeTo = optionalTimeTo.orElseGet(() -> Instant.now().getEpochSecond());
-        Long timeFrom = optionalTimeFrom.orElse(0L);
-        return flowService.getFlowStatuses(flowId, timeFrom, timeTo, maxCount)
-                .thenApply(statuses -> {
-                    HttpHeaders headers = new HttpHeaders();
-
-                    if (!optionalMaxCount.isPresent() && !optionalTimeFrom.isPresent() && !optionalTimeTo.isPresent()
-                            && statuses.getHistoryStatuses().size() == DEFAULT_MAX_HISTORY_RECORD_COUNT) {
-                        // if request has no parameters we assume that default value of `maxCount` is 100. To indicate
-                        // that response may contain not all of history records "Content-Range" header will be added to
-                        // response.
-                        headers.add(HttpHeaders.CONTENT_RANGE, format("items 0-%d/*",
-                                statuses.getHistoryStatuses().size() - 1));
-                    }
-                    return new ResponseEntity<>(statuses, headers, HttpStatus.OK);
-                });
+        return FlowHistoryHelper
+                .getFlowHistoryEvents(flowService, flowId, optionalTimeFrom, optionalTimeTo, optionalMaxCount);
     }
 
     private void verifyRequest(FlowRequestV2 request) {

@@ -111,7 +111,7 @@ public class CompleteHaFlowCreateAction extends
         });
 
         dashboardLogger.onFlowStatusUpdate(stateMachine.getHaFlowId(), flowStatus);
-        stateMachine.saveActionToHistory(format("The ha-flow status was set to %s", flowStatus));
+        stateMachine.saveHaFlowActionToHistory(format("The HA-flow status was set to %s", flowStatus));
     }
 
     private boolean isBackUpStrategyUsed(PathId pathId, HaFlowCreateFsm stateMachine) {

@@ -31,7 +31,7 @@ public class HandleNotDeallocatedResourcesAction extends
     @Override
     public void perform(State from, State to, Event event, HaFlowDeleteContext context, HaFlowDeleteFsm stateMachine) {
         stateMachine.getHaFlowResources().forEach(resources ->
-                stateMachine.saveErrorToHistory("Failed to deallocate resources",
+                stateMachine.saveHaFlowErrorToHistory("Failed to deallocate resources",
                         format("Failed to deallocate resources: %s", resources)));
     }
 }

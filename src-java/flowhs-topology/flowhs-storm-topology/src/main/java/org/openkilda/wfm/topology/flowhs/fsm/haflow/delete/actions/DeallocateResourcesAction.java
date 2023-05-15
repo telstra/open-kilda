@@ -43,7 +43,7 @@ public class DeallocateResourcesAction extends
         stateMachine.getHaFlowResources().forEach(resources -> {
             transactionManager.doInTransaction(() ->
                     resourcesManager.deallocateHaFlowResources(resources));
-            stateMachine.saveActionToHistory("Flow resources were deallocated",
+            stateMachine.saveHaFlowActionToHistory("Flow resources were deallocated",
                     format("The ha-flow resources for %s / %s were deallocated",
                             resources.getForward().getPathId(), resources.getReverse().getPathId()));
         });

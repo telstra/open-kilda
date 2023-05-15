@@ -32,7 +32,7 @@ public class HandleNotDeallocatedResourcesAction extends
     public void perform(State from, State to, Event event, HaFlowCreateContext context, HaFlowCreateFsm stateMachine) {
 
         stateMachine.getHaFlowResources().forEach(resource ->
-                stateMachine.saveErrorToHistory("Failed to deallocate resources",
+                stateMachine.saveHaFlowErrorToHistory("Failed to deallocate resources",
                         format("Failed to deallocate resources: %s", resource)));
     }
 }

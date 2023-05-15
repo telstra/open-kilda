@@ -91,7 +91,7 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
                 commands, stateMachine.getCommandContext());
 
         if (deleteRequests.isEmpty()) {
-            stateMachine.saveActionToHistory("No requests to remove ha-flow rules");
+            stateMachine.saveHaFlowActionToHistory("No requests to remove HA-flow rules");
             stateMachine.fire(Event.RULES_REMOVED);
         } else {
             // emitting
@@ -101,7 +101,7 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
                 stateMachine.addPendingCommand(request.getCommandId(), request.getSwitchId());
             });
 
-            stateMachine.saveActionToHistory("Commands for removing ha-flow rules have been sent");
+            stateMachine.saveHaFlowActionToHistory("Commands for removing ha-flow rules have been sent");
         }
     }
 

@@ -75,6 +75,7 @@ import org.openkilda.messaging.payload.history.FlowStatusTimestampsEntry;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
+import org.openkilda.northbound.converter.FlowStatusMapper;
 import org.openkilda.northbound.converter.PathMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
@@ -96,6 +97,7 @@ import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
+import org.openkilda.northbound.utils.flowhistory.FlowHistoryRangeConstraints;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -145,6 +147,9 @@ public class FlowServiceImpl implements FlowService {
 
     @Autowired
     private FlowMapper flowMapper;
+
+    @Autowired
+    private FlowStatusMapper flowStatusMapper;
 
     @Autowired
     private PathMapper pathMapper;
@@ -667,22 +672,22 @@ public class FlowServiceImpl implements FlowService {
     }
 
     @Override
-    public CompletableFuture<List<FlowHistoryEntry>> listFlowEvents(String flowId,
-                                                                    long timestampFrom,
-                                                                    long timestampTo, int maxCount) {
+    public CompletableFuture<List<FlowHistoryEntry>> getFlowHistory(String flowId,
+                                                                    FlowHistoryRangeConstraints constraints) {
         log.info("API request: List flow events: flowId {}, timestampFrom {}, timestampTo {}, maxCount {}",
-                flowId, timestampFrom, timestampTo, maxCount);
-        if (maxCount < 1) {
+                flowId, constraints.getTimeFrom(), constraints.getTimeTo(), constraints.getMaxCount());
+        if (constraints.getMaxCount() < 1) {
             throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
-                    ErrorType.PARAMETERS_INVALID, format("Invalid `max_count` argument '%s'.", maxCount),
+                    ErrorType.PARAMETERS_INVALID, format("Invalid `max_count` argument '%s'.",
+                    constraints.getMaxCount()),
                     "`max_count` argument must be positive.");
         }
         String correlationId = RequestCorrelationId.getId();
         GetFlowHistoryRequest request = GetFlowHistoryRequest.builder()
                 .flowId(flowId)
-                .timestampFrom(timestampFrom)
-                .timestampTo(timestampTo)
-                .maxCount(maxCount)
+                .timestampFrom(constraints.getTimeFrom())
+                .timestampTo(constraints.getTimeTo())
+                .maxCount(constraints.getMaxCount())
                 .build();
         CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
         return messagingChannel.sendAndGetChunked(nbworkerTopic, command)
@@ -692,27 +697,28 @@ public class FlowServiceImpl implements FlowService {
     }
 
     @Override
-    public CompletableFuture<FlowHistoryStatusesResponse> getFlowStatuses(String flowId, long timestampFrom,
-                                                                          long timestampTo, int maxCount) {
+    public CompletableFuture<FlowHistoryStatusesResponse> getFlowStatuses(String flowId,
+                                                                          FlowHistoryRangeConstraints constraints) {
         log.info("API request: Get flow statuses: flowId {}, timestampFrom {}, timestampTo {}, maxCount {}",
-                flowId, timestampFrom, timestampTo, maxCount);
-        if (maxCount < 1) {
+                flowId, constraints.getTimeFrom(), constraints.getTimeTo(), constraints.getMaxCount());
+        if (constraints.getMaxCount() < 1) {
             throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
-                    ErrorType.PARAMETERS_INVALID, format("Invalid `max_count` argument '%s'.", maxCount),
+                    ErrorType.PARAMETERS_INVALID, format("Invalid `max_count` argument '%s'.",
+                    constraints.getMaxCount()),
                     "`max_count` argument must be positive.");
         }
         String correlationId = RequestCorrelationId.getId();
         GetFlowStatusTimestampsRequest request = GetFlowStatusTimestampsRequest.builder()
                 .flowId(flowId)
-                .timestampFrom(timestampFrom)
-                .timestampTo(timestampTo)
-                .maxCount(maxCount)
+                .timestampFrom(constraints.getTimeFrom())
+                .timestampTo(constraints.getTimeTo())
+                .maxCount(constraints.getMaxCount())
                 .build();
         CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
         return messagingChannel.sendAndGetChunked(nbworkerTopic, command)
                 .thenApply(result -> result.stream()
                         .map(FlowStatusTimestampsEntry.class::cast)
-                        .map(flowMapper::toFlowHistoryStatus)
+                        .map(flowStatusMapper::toFlowHistoryStatus)
                         .collect(Collectors.toList()))
                 .thenApply(FlowHistoryStatusesResponse::new);
     }

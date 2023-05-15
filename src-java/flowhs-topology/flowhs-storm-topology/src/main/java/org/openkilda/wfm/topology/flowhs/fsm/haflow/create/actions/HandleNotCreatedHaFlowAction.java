@@ -45,7 +45,7 @@ public class HandleNotCreatedHaFlowAction extends HistoryRecordingAction<
         dashboardLogger.onFlowStatusUpdate(haFlowId, FlowStatus.DOWN);
         // TODO status info
         haFlowRepository.updateStatus(haFlowId, FlowStatus.DOWN);
-        stateMachine.saveActionToHistory("Failed to create the flow", stateMachine.getErrorReason());
+        stateMachine.saveHaFlowActionToHistory("Failed to create the flow", stateMachine.getErrorReason());
         stateMachine.fire(Event.NEXT);
     }
 }

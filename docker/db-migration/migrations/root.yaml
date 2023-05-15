@@ -93,3 +93,7 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 027-add-ha-flow-feature-toggle-and-groups.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 028-add-ha-flow-history-event.yaml
+

@@ -30,7 +30,6 @@ import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
-import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
@@ -48,7 +47,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * FlowService is for operations on flows, primarily against the Flow Topology.
  */
-public interface FlowService {
+public interface FlowService extends FlowHistoryAware<FlowHistoryEntry> {
     /**
      * Creates flow.
      *
@@ -237,14 +236,6 @@ public interface FlowService {
      * @return the meter entry
      */
     CompletableFuture<FlowMeterEntries> modifyMeter(String flowId);
-
-    CompletableFuture<List<FlowHistoryEntry>> listFlowEvents(String flowId,
-                                                             long timestampFrom,
-                                                             long timestampTo, int maxCount);
-
-    CompletableFuture<FlowHistoryStatusesResponse> getFlowStatuses(String flowId,
-                                                                   long timestampFrom,
-                                                                   long timestampTo, int maxCount);
 
     /**
      * Swaps a flow endpoint.

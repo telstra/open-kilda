@@ -43,7 +43,7 @@ public class RevertHaFlowStatusAction extends
             log.debug("Reverting the ha-flow status of {} to {}", haFlowId, originalStatus);
 
             haFlowRepository.updateStatus(haFlowId, originalStatus);
-            stateMachine.saveActionToHistory(format("The ha-flow status was reverted to %s", originalStatus));
+            stateMachine.saveHaFlowActionToHistory(format("The ha-flow status was reverted to %s", originalStatus));
         }
     }
 }

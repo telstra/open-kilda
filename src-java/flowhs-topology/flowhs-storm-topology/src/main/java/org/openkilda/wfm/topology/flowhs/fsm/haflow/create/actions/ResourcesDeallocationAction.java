@@ -60,8 +60,8 @@ public class ResourcesDeallocationAction extends
     protected void perform(
             State from, State to, Event event, HaFlowCreateContext context, HaFlowCreateFsm stateMachine) {
         if (!haFlowRepository.exists(stateMachine.getHaFlowId())) {
-            stateMachine.saveActionToHistory("Skip resources deallocation",
-                    format("Skip resources deallocation. HA-flow %s has already been deleted.",
+            stateMachine.saveHaFlowActionToHistory("Skip resources de-allocation",
+                    format("Skip resources de-allocation. HA-flow %s has already been deleted.",
                             stateMachine.getHaFlowId()));
             return;
         }
@@ -86,7 +86,7 @@ public class ResourcesDeallocationAction extends
             haFlowRepository.remove(stateMachine.getHaFlowId());
         }
 
-        stateMachine.saveActionToHistory("The resources have been deallocated");
+        stateMachine.saveHaFlowActionToHistory("The resources have been deallocated");
     }
 
     private void updateIslsForSegments(List<PathSegment> pathSegments) {

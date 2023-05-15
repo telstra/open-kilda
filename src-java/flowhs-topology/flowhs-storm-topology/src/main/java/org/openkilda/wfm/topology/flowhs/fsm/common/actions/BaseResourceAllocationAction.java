@@ -50,8 +50,8 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.share.history.model.DumpType;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
-import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
@@ -222,8 +222,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                                               FlowPathPair oldPaths, boolean allowOldPaths,
                                               String sharedBandwidthGroupId,
                                               Predicate<GetPathsResult> whetherCreatePathSegments,
-                                              boolean isProtected)
-            throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
+                                              boolean isProtected) {
         // Lazy initialisable map with reused bandwidth...
         Supplier<Map<IslEndpoints, Long>> reuseBandwidthPerIsl = Suppliers.memoize(() -> {
             Map<IslEndpoints, Long> result = new HashMap<>();
@@ -321,8 +320,7 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
     }
 
     @SneakyThrows
-    protected FlowResources allocateFlowResources(Flow flow, PathId forwardPathId, PathId reversePathId)
-            throws ResourceAllocationException {
+    protected FlowResources allocateFlowResources(Flow flow, PathId forwardPathId, PathId reversePathId) {
         RetryPolicy<FlowResources> resourceAllocationRetryPolicy =
                 transactionManager.<FlowResources>getDefaultRetryPolicy()
                         .handle(ResourceAllocationException.class)
