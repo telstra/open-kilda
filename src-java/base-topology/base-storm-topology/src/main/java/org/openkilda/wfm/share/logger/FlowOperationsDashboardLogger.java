@@ -71,6 +71,8 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String HA_FLOW_DELETE_RESULT_EVENT = "ha_flow_delete_result";
     private static final String HA_FLOW_UPDATE_EVENT = "ha_flow_update";
     private static final String HA_FLOW_UPDATE_RESULT_EVENT = "ha_flow_update_result";
+    private static final String HA_FLOW_PATH_SWAP_EVENT = "ha_flow_path_swap";
+    private static final String HA_FLOW_PATH_SWAP_RESULT_EVENT = "ha_flow_path_swap_result";
 
     private static final String TAG = "FLOW_OPERATIONS_DASHBOARD";
     private static final String DASHBOARD = "dashboard";
@@ -853,5 +855,42 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(FLOW_ID, haFlowId);
         data.put(EVENT_TYPE, HA_FLOW_UPDATE_EVENT);
         invokeLogger(Level.INFO, String.format("Patch update the HA-flow: %s", haFlowId), data);
+    }
+
+    /**
+     * Log a flow-paths-swap event.
+     */
+    public void onHaFlowPathsSwap(String haFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-paths-swap");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_PATH_SWAP_EVENT);
+        invokeLogger(Level.INFO, String.format("Swap paths for the ha-flow: %s", haFlowId), data);
+    }
+
+    /**
+     * Log a ha-paths-swap-successful event.
+     */
+    public void onSuccessfulHaFlowPathSwap(String haFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-paths-swap-successful");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_PATH_SWAP_RESULT_EVENT);
+        data.put(UPDATE_RESULT, SUCCESSFUL_RESULT);
+        invokeLogger(Level.INFO, String.format("Successful update of the ha-flow %s", haFlowId), data);
+    }
+
+    /**
+     * Log a ha-paths-swap-failed event.
+     */
+    public void onFailedHaFlowPathSwap(String haFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-paths-swap-failed");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_PATH_SWAP_RESULT_EVENT);
+        data.put(UPDATE_RESULT, FAILED_RESULT);
+        data.put(FAILURE_REASON, failureReason);
+        invokeLogger(Level.WARN, String.format("Failed path swap for the ha-flow %s, reason: %s",
+                        haFlowId, failureReason), data);
     }
 }

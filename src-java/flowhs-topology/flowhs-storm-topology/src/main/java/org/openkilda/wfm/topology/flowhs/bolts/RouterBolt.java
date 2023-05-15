@@ -28,6 +28,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_VALIDATION_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_CREATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_DELETE_HUB;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_PATH_SWAP_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_READ;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_UPDATE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_HA_FLOW_VALIDATION_HUB;
@@ -57,6 +58,7 @@ import org.openkilda.messaging.command.flow.FlowValidationRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
+import org.openkilda.messaging.command.haflow.HaFlowPathSwapRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathsReadRequest;
 import org.openkilda.messaging.command.haflow.HaFlowReadRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
@@ -268,6 +270,11 @@ public class RouterBolt extends AbstractBolt {
                 log.debug("Received an ha-flow validation request {} with the key {}", request, key);
                 emitWithContext(ROUTER_TO_HA_FLOW_VALIDATION_HUB.name(), input,
                         new Values(key, request.getHaFlowId(), data));
+            } else if (data instanceof HaFlowPathSwapRequest) {
+                HaFlowPathSwapRequest request = (HaFlowPathSwapRequest) data;
+                log.debug("Received a ha-flow paths swap request {} with key {}", request.getHaFlowId(), key);
+                emitWithContext(ROUTER_TO_HA_FLOW_PATH_SWAP_HUB.name(), input,
+                        new Values(key, request.getHaFlowId(), data));
             } else {
                 unhandledInput(input);
             }
@@ -314,6 +321,7 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(ROUTER_TO_HA_FLOW_UPDATE_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_HA_FLOW_DELETE_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_HA_FLOW_VALIDATION_HUB.name(), STREAM_FIELDS);
+        declarer.declareStream(ROUTER_TO_HA_FLOW_PATH_SWAP_HUB.name(), STREAM_FIELDS);
         declarer.declareStream(ROUTER_TO_HA_FLOW_READ.name(),
                 new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
         declarer.declareStream(ZkStreams.ZK.toString(),

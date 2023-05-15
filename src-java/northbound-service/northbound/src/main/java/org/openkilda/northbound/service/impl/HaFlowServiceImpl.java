@@ -18,6 +18,7 @@ package org.openkilda.northbound.service.impl;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
+import org.openkilda.messaging.command.haflow.HaFlowPathSwapRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathsReadRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathsResponse;
 import org.openkilda.messaging.command.haflow.HaFlowReadRequest;
@@ -212,6 +213,13 @@ public class HaFlowServiceImpl implements HaFlowService {
 
     @Override
     public CompletableFuture<HaFlow> swapHaFlowPaths(String haFlowId) {
-        return null;
+        log.info("API request: Swap paths of HA-flow: {}", haFlowId);
+        CommandMessage command = new CommandMessage(new HaFlowPathSwapRequest(haFlowId), System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(HaFlowResponse.class::cast)
+                .thenApply(HaFlowResponse::getHaFlow)
+                .thenApply(flowMapper::toHaFlow);
+
     }
 }

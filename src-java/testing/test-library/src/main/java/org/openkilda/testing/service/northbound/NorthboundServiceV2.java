@@ -202,4 +202,6 @@ public interface NorthboundServiceV2 {
     HaFlowValidationResult validateHaFlow(String haFlowId);
 
     HaFlowPaths getHaFlowPaths(String haFlowId);
+
+    HaFlow swapHaFlowPaths(String haFlowId);
 }
