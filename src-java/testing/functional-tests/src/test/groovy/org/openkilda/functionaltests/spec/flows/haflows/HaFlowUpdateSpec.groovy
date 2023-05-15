@@ -44,7 +44,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         when: "Update the ha-flow"
         def updateResponse = haFlowHelper.updateHaFlow(haFlow.haFlowId, update)
         def ignores = ["subFlows.timeUpdate", "subFlows.status", "timeUpdate", "status"]
-        ignores.addAll(data.additionalIgnores)
 
         then: "Requested updates are reflected in the response and in 'get' API"
         expect updateResponse, sameBeanAs(haFlow, ignores)
@@ -56,6 +55,9 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                 assert northboundV2.validateSwitch(switchId).isAsExpected()
             }
         }
+
+        and: "HA-flow pass validation"
+        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
 
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
@@ -72,8 +74,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                                         it.endpoint.switchId)) - it.endpoint.portNumber
                                 it.endpoint.portNumber = allowedPorts[0]
                             }
-                        },
-                        additionalIgnores: []
+                        }
                 ],
                 [
                         descr: "shared switch and subflow switches",
@@ -93,13 +94,11 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                                     .getAllowedPortsForSwitch(topology.find(newSwT.ep1.dpId))[-1]
                             payload.subFlows[1].endpoint.portNumber = topology
                                     .getAllowedPortsForSwitch(topology.find(newSwT.ep2.dpId))[-1]
-                        },
-                        additionalIgnores: ["yPoint"]
+                        }
                 ],
                 [
                         descr: "[without any changes in update request]",
                         updateClosure: { },
-                        additionalIgnores: []
                 ]
         ]
     }
@@ -132,6 +131,9 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
             }
         }
 
+        and: "HA-flow pass validation"
+        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
+
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
@@ -159,6 +161,9 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                 assert northboundV2.validateSwitch(switchId).isAsExpected()
             }
         }
+
+        and: "HA-flow pass validation"
+        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
 
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
@@ -290,6 +295,9 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
             }
         }
 
+        and: "HA-flow pass validation"
+        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
+
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
 
@@ -359,6 +367,9 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                 assert northboundV2.validateSwitch(switchId).isAsExpected()
             }
         }
+
+        and: "HA-flow pass validation"
+        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
 
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)

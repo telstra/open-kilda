@@ -53,6 +53,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.validation.HaFlowValidationF
 import org.openkilda.wfm.topology.flowhs.service.FlowValidationEventListener;
 import org.openkilda.wfm.topology.flowhs.service.FlowValidationHubCarrier;
 
+import com.google.common.collect.Sets;
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
 import lombok.Getter;
@@ -133,14 +134,12 @@ public final class HaFlowValidationFsm extends NbTrackableFlowProcessingFsm<HaFl
         });
 
         log.debug("Send commands to get the groups on the termination switches");
-        awaitingGroupsSize = haFlow.getProtectedForwardPath() != null ? 2 : 1;
+        Set<SwitchId> groupSwitchIds = Sets.newHashSet(haFlow.getForwardPath().getYPointSwitchId());
+        Optional.ofNullable(haFlow.getProtectedForwardPath()).map(e -> groupSwitchIds.add(e.getYPointSwitchId()));
+        awaitingGroupsSize = groupSwitchIds.size();
 
-        getCarrier().sendSpeakerRequest(flowId,
-                new DumpGroupsForFlowHsRequest(haFlow.getForwardPath().getYPointSwitchId()));
-        Optional.ofNullable(haFlow.getProtectedForwardPath()).ifPresent(protectedFlowPath -> {
-            getCarrier().sendSpeakerRequest(flowId,
-                    new DumpGroupsForFlowHsRequest(protectedFlowPath.getYPointSwitchId()));
-        });
+        groupSwitchIds.forEach(switchId ->
+                getCarrier().sendSpeakerRequest(flowId, new DumpGroupsForFlowHsRequest(switchId)));
     }
 
     public void receivedRules(State from, State to,
