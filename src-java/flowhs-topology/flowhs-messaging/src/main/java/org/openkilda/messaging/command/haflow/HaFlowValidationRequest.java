@@ -13,28 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.haflows;
+package org.openkilda.messaging.command.haflow;
 
-import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto;
+import org.openkilda.messaging.command.CommandData;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.experimental.FieldDefaults;
-
-import java.util.List;
+import lombok.EqualsAndHashCode;
 
 @Data
-@Builder
 @AllArgsConstructor
-@JsonNaming(SnakeCaseStrategy.class)
-@FieldDefaults(level = AccessLevel.PRIVATE)
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class HaFlowDiscrepancy {
-    Boolean asExpected;
-    List<PathDiscrepancyDto> discrepancies;
+@EqualsAndHashCode(callSuper = false)
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class HaFlowValidationRequest extends CommandData {
+    private static final long serialVersionUID = 1L;
+
+    String haFlowId;
 }

@@ -13,26 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.haflows;
+package org.openkilda.messaging.command.haflow;
 
-import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.flow.FlowValidationResponse;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.experimental.FieldDefaults;
+import lombok.EqualsAndHashCode;
 
 import java.util.List;
 
 @Data
-@Builder
-@AllArgsConstructor
-@JsonNaming(SnakeCaseStrategy.class)
-@FieldDefaults(level = AccessLevel.PRIVATE)
-public class HaFlowValidationResult {
+@EqualsAndHashCode(callSuper = false)
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class HaFlowValidationResponse extends InfoData {
+    private static final long serialVersionUID = 1L;
+
     boolean asExpected;
-    List<FlowValidationDto> subFlowValidationResults;
+    List<FlowValidationResponse> subFlowValidationResults;
 }
