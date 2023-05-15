@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions;
 
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseHaFlowPathRemovalAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.BaseHaFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;

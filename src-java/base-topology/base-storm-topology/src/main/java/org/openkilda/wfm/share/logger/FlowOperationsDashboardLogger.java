@@ -851,7 +851,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "ha-flow-patch-update");
         data.put(FLOW_ID, haFlowId);
-        data.put(EVENT_TYPE, FLOW_UPDATE_EVENT);
+        data.put(EVENT_TYPE, HA_FLOW_UPDATE_EVENT);
         invokeLogger(Level.INFO, String.format("Patch update the HA-flow: %s", haFlowId), data);
     }
 }

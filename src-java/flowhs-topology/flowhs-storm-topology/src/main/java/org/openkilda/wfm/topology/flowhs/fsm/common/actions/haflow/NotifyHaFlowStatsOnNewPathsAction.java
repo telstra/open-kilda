@@ -13,28 +13,26 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow;
 
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
-public class NotifyHaFlowStatsAction extends
-        FlowProcessingWithHistorySupportAction<HaFlowCreateFsm, State, Event, HaFlowCreateContext> {
-    private FlowGenericCarrier carrier;
+public class NotifyHaFlowStatsOnNewPathsAction<T extends HaFlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C
+        extends SpeakerResponseContext> extends FlowProcessingWithHistorySupportAction<T, S, E, C> {
+    private final FlowGenericCarrier carrier;
 
-    public NotifyHaFlowStatsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {
+    public NotifyHaFlowStatsOnNewPathsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {
         super(persistenceManager);
         this.carrier = carrier;
     }
 
     @Override
-    protected void perform(
-            State from, State to, Event event, HaFlowCreateContext context, HaFlowCreateFsm stateMachine) {
-        //TODO notify stats https://github.com/telstra/open-kilda/issues/5182
+    protected void perform(S from, S to, E event, C context, T stateMachine) {
+        // TODO notify stats https://github.com/telstra/open-kilda/issues/5182
+        // example: org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowStatsOnNewPathsAction
     }
 }

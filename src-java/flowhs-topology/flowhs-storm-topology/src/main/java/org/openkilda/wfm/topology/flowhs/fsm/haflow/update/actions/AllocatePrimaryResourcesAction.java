@@ -29,7 +29,7 @@ import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flow.model.HaFlowPathPair;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseHaResourceAllocationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.BaseHaResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;

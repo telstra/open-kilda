@@ -13,29 +13,27 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow;
 
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
 
 @Slf4j
-public class HandleNotCompletedCommandsAction extends
-        HistoryRecordingAction<HaFlowUpdateFsm, State, Event, HaFlowUpdateContext> {
+public class HandleNotCompletedCommandsAction<T extends HaFlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E,
+        C extends SpeakerResponseContext> extends HistoryRecordingAction<T, S, E, C> {
 
     public static final String ACTION_MESSAGE = "Command is not finished yet";
 
     @Override
-    public void perform(State from, State to, Event event, HaFlowUpdateContext context, HaFlowUpdateFsm stateMachine) {
+    public void perform(S from, S to, E event, C context, T stateMachine) {
         for (UUID commandId : stateMachine.getPendingCommands().keySet()) {
             BaseSpeakerCommandsRequest request = stateMachine.getRemoveCommands().get(commandId);
             String actionName;

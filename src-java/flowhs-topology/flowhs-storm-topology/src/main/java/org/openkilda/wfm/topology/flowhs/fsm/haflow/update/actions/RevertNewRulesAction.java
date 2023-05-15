@@ -15,19 +15,18 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions;
 
-import org.openkilda.model.FlowPath;
+import static com.google.common.collect.Lists.newArrayList;
+
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.PathId;
-import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.DataAdapter;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
-import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HaFlowRuleManagerProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HaFlowRuleManagerProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
@@ -71,8 +70,12 @@ public class RevertNewRulesAction extends HaFlowRuleManagerProcessingAction<
     }
 
     private void removeNewRules(HaFlow haFlow, HaFlowUpdateFsm stateMachine) {
-        List<SpeakerData> removeCommands = buildPrimaryRemoveCommands(haFlow, stateMachine);
-        removeCommands.addAll(buildProtectedRemoveCommands(haFlow, stateMachine));
+        Set<PathId> overlappingPathIds = getPathIdsWhichCanUseSharedRules(haFlow);
+        Map<PathId, HaFlow> haFlowMap = buildHaFlowMapForNewPaths(haFlow, stateMachine);
+
+        List<SpeakerData> removeCommands = buildPrimaryRemoveCommands(
+                haFlow, overlappingPathIds, haFlowMap, stateMachine);
+        removeCommands.addAll(buildProtectedRemoveCommands(haFlow, overlappingPathIds, haFlowMap, stateMachine));
 
         stateMachine.getRemoveCommands().clear();
         buildHaFlowDeleteRequests(removeCommands, stateMachine.getCommandContext())
@@ -83,57 +86,58 @@ public class RevertNewRulesAction extends HaFlowRuleManagerProcessingAction<
                 });
     }
 
-    private List<SpeakerData> buildPrimaryRemoveCommands(HaFlow haFlow, HaFlowUpdateFsm stateMachine) {
+    private List<SpeakerData> buildPrimaryRemoveCommands(
+            HaFlow haFlow, Set<PathId> overlappingPathIds, Map<PathId, HaFlow> haFlowMap,
+            HaFlowUpdateFsm stateMachine) {
         List<SpeakerData> removeCommands = new ArrayList<>();
         if (stateMachine.getNewPrimaryPathIds() != null) {
-            HaFlowPath newForward = getHaFlowPath(
-                    haFlow, stateMachine.getNewPrimaryPathIds().getForward().getHaPathId());
-            HaFlowPath newReverse = getHaFlowPath(
-                    haFlow, stateMachine.getNewPrimaryPathIds().getReverse().getHaPathId());
+            List<HaFlowPath> primaryPaths = newArrayList(
+                    getHaFlowPath(haFlow, stateMachine.getNewPrimaryPathIds().getForward().getHaPathId()),
+                    getHaFlowPath(haFlow, stateMachine.getNewPrimaryPathIds().getReverse().getHaPathId()));
 
-            DataAdapter dataAdapter = buildDataAdapterForNewRulesFullUpdate(
-                    haFlow, newForward, newReverse, stateMachine);
-            removeCommands.addAll(ruleManager.buildRulesHaFlowPath(
-                    newForward, true, false, true, true, dataAdapter));
-            removeCommands.addAll(ruleManager.buildRulesHaFlowPath(
-                    newReverse, true, false, true, true, dataAdapter));
+            for (HaFlowPath primaryPath : primaryPaths) {
+                DataAdapter dataAdapter = buildDataAdapterForNewRules(
+                        primaryPath, overlappingPathIds, haFlowMap, stateMachine);
+                removeCommands.addAll(ruleManager.buildRulesHaFlowPath(
+                        primaryPath, true, false, true, true, dataAdapter));
+            }
         }
         return removeCommands;
     }
 
-    private List<SpeakerData> buildProtectedRemoveCommands(HaFlow haFlow, HaFlowUpdateFsm stateMachine) {
+    private List<SpeakerData> buildProtectedRemoveCommands(
+            HaFlow haFlow, Set<PathId> overlappingPathIds, Map<PathId, HaFlow> haFlowMap,
+            HaFlowUpdateFsm stateMachine) {
         List<SpeakerData> revertCommands = new ArrayList<>();
         if (stateMachine.getNewProtectedPathIds() != null) {
-            HaFlowPath newForward = getHaFlowPath(
-                    haFlow, stateMachine.getNewProtectedPathIds().getForward().getHaPathId());
-            HaFlowPath newReverse = getHaFlowPath(
-                    haFlow, stateMachine.getNewProtectedPathIds().getReverse().getHaPathId());
-
-            DataAdapter dataAdapter = buildDataAdapterForNewRulesFullUpdate(
-                    haFlow, newForward, newReverse, stateMachine);
-
-            revertCommands.addAll(ruleManager.buildRulesHaFlowPath(
-                    newForward, true, false, false, true, dataAdapter));
-            revertCommands.addAll(ruleManager.buildRulesHaFlowPath(
-                    newReverse, true, false, false, true, dataAdapter));
+            List<HaFlowPath> protectedPaths = newArrayList(
+                    getHaFlowPath(haFlow, stateMachine.getNewProtectedPathIds().getForward().getHaPathId()),
+                    getHaFlowPath(haFlow, stateMachine.getNewProtectedPathIds().getReverse().getHaPathId()));
+            for (HaFlowPath protectedPath : protectedPaths) {
+                DataAdapter dataAdapter = buildDataAdapterForNewRules(
+                        protectedPath, overlappingPathIds, haFlowMap, stateMachine);
+                revertCommands.addAll(ruleManager.buildRulesHaFlowPath(
+                        protectedPath, true, false, false, true, dataAdapter));
+            }
         }
         return revertCommands;
     }
 
     private void installOldRules(HaFlowUpdateFsm stateMachine) {
+        HaFlow originalHaFlow = stateMachine.getOriginalHaFlow();
+        Map<PathId, HaFlow> haFlowMap = buildHaFlowMap(
+                originalHaFlow, stateMachine.getOldPrimaryPathIds(), stateMachine.getOldProtectedPathIds());
+
         List<SpeakerData> ingressCommands = new ArrayList<>();
         // Reinstall old ingress rules that may be overridden by new ingress.
 
-        DataAdapter dataAdapter = buildDataAdapterForOldRules(stateMachine.getOldPrimaryPathIds(), stateMachine);
-        HaFlowPath oldForward = stateMachine.getOriginalHaFlow().getForwardPath();
-        if (oldForward != null) {
+        for (HaFlowPath oldPath : newArrayList(originalHaFlow.getForwardPath(), originalHaFlow.getReversePath())) {
+            if (oldPath == null) {
+                continue;
+            }
+            DataAdapter dataAdapter = buildDataAdapterForOldRules(oldPath, haFlowMap);
             ingressCommands.addAll(ruleManager.buildRulesHaFlowPath(
-                    oldForward, false, false, true, false, dataAdapter));
-        }
-        HaFlowPath oldReverse = stateMachine.getOriginalHaFlow().getReversePath();
-        if (oldReverse != null) {
-            ingressCommands.addAll(ruleManager.buildRulesHaFlowPath(
-                    oldReverse, false, false, true, false, dataAdapter));
+                    oldPath, false, false, true, false, dataAdapter));
         }
 
         stateMachine.getIngressCommands().clear();  // need to clean previous requests
@@ -145,55 +149,29 @@ public class RevertNewRulesAction extends HaFlowRuleManagerProcessingAction<
                 });
     }
 
-    private DataAdapter buildDataAdapterForOldRules(
-            HaPathIdsPair oldPrimaryPathIdsPair, HaFlowUpdateFsm stateMachine) {
-        Set<PathId> pathIds = new HashSet<>(oldPrimaryPathIdsPair.getAllSubPathIds());
-
-        Set<SwitchId> switchIds = stateMachine.getOriginalHaFlow().getEndpointSwitchIds();
-        Map<PathId, HaFlow> additionalHaFlowMap = buildHaFlowMap(stateMachine.getOriginalHaFlow(),
-                stateMachine.getOldPrimaryPathIds(), stateMachine.getOldProtectedPathIds());
-
+    private DataAdapter buildDataAdapterForOldRules(HaFlowPath haFlowPath, Map<PathId, HaFlow> additionalHaFlowMap) {
+        Set<PathId> pathIds = new HashSet<>(haFlowPath.getSubPathIds());
+        Set<SwitchId> switchIds = haFlowPath.getAllInvolvedSwitches();
         return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false, additionalHaFlowMap);
     }
 
-    private DataAdapter buildDataAdapterForNewRulesFullUpdate(
-            HaFlow haFlow, HaFlowPath newForward, HaFlowPath newReverse, HaFlowUpdateFsm stateMachine) {
-        Set<SwitchId> endpointSwitchIds = newForward.getEndpointSwitchIds();
-        endpointSwitchIds.addAll(newReverse.getEndpointSwitchIds());
+    private DataAdapter buildDataAdapterForNewRules(
+            HaFlowPath haFlowPath, Set<PathId> overlappingPathIds, Map<PathId, HaFlow> additionalHaFlowMap,
+            HaFlowUpdateFsm stateMachine) {
+        Set<SwitchId> switchIds = haFlowPath.getAllInvolvedSwitches();
+        Set<PathId> pathIds = new HashSet<>(overlappingPathIds);
+        pathIds.addAll(haFlowPath.getSubPathIds());
+        pathIds.addAll(stateMachine.getOldPrimaryPathIds().getAllSubPathIds());
+        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false, additionalHaFlowMap);
+    }
 
-        Set<PathId> pathIds = new HashSet<>();
-        for (SwitchId switchId : endpointSwitchIds) {
-            flowPathRepository.findBySrcSwitch(switchId, false).stream()
-                    .map(FlowPath::getPathId)
-                    .forEach(pathIds::add);
-        }
-
-        List<FlowPath> subPaths = new ArrayList<>(newForward.getSubPaths());
-        subPaths.addAll(newReverse.getSubPaths());
-
-        Set<SwitchId> switchIds = new HashSet<>(endpointSwitchIds);
-
-        for (FlowPath subPath : subPaths) {
-            switchIds.addAll(getSubPathSwitchIds(subPath));
-            pathIds.add(subPath.getPathId());
-        }
-
+    private Map<PathId, HaFlow> buildHaFlowMapForNewPaths(HaFlow haFlow, HaFlowUpdateFsm stateMachine) {
         HaFlow updatedHaFlow = copyHaFlowWithPathIds(
                 haFlow, stateMachine.getNewPrimaryPathIds(), stateMachine.getNewProtectedPathIds());
         Map<PathId, HaFlow> additionalHaFlowMap = buildHaFlowMap(updatedHaFlow,
                 stateMachine.getNewPrimaryPathIds(), stateMachine.getNewProtectedPathIds());
         additionalHaFlowMap.putAll(buildHaFlowMap(stateMachine.getOriginalHaFlow(), stateMachine.getOldPrimaryPathIds(),
                 stateMachine.getOldProtectedPathIds()));
-
-        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false, additionalHaFlowMap);
-    }
-
-    private Set<SwitchId> getSubPathSwitchIds(FlowPath subPath) {
-        Set<SwitchId> switchIds = new HashSet<>();
-        for (PathSegment segment : subPath.getSegments()) {
-            switchIds.add(segment.getSrcSwitchId());
-            switchIds.add(segment.getDestSwitchId());
-        }
-        return switchIds;
+        return additionalHaFlowMap;
     }
 }

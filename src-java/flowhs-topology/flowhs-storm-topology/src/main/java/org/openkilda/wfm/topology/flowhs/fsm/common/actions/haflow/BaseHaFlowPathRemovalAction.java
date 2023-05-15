@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow;
 
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.HaFlowPath;
@@ -22,6 +22,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
 
 import lombok.extern.slf4j.Slf4j;
 

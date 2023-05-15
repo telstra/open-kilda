@@ -1,17 +1,19 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.YFlowHelper
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 
+import com.shazam.shazamcrest.matcher.CustomisableMatcher
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
@@ -31,20 +33,7 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
     def "Able to enable protected path on an HA-flow"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "A simple HA-flow"
-        def swT = topologyHelper.switchTriplets.find {
-            if (it.ep1 == it.ep2 || it.ep1 == it.shared || it.ep2 == it.shared) {
-                return false
-            }
-            def pathsCombinations = [it.pathsEp1, it.pathsEp2].combinations()
-            for (i in 0..<pathsCombinations.size()) {
-                for (j in i + 1..<pathsCombinations.size()) {
-                    if (!areHaPathsIntersect(pathsCombinations[i], pathsCombinations[j])) {
-                        return true
-                    }
-                }
-            }
-            return false
-        }
+        def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
         HaFlow haFlow = haFlowHelper.addHaFlow(haFlowRequest)
@@ -92,20 +81,7 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
     def "Able to disable protected path on an HA-flow via partial update"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "An HA-flow with protected path"
-        def swT = topologyHelper.switchTriplets.find {
-            if (it.ep1 == it.ep2 || it.ep1 == it.shared || it.ep2 == it.shared) {
-                return false
-            }
-            def pathsCombinations = [it.pathsEp1, it.pathsEp2].combinations()
-            for (i in 0..<pathsCombinations.size()) {
-                for (j in i + 1..<pathsCombinations.size()) {
-                    if (!areHaPathsIntersect(pathsCombinations[i], pathsCombinations[j])) {
-                        return true
-                    }
-                }
-            }
-            return false
-        }
+        def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
         haFlowRequest.allocateProtectedPath = true
@@ -142,19 +118,92 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
             }
         }
 
+        and: "HA-flow pass validation"
+        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
+
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
 
-    static boolean areHaPathsIntersect(subPaths1, subPaths2) {
-        for (List<PathNode> subPath1 : subPaths1) {
-            for (List<PathNode> subPath2 : subPaths2) {
-                if (subPaths1.intersect(subPaths2)) {
-                    return true
-                }
+    @Tidy
+    def "User can update #data.descr of a ha-flow with protected path"() {
+        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
+        given: "An HA-flow with protected path"
+        def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
+        assumeTrue(swT != null, "These cases cannot be covered on given topology:")
+        def haFlowRequest = haFlowHelper.randomHaFlow(swT)
+        haFlowRequest.allocateProtectedPath = true
+        HaFlow haFlow = haFlowHelper.addHaFlow(haFlowRequest)
+        def haFlowPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
+        assert haFlowPaths.sharedPath.protectedPath
+        haFlow.tap(data.updateClosure)
+        def update = haFlowHelper.convertToUpdate(haFlow)
+
+        when: "Update the ha-flow"
+        def updateResponse = haFlowHelper.updateHaFlow(haFlow.haFlowId, update)
+        def ignores = ["subFlows.timeUpdate", "subFlows.status", "timeUpdate", "status"]
+
+        then: "Requested updates are reflected in the response and in 'get' API"
+        expect updateResponse, sameBeanAs(haFlow, ignores)
+        expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
+
+        and: "And involved switches pass validation"
+        withPool {
+            haFlowHelper.getInvolvedSwitches(haFlow.haFlowId).eachParallel { SwitchId switchId ->
+                assert northboundV2.validateSwitch(switchId).isAsExpected()
             }
         }
-        return false
+
+        and: "HA-flow pass validation"
+        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
+
+        cleanup:
+        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+
+        where: data << [
+                [
+                        descr: "shared port and subflow ports",
+                        updateClosure: { HaFlow payload ->
+                            def allowedSharedPorts = topology.getAllowedPortsForSwitch(topology.find(
+                                    payload.sharedEndpoint.switchId)) - payload.sharedEndpoint.portNumber
+                            payload.sharedEndpoint.portNumber = allowedSharedPorts[0]
+                            payload.subFlows.each {
+                                def allowedPorts = topology.getAllowedPortsForSwitch(topology.find(
+                                        it.endpoint.switchId)) - it.endpoint.portNumber
+                                it.endpoint.portNumber = allowedPorts[0]
+                            }
+                        }
+                ],
+                [
+                        descr: "shared switch and subflow switches",
+                        updateClosure: { HaFlow payload ->
+                            def newSwT = topologyHelper.getSwitchTriplets(true).find {
+                                it.shared.dpId != payload.sharedEndpoint.switchId &&
+                                        it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
+                                        it.ep2.dpId != payload.subFlows[1].endpoint.switchId &&
+                                        it.ep1 != it.ep2
+                            }
+                            payload.sharedEndpoint.switchId = newSwT.shared.dpId
+                            payload.subFlows[0].endpoint.switchId = newSwT.ep1.dpId
+                            payload.subFlows[1].endpoint.switchId = newSwT.ep2.dpId
+                            payload.sharedEndpoint.portNumber = topology
+                                    .getAllowedPortsForSwitch(topology.find(newSwT.shared.dpId))[-1]
+                            payload.subFlows[0].endpoint.portNumber = topology
+                                    .getAllowedPortsForSwitch(topology.find(newSwT.ep1.dpId))[-1]
+                            payload.subFlows[1].endpoint.portNumber = topology
+                                    .getAllowedPortsForSwitch(topology.find(newSwT.ep2.dpId))[-1]
+                        }
+                ],
+                [
+                        descr: "[without any changes in update request]",
+                        updateClosure: { }
+                ]
+        ]
+    }
+
+    static <T> CustomisableMatcher<T> sameBeanAs(final T expected, List<String> ignores) {
+        def matcher = sameBeanAs(expected)
+        ignores.each { matcher.ignoring(it) }
+        return matcher
     }
 }
-

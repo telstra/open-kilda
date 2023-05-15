@@ -13,35 +13,33 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions;
-
-import static org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event.RULES_INSTALLED;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow;
 
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
 
 @Slf4j
-public class OnReceivedInstallResponseAction extends BaseReceivedResponseAction {
-    public static final String ACTION_NAME = "install";
+public class OnReceivedInstallResponseAction<T extends HaFlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E,
+        C extends SpeakerResponseContext> extends BaseReceivedResponseAction<T, S, E, C> {
+    public static final String INSTALL_ACTION = "install";
 
-    public OnReceivedInstallResponseAction(int speakerCommandRetriesLimit) {
-        super(speakerCommandRetriesLimit, RULES_INSTALLED);
+    public OnReceivedInstallResponseAction(
+            int speakerCommandRetriesLimit, E successEvent, FlowGenericCarrier carrier) {
+        super(speakerCommandRetriesLimit, successEvent, carrier);
     }
 
     @Override
-    protected void perform(
-            State from, State to, Event event, HaFlowUpdateContext context, HaFlowUpdateFsm stateMachine) {
+    protected void perform(S from, S to, E event, C context, T stateMachine) {
         SpeakerCommandResponse response = context.getSpeakerResponse();
         UUID commandId = response.getCommandId();
         BaseSpeakerCommandsRequest request = stateMachine.getInstallCommand(commandId);
-        handleResponse(response, request, ACTION_NAME, stateMachine);
+        handleResponse(response, request, INSTALL_ACTION, stateMachine);
     }
 }

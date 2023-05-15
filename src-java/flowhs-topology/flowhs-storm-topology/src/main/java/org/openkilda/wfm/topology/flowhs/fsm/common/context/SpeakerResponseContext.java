@@ -13,18 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.haflow.update;
+package org.openkilda.wfm.topology.flowhs.fsm.common.context;
 
-import org.openkilda.messaging.command.haflow.HaFlowRequest;
-import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
 
 @Data
 @SuperBuilder
-@EqualsAndHashCode(callSuper = true)
-public class HaFlowUpdateContext extends SpeakerResponseContext {
-    HaFlowRequest targetFlow;
+public class SpeakerResponseContext {
+    SpeakerCommandResponse speakerResponse;
 }

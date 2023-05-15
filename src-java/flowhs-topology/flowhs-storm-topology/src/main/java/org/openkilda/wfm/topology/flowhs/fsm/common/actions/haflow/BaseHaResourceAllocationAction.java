@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow;
 
 import static java.lang.String.format;
 
@@ -50,6 +50,8 @@ import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flow.model.HaFlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseResourceAllocationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
 
 import com.google.common.base.Suppliers;
 import lombok.SneakyThrows;
@@ -72,8 +74,8 @@ import java.util.function.Supplier;
  * A base for action classes that allocate resources for flow paths.
  */
 @Slf4j
-public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C> extends
-        BaseResourceAllocationAction<T, S, E, C> {
+public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E,
+        C extends SpeakerResponseContext> extends BaseResourceAllocationAction<T, S, E, C> {
 
     protected final HaFlowPathRepository haFlowPathRepository;
 

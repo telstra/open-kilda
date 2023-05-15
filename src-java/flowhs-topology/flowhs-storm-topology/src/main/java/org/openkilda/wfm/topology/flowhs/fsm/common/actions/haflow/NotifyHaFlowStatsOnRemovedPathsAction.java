@@ -13,24 +13,29 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow;
 
+import org.openkilda.model.HaFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
-public class NotifyHaFlowStatsOnNewPathsAction<T extends HaFlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C> extends
-        FlowProcessingWithHistorySupportAction<T, S, E, C> {
-    private final FlowGenericCarrier carrier;
+public class NotifyHaFlowStatsOnRemovedPathsAction<T extends HaFlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E,
+        C extends SpeakerResponseContext> extends FlowProcessingWithHistorySupportAction<T, S, E, C> {
+    private FlowGenericCarrier carrier;
 
-    public NotifyHaFlowStatsOnNewPathsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {
+    public NotifyHaFlowStatsOnRemovedPathsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {
         super(persistenceManager);
         this.carrier = carrier;
     }
 
     @Override
     protected void perform(S from, S to, E event, C context, T stateMachine) {
+        HaFlow originalHaFlow = stateMachine.getOriginalHaFlow();
+
         // TODO notify stats https://github.com/telstra/open-kilda/issues/5182
-        // example: org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowStatsOnNewPathsAction
+        // example: org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowStatsOnRemovedPathsAction
     }
 }

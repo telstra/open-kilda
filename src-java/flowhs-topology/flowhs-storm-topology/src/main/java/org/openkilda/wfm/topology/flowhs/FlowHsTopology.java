@@ -683,7 +683,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     private void haFlowCreateHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         int hubTimeout = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getCreateHubTimeoutSeconds());
 
-        HaFlowCreateConfig config = HaFlowCreateConfig.haFlowCreateBuilder()
+        HaFlowCreateConfig config = HaFlowCreateConfig.builder()
                 .haFlowCreationRetriesLimit(topologyConfig.getCreateHubRetries())
                 .pathAllocationRetriesLimit(topologyConfig.getPathAllocationRetriesLimit())
                 .pathAllocationRetryDelay(topologyConfig.getPathAllocationRetryDelay())
@@ -711,7 +711,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     private void haFlowUpdateHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         int hubTimeout = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getUpdateHubTimeoutSeconds());
 
-        HaFlowUpdateConfig config = HaFlowUpdateConfig.haFlowUpdateBuilder()
+        HaFlowUpdateConfig config = HaFlowUpdateConfig.builder()
                 .pathAllocationRetriesLimit(topologyConfig.getPathAllocationRetriesLimit())
                 .pathAllocationRetryDelay(topologyConfig.getPathAllocationRetryDelay())
                 .speakerCommandRetriesLimit(topologyConfig.getUpdateSpeakerCommandRetries())
@@ -738,7 +738,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
     private void haFlowDeleteHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         int hubTimeout = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getDeleteHubTimeoutSeconds());
 
-        HaFlowDeleteConfig config = HaFlowDeleteConfig.haFlowDeleteBuilder()
+        HaFlowDeleteConfig config = HaFlowDeleteConfig.builder()
                 .speakerCommandRetriesLimit(topologyConfig.getDeleteSpeakerCommandRetries())
                 .autoAck(true)
                 .timeoutMs(hubTimeout)
@@ -782,7 +782,6 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .timeoutMs(hubTimeout)
                 .build();
 
-        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
         HaFlowValidationHubBolt hubBolt = new HaFlowValidationHubBolt(config,
                 configurationProvider.getConfiguration(RuleManagerConfig.class),
                 persistenceManager);
