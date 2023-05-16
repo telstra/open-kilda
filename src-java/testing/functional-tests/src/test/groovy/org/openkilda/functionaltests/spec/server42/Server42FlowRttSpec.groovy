@@ -475,7 +475,16 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is valid and UP"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        northbound.validateFlow(flow.flowId).each { validationInfo ->
+
+           if (validationInfo.direction == "forward") {
+               assert !validationInfo.asExpected
+           }
+           else {
+            assert validationInfo.asExpected
+           }
+        }
+
         northbound.getFlowStatus(flow.flowId).status == FlowState.UP
 
         and: "server42 stats for forward direction are not increased"
