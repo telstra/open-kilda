@@ -71,7 +71,7 @@ import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring", uses = {
         FlowEncapsulationTypeMapper.class, FlowStatusMapper.class, PathComputationStrategyMapper.class,
-        KildaTypeMapper.class, TimeMapper.class, PingMapper.class})
+        KildaTypeMapper.class, TimeMapper.class, PingMapper.class, FlowDirectionMapper.class})
 public abstract class FlowMapper {
     /**
      * Map {@link FlowDto} into {@link FlowPayload}.

@@ -44,6 +44,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -110,6 +111,23 @@ public class FermaYFlowRepositoryTest extends InMemoryGraphBasedTest {
         assertEquals(expectedDescriptions, actualEditedDescriptions);
     }
 
+    @Test
+    public void getOrCreateDiverseYFlowGroupIdNonExistentYFlow() {
+        assertFalse(yFlowRepository.getOrCreateDiverseYFlowGroupId("non_existent").isPresent());
+    }
+
+    @Test
+    public void getOrCreateDiverseYFlowGroupId() {
+        createYFlow(Y_FLOW_ID_1, FLOW_ID_1, FLOW_ID_2);
+        Optional<String> createdGroup = yFlowRepository.getOrCreateDiverseYFlowGroupId(Y_FLOW_ID_1);
+        assertTrue(createdGroup.isPresent());
+        assertFalse(createdGroup.get().isEmpty());
+
+        Optional<String> foundGroup = yFlowRepository.getDiverseYFlowGroupId(Y_FLOW_ID_1);
+        assertTrue(foundGroup.isPresent());
+        assertEquals(createdGroup.get(), foundGroup.get());
+    }
+
     private YFlow createYFlow(String yFlowId, String flowId1, String flowId2) {
         YFlow yFlow = YFlow.builder()
                 .yFlowId(yFlowId)
@@ -119,6 +137,8 @@ public class FermaYFlowRepositoryTest extends InMemoryGraphBasedTest {
                 .build();
         Flow flow1 = createTestFlow(flowId1, switch1, PORT_1, VLAN_1, switch2, PORT_3, VLAN_3);
         Flow flow2 = createTestFlow(flowId2, switch1, PORT_1, VLAN_2, switch3, PORT_4, VLAN_3);
+        flow1.setAffinityGroupId(flowId1);
+        flow2.setAffinityGroupId(flowId1);
 
         YSubFlow subFlow1 = YSubFlow.builder()
                 .yFlow(yFlow)

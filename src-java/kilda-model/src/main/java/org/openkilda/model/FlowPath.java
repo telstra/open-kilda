@@ -145,7 +145,11 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
      */
     public boolean isProtected() {
         Flow flow = getFlow();
-        return flow != null && flow.isProtectedPath(getPathId());
+        if (flow != null && flow.isProtectedPath(getPathId())) {
+            return true;
+        }
+        HaFlowPath haFlowPath = getHaFlowPath();
+        return haFlowPath != null && haFlowPath.isProtected();
     }
 
     /**

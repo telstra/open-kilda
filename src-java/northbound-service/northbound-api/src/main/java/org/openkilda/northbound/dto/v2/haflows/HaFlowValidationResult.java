@@ -34,6 +34,5 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class HaFlowValidationResult {
     boolean asExpected;
-    HaFlowDiscrepancy haFlowValidationResult;
     List<FlowValidationDto> subFlowValidationResults;
 }

@@ -21,6 +21,7 @@ import org.openkilda.adapter.FlowDestAdapter;
 import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.adapter.FlowSourceAdapter;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.haflow.HaFlowResponse;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
@@ -31,8 +32,10 @@ import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathId;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
@@ -53,6 +56,7 @@ import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext.PathContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
+import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
 
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
@@ -121,6 +125,12 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
         return flowPathRepository.findById(pathId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Flow path %s not found", pathId)));
+    }
+
+    protected HaFlowPath getHaFlowPath(HaFlow haFlow, PathId haPathId) {
+        return haFlow.getPath(haPathId)
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                        format("Ha-flow %s has no ha-path %s", haFlow.getHaFlowId(), haPathId)));
     }
 
     protected Set<String> findFlowsIdsByEndpointWithMultiTable(SwitchId switchId, int port) {
@@ -201,10 +211,16 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                         .collect(Collectors.toSet());
     }
 
-    protected SwitchProperties getSwitchProperties(SwitchId ingressSwitchId) {
-        return switchPropertiesRepository.findBySwitchId(ingressSwitchId)
+    protected Switch getSwitch(SwitchId switchId) {
+        return switchRepository.findById(switchId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
-                        format("Properties for switch %s not found", ingressSwitchId)));
+                        format("Switch %s not found", switchId)));
+    }
+
+    protected SwitchProperties getSwitchProperties(SwitchId switchId) {
+        return switchPropertiesRepository.findBySwitchId(switchId)
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                        format("Properties for switch %s not found", switchId)));
     }
 
     protected SpeakerRequestBuildContext buildBaseSpeakerContextForInstall(SwitchId srcSwitchId, SwitchId dstSwitchId) {
@@ -253,6 +269,12 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                         getFlowMirrorPaths(flow)));
         return new InfoMessage(flowData, commandContext.getCreateTime(),
                 commandContext.getCorrelationId());
+    }
+
+    protected Message buildResponseMessage(HaFlow haFlow, CommandContext commandContext) {
+        HaFlowResponse response = new HaFlowResponse(
+                HaFlowMapper.INSTANCE.toHaFlowDto(haFlow, flowRepository, haFlowRepository));
+        return new InfoMessage(response, commandContext.getCreateTime(), commandContext.getCorrelationId());
     }
 
     protected List<FlowMirrorPath> getFlowMirrorPaths(Flow flow) {

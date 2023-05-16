@@ -16,12 +16,11 @@
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.actions;
 
 import static java.lang.String.format;
+import static org.openkilda.wfm.topology.flowhs.utils.SpeakerRequestHelper.keepOnlyFailedCommands;
 
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
-import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
-import org.openkilda.wfm.topology.flowhs.fsm.common.converters.OfCommandConverter;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
@@ -29,11 +28,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class OnReceivedResponseAction extends HistoryRecordingAction<
@@ -70,13 +66,8 @@ public class OnReceivedResponseAction extends HistoryRecordingAction<
                                                 + "Error: %s. Retrying (attempt %d)",
                                         commandId, uuid, response.getSwitchId(), message, attempt)));
 
-                Set<UUID> failedUuids = response.getFailedCommandIds().keySet();
                 BaseSpeakerCommandsRequest request = command.get();
-                List<OfCommand> failedCommands = request.getCommands().stream()
-                        .filter(ifCommand -> failedUuids.contains(ifCommand.getUuid()))
-                        .collect(Collectors.toList());
-                request.getCommands().clear();
-                request.getCommands().addAll(OfCommandConverter.INSTANCE.removeExcessDependencies(failedCommands));
+                keepOnlyFailedCommands(request, response.getFailedCommandIds().keySet());
                 stateMachine.getCarrier().sendSpeakerRequest(request);
             } else {
                 stateMachine.addFailedCommand(commandId, response);

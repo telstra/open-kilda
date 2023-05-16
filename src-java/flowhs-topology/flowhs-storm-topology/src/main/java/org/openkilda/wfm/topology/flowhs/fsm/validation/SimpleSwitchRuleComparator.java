@@ -21,12 +21,15 @@ import org.openkilda.model.Switch;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 
+import com.google.common.collect.Sets;
 import lombok.NonNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 public class SimpleSwitchRuleComparator {
     private final SwitchRepository switchRepository;
@@ -35,13 +38,34 @@ public class SimpleSwitchRuleComparator {
         this.switchRepository = switchRepository;
     }
 
+    /**
+     * Compares the expected SimpleSwitchRule to a list of actual SimpleSwitchRules and returns a list of discrepancies.
+     * Calls the overloaded method {@link #findDiscrepancy(SimpleSwitchRule, List, List, List)} with empty lists
+     * for pktCounts and byteCounts.
+     *
+     * @param expected the expected SimpleSwitchRule to compare against.
+     * @param actual   the list of actual SimpleSwitchRules to compare against.
+     * @return a list of PathDiscrepancyEntity containing discrepancies between the
+     *         expected SimpleSwitchRule and the list of actual SimpleSwitchRules.
+     * @throws SwitchNotFoundException if the switch ID in the expected SimpleSwitchRule is not found
+     *                                 in the list of actual
+     *                                 SimpleSwitchRules.
+     */
     public List<PathDiscrepancyEntity> findDiscrepancy(SimpleSwitchRule expected, List<SimpleSwitchRule> actual)
             throws SwitchNotFoundException {
         return findDiscrepancy(expected, actual, new ArrayList<>(), new ArrayList<>());
     }
 
     /**
-     * Compare expected and actual rules and gather discrepancy list.
+     * Compare the expected switch rule with a list of actual switch rules and gather discrepancies.
+     *
+     * @param expected   The SimpleSwitchRule object representing the expected switch rule.
+     * @param actual     A list of SimpleSwitchRule objects representing the actual switch rules.
+     * @param pktCounts  A list of Long objects representing the packet counts for each expected switch rule.
+     * @param byteCounts A list of Long objects representing the byte counts for each expected switch rule.
+     * @return A List of PathDiscrepancyEntity objects representing the discrepancies
+     *         between the expected and actual switch rules.
+     * @throws SwitchNotFoundException if the switch for the expected rule is not found in the actual switch rules.
      */
     public List<PathDiscrepancyEntity> findDiscrepancy(SimpleSwitchRule expected, List<SimpleSwitchRule> actual,
                                                        List<Long> pktCounts, List<Long> byteCounts)
@@ -50,7 +74,8 @@ public class SimpleSwitchRuleComparator {
         SimpleSwitchRule matched = findMatched(expected, actual);
 
         if (matched == null) {
-            discrepancies.add(new PathDiscrepancyEntity(String.valueOf(expected), "all", String.valueOf(expected), ""));
+            discrepancies.add(new PathDiscrepancyEntity(String.valueOf(expected),
+                    "all", String.valueOf(expected), ""));
             pktCounts.add(-1L);
             byteCounts.add(-1L);
         } else {
@@ -63,31 +88,10 @@ public class SimpleSwitchRuleComparator {
     }
 
     private SimpleSwitchRule findMatched(SimpleSwitchRule expected, List<SimpleSwitchRule> actual) {
-
-        //try to match on the cookie
-        SimpleSwitchRule matched = actual.stream()
+        return actual.stream()
                 .filter(rule -> rule.getCookie() != 0 && rule.getCookie() == expected.getCookie())
                 .findFirst()
                 .orElse(null);
-
-        //if no cookie match, then try to match on in_port and in_vlan
-        if (matched == null) {
-            matched = actual.stream()
-                    .filter(rule -> rule.getInPort() == expected.getInPort()
-                            && rule.getInVlan() == expected.getInVlan())
-                    .findFirst()
-                    .orElse(null);
-        }
-
-        //if cookie or in_port and in_vlan doesn't match, try to match on out_port and out_vlan
-        if (matched == null) {
-            matched = actual.stream()
-                    .filter(rule -> rule.getOutPort() == expected.getOutPort()
-                            && Objects.equals(rule.getOutVlan(), expected.getOutVlan()))
-                    .findFirst()
-                    .orElse(null);
-        }
-        return matched;
     }
 
     private List<PathDiscrepancyEntity> getRuleDiscrepancies(SimpleSwitchRule expected, SimpleSwitchRule matched)
@@ -139,7 +143,12 @@ public class SimpleSwitchRuleComparator {
                     discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterBurstSize",
                             String.valueOf(expected.getMeterBurstSize()), String.valueOf(matched.getMeterBurstSize())));
                 }
-                if (!Arrays.equals(matched.getMeterFlags(), expected.getMeterFlags())) {
+                Set<String> matchedFlags = Optional.ofNullable(matched.getMeterFlags())
+                        .map(Sets::newHashSet).orElse(Sets.newHashSet());
+                Set<String> expectedFlags = Optional.ofNullable(expected.getMeterFlags())
+                        .map(Sets::newHashSet).orElse(Sets.newHashSet());
+
+                if (!matchedFlags.equals(expectedFlags)) {
                     discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterFlags",
                             Arrays.toString(expected.getMeterFlags()), Arrays.toString(matched.getMeterFlags())));
                 }

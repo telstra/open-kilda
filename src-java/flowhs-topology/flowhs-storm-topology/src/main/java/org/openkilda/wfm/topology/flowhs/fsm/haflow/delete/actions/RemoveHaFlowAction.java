@@ -63,7 +63,7 @@ public class RemoveHaFlowAction extends
             affinityHaFlowIds
                     .forEach(affinityHaFlowId -> haFlowRepository.updateAffinityFlowGroupId(affinityHaFlowId, null));
             Collection<String> affinityFlowIds = flowRepository.findFlowsIdByAffinityGroupId(affinityGroupId);
-            affinityHaFlowIds
+            affinityFlowIds
                     .forEach(affinityFlowId -> flowRepository.updateAffinityFlowGroupId(affinityFlowId, null));
         }
     }

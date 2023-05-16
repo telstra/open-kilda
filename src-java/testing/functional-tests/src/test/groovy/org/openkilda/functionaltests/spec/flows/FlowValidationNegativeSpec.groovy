@@ -191,7 +191,7 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         //TODO(andriidovhan) try to extend this test when the issues/2302 is fixed
         def responseValidateFlow = northbound.validateFlow(flow.flowId).findAll { !it.discrepancies.empty }*.discrepancies
         assert responseValidateFlow.size() == 1
-        responseValidateFlow[0].expectedValue[0] == ruleToDelete.toString()
+        responseValidateFlow[0].expectedValue[0].contains(ruleToDelete.toString())
 
         when: "Delete all rules except default on the all involved switches"
         def mainPath = flowPathInfo.forwardPath

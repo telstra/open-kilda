@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.validation;
 
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
 import org.openkilda.messaging.info.flow.FlowValidationResponse;
-import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
@@ -66,8 +66,8 @@ public final class YFlowValidationFsm extends NbTrackableFlowProcessingFsm<YFlow
 
     private int awaitingRules;
     private int awaitingMeters;
-    private final List<SwitchFlowEntries> receivedRules = new ArrayList<>();
-    private final List<SwitchMeterEntries> receivedMeters = new ArrayList<>();
+    private final List<FlowDumpResponse> receivedRules = new ArrayList<>();
+    private final List<MeterDumpResponse> receivedMeters = new ArrayList<>();
 
     private YFlowValidationFsm(@NonNull CommandContext commandContext, @NonNull YFlowValidationHubCarrier carrier,
                                @NonNull String yFlowId, @NonNull Collection<YFlowEventListener> eventListeners) {

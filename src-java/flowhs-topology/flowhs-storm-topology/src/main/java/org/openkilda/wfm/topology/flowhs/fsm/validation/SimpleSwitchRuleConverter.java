@@ -18,15 +18,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.validation;
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT;
 
 import org.openkilda.adapter.FlowSideAdapter;
-import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.FlowApplyActions;
-import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.info.rule.FlowSetFieldAction;
-import org.openkilda.messaging.info.rule.GroupBucket;
-import org.openkilda.messaging.info.rule.GroupEntry;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchGroupEntries;
 import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -40,46 +31,41 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.rulemanager.Field;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
+import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.ProtoConstants.PortNumber;
+import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
+import org.openkilda.rulemanager.SpeakerData;
+import org.openkilda.rulemanager.action.Action;
+import org.openkilda.rulemanager.action.ActionType;
+import org.openkilda.rulemanager.action.GroupAction;
+import org.openkilda.rulemanager.action.PortOutAction;
+import org.openkilda.rulemanager.action.PushVxlanAction;
+import org.openkilda.rulemanager.action.SetFieldAction;
+import org.openkilda.rulemanager.group.Bucket;
+import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.SimpleSwitchRule.SimpleGroupBucket;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.SimpleSwitchRule.SimpleSwitchRuleBuilder;
 
 import com.google.common.collect.Lists;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SimpleSwitchRuleConverter {
-
-    private static final String VLAN_VID = "vlan_vid";
-    private static final String IN_PORT = "in_port";
-
-    /**
-     * Convert {@link FlowPath} to list of {@link SimpleSwitchRule}.
-     */
-    public List<SimpleSwitchRule> convertFlowPathToSimpleSwitchRules(Flow flow, FlowPath flowPath,
-                                                                     EncapsulationId encapsulationId,
-                                                                     long flowMeterMinBurstSizeInKbits,
-                                                                     double flowMeterBurstCoefficient) {
-        List<SimpleSwitchRule> rules = new ArrayList<>();
-        if (!flowPath.isProtected()) {
-            rules.addAll(buildIngressSimpleSwitchRules(flow, flowPath, encapsulationId, flowMeterMinBurstSizeInKbits,
-                    flowMeterBurstCoefficient));
-        }
-        if (!flow.isOneSwitchFlow()) {
-            rules.addAll(buildTransitAndEgressSimpleSwitchRules(flow, flowPath, encapsulationId));
-        }
-        return rules;
-    }
 
     /**
      * Build ingress rules ({@link SimpleSwitchRule}) for provided {@link FlowPath}.
@@ -181,30 +167,6 @@ public class SimpleSwitchRuleConverter {
         return builder.build();
     }
 
-    private List<SimpleSwitchRule> buildTransitAndEgressSimpleSwitchRules(Flow flow, FlowPath flowPath,
-                                                                          EncapsulationId encapsulationId) {
-        List<PathSegment> orderedSegments = flowPath.getSegments().stream()
-                .sorted(Comparator.comparingInt(PathSegment::getSeqId))
-                .collect(Collectors.toList());
-
-        List<SimpleSwitchRule> rules = new ArrayList<>();
-
-        for (int i = 1; i < orderedSegments.size(); i++) {
-            PathSegment srcPathSegment = orderedSegments.get(i - 1);
-            PathSegment dstPathSegment = orderedSegments.get(i);
-            rules.add(buildTransitSimpleSwitchRule(flow, flowPath, srcPathSegment, dstPathSegment, encapsulationId));
-        }
-
-        PathSegment egressSegment = orderedSegments.get(orderedSegments.size() - 1);
-        if (!egressSegment.getDestSwitchId().equals(flowPath.getDestSwitchId())) {
-            throw new IllegalStateException(
-                    String.format("PathSegment was not found for egress flow rule, flowId: %s", flow.getFlowId()));
-        }
-        rules.addAll(buildEgressSimpleSwitchRules(flow, flowPath, egressSegment, encapsulationId));
-
-        return rules;
-    }
-
     /**
      * Build ingress rules ({@link SimpleSwitchRule}) for provided y-flow's {@link FlowPath}.
      */
@@ -271,180 +233,180 @@ public class SimpleSwitchRuleConverter {
                 .collect(Collectors.toList());
     }
 
-    private List<SimpleSwitchRule> buildEgressSimpleSwitchRules(Flow flow, FlowPath flowPath,
-                                                                PathSegment egressSegment,
-                                                                EncapsulationId encapsulationId) {
-        List<SimpleSwitchRule> rules = new ArrayList<>();
+    /**
+     * Convert {@link SpeakerData list} to the Map of {@link SimpleSwitchRule}.
+     */
+    public Map<SwitchId, List<SimpleSwitchRule>> convertSpeakerDataToSimpleSwitchRulesAndGroupBySwitchId(
+            List<SpeakerData> speakerDataList) {
 
-        FlowSideAdapter egressAdapter = FlowSideAdapter.makeEgressAdapter(flow, flowPath);
-        FlowEndpoint endpoint = egressAdapter.getEndpoint();
-        SimpleSwitchRule rule = SimpleSwitchRule.builder()
-                .switchId(flowPath.getDestSwitchId())
-                .outPort(endpoint.getPortNumber())
-                .inPort(egressSegment.getDestPort())
-                .cookie(flowPath.getCookie().getValue())
-                .egressRule(true)
-                .build();
+        Map<SwitchId, List<FlowSpeakerData>> rules = filterSpeakerDataAndGroupBySwitchId(speakerDataList,
+                FlowSpeakerData.class);
+        Map<SwitchId, List<MeterSpeakerData>> meters = filterSpeakerDataAndGroupBySwitchId(speakerDataList,
+                MeterSpeakerData.class);
+        Map<SwitchId, List<GroupSpeakerData>> groups = filterSpeakerDataAndGroupBySwitchId(speakerDataList,
+                GroupSpeakerData.class);
 
-        if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
-            rule.setInVlan(encapsulationId.getEncapsulationId());
-            rule.setOutVlan(calcVlanSetSequence(
-                    Collections.singletonList(encapsulationId.getEncapsulationId()),
-                    endpoint.getVlanStack()));
-        } else if (flow.getEncapsulationType().equals(FlowEncapsulationType.VXLAN)) {
-            rule.setTunnelId(encapsulationId.getEncapsulationId());
-            rule.setOutVlan(calcVlanSetSequence(Collections.emptyList(), endpoint.getVlanStack()));
-        }
-        if (egressAdapter.isLooped() && !flowPath.isProtected()) {
-            rules.add(buildTransitLoopRuleForEgressSwitch(rule, flowPath));
-        }
-        rules.add(rule);
+        Map<SwitchId, List<SimpleSwitchRule>> result = new HashMap<>();
 
-        Optional<FlowMirrorPoints> foundFlowMirrorPoints = flowPath.getFlowMirrorPointsSet().stream()
-                .filter(mirrorPoints -> mirrorPoints.getMirrorSwitchId().equals(egressSegment.getDestSwitchId()))
-                .findFirst();
-        if (foundFlowMirrorPoints.isPresent()) {
-            FlowMirrorPoints flowMirrorPoints = foundFlowMirrorPoints.get();
-            rules.add(rule.toBuilder()
-                    .outPort(0)
-                    .cookie(flowPath.getCookie().toBuilder().mirror(true).build().getValue())
-                    .groupId(flowMirrorPoints.getMirrorGroupId().intValue())
-                    .groupBuckets(mapGroupBuckets(flowMirrorPoints.getMirrorPaths(), endpoint.getPortNumber(), 0, 0))
-                    .build());
-        }
-
-        return rules;
-    }
-
-    private SimpleSwitchRule buildTransitLoopRuleForEgressSwitch(SimpleSwitchRule rule, FlowPath flowPath) {
-        SimpleSwitchRuleBuilder builder = SimpleSwitchRule.builder()
-                .switchId(rule.getSwitchId())
-                .cookie(flowPath.getCookie().toBuilder().looped(true).build().getValue())
-                .inPort(rule.getInPort())
-                .inVlan(rule.getInVlan())
-                .tunnelId(rule.getTunnelId())
-                .outPort(rule.getInPort());
-        return builder.build();
+        rules.forEach((switchId, flowSpeakerData) ->
+                result.put(switchId, convertSpeakerDataToSimpleSwitchRulesForOneSwitchId(
+                        flowSpeakerData, meters.getOrDefault(switchId, Collections.emptyList()),
+                        groups.getOrDefault(switchId, Collections.emptyList()))));
+        return result;
     }
 
     /**
-     * Convert {@link SwitchFlowEntries} to list of {@link SimpleSwitchRule}.
+     * Convert {@link SpeakerData lists} to the Map of {@link SimpleSwitchRule}.
      */
-    public List<SimpleSwitchRule> convertSwitchFlowEntriesToSimpleSwitchRules(SwitchFlowEntries rules,
-                                                                              SwitchMeterEntries meters,
-                                                                              SwitchGroupEntries groups) {
-        if (rules == null || rules.getFlowEntries() == null) {
+    public List<SimpleSwitchRule> convertSpeakerDataToSimpleSwitchRulesForOneSwitchId(List<FlowSpeakerData> rules,
+                                                                                      List<MeterSpeakerData> meters,
+                                                                                      List<GroupSpeakerData> groups) {
+        if (CollectionUtils.isEmpty(rules)) {
             return Collections.emptyList();
         }
 
-        Map<Long, MeterEntry> meterMap = new HashMap<>();
-        if (meters != null && meters.getMeterEntries() != null) {
-            for (MeterEntry meterEntry : meters.getMeterEntries()) {
-                meterMap.put(meterEntry.getMeterId(), meterEntry);
-            }
-        }
+        Map<Long, List<MeterSpeakerData>> meterMap = Optional.ofNullable(meters)
+                .orElse(Collections.emptyList()).stream()
+                .collect(Collectors.groupingBy(e -> e.getMeterId().getValue()));
 
-        Map<Integer, List<GroupBucket>> groupMap = new HashMap<>();
-        if (groups != null && groups.getGroupEntries() != null) {
-            for (GroupEntry groupEntry : groups.getGroupEntries()) {
-                groupMap.put(groupEntry.getGroupId(), groupEntry.getBuckets());
-            }
-        }
+        Map<Integer, List<GroupSpeakerData>> groupMap = Optional.ofNullable(groups)
+                .orElse(Collections.emptyList()).stream().filter(e -> Objects.nonNull(e.getGroupId()))
+                .collect(Collectors.groupingBy(e -> e.getGroupId().intValue()));
+
 
         List<SimpleSwitchRule> simpleRules = new ArrayList<>();
-        for (FlowEntry flowEntry : rules.getFlowEntries()) {
-            simpleRules.add(buildSimpleSwitchRule(rules.getSwitchId(), flowEntry, meterMap, groupMap));
+        for (FlowSpeakerData flowSpeakerData : rules) {
+            simpleRules.add(buildSimpleSwitchRule(flowSpeakerData, meterMap, groupMap));
         }
         return simpleRules;
     }
 
+    private <T extends SpeakerData> Map<SwitchId, List<T>> filterSpeakerDataAndGroupBySwitchId(
+            List<SpeakerData> speakerData, Class<T> clazz) {
+
+        return speakerData.stream()
+                .filter(Objects::nonNull)
+                .filter(clazz::isInstance)
+                .map(clazz::cast)
+                .collect(Collectors.groupingBy(SpeakerData::getSwitchId));
+    }
+
     private SimpleSwitchRule buildSimpleSwitchRule(
-            SwitchId switchId, FlowEntry flowEntry, Map<Long, MeterEntry> meterMap,
-            Map<Integer, List<GroupBucket>> groupMap) {
+            FlowSpeakerData flowEntry, Map<Long, List<MeterSpeakerData>> meterMap,
+            Map<Integer, List<GroupSpeakerData>> groupMap) {
+
         SimpleSwitchRule rule = SimpleSwitchRule.builder()
-                .switchId(switchId)
-                .cookie(flowEntry.getCookie())
+                .switchId(flowEntry.getSwitchId())
+                .cookie(flowEntry.getCookie().getValue())
                 .pktCount(flowEntry.getPacketCount())
                 .byteCount(flowEntry.getByteCount())
-                .version(flowEntry.getVersion())
+                .version(flowEntry.getOfVersion().toString())
                 .build();
 
         if (flowEntry.getMatch() != null) {
-            rule.setInPort(NumberUtils.toInt(flowEntry.getMatch().getInPort()));
-            rule.setInVlan(NumberUtils.toInt(flowEntry.getMatch().getVlanVid()));
-            rule.setTunnelId(Optional.ofNullable(flowEntry.getMatch().getTunnelId())
-                    .map(Integer::decode)
-                    .orElse(NumberUtils.INTEGER_ZERO));
+            rule.setInPort(flowEntry.getMatch().stream().filter(e -> e.getField().equals(Field.IN_PORT))
+                    .map(FieldMatch::getValue).findFirst().orElse(NumberUtils.LONG_ZERO).intValue());
+
+            rule.setInVlan(flowEntry.getMatch().stream()
+                    .filter(fieldMatch -> fieldMatch.getField().equals(Field.VLAN_VID))
+                    .map(FieldMatch::getValue).findFirst().orElse(NumberUtils.LONG_ZERO).intValue());
+
+            rule.setTunnelId(flowEntry.getMatch().stream().filter(e -> e.getField().equals(Field.OVS_VXLAN_VNI)
+                            || e.getField().equals(Field.NOVIFLOW_TUNNEL_ID)).map(e -> String.valueOf(e.getValue()))
+                    .findFirst().map(Integer::decode).orElse(NumberUtils.INTEGER_ZERO));
         }
 
         if (flowEntry.getInstructions() != null) {
-            if (flowEntry.getInstructions().getApplyActions() != null) {
-                FlowApplyActions applyActions = flowEntry.getInstructions().getApplyActions();
-                List<FlowSetFieldAction> setFields = Optional.ofNullable(applyActions.getSetFieldActions())
-                        .orElse(new ArrayList<>());
+            if (CollectionUtils.isNotEmpty(flowEntry.getInstructions().getApplyActions())) {
+                List<Action> applyActions = flowEntry.getInstructions().getApplyActions();
+                List<SetFieldAction> setFields = applyActions.stream()
+                        .filter(action -> action.getType().equals(ActionType.SET_FIELD))
+                        .map(action -> (SetFieldAction) action)
+                        .collect(Collectors.toList());
+
                 rule.setOutVlan(setFields.stream()
-                        .filter(Objects::nonNull)
-                        .filter(action -> VLAN_VID.equals(action.getFieldName()))
-                        .map(FlowSetFieldAction::getFieldValue)
-                        .map(NumberUtils::toInt)
+                        .filter(action -> Field.VLAN_VID.equals(action.getField()))
+                        .map(action -> Long.valueOf(action.getValue()).intValue())
                         .collect(Collectors.toList()));
-                String outPort = applyActions.getFlowOutput();
-                if (IN_PORT.equals(outPort) && flowEntry.getMatch() != null) {
-                    outPort = flowEntry.getMatch().getInPort();
+
+                PortNumber outPortNumber = applyActions.stream()
+                        .filter(action -> action.getType().equals(ActionType.PORT_OUT))
+                        .findFirst().map(action -> ((PortOutAction) action).getPortNumber())
+                        .orElse(null);
+                int outPort;
+                if (outPortNumber != null && SpecialPortType.IN_PORT.equals(outPortNumber.getPortType())
+                        && rule.getInPort() != 0) {
+                    outPort = rule.getInPort();
+                } else {
+                    outPort = Optional.ofNullable(outPortNumber).map(PortNumber::getPortNumber).orElse(0);
                 }
-                rule.setOutPort(NumberUtils.toInt(outPort));
+                rule.setOutPort(outPort);
 
                 if (rule.getTunnelId() == NumberUtils.INTEGER_ZERO) {
-                    rule.setTunnelId(Optional.ofNullable(applyActions.getPushVxlan())
-                            .map(Integer::parseInt)
-                            .orElse(NumberUtils.INTEGER_ZERO));
+                    rule.setTunnelId(applyActions.stream()
+                            .filter(action -> action.getType().equals(ActionType.PUSH_VXLAN_OVS)
+                                    || action.getType().equals(ActionType.PUSH_VXLAN_NOVIFLOW))
+                            .findFirst().map(action -> ((PushVxlanAction) action).getVni()).orElse(0));
                 }
+                Long groupId = applyActions.stream().filter(action -> action.getType().equals(ActionType.GROUP))
+                        .map(action -> ((GroupAction) action).getGroupId().getValue())
+                        .findFirst().orElse(null);
 
-                if (NumberUtils.isParsable(applyActions.getGroup())) {
-                    int groupId = NumberUtils.toInt(applyActions.getGroup());
-                    List<GroupBucket> buckets = groupMap.getOrDefault(groupId, new ArrayList<>());
-                    rule.setGroupId(groupId);
-                    rule.setGroupBuckets(mapGroupBuckets(buckets));
+                if (groupId != null) {
+                    List<GroupSpeakerData> buckets = groupMap.getOrDefault(groupId.intValue(), new ArrayList<>());
+                    rule.setGroupId(groupId.intValue());
+                    rule.setGroupBuckets(buildSimpleGroupBucketsFromSpeakerGroups(buckets));
                 }
             }
-
             Optional.ofNullable(flowEntry.getInstructions().getGoToMeter())
                     .ifPresent(meterId -> {
-                        rule.setMeterId(meterId);
-                        MeterEntry meterEntry = meterMap.get(meterId);
-                        if (meterEntry != null) {
-                            rule.setMeterRate(meterEntry.getRate());
-                            rule.setMeterBurstSize(meterEntry.getBurstSize());
-                            rule.setMeterFlags(meterEntry.getFlags());
+                        rule.setMeterId(meterId.getValue());
+                        List<MeterSpeakerData> meterEntry = meterMap.get(meterId.getValue());
+                        if (meterEntry != null && meterEntry.size() != 0) {
+                            rule.setMeterRate(meterEntry.get(0).getRate());
+                            rule.setMeterBurstSize(meterEntry.get(0).getBurst());
+                            rule.setMeterFlags(meterEntry.get(0).getFlags().stream()
+                                    .map(Enum::name).sorted().toArray(String[]::new));
                         }
                     });
         }
-
         return rule;
     }
 
-    private List<SimpleGroupBucket> mapGroupBuckets(List<GroupBucket> buckets) {
+    private List<SimpleGroupBucket> buildSimpleGroupBucketsFromSpeakerGroups(List<GroupSpeakerData> buckets) {
         List<SimpleGroupBucket> simpleGroupBuckets = new ArrayList<>();
-        for (GroupBucket bucket : buckets) {
-            FlowApplyActions actions = bucket.getApplyActions();
-            if (actions == null || !NumberUtils.isParsable(actions.getFlowOutput())) {
+        for (Bucket bucket : buckets.stream().flatMap(e -> e.getBuckets().stream()).collect(Collectors.toList())) {
+            Set<Action> actions = bucket.getWriteActions();
+            if (actions == null) {
                 continue;
             }
-            int bucketPort = NumberUtils.toInt(actions.getFlowOutput());
+            PortNumber portNumber = actions.stream().filter(action -> action.getType().equals(ActionType.PORT_OUT))
+                    .findFirst().map(e -> ((PortOutAction) e).getPortNumber()).orElse(null);
+
+            if (portNumber == null || portNumber.getPortNumber() == 0) {
+                continue;
+            }
+
+            int bucketPort = portNumber.getPortNumber();
 
             int bucketVlan = 0;
-            if (actions.getSetFieldActions() != null
-                    && actions.getSetFieldActions().size() == 1) {
-                FlowSetFieldAction setFieldAction = actions.getSetFieldActions().get(0);
-                if (VLAN_VID.equals(setFieldAction.getFieldName())) {
-                    bucketVlan = NumberUtils.toInt(setFieldAction.getFieldValue());
+            List<SetFieldAction> setFieldActions = actions.stream()
+                    .filter(action -> action.getType().equals(ActionType.SET_FIELD))
+                    .map(action -> (SetFieldAction) action)
+                    .collect(Collectors.toList());
+            if (CollectionUtils.isNotEmpty(setFieldActions)
+                    && setFieldActions.size() == 1) {
+                SetFieldAction setFieldAction = setFieldActions.get(0);
+                if (Field.VLAN_VID.equals(setFieldAction.getField())) {
+                    bucketVlan = (int) setFieldAction.getValue();
                 }
             }
 
-            int bucketVni = 0;
-            if (actions.getPushVxlan() != null) {
-                bucketVni = NumberUtils.toInt(actions.getPushVxlan());
-            }
+            int bucketVni = actions.stream()
+                    .filter(action -> action.getType().equals(ActionType.PUSH_VXLAN_OVS)
+                            || action.getType().equals(ActionType.PUSH_VXLAN_NOVIFLOW))
+                    .findFirst().map(action -> ((PushVxlanAction) action).getVni()).orElse(0);
+
             simpleGroupBuckets.add(new SimpleGroupBucket(bucketPort, bucketVlan, bucketVni));
         }
         simpleGroupBuckets.sort(this::compareSimpleGroupBucket);

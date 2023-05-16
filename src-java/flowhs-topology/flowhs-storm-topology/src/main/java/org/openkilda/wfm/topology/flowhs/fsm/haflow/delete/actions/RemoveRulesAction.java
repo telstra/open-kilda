@@ -47,6 +47,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -68,8 +69,14 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
             State from, State to, Event event, HaFlowDeleteContext context, HaFlowDeleteFsm stateMachine) {
         HaFlow haFlow = getHaFlow(stateMachine.getFlowId());
 
+        List<HaFlowPath> haFlowPaths = new ArrayList<>();
+        Optional.ofNullable(haFlow.getForwardPath()).ifPresent(haFlowPaths::add);
+        Optional.ofNullable(haFlow.getReversePath()).ifPresent(haFlowPaths::add);
+        Optional.ofNullable(haFlow.getProtectedForwardPath()).ifPresent(haFlowPaths::add);
+        Optional.ofNullable(haFlow.getProtectedReversePath()).ifPresent(haFlowPaths::add);
+
         Set<PathId> haFlowPathIds = new HashSet<>();
-        for (HaFlowPath path : haFlow.getPaths()) {
+        for (HaFlowPath path : haFlowPaths) {
             PathId pathId = path.getHaPathId();
             if (haFlowPathIds.add(pathId)) {
                 HaFlowPath oppositePath = haFlow.getOppositePathId(pathId)
@@ -85,8 +92,8 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
             }
         }
 
-        DataAdapter adapter = buildDataAdapter(haFlow);
-        List<SpeakerData> commands = buildSpeakerCommands(haFlow.getPaths(), adapter);
+        DataAdapter adapter = buildDataAdapter(haFlow, haFlowPaths);
+        List<SpeakerData> commands = buildSpeakerCommands(haFlowPaths, adapter);
         Collection<DeleteSpeakerCommandsRequest> deleteRequests = buildHaFlowDeleteRequests(
                 commands, stateMachine.getCommandContext());
 
@@ -118,7 +125,7 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
         }
 
         EncapsulationResources encapsulationResources = resourcesManager.getEncapsulationResources(
-                    forwardPath.getHaPathId(), reversePath.getHaPathId(), flow.getEncapsulationType()).orElse(null);
+                forwardPath.getHaPathId(), reversePath.getHaPathId(), flow.getEncapsulationType()).orElse(null);
         return HaFlowResources.builder()
                 .unmaskedCookie(forwardPath.getCookie().getFlowEffectiveId())
                 .forward(HaPathResources.builder()
@@ -158,22 +165,22 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
                 .collect(Collectors.toMap(FlowPath::getHaSubFlowId, FlowPath::getMeterId));
     }
 
-    private DataAdapter buildDataAdapter(HaFlow haFlow) {
+    private DataAdapter buildDataAdapter(HaFlow haFlow, Collection<HaFlowPath> haFlowPaths) {
         Set<PathId> pathIds = new HashSet<>();
-        for (SwitchId switchId : haFlow.getEndpointSwitchIds()) {
-            pathIds.addAll(flowPathRepository.findByEndpointSwitch(switchId, false).stream()
-                    .map(FlowPath::getPathId)
-                    .collect(Collectors.toSet()));
-        }
-
         Set<SwitchId> switchIds = haFlow.getEndpointSwitchIds();
-        for (HaFlowPath haFlowPath : haFlow.getPaths()) {
+        for (HaFlowPath haFlowPath : haFlowPaths) {
             for (FlowPath subPath : haFlowPath.getSubPaths()) {
+                pathIds.add(subPath.getPathId());
                 for (PathSegment segment : subPath.getSegments()) {
                     switchIds.add(segment.getSrcSwitchId());
                     switchIds.add(segment.getDestSwitchId());
                 }
             }
+        }
+        for (SwitchId switchId : haFlow.getEndpointSwitchIds()) {
+            pathIds.addAll(flowPathRepository.findBySrcSwitch(switchId, false).stream()
+                    .map(FlowPath::getPathId)
+                    .collect(Collectors.toSet()));
         }
         return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false);
     }

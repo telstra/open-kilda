@@ -131,6 +131,9 @@ public class FlowEntryConverter {
         return builder.build();
     }
 
+    /**
+     *  Convert {@link Action} to the {@link FlowApplyActions} and add it to the builder.
+     */
     private void addAction(FlowApplyActionsBuilder builder, Action action) {
         switch (action.getType()) {
             case GROUP:

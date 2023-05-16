@@ -20,6 +20,7 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaSubFlow;
 
 public abstract class FlowSideAdapter {
 
@@ -39,9 +40,9 @@ public abstract class FlowSideAdapter {
      */
     public static FlowSideAdapter makeIngressAdapter(HaFlow haFlow, FlowPath subPath) {
         if (subPath.getCookie().getDirection() == FlowPathDirection.FORWARD) {
-            return new HaFlowSharedAdapter(haFlow, subPath.getHaSubFlow());
+            return new HaFlowSharedAdapter(haFlow, getHaSubFlow(haFlow, subPath));
         } else {
-            return new HaFlowSubFlowAdapter(haFlow, subPath.getHaSubFlow());
+            return new HaFlowSubFlowAdapter(haFlow, getHaSubFlow(haFlow, subPath));
         }
     }
 
@@ -61,9 +62,9 @@ public abstract class FlowSideAdapter {
      */
     public static FlowSideAdapter makeEgressAdapter(HaFlow haFlow, FlowPath subPath) {
         if (subPath.getCookie().getDirection() == FlowPathDirection.FORWARD) {
-            return new HaFlowSubFlowAdapter(haFlow, subPath.getHaSubFlow());
+            return new HaFlowSubFlowAdapter(haFlow, getHaSubFlow(haFlow, subPath));
         } else {
-            return new HaFlowSharedAdapter(haFlow, subPath.getHaSubFlow());
+            return new HaFlowSharedAdapter(haFlow, getHaSubFlow(haFlow, subPath));
         }
     }
 
@@ -76,4 +77,11 @@ public abstract class FlowSideAdapter {
     public abstract boolean isLooped();
 
     public abstract boolean isOneSwitchFlow();
+
+    private static HaSubFlow getHaSubFlow(HaFlow haFlow, FlowPath subPath) {
+        return haFlow.getHaSubFlow(subPath.getHaSubFlowId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        String.format("HA-flow %s has no sub flow %s",
+                                haFlow.getHaFlowId(), subPath.getHaSubFlowId())));
+    }
 }

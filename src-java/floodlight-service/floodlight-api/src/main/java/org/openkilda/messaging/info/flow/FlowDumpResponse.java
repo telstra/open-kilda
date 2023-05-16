@@ -20,10 +20,12 @@ import static org.openkilda.messaging.Utils.joinLists;
 import org.openkilda.messaging.Chunkable;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.FlowSpeakerData;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -33,21 +35,19 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Data
+@Builder
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
+@JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowDumpResponse extends InfoData implements Chunkable<FlowDumpResponse> {
-    @JsonProperty("flow_speaker_data")
-    List<FlowSpeakerData> flowSpeakerData;
 
-    @JsonCreator
-    @Builder
-    public FlowDumpResponse(@JsonProperty("flow_speaker_data") List<FlowSpeakerData> flowSpeakerData) {
-        this.flowSpeakerData = flowSpeakerData;
-    }
+    List<FlowSpeakerData> flowSpeakerData;
+    SwitchId switchId;
 
     @Override
     public List<FlowDumpResponse> split(int chunkSize) {
         return Utils.split(flowSpeakerData, chunkSize).stream()
-                .map(FlowDumpResponse::new)
+                .map(flowSpeakerDataList -> new FlowDumpResponse(flowSpeakerDataList, this.switchId))
                 .collect(Collectors.toList());
     }
 
@@ -58,8 +58,10 @@ public class FlowDumpResponse extends InfoData implements Chunkable<FlowDumpResp
         if (dataList == null) {
             return null;
         }
+
         return new FlowDumpResponse(joinLists(dataList.stream()
                 .filter(Objects::nonNull)
-                .map(FlowDumpResponse::getFlowSpeakerData)));
+                .map(FlowDumpResponse::getFlowSpeakerData)),
+                dataList.stream().findFirst().map(FlowDumpResponse::getSwitchId).orElse(null));
     }
 }

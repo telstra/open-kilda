@@ -15,11 +15,12 @@
 
 package org.openkilda.northbound.controller.v2;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.northbound.controller.BaseController;
-import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
@@ -33,6 +34,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.flowhistory.FlowHistoryHelper;
+import org.openkilda.northbound.validator.FlowRequestV2Validator;
 
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -57,6 +59,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.validation.Valid;
 
 @RestController
 @RequestMapping("/v2/flows")
@@ -69,7 +72,7 @@ public class FlowControllerV2 extends BaseController {
     @PostMapping
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> createFlow(@RequestBody FlowRequestV2 flow) {
-        verifyRequest(flow);
+        exposeBodyValidationResults(FlowRequestV2Validator.validateFlowRequestV2(flow), "Could not create flow");
         return flowService.createFlow(flow);
     }
 
@@ -78,7 +81,7 @@ public class FlowControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> updateFlow(@PathVariable(name = "flow_id") String flowId,
                                                         @RequestBody FlowRequestV2 flow) {
-        verifyRequest(flow);
+        exposeBodyValidationResults(FlowRequestV2Validator.validateFlowRequestV2(flow), "Could not update flow");
         return flowService.updateFlow(flowId, flow);
     }
 
@@ -105,7 +108,7 @@ public class FlowControllerV2 extends BaseController {
     /**
      * Gets flow.
      *
-     * @param flowId        flow id
+     * @param flowId flow id
      * @return flow
      */
     @ApiOperation(value = "Gets flow", response = FlowResponseV2.class)
@@ -131,7 +134,7 @@ public class FlowControllerV2 extends BaseController {
     /**
      * Gets flow status.
      *
-     * @param flowId        flow id
+     * @param flowId flow id
      * @return list of flow
      */
     @ApiOperation(value = "Gets flow status", response = FlowIdStatusPayload.class)
@@ -154,8 +157,8 @@ public class FlowControllerV2 extends BaseController {
     /**
      * Updates existing flow params.
      *
-     * @param flowPatchDto  flow parameters for update
-     * @param flowId        flow id
+     * @param flowPatchDto flow parameters for update
+     * @param flowId flow id
      * @return flow
      */
     @ApiOperation(value = "Updates flow", response = FlowResponseV2.class)
@@ -165,7 +168,7 @@ public class FlowControllerV2 extends BaseController {
                                                        @ApiParam(value = "To remove flow from a diverse group, "
                                                                + "need to pass the parameter \"diverse_flow_id\" "
                                                                + "equal to the empty string.")
-                                                       @RequestBody FlowPatchV2 flowPatchDto) {
+                                                       @Valid @RequestBody FlowPatchV2 flowPatchDto) {
         return flowService.patchFlow(flowId, flowPatchDto);
     }
 
@@ -261,25 +264,6 @@ public class FlowControllerV2 extends BaseController {
 
         return FlowHistoryHelper
                 .getFlowHistoryEvents(flowService, flowId, optionalTimeFrom, optionalTimeTo, optionalMaxCount);
-    }
-
-    private void verifyRequest(FlowRequestV2 request) {
-        exposeBodyValidationResults(Stream.concat(
-                verifyFlowEndpoint(request.getSource(), "source"),
-                verifyFlowEndpoint(request.getDestination(), "destination")));
-    }
-
-    private Stream<Optional<String>> verifyFlowEndpoint(FlowEndpointV2 endpoint, String name) {
-        return Stream.of(
-                verifyEndpointVlanId(name, "vlanId", endpoint.getVlanId()),
-                verifyEndpointVlanId(name, "innerVlanId", endpoint.getInnerVlanId()));
-    }
-
-    private Optional<String> verifyEndpointVlanId(String endpoint, String field, int value) {
-        if (! Utils.validateVlanRange(value)) {
-            return Optional.of(String.format("Invalid %s value %d into %s endpoint", field, value, endpoint));
-        }
-        return Optional.empty();
     }
 
     @ApiOperation(value = "Creates a new flow mirror point", response = FlowMirrorPointResponseV2.class)

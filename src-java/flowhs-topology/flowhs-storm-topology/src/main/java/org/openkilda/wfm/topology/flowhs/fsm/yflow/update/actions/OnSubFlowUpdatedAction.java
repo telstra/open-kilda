@@ -59,6 +59,7 @@ public class OnSubFlowUpdatedAction extends
                     stateMachine.notifyEventListeners(listener ->
                             listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
                     CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
+                    requestedFlow.setDiverseFlowId(stateMachine.getDiverseFlowId());
                     flowUpdateService.startFlowUpdating(flowContext, requestedFlow, yFlowId);
                 }
             });

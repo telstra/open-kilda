@@ -59,7 +59,7 @@ public class EmitInstallRulesRequestsAction extends
         List<SpeakerData> speakerCommands = buildSpeakerCommands(stateMachine);
         stateMachine.getSentCommands().addAll(speakerCommands);
         Collection<InstallSpeakerCommandsRequest> installRequests = buildHaFlowInstallRequests(
-                speakerCommands, stateMachine.getCommandContext());
+                speakerCommands, stateMachine.getCommandContext(), true);
 
         if (installRequests.isEmpty()) {
             stateMachine.saveHaFlowActionToHistory("No requests to install HA-flow rules");
@@ -77,9 +77,9 @@ public class EmitInstallRulesRequestsAction extends
     }
 
     private DataAdapter buildDataAdapter(HaFlow haFlow) {
-        Set<PathId> pathIds = new HashSet<>();
+        Set<PathId> pathIds = new HashSet<>(haFlow.getSubPathIds());
         for (SwitchId switchId : haFlow.getEndpointSwitchIds()) {
-            pathIds.addAll(flowPathRepository.findByEndpointSwitch(switchId, false).stream()
+            pathIds.addAll(flowPathRepository.findBySrcSwitch(switchId, false).stream()
                     .map(FlowPath::getPathId)
                     .collect(Collectors.toSet()));
         }

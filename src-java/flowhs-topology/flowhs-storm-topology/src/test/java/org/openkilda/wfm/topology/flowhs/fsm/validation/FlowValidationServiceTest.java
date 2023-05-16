@@ -19,34 +19,38 @@ import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
 import org.openkilda.messaging.info.flow.FlowValidationResponse;
 import org.openkilda.messaging.info.flow.PathDiscrepancyEntity;
-import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.model.SwitchId;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 
+import com.google.common.collect.Sets;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class FlowValidationServiceTest extends FlowValidationTestBase {
     private static FlowValidationService service;
 
+
     @BeforeClass
     public static void setUpOnce() {
         FlowValidationTestBase.setUpOnce();
-        FlowResourcesManager flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
-        service = new FlowValidationService(persistenceManager, flowResourcesManager,
-                MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+        RuleManagerConfig ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
+        service = new FlowValidationService(persistenceManager,
+                new RuleManagerImpl(ruleManagerConfig));
     }
 
     @Test
-    public void shouldGetSwitchIdListByFlowId() {
+    public void validateGetSwitchIdListByFlowId() {
         buildTransitVlanFlow("");
         List<SwitchId> switchIds = service.getSwitchIdListByFlowId(TEST_FLOW_ID_A);
         assertEquals(4, switchIds.size());
@@ -57,23 +61,27 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
     }
 
     @Test
-    public void shouldValidateFlowWithTransitVlanEncapsulation() throws FlowNotFoundException, SwitchNotFoundException {
+    public void validateFlowWithTransitVlanEncapsulation() throws FlowNotFoundException, SwitchNotFoundException {
         buildTransitVlanFlow("");
         validateFlow(true);
     }
 
     @Test
-    public void shouldValidateFlowWithVxlanEncapsulation() throws FlowNotFoundException, SwitchNotFoundException {
+    public void validateFlowWithVxlanEncapsulation() throws FlowNotFoundException, SwitchNotFoundException {
         buildVxlanFlow();
         validateFlow(false);
     }
 
-    private void validateFlow(boolean isTransitVlan) throws FlowNotFoundException, SwitchNotFoundException {
-        List<SwitchFlowEntries> flowEntries =
-                isTransitVlan ? getSwitchFlowEntriesWithTransitVlan() : getSwitchFlowEntriesWithVxlan();
-        List<SwitchMeterEntries> meterEntries = getSwitchMeterEntries();
+    private void validateFlow(boolean isTransitVlan)
+            throws FlowNotFoundException, SwitchNotFoundException {
+
+        List<FlowDumpResponse> flowEntries =
+                isTransitVlan ? getFlowDumpResponseWithTransitVlan() : getSwitchFlowEntriesWithVxlan();
+        List<MeterDumpResponse> meterEntries = getMeterDumpResponses();
+
+        Set<SwitchId> switchIdSet = Sets.newHashSet(service.getSwitchIdListByFlowId(TEST_FLOW_ID_A));
         List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries,
-                emptyList());
+                emptyList(), switchIdSet);
         assertEquals(4, result.size());
         assertEquals(0, result.get(0).getDiscrepancies().size());
         assertEquals(0, result.get(1).getDiscrepancies().size());
@@ -91,9 +99,9 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         flowEntries =
                 isTransitVlan ? getWrongSwitchFlowEntriesWithTransitVlan() : getWrongSwitchFlowEntriesWithVxlan();
         meterEntries = getWrongSwitchMeterEntries();
-        result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries, emptyList());
+        result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries, emptyList(), switchIdSet);
         assertEquals(4, result.size());
-        assertEquals(6, result.get(0).getDiscrepancies().size());
+        assertEquals(3, result.get(0).getDiscrepancies().size());
         assertEquals(3, result.get(1).getDiscrepancies().size());
         assertEquals(2, result.get(2).getDiscrepancies().size());
         assertEquals(2, result.get(3).getDiscrepancies().size());
@@ -101,12 +109,9 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         List<String> forwardDiscrepancies = result.get(0).getDiscrepancies().stream()
                 .map(PathDiscrepancyEntity::getField)
                 .collect(Collectors.toList());
-        assertTrue(forwardDiscrepancies.contains("cookie"));
+        assertTrue(forwardDiscrepancies.contains("all"));
         assertTrue(forwardDiscrepancies.contains(isTransitVlan ? "inVlan" : "tunnelId"));
         assertTrue(forwardDiscrepancies.contains("outVlan"));
-        assertTrue(forwardDiscrepancies.contains("meterRate"));
-        assertTrue(forwardDiscrepancies.contains("meterBurstSize"));
-        assertTrue(forwardDiscrepancies.contains("meterFlags"));
 
         List<String> reverseDiscrepancies = result.get(1).getDiscrepancies().stream()
                 .map(PathDiscrepancyEntity::getField)
@@ -129,31 +134,36 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
     }
 
     @Test
-    public void shouldValidateOneSwitchFlow() throws FlowNotFoundException, SwitchNotFoundException {
+    public void validateOneSwitchFlow() throws FlowNotFoundException, SwitchNotFoundException {
         buildOneSwitchPortFlow();
-        List<SwitchFlowEntries> switchEntries = getSwitchFlowEntriesOneSwitchFlow();
-        List<SwitchMeterEntries> meterEntries = getSwitchMeterEntriesOneSwitchFlow();
+        List<FlowDumpResponse> switchEntries = getSwitchFlowEntriesOneSwitchFlow();
+        List<MeterDumpResponse> meterEntries = getSwitchMeterEntriesOneSwitchFlow();
+
+        Set<SwitchId> switchIdSet = Sets.newHashSet(service.getSwitchIdListByFlowId(TEST_FLOW_ID_B));
+
         List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_B, switchEntries, meterEntries,
-                emptyList());
+                emptyList(), switchIdSet);
         assertEquals(2, result.size());
         assertEquals(0, result.get(0).getDiscrepancies().size());
         assertEquals(0, result.get(1).getDiscrepancies().size());
     }
 
     @Test(expected = FlowNotFoundException.class)
-    public void shouldValidateFlowUsingNotExistingFlow() throws FlowNotFoundException, SwitchNotFoundException {
-        service.validateFlow("test",  emptyList(),  emptyList(),  emptyList());
+    public void validateFlowUsingNotExistingFlow() throws FlowNotFoundException, SwitchNotFoundException {
+        service.validateFlow("test", emptyList(), emptyList(), emptyList(), Sets.newHashSet());
     }
 
     @Test
-    public void shouldValidateFlowWithTransitVlanEncapsulationESwitch()
+    public void validateFlowWithTransitVlanEncapsulationESwitch()
             throws FlowNotFoundException, SwitchNotFoundException {
         buildTransitVlanFlow("E");
 
-        List<SwitchFlowEntries> flowEntries = getSwitchFlowEntriesWithTransitVlan();
-        List<SwitchMeterEntries> meterEntries = getSwitchMeterEntriesWithESwitch();
+        List<FlowDumpResponse> flowEntries = getFlowDumpResponseWithTransitVlan();
+        List<MeterDumpResponse> meterEntries = getSwitchMeterEntriesWithESwitch();
+
+        Set<SwitchId> switchIdSet = Sets.newHashSet(service.getSwitchIdListByFlowId(TEST_FLOW_ID_A));
         List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries,
-                emptyList());
+                emptyList(), switchIdSet);
         assertEquals(4, result.size());
         assertEquals(0, result.get(0).getDiscrepancies().size());
         assertEquals(0, result.get(1).getDiscrepancies().size());
