@@ -468,7 +468,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public List<OFGroupDescStatsEntry> dumpGroups(DatapathId dpid) throws SwitchOperationException {
+    public List<OFGroupDescStatsEntry> dumpGroups(DatapathId dpid) throws SwitchNotFoundException {
         IOFSwitch sw = lookupSwitch(dpid);
         return dumpGroups(sw);
     }

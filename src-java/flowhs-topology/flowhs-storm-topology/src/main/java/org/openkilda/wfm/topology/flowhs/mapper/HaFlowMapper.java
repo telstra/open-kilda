@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.mapper;
 
 import org.openkilda.messaging.command.haflow.HaFlowDto;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRequest.Type;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
@@ -52,6 +53,10 @@ public abstract class HaFlowMapper {
     @Mapping(target = "affinityGroupId", ignore = true)
     @Mapping(target = "diverseGroupId", ignore = true)
     public abstract HaFlow toHaFlow(HaFlowRequest request);
+
+    @Mapping(target = "sharedEndpoint", source = "haFlow")
+    @Mapping(target = "subFlows", source = "haFlow.haSubFlows")
+    public abstract HaFlowRequest toHaFlowRequest(HaFlow haFlow, String diverseFlowId, Type type);
 
     @Mapping(target = "timeUpdate", source = "haFlow.timeModify")
     @Mapping(target = "sharedEndpoint", source = "haFlow")

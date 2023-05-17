@@ -21,9 +21,7 @@ import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.openkilda.wfm.topology.flowhs.fsm.validation.SwitchFlowEntriesBuilder.BURST_COEFFICIENT;
 import static org.openkilda.wfm.topology.flowhs.fsm.validation.SwitchFlowEntriesBuilder.MIN_BURST_SIZE_IN_KBITS;
 
-import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.info.rule.GroupEntry;
+import org.openkilda.messaging.info.group.GroupDumpResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -37,8 +35,13 @@ import org.openkilda.model.YFlow;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.VxlanRepository;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
+import org.openkilda.rulemanager.MeterFlag;
+import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.SwitchFlowEntriesBuilder;
 
+import com.google.common.collect.Sets;
 import lombok.NonNull;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
@@ -46,7 +49,9 @@ import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public final class YFlowSwitchFlowEntriesBuilder {
     private final YFlow yFlow;
@@ -74,10 +79,10 @@ public final class YFlowSwitchFlowEntriesBuilder {
     }
 
     /**
-     * Construct a set of {@link FlowEntry} that corresponds to the builder's y-flow.
+     * Construct a set of {@link FlowSpeakerData} that corresponds to the builder's y-flow.
      */
-    public Map<SwitchId, Collection<FlowEntry>> getFlowEntries() {
-        MultiValuedMap<SwitchId, FlowEntry> flowEntries = new ArrayListValuedHashMap<>();
+    public Map<SwitchId, Collection<FlowSpeakerData>> getFlowEntries() {
+        MultiValuedMap<SwitchId, FlowSpeakerData> flowEntries = new ArrayListValuedHashMap<>();
         yFlow.getSubFlows().forEach(subFlow -> {
             Flow flow = subFlow.getFlow();
             SwitchFlowEntriesBuilder builder = new SwitchFlowEntriesBuilder(flow);
@@ -92,14 +97,18 @@ public final class YFlowSwitchFlowEntriesBuilder {
 
             builder.getSwitchFlowEntries(forwardTransitEncId, reverseTransitEncId,
                             protectedForwardTransitEncId, protectedReverseTransitEncId)
-                    .forEach(entries -> flowEntries.putAll(entries.getSwitchId(), entries.getFlowEntries()));
+                    .stream().flatMap(e -> e.getFlowSpeakerData().stream())
+                    .forEach(flowSpeakerData -> flowEntries.put(flowSpeakerData.getSwitchId(), flowSpeakerData));
+
 
             FlowPath forwardPath = flow.getForwardPath();
             PathSegment firstSegment = forwardPath.getSegments().get(0);
             FlowSegmentCookie forwardCookie = forwardPath.getCookie().toBuilder().yFlow(true).build();
             boolean isVxlan = flow.getEncapsulationType() == VXLAN;
             flowEntries.put(yFlow.getSharedEndpoint().getSwitchId(),
-                    builder.getFlowEntry(forwardCookie.getValue(), flow.getSrcPort(), flow.getSrcVlan(), null,
+                    SwitchFlowEntriesBuilder.getFlowEntry(forwardCookie.getValue(),
+                            yFlow.getSharedEndpoint().getSwitchId(),
+                            flow.getSrcPort(), flow.getSrcVlan(), null,
                             firstSegment.getSrcPort(), isVxlan ? null : forwardTransitEncId,
                             isVxlan ? forwardTransitEncId : null,
                             yFlow.getSharedEndpointMeterId().getValue()));
@@ -114,7 +123,8 @@ public final class YFlowSwitchFlowEntriesBuilder {
 
                     if (nsegment.getDestSwitchId().equals(yFlow.getYPoint())) {
                         flowEntries.put(yFlow.getYPoint(),
-                                builder.getFlowEntry(reverseCookie.getValue(), nsegment.getDestPort(),
+                                builder.getFlowEntry(reverseCookie.getValue(), yFlow.getYPoint(),
+                                        nsegment.getDestPort(),
                                         isVxlan ? null : reverseTransitEncId,
                                         isVxlan ? reverseTransitEncId : null,
                                         n1segment.getSrcPort(), null, null,
@@ -134,7 +144,8 @@ public final class YFlowSwitchFlowEntriesBuilder {
 
                     if (nsegment.getDestSwitchId().equals(yFlow.getProtectedPathYPoint())) {
                         flowEntries.put(yFlow.getProtectedPathYPoint(),
-                                builder.getFlowEntry(reverseCookie.getValue(), nsegment.getDestPort(),
+                                builder.getFlowEntry(reverseCookie.getValue(), yFlow.getProtectedPathYPoint(),
+                                        nsegment.getDestPort(),
                                         isVxlan ? null : protectedReverseTransitEncId,
                                         isVxlan ? protectedReverseTransitEncId : null,
                                         n1segment.getSrcPort(), null, null,
@@ -156,45 +167,51 @@ public final class YFlowSwitchFlowEntriesBuilder {
     }
 
     /**
-     * Construct a set of {@link MeterEntry} that corresponds to the builder's y-flow.
+     * Construct a set of {@link MeterSpeakerData} that corresponds to the builder's y-flow.
      */
-    public Map<SwitchId, Collection<MeterEntry>> getMeterEntries() {
-        MultiValuedMap<SwitchId, MeterEntry> meterEntries = new ArrayListValuedHashMap<>();
+    public Map<SwitchId, Collection<MeterSpeakerData>> getMeterEntries() {
+        MultiValuedMap<SwitchId, MeterSpeakerData> meterEntries = new ArrayListValuedHashMap<>();
         yFlow.getSubFlows().forEach(subFlow -> {
             Flow flow = subFlow.getFlow();
             SwitchFlowEntriesBuilder builder = new SwitchFlowEntriesBuilder(flow);
-            builder.getSwitchMeterEntries()
-                    .forEach(entries -> meterEntries.putAll(entries.getSwitchId(), entries.getMeterEntries()));
+            builder.getSwitchMeterEntries().stream().flatMap(e -> e.getMeterSpeakerData().stream())
+                    .forEach(meterSpeakerData -> meterEntries.put(meterSpeakerData.getSwitchId(), meterSpeakerData));
 
             FlowPath forwardPath = flow.getForwardPath();
-            meterEntries.put(yFlow.getSharedEndpoint().getSwitchId(), MeterEntry.builder()
-                    .meterId(yFlow.getSharedEndpointMeterId().getValue())
+            meterEntries.put(yFlow.getSharedEndpoint().getSwitchId(), MeterSpeakerData.builder()
+                    .switchId(yFlow.getSharedEndpoint().getSwitchId())
+                    .meterId(yFlow.getSharedEndpointMeterId())
                     .rate(forwardPath.getBandwidth())
-                    .burstSize(Meter.calculateBurstSize(forwardPath.getBandwidth(),
+                    .burst(Meter.calculateBurstSize(forwardPath.getBandwidth(),
                             MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
-                    .flags(Meter.getMeterKbpsFlags())
+                    .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                            .collect(Collectors.toSet()))
                     .build());
 
             if (!yFlow.getYPoint().equals(flow.getSrcSwitchId())) {
                 FlowPath reversePath = flow.getReversePath();
-                meterEntries.put(yFlow.getYPoint(), MeterEntry.builder()
-                        .meterId(yFlow.getMeterId().getValue())
+                meterEntries.put(yFlow.getYPoint(), MeterSpeakerData.builder()
+                        .switchId(yFlow.getYPoint())
+                        .meterId(yFlow.getMeterId())
                         .rate(reversePath.getBandwidth())
-                        .burstSize(Meter.calculateBurstSize(reversePath.getBandwidth(),
+                        .burst(Meter.calculateBurstSize(reversePath.getBandwidth(),
                                 MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
-                        .flags(Meter.getMeterKbpsFlags())
+                        .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                                .collect(Collectors.toSet()))
                         .build());
             }
 
             if (yFlow.isAllocateProtectedPath() && yFlow.getProtectedPathYPoint() != null
                     && !yFlow.getProtectedPathYPoint().equals(flow.getSrcSwitchId())) {
                 FlowPath reversePath = flow.getProtectedReversePath();
-                meterEntries.put(yFlow.getProtectedPathYPoint(), MeterEntry.builder()
-                        .meterId(yFlow.getProtectedPathMeterId().getValue())
+                meterEntries.put(yFlow.getProtectedPathYPoint(), MeterSpeakerData.builder()
+                        .switchId(yFlow.getProtectedPathYPoint())
+                        .meterId(yFlow.getProtectedPathMeterId())
                         .rate(reversePath.getBandwidth())
-                        .burstSize(Meter.calculateBurstSize(reversePath.getBandwidth(),
+                        .burst(Meter.calculateBurstSize(reversePath.getBandwidth(),
                                 MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
-                        .flags(Meter.getMeterKbpsFlags())
+                        .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                                .collect(Collectors.toSet()))
                         .build());
             }
         });
@@ -202,15 +219,17 @@ public final class YFlowSwitchFlowEntriesBuilder {
     }
 
     /**
-     * Construct a set of {@link GroupEntry} that corresponds to the builder's y-flow.
+     * Construct a set of {@link GroupSpeakerData} that corresponds to the builder's y-flow.
      */
-    public Map<SwitchId, Collection<GroupEntry>> getGroupEntries() {
-        MultiValuedMap<SwitchId, GroupEntry> groupEntries = new ArrayListValuedHashMap<>();
+    public Map<SwitchId, Collection<GroupSpeakerData>> getGroupEntries() {
+        MultiValuedMap<SwitchId, GroupSpeakerData> groupEntries = new ArrayListValuedHashMap<>();
         yFlow.getSubFlows().forEach(subFlow -> {
             Flow flow = subFlow.getFlow();
             SwitchFlowEntriesBuilder builder = new SwitchFlowEntriesBuilder(flow);
-            builder.getSwitchGroupEntries()
-                    .forEach(entries -> groupEntries.putAll(entries.getSwitchId(), entries.getGroupEntries()));
+            builder.getSwitchGroupEntries().stream().map(GroupDumpResponse::getGroupSpeakerData)
+                    .flatMap(Collection::stream)
+                    .filter(Objects::nonNull)
+                    .forEach(e -> groupEntries.put(e.getSwitchId(), e));
         });
         return groupEntries.asMap();
     }

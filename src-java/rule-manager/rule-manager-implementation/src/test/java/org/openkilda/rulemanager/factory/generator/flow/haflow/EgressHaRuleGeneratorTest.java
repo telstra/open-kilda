@@ -25,6 +25,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
@@ -61,8 +62,9 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildVlanOuterInnerVlanEgressRuleTest() {
-        FlowPath subPath = buildSubPath(OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        EgressHaRuleGenerator generator = buildMeterlessGenerator(HA_FLOW, subPath, VLAN_ENCAPSULATION, true);
+        HaFlow haFlow = buildHaFlow(OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+        FlowPath subPath = buildSubPath(haFlow.getHaSubFlows().iterator().next());
+        EgressHaRuleGenerator generator = buildMeterlessGenerator(haFlow, subPath, VLAN_ENCAPSULATION, true);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
@@ -76,8 +78,9 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildVlanOuterVlanEgressRuleTest() {
-        FlowPath subPath = buildSubPath(OUTER_VLAN_ID_1, 0);
-        EgressHaRuleGenerator generator = buildMeterlessGenerator(HA_FLOW, subPath, VLAN_ENCAPSULATION, false);
+        HaFlow haFlow = buildHaFlow(OUTER_VLAN_ID_1, 0);
+        FlowPath subPath = buildSubPath(haFlow.getHaSubFlows().iterator().next());
+        EgressHaRuleGenerator generator = buildMeterlessGenerator(haFlow, subPath, VLAN_ENCAPSULATION, false);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
@@ -89,8 +92,9 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildVlanOuterVlanEqualsTransitEgressRuleTest() {
-        FlowPath subPath = buildSubPath(VLAN_ENCAPSULATION.getId(), 0);
-        EgressHaRuleGenerator generator = buildMeterlessGenerator(HA_FLOW, subPath, VLAN_ENCAPSULATION, true);
+        HaFlow haFlow = buildHaFlow(VLAN_ENCAPSULATION.getId(), 0);
+        FlowPath subPath = buildSubPath(haFlow.getHaSubFlows().iterator().next());
+        EgressHaRuleGenerator generator = buildMeterlessGenerator(haFlow, subPath, VLAN_ENCAPSULATION, true);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
@@ -101,8 +105,9 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildVlanOuterInnerVlanEqualsTransitEgressRuleTest() {
-        FlowPath subPath = buildSubPath(OUTER_VLAN_ID_1, VLAN_ENCAPSULATION.getId());
-        EgressHaRuleGenerator generator = buildMeterlessGenerator(HA_FLOW, subPath, VLAN_ENCAPSULATION, false);
+        HaFlow haFlow = buildHaFlow(OUTER_VLAN_ID_1, VLAN_ENCAPSULATION.getId());
+        FlowPath subPath = buildSubPath(haFlow.getHaSubFlows().iterator().next());
+        EgressHaRuleGenerator generator = buildMeterlessGenerator(haFlow, subPath, VLAN_ENCAPSULATION, false);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
@@ -115,8 +120,9 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildVlanFullPortEgressRuleTest() {
-        FlowPath subPath = buildSubPath(0, 0);
-        EgressHaRuleGenerator generator = buildMeterlessGenerator(HA_FLOW, subPath, VLAN_ENCAPSULATION, true);
+        HaFlow haFlow = buildHaFlow(0, 0);
+        FlowPath subPath = buildSubPath(haFlow.getHaSubFlows().iterator().next());
+        EgressHaRuleGenerator generator = buildMeterlessGenerator(haFlow, subPath, VLAN_ENCAPSULATION, true);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
@@ -128,8 +134,9 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildVxlanOuterInnerVlanEgressRuleTest() {
-        FlowPath subPath = buildSubPath(OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        EgressHaRuleGenerator generator = buildMeterlessGenerator(HA_FLOW, subPath, VXLAN_ENCAPSULATION, false);
+        HaFlow haFlow = buildHaFlow(OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+        FlowPath subPath = buildSubPath(haFlow.getHaSubFlows().iterator().next());
+        EgressHaRuleGenerator generator = buildMeterlessGenerator(haFlow, subPath, VXLAN_ENCAPSULATION, false);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
@@ -145,8 +152,9 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildVxlanOuterVlanEgressRuleTest() {
-        FlowPath subPath = buildSubPath(OUTER_VLAN_ID_1, 0);
-        EgressHaRuleGenerator generator = buildMeterlessGenerator(HA_FLOW, subPath, VXLAN_ENCAPSULATION, true);
+        HaFlow haFlow = buildHaFlow(OUTER_VLAN_ID_1, 0);
+        FlowPath subPath = buildSubPath(haFlow.getHaSubFlows().iterator().next());
+        EgressHaRuleGenerator generator = buildMeterlessGenerator(haFlow, subPath, VXLAN_ENCAPSULATION, true);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
@@ -160,8 +168,9 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildVxlanFullPortEgressRuleTest() {
-        FlowPath subPath = buildSubPath(0, 0);
-        EgressHaRuleGenerator generator = buildMeterlessGenerator(HA_FLOW, subPath, VXLAN_ENCAPSULATION, false);
+        HaFlow haFlow = buildHaFlow(0, 0);
+        FlowPath subPath = buildSubPath(haFlow.getHaSubFlows().iterator().next());
+        EgressHaRuleGenerator generator = buildMeterlessGenerator(haFlow, subPath, VXLAN_ENCAPSULATION, false);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
@@ -173,8 +182,9 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildVlanOuterInnerVlanEgressReverseRuleTest() {
-        FlowPath subPath = buildReversePath();
-        EgressHaRuleGenerator generator = buildMeterlessGenerator(HA_FLOW, subPath, VLAN_ENCAPSULATION, false);
+        HaFlow haFlow = buildHaFlow(OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+        FlowPath subPath = buildReversePath(haFlow.getHaSubFlows().iterator().next());
+        EgressHaRuleGenerator generator = buildMeterlessGenerator(haFlow, subPath, VLAN_ENCAPSULATION, false);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
@@ -213,8 +223,9 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void createSharedMeterTest() {
-        FlowPath subPath = buildSubPath(OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        EgressHaRuleGenerator generator = buildGenerator(HA_FLOW, subPath, VLAN_ENCAPSULATION, true, METER_ID,
+        HaFlow haFlow = buildHaFlow(OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+        FlowPath subPath = buildSubPath(haFlow.getHaSubFlows().iterator().next());
+        EgressHaRuleGenerator generator = buildGenerator(haFlow, subPath, VLAN_ENCAPSULATION, true, METER_ID,
                 METER_COMMAND_UUID, true);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
@@ -237,8 +248,9 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void dependsOnSharedMeterTest() {
-        FlowPath subPath = buildSubPath(OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        EgressHaRuleGenerator generator = buildGenerator(HA_FLOW, subPath, VLAN_ENCAPSULATION, true, METER_ID,
+        HaFlow haFlow = buildHaFlow(OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+        FlowPath subPath = buildSubPath(haFlow.getHaSubFlows().iterator().next());
+        EgressHaRuleGenerator generator = buildGenerator(haFlow, subPath, VLAN_ENCAPSULATION, true, METER_ID,
                 METER_COMMAND_UUID, false);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
@@ -251,8 +263,9 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void nullSharedMeterTest() {
-        FlowPath subPath = buildSubPath(OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        EgressHaRuleGenerator generator = buildGenerator(HA_FLOW, subPath, VLAN_ENCAPSULATION, true, null,
+        HaFlow haFlow = buildHaFlow(OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+        FlowPath subPath = buildSubPath(haFlow.getHaSubFlows().iterator().next());
+        EgressHaRuleGenerator generator = buildGenerator(haFlow, subPath, VLAN_ENCAPSULATION, true, null,
                 METER_COMMAND_UUID, true);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
@@ -264,8 +277,9 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void sharedMeterSwitchDoesntSupportMetersTest() {
-        FlowPath subPath = buildReversePath();
-        EgressHaRuleGenerator generator = buildGenerator(HA_FLOW, subPath, VLAN_ENCAPSULATION, true, METER_ID,
+        HaFlow haFlow = buildHaFlow(OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+        FlowPath subPath = buildReversePath(haFlow.getHaSubFlows().iterator().next());
+        EgressHaRuleGenerator generator = buildGenerator(haFlow, subPath, VLAN_ENCAPSULATION, true, METER_ID,
                 METER_COMMAND_UUID, true);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
@@ -324,7 +338,7 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 .build();
     }
 
-    private FlowPath buildReversePath() {
+    private FlowPath buildReversePath(HaSubFlow haSubFlow) {
         FlowPath subPath = FlowPath.builder()
                 .pathId(PATH_ID_1)
                 .cookie(REVERSE_COOKIE)
@@ -338,7 +352,7 @@ public class EgressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                         .destSwitch(SWITCH_1)
                         .build()))
                 .build();
-        subPath.setHaSubFlow(buildHaSubFlow(OUTER_VLAN_ID_1, INNER_VLAN_ID_1));
+        subPath.setHaSubFlow(haSubFlow);
         return subPath;
     }
 }

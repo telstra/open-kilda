@@ -19,9 +19,9 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.info.meter.SwitchMeterEntries;
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.validation.YFlowValidationContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.validation.YFlowValidationFsm;
@@ -40,24 +40,24 @@ public class OnReceivedYFlowResourcesAction extends
     public void perform(State from, State to, Event event, YFlowValidationContext context,
                         YFlowValidationFsm stateMachine) {
         MessageData data = context.getSpeakerResponse();
-        if (data instanceof SwitchFlowEntries) {
-            SwitchFlowEntries switchFlowEntries = (SwitchFlowEntries) data;
-            log.info("Switch rules received for switch {}", switchFlowEntries.getSwitchId());
-            stateMachine.getReceivedRules().add(switchFlowEntries);
+        if (data instanceof FlowDumpResponse) {
+            FlowDumpResponse flowDumpResponse = (FlowDumpResponse) data;
+            log.info("Switch rules received for switch {}", flowDumpResponse.getSwitchId());
+            stateMachine.getReceivedRules().add(flowDumpResponse);
             stateMachine.setAwaitingRules(stateMachine.getAwaitingRules() - 1);
             checkOfCompleteDataCollection(stateMachine);
-        } else if (data instanceof SwitchMeterEntries) {
-            SwitchMeterEntries switchMeterEntries = (SwitchMeterEntries) data;
-            log.info("Switch meters received for switch {}", switchMeterEntries.getSwitchId());
-            stateMachine.getReceivedMeters().add(switchMeterEntries);
+        } else if (data instanceof MeterDumpResponse) {
+            MeterDumpResponse meterDumpResponse = (MeterDumpResponse) data;
+            log.info("Switch meters received for switch {}", meterDumpResponse.getSwitchId());
+            stateMachine.getReceivedMeters().add(meterDumpResponse);
             stateMachine.setAwaitingMeters(stateMachine.getAwaitingMeters() - 1);
             checkOfCompleteDataCollection(stateMachine);
         } else if (data instanceof SwitchMeterUnsupported) {
             SwitchMeterUnsupported meterUnsupported = (SwitchMeterUnsupported) data;
             log.info("Meters unsupported for switch {}", meterUnsupported.getSwitchId());
-            stateMachine.getReceivedMeters().add(SwitchMeterEntries.builder()
+            stateMachine.getReceivedMeters().add(MeterDumpResponse.builder()
                     .switchId(meterUnsupported.getSwitchId())
-                    .meterEntries(Collections.emptyList())
+                    .meterSpeakerData(Collections.emptyList())
                     .build());
             stateMachine.setAwaitingMeters(stateMachine.getAwaitingMeters() - 1);
             checkOfCompleteDataCollection(stateMachine);

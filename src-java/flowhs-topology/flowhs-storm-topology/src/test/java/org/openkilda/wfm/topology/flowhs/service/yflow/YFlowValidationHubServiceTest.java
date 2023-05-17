@@ -38,16 +38,18 @@ import org.openkilda.messaging.command.yflow.YFlowValidationResponse;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.meter.MeterEntry;
-import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.info.rule.GroupEntry;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchGroupEntries;
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
+import org.openkilda.messaging.info.group.GroupDumpResponse;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
 import org.openkilda.model.YSubFlow;
+import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.GroupSpeakerData;
+import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.RuleManagerConfig;
+import org.openkilda.rulemanager.RuleManagerImpl;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.validation.YFlowSwitchFlowEntriesBuilder;
@@ -58,6 +60,7 @@ import org.openkilda.wfm.topology.flowhs.service.FlowValidationHubService;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -74,6 +77,12 @@ public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String
     private FlowValidationHubCarrier flowValidationHubCarrier;
     @Mock
     private YFlowValidationHubCarrier yFlowValidationHubCarrier;
+    private static RuleManagerConfig ruleManagerConfig;
+
+    @BeforeClass
+    public static void setUpOnce() {
+        ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
+    }
 
     @Before
     public void init() {
@@ -86,16 +95,16 @@ public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String
     }
 
     @Test
-    public void shouldValidateYFlowSuccessfully() throws DuplicateKeyException {
+    public void validateYFlowSuccessfully() throws DuplicateKeyException {
         // given
         String yFlowId = "test_y_flow_1";
         YFlow yFlow = createYFlowViaTransit(yFlowId);
         YFlowSwitchFlowEntriesBuilder flowEntriesBuilder = new YFlowSwitchFlowEntriesBuilder(yFlow,
                 persistenceManager.getRepositoryFactory().createTransitVlanRepository(),
                 persistenceManager.getRepositoryFactory().createVxlanRepository());
-        Map<SwitchId, Collection<FlowEntry>> flowEntries = flowEntriesBuilder.getFlowEntries();
-        Map<SwitchId, Collection<MeterEntry>> meterEntries = flowEntriesBuilder.getMeterEntries();
-        Map<SwitchId, Collection<GroupEntry>> groupEntries = flowEntriesBuilder.getGroupEntries();
+        Map<SwitchId, Collection<FlowSpeakerData>> flowEntries = flowEntriesBuilder.getFlowEntries();
+        Map<SwitchId, Collection<MeterSpeakerData>> meterEntries = flowEntriesBuilder.getMeterEntries();
+        Map<SwitchId, Collection<GroupSpeakerData>> groupEntries = flowEntriesBuilder.getGroupEntries();
 
         YFlowValidationHubService service = makeYFlowValidationHubService();
         service.handleRequest(yFlow.getYFlowId(), new CommandContext(), yFlow.getYFlowId());
@@ -108,7 +117,7 @@ public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String
     }
 
     @Test
-    public void shouldFailIfNoYFlowFound() throws DuplicateKeyException {
+    public void failIfNoYFlowFound() throws DuplicateKeyException {
         // given
         String yFlowId = "fake_test_y_flow";
 
@@ -123,7 +132,7 @@ public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String
     }
 
     @Test
-    public void shouldValidateAndFailIfSubFlowHasMissingRule() throws DuplicateKeyException {
+    public void validateAndFailIfSubFlowHasMissingRule() throws DuplicateKeyException {
         // given
         String yFlowId = "test_y_flow_1";
         YFlow yFlow = createYFlowViaTransit(yFlowId);
@@ -133,11 +142,12 @@ public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String
         YFlowSwitchFlowEntriesBuilder flowEntriesBuilder = new YFlowSwitchFlowEntriesBuilder(yFlow,
                 persistenceManager.getRepositoryFactory().createTransitVlanRepository(),
                 persistenceManager.getRepositoryFactory().createVxlanRepository());
-        Map<SwitchId, Collection<FlowEntry>> flowEntries = flowEntriesBuilder.getFlowEntries();
+        Map<SwitchId, Collection<FlowSpeakerData>> flowEntries = flowEntriesBuilder.getFlowEntries();
         flowEntries.forEach((s, f) ->
-                f.removeIf(entry -> entry.getCookie() == failedFlow.getForwardPath().getCookie().getValue()));
-        Map<SwitchId, Collection<MeterEntry>> meterEntries = flowEntriesBuilder.getMeterEntries();
-        Map<SwitchId, Collection<GroupEntry>> groupEntries = flowEntriesBuilder.getGroupEntries();
+                f.removeIf(entry ->
+                        entry.getCookie().getValue() == failedFlow.getForwardPath().getCookie().getValue()));
+        Map<SwitchId, Collection<MeterSpeakerData>> meterEntries = flowEntriesBuilder.getMeterEntries();
+        Map<SwitchId, Collection<GroupSpeakerData>> groupEntries = flowEntriesBuilder.getGroupEntries();
 
         YFlowValidationHubService service = makeYFlowValidationHubService();
         service.handleRequest(yFlow.getYFlowId(), new CommandContext(), yFlow.getYFlowId());
@@ -156,29 +166,31 @@ public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String
     }
 
     private void handleSpeakerRequests(YFlowValidationHubService service, String yFlowFsmKey,
-                                       Map<SwitchId, Collection<FlowEntry>> flowEntries,
-                                       Map<SwitchId, Collection<MeterEntry>> meterEntries,
-                                       Map<SwitchId, Collection<GroupEntry>> groupEntries) {
+                                       Map<SwitchId, Collection<FlowSpeakerData>> flowEntries,
+                                       Map<SwitchId, Collection<MeterSpeakerData>> meterEntries,
+                                       Map<SwitchId, Collection<GroupSpeakerData>> groupEntries) {
         handleSpeakerRequests(pair -> {
             CommandData commandData = pair.getValue();
             InfoData result = null;
             if (commandData instanceof DumpRulesForFlowHsRequest) {
                 SwitchId switchId = ((DumpRulesForFlowHsRequest) commandData).getSwitchId();
-                Collection<FlowEntry> foundFlowEntries = flowEntries.get(switchId);
-                result = SwitchFlowEntries.builder().switchId(switchId)
-                        .flowEntries(foundFlowEntries != null ? new ArrayList<>(foundFlowEntries) : emptyList())
+                Collection<FlowSpeakerData> foundFlowEntries = flowEntries.get(switchId);
+                result = FlowDumpResponse.builder()
+                        .flowSpeakerData(foundFlowEntries != null ? new ArrayList<>(foundFlowEntries) : emptyList())
+                        .switchId(switchId)
                         .build();
             } else if (commandData instanceof DumpMetersForFlowHsRequest) {
                 SwitchId switchId = ((DumpMetersForFlowHsRequest) commandData).getSwitchId();
-                Collection<MeterEntry> foundMeterEntries = meterEntries.get(switchId);
-                result = SwitchMeterEntries.builder().switchId(switchId)
-                        .meterEntries(foundMeterEntries != null ? new ArrayList<>(foundMeterEntries) : emptyList())
+                Collection<MeterSpeakerData> foundMeterEntries = meterEntries.get(switchId);
+                result = MeterDumpResponse.builder().switchId(switchId)
+                        .meterSpeakerData(foundMeterEntries != null ? new ArrayList<>(foundMeterEntries) : emptyList())
                         .build();
             } else if (commandData instanceof DumpGroupsForFlowHsRequest) {
                 SwitchId switchId = ((DumpGroupsForFlowHsRequest) commandData).getSwitchId();
-                Collection<GroupEntry> foundGroupEntries = groupEntries.get(switchId);
-                result = SwitchGroupEntries.builder().switchId(switchId)
-                        .groupEntries(foundGroupEntries != null ? new ArrayList<>(foundGroupEntries) : emptyList())
+                Collection<GroupSpeakerData> foundGroupEntries = groupEntries.get(switchId);
+                result = GroupDumpResponse.builder()
+                        .switchId(switchId)
+                        .groupSpeakerData(foundGroupEntries != null ? new ArrayList<>(foundGroupEntries) : emptyList())
                         .build();
             } else {
                 fail();
@@ -191,11 +203,19 @@ public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String
 
     private YFlowValidationHubService makeYFlowValidationHubService() {
         FlowValidationHubService flowValidationHubService = new FlowValidationHubService(flowValidationHubCarrier,
-                persistenceManager, flowResourcesManager, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+                persistenceManager, new RuleManagerImpl(ruleManagerConfig));
         YFlowValidationService yFlowValidationService = new YFlowValidationService(persistenceManager,
                 flowResourcesManager, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
         return new YFlowValidationHubService(yFlowValidationHubCarrier, persistenceManager, flowValidationHubService,
                 yFlowValidationService);
+    }
+
+    private void verifyNorthboundSuccessResponse(YFlowValidationHubCarrier carrierMock) {
+        YFlowValidationResponse response = getNorthboundResponse(carrierMock);
+        assertTrue(response.isAsExpected());
+        assertTrue(response.getYFlowValidationResult().isAsExpected());
+        response.getSubFlowValidationResults()
+                .forEach(result -> assertTrue(result.getAsExpected()));
     }
 
     private YFlowValidationResponse getNorthboundResponse(YFlowValidationHubCarrier carrierMock) {
@@ -209,13 +229,5 @@ public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String
         InfoData rawPayload = ((InfoMessage) rawResponse).getData();
         assertTrue(rawPayload instanceof YFlowValidationResponse);
         return (YFlowValidationResponse) rawPayload;
-    }
-
-    private void verifyNorthboundSuccessResponse(YFlowValidationHubCarrier carrierMock) {
-        YFlowValidationResponse response = getNorthboundResponse(carrierMock);
-        assertTrue(response.isAsExpected());
-        assertTrue(response.getYFlowValidationResult().isAsExpected());
-        response.getSubFlowValidationResults()
-                .forEach(result -> assertTrue(result.getAsExpected()));
     }
 }

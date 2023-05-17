@@ -33,18 +33,18 @@ import org.openkilda.messaging.command.switches.DumpMetersForFlowHsRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForFlowHsRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.flow.FlowDumpResponse;
 import org.openkilda.messaging.info.flow.FlowValidationResponse;
-import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
-import org.openkilda.messaging.info.rule.SwitchGroupEntries;
+import org.openkilda.messaging.info.group.GroupDumpResponse;
+import org.openkilda.messaging.info.meter.MeterDumpResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IllegalFlowStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableFlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.FlowValidationFsm.Event;
@@ -52,6 +52,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.validation.FlowValidationFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowValidationEventListener;
 import org.openkilda.wfm.topology.flowhs.service.FlowValidationHubCarrier;
 
+import com.google.common.collect.Sets;
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
 import lombok.Builder;
@@ -65,7 +66,9 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -73,30 +76,26 @@ public final class FlowValidationFsm extends NbTrackableFlowProcessingFsm<FlowVa
         FlowValidationHubCarrier, FlowValidationEventListener> {
     private static final String FINISHED_WITH_ERROR_METHOD_NAME = "finishedWithError";
     private static final String FINISHED_METHOD_NAME = "finished";
-    private static final int TERMINATION_SWITCHES_COUNT = 2;
-
     @Getter
     private final String flowId;
     private final FlowValidationService service;
-
     private int awaitingRules;
     private int awaitingMeters;
     private int awaitingGroups;
-    private final List<SwitchFlowEntries> receivedRules = new ArrayList<>();
-    private final List<SwitchMeterEntries> receivedMeters = new ArrayList<>();
-    private final List<SwitchGroupEntries> receivedGroups = new ArrayList<>();
+    private final List<FlowDumpResponse> receivedRules = new ArrayList<>();
+    private final List<MeterDumpResponse> receivedMeters = new ArrayList<>();
+    private final List<GroupDumpResponse> receivedGroups = new ArrayList<>();
+    private final Set<SwitchId> switchIdSet = new HashSet<>();
     private List<FlowValidationResponse> response;
 
     public FlowValidationFsm(@NonNull CommandContext commandContext, @NonNull FlowValidationHubCarrier carrier,
                              @NonNull String flowId, @NonNull PersistenceManager persistenceManager,
-                             @NonNull FlowResourcesManager flowResourcesManager,
-                             @NonNull Config config,
-                             @NonNull Collection<FlowValidationEventListener> eventListeners) {
+                             @NonNull Collection<FlowValidationEventListener> eventListeners,
+                             @NonNull RuleManager ruleManager) {
         super(Event.NEXT, Event.ERROR, commandContext, carrier, eventListeners);
         this.flowId = flowId;
 
-        service = new FlowValidationService(persistenceManager, flowResourcesManager,
-                config.getFlowMeterMinBurstSizeInKbits(), config.getFlowMeterBurstCoefficient());
+        service = new FlowValidationService(persistenceManager, ruleManager);
     }
 
     protected void receiveData(State from, State to,
@@ -116,47 +115,48 @@ public final class FlowValidationFsm extends NbTrackableFlowProcessingFsm<FlowVa
             return;
         }
 
-        List<SwitchId> switchIds = service.getSwitchIdListByFlowId(flowId);
+        switchIdSet.addAll(service.getSwitchIdListByFlowId(flowId));
 
-        awaitingRules = switchIds.size();
+        awaitingRules = switchIdSet.size();
         log.debug("Send commands to get rules on the switches");
-        switchIds.forEach(switchId ->
+        switchIdSet.forEach(switchId ->
                 getCarrier().sendSpeakerRequest(flowId, new DumpRulesForFlowHsRequest(switchId)));
 
-        log.debug("Send commands to get meters on the termination switches");
-        awaitingMeters = TERMINATION_SWITCHES_COUNT;
-        getCarrier().sendSpeakerRequest(flowId, new DumpMetersForFlowHsRequest(flow.getSrcSwitchId()));
-        getCarrier().sendSpeakerRequest(flowId, new DumpMetersForFlowHsRequest(flow.getDestSwitchId()));
 
-        log.debug("Send commands to get groups on the termination switches");
-        awaitingGroups = TERMINATION_SWITCHES_COUNT;
-        getCarrier().sendSpeakerRequest(flowId, new DumpGroupsForFlowHsRequest(flow.getSrcSwitchId()));
-        getCarrier().sendSpeakerRequest(flowId, new DumpGroupsForFlowHsRequest(flow.getDestSwitchId()));
+        Set<SwitchId> terminationSwitchIds = Sets.newHashSet(flow.getSrcSwitchId(), flow.getDestSwitchId());
+        awaitingMeters = terminationSwitchIds.size();
+        awaitingGroups = terminationSwitchIds.size();
+        for (SwitchId terminationSwitchId : terminationSwitchIds) {
+            log.debug("Send command to get meters on the termination switch {}", terminationSwitchId);
+            getCarrier().sendSpeakerRequest(flowId, new DumpMetersForFlowHsRequest(terminationSwitchId));
+            log.debug("Send command to get groups on the termination switch {}", terminationSwitchId);
+            getCarrier().sendSpeakerRequest(flowId, new DumpGroupsForFlowHsRequest(terminationSwitchId));
+        }
     }
 
     protected void receivedRules(State from, State to,
                                  Event event, Object context) {
-        SwitchFlowEntries switchFlowEntries = (SwitchFlowEntries) context;
-        log.info("Switch rules received for switch {}", switchFlowEntries.getSwitchId());
-        receivedRules.add(switchFlowEntries);
+        FlowDumpResponse flowDumpResponse = (FlowDumpResponse) context;
+        log.info("Switch rules received for switch {}", flowDumpResponse.getSwitchId());
+        receivedRules.add(flowDumpResponse);
         awaitingRules--;
         checkOfCompleteDataCollection();
     }
 
     protected void receivedMeters(State from, State to,
                                   Event event, Object context) {
-        SwitchMeterEntries switchMeterEntries = (SwitchMeterEntries) context;
-        log.info("Switch meters received for switch {}", switchMeterEntries.getSwitchId());
-        receivedMeters.add(switchMeterEntries);
+        MeterDumpResponse meterDumpResponse = (MeterDumpResponse) context;
+        log.info("Switch meters received for switch {}", meterDumpResponse.getSwitchId());
+        receivedMeters.add(meterDumpResponse);
         awaitingMeters--;
         checkOfCompleteDataCollection();
     }
 
     protected void receivedGroups(State from, State to,
                                   Event event, Object context) {
-        SwitchGroupEntries switchGroupEntries = (SwitchGroupEntries) context;
-        log.info("Switch meters received for switch {}", switchGroupEntries.getSwitchId());
-        receivedGroups.add(switchGroupEntries);
+        GroupDumpResponse groupDumpResponse = (GroupDumpResponse) context;
+        log.info("Switch groups received for switch {}", groupDumpResponse.getSwitchId());
+        receivedGroups.add(groupDumpResponse);
         awaitingGroups--;
         checkOfCompleteDataCollection();
     }
@@ -169,7 +169,7 @@ public final class FlowValidationFsm extends NbTrackableFlowProcessingFsm<FlowVa
 
     protected void validateFlow(State from, State to, Event event, Object context) {
         try {
-            response = service.validateFlow(flowId, receivedRules, receivedMeters, receivedGroups);
+            response = service.validateFlow(flowId, receivedRules, receivedMeters, receivedGroups, switchIdSet);
         } catch (FlowNotFoundException e) {
             log.error("Flow {} not found during flow validation", flowId, e);
             sendException(e.getMessage(), "Flow validation operation in FlowValidationFsm", ErrorType.NOT_FOUND);
@@ -204,15 +204,13 @@ public final class FlowValidationFsm extends NbTrackableFlowProcessingFsm<FlowVa
         private final StateMachineBuilder<FlowValidationFsm, State, Event, Object> builder;
         private final FlowValidationHubCarrier carrier;
         private final PersistenceManager persistenceManager;
-        private final FlowResourcesManager flowResourcesManager;
-        private final Config config;
+        private final RuleManager ruleManager;
 
         public Factory(@NonNull FlowValidationHubCarrier carrier, @NonNull PersistenceManager persistenceManager,
-                       @NonNull FlowResourcesManager flowResourcesManager, @NonNull Config config) {
+                       RuleManager ruleManager) {
             this.carrier = carrier;
             this.persistenceManager = persistenceManager;
-            this.flowResourcesManager = flowResourcesManager;
-            this.config = config;
+            this.ruleManager = ruleManager;
 
             builder = StateMachineBuilderFactory.create(
                     FlowValidationFsm.class,
@@ -223,9 +221,8 @@ public final class FlowValidationFsm extends NbTrackableFlowProcessingFsm<FlowVa
                     FlowValidationHubCarrier.class,
                     String.class,
                     PersistenceManager.class,
-                    FlowResourcesManager.class,
-                    Config.class,
-                    Collection.class);
+                    Collection.class,
+                    RuleManager.class);
 
             builder.transition().from(INITIALIZED).to(RECEIVE_DATA).on(NEXT)
                     .callMethod("receiveData");
@@ -249,7 +246,7 @@ public final class FlowValidationFsm extends NbTrackableFlowProcessingFsm<FlowVa
         public FlowValidationFsm newInstance(@NonNull String flowId, @NonNull CommandContext commandContext,
                                              @NonNull Collection<FlowValidationEventListener> eventListeners) {
             FlowValidationFsm fsm = builder.newStateMachine(INITIALIZED, commandContext, carrier, flowId,
-                    persistenceManager, flowResourcesManager, config, eventListeners);
+                    persistenceManager, eventListeners, ruleManager);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("FlowValidationFsm, transition to {} on {}", event.getTargetState(), event.getCause()));

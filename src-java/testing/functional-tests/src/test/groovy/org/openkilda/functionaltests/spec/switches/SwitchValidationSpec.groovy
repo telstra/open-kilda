@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.messaging.model.FlowDirectionType
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -98,9 +100,9 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         Long srcSwitchBurstSize = switchHelper.getExpectedBurst(srcSwitch.dpId, flow.maximumBandwidth)
         Long dstSwitchBurstSize = switchHelper.getExpectedBurst(dstSwitch.dpId, flow.maximumBandwidth)
         switchHelper.verifyBurstSizeIsCorrect(srcSwitch, srcSwitchBurstSize,
-            srcSwitchProperMeters*.burstSize[0])
+                srcSwitchProperMeters*.burstSize[0])
         switchHelper.verifyBurstSizeIsCorrect(dstSwitch, dstSwitchBurstSize,
-            dstSwitchProperMeters*.burstSize[0])
+                dstSwitchProperMeters*.burstSize[0])
 
         and: "The rest fields in the 'meter' section are empty"
         srcSwitchValidateInfo.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
@@ -139,7 +141,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         cleanup:
         flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         if (srcSwitch && dstSwitch && !testIsCompleted) {
-            [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true)}
+            [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true) }
             [srcSwitch, dstSwitch].each { sw ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
                     northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty()
@@ -252,9 +254,9 @@ misconfigured"
         Long srcSwitchBurstSize = switchHelper.getExpectedBurst(srcSwitch.dpId, flow.maximumBandwidth)
         Long dstSwitchBurstSize = switchHelper.getExpectedBurst(dstSwitch.dpId, flow.maximumBandwidth)
         switchHelper.verifyBurstSizeIsCorrect(srcSwitch, srcSwitchBurstSize,
-            srcSwitchValidateInfo.meters.misconfigured*.burstSize[0])
+                srcSwitchValidateInfo.meters.misconfigured*.burstSize[0])
         switchHelper.verifyBurstSizeIsCorrect(dstSwitch, dstSwitchBurstSize,
-            dstSwitchValidateInfo.meters.misconfigured*.burstSize[0])
+                dstSwitchValidateInfo.meters.misconfigured*.burstSize[0])
 
         and: "Reason is specified why meter is misconfigured"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
@@ -284,6 +286,9 @@ misconfigured"
             totalSwitchMeters += northbound.getAllMeters(swId).meterEntries.size()
         }
         def flowValidateResponse = northbound.validateFlow(flow.flowId)
+        def expectedRulesCount = [
+                flowHelperV2.getFlowRulesCountBySwitch(flow, true, involvedSwitches.size()),
+                flowHelperV2.getFlowRulesCountBySwitch(flow, false, involvedSwitches.size())]
         flowValidateResponse.eachWithIndex { direction, i ->
             assert direction.discrepancies.size() == 2
 
@@ -303,7 +308,8 @@ misconfigured"
             switchHelper.verifyBurstSizeIsCorrect(sw, newBurstSize, burst.expectedValue.toLong())
             switchHelper.verifyBurstSizeIsCorrect(sw, switchBurstSize, burst.actualValue.toLong())
 
-            assert direction.flowRulesTotal == 2
+            assert direction.flowRulesTotal == ((FlowDirectionType.FORWARD.toString() == direction.direction) ?
+                    expectedRulesCount[0] : expectedRulesCount[1])
             assert direction.switchRulesTotal == totalSwitchRules
             assert direction.flowMetersTotal == 1
             assert direction.switchMetersTotal == totalSwitchMeters
@@ -354,14 +360,15 @@ misconfigured"
             new Cookie(it.cookie).getType() in [CookieType.SHARED_OF_FLOW, CookieType.SERVER_42_FLOW_RTT_INGRESS]
         }?.cookie
         def untouchedCookiesOnSrcSw = switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable ?
-            (reverseCookies + sharedCookieOnSrcSw).sort() : reverseCookies
+                (reverseCookies + sharedCookieOnSrcSw).sort() : reverseCookies
         def cookiesOnDstSw = northbound.getSwitchRules(dstSwitch.dpId).flowEntries*.cookie
         northbound.deleteMeter(srcSwitch.dpId, srcSwitchCreatedMeterIds[0])
 
         then: "Meters info/rules are moved into the 'missing' section on the srcSwitch"
         verifyAll(northbound.validateSwitch(srcSwitch.dpId)) {
             it.rules.missing.sort() == forwardCookies
-            it.rules.proper.findAll { !new Cookie(it).serviceFlag }.sort() == untouchedCookiesOnSrcSw//forward cookie's removed with meter
+            it.rules.proper.findAll { !new Cookie(it).serviceFlag }.sort() == untouchedCookiesOnSrcSw
+//forward cookie's removed with meter
 
             it.meters.missing*.meterId == srcSwitchCreatedMeterIds
             it.meters.missing*.cookie == forwardCookies
@@ -381,7 +388,7 @@ misconfigured"
         verifyAll(northbound.validateSwitch(dstSwitch.dpId)) {
             it.rules.proper.sort() == cookiesOnDstSw.sort()
 
-            def properMeters = it.meters.proper.findAll({dto -> !isDefaultMeter(dto)})
+            def properMeters = it.meters.proper.findAll({ dto -> !isDefaultMeter(dto) })
             properMeters*.meterId == dstSwitchCreatedMeterIds
             properMeters.cookie.size() == 1
             properMeters*.cookie == reverseCookies
@@ -424,7 +431,7 @@ misconfigured"
         cleanup:
         flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         if (srcSwitch && dstSwitch && !testIsCompleted) {
-            [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true)}
+            [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true) }
             [srcSwitch, dstSwitch].each { sw ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
                     northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty()
@@ -490,7 +497,7 @@ misconfigured"
         cleanup:
         flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         if (srcSwitch && dstSwitch && !testIsCompleted) {
-            [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true)}
+            [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true) }
             [srcSwitch, dstSwitch].each { sw ->
                 northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty()
             }
@@ -528,7 +535,7 @@ misconfigured"
         }
 
         when: "Synchronize the switch"
-        with(northbound.synchronizeSwitch(transitSw.dpId, false)){
+        with(northbound.synchronizeSwitch(transitSw.dpId, false)) {
             rules.installed.size() == 2
         }
 
@@ -676,16 +683,16 @@ misconfigured"
         def producer = new KafkaProducer(producerProps)
         //pick a meter id which is not yet used on src switch
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(switchPair.src.dpId)
-                                                                  .meterEntries*.meterId).first()
+                .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(speakerTopic, switchPair.dst.dpId.toString(), buildMessage(
                 FlowSpeakerData.builder()
-                    .switchId(switchPair.dst.dpId)
-                    .ofVersion(OfVersion.of(switchPair.dst.ofVersion))
-                    .cookie(new Cookie(1L))
-                    .table(OfTable.EGRESS)
-                    .priority(101)
-                    .instructions(Instructions.builder().build())
-                    .build()).toJson())).get()
+                        .switchId(switchPair.dst.dpId)
+                        .ofVersion(OfVersion.of(switchPair.dst.ofVersion))
+                        .cookie(new Cookie(1L))
+                        .table(OfTable.EGRESS)
+                        .priority(101)
+                        .instructions(Instructions.builder().build())
+                        .build()).toJson())).get()
         involvedSwitches[1..-2].findAll { !it.description.contains("OF_12") }.each { transitSw ->
             producer.send(new ProducerRecord(speakerTopic, transitSw.toString(), buildMessage(
                     FlowSpeakerData.builder()
@@ -1032,13 +1039,15 @@ misconfigured"
                 [
                         descr              : "LLDP",
                         cookieSearchClosure: {
-                            new Cookie(it.cookie).getType() ==  CookieType.LLDP_INPUT_CUSTOMER_TYPE }
+                            new Cookie(it.cookie).getType() == CookieType.LLDP_INPUT_CUSTOMER_TYPE
+                        }
                 ],
 
                 [
                         descr              : "ARP",
                         cookieSearchClosure: {
-                            new Cookie(it.cookie).getType() == CookieType.ARP_INPUT_CUSTOMER_TYPE }
+                            new Cookie(it.cookie).getType() == CookieType.ARP_INPUT_CUSTOMER_TYPE
+                        }
                 ]
         ]
     }

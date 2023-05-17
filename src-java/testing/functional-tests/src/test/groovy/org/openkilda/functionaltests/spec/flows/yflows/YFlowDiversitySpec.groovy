@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.northbound.dto.v2.yflows.YFlow
 
 import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -188,12 +189,13 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
                 .tap { it.diverseFlowId = yFlow2.YFlowId }
         def yFlow3 = yFlowHelper.addYFlow(yFlowRequest3)
 
-        then: "Get flow path for all y-flows"
+        and: "Get flow path for all y-flows"
         YFlowPaths yFlow1Paths, yFlow2Paths, yFlow3Paths
         withPool {
             (yFlow1Paths, yFlow2Paths, yFlow3Paths) = [yFlow1, yFlow2, yFlow3].collectParallel { northboundV2.getYFlowPaths(it.yFlowId) }
         }
 
+        /* https://github.com/telstra/open-kilda/issues/5191
         and: "All y-flow paths have diverse group information"
         def yFlow1ExpectedValues = expectedThreeYFlowsPathIntersectionValuesMap(yFlow1Paths, yFlow2Paths, yFlow3Paths)
         verifySegmentsStats(yFlow1Paths, yFlow1ExpectedValues)
@@ -215,6 +217,12 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         verifySegmentsStats([yFlow1s1Path, yFlow1s2Path], yFlow1ExpectedValues)
         verifySegmentsStats([yFlow2s1Path, yFlow2s2Path], yFlow2ExpectedValues)
         verifySegmentsStats([yFlow3s1Path, yFlow3s2Path], yFlow3ExpectedValues)
+        */
+
+        then: "All Y-Flow paths have diverse group information"
+        "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow1Paths, [yFlow2, yFlow3])
+        "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow2Paths, [yFlow1, yFlow3])
+        "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow3Paths, [yFlow2, yFlow1])
 
         cleanup:
         withPool {
@@ -252,6 +260,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         }
 
         then: 'All YFlows have correct diverse group information'
+        /* https://github.com/telstra/open-kilda/issues/5191
         def yFlow1ExpectedValues = expectedThreeYFlowsPathIntersectionValuesMap(yFlow1Paths, yFlow2Paths, yFlow3Paths)
         verifySegmentsStats(yFlow1Paths, yFlow1ExpectedValues)
 
@@ -260,10 +269,59 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
         def yFlow3ExpectedValues = expectedThreeYFlowsPathIntersectionValuesMap(yFlow3Paths, yFlow1Paths, yFlow2Paths)
         verifySegmentsStats(yFlow3Paths, yFlow3ExpectedValues)
+        */
+        "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow1Paths, [yFlow2, yFlow3])
+        "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow2Paths, [yFlow1, yFlow3])
+        "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow3Paths, [yFlow2, yFlow1])
 
         cleanup:
         withPool {
             [yFlow1, yFlow2, yFlow3].eachParallel { it && yFlowHelper.deleteYFlow(it.YFlowId) }
+        }
+    }
+
+    @Tidy
+    def "Able to get Y-Flow paths with with diversity part when flows become diverse after partial update"() {
+        given: "Switches with three not overlapping paths at least"
+        def swT = topologyHelper.switchTriplets.find {
+            [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
+                    [it.pathsEp1, it.pathsEp2].every {
+                        it.collect { pathHelper.getInvolvedIsls(it) }
+                                .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
+                    }
+        }
+        assumeTrue(swT != null, "Unable to find suitable switches")
+
+        and: "Create two Y-Flows"
+        def yFlow1Request = yFlowHelper.randomYFlow(swT, false)
+        def yFlow1 = yFlowHelper.addYFlow(yFlow1Request)
+        def yFlow2Request = yFlowHelper.randomYFlow(swT, false)
+        def yFlow2 = yFlowHelper.addYFlow(yFlow2Request)
+        def allSubFlowsIds = yFlow1.subFlows*.flowId + yFlow2.subFlows*.flowId as Set
+
+
+        when: "Partially update Y-Flow to become diverse with another one"
+        yFlowHelper.partialUpdateYFlow(yFlow1.getYFlowId(), YFlowPatchPayload.builder()
+                .diverseFlowId(yFlow2.getYFlowId())
+                .build())
+
+        and: "Request paths for both Y-Flows"
+        YFlowPaths yFlow1Paths, yFlow2Paths
+        withPool {
+            (yFlow1Paths, yFlow2Paths) = [yFlow1, yFlow2]
+                    .collectParallel { northboundV2.getYFlowPaths(it.YFlowId) }
+        }
+
+        then: "Path request contain all the subflows in diverse group"
+        "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow1Paths, [yFlow2])
+        "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow2Paths, [yFlow1])
+
+
+        cleanup:
+        withPool {
+            [yFlow1, yFlow2].eachParallel{
+                it && yFlowHelper.deleteYFlow(it.getYFlowId())
+            }
         }
     }
 
@@ -301,31 +359,26 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         }
     }
 
-    def expectedThreeYFlowsPathIntersectionValuesMap(YFlowPaths yFlowUnderTest,
+        def expectedThreeYFlowsPathIntersectionValuesMap(YFlowPaths yFlowUnderTest,
                                                      YFlowPaths yFlow2Paths,
                                                      YFlowPaths yFlow3Paths) {
         return [
                 diverseGroup: [
                         (yFlowUnderTest.subFlowPaths[0].flowId): pathHelper.getOverlappingSegmentStats(
                                 yFlowUnderTest.subFlowPaths[0].forward,
-                                [yFlowUnderTest.subFlowPaths[1].forward,
-                                 yFlow2Paths.subFlowPaths[0].forward,
+                                [yFlow2Paths.subFlowPaths[0].forward,
                                  yFlow2Paths.subFlowPaths[1].forward,
                                  yFlow3Paths.subFlowPaths[0].forward,
                                  yFlow3Paths.subFlowPaths[1].forward]),
                         (yFlowUnderTest.subFlowPaths[1].flowId): pathHelper.getOverlappingSegmentStats(
                                 yFlowUnderTest.subFlowPaths[1].forward,
-                                [yFlowUnderTest.subFlowPaths[0].forward,
-                                 yFlow2Paths.subFlowPaths[0].forward,
+                                [yFlow2Paths.subFlowPaths[0].forward,
                                  yFlow2Paths.subFlowPaths[1].forward,
                                  yFlow3Paths.subFlowPaths[0].forward,
                                  yFlow3Paths.subFlowPaths[1].forward])
                 ],
                 otherFlows  : [
                         (yFlowUnderTest.subFlowPaths[0].flowId): [
-                                (yFlowUnderTest.subFlowPaths[1].flowId): pathHelper.getOverlappingSegmentStats(
-                                        yFlowUnderTest.subFlowPaths[0].forward,
-                                        [yFlowUnderTest.subFlowPaths[1].forward]),
                                 (yFlow2Paths.subFlowPaths[0].flowId)   : pathHelper.getOverlappingSegmentStats(
                                         yFlowUnderTest.subFlowPaths[0].forward,
                                         [yFlow2Paths.subFlowPaths[0].forward]),
@@ -340,9 +393,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
                                         [yFlow3Paths.subFlowPaths[1].forward])
                         ],
                         (yFlowUnderTest.subFlowPaths[1].flowId): [
-                                (yFlowUnderTest.subFlowPaths[0].flowId): pathHelper.getOverlappingSegmentStats(
-                                        yFlowUnderTest.subFlowPaths[1].forward,
-                                        [yFlowUnderTest.subFlowPaths[0].forward]),
                                 (yFlow2Paths.subFlowPaths[0].flowId)   : pathHelper.getOverlappingSegmentStats(
                                         yFlowUnderTest.subFlowPaths[1].forward,
                                         [yFlow2Paths.subFlowPaths[0].forward]),
@@ -358,6 +408,22 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
                         ]
                 ]
         ]
+    }
+
+    def "assert that sub-flows paths have all expected flow ids in 'other flows' section"(YFlowPaths yFlowPaths,
+                                                                                          List<YFlow> diverseYFlows) {
+        def expectedSubFlowIdSet = "get sub-flow id's from all Y-Flows"(diverseYFlows)
+        assert yFlowPaths.subFlowPaths[0].diverseGroup.otherFlows*.id as Set ==
+                expectedSubFlowIdSet
+        assert yFlowPaths.subFlowPaths[1].diverseGroup.otherFlows*.id as Set ==
+                expectedSubFlowIdSet
+        return true
+    }
+
+    Set<String> "get sub-flow id's from all Y-Flows"(List<YFlow> yFlows) {
+        return yFlows.collect { it.getSubFlows() }
+                .flatten()
+                .collect { it.getFlowId() } as Set
     }
 
 }

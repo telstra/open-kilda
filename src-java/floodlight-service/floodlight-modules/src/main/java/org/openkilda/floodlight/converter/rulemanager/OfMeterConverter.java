@@ -18,6 +18,7 @@ package org.openkilda.floodlight.converter.rulemanager;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 
 import org.openkilda.model.MeterId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.MeterFlag;
 import org.openkilda.rulemanager.MeterSpeakerData;
 
@@ -94,6 +95,7 @@ public class OfMeterConverter {
 
     /**
      * Convert Meter Install Command.
+     *
      * @param commandData data
      * @param ofFactory factory
      * @return mod
@@ -135,6 +137,7 @@ public class OfMeterConverter {
 
     /**
      * Convert Meter Delete Command.
+     *
      * @param commandData data
      * @param ofFactory factory
      * @return mod
@@ -164,16 +167,17 @@ public class OfMeterConverter {
      * Convert meter stats reply.
      */
     public List<MeterSpeakerData> convertToMeterSpeakerData(OFMeterConfigStatsReply statsReply,
-                                                            boolean inaccurate) {
+                                                            boolean inaccurate, SwitchId switchId) {
         return statsReply.getEntries().stream()
-                .map(entry -> convertToMeterSpeakerData(entry, inaccurate))
+                .map(entry -> convertToMeterSpeakerData(entry, inaccurate, switchId))
                 .collect(Collectors.toList());
     }
 
     /**
      * Convert meter config.
      */
-    public MeterSpeakerData convertToMeterSpeakerData(OFMeterConfig meterConfig, boolean inaccurate) {
+    public MeterSpeakerData convertToMeterSpeakerData(OFMeterConfig meterConfig, boolean inaccurate,
+                                                      SwitchId switchId) {
         MeterId meterId = new MeterId(meterConfig.getMeterId());
         long rate = 0;
         long burst = 0;
@@ -186,6 +190,7 @@ public class OfMeterConverter {
         return MeterSpeakerData.builder()
                 .meterId(meterId)
                 .burst(burst)
+                .switchId(switchId)
                 .rate(rate)
                 .flags(fromOfMeterFlags(meterConfig.getFlags()))
                 .inaccurate(inaccurate)

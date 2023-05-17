@@ -117,7 +117,10 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
         northboundV2.getAllYFlows().each { northboundV2.deleteYFlow(it.getYFlowId()) }
         northboundV2.getAllHaFlows().each { northboundV2.deleteHaFlow(it.getHaFlowId()) }
         northbound.deleteAllFlows()
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getAllFlows().empty }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllFlows().empty
+            assert northboundV2.getAllHaFlows().empty
+        }
         labService.flushLabs()
         Wrappers.wait(WAIT_OFFSET + discoveryTimeout) {
             assert northbound.getAllSwitches().findAll { it.state == SwitchChangeType.ACTIVATED }.empty

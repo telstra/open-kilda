@@ -71,6 +71,14 @@ public abstract class InMemoryGraphBasedTest {
     public static final int INNER_VLAN_1 = 8;
     public static final int INNER_VLAN_2 = 9;
     public static final int INNER_VLAN_3 = 10;
+    public static final long BANDWIDTH_1 = 11;
+    public static final long BANDWIDTH_2 = 12;
+    public static final int PRIORITY_1 = 13;
+    public static final int PRIORITY_2 = 14;
+    public static final long MAX_LATENCY_1 = 100;
+    public static final long MAX_LATENCY_2 = 101;
+    public static final long MAX_LATENCY_TIER_2_1 = 200;
+    public static final long MAX_LATENCY_TIER_2_2 = 201;
     public static final MeterId METER_ID_1 = new MeterId(11);
     public static final MeterId METER_ID_2 = new MeterId(12);
     public static final MeterId METER_ID_3 = new MeterId(13);
@@ -114,7 +122,13 @@ public abstract class InMemoryGraphBasedTest {
     }
 
     protected Switch createTestSwitch(SwitchId switchId) {
-        Switch sw = Switch.builder()
+        Switch sw = buildSwitch(switchId);
+        repositoryFactory.createSwitchRepository().add(sw);
+        return sw;
+    }
+
+    protected static Switch buildSwitch(SwitchId switchId) {
+        return Switch.builder()
                 .switchId(switchId)
                 .description("test_description")
                 .socketAddress(new IpSocketAddress("10.0.0.1", 30070))
@@ -122,7 +136,5 @@ public abstract class InMemoryGraphBasedTest {
                 .hostname("test_host_" + switchId)
                 .status(SwitchStatus.ACTIVE)
                 .build();
-        repositoryFactory.createSwitchRepository().add(sw);
-        return sw;
     }
 }

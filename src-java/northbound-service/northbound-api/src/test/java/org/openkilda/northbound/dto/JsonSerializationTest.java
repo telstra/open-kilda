@@ -20,6 +20,7 @@ import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.info.event.SwitchChangeType;
+import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto;
@@ -74,7 +75,9 @@ public class JsonSerializationTest {
     public void flowValidationDtoTest() throws IOException {
         PathDiscrepancyDto discrepancyDto = new PathDiscrepancyDto("rule", "field", "expected", "actual");
         FlowValidationDto dto = new FlowValidationDto(
-                FLOW_ID, true, singletonList(0L), singletonList(1L), singletonList(discrepancyDto), 10, 11, 2, 4,
+                FLOW_ID, FlowPathDirection.FORWARD.name().toLowerCase(),
+                true, singletonList(0L), singletonList(1L), singletonList(discrepancyDto),
+                10, 11, 2, 4,
                 true, true);
         assertEquals(dto, pass(dto, FlowValidationDto.class));
     }

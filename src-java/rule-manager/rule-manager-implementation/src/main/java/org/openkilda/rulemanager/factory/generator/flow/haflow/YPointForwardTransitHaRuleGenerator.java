@@ -26,7 +26,9 @@ import static org.openkilda.rulemanager.utils.Utils.makeVlanReplaceActions;
 
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -62,6 +64,7 @@ import java.util.stream.Collectors;
 @SuperBuilder
 public class YPointForwardTransitHaRuleGenerator extends NotIngressRuleGenerator {
 
+    private final HaFlow haFlow;
     private final List<FlowPath> subPaths;
     private final int inPort;
     private final Map<PathId, Integer> outPorts;
@@ -113,7 +116,8 @@ public class YPointForwardTransitHaRuleGenerator extends NotIngressRuleGenerator
             currenVlanStack = makeVlanStack(encapsulation.getId());
         } else if (VXLAN.equals(encapsulation.getType())) {
             currenVlanStack = new ArrayList<>();
-            if (shortestSubPath.getHaSubFlow().getEndpointInnerVlan() != 0) {
+            HaSubFlow haSubFlow = haFlow.getHaSubFlowOrThrowException(shortestSubPath.getHaSubFlowId());
+            if (haSubFlow.getEndpointInnerVlan() != 0) {
                 actions.add(Utils.buildPopVxlan(sw.getSwitchId(), sw.getFeatures()));
             }
         } else {
@@ -127,15 +131,17 @@ public class YPointForwardTransitHaRuleGenerator extends NotIngressRuleGenerator
 
     private Bucket buildBucket(FlowPath subPath, List<Integer> currentVlanStack, Switch sw) {
         Set<Action> actions = new HashSet<>();
+        HaSubFlow haSubFlow = haFlow.getHaSubFlowOrThrowException(subPath.getHaSubFlowId());
         if (encapsulation.getType() == VXLAN) {
             if (subPath.getDestSwitchId().equals(sw.getSwitchId())) {
-                if (subPath.getHaSubFlow().getEndpointInnerVlan() == 0) {
+                if (haSubFlow.getEndpointInnerVlan() == 0) {
                     actions.add(buildPopVxlan(sw.getSwitchId(), sw.getFeatures()));
                 }
             } else {
                 FlowPath otherSubPath = getOtherSubPath(subPath.getPathId());
                 if (otherSubPath.getDestSwitchId().equals(sw.getSwitchId())
-                        && otherSubPath.getHaSubFlow().getEndpointInnerVlan() != 0) {
+                        && haFlow.getHaSubFlowOrThrowException(
+                                otherSubPath.getHaSubFlowId()).getEndpointInnerVlan() != 0) {
                     actions.add(Utils.buildPushVxlan(encapsulation.getId(), subPath.getSrcSwitchId(),
                             subPath.getDestSwitchId(), VXLAN_UDP_SRC, sw.getFeatures()));
                 } else {
@@ -148,7 +154,7 @@ public class YPointForwardTransitHaRuleGenerator extends NotIngressRuleGenerator
         List<Integer> targetStack;
         if (subPath.getDestSwitchId().equals(sw.getSwitchId())) {
             targetStack = makeVlanStack(
-                    subPath.getHaSubFlow().getEndpointInnerVlan(), subPath.getHaSubFlow().getEndpointVlan());
+                    haSubFlow.getEndpointInnerVlan(), haSubFlow.getEndpointVlan());
         } else if (encapsulation.getType() == TRANSIT_VLAN) {
             targetStack = makeVlanStack(encapsulation.getId());
         } else {
@@ -183,9 +189,9 @@ public class YPointForwardTransitHaRuleGenerator extends NotIngressRuleGenerator
 
     private List<Integer> getTargetPreGroupVlanStack(SwitchId switchId) {
         FlowPath shortestSubPath = getShortestSubPath(subPaths);
-        if (shortestSubPath.getDestSwitchId().equals(switchId)
-                && shortestSubPath.getHaSubFlow().getEndpointInnerVlan() != 0) {
-            return makeVlanStack(shortestSubPath.getHaSubFlow().getEndpointInnerVlan());
+        HaSubFlow haSubFlow = haFlow.getHaSubFlowOrThrowException(shortestSubPath.getHaSubFlowId());
+        if (shortestSubPath.getDestSwitchId().equals(switchId) && haSubFlow.getEndpointInnerVlan() != 0) {
+            return makeVlanStack(haSubFlow.getEndpointInnerVlan());
         }
         if (encapsulation.getType() == TRANSIT_VLAN) {
             return makeVlanStack(encapsulation.getId());
