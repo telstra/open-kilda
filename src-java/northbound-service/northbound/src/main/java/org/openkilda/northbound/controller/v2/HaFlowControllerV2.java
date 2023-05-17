@@ -19,7 +19,6 @@ import static org.openkilda.northbound.config.SwaggerConfig.DRAFT_API_TAG;
 
 import org.openkilda.messaging.payload.history.HaFlowHistoryEntry;
 import org.openkilda.northbound.controller.BaseController;
-import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.haflows.HaFlow;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowDump;
@@ -56,8 +55,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
 
 @Api(tags = {DRAFT_API_TAG})
 @RestController
@@ -158,38 +155,6 @@ public class HaFlowControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<HaFlow> swapHaFlowPaths(@PathVariable("ha_flow_id") String haFlowId) {
         return flowService.swapHaFlowPaths(haFlowId);
-    }
-
-    /**
-     * Gets flow statuses from history.
-     */
-    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    @ApiOperation(value = "Gets flow status timestamps for flow from history",
-            response = FlowHistoryStatusesResponse.class)
-    @GetMapping(path = "/{flow_id}/history/statuses")
-    public CompletableFuture<ResponseEntity<FlowHistoryStatusesResponse>> getFlowStatusTimestamps(
-            @PathVariable("flow_id") String flowId,
-            @ApiParam(value = "default: 0 (1 January 1970 00:00:00).")
-            @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalTimeFrom,
-            @ApiParam(value = "default: now.")
-            @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTimeTo,
-            @ApiParam(value = "Returns at most N latest records. "
-                    + "Default: if `timeFrom` or `timeTo` parameters are present, the default value of "
-                    + "`maxCount` is infinite (all records in time interval will be returned). "
-                    + "Otherwise the default value of `maxCount` is 100. In this case, the response contains "
-                    + "a 'Content-Range' header.")
-            @RequestParam(value = "max_count", required = false)
-            @Min(1)
-            @Max(Integer.MAX_VALUE)
-            Optional<Integer> optionalMaxCount) {
-
-        //TODO decide whether remove it or implement. It is only supported by simple flow service,
-        //TODO but seems like there have been no calls of this API for many months.
-        if (true) {
-            throw new UnsupportedOperationException();
-        }
-        return FlowHistoryHelper
-                .getFlowStatuses(flowService, flowId, optionalTimeFrom, optionalTimeTo, optionalMaxCount);
     }
 
     /**

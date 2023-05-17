@@ -15,9 +15,6 @@
 
 package org.openkilda.northbound.controller.v2;
 
-import static java.lang.String.format;
-
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.northbound.controller.BaseController;
@@ -56,10 +53,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Stream;
+import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
-import javax.validation.Valid;
 
 @RestController
 @RequestMapping("/v2/flows")
