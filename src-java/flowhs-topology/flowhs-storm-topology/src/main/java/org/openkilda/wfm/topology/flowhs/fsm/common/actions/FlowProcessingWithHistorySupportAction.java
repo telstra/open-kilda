@@ -130,6 +130,12 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                         format("Flow path %s not found", pathId)));
     }
 
+    protected HaFlowPath getHaFlowPath(PathId haPathId) {
+        return haFlowPathRepository.findById(haPathId)
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                        format("HA-flow path %s not found", haPathId)));
+    }
+
     protected HaFlowPath getHaFlowPath(HaFlow haFlow, PathId haPathId) {
         return haFlow.getPath(haPathId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,

@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.service.impl;
 
+import static java.util.Collections.emptySet;
+
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
@@ -23,6 +25,8 @@ import org.openkilda.messaging.command.haflow.HaFlowPathsReadRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathsResponse;
 import org.openkilda.messaging.command.haflow.HaFlowReadRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRerouteResponse;
 import org.openkilda.messaging.command.haflow.HaFlowResponse;
 import org.openkilda.messaging.command.haflow.HaFlowValidationRequest;
 import org.openkilda.messaging.command.haflow.HaFlowValidationResponse;
@@ -63,6 +67,8 @@ public class HaFlowServiceImpl implements HaFlowService {
     private final HaFlowMapper flowMapper;
     @Value("#{kafkaTopicsConfig.getFlowHsTopic()}")
     private String flowHsTopic;
+    @Value("#{kafkaTopicsConfig.getTopoRerouteTopic()}")
+    private String rerouteTopic;
 
     @Autowired
     public HaFlowServiceImpl(MessagingChannel messagingChannel, HaFlowMapper flowMapper) {
@@ -182,7 +188,14 @@ public class HaFlowServiceImpl implements HaFlowService {
 
     @Override
     public CompletableFuture<HaFlowRerouteResult> rerouteHaFlow(String haFlowId) {
-        return null;
+        log.info("API request: Reroute HA-flow: {}", haFlowId);
+        HaFlowRerouteRequest request = new HaFlowRerouteRequest(
+                haFlowId, emptySet(), false, "initiated via Northbound", false, true);
+        CommandMessage command = new CommandMessage(request, System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(rerouteTopic, command)
+                .thenApply(HaFlowRerouteResponse.class::cast)
+                .thenApply(flowMapper::toRerouteResult);
     }
 
     /**

@@ -256,6 +256,20 @@ class PathHelper {
     }
 
     /**
+     * Converts List<PathNodePayload> path representation to a List<FlowPathV2.PathNodeV2> representation
+     */
+    static List<PathNodeV2> toNodesV2(List<PathNodePayload> path) {
+        return convertToNodesV2(convert(path))
+    }
+
+    /**
+     * Converts List<PathNodeV2> path representation to the list of PathNodeV2, but with null segmentLatency field
+     */
+    static List<PathNodeV2> setNullLatency(List<PathNodeV2> path) {
+        return path.collect { new PathNodeV2(it.switchId, it.portNo, null)}
+    }
+
+    /**
      * Get list of switches involved in a given path.
      */
     List<Switch> getInvolvedSwitches(List<PathNode> path) {

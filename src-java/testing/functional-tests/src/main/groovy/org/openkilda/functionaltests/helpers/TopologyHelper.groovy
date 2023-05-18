@@ -133,9 +133,18 @@ class TopologyHelper {
         return topology.getActiveSwitches().shuffled().first()
     }
 
+    SwitchTriplet findSwitchTripletWithAlternativePaths() {
+        return switchTriplets.find {
+            if (!SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it)) {
+                return false
+            }
+            return it.pathsEp1.size() > 1 || it.pathsEp2.size() > 1
+        }
+    }
+
     SwitchTriplet findSwitchTripletForHaFlowWithProtectedPaths() {
         return switchTriplets.find {
-            if (it.ep1 == it.ep2 || it.ep1 == it.shared || it.ep2 == it.shared) {
+            if (!SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it)) {
                 return false
             }
             def pathsCombinations = [it.pathsEp1, it.pathsEp2].combinations()
