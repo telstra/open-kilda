@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -30,9 +30,8 @@ import java.util.UUID;
 @Slf4j
 public class CalculateFlowLatencyService {
 
-    private Map<String, FlowLatencyRequest> requests = new HashMap<>();
-
-    private FlowCacheBoltCarrier carrier;
+    private final Map<String, FlowLatencyRequest> requests = new HashMap<>();
+    private final FlowCacheBoltCarrier carrier;
 
     public CalculateFlowLatencyService(FlowCacheBoltCarrier carrier) {
         this.carrier = carrier;
@@ -41,7 +40,8 @@ public class CalculateFlowLatencyService {
     /**
      * Handle calculate flow latency request.
      */
-    public void handleCalculateFlowLatencyRequest(String flowId, FlowDirection direction, List<Link> flowPath) {
+    public void handleCalculateFlowLatencyRequest(String flowId, FlowDirection direction, List<Link> flowPath,
+                                                  String haFlowId) {
         requests.values().stream()
                 .filter(request -> request.getFlowId().equals(flowId) && request.getDirection() == direction)
                 .findAny()
@@ -57,6 +57,7 @@ public class CalculateFlowLatencyService {
                 .flowId(flowId)
                 .direction(direction)
                 .flowPath(flowPath)
+                .haFlowId(haFlowId)
                 .build());
 
         flowPath.forEach(link -> carrier.emitGetLinkLatencyRequest(flowId, requestId, link));
@@ -80,7 +81,7 @@ public class CalculateFlowLatencyService {
             FlowDirection direction = flowLatencyRequest.getDirection();
             Duration result = flowLatencyRequest.getResult();
             carrier.emitCheckFlowLatencyRequest(flowId, direction, result);
-            carrier.emitLatencyStats(flowId, direction, result);
+            carrier.emitLatencyStats(flowId, direction, result, flowLatencyRequest.getHaFlowId());
             requests.remove(requestId);
         }
     }

@@ -30,6 +30,7 @@ import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
@@ -52,6 +53,7 @@ import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowCreateService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -175,8 +177,11 @@ public class HaFlowCreateHubBolt extends HubBolt implements FlowGenericCarrier {
     }
 
     @Override
-    public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
-        //TODO implement https://github.com/telstra/open-kilda/issues/5172
+    public void sendNotifyFlowMonitor(@NonNull CommandData haFlowCommand) {
+        String correlationId = getCommandContext().getCorrelationId();
+        Message message = new CommandMessage(haFlowCommand, System.currentTimeMillis(), correlationId);
+        emitWithContext(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(correlationId, message));
     }
 
     @Override
@@ -208,6 +213,11 @@ public class HaFlowCreateHubBolt extends HubBolt implements FlowGenericCarrier {
         declarer.declareStream(HUB_TO_STATS_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(ZkStreams.ZK.toString(),
                 new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
+    }
+
+    @Override
+    public void sendActivateFlowMonitoring(@NonNull RequestedFlow flow) {
+        //TODO: Implement logic during https://github.com/telstra/open-kilda/issues/5208
     }
 
     @Getter

@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowmonitoring.bolt;
 
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_REMOVE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.HA_SUB_FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_ID_FIELD;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
@@ -27,6 +28,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.RemoveFlowCommand;
 import org.openkilda.messaging.info.flow.UpdateFlowCommand;
+import org.openkilda.messaging.info.haflow.UpdateHaSubFlowCommand;
 import org.openkilda.messaging.info.stats.FlowRttStatsData;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
@@ -65,6 +67,10 @@ public class FlowSplitterBolt extends AbstractBolt {
                 RemoveFlowCommand removeFlowCommand = (RemoveFlowCommand) commandData;
                 emit(FLOW_REMOVE_STREAM_ID.name(), input, new Values(removeFlowCommand.getFlowId(),
                         getCommandContext()));
+            } else if (commandData instanceof UpdateHaSubFlowCommand) {
+                UpdateHaSubFlowCommand updateHaFlowCommand = (UpdateHaSubFlowCommand) commandData;
+                emit(HA_SUB_FLOW_UPDATE_STREAM_ID.name(), input, new Values(updateHaFlowCommand.getFlowId(),
+                        updateHaFlowCommand, getCommandContext()));
             } else {
                 unhandledInput(input);
             }
@@ -77,6 +83,8 @@ public class FlowSplitterBolt extends AbstractBolt {
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields(FLOW_ID_FIELD, INFO_DATA_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(FLOW_UPDATE_STREAM_ID.name(),
+                new Fields(FLOW_ID_FIELD, COMMAND_DATA_FIELD, FIELD_ID_CONTEXT));
+        declarer.declareStream(HA_SUB_FLOW_UPDATE_STREAM_ID.name(),
                 new Fields(FLOW_ID_FIELD, COMMAND_DATA_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(FLOW_REMOVE_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, FIELD_ID_CONTEXT));
     }
