@@ -110,7 +110,6 @@ public class RemoveOldRulesAction extends
                 haFlowPath, true, false, false, true, dataAdapter);
     }
 
-
     private DataAdapter buildDataAdapter(
             HaFlowPath haFlowPath, Set<PathId> overlappingPathIds, Map<PathId, HaFlow> additionalHaFlowMap,
             HaFlowUpdateFsm stateMachine) {

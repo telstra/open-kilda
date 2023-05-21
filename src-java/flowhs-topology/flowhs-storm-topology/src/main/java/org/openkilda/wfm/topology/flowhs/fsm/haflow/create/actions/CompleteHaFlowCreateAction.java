@@ -24,6 +24,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathId;
+import org.openkilda.model.StatusInfo;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -106,7 +107,10 @@ public class CompleteHaFlowCreateAction extends
                 subFlow.setStatus(subFlowMap.getOrDefault(subFlow.getHaSubFlowId(), FlowStatus.UP));
             }
             haFlow.setStatus(haFlowStatus);
-            //TODO add status info?
+            if (FlowStatus.DEGRADED.equals(haFlowStatus)) {
+                haFlow.setStatusInfo(StatusInfo.BACK_UP_STRATEGY_USED);
+            }
+
             return haFlowStatus;
         });
 

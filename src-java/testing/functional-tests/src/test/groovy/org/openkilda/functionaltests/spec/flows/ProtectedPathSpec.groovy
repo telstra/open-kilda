@@ -24,6 +24,7 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.StatusInfo
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
@@ -514,7 +515,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
                 status == FlowState.DEGRADED.toString()
                 flowStatusDetails.mainFlowPathStatus == "Up"
                 flowStatusDetails.protectedFlowPathStatus == "Down"
-                statusInfo == "Couldn't find non overlapping protected path"
+                statusInfo == StatusInfo.OVERLAPPING_PROTECTED_PATH
             }
         }
 
@@ -952,7 +953,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         Wrappers.wait(WAIT_OFFSET) {
             verifyAll(northbound.getFlow(flow.flowId)) {
                 status == FlowState.DEGRADED.toString()
-                statusInfo == "Couldn't find non overlapping protected path"
+                statusInfo == StatusInfo.OVERLAPPING_PROTECTED_PATH
             }
             assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
             assert northboundV2.getFlowHistoryStatuses(flow.flowId, 1).historyStatuses*.statusBecome == ["DEGRADED"]
@@ -1372,7 +1373,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
             verifyAll(northboundV2.getFlow(flow.flowId)) {
                 statusDetails.mainPath == "Up"
                 statusDetails.protectedPath == "Down"
-                statusInfo == "Couldn't find non overlapping protected path"
+                statusInfo == StatusInfo.OVERLAPPING_PROTECTED_PATH
             }
         }
 

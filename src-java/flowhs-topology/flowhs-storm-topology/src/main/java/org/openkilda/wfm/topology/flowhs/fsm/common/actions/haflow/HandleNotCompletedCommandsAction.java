@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
@@ -53,6 +54,14 @@ public class HandleNotCompletedCommandsAction<T extends HaFlowPathSwappingFsm<T,
                         format("Completing the update operation although the %s command may not be "
                                         + "finished yet: commandId %s, switch %s, command count %s",
                                 commandId, actionName, request.getSwitchId(), request.getCommands().size()));
+            }
+        }
+
+        for (SpeakerCommandResponse errorResponse : stateMachine.getFailedCommands().values()) {
+            for (UUID uuid : errorResponse.getFailedCommandIds().keySet()) {
+                log.warn("Receive error response from {} for command {}. UUID {}: {}",
+                        errorResponse.getSwitchId(), errorResponse.getCommandId(), uuid,
+                        errorResponse.getFailedCommandIds().get(uuid));
             }
         }
 

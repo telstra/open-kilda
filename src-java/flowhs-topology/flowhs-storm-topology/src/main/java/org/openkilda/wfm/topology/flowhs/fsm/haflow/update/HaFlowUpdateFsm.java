@@ -26,13 +26,18 @@ import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.DeallocateResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HandleNotCompletedCommandsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HandleNotDeallocatedResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HandleNotRemovedPathsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HandleNotRevertedResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowStatsOnNewPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowStatsOnRemovedPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.OnReceivedInstallResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.OnReceivedRemoveResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.OnReceivedRevertResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.RevertResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.AbandonPendingCommandsAction;
@@ -41,10 +46,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.AllocateProte
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.BuildNewRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.CompleteFlowPathInstallationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.CompleteFlowPathRemovalAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.DeallocateResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.HandleNotDeallocatedResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.HandleNotRemovedPathsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.HandleNotRevertedResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.InstallIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.InstallNonIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.OnFinishedAction;
@@ -55,7 +56,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertFlowAct
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertNewRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertPathsSwapAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.SwapFlowPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.UpdateFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.UpdateHaFlowAction;
@@ -249,17 +249,17 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
             builder.transitions().from(State.OLD_PATHS_REMOVAL_COMPLETED)
                     .toAmong(State.DEALLOCATING_OLD_RESOURCES, State.DEALLOCATING_OLD_RESOURCES)
                     .onEach(Event.TIMEOUT, Event.ERROR)
-                    .perform(new HandleNotRemovedPathsAction());
+                    .perform(new HandleNotRemovedPathsAction<>());
 
             builder.transition().from(State.DEALLOCATING_OLD_RESOURCES)
                     .to(State.OLD_RESOURCES_DEALLOCATED).on(Event.NEXT)
-                    .perform(new DeallocateResourcesAction(persistenceManager, resourcesManager));
+                    .perform(new DeallocateResourcesAction<>(persistenceManager, resourcesManager));
 
             builder.transition().from(State.OLD_RESOURCES_DEALLOCATED).to(State.UPDATING_FLOW_STATUS).on(Event.NEXT);
             builder.transitions().from(State.OLD_RESOURCES_DEALLOCATED)
                     .toAmong(State.UPDATING_FLOW_STATUS, State.UPDATING_FLOW_STATUS)
                     .onEach(Event.TIMEOUT, Event.ERROR)
-                    .perform(new HandleNotDeallocatedResourcesAction());
+                    .perform(new HandleNotDeallocatedResourcesAction<>());
 
             builder.transition().from(State.UPDATING_FLOW_STATUS).to(State.FLOW_STATUS_UPDATED).on(Event.NEXT)
                     .perform(new UpdateFlowStatusAction(persistenceManager, dashboardLogger));
@@ -301,11 +301,11 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
             builder.transitions().from(State.REVERTING_ALLOCATED_RESOURCES)
                     .toAmong(State.RESOURCES_ALLOCATION_REVERTED)
                     .onEach(Event.NEXT)
-                    .perform(new RevertResourceAllocationAction(persistenceManager, resourcesManager));
+                    .perform(new RevertResourceAllocationAction<>(persistenceManager, resourcesManager));
             builder.transition().from(State.RESOURCES_ALLOCATION_REVERTED).to(State.REVERTING_FLOW).on(Event.NEXT);
             builder.transition().from(State.RESOURCES_ALLOCATION_REVERTED).to(State.REVERTING_FLOW)
                     .on(Event.ERROR)
-                    .perform(new HandleNotRevertedResourceAllocationAction());
+                    .perform(new HandleNotRevertedResourceAllocationAction<>());
 
             builder.onEntry(State.REVERTING_FLOW)
                     .perform(reportErrorAction);

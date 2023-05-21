@@ -128,7 +128,6 @@ public class HaFlowUpdateService extends FlowProcessingService<HaFlowUpdateFsm, 
         }
 
         HaFlowUpdateFsm fsm = fsmFactory.newInstance(haFlowId, commandContext, eventListeners);
-        fsm.setSharedBandwidthGroupId(request.getHaFlowId());
         fsmRegister.registerFsm(key, fsm);
 
         HaFlowUpdateContext context = HaFlowUpdateContext.builder().targetFlow(request).build();

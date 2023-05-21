@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.reroute.service;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 
@@ -24,6 +25,8 @@ public interface IRerouteQueueCarrier {
     void sendRerouteRequest(String correlationId, FlowRerouteRequest request);
 
     void sendRerouteRequest(String correlationId, YFlowRerouteRequest request);
+
+    void sendRerouteRequest(String correlationId, HaFlowRerouteRequest request);
 
     void emitFlowRerouteError(ErrorData errorData);
 

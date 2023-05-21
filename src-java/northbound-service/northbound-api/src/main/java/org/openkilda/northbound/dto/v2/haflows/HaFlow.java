@@ -38,6 +38,7 @@ import java.util.Set;
 public class HaFlow {
     String haFlowId;
     String status;
+    String statusInfo;
 
     HaFlowSharedEndpoint sharedEndpoint;
 

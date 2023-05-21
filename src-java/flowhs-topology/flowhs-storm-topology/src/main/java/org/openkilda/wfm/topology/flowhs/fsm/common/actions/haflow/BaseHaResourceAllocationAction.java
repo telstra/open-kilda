@@ -62,6 +62,7 @@ import net.jodah.failsafe.RetryPolicy;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -118,8 +119,9 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
 
     @SneakyThrows
     protected GetHaPathsResult allocatePathPair(
-            HaFlow haFlow, HaPathIdsPair newPathIds, List<PathId> subPathsToReuseBandwidth, HaFlowPathPair oldPaths,
-            String sharedBandwidthGroupId, Predicate<GetHaPathsResult> whetherCreatePathSegments, boolean isProtected)
+            HaFlow haFlow, HaPathIdsPair newPathIds, boolean forceToIgnoreBandwidth,
+            List<PathId> subPathsToReuseBandwidth, HaFlowPathPair oldPaths, boolean allowOldPaths,
+            Predicate<GetHaPathsResult> whetherCreatePathSegments, boolean isProtected)
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         // Lazy initialisable map with reused bandwidth...
         Supplier<Map<IslEndpoints, Long>> reuseBandwidthPerIsl = getBandwidthMapSupplier(
@@ -128,29 +130,41 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
         try {
             return Failsafe.with(pathAllocationRetryPolicy).get(() -> {
                 GetHaPathsResult potentialPath;
-                potentialPath = pathComputer.getHaPath(haFlow, subPathsToReuseBandwidth, isProtected);
-
-                boolean newPathFound = isNotSamePath(potentialPath, oldPaths);
-                boolean createFoundPath = whetherCreatePathSegments.test(potentialPath);
-                log.debug("Found {} path for ha-flow {}. {} (re-)creating it", newPathFound ? "a new" : "the same",
-                        haFlow.getHaFlowId(), createFoundPath ? "Proceed with" : "Skip");
-
-                if (createFoundPath) {
-                    boolean ignoreBandwidth = haFlow.isIgnoreBandwidth();
-                    List<PathSegment> segments = buildPathSegments(
-                            haFlow, newPathIds.getForward(), potentialPath.getForward(), sharedBandwidthGroupId,
-                            ignoreBandwidth);
-
-                    segments.addAll(buildPathSegments(
-                            haFlow, newPathIds.getReverse(), potentialPath.getReverse(), sharedBandwidthGroupId,
-                            ignoreBandwidth));
-
-                    transactionManager.doInTransaction(() -> {
-                        createPathSegments(segments, reuseBandwidthPerIsl);
-                    });
+                if (forceToIgnoreBandwidth) {
+                    boolean originalIgnoreBandwidth = haFlow.isIgnoreBandwidth();
+                    haFlow.setIgnoreBandwidth(true);
+                    potentialPath = pathComputer.getHaPath(haFlow, Collections.emptyList(), isProtected);
+                    haFlow.setIgnoreBandwidth(originalIgnoreBandwidth);
+                } else {
+                    potentialPath = pathComputer.getHaPath(haFlow, subPathsToReuseBandwidth, isProtected);
                 }
 
-                return potentialPath;
+                boolean newPathFound = isNotSamePath(potentialPath, oldPaths);
+                if (allowOldPaths || newPathFound) {
+                    boolean createFoundPath = whetherCreatePathSegments.test(potentialPath);
+                    log.debug("Found {} path for ha-flow {}. {} (re-)creating it", newPathFound ? "a new" : "the same",
+                            haFlow.getHaFlowId(), createFoundPath ? "Proceed with" : "Skip");
+
+                    if (createFoundPath) {
+                        boolean ignoreBandwidth = forceToIgnoreBandwidth || haFlow.isIgnoreBandwidth();
+                        List<PathSegment> segments = buildPathSegments(
+                                haFlow, newPathIds.getForward(), potentialPath.getForward(), haFlow.getHaFlowId(),
+                                ignoreBandwidth);
+
+                        segments.addAll(buildPathSegments(
+                                haFlow, newPathIds.getReverse(), potentialPath.getReverse(), haFlow.getHaFlowId(),
+                                ignoreBandwidth));
+
+                        transactionManager.doInTransaction(() -> {
+                            createPathSegments(segments, reuseBandwidthPerIsl);
+                        });
+                    }
+
+                    return potentialPath;
+                } else {
+                    log.debug("Found the same path for ha-flow {}, but not allowed", haFlow.getHaFlowId());
+                    return null;
+                }
             });
         } catch (FailsafeException ex) {
             throw ex.getCause();
@@ -202,7 +216,8 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
     }
 
     protected HaFlowPathPair createHaFlowPathPair(
-            String haFlowId, HaFlowResources haFlowResources, GetHaPathsResult haPaths) {
+            String haFlowId, HaFlowResources haFlowResources, GetHaPathsResult haPaths,
+            boolean forceToIgnoreBandwidth) {
         final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
                 .flowEffectiveId(haFlowResources.getUnmaskedCookie());
 
@@ -211,20 +226,20 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
 
             HaFlowPath newForwardPath = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getForward(), haPaths.getForward(),
-                    cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build()
-            );
+                    cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build(),
+                    forceToIgnoreBandwidth);
             newForwardPath.setSubPaths(createSubPaths(haPaths.getForward(), haFlow, haFlowResources.getForward(),
-                    newForwardPath));
+                    newForwardPath, forceToIgnoreBandwidth));
             log.debug("Persisting new forward path {}", newForwardPath);
             haFlowPathRepository.add(newForwardPath);
             newForwardPath.setHaSubFlows(haFlow.getHaSubFlows());
 
             HaFlowPath newReversePath = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getReverse(), haPaths.getReverse(),
-                    cookieBuilder.direction(FlowPathDirection.REVERSE).subType(FlowSubType.SHARED).build()
-            );
+                    cookieBuilder.direction(FlowPathDirection.REVERSE).subType(FlowSubType.SHARED).build(),
+                    forceToIgnoreBandwidth);
             newReversePath.setSubPaths(createSubPaths(haPaths.getReverse(), haFlow, haFlowResources.getReverse(),
-                    newReversePath));
+                    newReversePath, forceToIgnoreBandwidth));
             log.debug("Persisting new reverse path {}", newForwardPath);
             haFlowPathRepository.add(newReversePath);
             newReversePath.setHaSubFlows(haFlow.getHaSubFlows());
@@ -235,7 +250,8 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
     }
 
     private List<FlowPath> createSubPaths(
-            HaPath haPath, HaFlow haFlow, HaPathResources haPathResources, HaFlowPath haFlowPath) {
+            HaPath haPath, HaFlow haFlow, HaPathResources haPathResources, HaFlowPath haFlowPath,
+            boolean forceIgnoreBandwidth) {
 
         Map<String, FlowSubType> subTypeMap = flowPathBuilder.buildSubTypeMap(haFlow.getHaSubFlows());
         List<FlowPath> subPaths = new ArrayList<>();
@@ -249,7 +265,7 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
                     haFlow, haPathResources.getSubPathResources(subFlow.getHaSubFlowId()), path,
                     srcSwitch, dstSwitch,
                     haFlowPath.getCookie().toBuilder().subType(subTypeMap.get(subFlow.getHaSubFlowId())).build(),
-                    segments);
+                    segments, forceIgnoreBandwidth);
             flowPathRepository.add(subPath);
             subPath.setHaSubFlow(subFlow);
             subPaths.add(subPath);
@@ -287,6 +303,14 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
                 }
             }
         }
+    }
+
+    protected Predicate<GetHaPathsResult> buildNonOverlappingPathPredicate(
+            HaFlowPath primaryForward, HaFlowPath primaryReverse) {
+        return haPath -> (primaryForward == null
+                || !flowPathBuilder.arePathsOverlapped(haPath.getForward(), primaryForward))
+                && (primaryReverse == null
+                || !flowPathBuilder.arePathsOverlapped(haPath.getReverse(), primaryReverse));
     }
 
     @Override

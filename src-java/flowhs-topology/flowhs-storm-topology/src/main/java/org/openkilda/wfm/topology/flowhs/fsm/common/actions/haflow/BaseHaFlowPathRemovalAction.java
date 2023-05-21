@@ -68,15 +68,17 @@ public abstract class BaseHaFlowPathRemovalAction<T extends FlowProcessingWithHi
         }
     }
 
-    protected void removeRejectedFlowPaths(Collection<PathId> rejectedPathIds) {
-        for (PathId pathId : rejectedPathIds) {
-            flowPathRepository.remove(pathId)
+    protected void removeRejectedPaths(Collection<PathId> subPathIds, Collection<PathId> haFlowPathIds) {
+        for (PathId subPathId : subPathIds) {
+            flowPathRepository.remove(subPathId)
                     .ifPresent(subPath -> {
                         updateIslsForFlowPath(subPath);
                         // TODO save info about removed paths into history
                         // https://github.com/telstra/open-kilda/issues/5169
                     });
-            haFlowPathRepository.remove(pathId)
+        }
+        for (PathId haFlowPathId : haFlowPathIds) {
+            haFlowPathRepository.remove(haFlowPathId)
                     .ifPresent(haFlowPath -> {
                         // TODO save info about removed paths into history
                         // https://github.com/telstra/open-kilda/issues/5169

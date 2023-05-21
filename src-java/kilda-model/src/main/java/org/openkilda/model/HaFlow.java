@@ -96,7 +96,8 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                   PathComputationStrategy pathComputationStrategy, FlowEncapsulationType encapsulationType,
                   Long maxLatency, Long maxLatencyTier2, boolean ignoreBandwidth, boolean periodicPings,
                   boolean pinned, Integer priority, boolean strictBandwidth, String description,
-                  boolean allocateProtectedPath, FlowStatus status, String affinityGroupId, String diverseGroupId) {
+                  boolean allocateProtectedPath, FlowStatus status, String statusInfo, String affinityGroupId,
+                  String diverseGroupId) {
         HaFlowDataImpl.HaFlowDataImplBuilder builder = HaFlowDataImpl.builder()
                 .haFlowId(haFlowId).sharedSwitch(sharedSwitch).sharedPort(sharedPort).sharedOuterVlan(sharedOuterVlan)
                 .sharedInnerVlan(sharedInnerVlan).maximumBandwidth(maximumBandwidth)
@@ -104,7 +105,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                 .maxLatency(maxLatency).maxLatencyTier2(maxLatencyTier2).ignoreBandwidth(ignoreBandwidth)
                 .periodicPings(periodicPings).pinned(pinned).priority(priority).strictBandwidth(strictBandwidth)
                 .description(description).allocateProtectedPath(allocateProtectedPath).status(status)
-                .affinityGroupId(affinityGroupId).diverseGroupId(diverseGroupId);
+                .statusInfo(statusInfo).affinityGroupId(affinityGroupId).diverseGroupId(diverseGroupId);
 
         data = builder.build();
 
@@ -445,6 +446,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                 .append(getProtectedReversePathId(), that.getProtectedReversePathId())
                 .append(getHaSubFlows(), that.getHaSubFlows())
                 .append(getStatus(), that.getStatus())
+                .append(getStatusInfo(), that.getStatusInfo())
                 .append(getAffinityGroupId(), that.getAffinityGroupId())
                 .append(getDiverseGroupId(), that.getDiverseGroupId())
                 .append(getTimeCreate(), that.getTimeCreate())
@@ -459,7 +461,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                 getEncapsulationType(), getMaxLatency(), getMaxLatencyTier2(), isIgnoreBandwidth(), isPeriodicPings(),
                 isPinned(), getPriority(), isStrictBandwidth(), getDescription(), isAllocateProtectedPath(),
                 getForwardPathId(), getReversePathId(), getProtectedForwardPathId(), getProtectedReversePathId(),
-                getHaSubFlows(), getStatus(), getTimeCreate(), getTimeModify(), getAffinityGroupId(),
+                getHaSubFlows(), getStatus(), getStatusInfo(), getTimeCreate(), getTimeModify(), getAffinityGroupId(),
                 getDiverseGroupId());
     }
 
@@ -602,6 +604,10 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
 
         void setStatus(FlowStatus status);
 
+        String getStatusInfo();
+
+        void setStatusInfo(String statusInfo);
+
         Instant getTimeCreate();
 
         void setTimeCreate(Instant timeCreate);
@@ -637,6 +643,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
         boolean periodicPings;
         FlowEncapsulationType encapsulationType;
         FlowStatus status;
+        String statusInfo;
         Long maxLatency;
         Long maxLatencyTier2;
         Instant timeCreate;

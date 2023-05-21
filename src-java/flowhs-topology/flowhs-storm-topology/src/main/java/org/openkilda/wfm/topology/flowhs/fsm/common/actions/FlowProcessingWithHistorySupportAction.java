@@ -41,6 +41,7 @@ import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
@@ -85,6 +86,7 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
     protected final HaFlowRepository haFlowRepository;
     protected final HaSubFlowRepository haSubFlowRepository;
     protected final FlowPathRepository flowPathRepository;
+    protected final HaFlowPathRepository haFlowPathRepository;
     protected final SwitchPropertiesRepository switchPropertiesRepository;
     protected final SwitchRepository switchRepository;
     protected final KildaFeatureTogglesRepository featureTogglesRepository;
@@ -98,6 +100,7 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
         this.haFlowRepository = repositoryFactory.createHaFlowRepository();
         this.haSubFlowRepository = repositoryFactory.createHaSubFlowRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
+        this.haFlowPathRepository = repositoryFactory.createHaFlowPathRepository();
         this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();

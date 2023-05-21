@@ -33,6 +33,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.reroute.FlowType;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.messaging.info.reroute.error.RerouteInProgressError;
 import org.openkilda.messaging.info.reroute.error.SpeakerRequestError;
@@ -134,6 +135,7 @@ public class RerouteQueueServiceTest {
                 .force(false)
                 .effectivelyDown(false)
                 .reason("another reason")
+                .flowType(FlowType.FLOW)
                 .build();
         rerouteQueueService.getReroutes().put(FLOW_ID, RerouteQueue.builder().throttling(first).build());
 
@@ -268,6 +270,7 @@ public class RerouteQueueServiceTest {
         RerouteResultInfoData rerouteResultInfoData = RerouteResultInfoData.builder()
                 .flowId(FLOW_ID)
                 .success(true)
+                .flowType(FlowType.FLOW)
                 .build();
         rerouteQueueService.processRerouteResult(rerouteResultInfoData, CORRELATION_ID);
 
@@ -289,6 +292,7 @@ public class RerouteQueueServiceTest {
                 .flowId(FLOW_ID)
                 .success(false)
                 .rerouteError(new RerouteInProgressError())
+                .flowType(FlowType.FLOW)
                 .build();
         rerouteQueueService.processRerouteResult(rerouteResultInfoData, CORRELATION_ID);
 
@@ -314,6 +318,7 @@ public class RerouteQueueServiceTest {
                 .success(false)
                 .rerouteError(new SpeakerRequestError("Failed to install rules",
                         Collections.singleton(SWITCH_B.getSwitchId())))
+                .flowType(FlowType.FLOW)
                 .build();
         rerouteQueueService.processRerouteResult(rerouteResultInfoData, CORRELATION_ID);
 
@@ -333,6 +338,7 @@ public class RerouteQueueServiceTest {
                 .force(false)
                 .effectivelyDown(true)
                 .reason("another reason")
+                .flowType(FlowType.FLOW)
                 .build();
         RerouteQueue rerouteQueue = RerouteQueue.builder()
                 .inProgress(inProgress)
@@ -345,6 +351,7 @@ public class RerouteQueueServiceTest {
                 .success(false)
                 .rerouteError(new SpeakerRequestError("Failed to install rules",
                         Collections.singleton(SWITCH_C.getSwitchId())))
+                .flowType(FlowType.FLOW)
                 .build();
         rerouteQueueService.processRerouteResult(rerouteResultInfoData, CORRELATION_ID);
 
@@ -370,7 +377,7 @@ public class RerouteQueueServiceTest {
                 .force(false)
                 .effectivelyDown(true)
                 .reason("another reason")
-                .yFlow(true)
+                .flowType(FlowType.Y_FLOW)
                 .build();
         RerouteQueue rerouteQueue = RerouteQueue.builder()
                 .inProgress(inProgress)
@@ -383,7 +390,7 @@ public class RerouteQueueServiceTest {
                 .success(false)
                 .rerouteError(new SpeakerRequestError("Failed to install rules",
                         Collections.singleton(SWITCH_C.getSwitchId())))
-                .yFlow(true)
+                .flowType(FlowType.Y_FLOW)
                 .build();
         rerouteQueueService.processRerouteResult(rerouteResultInfoData, CORRELATION_ID);
 
@@ -458,6 +465,7 @@ public class RerouteQueueServiceTest {
                 .force(false)
                 .effectivelyDown(false)
                 .reason("first reason")
+                .flowType(FlowType.FLOW)
                 .build();
         FlowThrottlingData pending = FlowThrottlingData.builder()
                 .correlationId("pending")
@@ -467,6 +475,7 @@ public class RerouteQueueServiceTest {
                 .force(false)
                 .effectivelyDown(true)
                 .reason("second reason")
+                .flowType(FlowType.FLOW)
                 .build();
         FlowThrottlingData throttling = FlowThrottlingData.builder()
                 .correlationId(CORRELATION_ID)
@@ -475,6 +484,7 @@ public class RerouteQueueServiceTest {
                 .affectedIsl(Collections.singleton(new IslEndpoint(SWITCH_ID_A, 1)))
                 .force(true)
                 .effectivelyDown(false)
+                .flowType(FlowType.FLOW)
                 .reason("third reason")
                 .build();
         RerouteQueue rerouteQueue = RerouteQueue.builder()
@@ -495,6 +505,7 @@ public class RerouteQueueServiceTest {
                 .affectedIsl(Sets.newHashSet(new IslEndpoint(SWITCH_ID_A, 1), new IslEndpoint(SWITCH_ID_B, 1)))
                 .force(true)
                 .effectivelyDown(true)
+                .flowType(FlowType.FLOW)
                 .reason(pending.getReason())
                 .build();
         assertEquals(expected, rerouteQueue.getPending());
@@ -542,6 +553,7 @@ public class RerouteQueueServiceTest {
                 .affectedIsl(Collections.emptySet())
                 .ignoreBandwidth(true)
                 .strictBandwidth(false)
+                .flowType(FlowType.FLOW)
                 .build();
 
         assertTrue(rerouteQueueService.computeIgnoreBandwidth(data, true));
@@ -551,6 +563,7 @@ public class RerouteQueueServiceTest {
                 .affectedIsl(Collections.emptySet())
                 .ignoreBandwidth(false)
                 .strictBandwidth(false)
+                .flowType(FlowType.FLOW)
                 .build();
 
         assertTrue(rerouteQueueService.computeIgnoreBandwidth(data, true));
@@ -560,6 +573,7 @@ public class RerouteQueueServiceTest {
                 .affectedIsl(Collections.emptySet())
                 .ignoreBandwidth(true)
                 .strictBandwidth(true)
+                .flowType(FlowType.FLOW)
                 .build();
 
         assertFalse(rerouteQueueService.computeIgnoreBandwidth(data, true));
@@ -569,6 +583,7 @@ public class RerouteQueueServiceTest {
                 .affectedIsl(Collections.emptySet())
                 .ignoreBandwidth(false)
                 .strictBandwidth(true)
+                .flowType(FlowType.FLOW)
                 .build();
 
         assertFalse(rerouteQueueService.computeIgnoreBandwidth(data, true));
@@ -583,6 +598,7 @@ public class RerouteQueueServiceTest {
                 .affectedIsl(Collections.emptySet())
                 .force(true)
                 .effectivelyDown(true)
+                .flowType(FlowType.FLOW)
                 .reason("reason");
     }
 
@@ -595,7 +611,7 @@ public class RerouteQueueServiceTest {
                 .force(true)
                 .effectivelyDown(true)
                 .reason("reason")
-                .yFlow(true);
+                .flowType(FlowType.Y_FLOW);
     }
 
     private FlowRerouteRequest getFlowRerouteRequest(String flowId, FlowThrottlingData flowThrottlingData) {

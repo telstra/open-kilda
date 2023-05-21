@@ -13,17 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow;
 
 import org.openkilda.model.HaFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.BaseHaFlowPathRemovalAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
 
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
@@ -32,8 +29,8 @@ import java.util.List;
 import java.util.Objects;
 
 @Slf4j
-public class RevertResourceAllocationAction extends
-        BaseHaFlowPathRemovalAction<HaFlowUpdateFsm, State, Event, HaFlowUpdateContext> {
+public class RevertResourceAllocationAction<T extends HaFlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E,
+        C extends SpeakerResponseContext> extends BaseHaFlowPathRemovalAction<T, S, E, C> {
     private final FlowResourcesManager resourcesManager;
 
     public RevertResourceAllocationAction(
@@ -43,8 +40,7 @@ public class RevertResourceAllocationAction extends
     }
 
     @Override
-    protected void perform(
-            State from, State to, Event event, HaFlowUpdateContext context, HaFlowUpdateFsm stateMachine) {
+    protected void perform(S from, S to, E event, C context, T stateMachine) {
         HaFlow haFlow = getHaFlow(stateMachine.getHaFlowId());
 
         List<HaFlowResources> resourcesList = Lists.newArrayList(
@@ -61,7 +57,7 @@ public class RevertResourceAllocationAction extends
 
         removeFlowPaths(stateMachine.getNewPrimaryPathIds());
         removeFlowPaths(stateMachine.getNewProtectedPathIds());
-        removeRejectedFlowPaths(stateMachine.getRejectedHaPathsIds());
+        removeRejectedPaths(stateMachine.getRejectedSubPathsIds(), stateMachine.getRejectedHaPathsIds());
 
         stateMachine.setNewPrimaryResources(null);
         stateMachine.setNewPrimaryPathIds(null);
@@ -69,7 +65,7 @@ public class RevertResourceAllocationAction extends
         stateMachine.setNewProtectedPathIds(null);
     }
 
-    private void saveHistory(HaFlowUpdateFsm stateMachine, HaFlow haFlow, HaFlowResources resources) {
+    private void saveHistory(T stateMachine, HaFlow haFlow, HaFlowResources resources) {
         // TODO save history https://github.com/telstra/open-kilda/issues/5169
         // example org.openkilda.wfm.topology.flowhs.fsm.update.actions.RevertResourceAllocationAction
     }
