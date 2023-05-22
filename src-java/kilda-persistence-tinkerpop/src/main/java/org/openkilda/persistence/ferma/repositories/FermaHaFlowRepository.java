@@ -84,6 +84,16 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
     }
 
     @Override
+    public Collection<HaFlow> findWithPeriodicPingsEnabled() {
+        return framedGraph().traverse(g -> g.V()
+                        .hasLabel(HaFlowFrame.FRAME_LABEL)
+                        .has(HaFlowFrame.PERIODIC_PINGS_PROPERTY, true))
+                .toListExplicit(HaFlowFrame.class).stream()
+                .map(HaFlow::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public Optional<HaFlow> findById(String haFlowId) {
         return HaFlowFrame.load(framedGraph(), haFlowId).map(HaFlow::new);
     }

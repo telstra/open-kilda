@@ -31,6 +31,7 @@ import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.PeriodicHaPingCommand;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -208,9 +209,11 @@ public class HaFlowUpdateHubBolt extends HubBolt implements FlowGenericCarrier {
 
     @Override
     public void sendPeriodicPingNotification(String haFlowId, boolean enabled) {
-        //TODO implement periodic pings https://github.com/telstra/open-kilda/issues/5153
-        log.info("Periodic pings are not implemented for ha-flow update operation yet. Skipping for the ha-flow {}",
-                haFlowId);
+        log.debug("Periodic ping ha-flow update operation. haFlowId={}", haFlowId);
+        PeriodicHaPingCommand payload = new PeriodicHaPingCommand(haFlowId, enabled);
+        Message message = new CommandMessage(payload, getCommandContext().getCreateTime(),
+                getCommandContext().getCorrelationId());
+        emitWithContext(Stream.HUB_TO_PING_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
     }
 
     @Override

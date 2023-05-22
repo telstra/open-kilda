@@ -316,6 +316,15 @@ public abstract class AbstractBolt extends BaseRichBolt {
         return value;
     }
 
+    protected <T> boolean hasValue(Tuple input, String field, Class<T> klass) {
+        try {
+            klass.cast(input.getValueByField(field));
+        } catch (ClassCastException e) {
+            return false;
+        }
+        return true;
+    }
+
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         stream.defaultReadObject();
 

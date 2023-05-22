@@ -180,8 +180,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
                 .shuffleGrouping(PingProducer.BOLT_ID)
                 .shuffleGrouping(Blacklist.BOLT_ID)
                 .shuffleGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_SPEAKER_PING_RESPONSE_ID)
-                .shuffleGrouping(
-                        PeriodicResultManager.BOLT_ID, PeriodicResultManager.STREAM_BLACKLIST_ID);
+                .shuffleGrouping(PeriodicResultManager.BOLT_ID, PeriodicResultManager.STREAM_BLACKLIST_ID);
     }
 
     private void blacklist(TopologyBuilder topology) {

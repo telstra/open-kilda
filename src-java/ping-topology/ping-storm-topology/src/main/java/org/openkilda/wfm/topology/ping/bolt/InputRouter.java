@@ -22,6 +22,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.HaFlowPingRequest;
+import org.openkilda.messaging.command.flow.PeriodicHaPingCommand;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.command.flow.YFlowPingRequest;
 import org.openkilda.messaging.floodlight.response.PingResponse;
@@ -94,7 +95,7 @@ public class InputRouter extends Abstract {
             emit(input, new Values(data), STREAM_ON_DEMAND_Y_FLOW_REQUEST_ID);
         } else if (data instanceof HaFlowPingRequest) {
             emit(input, new Values(data), STREAM_ON_DEMAND_HA_FLOW_REQUEST_ID);
-        } else if (data instanceof PeriodicPingCommand) {
+        } else if (data instanceof PeriodicPingCommand || data instanceof PeriodicHaPingCommand) {
             emit(input, new Values(data), STREAM_PERIODIC_PING_UPDATE_REQUEST_ID);
         } else {
             unhandledInput(input);
