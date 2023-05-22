@@ -51,65 +51,77 @@ We do not recommend upgrading pip and install docker-compose using the methods d
 
 For running a virtual environment (that is a Docker instance with the Open vSwitch service) it is required to have Linux kernel 4.18+ for OVS meters support.
 The following commands will install necessary dependencies on Ubuntu 18.04:
-  Add Python's PPA repository
-  ```shell
-  sudo add-apt-repository -y ppa:deadsnakes/ppa
-  ```
-  Install required packages:
-  ```shell
-  sudo apt update && sudo apt-get install -y \
-    maven \
-    openjdk-8-jdk \
-    python \
-    python3.8 \
-    python3-pip \
-    virtualenv \
-    make \
-    tox \
-    rsync \
-    openvswitch-switch \
-    linux-generic-hwe-18.04
-  ```
-    Install required components for Python 3.6:
-    ```shell
-    sudo pip3 install setuptools-rust==1.1.2 setuptools==46.4.0 --upgrade
-    ```
+Add Python's PPA repository
+```shell
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+```
 
-  To avoid version conflict you can install python3-pip with the official script. To do it, you need to download script & run script:
-    ```shell
-    wget -P /tmp/ https://bootstrap.pypa.io/get-pip.py \
-      && sudo python3.8 /tmp/get-pip.py
-    ```
+Install required packages:
+```shell
+sudo apt update && sudo apt-get install -y \
+  maven \
+  openjdk-8-jdk \
+  python \
+  python3.8 \
+  python3-pip \
+  virtualenv \
+  make \
+  tox \
+  rsync \
+  openvswitch-switch \
+  linux-generic-hwe-18.04
+```
 
-  After pip installation you can install Docker compose:
-    ```shell
-    sudo pip3 install docker-compose
-    ```
+Install required components for Python 3.6:
+```shell
+sudo pip3 install setuptools-rust==1.1.2 setuptools==46.4.0 --upgrade
+```
+
+Upgrade pip3:
+```shell
+sudo pip3 install pip --upgrade
+```
+
+(Optional) To avoid version conflict install python3-pip with the official script. To do it, you need to download script & run script:
+```shell
+wget -P /tmp/ https://bootstrap.pypa.io/get-pip.py \
+  && sudo python3.8 /tmp/get-pip.py
+```
+
+After pip upgrade install Docker compose:
+```shell
+sudo pip3 install docker-compose
+```
 
 #### Dependency installation on Ubuntu 20.04
 
-  The following commands will install necessary dependencies on Ubuntu 20.04:
-  ```shell
-  sudo apt update && sudo apt install -y \
-    maven \
-    make \
-    openjdk-8-jdk \
-    openvswitch-switch \
-    python3-pip \
-    tox \
-    rsync
-  ```
+The following commands will install necessary dependencies on Ubuntu 20.04:
+```shell
+sudo apt update && sudo apt install -y \
+  maven \
+  make \
+  openjdk-8-jdk \
+  openvswitch-switch \
+  python3-pip \
+  tox \
+  rsync
+```
 
-  To avoid version conflict you can install python3-pip with the official script. To do it, you need to download script & run script:
-  ```shell
-  wget -P /tmp/ https://bootstrap.pypa.io/get-pip.py \
-    && sudo python3 /tmp/get-pip.py
-  ```
+Upgrade pip3:
+```shell
+sudo pip3 install pip --upgrade
+```
 
-  After pip installation you can install Docker compose:
-  ```shell
-  sudo pip3 install docker-compose
-  ```
+(Optional) To avoid version conflict install python3-pip with the official script. To do it, you need to download script & run script:
+```shell
+wget -P /tmp/ https://bootstrap.pypa.io/get-pip.py \
+  && sudo python3.8 /tmp/get-pip.py
+```
+
+After pip upgrade install Docker compose:
+```shell
+sudo pip3 install docker-compose
+```
 
 #### Gradle
 
