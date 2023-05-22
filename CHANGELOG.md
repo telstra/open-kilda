@@ -1,5 +1,49 @@
 # Changelog
 
+## v1.135.0 (18/05/2023)
+
+### Features:
+-  [#5190](https://github.com/telstra/open-kilda/pull/5190) Update API doc for HA-Flow read operation (Issue: [#5148](https://github.com/telstra/open-kilda/issues/5148)) [**docs**]
+-  [#5164](https://github.com/telstra/open-kilda/pull/5164) Feature/ha validation (Issue: [#5152](https://github.com/telstra/open-kilda/issues/5152))
+
+### Bug Fixes:
+-  [#5202](https://github.com/telstra/open-kilda/pull/5202) Change flags for excess meter in SwitchSyncSpec to support WB switches
+-  [#4892](https://github.com/telstra/open-kilda/pull/4892) Add payload validation for API v2 (Issue: [#3491](https://github.com/telstra/open-kilda/issues/3491)) [**northbound**]
+
+### Improvements:
+-  [#4874](https://github.com/telstra/open-kilda/pull/4874) Upgrade java dependencies 2022/07
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.134.0...v1.135.0).
+
+### Affected Components:
+nb
+
+---
+
+## v1.134.0 (17/05/2023)
+
+### Features:
+-  [#5194](https://github.com/telstra/open-kilda/pull/5194) HA flows Part 12: Add H&S partial update operation (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+-  [#5180](https://github.com/telstra/open-kilda/pull/5180) HA flows Part 11: Add H&S update operation  (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+
+### Bug Fixes:
+-  [#5185](https://github.com/telstra/open-kilda/pull/5185) Y flow paths update on diverse flows Update/Patch API (Issue: [#5175](https://github.com/telstra/open-kilda/issues/5175))
+-  [#5183](https://github.com/telstra/open-kilda/pull/5183) Update logic to exclude redundant sub flows from diversity section (Issue: [#5181](https://github.com/telstra/open-kilda/issues/5181))
+
+### Improvements:
+-  [#5189](https://github.com/telstra/open-kilda/pull/5189) #5175: [TEST] Incorrect get paths response for Y-Flow after partial update (Issues: [#5175](https://github.com/telstra/open-kilda/issues/5175) [#5175](https://github.com/telstra/open-kilda/issues/5175)) [**tests**]
+-  [#5193](https://github.com/telstra/open-kilda/pull/5193) #5181: [TEST] Y flow get paths API must not return sub flows of the same Y flow in diversity group section (Issues: [#5181](https://github.com/telstra/open-kilda/issues/5181) [#5191](https://github.com/telstra/open-kilda/issues/5191)) [**tests**]
+-  [#5173](https://github.com/telstra/open-kilda/pull/5173) #5148: [TEST] Add ability to read HA paths (Issue: [#5148](https://github.com/telstra/open-kilda/issues/5148)) [**tests**]
+-  [#5119](https://github.com/telstra/open-kilda/pull/5119) Feature/5025use rule manager for flow validation (Issue: [#5025](https://github.com/telstra/open-kilda/issues/5025))
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.133.0...v1.134.0).
+
+### Affected Components:
+flow-hs
+
+---
+
 ## v1.133.0 (02/05/2023)
 
 ### Features:

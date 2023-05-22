@@ -362,7 +362,7 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
         flowRepository.add(flow);
     }
 
-    private static Switch buildSwitch(SwitchId switchId) {
+    protected static Switch buildSwitch(SwitchId switchId) {
         return Switch.builder().switchId(switchId).ofVersion("OF_13")
                 .features(ImmutableSet.of(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN, SwitchFeature.METERS))
                 .ofDescriptionSoftware("").ofDescriptionManufacturer("").description("").build();

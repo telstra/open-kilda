@@ -19,13 +19,10 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
-import org.openkilda.messaging.command.haflow.HaFlowResponse;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
-import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
@@ -46,7 +43,6 @@ import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
-import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -218,7 +214,6 @@ public class ResourcesAllocationAction extends
             HaFlowPath forward = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getForward(), paths.getForward(),
                     cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build());
-            forward.setStatus(FlowPathStatus.IN_PROGRESS);
             forward.setSubPaths(createForwardSubPaths(paths, haFlow, haFlowResources, forward, stateMachine));
             haFlowPathRepository.add(forward);
             forward.setHaSubFlows(haFlow.getHaSubFlows());
@@ -228,7 +223,6 @@ public class ResourcesAllocationAction extends
             HaFlowPath reverse = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getReverse(), paths.getReverse(),
                     cookieBuilder.direction(FlowPathDirection.REVERSE).subType(FlowSubType.SHARED).build());
-            reverse.setStatus(FlowPathStatus.IN_PROGRESS);
             reverse.setSubPaths(createReverseSubPaths(paths, haFlow, haFlowResources, reverse, stateMachine));
             haFlowPathRepository.add(reverse);
             reverse.setHaSubFlows(haFlow.getHaSubFlows());
@@ -278,7 +272,6 @@ public class ResourcesAllocationAction extends
             HaFlowPath forward = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getForward(), protectedPaths.getForward(),
                     cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build());
-            forward.setStatus(FlowPathStatus.IN_PROGRESS);
             forward.setSubPaths(createForwardSubPaths(protectedPaths, haFlow, haFlowResources, forward, stateMachine));
             haFlowPathRepository.add(forward);
             forward.setHaSubFlows(haFlow.getHaSubFlows());
@@ -289,7 +282,6 @@ public class ResourcesAllocationAction extends
             HaFlowPath reverse = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getReverse(), protectedPaths.getReverse(),
                     cookieBuilder.direction(FlowPathDirection.REVERSE).subType(FlowSubType.SHARED).build());
-            reverse.setStatus(FlowPathStatus.IN_PROGRESS);
             reverse.setSubPaths(createReverseSubPaths(protectedPaths, haFlow, haFlowResources, reverse, stateMachine));
             haFlowPathRepository.add(reverse);
             reverse.setHaSubFlows(haFlow.getHaSubFlows());
@@ -309,15 +301,14 @@ public class ResourcesAllocationAction extends
     private List<FlowPath> createForwardSubPaths(
             GetHaPathsResult paths, HaFlow haFlow, HaFlowResources haFlowResources, HaFlowPath forward,
             HaFlowCreateFsm stateMachine) {
-        List<HaSubFlow> subFlows = new ArrayList<>(haFlow.getHaSubFlows());
+        Map<String, FlowSubType> subTypeMap = flowPathBuilder.buildSubTypeMap(haFlow.getHaSubFlows());
         List<FlowPath> forwardSubPaths = new ArrayList<>();
-        for (int i = 0; i < subFlows.size(); i++) {
-            HaSubFlow subFlow = subFlows.get(i);
-            Path subPath = paths.getForward().getSubPaths().get(i);
+        for (HaSubFlow subFlow : haFlow.getHaSubFlows()) {
+            Path subPath = paths.getForward().getSubPaths().get(subFlow.getHaSubFlowId());
             FlowPath forwardSubPath = flowPathBuilder.buildHaSubPath(
                     haFlow, haFlowResources.getForward().getSubPathResources(subFlow.getHaSubFlowId()), subPath,
                     haFlow.getSharedSwitch(), subFlow.getEndpointSwitch(),
-                    forward.getCookie().toBuilder().subType(getSubType(i)).build());
+                    forward.getCookie().toBuilder().subType(subTypeMap.get(subFlow.getHaSubFlowId())).build());
             flowPathRepository.add(forwardSubPath);
             forwardSubPath.setHaSubFlow(subFlow);
             forwardSubPaths.add(forwardSubPath);
@@ -329,15 +320,14 @@ public class ResourcesAllocationAction extends
     private List<FlowPath> createReverseSubPaths(
             GetHaPathsResult paths, HaFlow haFlow, HaFlowResources haFlowResources, HaFlowPath reverse,
             HaFlowCreateFsm stateMachine) {
-        List<HaSubFlow> subFlows = new ArrayList<>(haFlow.getHaSubFlows());
+        Map<String, FlowSubType> subTypeMap = flowPathBuilder.buildSubTypeMap(haFlow.getHaSubFlows());
         List<FlowPath> reverseSubPaths = new ArrayList<>();
-        for (int i = 0; i < subFlows.size(); i++) {
-            HaSubFlow subFlow = subFlows.get(i);
-            Path subPath = paths.getReverse().getSubPaths().get(i);
+        for (HaSubFlow subFlow : haFlow.getHaSubFlows()) {
+            Path subPath = paths.getReverse().getSubPaths().get(subFlow.getHaSubFlowId());
             FlowPath reverseSubPath = flowPathBuilder.buildHaSubPath(
                     haFlow, haFlowResources.getReverse().getSubPathResources(subFlow.getHaSubFlowId()), subPath,
                     subFlow.getEndpointSwitch(), haFlow.getSharedSwitch(),
-                    reverse.getCookie().toBuilder().subType(getSubType(i)).build());
+                    reverse.getCookie().toBuilder().subType(subTypeMap.get(subFlow.getHaSubFlowId())).build());
             flowPathRepository.add(reverseSubPath);
             reverseSubPath.setHaSubFlow(subFlow);
             reverseSubPaths.add(reverseSubPath);
@@ -364,13 +354,6 @@ public class ResourcesAllocationAction extends
         }
     }
 
-    private Message buildResponseMessage(HaFlow haFlow, CommandContext commandContext) {
-        HaFlowResponse response = HaFlowResponse.builder()
-                .haFlow(HaFlowMapper.INSTANCE.toHaFlowDto(haFlow, flowRepository, haFlowRepository))
-                .build();
-        return new InfoMessage(response, commandContext.getCreateTime(), commandContext.getCorrelationId());
-    }
-
     @Override
     protected String getGenericErrorMessage() {
         return "Could not create ha-flow";
@@ -384,17 +367,4 @@ public class ResourcesAllocationAction extends
         stateMachine.notifyEventListeners(listener ->
                 listener.onFailed(stateMachine.getHaFlowId(), stateMachine.getErrorReason(), errorType));
     }
-
-    private FlowSubType getSubType(int id) {
-        //TODO find a better way
-        switch (id) {
-            case 0:
-                return FlowSubType.HA_SUB_FLOW_1;
-            case 1:
-                return FlowSubType.HA_SUB_FLOW_2;
-            default:
-                throw new IllegalArgumentException(format("Unknown sub type %d", id));
-        }
-    }
-
 }

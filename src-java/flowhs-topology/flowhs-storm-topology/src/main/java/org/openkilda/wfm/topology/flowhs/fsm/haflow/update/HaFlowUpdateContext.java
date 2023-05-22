@@ -13,28 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.haflows;
+package org.openkilda.wfm.topology.flowhs.fsm.haflow.update;
 
-import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto;
+import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
+import org.openkilda.messaging.command.haflow.HaFlowRequest;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.experimental.FieldDefaults;
-
-import java.util.List;
 
 @Data
 @Builder
-@AllArgsConstructor
-@JsonNaming(SnakeCaseStrategy.class)
-@FieldDefaults(level = AccessLevel.PRIVATE)
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class HaFlowDiscrepancy {
-    Boolean asExpected;
-    List<PathDiscrepancyDto> discrepancies;
+public class HaFlowUpdateContext {
+    HaFlowRequest targetFlow;
+    SpeakerCommandResponse speakerResponse;
 }

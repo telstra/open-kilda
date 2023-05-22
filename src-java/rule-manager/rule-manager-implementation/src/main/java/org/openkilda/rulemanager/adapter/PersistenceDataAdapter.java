@@ -78,7 +78,7 @@ public class PersistenceDataAdapter implements DataAdapter {
     private Map<PathId, Flow> flowCache; // flow path id to flow map
     private Map<PathId, FlowPath> commonFlowPathCache; // flow path id to flow path of common flows and y flows map
     private Map<PathId, FlowPath> haSubPathPathCache; // flow path id to ha-sub path map
-    private Map<PathId, FlowTransitEncapsulation> encapsulationCache;
+    private final Map<PathId, FlowTransitEncapsulation> encapsulationCache;
     private Map<SwitchId, Switch> switchCache;
     private Map<SwitchId, SwitchProperties> switchPropertiesCache;
     private Map<SwitchId, Set<Integer>> switchIslPortsCache;
@@ -88,14 +88,22 @@ public class PersistenceDataAdapter implements DataAdapter {
     private Map<PathId, HaFlow> haFlowCache; // ha-path id/ha-sub path to ha-flow map
     private Map<PathId, HaFlowPath> haFlowPathCache;
     private Set<PathId> haFlowPathIds;
+    private final Map<PathId, HaFlow> additionalHaFlows;
 
     @Builder.Default
     @Deprecated
     private boolean keepMultitableForFlow = false;
 
+    public PersistenceDataAdapter(
+            PersistenceManager persistenceManager, Set<PathId> pathIds, Set<SwitchId> switchIds,
+            boolean keepMultitableForFlow) {
+        this(persistenceManager, pathIds, switchIds, keepMultitableForFlow, null);
+    }
+
     @Builder
-    public PersistenceDataAdapter(PersistenceManager persistenceManager,
-                                  Set<PathId> pathIds, Set<SwitchId> switchIds, boolean keepMultitableForFlow) {
+    public PersistenceDataAdapter(
+            PersistenceManager persistenceManager, Set<PathId> pathIds, Set<SwitchId> switchIds,
+            boolean keepMultitableForFlow, Map<PathId, HaFlow> additionalHaFlows) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
@@ -110,6 +118,7 @@ public class PersistenceDataAdapter implements DataAdapter {
 
         this.pathIds = pathIds;
         this.switchIds = switchIds;
+        this.additionalHaFlows = additionalHaFlows;
 
         encapsulationCache = new HashMap<>();
 
@@ -242,6 +251,9 @@ public class PersistenceDataAdapter implements DataAdapter {
                 if (subPath != null && subPath.getHaFlowPath() != null && subPath.getHaSubFlow().getHaFlow() != null) {
                     haFlowCache.put(subPathId, subPath.getHaSubFlow().getHaFlow());
                 }
+            }
+            if (additionalHaFlows != null) {
+                haFlowCache.putAll(additionalHaFlows);
             }
         }
         return haFlowCache.get(pathId);

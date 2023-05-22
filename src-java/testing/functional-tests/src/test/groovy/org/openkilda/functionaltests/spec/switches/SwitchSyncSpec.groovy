@@ -211,7 +211,7 @@ class SwitchSyncSpec extends BaseSpecification {
                         .meterId(new MeterId(excessMeterId))
                         .rate(flow.getMaximumBandwidth())
                         .burst(flow.getMaximumBandwidth())
-                        .flags(Sets.newHashSet(MeterFlag.PKTPS, MeterFlag.BURST, MeterFlag.STATS))
+                        .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
                         .build()]).toJson())).get()
         involvedSwitches[1..-2].each { transitSw ->
             producer.send(new ProducerRecord(speakerTopic, transitSw.toString(), buildMessage(
@@ -239,7 +239,7 @@ class SwitchSyncSpec extends BaseSpecification {
                         .meterId(new MeterId(excessMeterId))
                         .rate(flow.getMaximumBandwidth())
                         .burst(flow.getMaximumBandwidth())
-                        .flags(Sets.newHashSet(MeterFlag.PKTPS, MeterFlag.BURST, MeterFlag.STATS))
+                        .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
                         .build()]).toJson())).get()
 
         Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -282,8 +282,8 @@ class SwitchSyncSpec extends BaseSpecification {
             }
         }
 
-        and: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        cleanup: "Delete the flow"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tidy

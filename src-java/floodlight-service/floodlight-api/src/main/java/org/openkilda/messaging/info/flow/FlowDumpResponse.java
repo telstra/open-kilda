@@ -42,7 +42,6 @@ import java.util.stream.Collectors;
 public class FlowDumpResponse extends InfoData implements Chunkable<FlowDumpResponse> {
 
     List<FlowSpeakerData> flowSpeakerData;
-
     SwitchId switchId;
 
     @Override

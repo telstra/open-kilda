@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
+import org.openkilda.messaging.command.haflow.HaSubFlowPartialUpdateDto;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.messaging.validation.ValidatorUtils;
@@ -30,6 +31,7 @@ import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Checks whether y-flow can be created and has no conflicts with already created ones.
@@ -54,7 +56,7 @@ public class HaFlowValidator {
     }
 
     /**
-     * Validates the specified y-flow request.
+     * Validates the specified HA-flow request.
      *
      * @param request a request to be validated.
      * @throws InvalidFlowException is thrown if a violation is found.
@@ -75,6 +77,31 @@ public class HaFlowValidator {
         checkBandwidth(request);
         checkMaxLatency(request);
         validateSubFlows(HaFlowMapper.INSTANCE.toRequestedFlows(request));
+    }
+
+    /**
+     * Validates the HA-sub flow IDs for HA-flow patch request.
+     */
+    public void validateHaSubFlowIds(
+            String haFlowId, Set<String> existingSubFlowIds, Collection<HaSubFlowPartialUpdateDto> requestedSubFlows)
+            throws InvalidFlowException {
+        if (requestedSubFlows.size() > 2) {
+            throw new InvalidFlowException(
+                    format("The ha-flow %s can't have more than 2 sub flows",
+                            haFlowId), ErrorType.DATA_INVALID);
+        }
+        for (HaSubFlowPartialUpdateDto subFlow : requestedSubFlows) {
+            if (subFlow.getFlowId() == null) {
+                throw new InvalidFlowException(
+                        format("The ha-flow %s patch request contains sub flow with null sub flow id",
+                                haFlowId), ErrorType.DATA_INVALID);
+            }
+            if (!existingSubFlowIds.contains(subFlow.getFlowId())) {
+                throw new InvalidFlowException(
+                        format("HA-flow %s has no sub flow %s. Known sub flow IDs are: %s",
+                                haFlowId, subFlow.getFlowId(), existingSubFlowIds), ErrorType.DATA_INVALID);
+            }
+        }
     }
 
     private void checkSubFlows(HaFlowRequest request) throws InvalidFlowException {

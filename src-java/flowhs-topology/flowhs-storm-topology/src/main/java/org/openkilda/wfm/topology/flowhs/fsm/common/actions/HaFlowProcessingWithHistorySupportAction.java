@@ -19,7 +19,11 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -39,6 +43,8 @@ public abstract class HaFlowProcessingWithHistorySupportAction<T extends FlowPro
     protected final PersistenceManager persistenceManager;
     protected final TransactionManager transactionManager;
     protected final HaFlowRepository haFlowRepository;
+    protected final HaFlowPathRepository haFlowPathRepository;
+    protected final FlowPathRepository flowPathRepository;
     protected final KildaFeatureTogglesRepository featureTogglesRepository;
 
     protected HaFlowProcessingWithHistorySupportAction(PersistenceManager persistenceManager) {
@@ -46,6 +52,8 @@ public abstract class HaFlowProcessingWithHistorySupportAction<T extends FlowPro
         this.transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.haFlowRepository = repositoryFactory.createHaFlowRepository();
+        this.haFlowPathRepository = repositoryFactory.createHaFlowPathRepository();
+        this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 
@@ -53,5 +61,11 @@ public abstract class HaFlowProcessingWithHistorySupportAction<T extends FlowPro
         return haFlowRepository.findById(haFlowId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("HA-flow %s not found", haFlowId)));
+    }
+
+    protected HaFlowPath getHaFlowPath(HaFlow haFlow, PathId haPathId) {
+        return haFlow.getPath(haPathId)
+                .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
+                        format("Ha-flow %s has no ha-path %s", haFlow.getHaFlowId(), haPathId)));
     }
 }

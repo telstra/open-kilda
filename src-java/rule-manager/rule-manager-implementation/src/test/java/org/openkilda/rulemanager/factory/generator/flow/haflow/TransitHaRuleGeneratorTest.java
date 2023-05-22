@@ -47,7 +47,7 @@ import java.util.Set;
 import java.util.UUID;
 
 public class TransitHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
-    public static final FlowPath SUB_PATH = buildSubPath(OUTER_VLAN_ID_1, INNER_VLAN_ID_2);
+    public static final FlowPath SUB_PATH = buildSubPath(null);
 
     @Test
     public void buildVlanTransitRuleTest() {

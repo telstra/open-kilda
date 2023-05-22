@@ -61,7 +61,6 @@ import org.openkilda.pce.model.PathWeight.Penalty;
 import org.openkilda.pce.model.WeightFunction;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -73,6 +72,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -140,9 +140,9 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     @Override
-    public GetHaPathsResult getHaPath(HaFlow haFlow, boolean isProtected)
+    public GetHaPathsResult getHaPath(HaFlow haFlow, Collection<PathId> reusePathsResources, boolean isProtected)
             throws UnroutableFlowException, RecoverableException {
-        AvailableNetwork network = availableNetworkFactory.getAvailableNetwork(haFlow, new ArrayList<>());
+        AvailableNetwork network = availableNetworkFactory.getAvailableNetwork(haFlow, reusePathsResources);
 
         if (haFlow.getHaSubFlows() == null || haFlow.getHaSubFlows().size() != 2) {
             throw new IllegalArgumentException(format("HA-flow %s must have 2 sub flows to find a path, but it "
@@ -150,19 +150,24 @@ public class InMemoryPathComputer implements PathComputer {
         }
 
         List<GetPathsResult> paths = new ArrayList<>();
+        List<String> subFlowIds = new ArrayList<>();
         for (HaSubFlow subFlow : haFlow.getHaSubFlows()) {
             paths.add(getPath(network, new RequestedPath(haFlow, subFlow), isProtected));
+            subFlowIds.add(subFlow.getHaSubFlowId());
         }
 
         return GetHaPathsResult.builder()
-                .forward(unitePathsToHaPath(paths.get(0).getForward(), paths.get(1).getForward(), true))
-                .reverse(unitePathsToHaPath(paths.get(0).getReverse(), paths.get(1).getReverse(), false))
+                .forward(unitePathsToHaPath(paths.get(0).getForward(), paths.get(1).getForward(),
+                        subFlowIds.get(0), subFlowIds.get(1), true))
+                .reverse(unitePathsToHaPath(paths.get(0).getReverse(), paths.get(1).getReverse(),
+                        subFlowIds.get(0), subFlowIds.get(1), false))
                 .backUpPathComputationWayUsed(
                         paths.get(0).isBackUpPathComputationWayUsed() || paths.get(1).isBackUpPathComputationWayUsed())
                 .build();
     }
 
-    private HaPath unitePathsToHaPath(Path firstPath, Path secondPath, boolean forward) {
+    private HaPath unitePathsToHaPath(
+            Path firstPath, Path secondPath, String firstSubFlowId, String secondSubFlowId, boolean forward) {
         HaPathBuilder haPath = HaPath.builder();
         if (forward) {
             if (!firstPath.getSrcSwitchId().equals(secondPath.getSrcSwitchId())) {
@@ -180,7 +185,10 @@ public class InMemoryPathComputer implements PathComputer {
             haPath.yPointSwitchId(findYPointForReversePaths(firstPath, secondPath));
         }
 
-        haPath.subPaths(Lists.newArrayList(firstPath, secondPath));
+        Map<String, Path> pathMap = new HashMap<>();
+        pathMap.put(firstSubFlowId, firstPath);
+        pathMap.put(secondSubFlowId, secondPath);
+        haPath.subPaths(pathMap);
         haPath.latency(Math.max(firstPath.getLatency(), secondPath.getLatency()));
         haPath.isBackupPath(firstPath.isBackupPath() || secondPath.isBackupPath());
         haPath.minAvailableBandwidth(Math.min(
