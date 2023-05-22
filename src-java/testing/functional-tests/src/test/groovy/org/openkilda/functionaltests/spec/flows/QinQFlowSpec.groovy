@@ -368,7 +368,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Invalid request payload"
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Could not create flow"
 
         cleanup:
         !exc && flowHelper.deleteFlow(flow.flowId)
