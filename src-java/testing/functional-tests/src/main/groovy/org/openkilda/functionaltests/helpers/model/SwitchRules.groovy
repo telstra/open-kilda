@@ -7,22 +7,18 @@ import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
 
 class SwitchRules {
     NorthboundService northboundService
-    NorthboundServiceV2 northboundServiceV2
     Database database
     SwitchId switchId
     private static final String COOKIE_ID_IN_RULE_DISCREPANCY_STRING_REGEX =  /-?\d{19}/
 
     SwitchRules(NorthboundService northboundService,
-                NorthboundServiceV2 northboundServiceV2,
                 Database database,
                 SwitchId switchId) {
         this.northboundService = northboundService
-        this.northboundServiceV2 = northboundServiceV2
         this.database = database
         this.switchId = switchId
     }
