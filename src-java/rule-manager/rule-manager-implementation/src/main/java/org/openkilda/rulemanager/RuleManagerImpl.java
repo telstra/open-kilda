@@ -199,7 +199,6 @@ public class RuleManagerImpl implements RuleManager {
         generators.add(serviceRulesFactory.getBfdCatchRuleGenerator());
         generators.add(serviceRulesFactory.getRoundTripLatencyRuleGenerator());
         generators.add(serviceRulesFactory.getUnicastVerificationVxlanRuleGenerator());
-        generators.add(serviceRulesFactory.getSkipEgressPingRuleGenerator());
 
         SwitchProperties switchProperties = adapter.getSwitchProperties(switchId);
         if (switchProperties.isMultiTable()) {
@@ -219,6 +218,7 @@ public class RuleManagerImpl implements RuleManager {
             generators.add(serviceRulesFactory.getArpPostIngressRuleGenerator());
             generators.add(serviceRulesFactory.getArpPostIngressVxlanRuleGenerator());
             generators.add(serviceRulesFactory.getArpPostIngressOneSwitchRuleGenerator());
+            generators.add(serviceRulesFactory.getSkipEgressPingRuleGenerator());
 
             if (switchProperties.isSwitchLldp()) {
                 generators.add(serviceRulesFactory.getLldpTransitRuleGenerator());

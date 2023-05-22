@@ -203,7 +203,7 @@ public class RuleManagerServiceRulesTest {
         List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
                 switchId, buildAdapter(switchId, switchProperties, new HashSet<>(), false, LAG_PORTS));
 
-        assertEquals(11, generators.size());
+        assertEquals(10, generators.size());
         assertTrue(generators.stream().anyMatch(g -> g instanceof TableDefaultRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
@@ -213,7 +213,6 @@ public class RuleManagerServiceRulesTest {
         assertTrue(generators.stream().anyMatch(g -> g instanceof UnicastVerificationVxlanRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof DropSlowProtocolsLoopRuleGenerator));
         assertEquals(2, generators.stream().filter(g -> g instanceof LacpReplyRuleGenerator).count());
-        assertTrue(generators.stream().anyMatch(g -> g instanceof SkipEgressPingRuleGenerator));
     }
 
     @Test
