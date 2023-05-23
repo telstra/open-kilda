@@ -168,6 +168,46 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    def "Able to create y-flow with one switch sub flow and diverse with simple multiSwitch flow"() {
+        given: "Two switches with two not overlapping paths at least"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            it.paths.collect { pathHelper.getInvolvedIsls(it) }
+                    .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
+        } ?: assumeTrue(false, "No suiting switches found")
+
+        and: "Simple multiSwitch flow"
+        def flow = flowHelperV2.randomFlow(switchPair.src, switchPair.dst, false)
+        flowHelperV2.addFlow(flow)
+
+        when: "Create a Y-flow with one switch sub flow and diversity with simple flow"
+        def yFlowRequest = yFlowHelper.randomYFlow(switchPair.src, switchPair.src, switchPair.dst, false)
+        yFlowRequest.diverseFlowId = flow.flowId
+        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
+
+        then: "Create response contains information about diverse flow"
+        yFlow.diverseWithFlows == [flow.flowId] as Set
+        yFlow.diverseWithYFlows.empty
+        yFlow.diverseWithHaFlows.empty
+
+        and: "Flow is diverse with Y-flow"
+        with(northboundV2.getFlow(flow.flowId)) {
+            it.diverseWithYFlows == [yFlow.YFlowId] as Set
+            it.diverseWith.empty
+            it.diverseWithHaFlows.empty
+        }
+
+        and: "Y-flow passes flow validation"
+        assert northboundV2.validateYFlow(yFlow.YFlowId).asExpected
+
+        and: "Simple flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        cleanup:
+        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
     def "Able to get y-flow paths with correct overlapping segments stats"() {
         given: "Switches with three not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {
