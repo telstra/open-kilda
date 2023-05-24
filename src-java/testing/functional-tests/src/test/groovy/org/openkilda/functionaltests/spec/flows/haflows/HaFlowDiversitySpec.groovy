@@ -37,7 +37,8 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
                     [it.pathsEp1, it.pathsEp2].every {
                         it.collect { pathHelper.getInvolvedIsls(it) }
                                 .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
-                    }
+                    } &&
+                    topology.getRelatedIsls(it.shared).size() >= 5
         }.shuffled().first()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
