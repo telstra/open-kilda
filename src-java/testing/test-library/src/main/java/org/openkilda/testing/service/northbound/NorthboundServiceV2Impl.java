@@ -34,6 +34,8 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlow;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowDump;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPingPayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPingResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
 import org.openkilda.northbound.dto.v2.links.BfdProperties;
@@ -596,5 +598,12 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     public HaFlow deleteHaFlow(String haFlowId) {
         return sorted(restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}", HttpMethod.DELETE,
                 new HttpEntity(buildHeadersWithCorrelationId()), HaFlow.class, haFlowId).getBody());
+    }
+
+    @Override
+    public HaFlowPingResult pingHaFlow(String haFlowId, HaFlowPingPayload payload) {
+        HttpEntity<HaFlowPingPayload> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/ping", HttpMethod.POST, httpEntity,
+                HaFlowPingResult.class, haFlowId).getBody();
     }
 }
