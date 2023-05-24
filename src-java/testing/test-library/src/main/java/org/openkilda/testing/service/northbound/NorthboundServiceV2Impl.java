@@ -15,6 +15,8 @@
 
 package org.openkilda.testing.service.northbound;
 
+import static org.openkilda.messaging.model.ValidationFilter.FLOW_INFO;
+
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.network.PathValidationPayload;
@@ -36,6 +38,7 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowDump;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingResult;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
 import org.openkilda.northbound.dto.v2.links.BfdProperties;
@@ -524,11 +527,8 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
 
     @Override
     public SwitchValidationV2ExtendedResult validateSwitch(SwitchId switchId) {
-        log.debug("Switch validating '{}'", switchId);
-        SwitchValidationResultV2 result = Objects.requireNonNull(restTemplate.exchange(
-                "/api/v2/switches/{switch_id}/validate", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResultV2.class, switchId).getBody());
-        return new SwitchValidationV2ExtendedResult(switchId, result);
+        // FLOW_INFO requires additional DB-queries and computations so should by excluded by default
+        return validateSwitch(switchId, null, FLOW_INFO.name());
     }
 
     @Override
@@ -605,5 +605,11 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         HttpEntity<HaFlowPingPayload> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
         return restTemplate.exchange("/api/v2/y-flows/{y_flow_id}/ping", HttpMethod.POST, httpEntity,
                 HaFlowPingResult.class, haFlowId).getBody();
+    }
+  
+    @Override
+    public HaFlowPaths getHaFlowPaths(String haFlowId) {
+        return restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}/paths", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), HaFlowPaths.class, haFlowId).getBody();
     }
 }

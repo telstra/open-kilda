@@ -60,7 +60,7 @@ public class SimpleSwitchRule {
         String outVlanString = outVlan.stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining(":"));
-        if (! outVlanString.isEmpty()) {
+        if (!outVlanString.isEmpty()) {
             outVlanString = "-" + outVlanString;
         }
         return "{sw:" + switchId

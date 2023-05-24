@@ -30,6 +30,7 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
@@ -189,7 +190,8 @@ public class IngressHaRuleGenerator implements MeteredRuleGenerator {
 
     private static PortNumber getOutPort(FlowPath path, HaFlow haFlow) {
         if (path.isOneSwitchPath()) {
-            if (path.getHaSubFlow().getEndpointPort() == haFlow.getSharedPort()) {
+            HaSubFlow subFlow = haFlow.getHaSubFlowOrThrowException(path.getHaSubFlowId());
+            if (subFlow.getEndpointPort() == haFlow.getSharedPort()) {
                 // the case of a single switch & same port flow.
                 return new PortNumber(SpecialPortType.IN_PORT);
             } else {

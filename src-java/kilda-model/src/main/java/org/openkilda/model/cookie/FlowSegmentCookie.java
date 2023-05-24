@@ -234,6 +234,8 @@ public class FlowSegmentCookie extends Cookie {
         public int getValue() {
             return value;
         }
+
+        public static FlowSubType[] HA_SUB_FLOW_TYPES = new FlowSubType[] {HA_SUB_FLOW_1, HA_SUB_FLOW_2};
     }
 
     /**

@@ -101,7 +101,7 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         meterEntries = getWrongSwitchMeterEntries();
         result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries, emptyList(), switchIdSet);
         assertEquals(4, result.size());
-        assertEquals(6, result.get(0).getDiscrepancies().size());
+        assertEquals(3, result.get(0).getDiscrepancies().size());
         assertEquals(3, result.get(1).getDiscrepancies().size());
         assertEquals(2, result.get(2).getDiscrepancies().size());
         assertEquals(2, result.get(3).getDiscrepancies().size());
@@ -109,12 +109,9 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         List<String> forwardDiscrepancies = result.get(0).getDiscrepancies().stream()
                 .map(PathDiscrepancyEntity::getField)
                 .collect(Collectors.toList());
-        assertTrue(forwardDiscrepancies.contains("cookie"));
+        assertTrue(forwardDiscrepancies.contains("all"));
         assertTrue(forwardDiscrepancies.contains(isTransitVlan ? "inVlan" : "tunnelId"));
         assertTrue(forwardDiscrepancies.contains("outVlan"));
-        assertTrue(forwardDiscrepancies.contains("meterRate"));
-        assertTrue(forwardDiscrepancies.contains("meterBurstSize"));
-        assertTrue(forwardDiscrepancies.contains("meterFlags"));
 
         List<String> reverseDiscrepancies = result.get(1).getDiscrepancies().stream()
                 .map(PathDiscrepancyEntity::getField)

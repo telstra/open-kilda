@@ -197,7 +197,7 @@ public class FlowValidator {
             }
             checkForMultiTableRequirement(descriptor, properties);
             checkFlowForIslConflicts(descriptor);
-            checkFlowForFlowConflicts(flow.getFlowId(), flow.getHaFlowId(), descriptor, bulkUpdateFlowIds);
+            checkFlowForFlowConflicts(flow.getFlowId(), descriptor, bulkUpdateFlowIds);
             checkFlowForSinkEndpointConflicts(descriptor);
             checkFlowForMirrorEndpointConflicts(flow.getFlowId(), descriptor);
             checkFlowForServer42Conflicts(descriptor, properties);
@@ -365,14 +365,14 @@ public class FlowValidator {
 
     private void checkFlowForFlowConflicts(
             String flowMirrorId, EndpointDescriptor descriptor) throws InvalidFlowException {
-        checkFlowForFlowConflicts(flowMirrorId, null, descriptor, new HashSet<>());
+        checkFlowForFlowConflicts(flowMirrorId, descriptor, new HashSet<>());
     }
 
     private void checkFlowForFlowConflicts(
-            String flowId, String haFlowId, EndpointDescriptor descriptor, Set<String> bulkUpdateFlowIds)
+            String flowId, EndpointDescriptor descriptor, Set<String> bulkUpdateFlowIds)
             throws InvalidFlowException {
         checkFlowForCommonFlowConflicts(flowId, descriptor, bulkUpdateFlowIds);
-        checkFlowForHaFlowConflicts(flowId, haFlowId, descriptor);
+        checkFlowForHaFlowConflicts(flowId, descriptor);
     }
 
     /**
@@ -417,12 +417,12 @@ public class FlowValidator {
      *
      * @throws InvalidFlowException is thrown in a case when flow endpoints conflict with existing ha-flows.
      */
-    private void checkFlowForHaFlowConflicts(String flowId, String haFlowId, EndpointDescriptor descriptor)
+    private void checkFlowForHaFlowConflicts(String flowId, EndpointDescriptor descriptor)
             throws InvalidFlowException {
         FlowEndpoint endpoint = descriptor.getEndpoint();
         for (HaFlow entry : haFlowRepository.findByEndpoint(endpoint.getSwitchId(), endpoint.getPortNumber(),
                 endpoint.getOuterVlanId(), endpoint.getInnerVlanId())) {
-            if (haFlowId != null && haFlowId.equals(flowId)) {
+            if (entry.getHaSubFlow(flowId).isPresent()) {
                 continue;
             }
             String errorMessage = format("Requested flow '%s' conflicts with existing ha-flow '%s'. "

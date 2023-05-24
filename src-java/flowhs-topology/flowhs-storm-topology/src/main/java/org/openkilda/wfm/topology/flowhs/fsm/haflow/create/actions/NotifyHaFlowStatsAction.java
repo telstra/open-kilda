@@ -35,6 +35,6 @@ public class NotifyHaFlowStatsAction extends
     @Override
     protected void perform(
             State from, State to, Event event, HaFlowCreateContext context, HaFlowCreateFsm stateMachine) {
-        //TODO notify stats
+        //TODO notify stats https://github.com/telstra/open-kilda/issues/5182
     }
 }

@@ -1,5 +1,72 @@
 # Changelog
 
+## v1.135.0 (18/05/2023)
+
+### Features:
+-  [#5190](https://github.com/telstra/open-kilda/pull/5190) Update API doc for HA-Flow read operation (Issue: [#5148](https://github.com/telstra/open-kilda/issues/5148)) [**docs**]
+-  [#5164](https://github.com/telstra/open-kilda/pull/5164) Feature/ha validation (Issue: [#5152](https://github.com/telstra/open-kilda/issues/5152))
+
+### Bug Fixes:
+-  [#5202](https://github.com/telstra/open-kilda/pull/5202) Change flags for excess meter in SwitchSyncSpec to support WB switches
+-  [#4892](https://github.com/telstra/open-kilda/pull/4892) Add payload validation for API v2 (Issue: [#3491](https://github.com/telstra/open-kilda/issues/3491)) [**northbound**]
+
+### Improvements:
+-  [#4874](https://github.com/telstra/open-kilda/pull/4874) Upgrade java dependencies 2022/07
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.134.0...v1.135.0).
+
+### Affected Components:
+nb
+
+---
+
+## v1.134.0 (17/05/2023)
+
+### Features:
+-  [#5194](https://github.com/telstra/open-kilda/pull/5194) HA flows Part 12: Add H&S partial update operation (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+-  [#5180](https://github.com/telstra/open-kilda/pull/5180) HA flows Part 11: Add H&S update operation  (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+
+### Bug Fixes:
+-  [#5185](https://github.com/telstra/open-kilda/pull/5185) Y flow paths update on diverse flows Update/Patch API (Issue: [#5175](https://github.com/telstra/open-kilda/issues/5175))
+-  [#5183](https://github.com/telstra/open-kilda/pull/5183) Update logic to exclude redundant sub flows from diversity section (Issue: [#5181](https://github.com/telstra/open-kilda/issues/5181))
+
+### Improvements:
+-  [#5189](https://github.com/telstra/open-kilda/pull/5189) #5175: [TEST] Incorrect get paths response for Y-Flow after partial update (Issues: [#5175](https://github.com/telstra/open-kilda/issues/5175) [#5175](https://github.com/telstra/open-kilda/issues/5175)) [**tests**]
+-  [#5193](https://github.com/telstra/open-kilda/pull/5193) #5181: [TEST] Y flow get paths API must not return sub flows of the same Y flow in diversity group section (Issues: [#5181](https://github.com/telstra/open-kilda/issues/5181) [#5191](https://github.com/telstra/open-kilda/issues/5191)) [**tests**]
+-  [#5173](https://github.com/telstra/open-kilda/pull/5173) #5148: [TEST] Add ability to read HA paths (Issue: [#5148](https://github.com/telstra/open-kilda/issues/5148)) [**tests**]
+-  [#5119](https://github.com/telstra/open-kilda/pull/5119) Feature/5025use rule manager for flow validation (Issue: [#5025](https://github.com/telstra/open-kilda/issues/5025))
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.133.0...v1.134.0).
+
+### Affected Components:
+flow-hs
+
+---
+
+## v1.133.0 (02/05/2023)
+
+### Features:
+-  [#5167](https://github.com/telstra/open-kilda/pull/5167) Add GET HA-Flow Paths API endpoint (Issue: [#5148](https://github.com/telstra/open-kilda/issues/5148))
+-  [#5139](https://github.com/telstra/open-kilda/pull/5139) Add HA-flow related parallelism options into FlowHs topology (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061)) [**configuration**]
+
+### Bug Fixes:
+-  [#4886](https://github.com/telstra/open-kilda/pull/4886) Handling RequestRejectedException and proper logging of correlation_id (Issue: [#4305](https://github.com/telstra/open-kilda/issues/4305)) [**northbound**]
+-  [#5178](https://github.com/telstra/open-kilda/pull/5178) fix logstash container build (Issue: [#5177](https://github.com/telstra/open-kilda/issues/5177))
+
+### Improvements:
+-  [#5144](https://github.com/telstra/open-kilda/pull/5144) add flow monitoring cache activation and deactivation (Issue: [#5117](https://github.com/telstra/open-kilda/issues/5117))
+
+### Other changes:
+-  [#5129](https://github.com/telstra/open-kilda/pull/5129) #2072: Add single-switch flow into diversity group tests (Issue: [#2072](https://github.com/telstra/open-kilda/issues/2072)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.132.0...v1.133.0).
+
+### Affected Components:
+nb, flow-monitor
+
+---
+
 ## v1.132.0 (24/04/2023)
 
 ### Features:

@@ -16,9 +16,11 @@
 package org.openkilda.wfm.topology.flowhs.service;
 
 import static java.lang.String.format;
+import static org.openkilda.model.cookie.FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_TYPES;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaSubFlow;
@@ -28,6 +30,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.model.cookie.FlowSegmentCookie.FlowSubType;
 import org.openkilda.pce.HaPath;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
@@ -41,6 +44,7 @@ import lombok.AllArgsConstructor;
 import org.apache.commons.collections4.map.LazyMap;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -102,7 +106,7 @@ public class FlowPathBuilder {
      * @param haFlowPath the ha-flow path to evaluate.
      */
     public boolean arePathsOverlapped(HaPath haPath, HaFlowPath haFlowPath) {
-        for (Path subPath : haPath.getSubPaths()) {
+        for (Path subPath : haPath.getSubPaths().values()) {
             Set<Segment> haPathSegments = buildSegmentSet(subPath);
             for (FlowPath haFlowSubPath : haFlowPath.getSubPaths()) {
                 Set<Segment> haFlowSegments = buildSegmentSet(haFlowSubPath);
@@ -199,6 +203,25 @@ public class FlowPathBuilder {
     public FlowPath buildHaSubPath(
             HaFlow haFlow, PathResources pathResources, Path path, Switch srcSwitch, Switch dstSwitch,
             FlowSegmentCookie cookie) {
+        List<PathSegment> segments = buildPathSegments(pathResources.getPathId(), path.getSegments(),
+                haFlow.getMaximumBandwidth(), haFlow.isIgnoreBandwidth(), haFlow.getHaFlowId());
+        return buildHaSubPath(haFlow, pathResources, path, srcSwitch, dstSwitch, cookie, segments);
+    }
+
+    /**
+     * Build a sub path entity for ha-flow path using provided resources and segments.
+     *
+     * @param haFlow a ha-flow the sub path will be associated with.
+     * @param pathResources resources to be used for the sub path.
+     * @param path network path for the sub path.
+     * @param srcSwitch source switch DB object of the future sub path.
+     * @param dstSwitch destination switch DB object of the future sub path.
+     * @param cookie cookie to be used for the sub path.
+     * @param segments path segments to be used for the sub path.
+     */
+    public FlowPath buildHaSubPath(
+            HaFlow haFlow, PathResources pathResources, Path path, Switch srcSwitch, Switch dstSwitch,
+            FlowSegmentCookie cookie, List<PathSegment> segments) {
 
         if (!srcSwitch.getSwitchId().equals(path.getSrcSwitchId())) {
             throw new IllegalArgumentException(format(
@@ -210,9 +233,6 @@ public class FlowPathBuilder {
                     "Path %s has different destination switch id %s than ha-flow %s. Ha-flow endpoint switch id is %s",
                     pathResources.getPathId(), path.getDestSwitchId(), haFlow.getHaFlowId(), dstSwitch.getSwitchId()));
         }
-        String sharedBandwidthGroupId = haFlow.getHaFlowId();
-        List<PathSegment> segments = buildPathSegments(pathResources.getPathId(), path.getSegments(),
-                haFlow.getMaximumBandwidth(), haFlow.isIgnoreBandwidth(), sharedBandwidthGroupId);
 
         return FlowPath.builder()
                 .pathId(pathResources.getPathId())
@@ -226,7 +246,8 @@ public class FlowPathBuilder {
                 .segments(segments)
                 .srcWithMultiTable(true)
                 .destWithMultiTable(true)
-                .sharedBandwidthGroupId(sharedBandwidthGroupId)
+                .sharedBandwidthGroupId(haFlow.getHaFlowId())
+                .status(FlowPathStatus.IN_PROGRESS)
                 .build();
     }
 
@@ -251,7 +272,7 @@ public class FlowPathBuilder {
         Set<SwitchId> haFlowEndpointSwitchIds = haFlow.getHaSubFlows().stream()
                 .map(HaSubFlow::getEndpointSwitchId).collect(Collectors.toSet());
         haFlowEndpointSwitchIds.add(haFlow.getSharedSwitchId());
-        for (Path subPath : haPath.getSubPaths()) {
+        for (Path subPath : haPath.getSubPaths().values()) {
             for (SwitchId switchId : new SwitchId[] {subPath.getSrcSwitchId(), subPath.getDestSwitchId()}) {
                 if (!haFlowEndpointSwitchIds.contains(switchId)) {
                     throw new IllegalArgumentException(format("Endpoint switch id %s of ha-sub-path %s is not equal "
@@ -271,6 +292,7 @@ public class FlowPathBuilder {
                 .yPointGroupId(pathResources.getYPointGroupId())
                 .bandwidth(haFlow.getMaximumBandwidth())
                 .ignoreBandwidth(haFlow.isIgnoreBandwidth())
+                .status(FlowPathStatus.IN_PROGRESS)
                 .build();
     }
 
@@ -311,6 +333,23 @@ public class FlowPathBuilder {
         }
 
         return result;
+    }
+
+    /**
+     * Builds a map with ha-sub flow IDs as keys and cookie FlowSubType and values.
+     */
+    public Map<String, FlowSubType> buildSubTypeMap(Collection<HaSubFlow> subFlows) {
+        if (subFlows.size() > HA_SUB_FLOW_TYPES.length) {
+            throw new IllegalArgumentException("Too much sub flows. Please create new sub flow types.");
+        }
+        Map<String, FlowSubType> subTypeMap = new HashMap<>();
+
+        int i = 0;
+        for (HaSubFlow subFlow : subFlows) {
+            subTypeMap.put(subFlow.getHaSubFlowId(), HA_SUB_FLOW_TYPES[i]);
+            i++;
+        }
+        return subTypeMap;
     }
 
     private static Set<Segment> buildSegmentSet(FlowPath flowPath) {

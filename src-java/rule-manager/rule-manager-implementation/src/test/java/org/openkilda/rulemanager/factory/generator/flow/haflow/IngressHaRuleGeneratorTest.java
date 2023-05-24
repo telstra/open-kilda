@@ -28,6 +28,7 @@ import org.openkilda.adapter.FlowSideAdapter;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
@@ -69,8 +70,10 @@ import java.util.Set;
 import java.util.UUID;
 
 public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
+    public static final HaFlow HA_FLOW = buildHaFlow(OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+    public static final HaSubFlow HA_SUB_FLOW = HA_FLOW.getHaSubFlows().iterator().next();
     public static final FlowPath FORWARD_PATH = buildSubPath(
-            SWITCH_1, SWITCH_2, FORWARD_COOKIE, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+            SWITCH_1, SWITCH_2, FORWARD_COOKIE, HA_SUB_FLOW);
 
     @Test
     public void buildTransformActionsVlanEncapsulationDoubleVlanTest() {
@@ -141,7 +144,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void unableToBuildIngressRulesForForwardOneSwitchPathTest() {
-        FlowPath oneSwitchForward = buildSubPath(SWITCH_1, SWITCH_1, FORWARD_COOKIE, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        FlowPath oneSwitchForward = buildSubPath(SWITCH_1, SWITCH_1, FORWARD_COOKIE, HA_SUB_FLOW);
         HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchForward, haFlow, VLAN_ENCAPSULATION);
         generator.generateCommands(SWITCH_1);
@@ -149,7 +152,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildTransformActionsOneSwitchDoubleVlanInDoubleVlanOutTest() {
-        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, HA_SUB_FLOW);
         HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haFlow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_2, FEATURES);
@@ -163,7 +166,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildTransformActionsOneSwitchDoubleVlanInSingleVlanOutTest() {
-        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, HA_SUB_FLOW);
         HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, 0);
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haFlow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_2, FEATURES);
@@ -175,7 +178,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildTransformActionsOneSwitchDoubleVlanInFullPortOutTest() {
-        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, HA_SUB_FLOW);
         HaFlow haFlow = buildHaFlow(SWITCH_1, 0, 0);
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haFlow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
@@ -185,8 +188,9 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildTransformActionsOneSwitchSingleVlanInDoubleVlanOutTest() {
-        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, OUTER_VLAN_ID_2, 0);
-        HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+        HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1, OUTER_VLAN_ID_2, 0);
+        FlowPath oneSwitchReverse = buildSubPath(
+                SWITCH_1, SWITCH_1, REVERSE_COOKIE, haFlow.getHaSubFlows().iterator().next());
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haFlow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
@@ -200,8 +204,9 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildTransformActionsOneSwitchSingleVlanInSingleVlanOutTest() {
-        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, OUTER_VLAN_ID_2, 0);
-        HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, 0);
+        HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, 0, OUTER_VLAN_ID_2, 0);
+        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE,
+                haFlow.getHaSubFlows().iterator().next());
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haFlow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
@@ -213,8 +218,9 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildTransformActionsOneSwitchSingleVlanInFullPortOutTest() {
-        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, OUTER_VLAN_ID_2, 0);
-        HaFlow haFlow = buildHaFlow(SWITCH_1, 0, 0);
+        HaFlow haFlow = buildHaFlow(SWITCH_1, 0, 0, OUTER_VLAN_ID_2, 0);
+        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE,
+                haFlow.getHaSubFlows().iterator().next());
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haFlow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList();
@@ -223,8 +229,9 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildTransformActionsOneSwitchFullPortInDoubleVlanOutTest() {
-        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, 0, 0);
-        HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+        HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1, 0, 0);
+        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE,
+                haFlow.getHaSubFlows().iterator().next());
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haFlow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
@@ -238,8 +245,9 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildTransformActionsOneSwitchFullPortInSingleVlanOutTest() {
-        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, 0, 0);
-        HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, 0);
+        HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, 0, 0, 0);
+        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE,
+                haFlow.getHaSubFlows().iterator().next());
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haFlow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
@@ -251,8 +259,9 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildTransformActionsOneSwitchFullPortInFullPortOutTest() {
-        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, 0, 0);
-        HaFlow haFlow = buildHaFlow(SWITCH_1, 0, 0);
+        HaFlow haFlow = buildHaFlow(SWITCH_1, 0, 0, 0, 0);
+        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE,
+                haFlow.getHaSubFlows().iterator().next());
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haFlow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList();
@@ -261,8 +270,9 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void oneSwitchFlowFullPortRuleTest() {
-        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, 0, 0);
-        HaFlow haflow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, 0);
+        HaFlow haflow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, 0, 0, 0);
+        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE,
+                haflow.getHaSubFlows().iterator().next());
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haflow, VLAN_ENCAPSULATION);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(2, commands.size());
@@ -285,8 +295,9 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildCommandsVlanEncapsulationDoubleVlanTest() {
-        FlowPath subPath = buildSubPath(SWITCH_2, SWITCH_1, FORWARD_COOKIE, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
-        HaFlow haFlow = buildHaFlow(subPath, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+        HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        FlowPath subPath = buildSubPath(haFlow.getSharedSwitch(), SWITCH_1, FORWARD_COOKIE,
+                haFlow.getHaSubFlows().iterator().next());
         IngressHaRuleGenerator generator = buildGenerator(subPath, haFlow, VLAN_ENCAPSULATION, true,
                 METER_ID, null, true, new HashSet<>());
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
@@ -332,13 +343,16 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildCommandsVlanEncapsulationDoubleVlanWithOuterVlanOverlappingTest() {
-        FlowPath oneSwitchReverse = buildSubPath(SWITCH_1, SWITCH_1, REVERSE_COOKIE, OUTER_VLAN_ID_1, 0);
-        HaFlow oneSwitchHaFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_2, INNER_VLAN_ID_1);
+        HaFlow oneSwitchHaFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_2, INNER_VLAN_ID_1, OUTER_VLAN_ID_1, 0);
+        FlowPath oneSwitchReverse = buildSubPath(oneSwitchHaFlow.getSharedSwitch(),
+                SWITCH_1, REVERSE_COOKIE, oneSwitchHaFlow.getHaSubFlows().iterator().next());
         Set<FlowSideAdapter> overlapping = Sets.newHashSet(
                 FlowSideAdapter.makeIngressAdapter(oneSwitchHaFlow, oneSwitchReverse));
-        HaFlow flow = buildHaFlow(SWITCH_1, oneSwitchReverse.getHaSubFlow().getEndpointPort(),
-                OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        IngressHaRuleGenerator generator = buildGenerator(FORWARD_PATH, flow, VLAN_ENCAPSULATION, false, null, null,
+        HaFlow haFlow = buildHaFlow(SWITCH_1, oneSwitchReverse.getHaSubFlow().getEndpointPort(),
+                OUTER_VLAN_ID_1, INNER_VLAN_ID_1, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        FlowPath subPath = buildSubPath(
+                SWITCH_1, SWITCH_2, FORWARD_COOKIE, haFlow.getHaSubFlows().iterator().next());
+        IngressHaRuleGenerator generator = buildGenerator(subPath, haFlow, VLAN_ENCAPSULATION, false, null, null,
                 false, overlapping);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(1, commands.size());
@@ -363,14 +377,15 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void buildCommandsVlanEncapsulationDoubleVlanPortOverlappingTest() {
-        FlowPath oneSwitchReverse = buildSubPath(SWITCH_2, SWITCH_2, REVERSE_COOKIE, OUTER_VLAN_ID_2, 0);
-        HaFlow oneSwitchHaFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_2, INNER_VLAN_ID_1);
+        HaFlow oneSwitchHaFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_2, INNER_VLAN_ID_1, OUTER_VLAN_ID_2, 0);
+        FlowPath oneSwitchReverse = buildSubPath(SWITCH_2, SWITCH_2, REVERSE_COOKIE,
+                oneSwitchHaFlow.getHaSubFlows().iterator().next());
         Set<FlowSideAdapter> overlapping = Sets.newHashSet(
                 FlowSideAdapter.makeIngressAdapter(oneSwitchHaFlow, oneSwitchReverse));
-        HaFlow flow = buildHaFlow(SWITCH_2, oneSwitchReverse.getHaSubFlow().getEndpointPort(),
-                OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        FlowPath subPath = buildSubPath(SWITCH_2, SWITCH_1, FORWARD_COOKIE, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
-        IngressHaRuleGenerator generator = buildGenerator(subPath, flow, VLAN_ENCAPSULATION, true, METER_ID, null,
+        HaFlow haFlow = buildHaFlow(SWITCH_2, oneSwitchReverse.getHaSubFlow().getEndpointPort(),
+                OUTER_VLAN_ID_1, INNER_VLAN_ID_1, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        FlowPath subPath = buildSubPath(SWITCH_2, SWITCH_1, FORWARD_COOKIE, haFlow.getHaSubFlows().iterator().next());
+        IngressHaRuleGenerator generator = buildGenerator(subPath, haFlow, VLAN_ENCAPSULATION, true, METER_ID, null,
                 true, overlapping);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
         assertEquals(3, commands.size());
@@ -411,8 +426,8 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void createSharedMeterTest() {
-        HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, TRANSIT_VLAN_ID);
-        FlowPath subPath = buildSubPath(SWITCH_2, SWITCH_1, FORWARD_COOKIE, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, TRANSIT_VLAN_ID, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        FlowPath subPath = buildSubPath(SWITCH_2, SWITCH_1, FORWARD_COOKIE, haFlow.getHaSubFlows().iterator().next());
         IngressHaRuleGenerator generator = buildGenerator(subPath, haFlow, VLAN_ENCAPSULATION, true, METER_ID,
                 METER_COMMAND_UUID, true, Sets.newHashSet(FlowSideAdapter.makeIngressAdapter(haFlow, subPath)));
 
@@ -428,8 +443,8 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void dependsOnSharedMeterTest() {
-        HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, TRANSIT_VLAN_ID);
-        FlowPath subPath = buildSubPath(SWITCH_2, SWITCH_1, FORWARD_COOKIE, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, TRANSIT_VLAN_ID, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        FlowPath subPath = buildSubPath(SWITCH_2, SWITCH_1, FORWARD_COOKIE, haFlow.getHaSubFlows().iterator().next());
         IngressHaRuleGenerator generator = buildGenerator(subPath, haFlow, VLAN_ENCAPSULATION, true, METER_ID,
                 METER_COMMAND_UUID, false, Sets.newHashSet(FlowSideAdapter.makeIngressAdapter(haFlow, subPath)));
 
@@ -443,8 +458,8 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
 
     @Test
     public void nullSharedMeterTest() {
-        HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, TRANSIT_VLAN_ID);
-        FlowPath subPath = buildSubPath(SWITCH_2, SWITCH_1, FORWARD_COOKIE, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, TRANSIT_VLAN_ID, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
+        FlowPath subPath = buildSubPath(SWITCH_2, SWITCH_1, FORWARD_COOKIE, haFlow.getHaSubFlows().iterator().next());
         IngressHaRuleGenerator generator = buildGenerator(subPath, haFlow, VLAN_ENCAPSULATION, true, null,
                 METER_COMMAND_UUID, true, Sets.newHashSet(FlowSideAdapter.makeIngressAdapter(haFlow, subPath)));
 
@@ -574,21 +589,31 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
     }
 
     private HaFlow buildHaFlow(FlowPath subPath, int outerVlan, int innerVlan) {
-        return buildHaFlow(subPath.getSrcSwitch(), PORT_NUMBER_1, outerVlan, innerVlan);
+        return buildHaFlow(subPath.getSrcSwitch(), outerVlan, innerVlan);
     }
 
-    private HaFlow buildHaFlow(Switch sharedSwitch, int outerVlan, int innerVlan) {
-        return buildHaFlow(sharedSwitch, PORT_NUMBER_1, outerVlan, innerVlan);
+    private HaFlow buildHaFlow(Switch sharedSwitch, int sharedOuterVlan, int sharedInnerVlan) {
+        return buildHaFlow(sharedSwitch, sharedOuterVlan, sharedInnerVlan, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
     }
 
-    private HaFlow buildHaFlow(Switch sharedSwitch, int sharedPort, int outerVlan, int innerVlan) {
-        return HaFlow.builder()
+    private HaFlow buildHaFlow(
+            Switch sharedSwitch, int sharedOuterVlan, int sharedInnerVlan, int subFlowOuterVlan, int subFlowInnerVlan) {
+        return buildHaFlow(sharedSwitch, PORT_NUMBER_1, sharedOuterVlan, sharedInnerVlan, subFlowOuterVlan,
+                subFlowInnerVlan);
+    }
+
+    private HaFlow buildHaFlow(
+            Switch sharedSwitch, int sharedPort, int sharedOuterVlan, int sharedInnerVlan, int subFlowOuterVlan,
+            int subFlowInnerVlan) {
+        HaFlow haFlow = HaFlow.builder()
                 .haFlowId(HA_FLOW_ID)
                 .sharedSwitch(sharedSwitch)
                 .sharedPort(sharedPort)
-                .sharedOuterVlan(outerVlan)
-                .sharedInnerVlan(innerVlan)
+                .sharedOuterVlan(sharedOuterVlan)
+                .sharedInnerVlan(sharedInnerVlan)
                 .build();
+        haFlow.setHaSubFlows(Lists.newArrayList(buildHaSubFlow(subFlowOuterVlan, subFlowInnerVlan)));
+        return haFlow;
     }
 
     private PushVxlanAction buildPushVxlan() {

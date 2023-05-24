@@ -101,7 +101,7 @@ public class LinkControllerV2 extends BaseLinkController {
     }
 
     private BfdProperties verifyRequest(BfdProperties request) {
-        exposeBodyValidationResults(verifyBfdProperties(request));
+        exposeBodyValidationResults(verifyBfdProperties(request), "Invalid BFD properties");
         return request;
     }
 

@@ -24,6 +24,8 @@ import org.openkilda.messaging.command.haflow.HaFlowPathsResponse;
 import org.openkilda.messaging.command.haflow.HaFlowReadRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.command.haflow.HaFlowResponse;
+import org.openkilda.messaging.command.haflow.HaFlowValidationRequest;
+import org.openkilda.messaging.command.haflow.HaFlowValidationResponse;
 import org.openkilda.messaging.command.haflow.HaFlowsDumpRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
@@ -188,9 +190,20 @@ public class HaFlowServiceImpl implements HaFlowService {
         return null;
     }
 
+    /**
+     * Validates a high-availability (HA) flow with the given ID asynchronously.
+     *
+     * @param haFlowId the ID of the HA flow to be validated
+     * @return a {@link CompletableFuture} that will be completed with the validation result
+     */
     @Override
     public CompletableFuture<HaFlowValidationResult> validateHaFlow(String haFlowId) {
-        return null;
+        log.info("API request: Validate the ha-flow: {}", haFlowId);
+        CommandMessage command = new CommandMessage(new HaFlowValidationRequest(haFlowId), System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(HaFlowValidationResponse.class::cast)
+                .thenApply(flowMapper::toValidationResult);
     }
 
     @Override
