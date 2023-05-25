@@ -48,6 +48,7 @@ import org.mapstruct.factory.Mappers;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -373,6 +374,44 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                 format("HA-flow %s has no HA-sub flow %s", getHaFlowId(), haSubFlowId)));
     }
 
+    /**
+     * Swap primary and protected path IDs.
+     */
+    public void swapPathIds() {
+        final PathId primaryForward = getForwardPathId();
+        final PathId primaryReverse = getReversePathId();
+        final PathId protectedForward = getProtectedForwardPathId();
+        final PathId protectedReverse = getProtectedReversePathId();
+
+        setForwardPathId(protectedForward);
+        setReversePathId(protectedReverse);
+        setProtectedForwardPathId(primaryForward);
+        setProtectedReversePathId(primaryReverse);
+    }
+
+    public Collection<HaFlowPath> getPrimaryPaths() {
+        return getHaFlowPaths(getForwardPath(), getReversePath());
+    }
+
+    public Collection<HaFlowPath> getProtectedPaths() {
+        return getHaFlowPaths(getProtectedForwardPath(), getProtectedReversePath());
+    }
+
+    /**
+     * Returns HA-flow paths which are currently in use.
+     * This method doesn't return unused paths, like getPath() method does.
+     * Paths can be set unused in the middle of update/reroute operations.
+     */
+    public Collection<HaFlowPath> getUsedPaths() {
+        Collection<HaFlowPath> paths = getPrimaryPaths();
+        paths.addAll(getProtectedPaths());
+        return paths;
+    }
+
+    private Collection<HaFlowPath> getHaFlowPaths(HaFlowPath... paths) {
+        return Arrays.stream(paths).filter(Objects::nonNull).collect(Collectors.toList());
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -425,9 +464,9 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
     }
 
     /**
-     * Recalculate the HA-flow status based on sub-flow statuses.
+     * Computes the HA-flow status based on sub-flow statuses.
      */
-    public void recalculateStatus() {
+    public FlowStatus computeStatus() {
         FlowStatus haFlowStatus = null;
         for (HaSubFlow subFlow : getHaSubFlows()) {
             FlowStatus subFlowStatus = subFlow.getStatus();
@@ -442,7 +481,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                 haFlowStatus = FlowStatus.DEGRADED;
             }
         }
-        setStatus(haFlowStatus);
+        return haFlowStatus;
     }
 
     /**
