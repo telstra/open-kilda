@@ -266,7 +266,6 @@ public class RuleManagerHaFlowRulesTest {
         assertFlowTables(switchCommandMap.get(SWITCH_ID_7), INPUT, INGRESS);
     }
 
-
     @Test
     public void buildISharedDifferentLengthHaFlowForwardCommands() {
         HaFlow haFlow = buildIShapedDifferentLengthHaFlow();
@@ -326,6 +325,50 @@ public class RuleManagerHaFlowRulesTest {
     }
 
     @Test
+    public void buildIShapedDifferentLengthHaFlowReverseIngressOnlyCommands() {
+        HaFlow haFlow = buildIShapedDifferentLengthHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getReversePath(), true, false, true, false, adapter);
+
+        assertEquals(5, reverseSpeakerData.size());
+
+        Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
+        assertEquals(2, switchCommandMap.get(SWITCH_ID_3).size());
+        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_3), INPUT, INGRESS);
+
+        assertEquals(3, switchCommandMap.get(SWITCH_ID_4).size());
+        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_4)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_4), INPUT, INGRESS);
+    }
+
+    @Test
+    public void buildIShapedDifferentLengthHaFlowReverseNonIngressOnlyCommands() {
+        HaFlow haFlow = buildIShapedDifferentLengthHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getReversePath(), true, false, false, true, adapter);
+
+        assertEquals(4, reverseSpeakerData.size());
+
+        Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS);
+
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
+
+        assertEquals(2, switchCommandMap.get(SWITCH_ID_3).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_3), TRANSIT);
+    }
+
+    @Test
     public void buildIShapedEqualLengthHaFlowForwardCommands() {
         HaFlow haFlow = buildIShapedEqualLengthHaFlow();
         DataAdapter adapter = buildAdapter(haFlow);
@@ -372,6 +415,41 @@ public class RuleManagerHaFlowRulesTest {
         assertEquals(4, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
         assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_3), INPUT, INGRESS, INPUT, INGRESS);
+    }
+
+    @Test
+    public void buildIShapedEqualLengthHaFlowReverseIngressOnlyCommands() {
+        HaFlow haFlow = buildIShapedEqualLengthHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getReversePath(), true, false, true, false, adapter);
+
+        assertEquals(5, reverseSpeakerData.size());
+
+        Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
+        assertEquals(5, switchCommandMap.get(SWITCH_ID_3).size());
+        assertEquals(4, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_3), INPUT, INGRESS, INPUT, INGRESS);
+    }
+
+    @Test
+    public void buildIShapedEqualLengthHaFlowReverseNonIngressOnlyCommands() {
+        HaFlow haFlow = buildIShapedEqualLengthHaFlow();
+        DataAdapter adapter = buildAdapter(haFlow);
+        List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
+                haFlow.getReversePath(), true, false, false, true, adapter);
+
+        assertEquals(2, reverseSpeakerData.size());
+
+        Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS);
+
+        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
     }
 
     @Test

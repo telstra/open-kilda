@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,19 +16,16 @@
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions;
 
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
-import org.openkilda.model.FlowPath;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.PathId;
-import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.rulemanager.DataAdapter;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HaFlowRuleManagerProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HaFlowRuleManagerProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
@@ -41,16 +38,13 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class EmitInstallRulesRequestsAction extends
         HaFlowRuleManagerProcessingAction<HaFlowCreateFsm, State, Event, HaFlowCreateContext> {
-    private final FlowPathRepository flowPathRepository;
 
     public EmitInstallRulesRequestsAction(PersistenceManager persistenceManager, RuleManager ruleManager) {
         super(persistenceManager, ruleManager);
-        flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
     }
 
     @Override
@@ -76,38 +70,25 @@ public class EmitInstallRulesRequestsAction extends
         }
     }
 
-    private DataAdapter buildDataAdapter(HaFlow haFlow) {
-        Set<PathId> pathIds = new HashSet<>(haFlow.getSubPathIds());
-        for (SwitchId switchId : haFlow.getEndpointSwitchIds()) {
-            pathIds.addAll(flowPathRepository.findBySrcSwitch(switchId, false).stream()
-                    .map(FlowPath::getPathId)
-                    .collect(Collectors.toSet()));
-        }
-
-        Set<SwitchId> switchIds = haFlow.getEndpointSwitchIds();
-        for (HaFlowPath haFlowPath : haFlow.getPaths()) {
-            for (FlowPath subPath : haFlowPath.getSubPaths()) {
-                for (PathSegment segment : subPath.getSegments()) {
-                    switchIds.add(segment.getSrcSwitchId());
-                    switchIds.add(segment.getDestSwitchId());
-                }
-            }
-        }
-
-        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false);
+    private List<SpeakerData> buildRules(HaFlowPath haPath, Set<PathId> overlappingPathIds) {
+        Set<SwitchId> switchIds = haPath.getAllInvolvedSwitches();
+        Set<PathId> pathIds = new HashSet<>(overlappingPathIds);
+        pathIds.addAll(haPath.getSubPathIds());
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false);
+        return ruleManager.buildRulesHaFlowPath(haPath, true, dataAdapter);
     }
 
     private List<SpeakerData> buildSpeakerCommands(HaFlowCreateFsm stateMachine) {
         HaFlow haFlow = getHaFlow(stateMachine.getFlowId());
+        Set<PathId> overlappingPathIds = getPathIdsWhichCanUseSharedRules(haFlow);
 
-        DataAdapter dataAdapter = buildDataAdapter(haFlow);
         List<SpeakerData> result = new ArrayList<>();
-        result.addAll(ruleManager.buildRulesHaFlowPath(haFlow.getForwardPath(), true, dataAdapter));
-        result.addAll(ruleManager.buildRulesHaFlowPath(haFlow.getReversePath(), true, dataAdapter));
+        result.addAll(buildRules(haFlow.getForwardPath(), overlappingPathIds));
+        result.addAll(buildRules(haFlow.getReversePath(), overlappingPathIds));
 
         if (haFlow.getProtectedForwardPath() != null && haFlow.getProtectedForwardPath() != null) {
-            result.addAll(ruleManager.buildRulesHaFlowPath(haFlow.getProtectedForwardPath(), true, dataAdapter));
-            result.addAll(ruleManager.buildRulesHaFlowPath(haFlow.getProtectedReversePath(), true, dataAdapter));
+            result.addAll(buildRules(haFlow.getProtectedForwardPath(), overlappingPathIds));
+            result.addAll(buildRules(haFlow.getProtectedReversePath(), overlappingPathIds));
         }
         return result;
     }

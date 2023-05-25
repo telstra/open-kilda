@@ -25,10 +25,14 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyHaFlowMonitorAction;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyHaFlowStatsOnNewPathsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyHaFlowStatsOnRemovedPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HandleNotCompletedCommandsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowMonitorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowStatsOnNewPathsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowStatsOnRemovedPathsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.OnReceivedInstallResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.OnReceivedRemoveResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.OnReceivedRevertResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.AbandonPendingCommandsAction;
@@ -38,7 +42,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.BuildNewRules
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.CompleteFlowPathInstallationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.CompleteFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.DeallocateResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.HandleNotCompletedCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.HandleNotDeallocatedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.HandleNotRemovedPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.HandleNotRevertedResourceAllocationAction;
@@ -46,9 +49,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.InstallIngres
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.InstallNonIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.OnFinishedWithErrorAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.OnReceivedInstallResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.OnReceivedRemoveResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.OnReceivedRevertResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.PostResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RemoveOldRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertFlowAction;
@@ -171,7 +171,8 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.INSTALLING_NON_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(config.getSpeakerCommandRetriesLimit()));
+                    .perform(new OnReceivedInstallResponseAction<>(
+                            config.getSpeakerCommandRetriesLimit(), Event.RULES_INSTALLED, carrier));
             builder.transition().from(State.INSTALLING_NON_INGRESS_RULES).to(State.NON_INGRESS_RULES_INSTALLED)
                     .on(Event.RULES_INSTALLED);
             builder.transitions().from(State.INSTALLING_NON_INGRESS_RULES)
@@ -201,7 +202,8 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
                     .perform(new InstallIngressRulesAction(persistenceManager));
 
             builder.internalTransition().within(State.INSTALLING_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedInstallResponseAction(config.getSpeakerCommandRetriesLimit()));
+                    .perform(new OnReceivedInstallResponseAction<>(
+                            config.getSpeakerCommandRetriesLimit(), Event.RULES_INSTALLED, carrier));
             builder.transition().from(State.INSTALLING_INGRESS_RULES).to(State.INGRESS_RULES_INSTALLED)
                     .on(Event.RULES_INSTALLED);
             builder.transitions().from(State.INSTALLING_INGRESS_RULES)
@@ -224,13 +226,14 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.REMOVING_OLD_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedRemoveResponseAction(config.getSpeakerCommandRetriesLimit()));
+                    .perform(new OnReceivedRemoveResponseAction<>(
+                            config.getSpeakerCommandRetriesLimit(), Event.RULES_REMOVED, carrier));
             builder.transition().from(State.REMOVING_OLD_RULES).to(State.OLD_RULES_REMOVED)
                     .on(Event.RULES_REMOVED);
             builder.transitions().from(State.REMOVING_OLD_RULES)
                     .toAmong(State.OLD_RULES_REMOVED, State.OLD_RULES_REMOVED)
                     .onEach(Event.TIMEOUT, Event.ERROR)
-                    .perform(new HandleNotCompletedCommandsAction());
+                    .perform(new HandleNotCompletedCommandsAction<>());
 
             builder.transition().from(State.OLD_RULES_REMOVED)
                     .to(State.NOTIFY_FLOW_STATS_ON_REMOVED_PATHS).on(Event.NEXT)
@@ -280,13 +283,14 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
                     .perform(new RevertNewRulesAction(persistenceManager, ruleManager));
 
             builder.internalTransition().within(State.REVERTING_NEW_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedRevertResponseAction(config.getSpeakerCommandRetriesLimit()));
+                    .perform(new OnReceivedRevertResponseAction<>(
+                            config.getSpeakerCommandRetriesLimit(), Event.RULES_REVERTED, carrier));
             builder.transition().from(State.REVERTING_NEW_RULES).to(State.NEW_RULES_REVERTED)
                     .on(Event.RULES_REVERTED);
             builder.transitions().from(State.REVERTING_NEW_RULES)
                     .toAmong(State.NEW_RULES_REVERTED, State.NEW_RULES_REVERTED)
                     .onEach(Event.TIMEOUT, Event.ERROR)
-                    .perform(new HandleNotCompletedCommandsAction());
+                    .perform(new HandleNotCompletedCommandsAction<>());
 
             builder.transition().from(State.NEW_RULES_REVERTED)
                     .to(State.REVERTING_ALLOCATED_RESOURCES)

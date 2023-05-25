@@ -13,12 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow;
 
 import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.request.rulemanager.InstallSpeakerCommandsRequest;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.PathId;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.SpeakerData;
@@ -31,7 +33,10 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 public abstract class HaFlowRuleManagerProcessingAction<T extends FlowProcessingWithHistorySupportFsm<
@@ -85,5 +90,20 @@ public abstract class HaFlowRuleManagerProcessingAction<T extends FlowProcessing
             haFlow.setProtectedReversePath(haFlow.getPathOrThrowException(protectedPathIds.getReverse().getHaPathId()));
         }
         return haFlow;
+    }
+
+    /**
+     * Finds path IDs of paths which can use same shared rules as paths of HA-flow use on endpoint switches.
+     * Excludes paths IDs of HA-fLow suf paths from the result.
+     */
+    protected Set<PathId> getPathIdsWhichCanUseSharedRules(HaFlow haFlow) {
+        Set<PathId> pathIds = new HashSet<>();
+        for (SwitchId switchId : haFlow.getEndpointSwitchIds()) {
+            pathIds.addAll(flowPathRepository.findBySrcSwitch(switchId, false).stream()
+                    .map(FlowPath::getPathId)
+                    .collect(Collectors.toSet()));
+        }
+        pathIds.removeAll(haFlow.getSubPathIds());
+        return pathIds;
     }
 }

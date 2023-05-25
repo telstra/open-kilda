@@ -51,9 +51,9 @@ import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowDeleteService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.experimental.SuperBuilder;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -198,15 +198,8 @@ public class HaFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
     }
 
     @Getter
+    @SuperBuilder
     public static class HaFlowDeleteConfig extends Config {
         private final int speakerCommandRetriesLimit;
-
-        @Builder(builderMethodName = "haFlowDeleteBuilder", builderClassName = "haFlowDeleteBuild")
-        public HaFlowDeleteConfig(
-                String requestSenderComponent, String workerComponent, String lifeCycleEventComponent, int timeoutMs,
-                boolean autoAck, int speakerCommandRetriesLimit) {
-            super(requestSenderComponent, workerComponent, lifeCycleEventComponent, timeoutMs, autoAck);
-            this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
-        }
     }
 }

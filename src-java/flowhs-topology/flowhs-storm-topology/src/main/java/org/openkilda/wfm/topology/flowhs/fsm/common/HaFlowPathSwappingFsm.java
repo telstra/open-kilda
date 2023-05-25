@@ -33,6 +33,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaFlowPathIds;
+import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
@@ -55,9 +56,9 @@ import java.util.UUID;
 @Getter
 @Setter
 @Slf4j
-public abstract class HaFlowPathSwappingFsm<T extends AbstractStateMachine<T, S, E, C>, S, E, C,
-        R extends NorthboundResponseCarrier & HistoryUpdateCarrier, L extends FlowProcessingEventListener>
-        extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
+public abstract class HaFlowPathSwappingFsm<T extends AbstractStateMachine<T, S, E, C>, S, E,
+        C extends SpeakerResponseContext, R extends NorthboundResponseCarrier & HistoryUpdateCarrier,
+        L extends FlowProcessingEventListener> extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
     protected final String haFlowId;
     protected String sharedBandwidthGroupId;
 

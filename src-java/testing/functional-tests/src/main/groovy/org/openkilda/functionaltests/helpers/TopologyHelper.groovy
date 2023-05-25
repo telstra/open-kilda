@@ -133,6 +133,34 @@ class TopologyHelper {
         return topology.getActiveSwitches().shuffled().first()
     }
 
+    SwitchTriplet findSwitchTripletForHaFlowWithProtectedPaths() {
+        return switchTriplets.find {
+            if (it.ep1 == it.ep2 || it.ep1 == it.shared || it.ep2 == it.shared) {
+                return false
+            }
+            def pathsCombinations = [it.pathsEp1, it.pathsEp2].combinations()
+            for (i in 0..<pathsCombinations.size()) {
+                for (j in i + 1..<pathsCombinations.size()) {
+                    if (!areHaPathsIntersect(pathsCombinations[i], pathsCombinations[j])) {
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+    }
+
+    private static boolean areHaPathsIntersect(subPaths1, subPaths2) {
+        for (List<PathNode> subPath1 : subPaths1) {
+            for (List<PathNode> subPath2 : subPaths2) {
+                if (subPaths1.intersect(subPaths2)) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
     private static Status switchStateToStatus(SwitchChangeType state) {
         switch (state) {
             case SwitchChangeType.ACTIVATED:

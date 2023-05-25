@@ -61,9 +61,9 @@ import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowUpdateService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.experimental.SuperBuilder;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -239,22 +239,11 @@ public class HaFlowUpdateHubBolt extends HubBolt implements FlowGenericCarrier {
     }
 
     @Getter
+    @SuperBuilder
     public static class HaFlowUpdateConfig extends Config {
         private final int pathAllocationRetriesLimit;
         private final int pathAllocationRetryDelay;
         private final int resourceAllocationRetriesLimit;
         private final int speakerCommandRetriesLimit;
-
-        @Builder(builderMethodName = "haFlowUpdateBuilder", builderClassName = "haFlowUpdateBuild")
-        public HaFlowUpdateConfig(
-                String requestSenderComponent, String workerComponent, String lifeCycleEventComponent, int timeoutMs,
-                boolean autoAck, int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
-                int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
-            super(requestSenderComponent, workerComponent, lifeCycleEventComponent, timeoutMs, autoAck);
-            this.pathAllocationRetriesLimit = pathAllocationRetriesLimit;
-            this.pathAllocationRetryDelay = pathAllocationRetryDelay;
-            this.resourceAllocationRetriesLimit = resourceAllocationRetriesLimit;
-            this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
-        }
     }
 }
