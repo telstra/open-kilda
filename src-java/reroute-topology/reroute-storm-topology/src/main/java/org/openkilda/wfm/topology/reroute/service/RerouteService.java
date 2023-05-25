@@ -20,15 +20,18 @@ import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.reroute.FlowType;
 import org.openkilda.messaging.info.reroute.SwitchStateChanged;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -40,6 +43,7 @@ import org.openkilda.persistence.exceptions.EntityNotFoundException;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
@@ -61,6 +65,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -69,15 +74,17 @@ import java.util.stream.Collectors;
 @Slf4j
 public class RerouteService {
     private final FlowOperationsDashboardLogger flowDashboardLogger = new FlowOperationsDashboardLogger(log);
-    private FlowRepository flowRepository;
-    private YFlowRepository yFlowRepository;
-    private FlowPathRepository flowPathRepository;
-    private PathSegmentRepository pathSegmentRepository;
-    private TransactionManager transactionManager;
+    private final FlowRepository flowRepository;
+    private final YFlowRepository yFlowRepository;
+    private final HaFlowRepository haFlowRepository;
+    private final FlowPathRepository flowPathRepository;
+    private final PathSegmentRepository pathSegmentRepository;
+    private final TransactionManager transactionManager;
 
     public RerouteService(PersistenceManager persistenceManager) {
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
+        this.haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         this.pathSegmentRepository = persistenceManager.getRepositoryFactory().createPathSegmentRepository();
         this.transactionManager = persistenceManager.getTransactionManager();
@@ -105,11 +112,13 @@ public class RerouteService {
             // swapping affected primary paths with available protected
             List<FlowPath> pathsForSwapping = getPathsForSwapping(affectedFlowPaths);
             for (FlowPath path : pathsForSwapping) {
-                String yFlowId = path.getFlow().getYFlowId();
-                if (yFlowId != null) {
-                    result.yFlowIdsForSwapPaths.add(yFlowId);
-                } else {
-                    result.flowIdsForSwapPaths.add(path.getFlowId());
+                if (path.getFlow() != null) {
+                    String yFlowId = path.getFlow().getYFlowId();
+                    if (yFlowId != null) {
+                        result.yFlowIdsForSwapPaths.add(yFlowId);
+                    } else {
+                        result.flowIdsForSwapPaths.add(path.getFlowId());
+                    }
                 }
             }
 
@@ -189,7 +198,7 @@ public class RerouteService {
                         rerouteRequired = true;
                     } catch (EntityNotFoundException e) {
                         log.warn("Path segment not found for flow {} and path {}. Skipping path segment status update.",
-                                fp.getFlow().getFlowId(), fp.getPathId(), e);
+                                fp.getFlowId(), fp.getPathId(), e);
                     }
                     break;
                 }
@@ -380,12 +389,15 @@ public class RerouteService {
     /**
      * Returns map with flow for reroute and set of reroute pathId.
      *
-     * @return map with flow for reroute and set of reroute pathId.
+     * @return list with flow for reroute and set of reroute pathId.
      */
     public List<FlowWithAffectedPaths> groupPathsForRerouting(Collection<FlowPath> paths) {
         Map<String, FlowWithAffectedPaths> results = new HashMap<>();
         for (FlowPath entry : paths) {
             Flow flow = entry.getFlow();
+            if (flow == null) {
+                continue; // It is orphaned path of HA-flow sub path
+            }
             if (flow.isPinned()) {
                 continue;
             }
@@ -402,8 +414,9 @@ public class RerouteService {
      */
     public Set<Flow> groupAffectedPinnedFlows(Collection<FlowPath> paths) {
         return paths.stream()
-                .filter(path -> path.getFlow().isPinned())
                 .map(FlowPath::getFlow)
+                .filter(Objects::nonNull)
+                .filter(Flow::isPinned)
                 .collect(Collectors.toSet());
     }
 
@@ -430,6 +443,7 @@ public class RerouteService {
         log.info("Get affected inactive flows for switch {}", switchId);
         return flowPathRepository.findInactiveBySegmentSwitch(switchId).stream()
                 .map(FlowPath::getFlow)
+                .filter(Objects::nonNull)
                 .filter(flow -> ! flow.isOneSwitchFlow())
                 .collect(toSet());
     }
@@ -476,6 +490,25 @@ public class RerouteService {
     }
 
     /**
+     * Process manual HA-flow reroute request.
+     */
+    public void processRerouteRequest(MessageSender sender, String correlationId, HaFlowRerouteRequest request) {
+        Optional<HaFlow> haFlow = haFlowRepository.findById(request.getHaFlowId());
+        FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(haFlow.orElse(null))
+                .correlationId(correlationId)
+                .affectedIsl(request.getAffectedIsls())
+                .force(false)
+                .effectivelyDown(request.isEffectivelyDown())
+                .reason(request.getReason())
+                .build();
+        if (request.isManual()) {
+            sender.emitManualRerouteCommand(request.getHaFlowId(), flowThrottlingData);
+        } else {
+            sender.emitRerouteCommand(request.getHaFlowId(), flowThrottlingData);
+        }
+    }
+
+    /**
      * Handles request to update single switch flow status.
      */
     public void processSingleSwitchFlowStatusUpdate(SwitchStateChanged request) {
@@ -499,31 +532,42 @@ public class RerouteService {
     }
 
     private FlowThrottlingDataBuilder getFlowThrottlingDataBuilder(Flow flow) {
-        return flow == null ? FlowThrottlingData.builder() :
+        return flow == null ? FlowThrottlingData.builder().flowType(FlowType.FLOW) :
                 FlowThrottlingData.builder()
                         .priority(flow.getPriority())
                         .timeCreate(flow.getTimeCreate())
                         .pathComputationStrategy(flow.getPathComputationStrategy())
                         .bandwidth(flow.getBandwidth())
+                        .flowType(FlowType.FLOW)
                         .strictBandwidth(flow.isStrictBandwidth());
     }
 
     private FlowThrottlingDataBuilder getFlowThrottlingDataBuilder(YFlow flow) {
-        return flow == null ? FlowThrottlingData.builder() :
+        return flow == null ? FlowThrottlingData.builder().flowType(FlowType.Y_FLOW) :
                 FlowThrottlingData.builder()
                         .priority(flow.getPriority())
                         .timeCreate(flow.getTimeCreate())
                         .pathComputationStrategy(flow.getPathComputationStrategy())
                         .bandwidth(flow.getMaximumBandwidth())
                         .strictBandwidth(flow.isStrictBandwidth())
-                        .yFlow(true);
+                        .flowType(FlowType.Y_FLOW);
+    }
+
+    private FlowThrottlingDataBuilder getFlowThrottlingDataBuilder(HaFlow haFlow) {
+        return haFlow == null ? FlowThrottlingData.builder().flowType(FlowType.HA_FLOW) :
+                FlowThrottlingData.builder()
+                        .priority(haFlow.getPriority())
+                        .timeCreate(haFlow.getTimeCreate())
+                        .pathComputationStrategy(haFlow.getPathComputationStrategy())
+                        .bandwidth(haFlow.getMaximumBandwidth())
+                        .strictBandwidth(haFlow.isStrictBandwidth())
+                        .flowType(FlowType.HA_FLOW);
     }
 
     @Value
     private static class FlowWithAffectedPaths {
-        private Flow flow;
-
-        private List<FlowPath> affectedPaths = new ArrayList<>();
+        Flow flow;
+        List<FlowPath> affectedPaths = new ArrayList<>();
     }
 
     @Data

@@ -37,6 +37,6 @@ public class CompleteFlowPathRemovalAction extends
             State from, State to, Event event, HaFlowUpdateContext context, HaFlowUpdateFsm stateMachine) {
         removeFlowPaths(stateMachine.getOldPrimaryPathIds());
         removeFlowPaths(stateMachine.getOldProtectedPathIds());
-        removeRejectedFlowPaths(stateMachine.getRejectedHaPathsIds());
+        removeRejectedPaths(stateMachine.getRejectedSubPathsIds(), stateMachine.getRejectedHaPathsIds());
     }
 }

@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,29 +13,32 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.reroute;
+package org.openkilda.messaging.command.haflow;
 
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.reroute.error.RerouteError;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.IslEndpoint;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.Builder;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 
-@Builder
-@Data
-@EqualsAndHashCode(callSuper = false)
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class RerouteResultInfoData extends InfoData {
+import java.util.Set;
 
-    private String flowId;
-    private boolean success;
-    private RerouteError rerouteError;
+@Data
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = false)
+@JsonNaming(SnakeCaseStrategy.class)
+public class HaFlowRerouteRequest extends CommandData {
+    private static final long serialVersionUID = 1L;
+
     @NonNull
-    private FlowType flowType;
+    String haFlowId;
+    Set<IslEndpoint> affectedIsls;
+    boolean effectivelyDown;
+    String reason;
+    boolean ignoreBandwidth;
+    boolean manual;
 }

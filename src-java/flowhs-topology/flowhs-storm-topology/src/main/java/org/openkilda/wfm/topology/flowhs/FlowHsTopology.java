@@ -1032,6 +1032,10 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.YFLOW_UPDATE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
                 .shuffleGrouping(ComponentId.YFLOW_REROUTE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
                 .shuffleGrouping(ComponentId.YFLOW_DELETE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
+                .shuffleGrouping(ComponentId.HA_FLOW_CREATE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
+                .shuffleGrouping(ComponentId.HA_FLOW_UPDATE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
+                .shuffleGrouping(ComponentId.HA_FLOW_DELETE_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
+                .shuffleGrouping(ComponentId.HA_FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_PING_SENDER.name())
                 .shuffleGrouping(YFlowSyncHubBolt.BOLT_ID, YFlowSyncHubBolt.STREAM_PING_REQUEST);
     }
 
@@ -1108,6 +1112,12 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .shuffleGrouping(ComponentId.YFLOW_DELETE_HUB.name(),
                         Stream.HUB_TO_STATS_TOPOLOGY_SENDER.name())
                 .shuffleGrouping(YFlowSyncHubBolt.BOLT_ID, YFlowSyncHubBolt.STREAM_STATS)
+                .shuffleGrouping(ComponentId.HA_FLOW_CREATE_HUB.name(),
+                        Stream.HUB_TO_STATS_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.HA_FLOW_UPDATE_HUB.name(),
+                        Stream.HUB_TO_STATS_TOPOLOGY_SENDER.name())
+                .shuffleGrouping(ComponentId.HA_FLOW_DELETE_HUB.name(),
+                        Stream.HUB_TO_STATS_TOPOLOGY_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_CREATE_MIRROR_POINT_HUB.name(),
                         Stream.HUB_TO_STATS_TOPOLOGY_SENDER.name())
                 .shuffleGrouping(ComponentId.FLOW_DELETE_MIRROR_POINT_HUB.name(),
@@ -1155,8 +1165,8 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                         ComponentId.HA_FLOW_UPDATE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), grouping)
                 .fieldsGrouping(
                         ComponentId.HA_FLOW_DELETE_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), grouping)
-                 .fieldsGrouping(ComponentId.HA_FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(),
-                         grouping);
+                .fieldsGrouping(ComponentId.HA_FLOW_PATH_SWAP_HUB.name(), Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(),
+                        grouping);
     }
 
     @Override

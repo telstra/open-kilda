@@ -19,32 +19,38 @@ import static java.lang.String.format;
 import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.reroute.FlowType;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.messaging.info.reroute.error.FlowInProgressError;
 import org.openkilda.messaging.info.reroute.error.NoPathFoundError;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.messaging.info.reroute.error.SpeakerRequestError;
 import org.openkilda.model.Flow;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
 import org.openkilda.model.YSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 import org.openkilda.wfm.topology.reroute.model.RerouteQueue;
 
 import com.google.common.annotations.VisibleForTesting;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -56,19 +62,21 @@ import java.util.stream.Collectors;
 @Slf4j
 public class RerouteQueueService {
 
-    private int defaultFlowPriority;
-    private int maxRetry;
-    private FlowRepository flowRepository;
-    private YFlowRepository yFlowRepository;
+    private final int defaultFlowPriority;
+    private final int maxRetry;
+    private final FlowRepository flowRepository;
+    private final YFlowRepository yFlowRepository;
+    private final HaFlowRepository haFlowRepository;
 
-    private Map<String, RerouteQueue> reroutes = new HashMap<>();
-    private IRerouteQueueCarrier carrier;
+    private final Map<String, RerouteQueue> reroutes = new HashMap<>();
+    private final IRerouteQueueCarrier carrier;
 
     public RerouteQueueService(IRerouteQueueCarrier carrier, PersistenceManager persistenceManager,
                                int defaultFlowPriority, int maxRetry) {
         this.carrier = carrier;
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
+        this.haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
         this.defaultFlowPriority = defaultFlowPriority;
         this.maxRetry = maxRetry;
     }
@@ -80,24 +88,13 @@ public class RerouteQueueService {
      * @param throttlingData reroute request params
      */
     public void processAutomaticRequest(String flowId, FlowThrottlingData throttlingData) {
-        if (throttlingData.isYFlow()) {
-            Optional<YFlow> flow = yFlowRepository.findById(flowId);
-            if (!flow.isPresent()) {
-                log.warn(format("Y-flow %s not found. Skip the reroute operation of this flow.", flowId));
-                return;
-            } else if (flow.get().isPinned()) {
-                log.info(format("Y-flow %s is pinned. Skip the reroute operation of this flow.", flowId));
-                return;
-            }
-        } else {
-            Optional<Flow> flow = flowRepository.findById(flowId);
-            if (!flow.isPresent()) {
-                log.warn(format("Flow %s not found. Skip the reroute operation of this flow.", flowId));
-                return;
-            } else if (flow.get().isPinned()) {
-                log.info(format("Flow %s is pinned. Skip the reroute operation of this flow.", flowId));
-                return;
-            }
+        FlowInfo flowInfo = getFlowInfo(flowId, throttlingData.getFlowType());
+        if (!flowInfo.isPresent()) {
+            log.warn(format("%s %s not found. Skip the reroute operation of this flow.", flowInfo.getType(), flowId));
+            return;
+        } else if (flowInfo.isPinned()) {
+            log.info(format("%s %s is pinned. Skip the reroute operation of this flow.", flowInfo.getType(), flowId));
+            return;
         }
 
         log.info("Puts reroute request for flow {} with correlationId {}.", flowId, throttlingData.getCorrelationId());
@@ -113,34 +110,20 @@ public class RerouteQueueService {
      * @param throttlingData reroute request params
      */
     public void processManualRequest(String flowId, FlowThrottlingData throttlingData) {
-        if (throttlingData.isYFlow()) {
-            Optional<YFlow> yFlow = yFlowRepository.findById(flowId);
-            if (!yFlow.isPresent()) {
-                String description = format("Y-flow %s not found", flowId);
-                ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, "Could not reroute y-flow", description);
-                carrier.emitFlowRerouteError(errorData);
-                return;
-            } else if (yFlow.get().isPinned()) {
-                String description = "Can't reroute pinned y-flow";
-                ErrorData errorData =
-                        new ErrorData(ErrorType.UNPROCESSABLE_REQUEST, "Could not reroute y-flow", description);
-                carrier.emitFlowRerouteError(errorData);
-                return;
-            }
-        } else {
-            Optional<Flow> flow = flowRepository.findById(flowId);
-            if (!flow.isPresent()) {
-                String description = format("Flow %s not found", flowId);
-                ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, "Could not reroute flow", description);
-                carrier.emitFlowRerouteError(errorData);
-                return;
-            } else if (flow.get().isPinned()) {
-                String description = "Can't reroute pinned flow";
-                ErrorData errorData =
-                        new ErrorData(ErrorType.UNPROCESSABLE_REQUEST, "Could not reroute flow", description);
-                carrier.emitFlowRerouteError(errorData);
-                return;
-            }
+        FlowInfo flowInfo = getFlowInfo(flowId, throttlingData.getFlowType());
+        if (!flowInfo.isPresent()) {
+            String description = format("%s %s not found", flowInfo.getType(), flowId);
+            ErrorData errorData = new ErrorData(
+                    ErrorType.NOT_FOUND, format("Could not reroute %s", flowInfo.getType().toLowerCase()), description);
+            carrier.emitFlowRerouteError(errorData);
+            return;
+        } else if (flowInfo.isPinned()) {
+            String description = format("Can't reroute pinned %s", flowInfo.getType().toLowerCase());
+            ErrorData errorData =
+                    new ErrorData(ErrorType.UNPROCESSABLE_REQUEST,
+                            format("Could not reroute %s", flowInfo.getType().toLowerCase()), description);
+            carrier.emitFlowRerouteError(errorData);
+            return;
         }
 
         RerouteQueue rerouteQueue = getRerouteQueue(flowId);
@@ -177,7 +160,7 @@ public class RerouteQueueService {
             sendRerouteRequest(flowId, toSend);
         } else {
             RerouteError rerouteError = rerouteResultInfoData.getRerouteError();
-            if (isRetryRequired(flowId, rerouteError, rerouteResultInfoData.isYFlow())) {
+            if (isRetryRequired(flowId, rerouteError, rerouteResultInfoData.getFlowType())) {
                 injectRetry(flowId, rerouteQueue, rerouteError instanceof NoPathFoundError);
             } else {
                 FlowThrottlingData toSend = rerouteQueue.processPending();
@@ -225,7 +208,7 @@ public class RerouteQueueService {
         foundReroutes.forEach(entry -> injectRetry(entry.getKey(), entry.getValue(), false));
     }
 
-    private boolean isRetryRequired(String flowId, RerouteError rerouteError, boolean isYFlow) {
+    private boolean isRetryRequired(String flowId, RerouteError rerouteError, FlowType flowType) {
         if (rerouteError instanceof NoPathFoundError) {
             log.info("Received no path found error for flow {}", flowId);
             return true;
@@ -233,34 +216,20 @@ public class RerouteQueueService {
             log.info("Received reroute in progress error for flow {}", flowId);
             return true;
         } else if (rerouteError instanceof SpeakerRequestError) {
-            if (isYFlow) {
-                log.info("Received speaker request error for y-flow {}", flowId);
-                YFlow yFlow = yFlowRepository.findById(flowId).orElse(null);
-                if (yFlow == null) {
-                    log.error("Y-flow {} not found", flowId);
-                    return false;
-                }
-                Set<SwitchId> yFlowSwitchIds = yFlow.getSubFlows().stream()
-                        .map(YSubFlow::getEndpointSwitchId).collect(Collectors.toSet());
-                yFlowSwitchIds.add(yFlow.getSharedEndpoint().getSwitchId());
-
-                boolean isRetryRequired = true;
-                SpeakerRequestError ruleFailedError = (SpeakerRequestError) rerouteError;
-                for (SwitchId switchId : yFlowSwitchIds) {
-                    isRetryRequired &= !ruleFailedError.getSwitches().contains(switchId);
-                }
-                return isRetryRequired;
-            } else {
-                log.info("Received speaker request error for flow {}", flowId);
-                Flow flow = flowRepository.findById(flowId).orElse(null);
-                if (flow == null) {
-                    log.error("Flow {} not found", flowId);
-                    return false;
-                }
-                SpeakerRequestError ruleFailedError = (SpeakerRequestError) rerouteError;
-                return !ruleFailedError.getSwitches().contains(flow.getSrcSwitchId())
-                        && !ruleFailedError.getSwitches().contains(flow.getDestSwitchId());
+            SpeakerRequestError ruleFailedError = (SpeakerRequestError) rerouteError;
+            FlowInfo flowInfo = getFlowInfo(flowId, flowType);
+            log.info("Received speaker request error for {} {}", flowInfo.getType(), flowId);
+            if (!flowInfo.isPresent()) {
+                log.error("{} {} not found", flowType, flowId);
+                return false;
             }
+
+            for (SwitchId switchId : flowInfo.endpointSwitchIds) {
+                if (ruleFailedError.getSwitches().contains(switchId)) {
+                    return false;
+                }
+            }
+            return true;
         }
         return false;
     }
@@ -298,15 +267,28 @@ public class RerouteQueueService {
 
     private void sendRerouteRequest(String flowId, FlowThrottlingData throttlingData) {
         if (throttlingData != null) {
-            if (throttlingData.isYFlow()) {
-                YFlowRerouteRequest request = new YFlowRerouteRequest(flowId, throttlingData.getAffectedIsl(),
-                        throttlingData.isForce(), throttlingData.getReason(), throttlingData.isIgnoreBandwidth());
-                carrier.sendRerouteRequest(throttlingData.getCorrelationId(), request);
-            } else {
-                FlowRerouteRequest request = new FlowRerouteRequest(flowId,
-                        throttlingData.isEffectivelyDown(), throttlingData.isIgnoreBandwidth(),
-                        throttlingData.getAffectedIsl(), throttlingData.getReason(), false);
-                carrier.sendRerouteRequest(throttlingData.getCorrelationId(), request);
+            switch (throttlingData.getFlowType()) {
+                case Y_FLOW:
+                    YFlowRerouteRequest yFlowRequest = new YFlowRerouteRequest(flowId, throttlingData.getAffectedIsl(),
+                            throttlingData.isForce(), throttlingData.getReason(), throttlingData.isIgnoreBandwidth());
+                    carrier.sendRerouteRequest(throttlingData.getCorrelationId(), yFlowRequest);
+                    break;
+                
+                case HA_FLOW:
+                    HaFlowRerouteRequest haFlowRequest = new HaFlowRerouteRequest(flowId,
+                            throttlingData.getAffectedIsl(), throttlingData.isEffectivelyDown(), 
+                            throttlingData.getReason(), throttlingData.isIgnoreBandwidth(), false);
+                    carrier.sendRerouteRequest(throttlingData.getCorrelationId(), haFlowRequest);
+                    break;
+                
+                case FLOW: 
+                    FlowRerouteRequest flowRequest = new FlowRerouteRequest(flowId,
+                            throttlingData.isEffectivelyDown(), throttlingData.isIgnoreBandwidth(),
+                            throttlingData.getAffectedIsl(), throttlingData.getReason(), false);
+                    carrier.sendRerouteRequest(throttlingData.getCorrelationId(), flowRequest);
+                    break;
+                default:
+                    logUnknownType(throttlingData.getFlowType());
             }
         }
     }
@@ -362,5 +344,64 @@ public class RerouteQueueService {
             return timeCreateA.compareTo(timeCreateB);
         }
         return 0;
+    }
+
+    private static void logUnknownType(FlowType flowType) {
+        log.error("Unknown flow type {}", flowType);
+    }
+
+    private FlowInfo getFlowInfo(String flowId, FlowType type) {
+        switch (type) {
+            case Y_FLOW:
+                Optional<YFlow> yFlow = yFlowRepository.findById(flowId);
+                return new FlowInfo(yFlow.isPresent(), "Y-flow", yFlow.map(YFlow::isPinned).orElse(false),
+                        getEndpointSwitches(yFlow.orElse(null)));
+            case HA_FLOW:
+                Optional<HaFlow> haFlow = haFlowRepository.findById(flowId);
+                return new FlowInfo(haFlow.isPresent(), "HA-flow", haFlow.map(HaFlow::isPinned).orElse(false),
+                        getEndpointSwitches(haFlow.orElse(null)));
+            case FLOW:
+                Optional<Flow> flow = flowRepository.findById(flowId);
+                return new FlowInfo(flow.isPresent(), "Flow", flow.map(Flow::isPinned).orElse(false),
+                        getEndpointSwitches(flow.orElse(null)));
+            default:
+                logUnknownType(type);
+                return new FlowInfo(false, "unknown", false, new HashSet<>());
+        }
+    }
+
+    private Set<SwitchId> getEndpointSwitches(Flow flow) {
+        Set<SwitchId> result = new HashSet<>();
+        if (flow != null) {
+            result.add(flow.getSrcSwitchId());
+            result.add(flow.getDestSwitchId());
+        }
+        return result;
+    }
+
+    private Set<SwitchId> getEndpointSwitches(YFlow yFlow) {
+        Set<SwitchId> result = new HashSet<>();
+        if (yFlow != null) {
+            yFlow.getSubFlows().stream()
+                    .map(YSubFlow::getEndpointSwitchId)
+                    .forEach(result::add);
+            result.add(yFlow.getSharedEndpoint().getSwitchId());
+        }
+        return result;
+    }
+
+    private Set<SwitchId> getEndpointSwitches(HaFlow haFlow) {
+        if (haFlow != null) {
+            return haFlow.getEndpointSwitchIds();
+        }
+        return new HashSet<>();
+    }
+
+    @Value
+    private static class FlowInfo {
+        boolean present;
+        String type;
+        boolean pinned;
+        Set<SwitchId> endpointSwitchIds;
     }
 }

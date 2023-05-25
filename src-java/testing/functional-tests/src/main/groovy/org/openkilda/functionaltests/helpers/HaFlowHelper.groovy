@@ -49,6 +49,8 @@ class HaFlowHelper {
     NorthboundService northbound
     @Autowired
     HaPathHelper haPathHelper
+    @Autowired
+    FlowHelperV2 flowHelperV2
 
     def random = new Random()
     def faker = new Faker()
@@ -79,6 +81,7 @@ class HaFlowHelper {
             ep
         }
         return HaFlowCreatePayload.builder()
+                .haFlowId(flowHelperV2.generateFlowId())
                 .sharedEndpoint(se)
                 .subFlows(subFlows)
                 .maximumBandwidth(1000)

@@ -16,6 +16,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
+import org.openkilda.model.StatusInfo
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.http.HttpStatus
@@ -146,8 +147,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
             assert flowInfo.status == FlowState.DEGRADED.toString()
             assert flowInfo.statusDetails.mainPath == "Up"
             assert flowInfo.statusDetails.protectedPath == "degraded"
-            assert flowInfo.statusInfo == "An alternative way (back up strategy or max_latency_tier2 value) of" +
-                    " building the path was used"
+            assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
         }
         def path = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(path) == mainPath
@@ -176,8 +176,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         wait(WAIT_OFFSET) {
             def flowInfo = northboundV2.getFlow(flow.flowId)
             assert flowInfo.status == FlowState.DEGRADED.toString()
-            assert flowInfo.statusInfo == "An alternative way (back up strategy or max_latency_tier2 value) of" +
-                    " building the path was used"
+            assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
             assert northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome == ["DEGRADED"]
         }
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
@@ -212,8 +211,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
             def flowInfo = northboundV2.getFlow(flow.flowId)
             assert flowInfo.maxLatency == newMaxLatency
             assert flowInfo.status == FlowState.DEGRADED.toString()
-            assert flowInfo.statusInfo == "An alternative way (back up strategy or max_latency_tier2 value) of" +
-                    " building the path was used"
+            assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
             /*[0..1] - can be more than two statuses due to running this test in a parallel mode.
             for example: reroute can be triggered by blinking/activating any isl (not involved in flow path)*/
             assert northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome[0..1] == ["UP", "DEGRADED"]
@@ -251,8 +249,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
             flowHistory.payload.last().details == "Flow reroute completed with status DEGRADED  and error null"
             def flowInfo = northboundV2.getFlow(flow.flowId)
             assert flowInfo.status == FlowState.DEGRADED.toString()
-            assert flowInfo.statusInfo == "An alternative way (back up strategy or max_latency_tier2 value) of" +
-                    " building the path was used"
+            assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
         }
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
 
@@ -284,8 +281,7 @@ but satisfies max_latency_tier2"
         wait(WAIT_OFFSET) {
             def flowInfo =  northboundV2.getFlow(flow.flowId)
             assert flowInfo.status == FlowState.DEGRADED.toString()
-            assert flowInfo.statusInfo == "An alternative way (back up strategy or max_latency_tier2 value) of" +
-                    " building the path was used"
+            assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
         }
         def path = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(path) == mainPath
