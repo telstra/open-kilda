@@ -20,7 +20,11 @@ import static java.lang.String.format;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.haflows.HaFlow;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint;
+import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
 import org.openkilda.northbound.dto.v2.yflows.SubFlow;
 import org.openkilda.northbound.dto.v2.yflows.YFlow;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpoint;
@@ -32,6 +36,7 @@ import org.openkilda.testing.service.traffexam.TraffExamService;
 import org.openkilda.testing.service.traffexam.model.Bandwidth;
 import org.openkilda.testing.service.traffexam.model.Exam;
 import org.openkilda.testing.service.traffexam.model.FlowBidirectionalExam;
+import org.openkilda.testing.service.traffexam.model.HAFlowBidirectionalExam;
 import org.openkilda.testing.service.traffexam.model.Host;
 import org.openkilda.testing.service.traffexam.model.TimeLimit;
 import org.openkilda.testing.service.traffexam.model.Vlan;
@@ -287,4 +292,84 @@ public class FlowTrafficExamBuilder {
     private NetworkEndpoint makeComparableEndpoint(YFlowSharedEndpoint flowEndpoint) {
         return new NetworkEndpoint(flowEndpoint.getSwitchId(), flowEndpoint.getPortNumber());
     }
+
+    private NetworkEndpoint makeComparableEndpoint(HaFlowSharedEndpoint flowEndpoint) {
+        return new NetworkEndpoint(flowEndpoint.getSwitchId(), flowEndpoint.getPortNumber());
+    }
+
+    private NetworkEndpoint makeComparableEndpoint(BaseFlowEndpointV2 flowEndpoint) {
+        return new NetworkEndpoint(flowEndpoint.getSwitchId(), flowEndpoint.getPortNumber());
+    }
+
+    public HAFlowBidirectionalExam buildHaFlowExam(HaFlow flow, long bandwidth, Long duration)
+            throws FlowNotApplicableException {
+
+        HaSubFlow subFlow1 = flow.getSubFlows().get(0);
+        HaSubFlow subFlow2 = flow.getSubFlows().get(1);
+        Optional<TraffGen> source = Optional.ofNullable(
+                endpointToTraffGen.get(makeComparableEndpoint(flow.getSharedEndpoint())));
+        Optional<TraffGen> dest1 = Optional.ofNullable(
+                endpointToTraffGen.get(makeComparableEndpoint(subFlow1.getEndpoint())));
+        Optional<TraffGen> dest2 = Optional.ofNullable(
+                endpointToTraffGen.get(makeComparableEndpoint(subFlow2.getEndpoint())));
+
+        checkIsFlowApplicable(flow.getHaFlowId(), source.isPresent(), dest1.isPresent() && dest2.isPresent());
+
+        List<Vlan> srcVlanId = ImmutableList.of(new Vlan(flow.getSharedEndpoint().getVlanId()),
+                new Vlan(flow.getSharedEndpoint().getInnerVlanId()));
+        List<Vlan> dstVlanIds1 = ImmutableList.of(new Vlan(subFlow1.getEndpoint().getVlanId()),
+                new Vlan(subFlow1.getEndpoint().getInnerVlanId()));
+        List<Vlan> dstVlanIds2 = ImmutableList.of(new Vlan(subFlow2.getEndpoint().getVlanId()),
+                new Vlan(subFlow2.getEndpoint().getInnerVlanId()));
+
+        //noinspection ConstantConditions
+        Host sourceHost = traffExam.hostByName(source.get().getName());
+        //noinspection ConstantConditions
+        Host destHost1 = traffExam.hostByName(dest1.get().getName());
+        Host destHost2 = traffExam.hostByName(dest2.get().getName());
+
+        Exam forward1 = Exam.builder()
+                .flow(null)
+                .source(sourceHost)
+                .sourceVlans(srcVlanId)
+                .dest(destHost1)
+                .destVlans(dstVlanIds1)
+                .bandwidthLimit(new Bandwidth(bandwidth))
+                .burstPkt(200)
+                .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
+                .build();
+        Exam forward2 = Exam.builder()
+                .flow(null)
+                .source(sourceHost)
+                .sourceVlans(srcVlanId)
+                .dest(destHost2)
+                .destVlans(dstVlanIds2)
+                .bandwidthLimit(new Bandwidth(bandwidth))
+                .burstPkt(200)
+                .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
+                .build();
+        Exam reverse1 = Exam.builder()
+                .flow(null)
+                .source(destHost1)
+                .sourceVlans(dstVlanIds1)
+                .dest(sourceHost)
+                .destVlans(srcVlanId)
+                .bandwidthLimit(new Bandwidth(bandwidth))
+                .burstPkt(200)
+                .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
+                .build();
+        Exam reverse2 = Exam.builder()
+                .flow(null)
+                .source(destHost2)
+                .sourceVlans(dstVlanIds2)
+                .dest(sourceHost)
+                .destVlans(srcVlanId)
+                .bandwidthLimit(new Bandwidth(bandwidth))
+                .burstPkt(200)
+                .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
+                .build();
+
+        return new HAFlowBidirectionalExam(forward1, reverse1, forward2, reverse2);
+    }
+
 }

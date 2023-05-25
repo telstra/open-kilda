@@ -63,17 +63,17 @@ class HaFlowHelper {
      * @param secondSwitch the endpoint of the second sub-flow
      */
     HaFlowCreatePayload randomHaFlow(
-            Switch sharedSwitch, Switch firstSwitch, Switch secondSwitch, List<HaFlowCreatePayload> existingFlows = []) {
+            Switch sharedSwitch, Switch firstSwitch, Switch secondSwitch, boolean useTraffgenPorts = true, List<HaFlowCreatePayload> existingFlows = []) {
         List<SwitchPortVlan> busyEndpoints = getBusyEndpoints(existingFlows)
         def se = HaFlowSharedEndpoint.builder()
                 .switchId(sharedSwitch.dpId)
-                .portNumber(randomEndpointPort(sharedSwitch, busyEndpoints))
+                .portNumber(randomEndpointPort(sharedSwitch, useTraffgenPorts, busyEndpoints))
                 .vlanId(randomVlan())
                 .build()
         def subFlows = [firstSwitch, secondSwitch].collect { sw ->
             busyEndpoints << new SwitchPortVlan(se.switchId, se.portNumber, se.vlanId)
             def ep = HaSubFlowCreatePayload.builder()
-                    .endpoint(randomEndpoint(sw, busyEndpoints))
+                    .endpoint(randomEndpoint(sw, useTraffgenPorts, busyEndpoints))
                     .build()
             busyEndpoints << new SwitchPortVlan(ep.endpoint.switchId, ep.endpoint.portNumber, ep.endpoint.vlanId)
             ep
@@ -91,8 +91,8 @@ class HaFlowHelper {
                 .build()
     }
 
-    HaFlowCreatePayload randomHaFlow(SwitchTriplet swT, List<HaFlowCreatePayload> existingFlows = []) {
-        randomHaFlow(swT.shared, swT.ep1, swT.ep2, existingFlows)
+    HaFlowCreatePayload randomHaFlow(SwitchTriplet swT, boolean useTraffgenPorts = true, List<HaFlowCreatePayload> existingFlows = []) {
+        randomHaFlow(swT.shared, swT.ep1, swT.ep2, useTraffgenPorts, existingFlows)
     }
 
     /**
@@ -247,18 +247,30 @@ class HaFlowHelper {
     /**
      * Returns an endpoint with randomly chosen port & vlan.
      */
-    private FlowEndpointV2 randomEndpoint(Switch sw, List<SwitchPortVlan> busyEps) {
+    private FlowEndpointV2 randomEndpoint(Switch sw, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEps) {
         return new FlowEndpointV2(
-                sw.dpId, randomEndpointPort(sw, busyEps), randomVlan(),
+                sw.dpId, randomEndpointPort(sw,useTraffgenPorts, busyEps), randomVlan(),
                 new DetectConnectedDevicesV2(false, false))
     }
 
     /**
      * Returns a randomly chosen endpoint port for ha-flow.
      */
-    private int randomEndpointPort(Switch sw, List<SwitchPortVlan> busyEps) {
+    private int randomEndpointPort(Switch sw, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEps) {
         def allowedPorts = topology.getAllowedPortsForSwitch(sw) - busyEps.findAll { it.sw == sw.dpId }*.port
-        allowedPorts[random.nextInt(allowedPorts.size())]
+        def port = allowedPorts[random.nextInt(allowedPorts.size())]
+        if (useTraffgenPorts) {
+            List<Integer> tgPorts = sw.traffGens*.switchPort.findAll { allowedPorts.contains(it) }
+            if (tgPorts) {
+                port = tgPorts[0]
+            } else {
+                tgPorts = sw.traffGens*.switchPort.findAll { topology.getAllowedPortsForSwitch(sw).contains(it) }
+                if (tgPorts) {
+                    port = tgPorts[0]
+                }
+            }
+        }
+        return port
     }
 
     int randomVlan(excludeVlan = null) {
