@@ -81,6 +81,9 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
             }
         }
 
+        and: "HA-flow pass validation"
+        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
+
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }

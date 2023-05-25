@@ -38,6 +38,7 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowDump;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
 import org.openkilda.northbound.dto.v2.links.BfdProperties;
 import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
@@ -602,5 +603,15 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     public HaFlowPaths getHaFlowPaths(String haFlowId) {
         return restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}/paths", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), HaFlowPaths.class, haFlowId).getBody();
+    }
+
+    @Override
+    public HaFlowValidationResult validateHaFlow(String haFlowId) {
+        return restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}/validate",
+                        HttpMethod.POST,
+                        new HttpEntity<>(buildHeadersWithCorrelationId()),
+                        HaFlowValidationResult.class,
+                        haFlowId)
+                .getBody();
     }
 }
