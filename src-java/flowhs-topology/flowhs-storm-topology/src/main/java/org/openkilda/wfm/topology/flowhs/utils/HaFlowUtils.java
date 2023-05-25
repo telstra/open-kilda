@@ -15,6 +15,10 @@
 
 package org.openkilda.wfm.topology.flowhs.utils;
 
+import static java.util.Collections.emptyList;
+
+import org.openkilda.messaging.command.yflow.SubFlowPathDto;
+import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.MeterId;
@@ -25,14 +29,19 @@ import org.openkilda.wfm.share.flow.resources.HaFlowResources.HaPathResources;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaFlowPathIds;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaPathIdsPairBuilder;
+import org.openkilda.wfm.share.mappers.FlowPathMapper;
+import org.openkilda.wfm.share.service.IntersectionComputer;
+import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowPaths;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 public final class HaFlowUtils {
@@ -97,6 +106,26 @@ public final class HaFlowUtils {
      */
     public static PathId getPathId(HaFlowPath path) {
         return path != null ? path.getHaPathId() : null;
+    }
+
+    /**
+     * Builds YFlowPaths object.
+     */
+    public static YFlowPaths definePaths(List<FlowPath> flowPaths) {
+        List<FlowPath> nonEmptyPaths = flowPaths.stream()
+                .filter(flowPath -> !flowPath.getSegments().isEmpty())
+                .collect(Collectors.toList());
+        PathInfoData sharedPath = FlowPathMapper.INSTANCE.map(nonEmptyPaths.size() >= 2
+                ? IntersectionComputer.calculatePathIntersectionFromSource(nonEmptyPaths) : emptyList());
+
+        List<SubFlowPathDto> subFlowPaths = flowPaths.stream()
+                .map(flowPath -> new SubFlowPathDto(flowPath.getHaSubFlowId(), FlowPathMapper.INSTANCE.map(flowPath)))
+                .collect(Collectors.toList());
+
+        return YFlowPaths.builder()
+                .sharedPath(sharedPath)
+                .subFlowPaths(subFlowPaths)
+                .build();
     }
 
     /**

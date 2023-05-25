@@ -17,6 +17,7 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths
+import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload
@@ -156,6 +157,20 @@ class HaFlowHelper {
             assert haFlow.status == FlowState.UP.toString()
         }
         haFlow
+    }
+
+    /**
+     * Sends manual reroute request for HA-flow
+     */
+    HaFlowRerouteResult rerouteHaFlow(String haFlowId) {
+        northboundV2.rerouteHaFlow(haFlowId)
+    }
+
+    /**
+     * Gets status of HA-flow
+     */
+    String getHaFlowStatus(String haFlowId) {
+        northboundV2.getHaFlow(haFlowId).status
     }
 
     /**
