@@ -1,5 +1,17 @@
 package org.openkilda.functionaltests.helpers
 
+import com.google.common.collect.ImmutableList
+import org.openkilda.functionaltests.helpers.model.traffic.ha.HaFlowBidirectionalExam
+import org.openkilda.messaging.model.NetworkEndpoint
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.service.traffexam.model.Bandwidth
+import org.openkilda.testing.service.traffexam.model.Exam
+import org.openkilda.testing.service.traffexam.model.Host
+import org.openkilda.testing.service.traffexam.model.TimeLimit
+import org.openkilda.testing.service.traffexam.model.Vlan
+
+import javax.inject.Provider
+
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
@@ -49,6 +61,8 @@ class HaFlowHelper {
     NorthboundService northbound
     @Autowired
     HaPathHelper haPathHelper
+    @Autowired
+    Provider<TraffExamService> traffExamProvider
 
     def random = new Random()
     def faker = new Faker()
@@ -242,6 +256,64 @@ class HaFlowHelper {
         } else {
             return null;
         }
+    }
+
+    HaFlowBidirectionalExam getTraffExam(HaFlow flow, long bandwidth = 0, Long duration = 5) {
+        def traffExam = traffExamProvider.get()
+        def subFlow1 = flow.getSubFlows().get(0);
+        def subFlow2 = flow.getSubFlows().get(1);
+        Optional<TopologyDefinition.TraffGen> shared = Optional.ofNullable(topology.getTraffGen(
+                flow.getSharedEndpoint().getSwitchId(), flow.getSharedEndpoint().getPortNumber()));
+        Optional<TopologyDefinition.TraffGen> ep1 = Optional.ofNullable(topology.getTraffGen(
+                subFlow1.getEndpoint().getSwitchId(), subFlow1.getEndpoint().getPortNumber()));
+        Optional<TopologyDefinition.TraffGen> ep2 = Optional.ofNullable(topology.getTraffGen(
+                subFlow2.getEndpoint().getSwitchId(), subFlow2.getEndpoint().getPortNumber()));
+        assert [shared, ep1, ep2].every {it.isPresent()}
+        List<Vlan> srcVlanId = ImmutableList.of(new Vlan(flow.getSharedEndpoint().getVlanId()),
+                new Vlan(flow.getSharedEndpoint().getInnerVlanId()));
+        List<Vlan> dstVlanIds1 = ImmutableList.of(new Vlan(subFlow1.getEndpoint().getVlanId()),
+                new Vlan(subFlow1.getEndpoint().getInnerVlanId()));
+        List<Vlan> dstVlanIds2 = ImmutableList.of(new Vlan(subFlow2.getEndpoint().getVlanId()),
+                new Vlan(subFlow2.getEndpoint().getInnerVlanId()));
+        //noinspection ConstantConditions
+        Host sourceHost = traffExam.hostByName(shared.get().getName());
+        Host destHost1 = traffExam.hostByName(ep1.get().getName());
+        Host destHost2 = traffExam.hostByName(ep2.get().getName());
+        def bandwidthLimit = new Bandwidth(bandwidth)
+        if (!bandwidth) {
+            bandwidthLimit = new Bandwidth(flow.strictBandwidth && flow.getMaximumBandwidth() ?
+                flow.getMaximumBandwidth() : 0)
+        }
+        def examBuilder = Exam.builder()
+                .flow(null)
+                .bandwidthLimit(bandwidthLimit)
+                .burstPkt(200)
+                .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
+        Exam forward1 = examBuilder
+                .source(sourceHost)
+                .sourceVlans(srcVlanId)
+                .dest(destHost1)
+                .destVlans(dstVlanIds1)
+                .build();
+        Exam forward2 = examBuilder
+                .source(sourceHost)
+                .sourceVlans(srcVlanId)
+                .dest(destHost2)
+                .destVlans(dstVlanIds2)
+                .build();
+        Exam reverse1 = examBuilder
+                .source(destHost1)
+                .sourceVlans(dstVlanIds1)
+                .dest(sourceHost)
+                .destVlans(srcVlanId)
+                .build();
+        Exam reverse2 = examBuilder
+                .source(destHost2)
+                .sourceVlans(dstVlanIds2)
+                .dest(sourceHost)
+                .destVlans(srcVlanId)
+                .build();
+        return new HaFlowBidirectionalExam(traffExam, forward1, reverse1, forward2, reverse2);
     }
 
     /**

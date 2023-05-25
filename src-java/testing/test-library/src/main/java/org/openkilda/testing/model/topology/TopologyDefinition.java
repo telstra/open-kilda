@@ -496,6 +496,7 @@ public class TopologyDefinition {
                 .collect(toList());
     }
 
+
     /**
      * Get switch for certain traffgen.
      */
@@ -503,6 +504,14 @@ public class TopologyDefinition {
     public TraffGen getTraffGen(SwitchId swId) {
         return traffGens.stream()
                 .filter(traffGen -> traffGen.getSwitchConnected().getDpId().equals(swId))
+                .findFirst().orElseThrow(() -> new RuntimeException("Switch has no traffgen"));
+    }
+
+    @JsonIgnore
+    public TraffGen getTraffGen(SwitchId swId, int portNumber) {
+        return traffGens.stream()
+                .filter(traffGen -> traffGen.getSwitchConnected().getDpId().equals(swId) &&
+                        traffGen.getSwitchPort() == portNumber)
                 .findFirst().orElseThrow(() -> new RuntimeException("Switch has no traffgen"));
     }
 

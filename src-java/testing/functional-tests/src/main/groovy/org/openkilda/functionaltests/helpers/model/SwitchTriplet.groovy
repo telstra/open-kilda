@@ -21,6 +21,11 @@ class SwitchTriplet {
         new SwitchTriplet(shared, ep2, ep1, pathsEp2, pathsEp1)
     }
 
+    @JsonIgnore
+    Boolean isHaTraffExamAvailable() {
+        return !(shared.getTraffGens().isEmpty() || ep1.getTraffGens().isEmpty() || ep2.getTraffGens().isEmpty())
+    }
+
     @Override
     String toString() {
         return "[$shared.name]-<$ep1.name>-<$ep2.name>"
