@@ -24,7 +24,7 @@ import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HaFlowProcessingWithHistorySupportAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HaFlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;

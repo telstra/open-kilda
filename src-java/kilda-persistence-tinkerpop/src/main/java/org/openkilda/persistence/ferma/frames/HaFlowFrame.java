@@ -64,6 +64,7 @@ public abstract class HaFlowFrame extends KildaBaseVertexFrame implements HaFlow
     public static final String PERIODIC_PINGS_PROPERTY = "periodic_pings";
     public static final String ENCAPSULATION_TYPE_PROPERTY = "encapsulation_type";
     public static final String STATUS_PROPERTY = "status";
+    public static final String STATUS_INFO_PROPERTY = "status_info";
     public static final String MAX_LATENCY_PROPERTY = "max_latency";
     public static final String MAX_LATENCY_TIER_2_PROPERTY = "max_latency_tier2";
     public static final String PINNED_PROPERTY = "pinned";
@@ -185,6 +186,14 @@ public abstract class HaFlowFrame extends KildaBaseVertexFrame implements HaFlow
     @Property(STATUS_PROPERTY)
     @Convert(FlowStatusConverter.class)
     public abstract void setStatus(FlowStatus status);
+
+    @Override
+    @Property(STATUS_INFO_PROPERTY)
+    public abstract String getStatusInfo();
+
+    @Override
+    @Property(STATUS_INFO_PROPERTY)
+    public abstract void setStatusInfo(String statusInfo);
 
     @Override
     @Property(MAX_LATENCY_PROPERTY)

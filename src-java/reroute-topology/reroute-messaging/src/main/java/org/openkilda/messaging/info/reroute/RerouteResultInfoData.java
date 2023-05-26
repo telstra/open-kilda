@@ -18,36 +18,24 @@ package org.openkilda.messaging.info.reroute;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 
 @Builder
 @Data
 @EqualsAndHashCode(callSuper = false)
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(value = SnakeCaseStrategy.class)
 public class RerouteResultInfoData extends InfoData {
 
-    @JsonProperty("flow_id")
     private String flowId;
-    @JsonProperty("success")
     private boolean success;
-    @JsonProperty("reroute_error")
     private RerouteError rerouteError;
-    @JsonProperty("is_y_flow")
-    private boolean yFlow;
-
-    @JsonCreator
-    public RerouteResultInfoData(@JsonProperty("flow_id") String flowId,
-                                 @JsonProperty("success") boolean success,
-                                 @JsonProperty("reroute_error") RerouteError rerouteError,
-                                 @JsonProperty("is_y_flow") boolean yFlow) {
-        this.flowId = flowId;
-        this.success = success;
-        this.rerouteError = rerouteError;
-        this.yFlow = yFlow;
-    }
+    @NonNull
+    private FlowType flowType;
 }

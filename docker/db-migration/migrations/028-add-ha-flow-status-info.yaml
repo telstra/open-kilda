@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: snikitin
+      changes:
+        - tagDatabase:
+            tag: 028-add-ha-flow-status-info
+  - changeSet:
+      id: add_ha_flow_status_info
+      author: snikitin
+      changes:
+        - sql: "CREATE PROPERTY ha_flow.status_info IF NOT EXISTS STRING"
+      rollback:
+        - sql: "DROP PROPERTY ha_flow.status_info"
