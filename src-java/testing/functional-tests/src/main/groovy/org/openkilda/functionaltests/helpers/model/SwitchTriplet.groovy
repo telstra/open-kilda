@@ -29,4 +29,8 @@ class SwitchTriplet {
     String hwSwString() {
         return "[$shared.hwSwString]-<$ep1.hwSwString>-<$ep2.hwSwString>"
     }
+
+    static Closure ALL_ENDPOINTS_DIFFERENT = {
+        SwitchTriplet swT -> swT.ep1 != swT.ep2 && swT.ep1 != swT.shared && swT.ep2 != swT.shared
+    }
 }

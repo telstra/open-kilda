@@ -64,6 +64,7 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -132,12 +133,8 @@ public class RuleManagerImpl implements RuleManager {
     }
 
     private Set<FlowSideAdapter> getOverlappingMultiTableIngressAdapters(
-            HaFlow haFlow, FlowPath subPath, DataAdapter adapter) {
-        Set<PathId> excludePathIds = Sets.newHashSet(subPath.getPathId());
-        excludePathIds.addAll(getSubPathIds(haFlow.getForwardPath()));
-        excludePathIds.addAll(getSubPathIds(haFlow.getReversePath()));
-        excludePathIds.addAll(getSubPathIds(haFlow.getProtectedForwardPath()));
-        excludePathIds.addAll(getSubPathIds(haFlow.getProtectedReversePath()));
+            HaFlow haFlow, FlowPath subPath, Collection<PathId> subPathIds, DataAdapter adapter) {
+        Set<PathId> excludePathIds = Sets.newHashSet(subPathIds);
         FlowEndpoint endpoint = makeIngressAdapter(haFlow, subPath).getEndpoint();
         return getOverlappingMultiTableIngressAdapters(endpoint, true, excludePathIds, adapter);
     }
@@ -605,6 +602,28 @@ public class RuleManagerImpl implements RuleManager {
         return rules;
     }
 
+    private boolean shouldGenerateReverseIngressMeter(
+            HaFlowPath haFlowPath, boolean sharedMeterWasCreated, boolean filterOutUsedSharedRules,
+            boolean nonIngress) {
+        if (sharedMeterWasCreated) {
+            return false;
+        }
+
+        if (!filterOutUsedSharedRules || nonIngress || !haFlowPath.isReverse()) {
+            return true;
+        }
+        int ingressCount = 0;
+        int nonIngressCount = 0;
+        for (FlowPath subPath : haFlowPath.getSubPaths()) {
+            if (subPath.getSrcSwitchId().equals(haFlowPath.getYPointSwitchId())) {
+                ingressCount++;
+            } else {
+                nonIngressCount++;
+            }
+        }
+        return !(ingressCount == 1 && nonIngressCount == 1);
+    }
+
     private List<SpeakerData> buildReverseHaRules(
             HaFlowPath haPath, boolean filterOutUsedSharedRules, boolean ignoreUnknownSwitches, boolean ingress,
             boolean nonIngress, HaFlow haFlow, FlowTransitEncapsulation encapsulation, DataAdapter adapter) {
@@ -613,19 +632,24 @@ public class RuleManagerImpl implements RuleManager {
         boolean sharedMeterWasCreated = false;
         boolean sharedPathRulesWereCreated = false;
 
+        Set<PathId> subPathIds = haPath.getSubPathIds();
         for (FlowPath subPath : haPath.getSubPaths()) {
 
             // reverse ingress rule
             if (ingress) {
                 Set<FlowSideAdapter> overlappingAdapters = new HashSet<>();
                 if (filterOutUsedSharedRules) {
-                    overlappingAdapters.addAll(getOverlappingMultiTableIngressAdapters(haFlow, subPath, adapter));
+                    overlappingAdapters.addAll(getOverlappingMultiTableIngressAdapters(
+                            haFlow, subPath, subPathIds, adapter));
                 }
                 if (subPath.getSrcSwitchId().equals(haPath.getYPointSwitchId())) {
+                    boolean shouldGenerateMeterCommand = shouldGenerateReverseIngressMeter(
+                            haPath, sharedMeterWasCreated, filterOutUsedSharedRules, nonIngress);
+
                     rules.addAll(buildHaIngressRules(haFlow, subPath, encapsulation, false, haPath.getYPointMeterId(),
-                            overlappingAdapters, yPointMeterCommandUuid, !sharedMeterWasCreated, ignoreUnknownSwitches,
-                            adapter));
-                    sharedMeterWasCreated = true;
+                            overlappingAdapters, yPointMeterCommandUuid, shouldGenerateMeterCommand,
+                            ignoreUnknownSwitches, adapter));
+                    sharedMeterWasCreated |= shouldGenerateMeterCommand;
                 } else {
                     rules.addAll(buildHaIngressRules(haFlow, subPath, encapsulation, false, subPath.getMeterId(),
                             overlappingAdapters, null, true, ignoreUnknownSwitches, adapter));
@@ -738,7 +762,7 @@ public class RuleManagerImpl implements RuleManager {
         Set<FlowSideAdapter> overlappingAdapters = new HashSet<>();
         if (filterOutUsedSharedRules) {
             overlappingAdapters.addAll(getOverlappingMultiTableIngressAdapters(
-                    haFlow, haPath.getSubPaths().get(0), adapter));
+                    haFlow, haPath.getSubPaths().get(0), haPath.getSubPathIds(), adapter));
         }
 
         if (haPath.getSharedSwitchId().equals(haPath.getYPointSwitchId())) {

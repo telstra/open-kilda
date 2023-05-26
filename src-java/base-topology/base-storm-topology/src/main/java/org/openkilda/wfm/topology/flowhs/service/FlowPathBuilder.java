@@ -205,7 +205,7 @@ public class FlowPathBuilder {
             FlowSegmentCookie cookie) {
         List<PathSegment> segments = buildPathSegments(pathResources.getPathId(), path.getSegments(),
                 haFlow.getMaximumBandwidth(), haFlow.isIgnoreBandwidth(), haFlow.getHaFlowId());
-        return buildHaSubPath(haFlow, pathResources, path, srcSwitch, dstSwitch, cookie, segments);
+        return buildHaSubPath(haFlow, pathResources, path, srcSwitch, dstSwitch, cookie, segments, false);
     }
 
     /**
@@ -221,7 +221,7 @@ public class FlowPathBuilder {
      */
     public FlowPath buildHaSubPath(
             HaFlow haFlow, PathResources pathResources, Path path, Switch srcSwitch, Switch dstSwitch,
-            FlowSegmentCookie cookie, List<PathSegment> segments) {
+            FlowSegmentCookie cookie, List<PathSegment> segments, boolean forceIgnoreBandwidth) {
 
         if (!srcSwitch.getSwitchId().equals(path.getSrcSwitchId())) {
             throw new IllegalArgumentException(format(
@@ -241,7 +241,7 @@ public class FlowPathBuilder {
                 .meterId(pathResources.getMeterId())
                 .cookie(cookie)
                 .bandwidth(haFlow.getMaximumBandwidth())
-                .ignoreBandwidth(haFlow.isIgnoreBandwidth())
+                .ignoreBandwidth(haFlow.isIgnoreBandwidth() || forceIgnoreBandwidth)
                 .latency(path.getLatency())
                 .segments(segments)
                 .srcWithMultiTable(true)
@@ -258,9 +258,11 @@ public class FlowPathBuilder {
      * @param pathResources resources to be used for the ha-flow path.
      * @param haPath ha-path to be used for the ha-flow path.
      * @param cookie cookie to be used for the ha-flow path.
+     * @param forceIgnoreBandwidth ignore isl bandwidth.
      */
     public HaFlowPath buildHaFlowPath(
-            HaFlow haFlow, HaPathResources pathResources, HaPath haPath, FlowSegmentCookie cookie) {
+            HaFlow haFlow, HaPathResources pathResources, HaPath haPath, FlowSegmentCookie cookie,
+            boolean forceIgnoreBandwidth) {
 
         if (!haFlow.getSharedSwitchId().equals(haPath.getSharedSwitchId())) {
             throw new IllegalArgumentException(format("Shared endpoint switch id %s of ha-path %s is not equal to "
@@ -291,7 +293,7 @@ public class FlowPathBuilder {
                 .yPointMeterId(pathResources.getYPointMeterId())
                 .yPointGroupId(pathResources.getYPointGroupId())
                 .bandwidth(haFlow.getMaximumBandwidth())
-                .ignoreBandwidth(haFlow.isIgnoreBandwidth())
+                .ignoreBandwidth(haFlow.isIgnoreBandwidth() || forceIgnoreBandwidth)
                 .status(FlowPathStatus.IN_PROGRESS)
                 .build();
     }

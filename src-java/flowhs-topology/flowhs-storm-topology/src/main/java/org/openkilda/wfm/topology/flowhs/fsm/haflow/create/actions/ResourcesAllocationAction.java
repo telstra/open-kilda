@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -211,9 +211,11 @@ public class ResourcesAllocationAction extends
             final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
                     .flowEffectiveId(haFlowResources.getUnmaskedCookie());
 
+            final boolean forceIgnoreBandwidth = false;
             HaFlowPath forward = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getForward(), paths.getForward(),
-                    cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build());
+                    cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build(),
+                    forceIgnoreBandwidth);
             forward.setSubPaths(createForwardSubPaths(paths, haFlow, haFlowResources, forward, stateMachine));
             haFlowPathRepository.add(forward);
             forward.setHaSubFlows(haFlow.getHaSubFlows());
@@ -222,7 +224,8 @@ public class ResourcesAllocationAction extends
 
             HaFlowPath reverse = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getReverse(), paths.getReverse(),
-                    cookieBuilder.direction(FlowPathDirection.REVERSE).subType(FlowSubType.SHARED).build());
+                    cookieBuilder.direction(FlowPathDirection.REVERSE).subType(FlowSubType.SHARED).build(),
+                    forceIgnoreBandwidth);
             reverse.setSubPaths(createReverseSubPaths(paths, haFlow, haFlowResources, reverse, stateMachine));
             haFlowPathRepository.add(reverse);
             reverse.setHaSubFlows(haFlow.getHaSubFlows());
@@ -269,9 +272,11 @@ public class ResourcesAllocationAction extends
             final FlowSegmentCookieBuilder cookieBuilder = FlowSegmentCookie.builder()
                     .flowEffectiveId(haFlowResources.getUnmaskedCookie());
 
+            final boolean forceIgnoreBandwidth = false;
             HaFlowPath forward = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getForward(), protectedPaths.getForward(),
-                    cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build());
+                    cookieBuilder.direction(FlowPathDirection.FORWARD).subType(FlowSubType.SHARED).build(),
+                    forceIgnoreBandwidth);
             forward.setSubPaths(createForwardSubPaths(protectedPaths, haFlow, haFlowResources, forward, stateMachine));
             haFlowPathRepository.add(forward);
             forward.setHaSubFlows(haFlow.getHaSubFlows());
@@ -281,7 +286,8 @@ public class ResourcesAllocationAction extends
 
             HaFlowPath reverse = flowPathBuilder.buildHaFlowPath(
                     haFlow, haFlowResources.getReverse(), protectedPaths.getReverse(),
-                    cookieBuilder.direction(FlowPathDirection.REVERSE).subType(FlowSubType.SHARED).build());
+                    cookieBuilder.direction(FlowPathDirection.REVERSE).subType(FlowSubType.SHARED).build(),
+                    forceIgnoreBandwidth);
             reverse.setSubPaths(createReverseSubPaths(protectedPaths, haFlow, haFlowResources, reverse, stateMachine));
             haFlowPathRepository.add(reverse);
             reverse.setHaSubFlows(haFlow.getHaSubFlows());

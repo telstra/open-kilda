@@ -26,6 +26,7 @@ import lombok.Value;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Value
 @Builder
@@ -38,10 +39,10 @@ public class HaPathIdsPair {
      */
     public List<PathId> getAllHaFlowPathIds() {
         List<PathId> result = new ArrayList<>();
-        if (forward != null) {
+        if (forward != null && forward.getHaPathId() != null) {
             result.add(forward.getHaPathId());
         }
-        if (reverse != null) {
+        if (reverse != null && reverse.getHaPathId() != null) {
             result.add(reverse.getHaPathId());
         }
         return result;
@@ -52,11 +53,11 @@ public class HaPathIdsPair {
      */
     public List<PathId> getAllSubPathIds() {
         List<PathId> result = new ArrayList<>();
-        if (forward.subPathIds != null) {
-            result.addAll(forward.getSubPathIds().values());
+        if (forward != null && forward.subPathIds != null) {
+            forward.getSubPathIds().values().stream().filter(Objects::nonNull).forEach(result::add);
         }
-        if (reverse.subPathIds != null) {
-            result.addAll(reverse.getSubPathIds().values());
+        if (reverse != null && reverse.subPathIds != null) {
+            reverse.getSubPathIds().values().stream().filter(Objects::nonNull).forEach(result::add);
         }
         return result;
     }

@@ -5,6 +5,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
 import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 
 import static groovyx.gpars.GParsPool.withPool
@@ -640,18 +641,14 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([LOW_PRIORITY])
-    def "Unable to update to a flow with unavailable bandwidth"() {
+    def "Unable to update to a flow with #problem"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(srcSwitch, dstSwitch))
-        def expectedException = new ExpectedHttpClientErrorException(HttpStatus.NOT_FOUND,
-                ~/Not enough bandwidth or no path found. Switch ${srcSwitch.dpId.toString()
-                } doesn't have links with enough bandwidth, Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
-
 
         when: "Try to update the flow "
         northboundV2.updateFlow(flow.getFlowId(),
-                flowHelperV2.toRequest(flow.tap { it.maximumBandwidth = IMPOSSIBLY_HIGH_BANDWIDTH }))
+                flowHelperV2.toRequest(flow.tap(update)))
 
         then: "Flow is not updated"
         def actualException = thrown(HttpClientErrorException)
@@ -659,6 +656,19 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         cleanup: "Remove the flow"
         Wrappers.silent { flowHelperV2.deleteFlow(flow.flowId) }
+
+        where:
+        problem | update | expectedException
+        "unavailable bandwidth" |
+                { FlowResponseV2 flowResponseV2 -> flowResponseV2.maximumBandwidth = IMPOSSIBLY_HIGH_BANDWIDTH } |
+                new ExpectedHttpClientErrorException(HttpStatus.NOT_FOUND,
+                ~/Not enough bandwidth or no path found. Switch .* doesn't have links with enough bandwidth, Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
+        "vlan id is above 4094" |
+                {FlowResponseV2 flowResponseV2 -> flowResponseV2.source =
+                        flowResponseV2.getSource().tap {it.vlanId = 4096}}|
+        new ExpectedHttpClientErrorException(HttpStatus.BAD_REQUEST,
+        ~/Errors: VlanId must be less than 4095/)
+
     }
 
     @Tidy
@@ -1412,6 +1422,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Ignore ("https://github.com/telstra/open-kilda/issues/5141")
+    @Tags(LOW_PRIORITY)
     def "Able to #method update with empty VLAN stats and non-zero VLANs (#5063)"() {
         given: "A flow with non empty vlans stats and with src and dst vlans set to '0'"
         def switches = topologyHelper.getSwitchPairs().shuffled().first()

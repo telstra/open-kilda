@@ -71,6 +71,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -129,7 +130,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
 
         try {
             return flowOperationsService.getFlowPathsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
-                    // NOTE(tdurakov): filter out paths here that are orphaned for the flow
+                    .filter(flowPath -> flowPath.getFlow() != null)
                     .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
                     .map(FlowPath::getFlow)
                     .distinct()
@@ -179,6 +180,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
 
         List<String> flowIds = paths.stream()
                 .map(FlowPath::getFlow)
+                .filter(Objects::nonNull)
                 .map(Flow::getFlowId)
                 .distinct()
                 .collect(Collectors.toList());

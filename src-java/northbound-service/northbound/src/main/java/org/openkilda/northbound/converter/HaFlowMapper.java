@@ -19,10 +19,14 @@ import org.openkilda.messaging.command.haflow.HaFlowDto;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathsResponse;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRerouteResponse;
 import org.openkilda.messaging.command.haflow.HaFlowValidationResponse;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
 import org.openkilda.messaging.command.haflow.HaSubFlowPartialUpdateDto;
 import org.openkilda.messaging.command.yflow.FlowPartialUpdateEndpoint;
+import org.openkilda.messaging.command.yflow.SubFlowPathDto;
+import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.HaFlowPingResponse;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
@@ -33,6 +37,7 @@ import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2;
 import org.openkilda.northbound.dto.v2.haflows.HaFlow;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint;
@@ -41,6 +46,8 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowPath;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPath.HaFlowProtectedPath;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingResult;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult.ReroutedSharedPath;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult;
@@ -193,4 +200,25 @@ public abstract class HaFlowMapper {
      * @return the HaFlowValidationResult.
      */
     public abstract HaFlowValidationResult toValidationResult(HaFlowValidationResponse source);
+
+    public abstract HaFlowRerouteResult toRerouteResult(HaFlowRerouteResponse source);
+
+    /**
+     * Convert {@link PathInfoData} to {@link ReroutedSharedPath}.
+     */
+    public HaFlowRerouteResult.ReroutedSharedPath toReroutedSharedPath(PathInfoData path) {
+        if (path != null && path.getPath() != null && !path.getPath().isEmpty()) {
+            return HaFlowRerouteResult.ReroutedSharedPath.builder()
+                    .nodes(path.getPath().stream().map(this::toPathNode).collect(Collectors.toList()))
+                    .build();
+        }
+        return null;
+    }
+
+    @Mapping(target = "nodes", source = "path.path")
+    public abstract HaFlowRerouteResult.ReroutedSubFlowPath toReroutedSubFlowPath(SubFlowPathDto flow);
+
+    @Mapping(target = "segmentLatency", source = "segLatency")
+    public abstract PathNodeV2 toPathNode(PathNode pathNode);
+
 }

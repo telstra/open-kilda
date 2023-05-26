@@ -168,6 +168,19 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
     }
 
     @Override
+    public void updateStatus(String haFlowId, FlowStatus flowStatus, String flowStatusInfo) {
+        getTransactionManager().doInTransaction(() ->
+                framedGraph().traverse(g -> g.V()
+                                .hasLabel(HaFlowFrame.FRAME_LABEL)
+                                .has(HaFlowFrame.HA_FLOW_ID_PROPERTY, haFlowId))
+                        .toListExplicit(FlowFrame.class)
+                        .forEach(haFlowFrame -> {
+                            haFlowFrame.setStatus(flowStatus);
+                            haFlowFrame.setStatusInfo(flowStatusInfo);
+                        }));
+    }
+
+    @Override
     public void updateAffinityFlowGroupId(@NonNull String haFlowId, String affinityGroupId) {
         getTransactionManager().doInTransaction(() ->
                 framedGraph().traverse(g -> g.V()

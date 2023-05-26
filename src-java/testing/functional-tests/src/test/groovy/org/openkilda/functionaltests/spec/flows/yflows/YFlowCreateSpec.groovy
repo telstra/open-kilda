@@ -353,6 +353,21 @@ switch '${flow.sharedEndpoint.switchId}' is occupied by an ISL \(source endpoint
                             ~/Server 42 port in the switch properties for switch '${flow.sharedEndpoint.switchId}'\
  is set to '${flow.sharedEndpoint.portNumber}'. It is not possible to create or update an endpoint with these parameters./
                         }
+                ],
+                [
+                        descr       : "negative shared endpoint port number",
+                        yFlow       : {
+                            def swTriplet = topologyHelper.switchTriplets.shuffled().first()
+                            if (swTriplet) {
+                                return yFlowHelper.randomYFlow(swTriplet).tap {
+                                    it.sharedEndpoint = it.getSharedEndpoint().tap {it.portNumber = -1}
+                                }
+                            }
+                            return null
+                        }(),
+                        errorPattern: { YFlowCreatePayload flow ->
+                            ~/Errors: PortNumber must be non-negative/
+                        }
                 ]
         ]
         yFlow = data.yFlow as YFlowCreatePayload

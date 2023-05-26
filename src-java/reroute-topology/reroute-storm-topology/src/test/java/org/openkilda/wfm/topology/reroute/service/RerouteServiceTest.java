@@ -36,6 +36,7 @@ import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.messaging.info.reroute.FlowType;
 import org.openkilda.messaging.info.reroute.SwitchStateChanged;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -400,6 +401,7 @@ public class RerouteServiceTest {
                 .force(false)
                 .effectivelyDown(true)
                 .reason(request.getReason())
+                .flowType(FlowType.FLOW)
                 .build();
         verify(carrier).emitRerouteCommand(eq(regularFlow.getFlowId()), eq(expected));
     }
@@ -443,7 +445,7 @@ public class RerouteServiceTest {
                 .force(false)
                 .effectivelyDown(true)
                 .reason(request.getReason())
-                .yFlow(true)
+                .flowType(FlowType.Y_FLOW)
                 .build();
         verify(carrier).emitRerouteCommand(eq(regularYFlow.getYFlowId()), eq(expected));
     }
@@ -533,6 +535,7 @@ public class RerouteServiceTest {
                 .affectedIsl(Collections.emptySet())
                 .force(false)
                 .effectivelyDown(true)
+                .flowType(FlowType.FLOW)
                 .reason(format("Switch '%s' online", regularFlow.getSrcSwitchId()))
                 .build();
         verify(carrier).emitRerouteCommand(eq(regularFlow.getFlowId()), eq(expected));
@@ -571,7 +574,7 @@ public class RerouteServiceTest {
                 .force(false)
                 .effectivelyDown(true)
                 .reason(format("Switch '%s' online", subFlow.getSrcSwitchId()))
-                .yFlow(true)
+                .flowType(FlowType.Y_FLOW)
                 .build();
         verify(carrier).emitRerouteCommand(eq(regularYFlow.getYFlowId()), eq(expected));
 
@@ -604,6 +607,7 @@ public class RerouteServiceTest {
                 .timeCreate(regularFlow.getTimeCreate())
                 .affectedIsl(Collections.emptySet())
                 .effectivelyDown(true)
+                .flowType(FlowType.FLOW)
                 .reason("reason")
                 .build();
         verify(carrier).emitManualRerouteCommand(eq(regularFlow.getFlowId()), eq(expected));
@@ -635,7 +639,7 @@ public class RerouteServiceTest {
                 .affectedIsl(Collections.emptySet())
                 .force(true)
                 .reason("reason")
-                .yFlow(true)
+                .flowType(FlowType.Y_FLOW)
                 .build();
         verify(carrier).emitManualRerouteCommand(eq(regularYFlow.getYFlowId()), eq(expected));
     }

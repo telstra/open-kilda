@@ -43,6 +43,8 @@ public interface HaFlowRepository extends Repository<HaFlow> {
 
     void updateStatus(String haFlowId, FlowStatus flowStatus);
 
+    void updateStatus(String haFlowId, FlowStatus flowStatus, String flowStatusInfo);
+
     void updateAffinityFlowGroupId(@NonNull String haFlowId, String affinityGroupId);
 
     Optional<HaFlow> remove(String haFlowId);

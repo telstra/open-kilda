@@ -530,20 +530,10 @@ public class FlowValidator {
 
     @VisibleForTesting
     void checkAffinityFlow(RequestedFlow targetFlow) throws InvalidFlowException {
-        if (targetFlow.getSrcSwitch().equals(targetFlow.getDestSwitch())) {
-            throw new InvalidFlowException("Couldn't add one-switch flow into affinity group",
-                    ErrorType.PARAMETERS_INVALID);
-        }
-
         Flow affinityFlow = flowRepository.findById(targetFlow.getAffinityFlowId())
                 .orElseThrow(() ->
                         new InvalidFlowException(format("Failed to find affinity flow id %s",
                                 targetFlow.getAffinityFlowId()), ErrorType.PARAMETERS_INVALID));
-
-        if (affinityFlow.isOneSwitchFlow()) {
-            throw new InvalidFlowException("Couldn't create affinity group with one-switch flow",
-                    ErrorType.PARAMETERS_INVALID);
-        }
 
         if (StringUtils.isNotBlank(affinityFlow.getAffinityGroupId())) {
             String mainAffinityFlowId = affinityFlow.getAffinityGroupId();

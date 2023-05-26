@@ -21,6 +21,7 @@ You can find OpenKIlda high level design [here](docs/design/kilda-high-level-des
 ## Important notes
 
 ### Deprecation
+
 Since the release 1.126.2 (December 2022), single-table mode for switches became deprecated. New features will be designed
 only for multi-table mode. Current features will support single table mode till July 1, 2023. After that, single table
 mode support might be removed from any feature.
@@ -35,7 +36,7 @@ The following packages are required for building OpenKilda controller:
  - Gradle 7.0+
  - Maven 3.3.9+
  - JDK 8+
- - Python 3.6+
+ - Python 3.8+
  - Docker 19.03.3+
  - Docker Compose 1.20.0+
  - GNU Make 4.1+
@@ -46,45 +47,84 @@ The following packages are required for building OpenKilda controller:
 We do not recommend upgrading pip and install docker-compose using the methods described below, bypassing the packer managers. Instead, please read the documentation for installing the [pip](https://pip.pypa.io/en/stable/installation/#upgrading-pip) and the [docker-compose](https://docs.docker.com/compose/install/).
 
 
-#### Dependency installation on Ubuntu 18.04 
+#### Dependency installation on Ubuntu 18.04
+
 For running a virtual environment (that is a Docker instance with the Open vSwitch service) it is required to have Linux kernel 4.18+ for OVS meters support.
 The following commands will install necessary dependencies on Ubuntu 18.04:
+Add Python's PPA repository
 ```shell
-sudo apt install maven make openjdk-8-jdk openvswitch-switch python3-pip linux-generic-hwe-18.04 tox rsync
+sudo add-apt-repository -y ppa:deadsnakes/ppa
 ```
+
+Install required packages:
 ```shell
-sudo pip3 install --upgrade pip
+sudo apt update && sudo apt-get install -y \
+  maven \
+  openjdk-8-jdk \
+  python \
+  python3.8 \
+  python3-pip \
+  virtualenv \
+  make \
+  tox \
+  rsync \
+  openvswitch-switch \
+  linux-generic-hwe-18.04
+```
+
+Install required components for Python 3.6:
+```shell
+sudo pip3 install setuptools-rust==1.1.2 setuptools==46.4.0 --upgrade
+```
+
+Upgrade pip3:
+```shell
+sudo pip3 install pip --upgrade
+```
+
+(Optional) To avoid version conflict install python3-pip with the official script. To do it, you need to download script & run script:
+```shell
+wget -P /tmp/ https://bootstrap.pypa.io/get-pip.py \
+  && sudo python3.8 /tmp/get-pip.py
+```
+
+After pip upgrade install Docker compose:
+```shell
 sudo pip3 install docker-compose
 ```
+
 #### Dependency installation on Ubuntu 20.04
+
 The following commands will install necessary dependencies on Ubuntu 20.04:
 ```shell
-sudo apt install maven make openjdk-8-jdk openvswitch-switch python3-pip tox rsync
+sudo apt update && sudo apt install -y \
+  maven \
+  make \
+  openjdk-8-jdk \
+  openvswitch-switch \
+  python3-pip \
+  tox \
+  rsync
 ```
 
+Upgrade pip3:
 ```shell
-sudo apt install maven make openjdk-8-jdk openvswitch-switch tox
+sudo pip3 install pip --upgrade
 ```
 
-To avoid version conflict you can install python3-pip with the official script. To do it, you need to download script:
-
+(Optional) To avoid version conflict install python3-pip with the official script. To do it, you need to download script & run script:
 ```shell
-wget https://bootstrap.pypa.io/get-pip.py
+wget -P /tmp/ https://bootstrap.pypa.io/get-pip.py \
+  && sudo python3.8 /tmp/get-pip.py
 ```
 
-and then run it:
-
-```shell
-sudo python3 get-pip.py
-```
-
-After pip installation you can install Docker compose:
-
+After pip upgrade install Docker compose:
 ```shell
 sudo pip3 install docker-compose
 ```
 
 #### Gradle
+
 You can either install Gradle, or use Gradle wrapper:
  - Option 1: Use Gradle wrapper. The OpenKilda repository contains an instance of Gradle Wrapper 
  which can be used straight from here without further installation.
@@ -92,20 +132,24 @@ You can either install Gradle, or use Gradle wrapper:
 
 
 #### Docker
+
 Note that your build user needs to be a member of the docker group for the build to work. 
 Do that by adding the user to /etc/groups, logging out, and logging in back again.
 
 ##### Basic installation instruction from Docker site
-
 ```shell
-sudo apt-get install ca-certificates curl gnupg lsb-release
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update
-sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-sudo usermod -aG docker $USER
-# re-login to apply the usermod command
+sudo apt-get install -y ca-certificates curl gnupg lsb-release \
+&& sudo mkdir -p /etc/apt/keyrings \
+&& curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+ | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null \
+&& sudo apt-get update && sudo apt-get install -y \
+  docker-ce \
+  docker-ce-cli \
+  containerd.io \
+  docker-compose-plugin \
+&& sudo usermod -aG docker $USER
+# re-login or reboot to apply the usermod command
 ```
 
 #### Maven
@@ -145,6 +189,7 @@ make up-stable
 ```
 
 ### How to create a virtual topology for test
+
 ```shell
 make test-topology
 ```
@@ -304,6 +349,7 @@ create (or open if already exists) ```NetworkTopology.main``` application debug 
 execute ```docker-compose up``` and run in the debug mode ```NetworkTopology.main```.
 
 ### How to run tests
+
 Please refer to the [Testing](https://github.com/telstra/open-kilda/wiki/Testing) section on our Wiki.
 
 ### How to build / test locally without containers
@@ -382,6 +428,7 @@ We have confd for managing config/properties files from templates. Confd configs
 5. Execute: `make update-props` for applying the templates.
 
 #### How to use a stand-alone OrientDB server?
+
 Let's suppose, you have an OrientDB server, and you want to use it instead of the dockerized OrientDB.
 You can add OrientDB endpoints to `confd/vars/main.yaml` and create properties template for services which use OrientDB:
 

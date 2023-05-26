@@ -83,6 +83,7 @@ public class HaFlowMapperTest {
     private static final long MAX_LATENCY = 10L;
     private static final long MAX_LATENCY_TIER_2 = 20L;
     private static final int PRIORITY = 11;
+    private static final String STATUS_INFO = "some info";
     private static final String DESC_1 = "desc1";
     private static final String DESC_2 = "desc2";
     private static final String DESC_3 = "desc3";
@@ -187,6 +188,7 @@ public class HaFlowMapperTest {
         assertEquals(haFlow.getDescription(), result.getDescription());
         assertEquals(haFlow.isAllocateProtectedPath(), result.isAllocateProtectedPath());
         assertEquals(haFlow.getStatus(), result.getStatus());
+        assertEquals(haFlow.getStatusInfo(), result.getStatusInfo());
         assertEquals(haFlow.getSharedSwitchId(), result.getSharedEndpoint().getSwitchId());
         assertEquals(haFlow.getSharedPort(), result.getSharedEndpoint().getPortNumber().intValue());
         assertEquals(haFlow.getSharedOuterVlan(), result.getSharedEndpoint().getOuterVlanId());
@@ -265,7 +267,7 @@ public class HaFlowMapperTest {
         HaFlow haFlow = new HaFlow(
                 HA_FLOW_ID_1, SWITCH_3, PORT_3, VLAN_3, INNER_VLAN_3, BANDWIDTH,
                 PathComputationStrategy.COST, FlowEncapsulationType.VXLAN, MAX_LATENCY, MAX_LATENCY_TIER_2, true, false,
-                true, PRIORITY, false, DESC_1, true, FlowStatus.UP, GROUP_1, GROUP_2);
+                true, PRIORITY, false, DESC_1, true, FlowStatus.UP, STATUS_INFO, GROUP_1, GROUP_2);
         haFlow.setHaSubFlows(Sets.newHashSet(
                 HaSubFlow.builder().haSubFlowId(SUB_FLOW_ID_1)
                         .endpointSwitch(SWITCH_1)

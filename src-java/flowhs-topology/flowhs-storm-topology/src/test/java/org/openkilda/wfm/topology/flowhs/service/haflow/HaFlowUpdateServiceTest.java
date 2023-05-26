@@ -87,6 +87,7 @@ public class HaFlowUpdateServiceTest extends AbstractHaFlowTest<FlowSegmentReque
                             .build()))
             .diverseFlowId(HA_FLOW_ID_2)
             .build();
+    public static final String STATUS_INFO = "some info";
 
 
     @Mock
@@ -415,7 +416,7 @@ public class HaFlowUpdateServiceTest extends AbstractHaFlowTest<FlowSegmentReque
         HaFlow haFlow = new HaFlow(
                 HA_FLOW_ID_1, SWITCH_3, PORT_3, VLAN_3, INNER_VLAN_3, BANDWIDTH_1,
                 COST, VXLAN, MAX_LATENCY_1, MAX_LATENCY_TIER_2_1, true, false,
-                true, PRIORITY_1, false, DESCRIPTION_1, true, FlowStatus.UP, GROUP_ID_1.toString(),
+                true, PRIORITY_1, false, DESCRIPTION_1, true, FlowStatus.UP, STATUS_INFO, GROUP_ID_1.toString(),
                 GROUP_ID_2.toString());
         haFlow.setHaSubFlows(Sets.newHashSet(
                 HaSubFlow.builder().haSubFlowId(SUB_FLOW_ID_1)

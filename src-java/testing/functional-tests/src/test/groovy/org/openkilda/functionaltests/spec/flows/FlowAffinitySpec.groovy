@@ -5,6 +5,7 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_ACTION
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static groovyx.gpars.GParsPool.withPool
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
@@ -262,25 +263,29 @@ class FlowAffinitySpec extends HealthCheckSpecification {
     def "Unable to create an affinity flow with a 1-switch flow"() {
         given: "A one-switch flow"
         def sw = topology.activeSwitches[0]
-        def flow = flowHelperV2.singleSwitchFlow(sw)
-        flowHelperV2.addFlow(flow)
+        def oneSwitchFlow = flowHelperV2.singleSwitchFlow(sw)
+        flowHelperV2.addFlow(oneSwitchFlow)
 
-        when: "Try to create an affinity flow targeting the one-switch flow"
+        when: "Create an affinity flow targeting the one-switch flow"
         def swPair = topologyHelper.getSwitchPairs(true).find { it.src.dpId == sw.dpId }
-        def affinityFlow = flowHelperV2.randomFlow(swPair, false, [flow]).tap { affinityFlowId = flow.flowId }
-        northboundV2.addFlow(affinityFlow)
+        def affinityFlow = flowHelperV2.randomFlow(swPair, false, [oneSwitchFlow]).tap { affinityFlowId = oneSwitchFlow.flowId }
+        flowHelperV2.addFlow(affinityFlow)
 
-        then: "Error is returned"
-        def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-        with(e.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not create flow"
-            errorDescription == "Couldn't create affinity group with one-switch flow"
+        then: "Both flows have affinity with flow1"
+        //yes, even flow1 with flow1, by design
+        withPool {
+            [oneSwitchFlow, affinityFlow].eachParallel {
+                assert northboundV2.getFlow(it.flowId).affinityWith == oneSwitchFlow.flowId
+            }
         }
 
+        and: "Affinity flow history contain 'affinityGroupId' information"
+            assert northbound.getFlowHistory(affinityFlow.flowId).find { it.action == CREATE_ACTION }.dumps
+                    .find { it.type == "stateAfter" }?.affinityGroupId == oneSwitchFlow.flowId
+
         cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
-        !e && flowHelperV2.deleteFlow(affinityFlow.flowId)
+        oneSwitchFlow && flowHelperV2.deleteFlow(oneSwitchFlow.flowId)
+        affinityFlow && flowHelperV2.deleteFlow(affinityFlow.flowId)
     }
 
     @Tidy
