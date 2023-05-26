@@ -336,8 +336,8 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
     }
 
     private void setRandomVlans(HaFlow payload) {
-        payload.sharedEndpoint.vlanId = haFlowHelper.randomVlan(payload.sharedEndpoint.vlanId)
-        payload.subFlows.forEach { it.endpoint.vlanId = haFlowHelper.randomVlan(it.endpoint.vlanId) }
+        payload.sharedEndpoint.vlanId = flowHelperV2.randomVlan([payload.sharedEndpoint.vlanId])
+        payload.subFlows.forEach { it.endpoint.vlanId = flowHelperV2.randomVlan([it.endpoint.vlanId]) }
     }
 
     @Tidy

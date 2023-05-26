@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.hasItem
@@ -661,6 +664,31 @@ class SwitchHelper {
             }
         }
         assert result == switchValidateInfo.asExpected
+    }
+
+    static SwitchSyncResult synchronize(SwitchId switchId) {
+        return northbound.get().synchronizeSwitch(switchId, true)
+    }
+
+    static void synchronize(List<SwitchId> switchesToSynchronize) {
+        def synchronizationResult = withPool {
+            switchesToSynchronize.collectParallel { synchronize(it) }
+                    .findAll {
+                        !(it.getRules().getExcess().isEmpty() ||
+                                it.getRules().getMisconfigured().isEmpty() ||
+                                it.getRules().getMissing().isEmpty())
+                    }
+        }
+        assert synchronizationResult.isEmpty()
+    }
+
+    static SwitchValidationV2ExtendedResult validate(SwitchId switchId) {
+        return northboundV2.get().validateSwitch(switchId)
+    }
+
+    static List<SwitchValidationV2ExtendedResult> validate(List<SwitchId> switchesToValidate) {
+        return switchesToValidate.collect { validate(it) }
+                    .findAll {!it.isAsExpected()}
     }
 
     @Memoized

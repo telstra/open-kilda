@@ -223,7 +223,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         def flow1 = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
-        def flow2 = flowHelperV2.randomFlow(switchPair)
+        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1])
         flowHelperV2.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
 

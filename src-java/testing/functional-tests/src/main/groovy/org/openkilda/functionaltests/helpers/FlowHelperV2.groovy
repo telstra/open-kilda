@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.openkilda.functionaltests.helpers.FlowHelper.KILDA_ALLOWED_VLANS
 import static FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_MIRROR_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
@@ -52,7 +53,6 @@ class FlowHelperV2 {
 
     def random = new Random()
     def faker = new Faker()
-    def allowedVlans = 101..4095
 
     /**
      * Creates a FlowRequestV2 instance with random vlan and flow id.
@@ -230,12 +230,12 @@ class FlowHelperV2 {
                 faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4)
     }
 
-    int randomVlan() {
+    static int randomVlan() {
         return randomVlan([])
     }
 
-    int randomVlan(List<Integer> exclusions) {
-        return (allowedVlans - exclusions)[random.nextInt(allowedVlans.size())]
+    static int randomVlan(List<Integer> exclusions) {
+        return (KILDA_ALLOWED_VLANS - exclusions).shuffled().first()
     }
 
     /**
