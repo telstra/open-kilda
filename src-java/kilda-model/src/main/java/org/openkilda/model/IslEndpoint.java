@@ -33,4 +33,12 @@ public class IslEndpoint extends NetworkEndpoint {
             @JsonProperty("port_number") Integer portNumber) {
         super(switchId, portNumber);
     }
+
+    public static IslEndpoint buildSourceEndpoint(PathSegment segment) {
+        return new IslEndpoint(segment.getSrcSwitchId(), segment.getSrcPort());
+    }
+
+    public static IslEndpoint buildDestinationEndpoint(PathSegment segment) {
+        return new IslEndpoint(segment.getDestSwitchId(), segment.getDestPort());
+    }
 }

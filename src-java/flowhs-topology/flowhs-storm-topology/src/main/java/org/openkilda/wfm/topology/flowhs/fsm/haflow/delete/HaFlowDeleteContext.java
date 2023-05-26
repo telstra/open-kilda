@@ -15,13 +15,14 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.delete;
 
-import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
+import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
 
-import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.experimental.SuperBuilder;
 
-@Value
-@Builder
-public class HaFlowDeleteContext {
-    SpeakerCommandResponse speakerResponse;
+@Data
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class HaFlowDeleteContext extends SpeakerResponseContext {
 }

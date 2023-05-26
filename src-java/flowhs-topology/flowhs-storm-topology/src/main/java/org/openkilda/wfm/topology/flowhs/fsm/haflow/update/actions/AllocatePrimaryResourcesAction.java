@@ -29,7 +29,7 @@ import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flow.model.HaFlowPathPair;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseHaResourceAllocationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.BaseHaResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
@@ -75,8 +75,8 @@ public class AllocatePrimaryResourcesAction extends
 
         log.debug("Finding a new primary path for ha-flow {}", haFlowId);
         GetHaPathsResult allocatedPaths = allocatePathPair(haFlow, newPathIdsPair,
-                pathIdsToReuse, oldPaths,
-                stateMachine.getSharedBandwidthGroupId(), path -> true, false);
+                false, pathIdsToReuse, oldPaths, true,
+                path -> true, false);
         if (allocatedPaths == null) {
             throw new ResourceAllocationException("Unable to allocate ha-paths");
         }
@@ -89,7 +89,9 @@ public class AllocatePrimaryResourcesAction extends
                 haFlow, allocatedPaths.getForward().getYPointSwitchId(), newPathIdsPair);
         stateMachine.setNewPrimaryResources(haFlowResources);
 
-        HaFlowPathPair createdPaths = createHaFlowPathPair(haFlowId, haFlowResources, allocatedPaths);
+        final boolean forceIgnoreBandwidth = false;
+        HaFlowPathPair createdPaths = createHaFlowPathPair(
+                haFlowId, haFlowResources, allocatedPaths, forceIgnoreBandwidth);
         log.debug("New primary ha-path has been created: {}", createdPaths);
 
         saveAllocationActionWithDumpsToHistory(stateMachine, haFlow, PATHS_TYPE, createdPaths);

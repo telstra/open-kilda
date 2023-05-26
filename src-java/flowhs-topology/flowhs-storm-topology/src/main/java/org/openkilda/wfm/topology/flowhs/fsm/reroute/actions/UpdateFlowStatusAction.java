@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.StatusInfo;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.TimedExecution;
@@ -80,13 +81,13 @@ public class UpdateFlowStatusAction extends
         boolean isBackUpPathComputationWayUsed = stateMachine.isBackUpPrimaryPathComputationWayUsed()
                 || (flow.isAllocateProtectedPath() && stateMachine.isBackUpProtectedPathComputationWayUsed());
         if (ignoreBandwidth && isBackUpPathComputationWayUsed) {
-            return "Couldn't find path with required bandwidth and backup way was used to build the path";
+            return StatusInfo.NOT_ENOUGH_BANDWIDTH_AND_BACK_UP;
         } else if (ignoreBandwidth) {
-            return "Couldn't find path with required bandwidth";
+            return StatusInfo.NOT_ENOUGH_BANDWIDTH;
         } else if (isBackUpPathComputationWayUsed) {
-            return "An alternative way (back up strategy or max_latency_tier2 value) of building the path was used";
+            return StatusInfo.BACK_UP_STRATEGY_USED;
         } else {
-            return "Couldn't find non overlapping protected path";
+            return StatusInfo.OVERLAPPING_PROTECTED_PATH;
         }
     }
 }
