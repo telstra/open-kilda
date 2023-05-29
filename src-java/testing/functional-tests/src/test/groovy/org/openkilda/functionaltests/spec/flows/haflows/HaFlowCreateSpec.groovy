@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -53,11 +51,14 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
             haFlow = northboundV2.getHaFlow(haFlow.haFlowId)
             assert haFlow && haFlow.status == FlowState.UP.toString()
         }
-        
+
         and: "Traffic passes through HA-Flow"
         if (swT.isHaTraffExamAvailable()) {
             haFlowHelper.getTraffExam(haFlow).run().hasTraffic()
         }
+
+        and: "HA-flow pass validation"
+        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
 
         when: "Delete the Ha-Flow"
         northboundV2.deleteHaFlow(haFlow.haFlowId)

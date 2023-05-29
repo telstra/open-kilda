@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
+import org.openkilda.model.StatusInfo;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
@@ -46,7 +47,9 @@ public class RevertFlowStatusAction extends
         if (originalHaFlowStatus != null) {
             log.debug("Reverting the ha-flow status of {} to {}", haFlowId, originalHaFlowStatus);
 
-            haFlowRepository.updateStatus(haFlowId, originalHaFlowStatus);
+            String flowStatusInfo = FlowStatus.DEGRADED.equals(originalHaFlowStatus)
+                    ? StatusInfo.OVERLAPPING_PROTECTED_PATH : stateMachine.getOriginalHaFlow().getStatusInfo();
+            haFlowRepository.updateStatus(haFlowId, originalHaFlowStatus, flowStatusInfo);
             stateMachine.saveActionToHistory(format("The ha-flow status was reverted to %s", originalHaFlowStatus));
         }
     }

@@ -71,17 +71,21 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String HA_FLOW_DELETE_RESULT_EVENT = "ha_flow_delete_result";
     private static final String HA_FLOW_UPDATE_EVENT = "ha_flow_update";
     private static final String HA_FLOW_UPDATE_RESULT_EVENT = "ha_flow_update_result";
+    private static final String HA_FLOW_PATH_SWAP_EVENT = "ha_flow_path_swap";
+    private static final String HA_FLOW_PATH_SWAP_RESULT_EVENT = "ha_flow_path_swap_result";
 
     private static final String TAG = "FLOW_OPERATIONS_DASHBOARD";
     private static final String DASHBOARD = "dashboard";
 
     private static final String DELETE_RESULT = "delete-result";
     private static final String UPDATE_RESULT = "update-result";
+    private static final String REROUTE_RESULT = "reroute-result";
 
     private static final String SUCCESSFUL_RESULT = "successful";
     private static final String FAILED_RESULT = "failed";
 
     private static final String FAILURE_REASON = "failure-reason";
+    private static final String FORCED_REROUTE = "forced_reroute";
 
     public FlowOperationsDashboardLogger(Logger logger) {
         super(logger);
@@ -386,7 +390,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-paths-reroute");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, REROUTE_EVENT);
-        data.put("forced_reroute", Boolean.toString(forceToReroute));
+        data.put(FORCED_REROUTE, Boolean.toString(forceToReroute));
         invokeLogger(Level.INFO, String.format("Reroute due to failure on %s ISLs flow %s", affectedIsl, flowId), data);
     }
 
@@ -398,7 +402,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-reroute-successful");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, REROUTE_RESULT_EVENT);
-        data.put("reroute-result", SUCCESSFUL_RESULT);
+        data.put(REROUTE_RESULT, SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful reroute of the flow %s", flowId), data);
     }
 
@@ -410,7 +414,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "flow-reroute-failed");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, REROUTE_RESULT_EVENT);
-        data.put("reroute-result", FAILED_RESULT);
+        data.put(REROUTE_RESULT, FAILED_RESULT);
         data.put(FAILURE_REASON, failureReason);
         invokeLogger(
                 Level.WARN, String.format("Failed reroute of the flow %s, reason: %s", flowId, failureReason), data);
@@ -598,7 +602,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-reroute");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_REROUTE_EVENT);
-        data.put("forced_reroute", Boolean.toString(forceToReroute));
+        data.put(FORCED_REROUTE, Boolean.toString(forceToReroute));
         invokeLogger(Level.INFO, String.format("Reroute y-flow due to failure on %s ISLs flow %s",
                 affectedIsl, yFlowId), data);
     }
@@ -611,7 +615,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-reroute-successful");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_REROUTE_RESULT_EVENT);
-        data.put("reroute-result", SUCCESSFUL_RESULT);
+        data.put(REROUTE_RESULT, SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful reroute of the y-flow %s", yFlowId), data);
     }
 
@@ -623,7 +627,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         data.put(TAG, "y-flow-reroute-failed");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_REROUTE_RESULT_EVENT);
-        data.put("reroute-result", FAILED_RESULT);
+        data.put(REROUTE_RESULT, FAILED_RESULT);
         data.put(FAILURE_REASON, failureReason);
         invokeLogger(Level.WARN, String.format("Failed reroute of the y-flow %s, reason: %s", yFlowId, failureReason),
                 data);
@@ -851,7 +855,83 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "ha-flow-patch-update");
         data.put(FLOW_ID, haFlowId);
-        data.put(EVENT_TYPE, FLOW_UPDATE_EVENT);
+        data.put(EVENT_TYPE, HA_FLOW_UPDATE_EVENT);
         invokeLogger(Level.INFO, String.format("Patch update the HA-flow: %s", haFlowId), data);
+    }
+
+    /**
+     * Log a flow-paths-swap event.
+     */
+    public void onHaFlowPathsSwap(String haFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-paths-swap");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_PATH_SWAP_EVENT);
+        invokeLogger(Level.INFO, String.format("Swap paths for the ha-flow: %s", haFlowId), data);
+    }
+
+    /**
+     * Log a ha-paths-swap-successful event.
+     */
+    public void onSuccessfulHaFlowPathSwap(String haFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-paths-swap-successful");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_PATH_SWAP_RESULT_EVENT);
+        data.put(UPDATE_RESULT, SUCCESSFUL_RESULT);
+        invokeLogger(Level.INFO, String.format("Successful update of the ha-flow %s", haFlowId), data);
+    }
+
+    /**
+     * Log a ha-paths-swap-failed event.
+     */
+    public void onFailedHaFlowPathSwap(String haFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-paths-swap-failed");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_PATH_SWAP_RESULT_EVENT);
+        data.put(UPDATE_RESULT, FAILED_RESULT);
+        data.put(FAILURE_REASON, failureReason);
+        invokeLogger(Level.WARN, String.format("Failed path swap for the ha-flow %s, reason: %s",
+                        haFlowId, failureReason), data);
+    }
+
+    /**
+     * Log an ha-flow-reroute event.
+     */
+    public void onHaFlowReroute(String haFlowId, Collection<IslEndpoint> affectedIsl) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-paths-reroute");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, REROUTE_EVENT);
+        invokeLogger(Level.INFO, String.format(
+                "Reroute due to failure on %s ISLs HA-flow %s", affectedIsl, haFlowId), data);
+    }
+
+    /**
+     * Log a ha-flow-reroute-successful event.
+     */
+    public void onSuccessfulHaFlowReroute(String haFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-reroute-successful");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, REROUTE_RESULT_EVENT);
+        data.put(REROUTE_RESULT, SUCCESSFUL_RESULT);
+        invokeLogger(Level.INFO, String.format("Successful reroute of the HA-flow %s", haFlowId), data);
+    }
+
+    /**
+     * Log a ha-flow-reroute-failed event.
+     */
+    public void onFailedHaFlowReroute(String haFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-reroute-failed");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, REROUTE_RESULT_EVENT);
+        data.put(REROUTE_RESULT, FAILED_RESULT);
+        data.put(FAILURE_REASON, failureReason);
+        invokeLogger(
+                Level.WARN, String.format(
+                        "Failed reroute of the HA-flow %s, reason: %s", haFlowId, failureReason), data);
     }
 }

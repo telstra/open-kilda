@@ -41,24 +41,24 @@ public class CompleteFlowPathInstallationAction extends
         PathId newPrimaryForwardPathId = stateMachine.getNewPrimaryPathIds().getForward().getHaPathId();
         PathId newPrimaryReversePathId = stateMachine.getNewPrimaryPathIds().getReverse().getHaPathId();
 
-        log.debug("Completing installation of the flow primary path {} / {}",
+        log.debug("Completing installation of the HA-flow primary path {} / {}",
                 newPrimaryForwardPathId, newPrimaryReversePathId);
 
         updatePathStatuses(stateMachine.getNewPrimaryPathIds(), stateMachine);
 
-        stateMachine.saveActionToHistory("Flow paths were installed",
-                format("The flow paths %s / %s were installed", newPrimaryForwardPathId, newPrimaryReversePathId));
+        stateMachine.saveActionToHistory("HA-flow paths were installed",
+                format("The HA-flow paths %s / %s were installed", newPrimaryForwardPathId, newPrimaryReversePathId));
 
         if (stateMachine.getNewProtectedPathIds() != null) {
             PathId newProtectedForwardPathId = stateMachine.getNewProtectedPathIds().getForward().getHaPathId();
             PathId newProtectedReversePathId = stateMachine.getNewProtectedPathIds().getReverse().getHaPathId();
 
-            log.debug("Completing installation of the flow protected path {} / {}",
+            log.debug("Completing installation of the HA-flow protected path {} / {}",
                     newProtectedForwardPathId, newProtectedReversePathId);
             updatePathStatuses(stateMachine.getNewProtectedPathIds(), stateMachine);
 
-            stateMachine.saveActionToHistory("Flow paths were installed",
-                    format("The flow paths %s / %s were installed",
+            stateMachine.saveActionToHistory("HA-flow paths were installed",
+                    format("The HA-flow paths %s / %s were installed",
                             newProtectedForwardPathId, newProtectedReversePathId));
         }
     }
@@ -69,7 +69,7 @@ public class CompleteFlowPathInstallationAction extends
                 flowPathRepository.updateStatus(newSubPathId, stateMachine.getNewPathStatus(newSubPathId));
             }
             for (PathId newHaFlowPathId : haPathIds.getAllHaFlowPathIds()) {
-                flowPathRepository.updateStatus(newHaFlowPathId, stateMachine.getNewPathStatus(newHaFlowPathId));
+                haFlowPathRepository.updateStatus(newHaFlowPathId, stateMachine.getNewPathStatus(newHaFlowPathId));
             }
         });
     }

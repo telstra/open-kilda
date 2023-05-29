@@ -131,7 +131,7 @@ public class RerouteQueue {
         merged.priority(Math.max(Optional.ofNullable(first.getPriority()).orElse(0),
                 Optional.ofNullable(second.getPriority()).orElse(0)));
         merged.timeCreate(first.getTimeCreate());
-        merged.yFlow(first.isYFlow());
+        merged.flowType(first.getFlowType());
 
         return merged.build();
     }

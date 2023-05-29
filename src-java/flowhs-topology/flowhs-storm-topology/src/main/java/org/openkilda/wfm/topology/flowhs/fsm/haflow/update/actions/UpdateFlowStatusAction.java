@@ -23,6 +23,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathId;
+import org.openkilda.model.StatusInfo;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
@@ -105,6 +106,9 @@ public class UpdateFlowStatusAction extends
             if (newHaFlowStatusStatus != haFlow.getStatus()) {
                 dashboardLogger.onHaFlowStatusUpdate(stateMachine.getHaFlowId(), newHaFlowStatusStatus);
                 haFlow.setStatus(newHaFlowStatusStatus);
+                haFlow.setStatusInfo(getFlowStatusInfo(newHaFlowStatusStatus, stateMachine));
+            } else if (FlowStatus.DEGRADED.equals(newHaFlowStatusStatus)) {
+                haFlow.setStatusInfo(getDegradedFlowStatusInfo(stateMachine));
             }
 
             stateMachine.setNewFlowStatus(newHaFlowStatusStatus);
@@ -121,5 +125,26 @@ public class UpdateFlowStatusAction extends
                     pathId, stateMachine.getBackUpComputationWayUsedMap().keySet()));
         }
         return result;
+    }
+
+    private String getFlowStatusInfo(FlowStatus flowStatus, HaFlowUpdateFsm stateMachine) {
+        String flowStatusInfo = null;
+        if (!FlowStatus.UP.equals(flowStatus) && !flowStatus.equals(stateMachine.getOriginalHaFlow().getStatus())) {
+            flowStatusInfo = stateMachine.getErrorReason();
+        }
+        if (FlowStatus.DEGRADED.equals(flowStatus)) {
+            flowStatusInfo = getDegradedFlowStatusInfo(stateMachine);
+        }
+        return flowStatusInfo;
+    }
+
+    private String getDegradedFlowStatusInfo(HaFlowUpdateFsm stateMachine) {
+        boolean isBackUpPathComputationWayUsed = stateMachine.getBackUpComputationWayUsedMap().values().stream()
+                .anyMatch(Boolean::booleanValue);
+        if (isBackUpPathComputationWayUsed) {
+            return StatusInfo.BACK_UP_STRATEGY_USED;
+        } else {
+            return StatusInfo.OVERLAPPING_PROTECTED_PATH;
+        }
     }
 }

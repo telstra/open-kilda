@@ -43,7 +43,6 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
-import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
@@ -493,10 +492,6 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyPathReplace(origin, result);
-        RerouteResultInfoData expected = RerouteResultInfoData.builder()
-                .flowId(origin.getFlowId())
-                .success(true)
-                .build();
         verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()), isNull(), any(String.class));
     }
 

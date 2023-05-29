@@ -171,9 +171,9 @@ public class ValidateYFlowAction extends
 
         boolean isAffected = false;
         for (PathSegment segment : path.getSegments()) {
-            isAffected = affectedIsls.contains(getSegmentSourceEndpoint(segment));
+            isAffected = affectedIsls.contains(IslEndpoint.buildSourceEndpoint(segment));
             if (!isAffected) {
-                isAffected = affectedIsls.contains(getSegmentDestEndpoint(segment));
+                isAffected = affectedIsls.contains(IslEndpoint.buildDestinationEndpoint(segment));
             }
 
             if (isAffected) {
@@ -182,14 +182,6 @@ public class ValidateYFlowAction extends
         }
 
         return isAffected;
-    }
-
-    private IslEndpoint getSegmentSourceEndpoint(PathSegment segment) {
-        return new IslEndpoint(segment.getSrcSwitchId(), segment.getSrcPort());
-    }
-
-    private IslEndpoint getSegmentDestEndpoint(PathSegment segment) {
-        return new IslEndpoint(segment.getDestSwitchId(), segment.getDestPort());
     }
 
     @Override

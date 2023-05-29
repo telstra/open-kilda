@@ -22,18 +22,12 @@ import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.InvalidFlowException;
-import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
-import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaSubFlow;
-import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
-import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaFlowPathIds;
-import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaPathIdsPairBuilder;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -47,10 +41,7 @@ import org.openkilda.wfm.topology.flowhs.validation.UnavailableFlowEndpointExcep
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -118,51 +109,14 @@ public class ValidateFlowAction extends
             stateMachine.setOriginalHaFlow(originalHaFlow);
 
             foundHaFlow.setStatus(FlowStatus.IN_PROGRESS);
+            foundHaFlow.setStatusInfo(null);
             return foundHaFlow;
         });
 
-        saveOldPathIds(stateMachine);
+        stateMachine.saveOldPathIds(stateMachine.getOriginalHaFlow());
         stateMachine.saveNewEventToHistory("Ha-flow was validated successfully", FlowEventData.Event.UPDATE);
 
         return Optional.empty();
-    }
-
-    private void saveOldPathIds(HaFlowUpdateFsm stateMachine) {
-        HaFlow haFlow = stateMachine.getOriginalHaFlow();
-        stateMachine.setOldPrimaryPathIds(buildPathIds(haFlow.getForwardPath(), haFlow.getReversePath()));
-        stateMachine.setOldProtectedPathIds(buildPathIds(
-                haFlow.getProtectedForwardPath(), haFlow.getProtectedReversePath()));
-    }
-
-    private HaPathIdsPair buildPathIds(HaFlowPath forward, HaFlowPath reverse) {
-        HaPathIdsPairBuilder haPathIdsPairBuilder = HaPathIdsPair.builder();
-        if (forward != null) {
-            haPathIdsPairBuilder.forward(buildPathIds(forward));
-        }
-        if (reverse != null) {
-            haPathIdsPairBuilder.reverse(buildPathIds(reverse));
-        }
-        if (forward != null || reverse != null) {
-            return haPathIdsPairBuilder.build();
-        }
-        return null;
-    }
-
-    private static HaFlowPathIds buildPathIds(HaFlowPath haFlowPath) {
-        return HaFlowPathIds.builder()
-                .haPathId(haFlowPath.getHaPathId())
-                .subPathIds(buildSubPathIdMap(haFlowPath.getSubPaths()))
-                .build();
-    }
-
-    private static Map<String, PathId> buildSubPathIdMap(Collection<FlowPath> subPaths) {
-        Map<String, PathId> result = new HashMap<>();
-        if (subPaths != null) {
-            for (FlowPath subPath : subPaths) {
-                result.put(subPath.getHaSubFlowId(), subPath.getPathId());
-            }
-        }
-        return result;
     }
 
     @Override
