@@ -306,7 +306,7 @@ public class ResourcesAllocationAction extends
     }
 
     private void allocateProtectedPath(FlowCreateFsm stateMachine) throws UnroutableFlowException,
-            RecoverableException, FlowNotFoundException {
+            RecoverableException, ResourceAllocationException, FlowNotFoundException {
         String flowId = stateMachine.getFlowId();
         Flow tmpFlow = getFlow(flowId);
         if (!tmpFlow.isAllocateProtectedPath()) {

@@ -15,11 +15,11 @@
 
 package org.openkilda.messaging.payload.history;
 
-import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowStatus;
-import org.openkilda.model.PathComputationStrategy;
-import org.openkilda.model.history.DumpType;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.model.FlowPathStatus;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
@@ -32,35 +32,30 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @JsonNaming(SnakeCaseStrategy.class)
-public class HaFlowDumpPayload {
-    String taskId;
-    DumpType dumpType;
-    String haFlowId;
-    String sharedSwitchId;
-    Integer sharedPort;
-    Integer sharedOuterVlan;
-    Integer sharedInnerVlan;
-    Long maximumBandwidth;
-    PathComputationStrategy pathComputationStrategy;
-    FlowEncapsulationType encapsulationType;
-    Long maxLatency;
-    Long maxLatencyTier2;
+public class HaFlowPathPayload {
+    String haPathId;
+    String cookie;
+    String sharedPointMeterId;
+    Long bandwidth;
     Boolean ignoreBandwidth;
-    Boolean periodicPings;
-    Boolean pinned;
-    Integer priority;
-    Boolean strictBandwidth;
-    String description;
-    Boolean allocateProtectedPath;
-    String diverseGroupId;
-    String affinityGroupId;
-    FlowStatus status;
-    String flowTimeCreate;
-    String flowTimeModify;
+    String timeCreate;
+    String timeModify;
+    FlowPathStatus status;
+    String sharedSwitchId;
+
+    @JsonProperty("y_point_switch_id")
+    @JsonAlias("ypoint_switch_id")
+    String yPointSwitchId;
+
+    @JsonProperty("y_point_group_id")
+    @JsonAlias("ypoint_group_id")
+    String yPointGroupId;
+
+    @JsonProperty("y_point_meter_id")
+    @JsonAlias("ypoint_meter_id")
+    String yPointMeterId;
+
+    List<List<PathNodePayload>> paths;
 
     List<HaSubFlowPayload> haSubFlows;
-    HaFlowPathPayload forwardPath;
-    HaFlowPathPayload reversePath;
-    HaFlowPathPayload protectedForwardPath;
-    HaFlowPathPayload protectedReversePath;
 }

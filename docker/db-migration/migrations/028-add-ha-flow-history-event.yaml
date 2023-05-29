@@ -4,7 +4,7 @@ databaseChangeLog:
       author: dmitrii-beliakov
       changes:
         - tagDatabase:
-            tag: 028-add-ha-flow-history-event
+            tag: 029-add-ha-flow-history-event
   - changeSet:
       id: ha_flow_event_class
       author: dmitrii-beliakov
@@ -38,21 +38,17 @@ databaseChangeLog:
         - sql: "CREATE PROPERTY ha_flow_event_dump.diverse_group_id IF NOT EXISTS STRING"
         - sql: "CREATE PROPERTY ha_flow_event_dump.dump_type IF NOT EXISTS STRING"
         - sql: "CREATE PROPERTY ha_flow_event_dump.encapsulation_type IF NOT EXISTS STRING"
-        - sql: "CREATE PROPERTY ha_flow_event_dump.forward_path_id IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow_event_dump.forward_path IF NOT EXISTS STRING"
         - sql: "CREATE PROPERTY ha_flow_event_dump.ha_flow_id IF NOT EXISTS STRING"
         - sql: "CREATE PROPERTY ha_flow_event_dump.ha_sub_flows IF NOT EXISTS STRING"
         - sql: "CREATE PROPERTY ha_flow_event_dump.ignore_bandwidth IF NOT EXISTS BOOLEAN"
         - sql: "CREATE PROPERTY ha_flow_event_dump.maximum_bandwidth IF NOT EXISTS LONG"
         - sql: "CREATE PROPERTY ha_flow_event_dump.max_latency IF NOT EXISTS LONG"
         - sql: "CREATE PROPERTY ha_flow_event_dump.max_latency_tier2 IF NOT EXISTS LONG"
-        - sql: "CREATE PROPERTY ha_flow_event_dump.paths IF NOT EXISTS STRING"
         - sql: "CREATE PROPERTY ha_flow_event_dump.path_computation_strategy IF NOT EXISTS STRING"
         - sql: "CREATE PROPERTY ha_flow_event_dump.periodic_pings IF NOT EXISTS BOOLEAN"
         - sql: "CREATE PROPERTY ha_flow_event_dump.pinned IF NOT EXISTS BOOLEAN"
         - sql: "CREATE PROPERTY ha_flow_event_dump.priority IF NOT EXISTS INTEGER"
-        - sql: "CREATE PROPERTY ha_flow_event_dump.protected_forward_path_id IF NOT EXISTS STRING"
-        - sql: "CREATE PROPERTY ha_flow_event_dump.protected_reverse_path_id IF NOT EXISTS STRING"
-        - sql: "CREATE PROPERTY ha_flow_event_dump.reverse_path_id IF NOT EXISTS STRING"
         - sql: "CREATE PROPERTY ha_flow_event_dump.shared_inner_vlan IF NOT EXISTS INTEGER"
         - sql: "CREATE PROPERTY ha_flow_event_dump.shared_outer_vlan IF NOT EXISTS INTEGER"
         - sql: "CREATE PROPERTY ha_flow_event_dump.shared_port IF NOT EXISTS INTEGER"
@@ -60,8 +56,11 @@ databaseChangeLog:
         - sql: "CREATE PROPERTY ha_flow_event_dump.status IF NOT EXISTS STRING"
         - sql: "CREATE PROPERTY ha_flow_event_dump.strict_bandwidth IF NOT EXISTS BOOLEAN"
         - sql: "CREATE PROPERTY ha_flow_event_dump.task_id IF NOT EXISTS STRING"
-        - sql: "CREATE PROPERTY ha_flow_event_dump.flow_time_create IF NOT EXISTS LONG"
-        - sql: "CREATE PROPERTY ha_flow_event_dump.flow_time_modify IF NOT EXISTS LONG"
+        - sql: "CREATE PROPERTY ha_flow_event_dump.flow_time_create IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow_event_dump.flow_time_modify IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow_event_dump.reverse_path IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow_event_dump.protected_forward_path IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow_event_dump.protected_reverse_path IF NOT EXISTS STRING"
       rollback:
         - sql: "DROP CLASS ha_flow_event_dump"
   - changeSet:

@@ -36,6 +36,7 @@ import org.openkilda.persistence.repositories.history.PortEventRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.history.model.PortEventData;
+import org.openkilda.wfm.share.mappers.HaFlowHistoryMapper;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 
 import lombok.extern.slf4j.Slf4j;
@@ -73,23 +74,25 @@ public class HistoryService {
     }
 
     private void storeHaFlowHistory(FlowHistoryHolder historyHolder) {
+        HaFlowHistoryMapper mapper = HaFlowHistoryMapper.INSTANCE;
+
         transactionManager.doInTransaction(() -> {
             String taskId = historyHolder.getTaskId();
             if (historyHolder.getHaFlowEventData() != null) {
-                HaFlowEvent event = HistoryMapper.INSTANCE.map(historyHolder.getHaFlowEventData());
+                HaFlowEvent event = mapper.createHaFlowEvent(historyHolder.getHaFlowEventData());
                 event.setTaskId(taskId);
                 haFlowEventRepository.add(event);
             }
 
             if (historyHolder.getHaFlowHistoryData() != null) {
-                HaFlowEventAction history = HistoryMapper.INSTANCE.map(historyHolder.getHaFlowHistoryData());
+                HaFlowEventAction history = mapper.createHaFlowEventAction(historyHolder.getHaFlowHistoryData());
                 history.setTaskId(taskId);
                 haFlowEventActionRepository.add(history);
             }
 
             if (historyHolder.getHaFlowDumpData() != null) {
                 HaFlowEventDump dump = new HaFlowEventDump(
-                        HistoryMapper.INSTANCE.map(historyHolder.getHaFlowDumpData()));
+                        mapper.createHaFlowEventDump(historyHolder.getHaFlowDumpData()));
                 dump.setTaskId(taskId);
                 haFlowEventDumpRepository.add(dump);
             }

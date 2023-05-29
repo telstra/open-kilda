@@ -13,30 +13,29 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model.history;
+package org.openkilda.messaging.payload.history;
 
+import org.openkilda.model.FlowStatus;
+
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Builder;
+import lombok.Value;
 
+@Value
 @AllArgsConstructor
-@Getter
-public enum DumpType {
-    STATE_BEFORE("stateBefore"),
-    STATE_AFTER("stateAfter");
-
-    private final String type;
-
-    /**
-     * Helper method for creating an enum from a String.
-     * @param value String representation
-     * @return enum representation
-     */
-    public static DumpType of(String value) {
-        switch (value) {
-            case "stateBefore": return STATE_BEFORE;
-            case "stateAfter": return STATE_AFTER;
-            default:
-                throw new IllegalArgumentException("DumpType not supported: " + value);
-        }
-    }
+@Builder
+@JsonNaming(SnakeCaseStrategy.class)
+public class HaSubFlowPayload {
+    String haFlowId;
+    String haSubFlowId;
+    FlowStatus status;
+    String endpointSwitchId;
+    Integer endpointPort;
+    Integer endpointVlan;
+    Integer endpointInnerVlan;
+    String description;
+    String timeCreate;
+    String timeModify;
 }

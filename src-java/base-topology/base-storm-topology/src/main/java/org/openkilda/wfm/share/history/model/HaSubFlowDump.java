@@ -15,9 +15,7 @@
 
 package org.openkilda.wfm.share.history.model;
 
-import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
@@ -28,47 +26,24 @@ import lombok.Value;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.List;
 
 @Value
-@Builder
 @AllArgsConstructor
+@Builder
 @JsonNaming(SnakeCaseStrategy.class)
-public class HaFlowDumpData implements Serializable {
-    DumpType dumpType;
-    String taskId;
-
+public class HaSubFlowDump implements Serializable {
     String haFlowId;
-
-    String affinityGroupId;
-    Boolean allocateProtectedPath;
-    String description;
-    String diverseGroupId;
-    FlowEncapsulationType encapsulationType;
-    Instant flowTimeCreate;
-    Instant flowTimeModify;
-    List<HaSubFlowDump> haSubFlows;
-    Boolean ignoreBandwidth;
-    Long maxLatency;
-    Long maxLatencyTier2;
-    Long maximumBandwidth;
-    PathComputationStrategy pathComputationStrategy;
-    Boolean periodicPings;
-    Boolean pinned;
-    Integer priority;
-    Integer sharedInnerVlan;
-    Integer sharedOuterVlan;
-    Integer sharedPort;
-    SwitchId sharedSwitchId;
+    String haSubFlowId;
     FlowStatus status;
-    Boolean strictBandwidth;
+    SwitchId endpointSwitchId;
+    Integer endpointPort;
+    Integer endpointVlan;
+    Integer endpointInnerVlan;
+    String description;
+    Instant timeCreate;
+    Instant timeModify;
 
-    HaFlowPathDump forwardPath;
-    HaFlowPathDump reversePath;
-    HaFlowPathDump protectedForwardPath;
-    HaFlowPathDump protectedReversePath;
-
-    public static HaFlowDumpData empty() {
-        return HaFlowDumpData.builder().build();
+    public static HaSubFlowDump empty() {
+        return HaSubFlowDump.builder().build();
     }
 }

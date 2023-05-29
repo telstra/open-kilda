@@ -16,7 +16,6 @@
 package org.openkilda.wfm.share.mappers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.wfm.share.mappers.HistoryMapper.INSTANCE;
 
 import org.openkilda.messaging.payload.history.FlowDumpPayload;
@@ -24,37 +23,20 @@ import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathStatus;
-import org.openkilda.model.FlowStatus;
-import org.openkilda.model.GroupId;
-import org.openkilda.model.HaFlow;
-import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathComputationStrategy;
-import org.openkilda.model.PathId;
-import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.model.history.FlowEventAction;
 import org.openkilda.model.history.FlowEventDump;
-import org.openkilda.model.history.HaFlowEvent;
-import org.openkilda.model.history.HaFlowEventAction;
-import org.openkilda.model.history.HaFlowEventDump.HaFlowEventDumpDataImpl;
-import org.openkilda.wfm.share.history.model.DumpType;
-import org.openkilda.wfm.share.history.model.HaFlowDumpData;
-import org.openkilda.wfm.share.history.model.HaFlowEventData;
-import org.openkilda.wfm.share.history.model.HaFlowEventData.Event;
-import org.openkilda.wfm.share.history.model.HaFlowEventData.Initiator;
-import org.openkilda.wfm.share.history.model.HaFlowHistoryData;
 
-import com.google.common.collect.Lists;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.List;
 
 public class HistoryMapperTest {
 
@@ -230,206 +212,5 @@ public class HistoryMapperTest {
     public void toFlowDumpPayloadTest() {
         FlowDumpPayload payload = INSTANCE.map(flowEventDump);
         assertEquals(payload, expectedPayload);
-
-    }
-
-    @Test
-    public void mapHaFlowEvent() {
-        String sourceFlowId = "HA flow ID";
-        Initiator sourceInitiator = Initiator.AUTO;
-        Event sourceEvent = Event.CREATE;
-        String sourceDetails = "Some details";
-        Instant sourceInstant = Instant.now();
-        HaFlowEventData source = HaFlowEventData.builder()
-                .haFlowId(sourceFlowId)
-                .initiator(sourceInitiator)
-                .event(sourceEvent)
-                .details(sourceDetails)
-                .time(sourceInstant)
-                .build();
-
-        HaFlowEvent result = INSTANCE.map(source);
-
-        assertEquals(sourceFlowId, result.getHaFlowId());
-        assertEquals(sourceDetails, result.getDetails());
-        assertEquals(sourceInitiator.name(), result.getActor());
-        assertEquals(sourceInstant, result.getTimestamp());
-        assertEquals(sourceEvent.getDescription(), result.getAction());
-    }
-
-    @Test
-    public void mapHaFlowEventAction() {
-        String sourceFlowId = "HA flow ID";
-        String sourceAction = "CREATE action";
-        String sourceDescription = "Some details";
-        Instant sourceInstant = Instant.now();
-        HaFlowHistoryData source = HaFlowHistoryData.builder()
-                .time(sourceInstant)
-                .haFlowId(sourceFlowId)
-                .action(sourceAction)
-                .description(sourceDescription)
-                .build();
-
-        HaFlowEventAction result = INSTANCE.map(source);
-
-        //TODO review fields list
-        assertEquals(sourceAction, result.getAction());
-        assertEquals(sourceDescription, result.getDetails());
-        assertEquals(sourceAction, result.getAction());
-    }
-
-    @Test
-    public void mapHaFlowDumpDataImpl() {
-        HaFlowDumpData source = createHaFlowDumpData();
-        HaFlowEventDumpDataImpl result = INSTANCE.map(source);
-
-        assertEquals(source.getTaskId(), result.getTaskId());
-        assertEquals(source.getHaFlowId(), result.getHaFlowId());
-        assertEquals(source.getAffinityGroupId(), result.getAffinityGroupId());
-        assertEquals(source.isAllocateProtectedPath(), result.isAllocateProtectedPath());
-        assertEquals(source.getDescription(), result.getDescription());
-        assertEquals(source.getDiverseGroupId(), result.getDiverseGroupId());
-        assertEquals(source.getEncapsulationType(), result.getEncapsulationType());
-        assertEquals(source.getFlowTimeCreate(), result.getFlowTimeCreate());
-        assertEquals(source.getFlowTimeModify(), result.getFlowTimeModify());
-        assertEquals(source.getForwardPathId(), result.getForwardPathId());
-        assertEquals(source.getHaSubFlows(), result.getHaSubFlows());
-        assertEquals(source.isIgnoreBandwidth(), result.isIgnoreBandwidth());
-        assertEquals(source.getMaxLatency(), result.getMaxLatency());
-        assertEquals(source.getMaxLatencyTier2(), result.getMaxLatencyTier2());
-        assertEquals(source.getMaximumBandwidth(), result.getMaximumBandwidth());
-        assertEquals(source.getPathComputationStrategy(), result.getPathComputationStrategy());
-        assertEquals(source.getPaths(), result.getPaths());
-        assertEquals(source.isPeriodicPings(), result.isPeriodicPings());
-        assertEquals(source.isPinned(), result.isPinned());
-        assertEquals(source.getPriority(), result.getPriority());
-        assertEquals(source.getProtectedForwardPathId(), result.getProtectedForwardPathId());
-        assertEquals(source.getProtectedReversePathId(), result.getProtectedReversePathId());
-        assertEquals(source.getReversePathId(), result.getReversePathId());
-        assertEquals(source.getSharedInnerVlan(), result.getSharedInnerVlan());
-        assertEquals(source.getSharedOuterVlan(), result.getSharedOuterVlan());
-        assertEquals(source.getSharedPort(), result.getSharedPort());
-        assertEquals(source.getSharedSwitchId(), result.getSharedSwitchId());
-        assertEquals(source.getStatus(), result.getStatus());
-        assertEquals(source.isStrictBandwidth(), result.isStrictBandwidth());
-    }
-
-    @Test
-    public void mapHaFlowPathsToString() {
-        List<HaFlowPath> source = Lists.newArrayList(createHaFlowPath("1"),
-                createHaFlowPath("2"));
-        String target = INSTANCE.mapHaFlowPaths(source);
-
-        assertTrue(target.contains(source.get(0).getHaPathId().getId()));
-    }
-
-    @Test
-    public void mapToHaFlowDumpData() {
-        HaFlow source = HaFlow.builder()
-                .haFlowId("ha flow id")
-                .haFlowId("HA Flow ID")
-                .affinityGroupId("group ID")
-                .allocateProtectedPath(true)
-                .description("some description")
-                .diverseGroupId("some diverse group ID")
-                .encapsulationType(FlowEncapsulationType.VXLAN)
-                .ignoreBandwidth(true)
-                .maxLatency(1L)
-                .maxLatencyTier2(2L)
-                .maximumBandwidth(100L)
-                .pathComputationStrategy(PathComputationStrategy.LATENCY)
-                .periodicPings(true)
-                .pinned(true)
-                .priority(1)
-                .sharedInnerVlan(10)
-                .sharedOuterVlan(20)
-                .sharedPort(30)
-                .status(FlowStatus.UP)
-                .strictBandwidth(true)
-                .sharedSwitch(Switch.builder().switchId(new SwitchId("00:01")).build())
-                .build();
-
-        source.addPaths(createHaFlowPath("test HA flow path ID"));
-        String taskId = "correlation ID";
-        HaFlowDumpData result = INSTANCE.toHaFlowDumpData(source, taskId, DumpType.STATE_AFTER);
-
-        assertEquals(taskId, result.getTaskId());
-
-        assertEquals(source.getHaFlowId(), result.getHaFlowId());
-        assertEquals(source.getAffinityGroupId(), result.getAffinityGroupId());
-        assertEquals(source.isAllocateProtectedPath(), result.isAllocateProtectedPath());
-        assertEquals(source.getDescription(), result.getDescription());
-        assertEquals(source.getDiverseGroupId(), result.getDiverseGroupId());
-        assertEquals(source.getEncapsulationType(), result.getEncapsulationType());
-        assertEquals(source.getForwardPathId(), result.getForwardPathId());
-        assertEquals(source.isIgnoreBandwidth(), result.isIgnoreBandwidth());
-        assertEquals(source.getMaxLatency(), result.getMaxLatency());
-        assertEquals(source.getMaxLatencyTier2(), result.getMaxLatencyTier2());
-        assertEquals(source.getMaximumBandwidth(), result.getMaximumBandwidth());
-        assertEquals(source.getPathComputationStrategy(), result.getPathComputationStrategy());
-        assertEquals(source.isPeriodicPings(), result.isPeriodicPings());
-        assertEquals(source.isPinned(), result.isPinned());
-        assertEquals(source.getPriority(), result.getPriority());
-        assertEquals(source.getProtectedForwardPathId(), result.getProtectedForwardPathId());
-        assertEquals(source.getProtectedReversePathId(), result.getProtectedReversePathId());
-        assertEquals(source.getReversePathId(), result.getReversePathId());
-        assertEquals(source.getSharedInnerVlan(), result.getSharedInnerVlan());
-        assertEquals(source.getSharedOuterVlan(), result.getSharedOuterVlan());
-        assertEquals(source.getSharedPort(), result.getSharedPort());
-        assertEquals(source.getSharedSwitchId(), result.getSharedSwitchId());
-        assertEquals(source.getStatus(), result.getStatus());
-        assertEquals(source.isStrictBandwidth(), result.isStrictBandwidth());
-
-        //paths and subflows are not tested here
-    }
-
-    private HaFlowPath createHaFlowPath(String id) {
-        // HaFlowPath without subpaths
-        return HaFlowPath.builder()
-                .haPathId(new PathId(id))
-                .status(FlowPathStatus.ACTIVE)
-                .bandwidth(10L)
-                .cookie(new FlowSegmentCookie(12L))
-                .ignoreBandwidth(false)
-                .sharedSwitch(Switch.builder().switchId(new SwitchId("01:02")).build())
-                .sharedPointMeterId(MeterId.LACP_REPLY_METER_ID)
-                .yPointGroupId(GroupId.MAX_FLOW_GROUP_ID)
-                .yPointMeterId(MeterId.LACP_REPLY_METER_ID)
-                .build();
-    }
-
-    private HaFlowDumpData createHaFlowDumpData() {
-        return HaFlowDumpData.builder()
-                .dumpType(DumpType.STATE_AFTER)
-                .taskId("task")
-                .haFlowId("HA Flow ID")
-                .affinityGroupId("group ID")
-                .allocateProtectedPath(true)
-                .description("some description")
-                .diverseGroupId("some diverse group ID")
-                .encapsulationType(FlowEncapsulationType.VXLAN)
-                .flowTimeCreate(Instant.now())
-                .flowTimeModify(Instant.now())
-                .forwardPathId(new PathId("forward path ID"))
-                .haSubFlows("subflow 1")
-                .ignoreBandwidth(true)
-                .maxLatency(1L)
-                .maxLatencyTier2(2L)
-                .maximumBandwidth(100L)
-                .pathComputationStrategy(PathComputationStrategy.LATENCY)
-                .paths("path 1")
-                .periodicPings(true)
-                .pinned(true)
-                .priority(1)
-                .protectedForwardPathId(new PathId("protected forward path ID"))
-                .protectedReversePathId(new PathId("protected reverse path ID"))
-                .reversePathId(new PathId("reverse path ID"))
-                .sharedInnerVlan(10)
-                .sharedOuterVlan(20)
-                .sharedPort(30)
-                .sharedSwitchId(new SwitchId("00:11"))
-                .status(FlowStatus.UP)
-                .strictBandwidth(true)
-                .build();
     }
 }

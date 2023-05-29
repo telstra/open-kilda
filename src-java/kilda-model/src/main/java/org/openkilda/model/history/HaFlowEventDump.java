@@ -19,8 +19,6 @@ import org.openkilda.model.CompositeDataEntity;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathComputationStrategy;
-import org.openkilda.model.PathId;
-import org.openkilda.model.SwitchId;
 import org.openkilda.model.history.HaFlowEventDump.HaFlowEventDumpData;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -30,12 +28,16 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.Value;
 import lombok.experimental.Delegate;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
-import java.time.Instant;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class HaFlowEventDump implements CompositeDataEntity<HaFlowEventDumpData> {
 
@@ -58,45 +60,53 @@ public class HaFlowEventDump implements CompositeDataEntity<HaFlowEventDumpData>
     }
 
     public interface HaFlowEventDumpData {
+        DumpType getDumpType();
+
+        void setDumpType(DumpType dumpType);
+
         String getTaskId();
 
         void setTaskId(String taskId);
-
-        DumpType getDumpType();
-
-        void setDumpType(DumpType type);
 
         String getHaFlowId();
 
         void setHaFlowId(String haFlowId);
 
-        SwitchId getSharedSwitchId();
+        String getAffinityGroupId();
 
-        void setSharedSwitchId(SwitchId switchId);
+        void setAffinityGroupId(String affinityGroupId);
 
-        int getSharedPort();
+        Boolean getAllocateProtectedPath();
 
-        void setSharedPort(int port);
+        void setAllocateProtectedPath(Boolean allocateProtectedPath);
 
-        int getSharedOuterVlan();
+        String getDescription();
 
-        void setSharedOuterVlan(int outerVlan);
+        void setDescription(String description);
 
-        int getSharedInnerVlan();
+        String getDiverseGroupId();
 
-        void setSharedInnerVlan(int innerVlan);
-
-        long getMaximumBandwidth();
-
-        void setMaximumBandwidth(long maximumBandwidth);
-
-        PathComputationStrategy getPathComputationStrategy();
-
-        void setPathComputationStrategy(PathComputationStrategy pathComputationStrategy);
+        void setDiverseGroupId(String diverseGroupId);
 
         FlowEncapsulationType getEncapsulationType();
 
         void setEncapsulationType(FlowEncapsulationType encapsulationType);
+
+        String getFlowTimeCreate();
+
+        void setFlowTimeCreate(String flowTimeCreate);
+
+        String getFlowTimeModify();
+
+        void setFlowTimeModify(String flowTimeModify);
+
+        HaSubFlowDumpWrapper getHaSubFlows();
+
+        void setHaSubFlows(HaSubFlowDumpWrapper haSubFlows);
+
+        Boolean getIgnoreBandwidth();
+
+        void setIgnoreBandwidth(Boolean ignoreBandwidth);
 
         Long getMaxLatency();
 
@@ -106,77 +116,65 @@ public class HaFlowEventDump implements CompositeDataEntity<HaFlowEventDumpData>
 
         void setMaxLatencyTier2(Long maxLatencyTier2);
 
-        boolean isIgnoreBandwidth();
+        Long getMaximumBandwidth();
 
-        void setIgnoreBandwidth(boolean ignoreBandwidth);
+        void setMaximumBandwidth(Long maximumBandwidth);
 
-        boolean isPeriodicPings();
+        PathComputationStrategy getPathComputationStrategy();
 
-        void setPeriodicPings(boolean periodicPings);
+        void setPathComputationStrategy(PathComputationStrategy pathComputationStrategy);
 
-        boolean isPinned();
+        Boolean getPeriodicPings();
 
-        void setPinned(boolean pinned);
+        void setPeriodicPings(Boolean periodicPings);
+
+        Boolean getPinned();
+
+        void setPinned(Boolean pinned);
 
         Integer getPriority();
 
         void setPriority(Integer priority);
 
-        boolean isStrictBandwidth();
+        Integer getSharedInnerVlan();
 
-        void setStrictBandwidth(boolean strictBandwidth);
+        void setSharedInnerVlan(Integer sharedInnerVlan);
 
-        String getDescription();
+        Integer getSharedOuterVlan();
 
-        void setDescription(String description);
+        void setSharedOuterVlan(Integer sharedOuterVlan);
 
-        boolean isAllocateProtectedPath();
+        Integer getSharedPort();
 
-        void setAllocateProtectedPath(boolean allocateProtectedPath);
+        void setSharedPort(Integer sharedPort);
 
-        String getDiverseGroupId();
+        String getSharedSwitchId();
 
-        void setDiverseGroupId(String diverseGroupId);
-
-        String getAffinityGroupId();
-
-        void setAffinityGroupId(String affinityGroupId);
-
-        PathId getForwardPathId();
-
-        void setForwardPathId(PathId forwardPathId);
-
-        PathId getReversePathId();
-
-        void setReversePathId(PathId reversePathId);
-
-        PathId getProtectedForwardPathId();
-
-        void setProtectedForwardPathId(PathId protectedForwardPathId);
-
-        PathId getProtectedReversePathId();
-
-        void setProtectedReversePathId(PathId protectedReversePathId);
-
-        String getPaths();
-
-        void setPaths(String paths);
-
-        String getHaSubFlows();
-
-        void setHaSubFlows(String haSubFlows);
+        void setSharedSwitchId(String sharedSwitchId);
 
         FlowStatus getStatus();
 
         void setStatus(FlowStatus status);
 
-        Instant getFlowTimeCreate();
+        Boolean getStrictBandwidth();
 
-        void setFlowTimeCreate(Instant timeCreate);
+        void setStrictBandwidth(Boolean strictBandwidth);
 
-        Instant getFlowTimeModify();
+        HaFlowPathDump getForwardPath();
 
-        void setFlowTimeModify(Instant timeModify);
+        void setForwardPath(HaFlowPathDump forwardPath);
+
+        HaFlowPathDump getReversePath();
+
+        void setReversePath(HaFlowPathDump reversePath);
+
+        HaFlowPathDump getProtectedForwardPath();
+
+        void setProtectedForwardPath(HaFlowPathDump protectedForwardPath);
+
+        HaFlowPathDump getProtectedReversePath();
+
+        void setProtectedReversePath(HaFlowPathDump protectedReversePath);
     }
 
     @Data
@@ -184,36 +182,101 @@ public class HaFlowEventDump implements CompositeDataEntity<HaFlowEventDumpData>
     @NoArgsConstructor
     @AllArgsConstructor
     public static class HaFlowEventDumpDataImpl implements HaFlowEventDumpData {
-        String taskId;
         DumpType dumpType;
+        String taskId;
+
         String haFlowId;
-        SwitchId sharedSwitchId;
-        int sharedPort;
-        int sharedOuterVlan;
-        int sharedInnerVlan;
-        long maximumBandwidth;
-        PathComputationStrategy pathComputationStrategy;
+
+        String affinityGroupId;
+        Boolean allocateProtectedPath;
+        String description;
+        String diverseGroupId;
         FlowEncapsulationType encapsulationType;
+        String flowTimeCreate;
+        String flowTimeModify;
+        HaSubFlowDumpWrapper haSubFlows;
+        Boolean ignoreBandwidth;
         Long maxLatency;
         Long maxLatencyTier2;
-        boolean ignoreBandwidth;
-        boolean periodicPings;
-        boolean pinned;
+        Long maximumBandwidth;
+        PathComputationStrategy pathComputationStrategy;
+        Boolean periodicPings;
+        Boolean pinned;
         Integer priority;
-        boolean strictBandwidth;
-        String description;
-        boolean allocateProtectedPath;
-        String diverseGroupId;
-        String affinityGroupId;
-        PathId forwardPathId;
-        PathId reversePathId;
-        PathId protectedForwardPathId;
-        PathId protectedReversePathId;
-        String paths;
-        String haSubFlows;
+        Integer sharedInnerVlan;
+        Integer sharedOuterVlan;
+        Integer sharedPort;
+        String sharedSwitchId;
         FlowStatus status;
-        Instant flowTimeCreate;
-        Instant flowTimeModify;
+        Boolean strictBandwidth;
+
+        HaFlowPathDump forwardPath;
+        HaFlowPathDump reversePath;
+        HaFlowPathDump protectedForwardPath;
+        HaFlowPathDump protectedReversePath;
+    }
+
+    @Value
+    @Builder
+    public static class HaSubFlowDumpWrapper implements Serializable {
+        List<HaSubFlowDump> haSubFlowDumpList;
+
+        public List<HaSubFlowDump> getHaSubFlowDumpList() {
+            return new ArrayList<>(haSubFlowDumpList);
+        }
+
+        /**
+         * Creates an empty object with initialized collections.
+         * @return an empty HaSubFlowDumpWrapper
+         */
+        public static HaSubFlowDumpWrapper empty() {
+            return HaSubFlowDumpWrapper.builder()
+                    .haSubFlowDumpList(Collections.emptyList())
+                    .build();
+        }
+    }
+
+    @Value
+    @Builder
+    public static class HaSubFlowDump implements Serializable {
+        String haFlowId;
+        String haSubFlowId;
+        FlowStatus status;
+        String endpointSwitchId;
+        Integer endpointPort;
+        Integer endpointVlan;
+        Integer endpointInnerVlan;
+        String description;
+        String timeCreate;
+        String timeModify;
+    }
+
+    @Data
+    @Builder
+    public static class HaFlowPathDump implements Serializable {
+        String haPathId;
+        String yPointSwitchId;
+        String cookie;
+        String yPointMeterId;
+        String sharedPointMeterId;
+        String yPointGroupId;
+        Long bandwidth;
+        Boolean ignoreBandwidth;
+        String timeCreate;
+        String timeModify;
+        String status;
+        String sharedSwitchId;
+        List<List<PathNodePayload>> paths;
+
+        List<HaSubFlowDump> haSubFlows;
+    }
+    
+    @Value
+    @Builder
+    public static class PathNodePayload {
+        String switchId;
+        Integer inputPort;
+        Integer outputPort;
     }
 
     @Mapper

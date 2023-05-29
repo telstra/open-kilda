@@ -20,6 +20,8 @@ import org.openkilda.model.history.HaFlowEventAction.HaFlowEventActionData;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -99,7 +101,9 @@ public class HaFlowEventAction implements CompositeDataEntity<HaFlowEventActionD
     }
 
     @Data
+    @Builder
     @NoArgsConstructor
+    @AllArgsConstructor
     public static class HaFlowEventActionDataImpl implements HaFlowEventActionData, Serializable {
         private static final long serialVersionUID = 1L;
         Instant timestamp;

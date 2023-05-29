@@ -28,7 +28,7 @@ import java.util.concurrent.CompletableFuture;
 public interface FlowHistoryAware<T> {
 
     /**
-     * Retrieves a flow history events with flow dumps from saved history.
+     * Retrieves flow history events with flow dumps from the persistence layer.
      * @param flowId get flow statuses for this flow ID
      * @param constraints a set of constraints to filter flow history result set
      * @return a response containing history entries
@@ -37,7 +37,7 @@ public interface FlowHistoryAware<T> {
                                                              FlowHistoryRangeConstraints constraints);
 
     /**
-     * Retrieves a flow statuses from saved history.
+     * Retrieves flow statuses from the persistence layer.
      * @param flowId get flow statuses for this flow ID
      * @param constraints a set of constraints to filter flow history result set
      * @return a response containing history entries

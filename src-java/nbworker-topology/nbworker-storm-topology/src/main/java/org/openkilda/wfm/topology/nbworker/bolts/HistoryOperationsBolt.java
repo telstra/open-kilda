@@ -28,6 +28,7 @@ import org.openkilda.model.HaFlow;
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.history.service.HistoryService;
+import org.openkilda.wfm.share.mappers.HaFlowHistoryMapper;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.share.metrics.TimedExecution;
 import org.openkilda.wfm.topology.nbworker.StreamType;
@@ -41,6 +42,11 @@ import java.util.stream.Collectors;
 
 public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     private transient HistoryService historyService;
+
+    public HistoryOperationsBolt(PersistenceManager persistenceManager, HistoryService historyService) {
+        super(persistenceManager);
+        this.historyService = historyService;
+    }
 
     public HistoryOperationsBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
@@ -96,10 +102,10 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
         return historyService.getHaFlowHistoryEvents(flowId, timeFrom, timeTo, maxCount)
                 .stream().map(entry -> {
                     List<HaFlowHistoryPayload> payloads = entry.getEventActions().stream().map(
-                            HistoryMapper.INSTANCE::toHaFlowHistoryPayload).collect(Collectors.toList());
+                            HaFlowHistoryMapper.INSTANCE::toHaFlowHistoryPayload).collect(Collectors.toList());
                     List<HaFlowDumpPayload> dumps = entry.getEventDumps().stream().map(
-                            HistoryMapper.INSTANCE::toHaFlowDumpPayload).collect(Collectors.toList());
-                    return HistoryMapper.INSTANCE.map(entry, payloads, dumps);
+                            HaFlowHistoryMapper.INSTANCE::persistenceToPayload).collect(Collectors.toList());
+                    return HaFlowHistoryMapper.INSTANCE.createHaFlowHistoryEntry(entry, payloads, dumps);
                 }).collect(Collectors.toList());
     }
 

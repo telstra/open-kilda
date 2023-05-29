@@ -15,17 +15,23 @@
 
 package org.openkilda.persistence.ferma.frames.converters;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import org.openkilda.model.history.DumpType;
 
-public class DumpTypeConverter implements AttributeConverter<DumpType, String> {
+import org.junit.Test;
 
-    @Override
-    public String toGraphProperty(DumpType value) {
-        return value == null ? null : value.getType();
-    }
+public class DumpTypeConverterTest {
+    @Test
+    public void roundTrip() {
+        DumpTypeConverter converter = new DumpTypeConverter();
 
-    @Override
-    public DumpType toEntityAttribute(String value) {
-        return value == null ? null : DumpType.of(value);
+        assertTrue(DumpType.values().length > 0);
+
+        for (DumpType value : DumpType.values()) {
+            DumpType converted = converter.toEntityAttribute(converter.toGraphProperty(value));
+            assertEquals(value, converted);
+        }
     }
 }

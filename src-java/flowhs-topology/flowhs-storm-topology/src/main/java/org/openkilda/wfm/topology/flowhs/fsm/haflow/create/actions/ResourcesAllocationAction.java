@@ -51,7 +51,7 @@ import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.history.model.DumpType;
 import org.openkilda.wfm.share.history.model.HaFlowDumpData;
 import org.openkilda.wfm.share.history.model.HaFlowEventData;
-import org.openkilda.wfm.share.mappers.HistoryMapper;
+import org.openkilda.wfm.share.mappers.HaFlowHistoryMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
@@ -155,7 +155,7 @@ public class ResourcesAllocationAction extends
     }
 
     private void saveCreateHaFlowToHistory(HaFlowCreateFsm stateMachine, HaFlow haFlow) {
-        HaFlowDumpData haFlowDumpData = HistoryMapper.INSTANCE.toHaFlowDumpData(haFlow,
+        HaFlowDumpData haFlowDumpData = HaFlowHistoryMapper.INSTANCE.toHaFlowDumpData(haFlow,
                 stateMachine.getCommandContext().getCorrelationId(),
                 DumpType.STATE_AFTER);
 
@@ -210,7 +210,7 @@ public class ResourcesAllocationAction extends
     }
 
     private void allocateMainPath(HaFlowCreateFsm stateMachine) throws UnroutableFlowException,
-            RecoverableException {
+            RecoverableException, ResourceAllocationException {
         GetHaPathsResult paths = pathComputer.getHaPath(getHaFlow(stateMachine.getHaFlowId()), false);
         stateMachine.setBackUpPrimaryPathComputationWayUsed(paths.isBackUpPathComputationWayUsed());
 
@@ -250,7 +250,7 @@ public class ResourcesAllocationAction extends
     }
 
     private void allocateProtectedPath(HaFlowCreateFsm stateMachine) throws UnroutableFlowException,
-            RecoverableException, FlowNotFoundException {
+            RecoverableException, ResourceAllocationException, FlowNotFoundException {
         String haFlowId = stateMachine.getHaFlowId();
         HaFlow tmpFlow = getHaFlow(haFlowId);
         if (!tmpFlow.isAllocateProtectedPath()) {
