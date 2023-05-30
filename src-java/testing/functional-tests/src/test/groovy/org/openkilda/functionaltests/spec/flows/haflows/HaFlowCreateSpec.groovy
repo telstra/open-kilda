@@ -64,7 +64,8 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         def flowRemoved = true
 
         and: "ha-flow is pingable"
-        if (swT.shared != swT.ep1 || swT.shared != swT.ep2) {
+        // Ping operation is temporary allowed only for multi switch HA-flows https://github.com/telstra/open-kilda/issues/5224
+        if (SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(swT)) {
             def response = northboundV2.pingHaFlow(haFlow.haFlowId, new HaFlowPingPayload(2000))
             !response.error
             response.subFlows.each {

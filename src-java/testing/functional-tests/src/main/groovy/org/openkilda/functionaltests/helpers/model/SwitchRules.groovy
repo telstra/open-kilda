@@ -1,8 +1,10 @@
 package org.openkilda.functionaltests.helpers.model
 
 import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.FlowMeter
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.testing.service.database.Database
@@ -41,5 +43,21 @@ class SwitchRules {
 
     static Set<Long> missingRuleCookieIds(Collection<PathDiscrepancyDto> missingRules) {
         return missingRules.collect {new Long((it.getRule() =~ COOKIE_ID_IN_RULE_DISCREPANCY_STRING_REGEX)[0])}
+    }
+
+    FlowEntry pingRule(String encapsulationType) {
+        def pingRuleCookie = getPingRuleCookie(encapsulationType)
+        return northboundService.getSwitchRules(switchId).flowEntries
+                .find { it.cookie == pingRuleCookie }
+    }
+
+    static long getPingRuleCookie(String encapsulationType) {
+        if (FlowEncapsulationType.TRANSIT_VLAN.toString().equalsIgnoreCase(encapsulationType)) {
+            return Cookie.VERIFICATION_UNICAST_RULE_COOKIE
+        } else if (FlowEncapsulationType.VXLAN.toString().equalsIgnoreCase(encapsulationType)) {
+            return Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
+        } else {
+            throw new IllegalArgumentException("Unknown encapsulation " + encapsulationType)
+        }
     }
 }
