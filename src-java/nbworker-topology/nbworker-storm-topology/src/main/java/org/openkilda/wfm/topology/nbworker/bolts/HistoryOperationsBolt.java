@@ -79,8 +79,7 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     private List<InfoData> getFlowHistory(GetFlowHistoryRequest request) {
         Instant timeFrom = Instant.ofEpochSecond(request.getTimestampFrom());
         Instant timeTo = Instant.ofEpochSecond(request.getTimestampTo() + 1).minusMillis(1);
-        log.info("getFlowHistory: {}; condition: {}", request.getModelType(),
-                Objects.equals(request.getModelType(), HaFlow.class));
+
         if (Objects.equals(request.getModelType(), HaFlow.class)) {
             return getHaFlowHistory(request.getFlowId(), timeFrom, timeTo, request.getMaxCount());
         } else {

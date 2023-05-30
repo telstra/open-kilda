@@ -22,6 +22,7 @@ import java.util.List;
  * A generic interface for holding data of a flow event to save it in history. Event dump holds data of a specific flow.
  * Dumps could be created before and after an action that changes a flow state.
  * @param <T> a flow dump type.
+ * @param <U> an event action type.
  */
 public interface GenericFlowEventData<T, U> {
     Instant getTimestamp();
