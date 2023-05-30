@@ -73,9 +73,8 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         assert subFlow1ProtectedAfter == subFlow1PrimaryBefore
         assert subFlow2ProtectedAfter == subFlow2PrimaryBefore
 
-        // not implemented yet https://github.com/telstra/open-kilda/issues/5152
-        // and: "Ha-Flow and related sub-flows are valid"
-        // northboundV2.validateHaFlow(haFlow.haFlowId).asExpected
+        and: "Ha-Flow and related sub-flows are valid"
+        northboundV2.validateHaFlow(haFlowId).asExpected
 
         and: "All involved switches passes switch validation"
         def involvedSwitches = haFlowHelper.getInvolvedSwitches(haFlowPathInfoAfter)
@@ -85,7 +84,11 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
             }
         }
 
-        // TODO check traffic
+        and: "Traffic passes through HA-Flow"
+        if (swT.isHaTraffExamAvailable()) {
+            haFlowHelper.getTraffExam(createdHaFlow).run().hasTraffic()
+        }
+
         // TODO check stats
 
         cleanup:

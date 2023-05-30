@@ -27,7 +27,7 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 @Slf4j
-@Narrative("Verify create operations on Ha-Flows.")
+@Narrative("Verify create operations on HA-Flows.")
 class HaFlowCreateSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
@@ -38,15 +38,15 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
-    def "Valid Ha-Flow can be created#trafficDisclaimer, covered cases: #coveredCases"() {
-        assumeTrue(useMultitable, "Ha-Flow operations require multiTable switch mode")
+    def "Valid HA-Flow can be created#trafficDisclaimer, covered cases: #coveredCases"() {
+        assumeTrue(useMultitable, "HA-Flow operations require multiTable switch mode")
         assumeTrue(swT != null, "These cases cannot be covered on given topology: $coveredCases")
 
-        when: "Create an Ha-Flow of certain configuration"
+        when: "Create an HA-Flow of certain configuration"
         def haFlow = northboundV2.addHaFlow(haFlowRequest)
         def involvedSwitchIds = haFlowHelper.getInvolvedSwitches(haFlow.haFlowId)
 
-        then: "Ha-Flow is created and has UP status"
+        then: "HA-Flow is created and has UP status"
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             haFlow = northboundV2.getHaFlow(haFlow.haFlowId)
             assert haFlow && haFlow.status == FlowState.UP.toString()
@@ -60,10 +60,10 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
 
-        when: "Delete the Ha-Flow"
+        when: "Delete the HA-Flow"
         northboundV2.deleteHaFlow(haFlow.haFlowId)
 
-        then: "The Ha-Flow is no longer visible via 'get' API"
+        then: "The HA-Flow is no longer visible via 'get' API"
         Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getHaFlow(haFlow.haFlowId) }
         def flowRemoved = true
 
@@ -87,14 +87,14 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "User cannot create a Ha-Flow with existent ha_flow_id"() {
-        assumeTrue(useMultitable, "Ha-Flow operations require multiTable switch mode")
-        given: "Existing Ha-Flow"
+    def "User cannot create a HA-Flow with existent ha_flow_id"() {
+        assumeTrue(useMultitable, "HA-Flow operations require multiTable switch mode")
+        given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
 
-        when: "Try to create the same Ha-Flow"
+        when: "Try to create the same HA-Flow"
         haFlowRequest.haFlowId = haFlow.haFlowId
         haFlowHelper.addHaFlow(haFlowRequest)
 
@@ -102,8 +102,8 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.CONFLICT
         exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == "Could not create Ha-Flow"
-            assertThat(errorDescription).matches(/Ha-Flow .*? already exists/)
+            assert errorMessage == "Could not create ha-flow"
+            assertThat(errorDescription).matches(/HA-flow .*? already exists/)
         }
 
         cleanup:
@@ -111,13 +111,13 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "User cannot create a Ha-Flow with equal A-B endpoints and different inner vlans at these endpoints"() {
-        assumeTrue(useMultitable, "Ha-Flow operations require multiTable switch mode")
+    def "User cannot create a HA-Flow with equal A-B endpoints and different inner vlans at these endpoints"() {
+        assumeTrue(useMultitable, "HA-Flow operations require multiTable switch mode")
         given: "A switch triplet with equal A-B endpoint switches"
         def swT  = topologyHelper.switchTriplets[0]
         def iShapedSwitchTriplet = new SwitchTriplet(swT.shared, swT.ep1, swT.ep1, swT.pathsEp1, swT.pathsEp1)
 
-        when: "Try to create I-shaped Ha-Flow request with equal A-B endpoint switches and different innerVlans"
+        when: "Try to create I-shaped HA-Flow request with equal A-B endpoint switches and different innerVlans"
         def haFlowRequest = haFlowHelper.randomHaFlow(iShapedSwitchTriplet)
         haFlowRequest.subFlows[0].endpoint.vlanId = 1
         haFlowRequest.subFlows[0].endpoint.innerVlanId = 2
@@ -129,7 +129,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.BAD_REQUEST
         exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == "Could not create Ha-Flow"
+            assert errorMessage == "Could not create ha-flow"
             assertThat(errorDescription).matches("To have ability to use double vlan tagging for both sub flow "
             + "destination endpoints which are placed on one switch .*? you must set equal inner vlan for both endpoints. "
             + "Current inner vlans: ${haFlowRequest.subFlows[0].endpoint.innerVlanId} and "
@@ -141,12 +141,12 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "User cannot create a one switch Ha-Flow"() {
-        assumeTrue(useMultitable, "Ha-Flow operations require multiTable switch mode")
+    def "User cannot create a one switch HA-Flow"() {
+        assumeTrue(useMultitable, "HA-Flow operations require multiTable switch mode")
         given: "A switch"
         def sw = topologyHelper.getRandomSwitch()
 
-        when: "Try to create one switch Ha-Flow"
+        when: "Try to create one switch HA-Flow"
         def haFlowRequest = haFlowHelper.singleSwitchHaFlow(sw)
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
 
@@ -154,8 +154,8 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.BAD_REQUEST
         exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == "Could not create Ha-Flow"
-            assertThat(errorDescription).matches(/The Ha-Flow .*? is one switch flow\..*?/)
+            assert errorMessage == "Could not create ha-flow"
+            assertThat(errorDescription).matches(/The ha-flow .*? is one switch flow\..*?/)
         }
 
         cleanup:

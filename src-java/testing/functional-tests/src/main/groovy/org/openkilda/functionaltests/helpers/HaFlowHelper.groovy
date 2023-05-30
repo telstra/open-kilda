@@ -280,11 +280,11 @@ class HaFlowHelper {
         def subFlow1 = flow.getSubFlows().get(0);
         def subFlow2 = flow.getSubFlows().get(1);
         Optional<TopologyDefinition.TraffGen> shared = Optional.ofNullable(topology.getTraffGen(
-                flow.getSharedEndpoint().getSwitchId(), flow.getSharedEndpoint().getPortNumber()));
+                flow.getSharedEndpoint().getSwitchId()));
         Optional<TopologyDefinition.TraffGen> ep1 = Optional.ofNullable(topology.getTraffGen(
-                subFlow1.getEndpoint().getSwitchId(), subFlow1.getEndpoint().getPortNumber()));
+                subFlow1.getEndpoint().getSwitchId()));
         Optional<TopologyDefinition.TraffGen> ep2 = Optional.ofNullable(topology.getTraffGen(
-                subFlow2.getEndpoint().getSwitchId(), subFlow2.getEndpoint().getPortNumber()));
+                subFlow2.getEndpoint().getSwitchId()));
         assert [shared, ep1, ep2].every {it.isPresent()}
         List<Vlan> srcVlanId = ImmutableList.of(new Vlan(flow.getSharedEndpoint().getVlanId()),
                 new Vlan(flow.getSharedEndpoint().getInnerVlanId()));

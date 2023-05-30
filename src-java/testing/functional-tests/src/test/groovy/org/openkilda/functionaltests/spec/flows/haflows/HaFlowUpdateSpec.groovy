@@ -59,6 +59,14 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
 
+        and: "Traffic passes through HA-Flow"
+        def switchTripletAfterUpdate = topologyHelper.getSwitchTriplet(update.getSharedEndpoint().getSwitchId(),
+                update.getSubFlows().get(0).getEndpoint().getSwitchId(),
+                update.getSubFlows().get(1).getEndpoint().getSwitchId())
+        if (switchTripletAfterUpdate.isHaTraffExamAvailable()) {
+            haFlowHelper.getTraffExam(haFlow).run().hasTraffic()
+        }
+
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
 
