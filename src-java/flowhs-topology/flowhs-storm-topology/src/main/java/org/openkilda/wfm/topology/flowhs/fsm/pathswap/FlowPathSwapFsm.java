@@ -283,11 +283,6 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
         REMOVING_OLD_RULES,
         OLD_RULES_REMOVED,
 
-        OLD_PATHS_REMOVAL_COMPLETED,
-
-        DEALLOCATING_OLD_RESOURCES,
-        OLD_RESOURCES_DEALLOCATED,
-
         UPDATING_FLOW_STATUS,
         FLOW_STATUS_UPDATED,
 
@@ -299,7 +294,6 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
         NEW_RULES_REVERTED,
 
         REVERTING_FLOW_STATUS,
-        REVERTING_FLOW,
 
         FINISHED_WITH_ERROR,
 

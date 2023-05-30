@@ -231,7 +231,7 @@ public class FlowOperationsService {
     private Collection<Flow> getFlowsForEndpoint(Collection<FlowPath> flowPaths,
                                                  Collection<Flow> flows) {
         Stream<Flow> flowBySegment = flowPaths.stream()
-                // NOTE(tdurakov): filter out paths here that are orphaned for the flow
+                .filter(flowPath -> flowPath.getFlow() != null)
                 .filter(flowPath -> flowPath.getFlow().isActualPathId(flowPath.getPathId()))
                 .map(FlowPath::getFlow);
         // need to return Flows unique by id
@@ -646,6 +646,9 @@ public class FlowOperationsService {
         Set<String> processed = new HashSet<>();
         for (FlowPath entry : targetPaths) {
             Flow flow = entry.getFlow();
+            if (flow == null) {
+                continue; // It is orphaned path of HA-flow sub path
+            }
             if (processed.add(flow.getFlowId())) {
                 FlowRerouteRequest request = new FlowRerouteRequest(
                         flow.getFlowId(), false, false, affectedIslEndpoints, reason, false);

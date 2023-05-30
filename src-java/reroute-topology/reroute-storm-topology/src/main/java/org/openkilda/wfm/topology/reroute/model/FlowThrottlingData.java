@@ -15,11 +15,13 @@
 
 package org.openkilda.wfm.topology.reroute.model;
 
+import org.openkilda.messaging.info.reroute.FlowType;
 import org.openkilda.model.IslEndpoint;
 import org.openkilda.model.PathComputationStrategy;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.NonNull;
 
 import java.io.Serializable;
 import java.time.Instant;
@@ -40,14 +42,15 @@ public class FlowThrottlingData implements Serializable {
     private PathComputationStrategy pathComputationStrategy;
     private long bandwidth;
     private int retryCounter;
-    private boolean yFlow;
+    @NonNull
+    private FlowType flowType;
 
     @Builder
     public FlowThrottlingData(String correlationId, Integer priority, Instant timeCreate,
                               Set<IslEndpoint> affectedIsl, boolean force, boolean ignoreBandwidth,
                               boolean strictBandwidth, boolean effectivelyDown, String reason,
                               PathComputationStrategy pathComputationStrategy, long bandwidth, int retryCounter,
-                              boolean yFlow) {
+                              FlowType flowType) {
         this.correlationId = correlationId;
         this.priority = priority;
         this.timeCreate = timeCreate;
@@ -63,7 +66,7 @@ public class FlowThrottlingData implements Serializable {
         this.pathComputationStrategy = pathComputationStrategy;
         this.bandwidth = bandwidth;
         this.retryCounter = retryCounter;
-        this.yFlow = yFlow;
+        this.flowType = flowType;
     }
 
     public void increaseRetryCounter() {

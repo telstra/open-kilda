@@ -15,13 +15,18 @@
 
 package org.openkilda.northbound.service.impl;
 
+import static java.util.Collections.emptySet;
+
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
+import org.openkilda.messaging.command.haflow.HaFlowPathSwapRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathsReadRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathsResponse;
 import org.openkilda.messaging.command.haflow.HaFlowReadRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRerouteResponse;
 import org.openkilda.messaging.command.haflow.HaFlowResponse;
 import org.openkilda.messaging.command.haflow.HaFlowValidationRequest;
 import org.openkilda.messaging.command.haflow.HaFlowValidationResponse;
@@ -70,6 +75,8 @@ public class HaFlowServiceImpl implements HaFlowService {
     private final HaFlowMapper flowMapper;
     @Value("#{kafkaTopicsConfig.getFlowHsTopic()}")
     private String flowHsTopic;
+    @Value("#{kafkaTopicsConfig.getTopoRerouteTopic()}")
+    private String rerouteTopic;
     @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbworkerTopic;
 
@@ -196,7 +203,14 @@ public class HaFlowServiceImpl implements HaFlowService {
 
     @Override
     public CompletableFuture<HaFlowRerouteResult> rerouteHaFlow(String haFlowId) {
-        return null;
+        log.info("API request: Reroute HA-flow: {}", haFlowId);
+        HaFlowRerouteRequest request = new HaFlowRerouteRequest(
+                haFlowId, emptySet(), false, "initiated via Northbound", false, true);
+        CommandMessage command = new CommandMessage(request, System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(rerouteTopic, command)
+                .thenApply(HaFlowRerouteResponse.class::cast)
+                .thenApply(flowMapper::toRerouteResult);
     }
 
     /**
@@ -227,7 +241,14 @@ public class HaFlowServiceImpl implements HaFlowService {
 
     @Override
     public CompletableFuture<HaFlow> swapHaFlowPaths(String haFlowId) {
-        return null;
+        log.info("API request: Swap paths of HA-flow: {}", haFlowId);
+        CommandMessage command = new CommandMessage(new HaFlowPathSwapRequest(haFlowId), System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(HaFlowResponse.class::cast)
+                .thenApply(HaFlowResponse::getHaFlow)
+                .thenApply(flowMapper::toHaFlow);
+
     }
 
     @Override

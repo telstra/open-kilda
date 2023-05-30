@@ -38,6 +38,7 @@ public class HaFlowDto implements Serializable {
 
     String haFlowId;
     FlowStatus status;
+    String statusInfo;
     FlowEndpoint sharedEndpoint;
     long maximumBandwidth;
     PathComputationStrategy pathComputationStrategy;

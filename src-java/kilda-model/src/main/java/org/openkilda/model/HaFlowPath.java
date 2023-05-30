@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -176,6 +177,24 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
         Set<SwitchId> result = getSubFlowSwitchIds();
         result.add(getSharedSwitchId());
         return result;
+    }
+
+    public Set<PathId> getSubPathIds() {
+        return getSubPaths().stream().map(FlowPath::getPathId).collect(Collectors.toSet());
+    }
+
+    /**
+     * Get all switches used by the path (including segment switches).
+     */
+    public Set<SwitchId> getAllInvolvedSwitches() {
+        Set<SwitchId> switchIds = new HashSet<>();
+        for (FlowPath subPath : getSubPaths()) {
+            for (PathSegment segment : subPath.getSegments()) {
+                switchIds.add(segment.getSrcSwitchId());
+                switchIds.add(segment.getDestSwitchId());
+            }
+        }
+        return switchIds;
     }
 
     /**

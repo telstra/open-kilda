@@ -373,6 +373,14 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                         },
                         errorStatusCode: HttpStatus.BAD_REQUEST,
                         errorDescrPattern: /The sub-flows .* and .* have shared endpoint conflict: .*/
+                ],
+                [
+                        descr: "empty shared endpoint",
+                        updateClosure: { YFlow payload ->
+                            payload.sharedEndpoint = null
+                        },
+                        errorStatusCode: HttpStatus.BAD_REQUEST,
+                        errorDescrPattern: /Errors: SharedEndpoint is required/
                 ]
         ]
     }

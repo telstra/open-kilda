@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaFlowPath.HaFlowPathData;
@@ -122,6 +123,17 @@ public class FermaHaFlowPathRepository extends FermaGenericRepository<HaFlowPath
         return haFlowPathFrames.stream()
                 .map(HaFlowPath::new)
                 .collect(Collectors.toMap(HaFlowPath::getHaPathId, Function.identity()));
+    }
+
+    @Override
+    public void updateStatus(PathId pathId, FlowPathStatus pathStatus) {
+        getTransactionManager().doInTransaction(() ->
+                framedGraph().traverse(g -> g.V()
+                                .hasLabel(HaFlowPathFrame.FRAME_LABEL)
+                                .has(HaFlowPathFrame.HA_PATH_ID_PROPERTY,
+                                        PathIdConverter.INSTANCE.toGraphProperty(pathId)))
+                        .toListExplicit(HaFlowPathFrame.class)
+                        .forEach(pathFrame -> pathFrame.setStatus(pathStatus)));
     }
 
     @Override

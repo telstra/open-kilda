@@ -21,10 +21,8 @@ import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
-import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.rulemanager.DataAdapter;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.SpeakerData;
@@ -33,7 +31,7 @@ import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources.HaPathResources;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HaFlowRuleManagerProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HaFlowRuleManagerProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
@@ -55,13 +53,11 @@ import java.util.stream.Collectors;
 public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
         HaFlowDeleteFsm, State, Event, HaFlowDeleteContext> {
     private final FlowResourcesManager resourcesManager;
-    private final FlowPathRepository flowPathRepository;
 
     public RemoveRulesAction(
             PersistenceManager persistenceManager, FlowResourcesManager resourcesManager, RuleManager ruleManager) {
         super(persistenceManager, ruleManager);
         this.resourcesManager = resourcesManager;
-        this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
     }
 
     @Override
@@ -92,8 +88,7 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
             }
         }
 
-        DataAdapter adapter = buildDataAdapter(haFlow, haFlowPaths);
-        List<SpeakerData> commands = buildSpeakerCommands(haFlowPaths, adapter);
+        List<SpeakerData> commands = buildSpeakerCommands(haFlow, haFlowPaths);
         Collection<DeleteSpeakerCommandsRequest> deleteRequests = buildHaFlowDeleteRequests(
                 commands, stateMachine.getCommandContext());
 
@@ -165,30 +160,18 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
                 .collect(Collectors.toMap(FlowPath::getHaSubFlowId, FlowPath::getMeterId));
     }
 
-    private DataAdapter buildDataAdapter(HaFlow haFlow, Collection<HaFlowPath> haFlowPaths) {
-        Set<PathId> pathIds = new HashSet<>();
-        Set<SwitchId> switchIds = haFlow.getEndpointSwitchIds();
-        for (HaFlowPath haFlowPath : haFlowPaths) {
-            for (FlowPath subPath : haFlowPath.getSubPaths()) {
-                pathIds.add(subPath.getPathId());
-                for (PathSegment segment : subPath.getSegments()) {
-                    switchIds.add(segment.getSrcSwitchId());
-                    switchIds.add(segment.getDestSwitchId());
-                }
-            }
-        }
-        for (SwitchId switchId : haFlow.getEndpointSwitchIds()) {
-            pathIds.addAll(flowPathRepository.findBySrcSwitch(switchId, false).stream()
-                    .map(FlowPath::getPathId)
-                    .collect(Collectors.toSet()));
-        }
+    private DataAdapter buildDataAdapter(HaFlowPath haFlowPath, Set<PathId> overlappingPathIds) {
+        Set<SwitchId> switchIds = haFlowPath.getAllInvolvedSwitches();
+        Set<PathId> pathIds = new HashSet<>(overlappingPathIds);
+        pathIds.addAll(haFlowPath.getSubPathIds());
         return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false);
     }
 
-    private List<SpeakerData> buildSpeakerCommands(
-            Collection<HaFlowPath> paths, DataAdapter adapter) {
+    private List<SpeakerData> buildSpeakerCommands(HaFlow haFlow, Collection<HaFlowPath> paths) {
+        Set<PathId> overlappingPathIds = getPathIdsWhichCanUseSharedRules(haFlow);
         List<SpeakerData> result = new ArrayList<>();
         for (HaFlowPath path : paths) {
+            DataAdapter adapter = buildDataAdapter(path, overlappingPathIds);
             result.addAll(ruleManager.buildRulesHaFlowPath(path, true, adapter));
         }
         return result;

@@ -35,6 +35,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.reroute.FlowType;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.messaging.info.stats.StatsNotification;
@@ -209,7 +210,7 @@ public class YFlowRerouteHubBolt extends HubBolt implements YFlowRerouteHubCarri
                 .flowId(flowId)
                 .success(rerouteError == null)
                 .rerouteError(rerouteError)
-                .yFlow(true)
+                .flowType(FlowType.Y_FLOW)
                 .build();
         Message message = new InfoMessage(rerouteResult, System.currentTimeMillis(), correlationId);
         emitWithContext(Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name(), getCurrentTuple(),

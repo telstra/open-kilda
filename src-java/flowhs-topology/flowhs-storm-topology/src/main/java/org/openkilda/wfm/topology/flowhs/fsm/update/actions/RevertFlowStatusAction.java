@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 import static java.lang.String.format;
 
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.StatusInfo;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
@@ -43,7 +44,7 @@ public class RevertFlowStatusAction extends
             log.debug("Reverting the flow status of {} to {}", flowId, originalFlowStatus);
 
             String flowStatusInfo = FlowStatus.DEGRADED.equals(originalFlowStatus)
-                    ? "Couldn't find non overlapping protected path" : stateMachine.getOriginalFlowStatusInfo();
+                    ? StatusInfo.OVERLAPPING_PROTECTED_PATH : stateMachine.getOriginalFlowStatusInfo();
             flowRepository.updateStatus(flowId, originalFlowStatus, flowStatusInfo);
 
             stateMachine.saveActionToHistory(format("The flow status was reverted to %s", originalFlowStatus));

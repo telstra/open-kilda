@@ -16,14 +16,17 @@
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions;
 
 import static java.lang.String.format;
+import static org.openkilda.wfm.topology.flowhs.utils.HaFlowUtils.getForwardPathId;
+import static org.openkilda.wfm.topology.flowhs.utils.HaFlowUtils.getForwardSubPathIds;
+import static org.openkilda.wfm.topology.flowhs.utils.HaFlowUtils.getReversePathId;
+import static org.openkilda.wfm.topology.flowhs.utils.HaFlowUtils.getReverseSubPathIds;
 
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
-import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaFlowPathIds;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HaFlowProcessingWithHistorySupportAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HaFlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
@@ -31,10 +34,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 public class RevertPathsSwapAction extends
@@ -66,7 +66,7 @@ public class RevertPathsSwapAction extends
         if (oldPathIds.getForward() != null) {
             PathId oldForwardPathId = getForwardPathId(oldPathIds);
             updatePathStatus(stateMachine, oldForwardPathId);
-            updateSubPathStatuses(stateMachine, getForwardSubPathId(oldPathIds));
+            updateSubPathStatuses(stateMachine, getForwardSubPathIds(oldPathIds));
 
             log.debug("Swapping back the primary forward path {} with {}",
                     haFlow.getForwardPathId(), oldForwardPathId != null ? oldForwardPathId : NO_PATH);
@@ -78,7 +78,7 @@ public class RevertPathsSwapAction extends
         if (oldPathIds.getReverse() != null) {
             PathId oldReversePathId = getReversePathId(oldPathIds);
             updatePathStatus(stateMachine, oldReversePathId);
-            updateSubPathStatuses(stateMachine, getReverseSubPathId(oldPathIds));
+            updateSubPathStatuses(stateMachine, getReverseSubPathIds(oldPathIds));
 
             log.debug("Swapping back the primary reverse path {} with {}",
                     haFlow.getReversePathId(), oldReversePathId != null ? oldReversePathId : NO_PATH);
@@ -98,7 +98,7 @@ public class RevertPathsSwapAction extends
         if (oldPathIds.getForward() != null) {
             PathId oldForwardPathId = getForwardPathId(oldPathIds);
             updatePathStatus(stateMachine, oldForwardPathId);
-            updateSubPathStatuses(stateMachine, getForwardSubPathId(oldPathIds));
+            updateSubPathStatuses(stateMachine, getForwardSubPathIds(oldPathIds));
 
             log.debug("Swapping back the protected forward path {} with {}",
                     haFlow.getProtectedForwardPathId(),
@@ -111,7 +111,7 @@ public class RevertPathsSwapAction extends
         if (oldPathIds.getReverse() != null) {
             PathId oldReversePathId = getReversePathId(oldPathIds);
             updatePathStatus(stateMachine, oldReversePathId);
-            updateSubPathStatuses(stateMachine, getReverseSubPathId(oldPathIds));
+            updateSubPathStatuses(stateMachine, getReverseSubPathIds(oldPathIds));
 
             log.debug("Swapping back the protected reverse path {} with {}",
                     haFlow.getProtectedReversePathId(),
@@ -148,41 +148,5 @@ public class RevertPathsSwapAction extends
         String pathName = pathId == null ? NO_PATH : format("the path %s", pathId);
         stateMachine.saveActionToHistory("Ha-flow was reverted to old paths",
                 format("The ha-flow %s was updated with %s", haFlowId, pathName));
-    }
-
-    private PathId getForwardPathId(HaPathIdsPair haPathIdsPair) {
-        return Optional.ofNullable(haPathIdsPair)
-                .map(HaPathIdsPair::getForward)
-                .map(HaFlowPathIds::getHaPathId)
-                .orElse(null);
-    }
-
-    private PathId getReversePathId(HaPathIdsPair haPathIdsPair) {
-        return Optional.ofNullable(haPathIdsPair)
-                .map(HaPathIdsPair::getReverse)
-                .map(HaFlowPathIds::getHaPathId)
-                .orElse(null);
-    }
-
-    private Collection<PathId> getForwardSubPathId(HaPathIdsPair haPathIdsPair) {
-        return Optional.ofNullable(haPathIdsPair)
-                .map(HaPathIdsPair::getForward)
-                .map(this::getSubPathIds)
-                .orElse(new ArrayList<>());
-    }
-
-    private Collection<PathId> getReverseSubPathId(HaPathIdsPair haPathIdsPair) {
-        return Optional.ofNullable(haPathIdsPair)
-                .map(HaPathIdsPair::getReverse)
-                .map(this::getSubPathIds)
-                .orElse(new ArrayList<>());
-    }
-
-    private Collection<PathId> getSubPathIds(HaFlowPathIds haFlowPathIds) {
-        return Optional.ofNullable(haFlowPathIds)
-                .map(HaFlowPathIds::getSubPathIds)
-                .map(Map::values)
-                .orElse(new ArrayList<>());
-
     }
 }

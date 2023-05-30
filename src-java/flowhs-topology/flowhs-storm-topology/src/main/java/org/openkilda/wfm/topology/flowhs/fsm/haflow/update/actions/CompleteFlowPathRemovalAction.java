@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions;
 
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseHaFlowPathRemovalAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.BaseHaFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
@@ -37,6 +37,6 @@ public class CompleteFlowPathRemovalAction extends
             State from, State to, Event event, HaFlowUpdateContext context, HaFlowUpdateFsm stateMachine) {
         removeFlowPaths(stateMachine.getOldPrimaryPathIds());
         removeFlowPaths(stateMachine.getOldProtectedPathIds());
-        removeRejectedFlowPaths(stateMachine.getRejectedHaPathsIds());
+        removeRejectedPaths(stateMachine.getRejectedSubPathsIds(), stateMachine.getRejectedHaPathsIds());
     }
 }

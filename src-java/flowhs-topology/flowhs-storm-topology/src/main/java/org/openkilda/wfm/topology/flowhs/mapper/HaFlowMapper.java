@@ -46,6 +46,7 @@ public abstract class HaFlowMapper {
     public static final HaFlowMapper INSTANCE = Mappers.getMapper(HaFlowMapper.class);
 
     @Mapping(target = "status", ignore = true)
+    @Mapping(target = "statusInfo", ignore = true)
     @Mapping(target = "sharedSwitch", source = "sharedEndpoint.switchId")
     @Mapping(target = "sharedPort", source = "sharedEndpoint.portNumber")
     @Mapping(target = "sharedOuterVlan", source = "sharedEndpoint.outerVlanId")

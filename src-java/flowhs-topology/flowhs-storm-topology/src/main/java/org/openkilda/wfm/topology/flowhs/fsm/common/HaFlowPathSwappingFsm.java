@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.common;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.openkilda.wfm.topology.flowhs.utils.HaFlowUtils.buildPathIds;
 
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
@@ -33,6 +34,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaFlowPathIds;
+import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
@@ -55,11 +57,10 @@ import java.util.UUID;
 @Getter
 @Setter
 @Slf4j
-public abstract class HaFlowPathSwappingFsm<T extends AbstractStateMachine<T, S, E, C>, S, E, C,
-        R extends NorthboundResponseCarrier & HistoryUpdateCarrier, L extends FlowProcessingEventListener>
-        extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
+public abstract class HaFlowPathSwappingFsm<T extends AbstractStateMachine<T, S, E, C>, S, E,
+        C extends SpeakerResponseContext, R extends NorthboundResponseCarrier & HistoryUpdateCarrier,
+        L extends FlowProcessingEventListener> extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
     protected final String haFlowId;
-    protected String sharedBandwidthGroupId;
 
     protected HaFlowResources newPrimaryResources;
     protected HaFlowResources newProtectedResources;
@@ -166,11 +167,32 @@ public abstract class HaFlowPathSwappingFsm<T extends AbstractStateMachine<T, S,
     }
 
     public FlowPathStatus getNewPathStatus(PathId pathId) {
+        return getNewPathStatus(pathId, false);
+    }
+
+    public FlowPathStatus getNewPathStatus(PathId pathId, boolean isIgnoreBandwidth) {
         Boolean isBackUpPathComputationStrategyUsed = backUpComputationWayUsedMap.get(pathId);
         if (isBackUpPathComputationStrategyUsed == null) {
             throw new IllegalArgumentException(format("Unknown path id %s", pathId));
         }
-        return isBackUpPathComputationStrategyUsed ? FlowPathStatus.DEGRADED : FlowPathStatus.ACTIVE;
+        return isIgnoreBandwidth || isBackUpPathComputationStrategyUsed
+                ? FlowPathStatus.DEGRADED : FlowPathStatus.ACTIVE;
+    }
+
+    public void savePathsAndSetInProgressStatuses(HaFlowPath haFlowPath) {
+        setOldPathStatuses(haFlowPath);
+
+        haFlowPath.setStatus(FlowPathStatus.IN_PROGRESS);
+        if (haFlowPath.getSubPaths() != null) {
+            for (FlowPath subPath : haFlowPath.getSubPaths()) {
+                subPath.setStatus(FlowPathStatus.IN_PROGRESS);
+            }
+        }
+    }
+
+    public void saveOldPathIds(HaFlow haFlow) {
+        setOldPrimaryPathIds(buildPathIds(haFlow.getForwardPath(), haFlow.getReversePath()));
+        setOldProtectedPathIds(buildPathIds(haFlow.getProtectedForwardPath(), haFlow.getProtectedReversePath()));
     }
 
     public void addBackUpComputationStatuses(GetHaPathsResult paths, HaPathIdsPair pathIds) {

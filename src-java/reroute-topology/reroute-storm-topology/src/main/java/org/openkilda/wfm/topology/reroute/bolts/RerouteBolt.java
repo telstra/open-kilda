@@ -22,6 +22,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteAffectedInactiveFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
@@ -106,6 +107,8 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
             rerouteService.processRerouteRequest(this, correlationId, (FlowRerouteRequest) commandData);
         } else if (commandData instanceof YFlowRerouteRequest) {
             rerouteService.processRerouteRequest(this, correlationId, (YFlowRerouteRequest) commandData);
+        } else if (commandData instanceof HaFlowRerouteRequest) {
+            rerouteService.processRerouteRequest(this, correlationId, (HaFlowRerouteRequest) commandData);
         } else {
             unhandledInput(getCurrentTuple());
         }

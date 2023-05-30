@@ -77,6 +77,7 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
     private static final int PRIORITY_2 = 6;
     private static final String DESCRIPTION_1 = "description_1";
     private static final String DESCRIPTION_2 = "description_2";
+    public static final String STATUS_INFO = "new Status info";
 
     private HaSubFlowRepository haSubFlowRepository;
     private HaFlowPathRepository haFlowPathRepository;
@@ -340,13 +341,25 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void updateHaFLowStatusTest() {
+    public void updateHaFlowStatusTest() {
         createHaFlow(haFlow1);
         for (FlowStatus status : FlowStatus.values()) {
             haFlowRepository.updateStatus(haFlow1.getHaFlowId(), status);
             Optional<HaFlow> updatedFlow = haFlowRepository.findById(haFlow1.getHaFlowId());
             assertTrue(updatedFlow.isPresent());
             assertEquals(status, updatedFlow.get().getStatus());
+        }
+    }
+
+    @Test
+    public void updateHaFlowStatusInfoTest() {
+        createHaFlow(haFlow1);
+        for (FlowStatus status : FlowStatus.values()) {
+            haFlowRepository.updateStatus(haFlow1.getHaFlowId(), status, STATUS_INFO);
+            Optional<HaFlow> updatedFlow = haFlowRepository.findById(haFlow1.getHaFlowId());
+            assertTrue(updatedFlow.isPresent());
+            assertEquals(status, updatedFlow.get().getStatus());
+            assertEquals(STATUS_INFO, updatedFlow.get().getStatusInfo());
         }
     }
 
