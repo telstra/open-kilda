@@ -64,6 +64,7 @@ public abstract class HaFlowEventDumpFrame extends KildaBaseVertexFrame implemen
     public static final String REVERSE_PATH_PROPERTY = "reverse_path";
     public static final String PROTECTED_FORWARD_PATH_PROPERTY = "protected_forward_path";
     public static final String PROTECTED_REVERSE_PATH_PROPERTY = "protected_reverse_path";
+    public static final String STATUS_INFO = "status_info";
 
     @Override
     @Property(TASK_ID_PROPERTY)
@@ -246,6 +247,15 @@ public abstract class HaFlowEventDumpFrame extends KildaBaseVertexFrame implemen
     @Override
     @Property(STATUS_PROPERTY)
     public abstract void setStatus(FlowStatus status);
+
+
+    @Override
+    @Property(STATUS_INFO)
+    public abstract String getStatusInfo();
+
+    @Override
+    @Property(STATUS_INFO)
+    public abstract void setStatusInfo(String statusInfo);
 
     @Override
     @Property(FLOW_TIME_CREATE_PROPERTY)
