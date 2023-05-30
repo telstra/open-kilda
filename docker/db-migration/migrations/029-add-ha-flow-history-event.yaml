@@ -54,6 +54,7 @@ databaseChangeLog:
         - sql: "CREATE PROPERTY ha_flow_event_dump.shared_port IF NOT EXISTS INTEGER"
         - sql: "CREATE PROPERTY ha_flow_event_dump.shared_switch_id IF NOT EXISTS STRING"
         - sql: "CREATE PROPERTY ha_flow_event_dump.status IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY ha_flow_event_dump.status_info IF NOT EXISTS STRING"
         - sql: "CREATE PROPERTY ha_flow_event_dump.strict_bandwidth IF NOT EXISTS BOOLEAN"
         - sql: "CREATE PROPERTY ha_flow_event_dump.task_id IF NOT EXISTS STRING"
         - sql: "CREATE PROPERTY ha_flow_event_dump.flow_time_create IF NOT EXISTS STRING"

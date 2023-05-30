@@ -61,6 +61,7 @@ public class HaFlowDumpData implements Serializable {
     Integer sharedPort;
     SwitchId sharedSwitchId;
     FlowStatus status;
+    String statusInfo;
     Boolean strictBandwidth;
 
     HaFlowPathDump forwardPath;

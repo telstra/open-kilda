@@ -156,6 +156,10 @@ public class HaFlowEventDump implements CompositeDataEntity<HaFlowEventDumpData>
 
         void setStatus(FlowStatus status);
 
+        String getStatusInfo();
+
+        void setStatusInfo(String statusInfo);
+
         Boolean getStrictBandwidth();
 
         void setStrictBandwidth(Boolean strictBandwidth);
@@ -208,6 +212,7 @@ public class HaFlowEventDump implements CompositeDataEntity<HaFlowEventDumpData>
         Integer sharedPort;
         String sharedSwitchId;
         FlowStatus status;
+        String statusInfo;
         Boolean strictBandwidth;
 
         HaFlowPathDump forwardPath;

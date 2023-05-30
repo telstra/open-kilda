@@ -227,6 +227,7 @@ public abstract class HaFlowHistoryMapper {
                 .sharedPort(haFlow.getSharedPort())
                 .sharedSwitchId(haFlow.getSharedSwitchId())
                 .status(haFlow.getStatus())
+                .statusInfo(haFlow.getStatusInfo())
                 .strictBandwidth(haFlow.isStrictBandwidth())
                 .haSubFlows(toHaSubFlowDumps(haFlow))
                 .forwardPath(toHaFlowPathDump(haFlow.getForwardPath()))

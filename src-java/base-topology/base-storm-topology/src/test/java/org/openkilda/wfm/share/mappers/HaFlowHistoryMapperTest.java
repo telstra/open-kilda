@@ -84,6 +84,7 @@ public class HaFlowHistoryMapperTest {
     private static final Boolean PERIODIC_PINGS = false;
     private static final Boolean PINNED = false;
     private static final Integer PRIORITY = 455;
+    public static final String STATUS_INFO = "Status info";
     private static final Boolean STRICT_BANDWIDTH = false;
     private static final String DESCRIPTION = "HA flow description";
     private static final Boolean ALLOCATE_PROTECTED_PATH = true;
@@ -292,6 +293,7 @@ public class HaFlowHistoryMapperTest {
         assertEquals(source.getDescription(), result.getDescription());
         assertEquals(source.getAllocateProtectedPath(), result.getAllocateProtectedPath());
         assertEquals(source.getStatus(), result.getStatus());
+        assertEquals(source.getStatusInfo(), result.getStatusInfo());
         assertEquals(source.getAffinityGroupId(), result.getAffinityGroupId());
         assertEquals(source.getDiverseGroupId(), result.getDiverseGroupId());
 
@@ -414,6 +416,7 @@ public class HaFlowHistoryMapperTest {
         assertEquals(source.getDescription(), dump.getDescription());
         assertEquals(Boolean.valueOf(source.isAllocateProtectedPath()), dump.getAllocateProtectedPath());
         assertEquals(source.getStatus(), dump.getStatus());
+        assertEquals(source.getStatusInfo(), dump.getStatusInfo());
         assertEquals(source.getAffinityGroupId(), dump.getAffinityGroupId());
         assertEquals(source.getDiverseGroupId(), dump.getDiverseGroupId());
 
@@ -618,6 +621,7 @@ public class HaFlowHistoryMapperTest {
                 DESCRIPTION,
                 ALLOCATE_PROTECTED_PATH,
                 FLOW_STATUS,
+                STATUS_INFO,
                 AFFINITY_GROUP_ID,
                 DIVERSE_GROUP_ID);
 

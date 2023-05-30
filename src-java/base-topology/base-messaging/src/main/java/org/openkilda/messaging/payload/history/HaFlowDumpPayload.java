@@ -55,6 +55,7 @@ public class HaFlowDumpPayload {
     String diverseGroupId;
     String affinityGroupId;
     FlowStatus status;
+    String statusInfo;
     String flowTimeCreate;
     String flowTimeModify;
 
