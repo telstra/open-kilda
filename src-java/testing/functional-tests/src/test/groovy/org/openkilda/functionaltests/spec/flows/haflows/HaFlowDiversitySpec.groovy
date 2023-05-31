@@ -32,13 +32,14 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
     def "Able to create diverse ha-flows"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with three not overlapping paths at least"
-        def swT = topologyHelper.switchTriplets.find {
+        def swT = topologyHelper.switchTriplets.findAll {
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
                     [it.pathsEp1, it.pathsEp2].every {
                         it.collect { pathHelper.getInvolvedIsls(it) }
                                 .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
-                    }
-        }
+                    } &&
+                    topology.getRelatedIsls(it.shared).size() >= 5
+        }.shuffled().first()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create three ha-flows with diversity enabled"
