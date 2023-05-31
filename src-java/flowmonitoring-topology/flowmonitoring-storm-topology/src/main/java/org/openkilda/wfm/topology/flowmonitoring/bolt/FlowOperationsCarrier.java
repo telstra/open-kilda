@@ -22,4 +22,8 @@ public interface FlowOperationsCarrier {
     void sendFlowRerouteRequest(String flowId);
 
     void persistFlowStats(String flowId, String direction, long latency);
+
+    void sendHaFlowSyncRequest(String haFlowId);
+
+    void sendHaFlowRerouteRequest(String haFlowId);
 }

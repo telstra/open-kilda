@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,11 +23,11 @@ import java.util.List;
 
 public interface FlowCacheBoltCarrier {
 
-    void emitCalculateFlowLatencyRequest(String flowId, FlowDirection direction, List<Link> flowPath);
+    void emitCalculateFlowLatencyRequest(String flowId, FlowDirection direction, List<Link> flowPath, String haFlowId);
 
     void emitGetLinkLatencyRequest(String flowId, String requestId, Link link);
 
     void emitCheckFlowLatencyRequest(String flowId, FlowDirection direction, Duration latency);
 
-    public void emitLatencyStats(String flowId, FlowDirection direction, Duration latency);
+    void emitLatencyStats(String flowId, FlowDirection direction, Duration latency, String haFlowId);
 }

@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.S
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_REMOVE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_STATS_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.HA_SUB_FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_DIRECTION_FIELD;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.FLOW_ID_FIELD;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowCacheBolt.LATENCY_FIELD;
@@ -30,7 +31,9 @@ import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt.CO
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowSyncRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
 import org.openkilda.messaging.info.flow.UpdateFlowCommand;
+import org.openkilda.messaging.info.haflow.UpdateHaSubFlowCommand;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.wfm.AbstractBolt;
@@ -88,6 +91,12 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
             actionService.removeFlowInfo(flowId);
             return;
         }
+        if (HA_SUB_FLOW_UPDATE_STREAM_ID.name().equals(input.getSourceStreamId())) {
+            UpdateHaSubFlowCommand updateHaSubFlowCommand = pullValue(input, COMMAND_DATA_FIELD,
+                    UpdateHaSubFlowCommand.class);
+            actionService.updateHaSubFlowInfo(updateHaSubFlowCommand);
+            return;
+        }
 
         if (ACTION_STREAM_ID.name().equals(input.getSourceStreamId())) {
             String flowId = pullValue(input, FLOW_ID_FIELD, String.class);
@@ -142,5 +151,17 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
     public void persistFlowStats(String flowId, String direction, long latency) {
         emit(FLOW_STATS_STREAM_ID.name(), getCurrentTuple(), new Values(flowId, direction, latency,
                 getCommandContext()));
+    }
+
+    @Override
+    public void sendHaFlowSyncRequest(String haFlowId) {
+        HaFlowRerouteRequest request = new HaFlowRerouteRequest(haFlowId, Collections.emptySet(), false,
+                "HA-Flow latency become unhealthy", false, false);
+        emit(getCurrentTuple(), new Values(request, getCommandContext()));
+    }
+
+    @Override
+    public void sendHaFlowRerouteRequest(String haFlowId) {
+        //TODO: Implement logic
     }
 }

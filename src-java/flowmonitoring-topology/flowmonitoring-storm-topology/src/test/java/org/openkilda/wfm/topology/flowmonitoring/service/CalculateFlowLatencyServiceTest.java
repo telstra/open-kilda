@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ public class CalculateFlowLatencyServiceTest {
 
     @Test
     public void shouldSendLinkRequests() {
-        service.handleCalculateFlowLatencyRequest(FLOW_ID, FlowDirection.FORWARD, FLOW_PATH);
+        service.handleCalculateFlowLatencyRequest(FLOW_ID, FlowDirection.FORWARD, FLOW_PATH, null);
 
         verify(carrier).emitGetLinkLatencyRequest(eq(FLOW_ID), any(String.class), eq(FIRST_LINK));
         verify(carrier).emitGetLinkLatencyRequest(eq(FLOW_ID), any(String.class), eq(SECOND_LINK));
@@ -74,7 +74,7 @@ public class CalculateFlowLatencyServiceTest {
 
     @Test
     public void shouldSendCalculatedResponse() {
-        service.handleCalculateFlowLatencyRequest(FLOW_ID, FlowDirection.FORWARD, FLOW_PATH);
+        service.handleCalculateFlowLatencyRequest(FLOW_ID, FlowDirection.FORWARD, FLOW_PATH, null);
 
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
         verify(carrier).emitGetLinkLatencyRequest(eq(FLOW_ID), captor.capture(), eq(FIRST_LINK));
@@ -87,13 +87,13 @@ public class CalculateFlowLatencyServiceTest {
         service.handleGetLinkLatencyResponse(requestId, SECOND_LINK, latency2);
 
         verify(carrier).emitCheckFlowLatencyRequest(FLOW_ID, FlowDirection.FORWARD, latency1.plus(latency2));
-        verify(carrier).emitLatencyStats(FLOW_ID, FlowDirection.FORWARD, latency1.plus(latency2));
+        verify(carrier).emitLatencyStats(FLOW_ID, FlowDirection.FORWARD, latency1.plus(latency2), null);
         verifyNoMoreInteractions(carrier);
     }
 
     @Test
     public void shouldNotSendCalculatedResponseForNotFinishedRequests() {
-        service.handleCalculateFlowLatencyRequest(FLOW_ID, FlowDirection.FORWARD, FLOW_PATH);
+        service.handleCalculateFlowLatencyRequest(FLOW_ID, FlowDirection.FORWARD, FLOW_PATH, null);
 
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
         verify(carrier).emitGetLinkLatencyRequest(eq(FLOW_ID), captor.capture(), eq(FIRST_LINK));

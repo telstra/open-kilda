@@ -31,6 +31,7 @@ import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.reroute.FlowType;
@@ -178,8 +179,11 @@ public class HaFlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarri
     }
 
     @Override
-    public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
-        //TODO implement https://github.com/telstra/open-kilda/issues/5172
+    public void sendNotifyFlowMonitor(@NonNull CommandData haFlowCommand) {
+        String correlationId = getCommandContext().getCorrelationId();
+        Message message = new CommandMessage(haFlowCommand, System.currentTimeMillis(), correlationId);
+        emitWithContext(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(correlationId, message));
     }
 
     @Override
