@@ -116,6 +116,7 @@ Each of the metrics above have the following tags:
 * `cookie` - String: OpenFlow cookie of the rule
 * `inPort` - Number: input port of a rule (if a rule contains in port in OpenFlow match section)
 * `outPort` - Number: out port of a rule
+* `tableid` - Number: OpenFlow table ID
 
 ### HA-flow ingress rule metrics
 * `<prefix>.haflow.ingress.bits` - total size of all packets which were processed by HA-flow ingress rule in bits
@@ -163,7 +164,7 @@ Tags:
 
 Tags:
 * `switchid` - String: ID of a switch which meter belongs
-* `miterid` - Number: ID of a meter
+* `meterid` - Number: ID of a meter
 * `is_y_flow_subflow` Boolean: `false` as a flow doesn't belong to any Y-flow
 * `flowid` - String: ID of the flow which a meter belongs, `unknown` if there is no information about a flow
 * `direction` - String: direction of flow traffic: `forward`, `reverse` or `undefined`
@@ -176,7 +177,7 @@ Tags:
 
 Tags:
 * `switchid` - String: ID of a switch which meter belongs
-* `miterid` - Number: ID of a meter
+* `meterid` - Number: ID of a meter
 * `is_y_flow_subflow` Boolean: `true` as a sub flow belong to a Y-flow
 * `flowid` - String: ID of the flow which a meter belongs, `unknown` if there is no information about a flow
 * `y_flow_id` - String: ID of a Y-flow which a meter belongs, `unknown` if there is no information about a Y-flow
@@ -190,7 +191,7 @@ Tags:
 
 Tags:
 * `switchid` - String: ID of a switch which meter belongs
-* `miterid` - Number: ID of a meter
+* `meterid` - Number: ID of a meter
 * `y_flow_id` - String: ID of a Y-flow which a meter belongs, `unknown` if there is no information about a Y-flow
 
 ## Y-flow Y point meter metric
@@ -200,7 +201,7 @@ Tags:
 
 Tags:
 * `switchid` - String: ID of a switch which meter belongs
-* `miterid` - Number: ID of a meter
+* `meterid` - Number: ID of a meter
 * `y_flow_id` - String: ID of a Y-flow which a meter belongs, `unknown` if there is no information about a Y-flow
 
 ## HA-flow meter metrics
@@ -211,7 +212,7 @@ Tags:
 
 Tags:
 * `switchid` - String: ID of a switch which meter belongs
-* `miterid` - Number: ID of a meter
+* `meterid` - Number: ID of a meter
 * `ha_flow_id` - String: ID of an HA-flow which a meter belongs, `unknown` if there is no information about an HA-flow
 * `flowid` - String: ID of an HA-sub flow which a meter belongs,
              `shared` if rule belongs to both sub flows (meter is a part of HA flow shared path),
@@ -226,7 +227,7 @@ Tags:
 
 Tags:
 * `switchid` - String: ID of a switch which meter belongs
-* `miterid` - Number: ID of a meter
+* `meterid` - Number: ID of a meter
 * `ha_flow_id` - String: ID of a HA-flow which a meter belongs, `unknown` if there is no information about an HA-flow
 
 ## Group metrics
