@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.136.0 (29/05/2023)
+
+### Features:
+-  [#5195](https://github.com/telstra/open-kilda/pull/5195) HA flows Part 13: Add H&S swap path operation (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+-  [#5204](https://github.com/telstra/open-kilda/pull/5204) HA flows Part 15: Add H&S manual reroute operation (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+-  [#5207](https://github.com/telstra/open-kilda/pull/5207) HA flows Part 14: Pre-reroute refactoring (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+
+### Bug Fixes:
+-  [#5200](https://github.com/telstra/open-kilda/pull/5200) Fix HA-flow validation for protected path (Issue: [#5197](https://github.com/telstra/open-kilda/issues/5197))
+-  [#5213](https://github.com/telstra/open-kilda/pull/5213) Add ability to include Y-flow with one switch sub flow into diversity group (Issue: [#5212](https://github.com/telstra/open-kilda/issues/5212))
+
+### Improvements:
+-  [#5186](https://github.com/telstra/open-kilda/pull/5186) #3491: [TEST]Add payload validation for API V2 (Issue: [#3491](https://github.com/telstra/open-kilda/issues/3491)) [**tests**]
+-  [#5199](https://github.com/telstra/open-kilda/pull/5199) HA-flow: improvements and refactoring (Issue: [#5198](https://github.com/telstra/open-kilda/issues/5198))
+-  [#5205](https://github.com/telstra/open-kilda/pull/5205) Updated README.md - corrected steps for build process on Ubuntu [**docs**]
+-  [#5214](https://github.com/telstra/open-kilda/pull/5214) [TEST] Add initial mechanism to unify work with paths [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.135.0...v1.136.0).
+
+### Affected Components:
+flow-hs
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
 ## v1.135.0 (18/05/2023)
 
 ### Features:
