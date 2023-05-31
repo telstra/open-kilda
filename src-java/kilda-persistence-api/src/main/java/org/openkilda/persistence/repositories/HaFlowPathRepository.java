@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence.repositories;
 
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.PathId;
@@ -38,6 +39,8 @@ public interface HaFlowPathRepository extends Repository<HaFlowPath> {
     Map<PathId, HaFlow> findHaFlowsByPathIds(Set<PathId> pathIds);
 
     Map<PathId, HaFlowPath> findByIds(Set<PathId> pathIds);
+
+    void updateStatus(PathId pathId, FlowPathStatus pathStatus);
 
     Optional<HaFlowPath> remove(PathId pathId);
 }

@@ -21,6 +21,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_MET
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_RESPONSE_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_PING_SENDER;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPEAKER_WORKER;
+import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_STATS_TOPOLOGY_SENDER;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.bluegreen.LifecycleEvent;
@@ -51,9 +52,9 @@ import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowDeleteService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.experimental.SuperBuilder;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -193,20 +194,14 @@ public class HaFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
         declarer.declareStream(HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_PING_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_STATS_TOPOLOGY_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(ZkStreams.ZK.toString(),
                 new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
     }
 
     @Getter
+    @SuperBuilder
     public static class HaFlowDeleteConfig extends Config {
         private final int speakerCommandRetriesLimit;
-
-        @Builder(builderMethodName = "haFlowDeleteBuilder", builderClassName = "haFlowDeleteBuild")
-        public HaFlowDeleteConfig(
-                String requestSenderComponent, String workerComponent, String lifeCycleEventComponent, int timeoutMs,
-                boolean autoAck, int speakerCommandRetriesLimit) {
-            super(requestSenderComponent, workerComponent, lifeCycleEventComponent, timeoutMs, autoAck);
-            this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
-        }
     }
 }

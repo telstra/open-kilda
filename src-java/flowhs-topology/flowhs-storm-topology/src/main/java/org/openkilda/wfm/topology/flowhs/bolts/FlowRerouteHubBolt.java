@@ -34,6 +34,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.reroute.FlowType;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
@@ -217,7 +218,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
                 .flowId(flowId)
                 .success(rerouteError == null)
                 .rerouteError(rerouteError)
-                .yFlow(false)
+                .flowType(FlowType.FLOW)
                 .build();
         Message message = new InfoMessage(rerouteResult, System.currentTimeMillis(), correlationId);
         emitWithContext(Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name(), getCurrentTuple(),

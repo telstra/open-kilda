@@ -15,15 +15,16 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.create;
 
-import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
+import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
 
-import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.experimental.SuperBuilder;
 
-@Value
-@Builder
-public class HaFlowCreateContext {
+@Data
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class HaFlowCreateContext extends SpeakerResponseContext {
     HaFlowRequest targetFlow;
-    SpeakerCommandResponse speakerResponse;
 }

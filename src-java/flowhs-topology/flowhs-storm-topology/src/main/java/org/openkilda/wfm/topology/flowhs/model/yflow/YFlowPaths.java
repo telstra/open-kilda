@@ -23,6 +23,7 @@ import lombok.NonNull;
 import lombok.Singular;
 import lombok.Value;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Value
@@ -33,4 +34,24 @@ public class YFlowPaths {
 
     @NonNull @Singular
     List<SubFlowPathDto> subFlowPaths;
+
+    /**
+     * Builds empty YFlowPaths.
+     */
+    public static YFlowPaths buildEmpty() {
+        return YFlowPaths.builder()
+                .sharedPath(new PathInfoData(0, new ArrayList<>()))
+                .subFlowPaths(new ArrayList<>())
+                .build();
+    }
+
+    /**
+     * Checks if paths have equal nodes.
+     */
+    public boolean isSamePath(YFlowPaths otherPaths) {
+        if (otherPaths == null) {
+            return false;
+        }
+        return sharedPath.equals(otherPaths.sharedPath) && subFlowPaths.equals(otherPaths.getSubFlowPaths());
+    }
 }

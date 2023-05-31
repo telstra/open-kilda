@@ -167,7 +167,7 @@ public class ValidateFlowAction extends
         stateMachine.setForceReroute(context.isForceReroute());
         stateMachine.setIgnoreBandwidth(context.isIgnoreBandwidth());
 
-        stateMachine.saveActionToHistory("Flow was validated successfully");
+        stateMachine.saveActionToHistory("HA-flow was validated successfully");
 
         return Optional.empty();
     }
@@ -184,9 +184,9 @@ public class ValidateFlowAction extends
 
         boolean isAffected = false;
         for (PathSegment segment : path.getSegments()) {
-            isAffected = affectedIsl.contains(getSegmentSourceEndpoint(segment));
+            isAffected = affectedIsl.contains(IslEndpoint.buildSourceEndpoint(segment));
             if (!isAffected) {
-                isAffected = affectedIsl.contains(getSegmentDestEndpoint(segment));
+                isAffected = affectedIsl.contains(IslEndpoint.buildDestinationEndpoint(segment));
             }
 
             if (isAffected) {
@@ -195,14 +195,6 @@ public class ValidateFlowAction extends
         }
 
         return isAffected;
-    }
-
-    private IslEndpoint getSegmentSourceEndpoint(PathSegment segment) {
-        return new IslEndpoint(segment.getSrcSwitchId(), segment.getSrcPort());
-    }
-
-    private IslEndpoint getSegmentDestEndpoint(PathSegment segment) {
-        return new IslEndpoint(segment.getDestSwitchId(), segment.getDestPort());
     }
 
     @Override

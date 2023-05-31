@@ -46,11 +46,14 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         def haFlow = northboundV2.addHaFlow(haFlowRequest)
         def involvedSwitchIds = haFlowHelper.getInvolvedSwitches(haFlow.haFlowId)
 
-        then: "Y-flow is created and has UP status"
+        then: "HA-flow is created and has UP status"
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             haFlow = northboundV2.getHaFlow(haFlow.haFlowId)
             assert haFlow && haFlow.status == FlowState.UP.toString()
         }
+
+        and: "HA-flow pass validation"
+        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
 
         when: "Delete the ha-flow"
         northboundV2.deleteHaFlow(haFlow.haFlowId)

@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.converter;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.Assert.assertEquals;
 
@@ -22,9 +23,13 @@ import org.openkilda.messaging.command.haflow.HaFlowDto;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathsResponse;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRerouteResponse;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
 import org.openkilda.messaging.command.haflow.HaSubFlowPartialUpdateDto;
 import org.openkilda.messaging.command.yflow.FlowPartialUpdateEndpoint;
+import org.openkilda.messaging.command.yflow.SubFlowPathDto;
+import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
@@ -34,11 +39,13 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2;
 import org.openkilda.northbound.dto.v2.haflows.HaFlow;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
@@ -46,7 +53,6 @@ import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowUpdatePayload;
 
-import com.google.common.collect.Lists;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +62,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.List;
 
 @RunWith(SpringRunner.class)
 public class HaFlowMapperTest {
@@ -89,6 +96,7 @@ public class HaFlowMapperTest {
     private static final String DESC_1 = "desc1";
     private static final String DESC_2 = "desc2";
     private static final String DESC_3 = "desc3";
+    private static final String STATUS_INFO = "some info";
     private static final HaSubFlowCreatePayload CREATE_SUB_FLOW_1 = new HaSubFlowCreatePayload(
             new BaseFlowEndpointV2(SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1), DESC_2);
     private static final HaSubFlowCreatePayload CREATE_SUB_FLOW_2 = new HaSubFlowCreatePayload(
@@ -110,7 +118,7 @@ public class HaFlowMapperTest {
         HaFlowCreatePayload request = new HaFlowCreatePayload(
                 HA_FLOW_ID, SHARED_ENDPOINT, BANDWIDTH, PathComputationStrategy.COST.name(),
                 FlowEncapsulationType.VXLAN.name(), MAX_LATENCY, MAX_LATENCY_TIER_2, true, false, true, PRIORITY,
-                false, DESC_1, true, FLOW_3, Lists.newArrayList(CREATE_SUB_FLOW_1, CREATE_SUB_FLOW_2));
+                false, DESC_1, true, FLOW_3, newArrayList(CREATE_SUB_FLOW_1, CREATE_SUB_FLOW_2));
 
         HaFlowRequest result = mapper.toHaFlowCreateRequest(request);
         assertEquals(request.getHaFlowId(), result.getHaFlowId());
@@ -139,7 +147,7 @@ public class HaFlowMapperTest {
         HaFlowUpdatePayload request = new HaFlowUpdatePayload(
                 SHARED_ENDPOINT, BANDWIDTH, PathComputationStrategy.COST.name(), FlowEncapsulationType.VXLAN.name(),
                 MAX_LATENCY, MAX_LATENCY_TIER_2, true, false, true, PRIORITY, false, DESC_1, true, FLOW_3,
-                Lists.newArrayList(UPDATE_SUB_FLOW_1, UPDATE_SUB_FLOW_2));
+                newArrayList(UPDATE_SUB_FLOW_1, UPDATE_SUB_FLOW_2));
 
         HaFlowRequest result = mapper.toHaFlowUpdateRequest(HA_FLOW_ID, request);
         assertEquals(HA_FLOW_ID, result.getHaFlowId());
@@ -168,7 +176,7 @@ public class HaFlowMapperTest {
                 new HaFlowPatchEndpoint(SWITCH_ID_3, PORT_3, VLAN_3, INNER_VLAN_3), (long) BANDWIDTH,
                 PathComputationStrategy.COST.name(), FlowEncapsulationType.VXLAN.name(), MAX_LATENCY,
                 MAX_LATENCY_TIER_2, true, false, true, PRIORITY, false, DESC_1, true, FLOW_3,
-                Lists.newArrayList(
+                newArrayList(
                         new HaSubFlowPatchPayload(SUB_FLOW_1_NAME,
                                 new HaFlowPatchEndpoint(SWITCH_ID_1, PORT_1, VLAN_1, VLAN_2), DESC_2),
                         new HaSubFlowPatchPayload(SUB_FLOW_2_NAME,
@@ -199,11 +207,11 @@ public class HaFlowMapperTest {
     @Test
     public void getResponse() {
         HaFlowDto response = new HaFlowDto(
-                HA_FLOW_ID, FlowStatus.UP, new FlowEndpoint(SWITCH_ID_3, PORT_3, VLAN_3, INNER_VLAN_3), BANDWIDTH,
-                PathComputationStrategy.COST, FlowEncapsulationType.VXLAN, MAX_LATENCY * MILLION,
+                HA_FLOW_ID, FlowStatus.UP, STATUS_INFO, new FlowEndpoint(SWITCH_ID_3, PORT_3, VLAN_3, INNER_VLAN_3),
+                BANDWIDTH, PathComputationStrategy.COST, FlowEncapsulationType.VXLAN, MAX_LATENCY * MILLION,
                 MAX_LATENCY_TIER_2 * MILLION, true, false, true, PRIORITY, false, DESC_1, true,
                 newHashSet(FLOW_1), newHashSet(FLOW_2), newHashSet(FLOW_3),
-                Lists.newArrayList(
+                newArrayList(
                         HaSubFlowDto.builder().flowId(SUB_FLOW_1_NAME)
                                 .endpoint(new FlowEndpoint(SWITCH_ID_1, PORT_1))
                                 .status(FlowStatus.UP)
@@ -236,6 +244,7 @@ public class HaFlowMapperTest {
         assertEquals(response.isAllocateProtectedPath(), result.isAllocateProtectedPath());
         assertEquals(response.getDiverseWithFlows(), result.getDiverseWithFlows());
         assertEquals(response.getStatus().toString(), result.getStatus().toUpperCase());
+        assertEquals(response.getStatusInfo(), result.getStatusInfo());
         assertEquals(response.getDiverseWithFlows(), result.getDiverseWithFlows());
         assertEquals(response.getDiverseWithYFlows(), result.getDiverseWithYFlows());
         assertEquals(response.getDiverseWithHaFlows(), result.getDiverseWithHaFlows());
@@ -247,22 +256,40 @@ public class HaFlowMapperTest {
     }
 
     @Test
+    public void toRerouteResult() {
+        PathInfoData sharedPath = buildPathInfoData(MAX_LATENCY, SWITCH_ID_1);
+        List<SubFlowPathDto> subFlowPaths = newArrayList(
+                new SubFlowPathDto(FLOW_1, buildPathInfoData(MAX_LATENCY_TIER_2, SWITCH_ID_2)));
+        HaFlowRerouteResponse response = new HaFlowRerouteResponse(sharedPath, subFlowPaths, true);
+
+        HaFlowRerouteResult result = mapper.toRerouteResult(response);
+        assertEquals(1, result.getSharedPath().getNodes().size());
+        assertEquals(1, result.getSharedPath().getNodes().get(0).getPortNo());
+        assertPathNode(sharedPath.getPath().get(0), result.getSharedPath().getNodes().get(0));
+        assertEquals(1, result.getSubFlowPaths().size());
+        assertEquals(subFlowPaths.get(0).getFlowId(), result.getSubFlowPaths().get(0).getFlowId());
+        assertEquals(1, result.getSubFlowPaths().get(0).getNodes().size());
+        assertPathNode(subFlowPaths.get(0).getPath().getPath().get(0),
+                result.getSubFlowPaths().get(0).getNodes().get(0));
+    }
+
+    @Test
     public void mapToHaFlowPaths() {
         FlowPathDto sharedPath = FlowPathDto.builder()
-                .forwardPath(Lists.newArrayList(
+                .forwardPath(newArrayList(
                         new PathNodePayload(SWITCH_ID_1, PORT_1, PORT_2),
                         new PathNodePayload(SWITCH_ID_2, PORT_1, PORT_2)
                 ))
-                .reversePath(Lists.newArrayList(
+                .reversePath(newArrayList(
                         new PathNodePayload(SWITCH_ID_2, PORT_2, PORT_1),
                         new PathNodePayload(SWITCH_ID_1, PORT_2, PORT_1)
                 ))
                 .protectedPath(FlowProtectedPathDto.builder()
-                        .forwardPath(Lists.newArrayList(
+                        .forwardPath(newArrayList(
                                 new PathNodePayload(SWITCH_ID_1, PORT_3, PORT_4),
                                 new PathNodePayload(SWITCH_ID_2, PORT_3, PORT_4)
                         ))
-                        .reversePath(Lists.newArrayList(
+                        .reversePath(newArrayList(
                                 new PathNodePayload(SWITCH_ID_2, PORT_4, PORT_3),
                                 new PathNodePayload(SWITCH_ID_1, PORT_4, PORT_3)
                         ))
@@ -271,23 +298,23 @@ public class HaFlowMapperTest {
 
         FlowPathDto firstSubFlow = FlowPathDto.builder()
                 .id(SUB_FLOW_1_NAME)
-                .forwardPath(Lists.newArrayList(
+                .forwardPath(newArrayList(
                         new PathNodePayload(SWITCH_ID_1, PORT_1, PORT_2),
                         new PathNodePayload(SWITCH_ID_2, PORT_1, PORT_2),
                         new PathNodePayload(SWITCH_ID_3, PORT_1, PORT_2)
                 ))
-                .reversePath(Lists.newArrayList(
+                .reversePath(newArrayList(
                         new PathNodePayload(SWITCH_ID_3, PORT_2, PORT_1),
                         new PathNodePayload(SWITCH_ID_2, PORT_2, PORT_1),
                         new PathNodePayload(SWITCH_ID_1, PORT_2, PORT_1)
                 ))
                 .protectedPath(FlowProtectedPathDto.builder()
-                        .forwardPath(Lists.newArrayList(
+                        .forwardPath(newArrayList(
                                 new PathNodePayload(SWITCH_ID_1, PORT_3, PORT_4),
                                 new PathNodePayload(SWITCH_ID_2, PORT_3, PORT_4),
                                 new PathNodePayload(SWITCH_ID_3, PORT_3, PORT_4)
                         ))
-                        .reversePath(Lists.newArrayList(
+                        .reversePath(newArrayList(
                                 new PathNodePayload(SWITCH_ID_3, PORT_4, PORT_3),
                                 new PathNodePayload(SWITCH_ID_2, PORT_4, PORT_3),
                                 new PathNodePayload(SWITCH_ID_1, PORT_4, PORT_3)
@@ -297,23 +324,23 @@ public class HaFlowMapperTest {
 
         FlowPathDto secondSubFlow = FlowPathDto.builder()
                 .id(SUB_FLOW_2_NAME)
-                .forwardPath(Lists.newArrayList(
+                .forwardPath(newArrayList(
                         new PathNodePayload(SWITCH_ID_1, PORT_1, PORT_2),
                         new PathNodePayload(SWITCH_ID_2, PORT_1, PORT_2),
                         new PathNodePayload(SWITCH_ID_4, PORT_1, PORT_2)
                 ))
-                .reversePath(Lists.newArrayList(
+                .reversePath(newArrayList(
                         new PathNodePayload(SWITCH_ID_4, PORT_2, PORT_1),
                         new PathNodePayload(SWITCH_ID_2, PORT_2, PORT_1),
                         new PathNodePayload(SWITCH_ID_1, PORT_2, PORT_1)
                 ))
                 .protectedPath(FlowProtectedPathDto.builder()
-                        .forwardPath(Lists.newArrayList(
+                        .forwardPath(newArrayList(
                                 new PathNodePayload(SWITCH_ID_1, PORT_3, PORT_4),
                                 new PathNodePayload(SWITCH_ID_2, PORT_3, PORT_4),
                                 new PathNodePayload(SWITCH_ID_4, PORT_3, PORT_4)
                         ))
-                        .reversePath(Lists.newArrayList(
+                        .reversePath(newArrayList(
                                 new PathNodePayload(SWITCH_ID_4, PORT_4, PORT_3),
                                 new PathNodePayload(SWITCH_ID_2, PORT_4, PORT_3),
                                 new PathNodePayload(SWITCH_ID_1, PORT_4, PORT_3)
@@ -322,7 +349,7 @@ public class HaFlowMapperTest {
                 .build();
 
         HaFlowPathsResponse response = new HaFlowPathsResponse(sharedPath,
-                Lists.newArrayList(firstSubFlow, secondSubFlow), Collections.emptyMap());
+                newArrayList(firstSubFlow, secondSubFlow), Collections.emptyMap());
         HaFlowPaths result = mapper.toHaFlowPaths(response);
         assertEquals(response.getSharedPath().getForwardPath(), result.getSharedPath().getForward());
         assertEquals(response.getSharedPath().getReversePath(), result.getSharedPath().getReverse());
@@ -344,6 +371,13 @@ public class HaFlowMapperTest {
                 result.getSubFlowPaths().get(1).getProtectedPath().getForward());
         assertEquals(response.getSubFlowPaths().get(1).getProtectedPath().getReversePath(),
                 result.getSubFlowPaths().get(1).getProtectedPath().getReverse());
+    }
+
+    private static PathInfoData buildPathInfoData(long latency, SwitchId switchId1) {
+        PathInfoData pathInfoData = new PathInfoData();
+        pathInfoData.setLatency(latency);
+        pathInfoData.setPath(Collections.singletonList(new PathNode(switchId1, 1, 1, 1L, 1L)));
+        return pathInfoData;
     }
 
     private void assertSubFlow(HaSubFlowUpdatePayload expected, HaSubFlowDto actual) {
@@ -396,6 +430,12 @@ public class HaFlowMapperTest {
         assertEquals(expected.getPortNumber().intValue(), actual.getPortNumber());
         assertEquals(expected.getOuterVlanId(), actual.getVlanId());
         assertEquals(expected.getInnerVlanId(), actual.getInnerVlanId());
+    }
+
+    private void assertPathNode(PathNode expected, FlowPathV2.PathNodeV2 actual) {
+        assertEquals(expected.getPortNo(), actual.getPortNo());
+        assertEquals(expected.getSegLatency(), actual.getSegmentLatency());
+        assertEquals(expected.getSwitchId(), actual.getSwitchId());
     }
 
     @TestConfiguration

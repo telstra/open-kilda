@@ -21,6 +21,7 @@ import static org.openkilda.wfm.topology.reroute.bolts.TimeWindowBolt.STREAM_TIM
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -126,6 +127,14 @@ public class FlowRerouteQueueBolt extends CoordinatedBolt implements IRerouteQue
         log.info("Send reroute request {} with correlationId {}", request, correlationId);
         // emit without anchor to prevent a possible loop
         emit(STREAM_OPERATION_QUEUE_ID, new Values(request.getYFlowId(), request, new CommandContext(correlationId)));
+        registerCallback(correlationId);
+    }
+
+    @Override
+    public void sendRerouteRequest(String correlationId, HaFlowRerouteRequest request) {
+        log.info("Send reroute request {} with correlationId {}", request, correlationId);
+        // emit without anchor to prevent a possible loop
+        emit(STREAM_OPERATION_QUEUE_ID, new Values(request.getHaFlowId(), request, new CommandContext(correlationId)));
         registerCallback(correlationId);
     }
 
