@@ -17,6 +17,7 @@ package org.openkilda.testing.service.database;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowMeter;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -24,7 +25,9 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
+import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.history.FlowEvent;
+import org.openkilda.northbound.dto.v2.haflows.HaFlow;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import java.time.Instant;
@@ -88,6 +91,14 @@ public interface Database {
     void updateFlowMeterId(String flowId, long newMeterId);
 
     List<FlowMirrorPoints> getMirrorPoints();
+
+    //HA-Flows
+
+    Set<Cookie> getHaFlowCookies(String haFlowId);
+
+    Set<Cookie> getHaSubFlowsCookies(HaFlow haFlow);
+
+    Set<FlowMeter> getHaFlowMeters(HaFlow haFlow);
 
     //history
     void addFlowEvent(FlowEvent event);
