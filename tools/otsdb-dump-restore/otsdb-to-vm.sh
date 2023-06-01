@@ -26,11 +26,11 @@ interval="${6:-day}"
 case $interval in
   hour)
     interval_format="%Y-%m-%dT%H:00:00"
-    increment="+1H"
+    increment="1 hour"
     ;;
   day)
     interval_format="%Y-%m-%d"
-    increment="+1d"
+    increment="1 days"
     ;;
   *)
     echo "Invalid interval: $interval"
@@ -39,22 +39,27 @@ case $interval in
 esac
 
 
+if [[ "$(docker images -q kilda-otsdb-dump-restore 2> /dev/null)" == "" ]]; then
+  echo "Docker image kilda-otsdb-dump-restore not found. Please build it first." >&2
+  exit 1
+fi
 
 # Define function to dump data from OpenTSDB
 function dump_data {
-    docker run --rm -v "opentsdb-data-${5}":/tmp kilda-otsdb-dump-restore kilda-otsdb-dump --metrics-prefix "${2}" --time-stop "${3}" "${4}" "${1}"
+    docker run --rm --network="host" -v "opentsdb-data-${5}":/tmp kilda-otsdb-dump-restore kilda-otsdb-dump --metrics-prefix "${2}" --time-stop "${3}" "${4}" "${1}"
 }
 
 # Define function to restore data to Victoria Metrics
 function restore_data {
-    docker run --rm -v "opentsdb-data-${2}":/tmp kilda-otsdb-dump-restore kilda-otsdb-restore "${1}" && docker volume rm "opentsdb-data-${2}" || echo "Failed to restore data to Victoria Metrics" >&2
+    docker run --rm --network="host" -v "opentsdb-data-${2}":/tmp kilda-otsdb-dump-restore kilda-otsdb-restore "${1}" && docker volume rm "opentsdb-data-${2}" || echo "Failed to restore data to Victoria Metrics" >&2
 }
 
 function increment_date()
 {
     local  __resultvar=$1
-    eval $__resultvar=$(date -j -v ${increment} -f "${interval_format}" "${start_date}" +"${interval_format}")
+    eval $__resultvar=$(date -d "${start_date} ${increment}" +${interval_format})
 }
+
 
 # Loop through dates
 while [[ "$start_date" < "$end_date" ]]; do
