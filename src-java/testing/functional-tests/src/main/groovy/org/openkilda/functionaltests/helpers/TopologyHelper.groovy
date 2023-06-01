@@ -112,6 +112,13 @@ class TopologyHelper {
         }
     }
 
+    List<SwitchTriplet> getAllNotNeighbouringSwitchTriplets(boolean includeReverse = false) {
+        return getSwitchTriplets(includeReverse).findAll {
+            it.shared != it.ep1 && it.ep1 != it.ep2 && it.ep2 != it.shared &&
+            it.getPathsEp1().every {it.size() > 2} &&
+                    it.getPathsEp2().every {it.size() > 2}}
+    }
+
     TopologyDefinition readCurrentTopology() {
         readCurrentTopology(false)
     }

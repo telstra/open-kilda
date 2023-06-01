@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -43,12 +43,14 @@ public abstract class FlowMapper {
     @Mapping(target = "reversePath", source = "reversePath.segments")
     @Mapping(target = "forwardPathLatency", ignore = true)
     @Mapping(target = "reversePathLatency", ignore = true)
+    @Mapping(target = "haFlowId", ignore = true)
     public abstract FlowState toFlowState(Flow flow);
 
     @Mapping(target = "forwardPath", source = "info.flowPath.forwardPath")
     @Mapping(target = "reversePath", source = "info.flowPath.reversePath")
     @Mapping(target = "forwardPathLatency", ignore = true)
     @Mapping(target = "reversePathLatency", ignore = true)
+    @Mapping(target = "haFlowId", ignore = true)
     public abstract FlowState toFlowState(UpdateFlowCommand info);
 
     /**

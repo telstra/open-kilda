@@ -47,6 +47,7 @@ public class ResultDispatcher extends Abstract {
                 return STREAM_PERIODIC_ID;
             case ON_DEMAND:
             case ON_DEMAND_Y_FLOW:
+            case ON_DEMAND_HA_FLOW:
                 return STREAM_MANUAL_ID;
             default:
                 throw new IllegalArgumentException(String.format(

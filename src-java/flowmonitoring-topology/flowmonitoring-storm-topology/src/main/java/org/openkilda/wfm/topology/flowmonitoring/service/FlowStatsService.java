@@ -1,4 +1,4 @@
-/* Copyright 2022 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowStatsRepository;
+import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.tx.TransactionManager;
 
@@ -39,12 +40,14 @@ public class FlowStatsService {
     private final FlowRepository flowRepository;
     private final FlowStatsRepository flowStatsRepository;
     private final TransactionManager transactionManager;
+    private final HaSubFlowRepository haSubFlowRepository;
 
     public FlowStatsService(PersistenceManager persistenceManager) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowRepository = repositoryFactory.createFlowRepository();
         flowStatsRepository = repositoryFactory.createFlowStatsRepository();
         transactionManager = persistenceManager.getTransactionManager();
+        haSubFlowRepository = repositoryFactory.createHaSubFlowRepository();
     }
 
     /**
@@ -60,15 +63,19 @@ public class FlowStatsService {
                         FlowStats toCreate = new FlowStats(flow.get(), null, null);
                         flowStatsRepository.add(toCreate);
                         flowStats = toCreate;
+                    } else if (haSubFlowRepository.findById(flowId).isPresent()) {
+                        //TODO: https://github.com/telstra/open-kilda/issues/5223
                     } else {
                         log.warn("Can't save latency for flow '{}'. Flow not found.", flowId);
                         return;
                     }
                 }
-                if (FORWARD.name().toLowerCase().equals(direction)) {
-                    flowStats.setForwardLatency(latency);
-                } else {
-                    flowStats.setReverseLatency(latency);
+                if (flowStats != null) {
+                    if (FORWARD.name().toLowerCase().equals(direction)) {
+                        flowStats.setForwardLatency(latency);
+                    } else {
+                        flowStats.setReverseLatency(latency);
+                    }
                 }
             });
         } catch (PersistenceException e) {

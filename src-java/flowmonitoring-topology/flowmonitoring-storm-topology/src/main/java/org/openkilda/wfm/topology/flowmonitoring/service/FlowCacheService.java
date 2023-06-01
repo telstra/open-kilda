@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,15 +15,21 @@
 
 package org.openkilda.wfm.topology.flowmonitoring.service;
 
+import static java.lang.String.format;
 import static org.openkilda.server42.messaging.FlowDirection.FORWARD;
 
 import org.openkilda.messaging.info.flow.UpdateFlowCommand;
+import org.openkilda.messaging.info.haflow.UpdateHaSubFlowCommand;
 import org.openkilda.messaging.info.stats.FlowRttStatsData;
 import org.openkilda.model.Flow;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.wfm.topology.flowmonitoring.mapper.FlowMapper;
+import org.openkilda.wfm.topology.flowmonitoring.mapper.HaFlowMapper;
 import org.openkilda.wfm.topology.flowmonitoring.model.FlowState;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -34,16 +40,19 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class FlowCacheService {
 
-    private Clock clock;
-    private Duration flowRttStatsExpirationTime;
-    private FlowCacheBoltCarrier carrier;
+    private final Clock clock;
+    private final Duration flowRttStatsExpirationTime;
+    private final FlowCacheBoltCarrier carrier;
     private boolean active;
     private final Map<String, FlowState> flowStates;
     private final FlowRepository flowRepository;
+    private final HaSubFlowRepository haSubFlowRepository;
 
     public FlowCacheService(PersistenceManager persistenceManager, Clock clock,
                             Duration flowRttStatsExpirationTime, FlowCacheBoltCarrier carrier) {
@@ -53,20 +62,20 @@ public class FlowCacheService {
         flowStates = new HashMap<>();
         active = false;
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        haSubFlowRepository = persistenceManager.getRepositoryFactory().createHaSubFlowRepository();
     }
 
-    private void initCache(FlowRepository flowRepository) {
-        for (Flow entry : flowRepository.findAll()) {
-            if (entry.isOneSwitchFlow()) {
-                continue;
-            }
-            if (isIncompleteFlow(entry)) {
-                log.warn("Flow is incomplete, do not put it into flow cache (flow_id: {}, ctime: {}, mtime: {}",
-                        entry.getFlowId(), entry.getTimeCreate(), entry.getTimeModify());
-                continue;
-            }
-            flowStates.put(entry.getFlowId(), FlowMapper.INSTANCE.toFlowState(entry));
-        }
+    private void initCache() {
+        flowStates.putAll(flowRepository.findAll().stream()
+                .filter(flow -> !flow.isOneSwitchFlow())
+                .filter(this::isCompletedFlow)
+                .collect(Collectors.toMap(Flow::getFlowId, FlowMapper.INSTANCE::toFlowState)));
+
+        flowStates.putAll(haSubFlowRepository.findAll().stream()
+                .filter(this::isCompletedHaFlow)
+                .filter(haSubFlow -> !haSubFlow.isOneSwitch())
+                .collect(Collectors.toMap(HaSubFlow::getHaSubFlowId, HaFlowMapper.INSTANCE::toFlowState)));
+
         log.info("Flow cache initialized successfully.");
     }
 
@@ -94,6 +103,23 @@ public class FlowCacheService {
     }
 
     /**
+     * Update HA-Flow info.
+     */
+    public void updateHaFlowInfo(UpdateHaSubFlowCommand info) {
+        Optional<HaSubFlow> optionalHaSubFlow = haSubFlowRepository.findById(info.getFlowId());
+        if (optionalHaSubFlow.isPresent()) {
+            HaSubFlow haSubFlow = optionalHaSubFlow.get();
+            if (haSubFlow.getHaFlow() != null) {
+                flowStates.put(info.getFlowId(), HaFlowMapper.INSTANCE.toFlowState(haSubFlow));
+            } else {
+                log.error(format("HA-Flow for HA-Sub-Flow %s is not found.", haSubFlow.getHaSubFlowId()));
+            }
+        } else {
+            log.error(format("HA-Sub-Flow %s is not found.", info.getFlowId()));
+        }
+    }
+
+    /**
      * Remove flow info.
      */
     public void removeFlowInfo(String flowId) {
@@ -117,7 +143,7 @@ public class FlowCacheService {
      */
     public void activate() {
         if (!active) {
-            initCache(flowRepository);
+            initCache();
             active = true;
         }
     }
@@ -136,13 +162,15 @@ public class FlowCacheService {
     private void checkFlowLatency(String flowId, FlowState flowState) {
         Instant current = clock.instant();
         if (isExpired(flowState.getForwardPathLatency().getTimestamp(), current)) {
-            carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.FORWARD, flowState.getForwardPath());
+            carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.FORWARD, flowState.getForwardPath(),
+                    flowState.getHaFlowId());
         } else {
             carrier.emitCheckFlowLatencyRequest(flowId, FlowDirection.FORWARD,
                     flowState.getForwardPathLatency().getLatency());
         }
         if (isExpired(flowState.getReversePathLatency().getTimestamp(), current)) {
-            carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.REVERSE, flowState.getReversePath());
+            carrier.emitCalculateFlowLatencyRequest(flowId, FlowDirection.REVERSE, flowState.getReversePath(),
+                    flowState.getHaFlowId());
         } else {
             carrier.emitCheckFlowLatencyRequest(flowId, FlowDirection.REVERSE,
                     flowState.getReversePathLatency().getLatency());
@@ -153,8 +181,23 @@ public class FlowCacheService {
         return timestamp == null || current.isAfter(timestamp.plus(flowRttStatsExpirationTime));
     }
 
-    private boolean isIncompleteFlow(Flow flow) {
-        return flow.getForwardPathId() == null || flow.getReversePathId() == null;
+    private boolean isCompletedFlow(Flow flow) {
+        if (flow.getForwardPathId() == null || flow.getReversePathId() == null) {
+            log.warn("Flow is incomplete, do not put it into flow cache (flow_id: {}, ctime: {}, mtime: {}",
+                    flow.getFlowId(), flow.getTimeCreate(), flow.getTimeModify());
+            return false;
+        }
+        return true;
+    }
+
+    private boolean isCompletedHaFlow(HaSubFlow haSubFlow) {
+        HaFlow haFlow = haSubFlow.getHaFlow();
+        if (haFlow == null || haFlow.getForwardPathId() == null || haFlow.getReversePathId() == null) {
+            log.warn("HA-flow is incomplete, do not put it into flow cache (flow_id: {}, ctime: {}, mtime: {}",
+                    haSubFlow.getHaFlowId(), haSubFlow.getTimeCreate(), haSubFlow.getTimeModify());
+            return false;
+        }
+        return true;
     }
 
     /**

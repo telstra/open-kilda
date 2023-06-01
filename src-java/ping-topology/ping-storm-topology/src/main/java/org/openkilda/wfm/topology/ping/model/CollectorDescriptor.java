@@ -70,6 +70,8 @@ public class CollectorDescriptor extends Expirable<GroupId> {
                 return Type.FLOW;
             case ON_DEMAND_Y_FLOW:
                 return Type.Y_FLOW;
+            case ON_DEMAND_HA_FLOW:
+                return Type.HA_FLOW;
             default:
                 return null;
         }
