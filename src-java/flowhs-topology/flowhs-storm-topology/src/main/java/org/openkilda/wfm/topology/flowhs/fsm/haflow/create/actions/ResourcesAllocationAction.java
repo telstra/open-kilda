@@ -156,6 +156,7 @@ public class ResourcesAllocationAction extends
             transactionManager.doInTransaction(() -> {
                 HaFlow haFlow = HaFlowMapper.INSTANCE.toHaFlow(targetFlow);
                 haFlow.setStatus(FlowStatus.IN_PROGRESS);
+                haFlow.getHaSubFlows().forEach(subFlow -> subFlow.setStatus(FlowStatus.IN_PROGRESS));
                 getOrCreateFlowDiverseGroup(targetFlow.getDiverseFlowId()).ifPresent(haFlow::setDiverseGroupId);
                 haFlowRepository.add(haFlow);
 

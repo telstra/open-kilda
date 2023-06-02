@@ -101,6 +101,7 @@ public class OnNoPathFoundAction extends
             dashboardLogger.onFlowStatusUpdate(haFlowId, newFlowStatus);
             haFlow.setStatus(newFlowStatus);
             haFlow.setStatusInfo(stateMachine.getErrorReason());
+            haFlow.recalculateHaSubFlowStatuses();
             stateMachine.setNewHaFlowStatus(newFlowStatus);
             return newFlowStatus;
         });

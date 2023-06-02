@@ -20,8 +20,10 @@ import static org.apache.commons.collections4.ListUtils.union;
 import static org.openkilda.model.PathComputationStrategy.LATENCY;
 import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 
+import org.openkilda.messaging.command.BaseRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.messaging.error.MessageException;
@@ -640,19 +642,27 @@ public class FlowOperationsService {
     /**
      * Produce reroute request for all affected paths/flows.
      */
-    public List<FlowRerouteRequest> makeRerouteRequests(
+    public List<BaseRerouteRequest> makeRerouteRequests(
             Collection<FlowPath> targetPaths, Set<IslEndpoint> affectedIslEndpoints, String reason) {
-        List<FlowRerouteRequest> results = new ArrayList<>();
+        List<BaseRerouteRequest> results = new ArrayList<>();
         Set<String> processed = new HashSet<>();
         for (FlowPath entry : targetPaths) {
             Flow flow = entry.getFlow();
             if (flow == null) {
-                continue; // It is orphaned path of HA-flow sub path
-            }
-            if (processed.add(flow.getFlowId())) {
-                FlowRerouteRequest request = new FlowRerouteRequest(
-                        flow.getFlowId(), false, false, affectedIslEndpoints, reason, false);
-                results.add(request);
+                String haFlowId = entry.getHaFlowId();
+                if (haFlowId != null && haFlowRepository.exists(haFlowId)) {
+                    if (processed.add(haFlowId)) {
+                        HaFlowRerouteRequest request = new HaFlowRerouteRequest(
+                                haFlowId, affectedIslEndpoints, false, reason, false, false);
+                        results.add(request);
+                    }
+                }
+            } else {
+                if (processed.add(flow.getFlowId())) {
+                    FlowRerouteRequest request = new FlowRerouteRequest(
+                            flow.getFlowId(), false, false, affectedIslEndpoints, reason, false);
+                    results.add(request);
+                }
             }
         }
 

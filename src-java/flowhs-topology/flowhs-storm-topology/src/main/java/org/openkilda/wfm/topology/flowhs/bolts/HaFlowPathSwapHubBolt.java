@@ -33,6 +33,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.PeriodicHaPingCommand;
 import org.openkilda.messaging.command.haflow.HaFlowPathSwapRequest;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.reroute.PathSwapResult;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.RuleManagerConfig;
@@ -175,8 +176,14 @@ public class HaFlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCar
     }
 
     @Override
-    public void sendPathSwapResultStatus(String flowId, boolean success, String correlationId) {
-        //TODO implement https://github.com/telstra/open-kilda/issues/5061
+    public void sendPathSwapResultStatus(String haFlowId, boolean success, String correlationId) {
+        PathSwapResult pathSwapResult = PathSwapResult.builder()
+                .flowId(haFlowId)
+                .success(success)
+                .build();
+        Message message = new InfoMessage(pathSwapResult, System.currentTimeMillis(), correlationId);
+        emitWithContext(Stream.HUB_TO_REROUTE_RESPONSE_SENDER.name(), getCurrentTuple(),
+                new Values(currentKey, message));
     }
 
     @Override

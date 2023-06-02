@@ -71,7 +71,7 @@ public class ValidateFlowAction extends
         String flowId = stateMachine.getFlowId();
         Set<IslEndpoint> affectedIsl =
                 new HashSet<>(Optional.ofNullable(context.getAffectedIsl()).orElse(emptySet()));
-        dashboardLogger.onFlowPathReroute(flowId, affectedIsl, context.isForceReroute());
+        dashboardLogger.onFlowPathReroute(flowId, affectedIsl);
 
         String rerouteReason = context.getRerouteReason();
         stateMachine.saveNewEventToHistory("Started flow validation", FlowEventData.Event.REROUTE,
@@ -102,7 +102,7 @@ public class ValidateFlowAction extends
             stateMachine.setOriginalFlowStatusInfo(foundFlow.getStatusInfo());
             stateMachine.setOriginalEncapsulationType(foundFlow.getEncapsulationType());
             stateMachine.setOriginalPathComputationStrategy(foundFlow.getPathComputationStrategy());
-            stateMachine.setRecreateIfSamePath(!foundFlow.isActive() || context.isForceReroute());
+            stateMachine.setRecreateIfSamePath(!foundFlow.isActive());
             stateMachine.setOriginalFlow(RequestedFlowMapper.INSTANCE.toRequestedFlow(foundFlow));
             stateMachine.setPeriodicPingsEnabled(foundFlow.isPeriodicPings());
 
@@ -164,7 +164,6 @@ public class ValidateFlowAction extends
         }
 
         stateMachine.setAffectedIsls(context.getAffectedIsl());
-        stateMachine.setForceReroute(context.isForceReroute());
         stateMachine.setIgnoreBandwidth(context.isIgnoreBandwidth());
 
         stateMachine.saveActionToHistory("HA-flow was validated successfully");

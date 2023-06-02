@@ -110,6 +110,7 @@ public class CompleteHaFlowCreateAction extends
             if (FlowStatus.DEGRADED.equals(haFlowStatus)) {
                 haFlow.setStatusInfo(StatusInfo.BACK_UP_STRATEGY_USED);
             }
+            haFlow.recalculateHaSubFlowStatuses();
 
             return haFlowStatus;
         });

@@ -15,7 +15,7 @@
 
 package org.openkilda.messaging.command.flow;
 
-import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.BaseRerouteRequest;
 import org.openkilda.model.IslEndpoint;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -29,31 +29,14 @@ import java.util.Collections;
 import java.util.Set;
 
 @Value
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class FlowRerouteRequest extends CommandData {
-    /**
-     * Serialization version number constant.
-     */
+public class FlowRerouteRequest extends BaseRerouteRequest {
     private static final long serialVersionUID = 1L;
 
-    @JsonProperty("flowid")
-    protected String flowId;
-
-    @JsonProperty("path_ids")
-    protected Set<IslEndpoint> affectedIsl;
-
-    @JsonProperty("effectively_down")
-    private boolean effectivelyDown;
-
-    @JsonProperty("reason")
-    private String reason;
-
-    @JsonProperty("ignore_bandwidth")
-    private boolean ignoreBandwidth;
-
-    @JsonProperty("manual")
-    private boolean manual;
+    String flowId;
+    boolean effectivelyDown;
+    boolean manual;
 
     /**
      * Create Simplified request usable only for northbound API.
@@ -64,17 +47,15 @@ public class FlowRerouteRequest extends CommandData {
     }
 
     @JsonCreator
-    public FlowRerouteRequest(@NonNull @JsonProperty("flowid") String flowId,
+    public FlowRerouteRequest(@NonNull @JsonProperty("flow_id") String flowId,
                               @JsonProperty("effectively_down") boolean effectivelyDown,
                               @JsonProperty("ignore_bandwidth") boolean ignoreBandwidth,
-                              @NonNull @JsonProperty("path_ids") Set<IslEndpoint> affectedIsl,
+                              @NonNull @JsonProperty("affected_isls") Set<IslEndpoint> affectedIsls,
                               @JsonProperty("reason") String reason,
                               @JsonProperty("manual") boolean manual) {
+        super(affectedIsls, reason, ignoreBandwidth);
         this.flowId = flowId;
         this.effectivelyDown = effectivelyDown;
-        this.affectedIsl = affectedIsl;
-        this.reason = reason;
-        this.ignoreBandwidth = ignoreBandwidth;
         this.manual = manual;
     }
 }

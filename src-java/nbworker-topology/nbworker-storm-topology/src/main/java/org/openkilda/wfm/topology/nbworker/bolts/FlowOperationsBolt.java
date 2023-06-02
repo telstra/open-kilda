@@ -20,7 +20,7 @@ import static java.util.stream.Collectors.toMap;
 import static org.openkilda.model.ConnectedDeviceType.ARP;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
-import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.BaseRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
@@ -319,7 +319,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private void sendRerouteRequest(Collection<FlowPath> paths, Set<IslEndpoint> affectedIslEndpoints, String reason) {
-        for (FlowRerouteRequest request : flowOperationsService.makeRerouteRequests(
+        for (BaseRerouteRequest request : flowOperationsService.makeRerouteRequests(
                 paths, affectedIslEndpoints, reason)) {
             CommandContext forkedContext = getCommandContext().fork(request.getFlowId());
             getOutput().emit(StreamType.REROUTE.toString(), getCurrentTuple(),

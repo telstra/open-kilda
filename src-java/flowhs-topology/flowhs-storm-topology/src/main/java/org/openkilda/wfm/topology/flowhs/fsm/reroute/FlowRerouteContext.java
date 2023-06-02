@@ -30,7 +30,6 @@ import java.util.Set;
 public class FlowRerouteContext extends FlowContext {
     private String flowId;
     private Set<IslEndpoint> affectedIsl;
-    private boolean forceReroute;
     private boolean ignoreBandwidth;
     private boolean effectivelyDown;
     private String rerouteReason;
@@ -38,11 +37,10 @@ public class FlowRerouteContext extends FlowContext {
     @Builder
     public FlowRerouteContext(
             SpeakerFlowSegmentResponse speakerFlowResponse, String flowId, Set<IslEndpoint> affectedIsl,
-            boolean forceReroute, boolean ignoreBandwidth, boolean effectivelyDown, String rerouteReason) {
+            boolean ignoreBandwidth, boolean effectivelyDown, String rerouteReason) {
         super(speakerFlowResponse);
         this.flowId = flowId;
         this.affectedIsl = affectedIsl;
-        this.forceReroute = forceReroute;
         this.ignoreBandwidth = ignoreBandwidth;
         this.effectivelyDown = effectivelyDown;
         this.rerouteReason = rerouteReason;

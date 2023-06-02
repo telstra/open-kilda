@@ -61,6 +61,7 @@ public class UpdateHaFlowStatusAction extends
             if (flowStatus != haFlow.getStatus()) {
                 dashboardLogger.onHaFlowStatusUpdate(haFlowId, flowStatus);
                 haFlow.setStatus(flowStatus);
+                haFlow.recalculateHaSubFlowStatuses();
             }
             return flowStatus;
         });
