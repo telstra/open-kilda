@@ -70,8 +70,7 @@ public class Ping implements Serializable {
 
     public Ping(NetworkEndpoint source, NetworkEndpoint dest,
                 FlowTransitEncapsulation transitEncapsulation, int islPort) {
-
-        this(generatePingId(source, dest, transitEncapsulation, islPort), source, dest, transitEncapsulation, islPort);
+        this(UUID.randomUUID(), source, dest, transitEncapsulation, islPort);
     }
 
     @Override
@@ -87,12 +86,4 @@ public class Ping implements Serializable {
         return String.format("%s-%d", swId, portNumber);
     }
 
-    /**
-     * Generate ping id based on source, dest, transit encapsulation and isl port.
-     */
-    private static UUID generatePingId(NetworkEndpoint source, NetworkEndpoint dest,
-                                      FlowTransitEncapsulation transitEncapsulation, int islPort) {
-        return UUID.nameUUIDFromBytes(
-                String.format("%s-%s-%s-%d", source, dest, transitEncapsulation, islPort).getBytes());
-    }
 }

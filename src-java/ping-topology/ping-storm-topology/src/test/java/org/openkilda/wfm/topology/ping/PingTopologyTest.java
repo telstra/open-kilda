@@ -17,6 +17,9 @@ package org.openkilda.wfm.topology.ping;
 
 import static java.lang.String.format;
 import static org.apache.storm.utils.Utils.sleep;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaFlowPath;
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaSubFlow;
@@ -28,8 +31,10 @@ import static org.openkilda.wfm.config.ZookeeperConfig.FLOW_PING_TOPOLOGY_TEST_Z
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.HaFlowPingRequest;
+import org.openkilda.messaging.command.flow.PeriodicHaPingCommand;
 import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.floodlight.response.PingResponse;
+import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.HaFlowPingResponse;
 import org.openkilda.messaging.info.flow.SubFlowPingPayload;
@@ -61,9 +66,11 @@ import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
+import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -120,6 +127,7 @@ public class PingTopologyTest extends AbstractStormTest {
     private static PingTopologyConfig pingTopologyConfig;
     private static TestKafkaConsumer speakerConsumer;
     private static TestKafkaConsumer northboundConsumer;
+    private static TestKafkaConsumer otsdbConsumer;
     private static FlowPathRepository flowPathRepository;
     private static TransitVlanRepository transitVlanRepository;
     private static HaFlowRepository haFlowRepository;
@@ -136,6 +144,8 @@ public class PingTopologyTest extends AbstractStormTest {
     public static void setupOnce() throws Exception {
         Properties configOverlay = getZooKeeperProperties(FLOW_PING_TOPOLOGY_TEST_ZOOKEEPER_PORT, ROOT_NODE);
         configOverlay.putAll(getKafkaProperties(FLOW_PING_TOPOLOGY_TEST_KAFKA_PORT));
+        configOverlay.setProperty("flow.ping.timeout", "1");
+        configOverlay.setProperty("flow.ping.cache.expiry.sec", "1");
 
         AbstractStormTest.startZooKafka(configOverlay);
         setStartSignal(FLOW_PING_TOPOLOGY_TEST_ZOOKEEPER_PORT, ROOT_NODE, COMPONENT_NAME, RUN_ID);
@@ -161,6 +171,10 @@ public class PingTopologyTest extends AbstractStormTest {
                 kafkaConsumerProperties(UUID.randomUUID().toString(), "northbound", RUN_ID), 1000);
         northboundConsumer.start();
 
+        otsdbConsumer = new TestKafkaConsumer(pingTopologyConfig.getKafkaOtsdbTopic(),
+                kafkaConsumerProperties(UUID.randomUUID().toString(), "opentsdb", RUN_ID), 2000);
+        otsdbConsumer.start();
+
         haFlowPathRepository = persistenceManager.getRepositoryFactory().createHaFlowPathRepository();
         flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
@@ -177,6 +191,8 @@ public class PingTopologyTest extends AbstractStormTest {
         speakerConsumer.join();
         northboundConsumer.wakeup();
         northboundConsumer.join();
+        otsdbConsumer.wakeup();
+        otsdbConsumer.join();
         AbstractStormTest.stopZooKafkaAndStorm();
     }
 
@@ -185,6 +201,7 @@ public class PingTopologyTest extends AbstractStormTest {
         persistenceManager.getInMemoryImplementation().purgeData();
         speakerConsumer.clear();
         northboundConsumer.clear();
+        otsdbConsumer.clear();
     }
 
     @Before
@@ -250,7 +267,7 @@ public class PingTopologyTest extends AbstractStormTest {
 
     @Test
     public void flowFetcherTwoHaPingsTimeout() {
-        long pingTimeout = 10;
+        long pingTimeout = 1;
         List<SubFlowPingPayload> expectedSubFlowsPayload = Lists.newArrayList(
                 new SubFlowPingPayload(SUB_FLOW_ID_B,
                         new UniSubFlowPingPayload(true, null, 1),
@@ -277,6 +294,7 @@ public class PingTopologyTest extends AbstractStormTest {
 
         HaFlowPingResponse response = (HaFlowPingResponse) infoMessage.getData();
         Assertions.assertEquals(expectedResponse, response);
+
     }
 
     @Test
@@ -288,12 +306,12 @@ public class PingTopologyTest extends AbstractStormTest {
 
         sendNorthboundHaFlowPingCommand(notExistingHaFlowId, pingTimeout);
 
-        InfoMessage infoMessage = northboundConsumer.assertNAndPoll(1, InfoMessage.class).get(0);
+        InfoMessage infoMessage = northboundConsumer.assertNAndPoll(1, 2000, InfoMessage.class).get(0);
 
         HaFlowPingResponse response = (HaFlowPingResponse) infoMessage.getData();
         Assertions.assertEquals(expectedResponse, response);
 
-        speakerConsumer.assertNAndPoll(0, CommandMessage.class);
+        assertTrue(speakerConsumer.isEmpty());
     }
 
     @Test
@@ -311,7 +329,7 @@ public class PingTopologyTest extends AbstractStormTest {
         HaFlowPingResponse response = (HaFlowPingResponse) infoMessage.getData();
         Assertions.assertEquals(expectedResponse, response);
 
-        speakerConsumer.assertNAndPoll(0, CommandMessage.class);
+        assertTrue(speakerConsumer.isEmpty());
     }
 
     @Test
@@ -354,7 +372,7 @@ public class PingTopologyTest extends AbstractStormTest {
         HaFlowPingResponse response = (HaFlowPingResponse) infoMessage.getData();
         Assertions.assertEquals(expectedResponse, response);
 
-        speakerConsumer.assertNAndPoll(0, CommandMessage.class);
+        assertTrue(speakerConsumer.isEmpty());
     }
 
     @Test
@@ -373,31 +391,109 @@ public class PingTopologyTest extends AbstractStormTest {
         HaFlowPingResponse response = (HaFlowPingResponse) infoMessage.getData();
         Assertions.assertEquals(expectedResponse, response);
 
-        speakerConsumer.assertNAndPoll(0, CommandMessage.class);
+        assertTrue(speakerConsumer.isEmpty());
+    }
+
+    @Test
+    public void flowFetcherHaPeriodicPingCommandOk() {
+        final List<Datapoint> expectedDatapoints = Lists.newArrayList(
+                new Datapoint("kilda.flow.latency", 0L,
+                        ImmutableMap.of("ha_flow_id", HA_FLOW_ID_1,
+                                "flowid", SUB_FLOW_ID_A,
+                                "direction", "forward",
+                                "status", "success"), 1),
+                new Datapoint("kilda.flow.latency", 0L,
+                        ImmutableMap.of("ha_flow_id", HA_FLOW_ID_1,
+                                "flowid", SUB_FLOW_ID_A,
+                                "direction", "reverse",
+                                "status", "success"), 1),
+                new Datapoint("kilda.flow.latency", 0L,
+                        ImmutableMap.of("ha_flow_id", HA_FLOW_ID_1,
+                                "flowid", SUB_FLOW_ID_B,
+                                "direction", "forward",
+                                "status", "success"), 1),
+                new Datapoint("kilda.flow.latency", 0L,
+                        ImmutableMap.of("ha_flow_id", HA_FLOW_ID_1,
+                                "flowid", SUB_FLOW_ID_B,
+                                "direction", "reverse",
+                                "status", "success"), 1)
+        );
+
+        createCompleteHaFlowWithPeriodicPing();
+
+        sendHaFlowPeriodicPingCommand(HA_FLOW_ID_1);
+        List<CommandMessage> pingCommands = speakerConsumer.assertNAndPoll(4, 2000, CommandMessage.class);
+        pingCommands.forEach(this::sendSpeakerAnswer);
+
+        List<Datapoint> resultDataPoints = otsdbConsumer.assertNAndPoll(4, Datapoint.class);
+        assertThat(resultDataPoints, Matchers.containsInAnyOrder(expectedDatapoints.toArray()));
+
+        disableHaFlowAndAssert();
+        haFlowRepository.remove(HA_FLOW_ID_1);
+    }
+
+    @Test
+    public void  flowFetcherHaPeriodicPingOneFails() {
+        createCompleteHaFlowWithPeriodicPing();
+
+        sendHaFlowPeriodicPingCommand(HA_FLOW_ID_1);
+        List<CommandMessage> pingCommands = speakerConsumer.assertNAndPoll(4, 2000, CommandMessage.class);
+
+        // send only 2 answers
+        sendSpeakerAnswer(pingCommands.get(0));
+        sendSpeakerAnswer(pingCommands.get(1));
+
+        List<Datapoint> resultDataPoints = otsdbConsumer.assertNAndPoll(4, Datapoint.class);
+
+        long errorCounter = resultDataPoints.stream()
+                .filter(datapoint -> datapoint.getTags().get("status").equals("error"))
+                .count();
+
+        assertEquals(2, errorCounter);
+
+        haFlowRepository.remove(HA_FLOW_ID_1);
+        disableHaFlowAndAssert();
+    }
+
+    private void disableHaFlowAndAssert() {
+        sendDisableHaFlowPeriodicPingCommand(HA_FLOW_ID_1);
+        // wait 1 second to ensure all the remaining pings has been processed before clear
+        sleep(1000);
+        speakerConsumer.clear();
+        //wait 1 additional second to check that the periodic ping has been disabled
+        while (!speakerConsumer.isEmpty()) {
+            sleep(1000);
+        }
+
+        assertTrue(speakerConsumer.isEmpty());
     }
 
     private void createCompleteHaFlow() {
-        createHaFlow(true, true, false, false);
+        createHaFlow(true, true, false, false, false);
+    }
+
+    private void createCompleteHaFlowWithPeriodicPing() {
+        createHaFlow(true, true, false, false, true);
     }
 
     private void createHaFlowWithoutTransitVlan() {
-        createHaFlow(true, false, false, false);
+        createHaFlow(true, false, false, false, false);
     }
 
     private void createHaFlowWithoutHaSubFlows() {
-        createHaFlow(false, false, false, false);
+        createHaFlow(false, false, false, false, false);
     }
 
     private void createHaFlowWithOneSubFlowOneSwitchFlow() {
-        createHaFlow(true, true, true, false);
+        createHaFlow(true, true, true, false, false);
     }
 
     private void createHaFlowWithOneSubFlowWithEndpointEqualsYPoint() {
-        createHaFlow(true, true, false, true);
+        createHaFlow(true, true, false, true, false);
     }
 
     private void createHaFlow(boolean addSubFlows, boolean addTransitVlan, boolean oneIsOneSwitchFlow,
-                              boolean endPointsEqualsYPoint) {
+                              boolean endPointsEqualsYPoint, boolean periodicPing) {
         final Switch sharedSwitch = switch1;
         Switch endpointSwitchA = switch3;
         if (oneIsOneSwitchFlow) {
@@ -413,6 +509,7 @@ public class PingTopologyTest extends AbstractStormTest {
                 .sharedOuterVlan(0)
                 .sharedInnerVlan(0)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .periodicPings(periodicPing)
                 .build();
 
         if (addTransitVlan) {
@@ -476,6 +573,18 @@ public class PingTopologyTest extends AbstractStormTest {
 
     private void sendNorthboundHaFlowPingCommand(String haFlowId, long timeout) {
         CommandMessage command = new CommandMessage(new HaFlowPingRequest(haFlowId, timeout),
+                System.currentTimeMillis(), UUID.randomUUID().toString());
+        sendMessage(command, pingTopologyConfig.getKafkaPingTopic());
+    }
+
+    private void sendHaFlowPeriodicPingCommand(String haFlowId) {
+        CommandMessage command = new CommandMessage(new PeriodicHaPingCommand(haFlowId, true),
+                System.currentTimeMillis(), UUID.randomUUID().toString());
+        sendMessage(command, pingTopologyConfig.getKafkaPingTopic());
+    }
+
+    private void sendDisableHaFlowPeriodicPingCommand(String haFlowId) {
+        CommandMessage command = new CommandMessage(new PeriodicHaPingCommand(haFlowId, false),
                 System.currentTimeMillis(), UUID.randomUUID().toString());
         sendMessage(command, pingTopologyConfig.getKafkaPingTopic());
     }

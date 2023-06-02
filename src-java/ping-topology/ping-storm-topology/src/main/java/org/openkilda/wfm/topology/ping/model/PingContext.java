@@ -112,6 +112,13 @@ public class PingContext implements Serializable {
      * <p>It use direction value to determine which(forward, reverse, of flagless) cookie should be returned.
      */
     public long getCookie() {
+        if (isHaFlow()) {
+            return getHaFlowCookie();
+        }
+        return getFlowCookie();
+    }
+
+    private long getFlowCookie() {
         long value;
         if (direction == null) {
             value = flow.getForwardPath().getCookie().getFlowEffectiveId();
@@ -126,12 +133,28 @@ public class PingContext implements Serializable {
         return value;
     }
 
+    private long getHaFlowCookie() {
+        long value;
+        if (direction == null) {
+            value = haFlow.getForwardPath().getCookie().getFlowEffectiveId();
+        } else if (direction == FlowDirection.FORWARD) {
+            value = haFlow.getForwardPath().getCookie().getValue();
+        } else if (direction == FlowDirection.REVERSE) {
+            value = haFlow.getReversePath().getCookie().getValue();
+        } else {
+            throw new IllegalArgumentException(String.format(
+                    "Unsupported %s.%s value", FlowDirection.class.getName(), direction));
+        }
+        return value;
+    }
+
+
     public String getHaFlowId() {
         return haFlowId != null ? haFlowId : haFlow.getHaFlowId();
     }
 
     public boolean isHaFlow() {
-        return haFlow != null && kind.equals(Kinds.ON_DEMAND_HA_FLOW);
+        return haFlow != null;
     }
 
     @Override
