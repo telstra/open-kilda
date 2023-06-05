@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,42 +19,22 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import lombok.ToString;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
 import java.util.List;
 
-/**
- * This class contains the flow stats replies for a given switch.
- */
+@Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-        "message_type",
-        "switch_id",
-        "stats"})
-@ToString
-public class FlowStatsData extends InfoData {
-
+@JsonPropertyOrder({"switch_id", "stats"})
+@EqualsAndHashCode(callSuper = false)
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class GroupStatsData extends InfoData {
     private static final long serialVersionUID = 1L;
 
-    @JsonProperty("switch_id")
-    private SwitchId switchId;
-
-    @JsonProperty
-    private List<FlowStatsEntry> stats;
-
-    public FlowStatsData(@JsonProperty("switch_id") SwitchId switchId,
-                         @JsonProperty("stats") List<FlowStatsEntry> switchStats) {
-        this.switchId = switchId;
-        this.stats = switchStats;
-    }
-
-    public SwitchId getSwitchId() {
-        return switchId;
-    }
-
-    public List<FlowStatsEntry> getStats() {
-        return stats;
-    }
+    SwitchId switchId;
+    List<GroupStatsEntry> stats;
 }

@@ -26,9 +26,12 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.ServiceCookie;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
+import org.openkilda.wfm.topology.stats.model.CommonHaFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyFlowDescriptor;
+import org.openkilda.wfm.topology.stats.model.DummyGroupDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyMeterDescriptor;
 import org.openkilda.wfm.topology.stats.model.EndpointFlowDescriptor;
+import org.openkilda.wfm.topology.stats.model.HaFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
@@ -82,6 +85,30 @@ public final class MeterStatsHandler extends BaseStatsEntryHandler {
     }
 
     @Override
+    public void handleStatsEntry(HaFlowDescriptor descriptor) {
+        handleStatsEntry((CommonHaFlowDescriptor) descriptor);
+    }
+
+    @Override
+    public void handleStatsEntry(CommonHaFlowDescriptor descriptor) {
+        TagsFormatter tags = initTags();
+        tags.addHaFlowIdTag(descriptor.getHaFlowId());
+        switch (descriptor.getMeasurePoint()) {
+            case INGRESS:
+                tags.addFlowIdTag(descriptor.getHaSubFlowId());
+                tags.addDirectionTag(descriptor.getCookie().getDirection());
+                tags.addCookieTag(descriptor.getCookie());
+                emitHaFlowIngressMeterPoints(tags);
+                break;
+            case HA_FLOW_Y_POINT:
+                emitHaFlowYPointMeterPoints(tags);
+                break;
+            default:
+                // nothing to do here
+        }
+    }
+
+    @Override
     public void handleStatsEntry(YFlowSubDescriptor descriptor) {
         TagsFormatter tags = initTags();
         tags.addIsYFlowSubFlowTag(true);
@@ -91,6 +118,11 @@ public final class MeterStatsHandler extends BaseStatsEntryHandler {
 
     @Override
     public void handleStatsEntry(DummyFlowDescriptor descriptor) {
+        throw new IllegalArgumentException(formatUnexpectedDescriptorMessage(descriptor.getClass()));
+    }
+
+    @Override
+    public void handleStatsEntry(DummyGroupDescriptor descriptor) {
         throw new IllegalArgumentException(formatUnexpectedDescriptorMessage(descriptor.getClass()));
     }
 
@@ -118,7 +150,6 @@ public final class MeterStatsHandler extends BaseStatsEntryHandler {
     private void handleFlowStats(TagsFormatter tags, FlowSegmentCookie cookie, String flowId) {
         tags.addFlowIdTag(flowId);
         tags.addCookieTag(cookie);
-
         FlowPathDirection direction = null;
         if (cookie != null) {
             direction = cookie.getDirection();
@@ -128,7 +159,6 @@ public final class MeterStatsHandler extends BaseStatsEntryHandler {
             }
         }
         tags.addDirectionTag(direction);
-
         emitFlowMeterPoints(tags);
     }
 
@@ -143,6 +173,19 @@ public final class MeterStatsHandler extends BaseStatsEntryHandler {
                 new MetricFormatter("flow.meter."), timestamp,
                 statsEntry.getPacketsInCount(), statsEntry.getByteInCount(), tagsFormatter.getTags());
     }
+
+    private void emitHaFlowIngressMeterPoints(TagsFormatter tagsFormatter) {
+        meterEmitter.emitPacketAndBytePoints(
+                new MetricFormatter("haflow.meter."), timestamp,
+                statsEntry.getPacketsInCount(), statsEntry.getByteInCount(), tagsFormatter.getTags());
+    }
+
+    private void emitHaFlowYPointMeterPoints(TagsFormatter tagsFormatter) {
+        meterEmitter.emitPacketAndBytePoints(
+                new MetricFormatter("haflow.meter.ypoint."), timestamp,
+                statsEntry.getPacketsInCount(), statsEntry.getByteInCount(), tagsFormatter.getTags());
+    }
+
 
     private void emitYFlowSharedMeterPoints(TagsFormatter tagsFormatter) {
         meterEmitter.emitPacketAndBytePoints(

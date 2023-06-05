@@ -16,25 +16,53 @@
 package org.openkilda.wfm.topology.stats.service;
 
 import org.openkilda.wfm.topology.stats.model.CookieCacheKey;
+import org.openkilda.wfm.topology.stats.model.GroupCacheKey;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
+import org.openkilda.wfm.topology.stats.model.MeasurePoint;
 import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
 
-import java.util.Map;
+import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
 
 public class CacheAddUpdateHandler extends BaseCacheChangeHandler {
     public CacheAddUpdateHandler(
-            Map<CookieCacheKey, KildaEntryDescriptor> cookieToEntry, Map<MeterCacheKey,
-            KildaEntryDescriptor> meterToEntry) {
-        super(cookieToEntry, meterToEntry);
+            HashSetValuedHashMap<CookieCacheKey, KildaEntryDescriptor> cookieToEntry,
+            HashSetValuedHashMap<MeterCacheKey, KildaEntryDescriptor> meterToEntry,
+            HashSetValuedHashMap<GroupCacheKey, KildaEntryDescriptor> groupToEntry) {
+        super(cookieToEntry, meterToEntry, groupToEntry);
     }
 
+    /**
+     * Caches the given entry with the specified key in the cookieToEntry map.
+     * It is vital to check if the value with the same measurePoint already exist in the cookieToEntry cache,
+     * and remove it if so, this condition is important during any path update.
+     *
+     * @param key   the CookieCacheKey used as the key in the map
+     * @param entry the KildaEntryDescriptor to be cached
+     */
     @Override
     protected void cacheAction(CookieCacheKey key, KildaEntryDescriptor entry) {
+        if (cookieToEntry.containsKey(key)) {
+            cookieToEntry.get(key).stream()
+                    .filter(descriptor -> entry.getMeasurePoint() == descriptor.getMeasurePoint())
+                    .findFirst().ifPresent(descriptor -> cookieToEntry.removeMapping(key, descriptor));
+        }
         cookieToEntry.put(key, entry);
     }
 
     @Override
     protected void cacheAction(MeterCacheKey key, KildaEntryDescriptor entry) {
-        meterToEntry.put(key, entry);
+        if (!meterToEntry.get(key).isEmpty() && MeasurePoint.HA_FLOW_Y_POINT == entry.getMeasurePoint()) {
+            if (meterToEntry.get(key).stream().noneMatch(descriptor ->
+                    MeasurePoint.HA_FLOW_Y_POINT == descriptor.getMeasurePoint())) {
+                meterToEntry.put(key, entry);
+            }
+        } else {
+            meterToEntry.put(key, entry);
+        }
+    }
+
+    @Override
+    protected void cacheAction(GroupCacheKey key, KildaEntryDescriptor entry) {
+        groupToEntry.put(key, entry);
     }
 }

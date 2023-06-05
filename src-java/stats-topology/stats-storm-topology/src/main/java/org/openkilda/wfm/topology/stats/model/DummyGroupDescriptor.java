@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,13 +15,21 @@
 
 package org.openkilda.wfm.topology.stats.model;
 
-import org.openkilda.messaging.info.stats.FlowStatsEntry;
+import org.openkilda.model.SwitchId;
 
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 import lombok.ToString;
 
-@ToString
-public class FlowStatsAndDescriptor extends StatsAndDescriptor<FlowStatsEntry> {
-    public FlowStatsAndDescriptor(FlowStatsEntry data, KildaEntryDescriptor descriptor) {
-        super(data, descriptor);
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
+public class DummyGroupDescriptor extends KildaEntryDescriptor {
+    public DummyGroupDescriptor(@NonNull SwitchId switchId) {
+        super(switchId, MeasurePoint.UNKNOWN);
+    }
+
+    @Override
+    public void handle(KildaEntryDescriptorHandler handler) {
+        handler.handleStatsEntry(this);
     }
 }

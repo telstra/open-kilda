@@ -15,24 +15,42 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow;
 
+import static org.openkilda.wfm.topology.flowhs.utils.HaFlowUtils.buildUpdateHaFlowPathInfo;
+
+import org.openkilda.messaging.info.stats.UpdateHaFlowPathInfo;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.HaFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowGenericCarrier;
+
+import java.util.Optional;
+import java.util.stream.Stream;
 
 public class NotifyHaFlowStatsOnNewPathsAction<T extends HaFlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C
         extends SpeakerResponseContext> extends FlowProcessingWithHistorySupportAction<T, S, E, C> {
-    private final FlowGenericCarrier carrier;
+    private final HaFlowGenericCarrier carrier;
 
-    public NotifyHaFlowStatsOnNewPathsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {
+    public NotifyHaFlowStatsOnNewPathsAction(PersistenceManager persistenceManager, HaFlowGenericCarrier carrier) {
         super(persistenceManager);
         this.carrier = carrier;
     }
 
     @Override
     protected void perform(S from, S to, E event, C context, T stateMachine) {
-        // TODO notify stats https://github.com/telstra/open-kilda/issues/5182
-        // example: org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowStatsOnNewPathsAction
+        haFlowRepository.findById(stateMachine.getHaFlowId()).ifPresent(haFlow ->
+                Stream.concat(stateMachine.getNewPrimaryPathIds().getAllSubPathIds().stream(),
+                                Optional.ofNullable(stateMachine.getNewProtectedPathIds())
+                                        .map(haPathIdsPair -> haPathIdsPair.getAllSubPathIds().stream())
+                                        .orElse(Stream.empty()))
+                        .forEach(pathId -> flowPathRepository.findById(pathId)
+                                .ifPresent(flowPath -> sendUpdateHaFlowPathInfo(haFlow, flowPath))));
+    }
+
+    private void sendUpdateHaFlowPathInfo(HaFlow haFlow, FlowPath flowPath) {
+        UpdateHaFlowPathInfo updateHaFlowPathInfo = buildUpdateHaFlowPathInfo(flowPath, haFlow);
+        carrier.sendNotifyFlowStats(updateHaFlowPathInfo);
     }
 }

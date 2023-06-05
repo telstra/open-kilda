@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,15 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats.model;
+package org.openkilda.messaging.info.stats;
 
-import org.openkilda.messaging.info.stats.FlowStatsEntry;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Value;
 
-import lombok.ToString;
+import java.io.Serializable;
 
-@ToString
-public class FlowStatsAndDescriptor extends StatsAndDescriptor<FlowStatsEntry> {
-    public FlowStatsAndDescriptor(FlowStatsEntry data, KildaEntryDescriptor descriptor) {
-        super(data, descriptor);
-    }
+@Value
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class GroupStatsEntry implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    int groupId;
+    long byteInCount;
+    long packetsInCount;
 }

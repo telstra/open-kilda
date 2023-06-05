@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,15 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats.model;
+package org.openkilda.wfm.topology.flowhs.service.haflow;
 
-import org.openkilda.messaging.info.stats.FlowStatsEntry;
+import org.openkilda.messaging.info.reroute.error.RerouteError;
 
-import lombok.ToString;
-
-@ToString
-public class FlowStatsAndDescriptor extends StatsAndDescriptor<FlowStatsEntry> {
-    public FlowStatsAndDescriptor(FlowStatsEntry data, KildaEntryDescriptor descriptor) {
-        super(data, descriptor);
-    }
+public interface HaFlowRerouteHubCarrier extends HaFlowGenericCarrier {
+    /**
+     * Sends reroute result status to reroute topology.
+     *
+     * @param flowId        flow id.
+     * @param rerouteError  first error in reroute process if any.
+     * @param correlationId correlation id.
+     */
+    void sendRerouteResultStatus(String flowId, RerouteError rerouteError, String correlationId);
 }

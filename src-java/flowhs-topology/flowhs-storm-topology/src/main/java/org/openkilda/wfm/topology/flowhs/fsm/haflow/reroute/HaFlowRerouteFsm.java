@@ -66,7 +66,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions.SwapFlowPath
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions.UpdateFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions.ValidateHaFlowAction;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteEventListener;
-import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowRerouteHubCarrier;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
@@ -89,7 +89,7 @@ import java.util.concurrent.TimeUnit;
 @Setter
 @Slf4j
 public final class HaFlowRerouteFsm extends HaFlowPathSwappingFsm<HaFlowRerouteFsm, State, Event, HaFlowRerouteContext,
-        FlowRerouteHubCarrier, FlowRerouteEventListener> {
+        HaFlowRerouteHubCarrier, FlowRerouteEventListener> {
     private boolean recreateIfSamePath;
     private boolean reroutePrimary;
     private boolean rerouteProtected;
@@ -106,7 +106,7 @@ public final class HaFlowRerouteFsm extends HaFlowPathSwappingFsm<HaFlowRerouteF
     private RerouteError rerouteError;
 
     public HaFlowRerouteFsm(
-            @NonNull CommandContext commandContext, @NonNull FlowRerouteHubCarrier carrier, @NonNull String haFlowId,
+            @NonNull CommandContext commandContext, @NonNull HaFlowRerouteHubCarrier carrier, @NonNull String haFlowId,
             @NonNull Collection<FlowRerouteEventListener> eventListeners) {
         super(Event.NEXT, Event.ERROR, commandContext, carrier, haFlowId, eventListeners);
     }
@@ -144,15 +144,15 @@ public final class HaFlowRerouteFsm extends HaFlowPathSwappingFsm<HaFlowRerouteF
 
     public static class Factory {
         private final StateMachineBuilder<HaFlowRerouteFsm, State, Event, HaFlowRerouteContext> builder;
-        private final FlowRerouteHubCarrier carrier;
+        private final HaFlowRerouteHubCarrier carrier;
 
-        public Factory(@NonNull FlowRerouteHubCarrier carrier, @NonNull Config config,
+        public Factory(@NonNull HaFlowRerouteHubCarrier carrier, @NonNull Config config,
                        @NonNull PersistenceManager persistenceManager, @NonNull RuleManager ruleManager,
                        @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager resourcesManager) {
             this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(HaFlowRerouteFsm.class, State.class, Event.class,
-                    HaFlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class, String.class,
+                    HaFlowRerouteContext.class, CommandContext.class, HaFlowRerouteHubCarrier.class, String.class,
                     Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);

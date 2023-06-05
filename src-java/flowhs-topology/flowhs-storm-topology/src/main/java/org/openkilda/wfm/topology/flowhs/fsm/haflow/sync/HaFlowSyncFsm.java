@@ -36,8 +36,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.sync.actions.OnFinishedWithE
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.sync.actions.OnReceivedResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.sync.actions.UpdateHaFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateEventListener;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowGenericCarrier;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
@@ -63,12 +63,12 @@ import java.util.concurrent.TimeUnit;
 @Setter
 @Slf4j
 public final class HaFlowSyncFsm extends HaFlowProcessingFsm<HaFlowSyncFsm, State, Event,
-        HaFlowSyncContext, FlowGenericCarrier, FlowCreateEventListener> {
+        HaFlowSyncContext, HaFlowGenericCarrier, FlowCreateEventListener> {
 
     private final Map<UUID, Set<PathId>> requestToPathIdsMap;
 
     private HaFlowSyncFsm(
-            @NonNull CommandContext commandContext, @NonNull FlowGenericCarrier carrier, @NonNull String haFlowId,
+            @NonNull CommandContext commandContext, @NonNull HaFlowGenericCarrier carrier, @NonNull String haFlowId,
             @NonNull Collection<FlowCreateEventListener> eventListeners) {
         super(Event.NEXT, Event.ERROR, commandContext, carrier, haFlowId, eventListeners);
         this.requestToPathIdsMap = new HashMap<>();
@@ -102,13 +102,13 @@ public final class HaFlowSyncFsm extends HaFlowProcessingFsm<HaFlowSyncFsm, Stat
 
     public static class Factory {
         private final StateMachineBuilder<HaFlowSyncFsm, State, Event, HaFlowSyncContext> builder;
-        private final FlowGenericCarrier carrier;
+        private final HaFlowGenericCarrier carrier;
 
-        public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+        public Factory(@NonNull HaFlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
                        @NonNull RuleManager ruleManager, @NonNull Config config) {
             this.carrier = carrier;
             this.builder = StateMachineBuilderFactory.create(HaFlowSyncFsm.class, State.class, Event.class,
-                    HaFlowSyncContext.class, CommandContext.class, FlowGenericCarrier.class, String.class,
+                    HaFlowSyncContext.class, CommandContext.class, HaFlowGenericCarrier.class, String.class,
                     Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
