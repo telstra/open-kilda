@@ -86,7 +86,7 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
 
         and: "Traffic passes through HA-Flow"
         if (swT.isHaTraffExamAvailable()) {
-            haFlowHelper.getTraffExam(createdHaFlow).run().hasTraffic()
+            assert haFlowHelper.getTraffExam(createdHaFlow).run().hasTraffic()
         }
 
         // TODO check stats

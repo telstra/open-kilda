@@ -54,7 +54,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
         and: "Traffic passes through HA-Flow"
         if (swT.isHaTraffExamAvailable()) {
-            haFlowHelper.getTraffExam(haFlow).run().hasTraffic()
+            assert haFlowHelper.getTraffExam(haFlow).run().hasTraffic()
         }
 
         and: "HA-flow pass validation"

@@ -64,7 +64,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                 update.getSubFlows().get(0).getEndpoint().getSwitchId(),
                 update.getSubFlows().get(1).getEndpoint().getSwitchId())
         if (switchTripletAfterUpdate.isHaTraffExamAvailable()) {
-            haFlowHelper.getTraffExam(haFlow).run().hasTraffic()
+            assert haFlowHelper.getTraffExam(haFlow).run().hasTraffic()
         }
 
         cleanup:
