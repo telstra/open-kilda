@@ -26,6 +26,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseConte
 import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
 import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.BaseHaFlowPathRemovalAction;
 
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
