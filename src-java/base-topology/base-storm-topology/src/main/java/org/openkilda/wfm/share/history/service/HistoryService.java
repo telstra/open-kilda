@@ -174,7 +174,6 @@ public class HistoryService {
                     haFlowEventRepository.detach(haFlowEvent);
                     result.add(haFlowEvent);
                 });
-        log.info("fetched {} events", result.size());
         return result;
     }
 

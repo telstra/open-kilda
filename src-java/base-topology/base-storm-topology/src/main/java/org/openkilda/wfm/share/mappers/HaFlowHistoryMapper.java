@@ -50,6 +50,7 @@ import org.mapstruct.factory.Mappers;
 import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Mapper(imports = { ZoneOffset.class, SwitchId.class, MeterId.class, GroupId.class })
@@ -80,23 +81,23 @@ public abstract class HaFlowHistoryMapper {
     public abstract HaFlowEventDumpDataImpl createHaFlowEventDump(HaFlowDumpData haFlowDumpData);
 
     public String switchIdToString(SwitchId value) {
-        return value == null ? null : value.toString();
+        return Objects.toString(value, null);
     }
 
     public String pathIdToString(PathId value) {
-        return value == null ? null : value.toString();
+        return Objects.toString(value, null);
     }
 
     public String cookieToString(FlowSegmentCookie value) {
-        return value == null ? null : value.toString();
+        return Objects.toString(value, null);
     }
 
     public String groupIdToString(GroupId value) {
-        return value == null ? null : value.toString();
+        return Objects.toString(value, null);
     }
 
     public String meterIdToString(MeterId value) {
-        return value == null ? null : value.toString();
+        return Objects.toString(value, null);
     }
 
     /**

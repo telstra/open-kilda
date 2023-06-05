@@ -33,8 +33,7 @@ public interface FlowHistoryAware<T> {
      * @param constraints a set of constraints to filter flow history result set
      * @return a response containing history entries
      */
-    CompletableFuture<List<T>> getFlowHistory(String flowId,
-                                                             FlowHistoryRangeConstraints constraints);
+    CompletableFuture<List<T>> getFlowHistory(String flowId, FlowHistoryRangeConstraints constraints);
 
     /**
      * Retrieves flow statuses from the persistence layer.

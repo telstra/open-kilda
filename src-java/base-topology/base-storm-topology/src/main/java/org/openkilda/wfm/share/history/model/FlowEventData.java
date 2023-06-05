@@ -25,7 +25,7 @@ import java.time.Instant;
 
 @Value
 @Builder
-public class FlowEventData implements EventData, Serializable {
+public class FlowEventData implements Serializable {
     String flowId;
     Initiator initiator;
     Event event;

@@ -79,7 +79,7 @@ public class OnReceivedResponseAction
                 stateMachine.removePendingCommand(commandId);
 
                 response.getFailedCommandIds().forEach((uuid, message) ->
-                        stateMachine.saveHaFlowActionToHistory(format(FAILED_TO_APPLY_RULE_MESSAGE, actionName), format(
+                        stateMachine.saveHaFlowErrorToHistory(format(FAILED_TO_APPLY_RULE_MESSAGE, actionName), format(
                                 "Failed to %s the rule: commandId %s, switch %s, uuid %s. Error: %s",
                                 actionName, commandId, response.getSwitchId(), uuid, message)));
 

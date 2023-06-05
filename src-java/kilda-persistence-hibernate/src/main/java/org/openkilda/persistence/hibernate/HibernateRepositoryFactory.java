@@ -18,6 +18,9 @@ package org.openkilda.persistence.hibernate;
 import org.openkilda.persistence.hibernate.repositories.HibernateHistoryFlowEventActionRepository;
 import org.openkilda.persistence.hibernate.repositories.HibernateHistoryFlowEventDumpRepository;
 import org.openkilda.persistence.hibernate.repositories.HibernateHistoryFlowEventRepository;
+import org.openkilda.persistence.hibernate.repositories.HibernateHistoryHaFlowEventActionRepository;
+import org.openkilda.persistence.hibernate.repositories.HibernateHistoryHaFlowEventDumpRepository;
+import org.openkilda.persistence.hibernate.repositories.HibernateHistoryHaFlowEventRepository;
 import org.openkilda.persistence.hibernate.repositories.HibernateHistoryPortEventRepository;
 import org.openkilda.persistence.repositories.ApplicationRepository;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
@@ -138,17 +141,19 @@ public class HibernateRepositoryFactory implements RepositoryFactory {
 
     @Override
     public HaFlowEventRepository createHaFlowEventRepository() {
-        throw new UnsupportedOperationException();
+        return new HibernateHistoryHaFlowEventRepository(implementation);
     }
 
     @Override
     public HaFlowEventDumpRepository createHaFlowEventDumpRepository() {
-        throw new UnsupportedOperationException();
+        return new HibernateHistoryHaFlowEventDumpRepository(implementation,
+                new HibernateHistoryHaFlowEventRepository(implementation));
     }
 
     @Override
     public HaFlowEventActionRepository createHaFlowEventActionRepository() {
-        throw new UnsupportedOperationException();
+        return new HibernateHistoryHaFlowEventActionRepository(implementation,
+                new HibernateHistoryHaFlowEventRepository(implementation));
     }
 
     @Override

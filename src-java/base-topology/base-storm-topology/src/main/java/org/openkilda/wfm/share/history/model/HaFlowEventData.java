@@ -27,7 +27,7 @@ import java.time.Instant;
 @Value
 @Builder
 @EqualsAndHashCode(callSuper = false)
-public class HaFlowEventData implements EventData, Serializable {
+public class HaFlowEventData implements Serializable {
     String haFlowId;
     Initiator initiator;
     Event event;

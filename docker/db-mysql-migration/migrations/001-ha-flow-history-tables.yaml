@@ -1,0 +1,226 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: dmitrii-beliakov
+      changes:
+        - tagDatabase:
+            tag: 001-ha-flow-history-tables.yaml
+
+  - changeSet:
+      id: 01-ha-flow-event-table
+      author: dmitrii-beliakov
+      changes:
+        - createTable:
+            tableName: ha_flow_event
+            columns:
+              - column:
+                  name: id
+                  type: INT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: ha_flow_id
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: timestamp
+                  type: DATETIME(3)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: actor
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: action
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: task_id
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: task_id_unique_key
+                  type: CHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: time_create
+                  type: DATETIME(3)
+                  defaultValueComputed: now(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_modify
+                  type: DATETIME(3)
+                  constraints:
+                    nullable: true
+        - modifySql:
+            dbms: mysql
+            append:
+              value: engine innodb charset=UTF8
+
+  - changeSet:
+      id: 02-ha-flow-event-table-indexes
+      author: dmitrii-beliakov
+      changes:
+        - createIndex:
+            tableName: ha_flow_event
+            indexName: ix_ha_event_time
+            columns:
+              - column:
+                  name: timestamp
+        - createIndex:
+            tableName: ha_flow_event
+            indexName: ix_ha_flow_id
+            columns:
+              - column:
+                  name: ha_flow_id(64)
+        - createIndex:
+            tableName: ha_flow_event
+            indexName: ix_ha_flow_event_task_id
+            unique: true
+            columns:
+              - column:
+                  name: task_id_unique_key(100)
+
+  - changeSet:
+      id: 03-ha-flow-event-action-table
+      author: dmitrii-beliakov
+      changes:
+        - createTable:
+            tableName: ha_flow_event_action
+            columns:
+              - column:
+                  name: id
+                  type: INT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: action
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: details
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: task_id
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: timestamp
+                  type: DATETIME(3)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: ha_flow_event_id
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_create
+                  type: DATETIME(3)
+                  defaultValueComputed: now(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_modify
+                  type: DATETIME(3)
+                  constraints:
+                    nullable: true
+        - modifySql:
+            dbms: mysql
+            append:
+              value: engine innodb charset=UTF8
+
+  - changeSet:
+      id: 04-ha-flow_event_action-table-indexes
+      author: dmitrii-beliakov
+      changes:
+        - createIndex:
+            tableName: ha_flow_event_action
+            indexName: ix_ha_flow_event_id
+            columns:
+              - column:
+                  name: ha_flow_event_id
+        - addForeignKeyConstraint:
+            constraintName: fk_ha_flow_event_action_2_flow_event
+            baseTableName: ha_flow_event_action
+            baseColumnNames: ha_flow_event_id
+            onUpdate: CASCADE
+            onDelete: RESTRICT
+            referencedTableName: ha_flow_event
+            referencedColumnNames: id
+
+  - changeSet:
+      id: 05-ha-flow-event-dump-table
+      author: dmitrii-beliakov
+      changes:
+        - createTable:
+            tableName: ha_flow_event_dump
+            columns:
+              - column:
+                  name: id
+                  type: INT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: ha_flow_event_id
+                  type: INT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: event_dump_json
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: time_create
+                  type: DATETIME(3)
+                  defaultValueComputed: now(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_modify
+                  type: DATETIME(3)
+                  constraints:
+                    nullable: true
+        - modifySql:
+            dbms: mysql
+            append:
+              value: engine innodb charset=UTF8
+
+  - changeSet:
+      id: 06-ha-flow_event_dump-table-indexes
+      author: dmitrii-beliakov
+      changes:
+        - createIndex:
+            tableName: ha_flow_event_dump
+            indexName: ix_ha_flow_event_dump_id
+            columns:
+              - column:
+                  name: ha_flow_event_id
+        - addForeignKeyConstraint:
+            constraintName: fk_ha_flow_event_dump_2_flow_event
+            baseTableName: ha_flow_event_dump
+            baseColumnNames: ha_flow_event_id
+            onUpdate: CASCADE
+            onDelete: RESTRICT
+            referencedTableName: ha_flow_event
+            referencedColumnNames: id
