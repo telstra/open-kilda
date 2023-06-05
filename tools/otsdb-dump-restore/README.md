@@ -109,3 +109,26 @@ docker run --rm -v opentsdb-data:/tmp kilda-otsdb-dump-restore kilda-otsdb-resto
 ```bash
 docker volume remove opentsdb-data
 ```
+
+### How to use the otsdb-to-vm script
+The otsdb-to-vm script is a wrapper around the kilda-otsdb-dump-restore tool. It is used to dump data from an OpenTSDB and restore it to a VictoriaMetrics service.
+```bash
+Usage: otsdb-to-vm OPENTSDB_ENDPOINT VICTORIA_ENDPOINT TIME_START TIME_STOP [hour|day]
+
+  This tool dumps the data from an OpenTSDB and restore it to a VictoriaMetrics service.
+
+  OPENTSDB_ENDPOINT openTSDB endpoint
+
+  VICTORIA_ENDPOINT VictoriaMetrics endpoint
+
+  TIME_START time since the data is dumped
+
+  DATE_STOP time where to stop dumping
+
+  [hour|day] time frame size
+
+  Examples:
+
+  ./otsdb-to-vm.sh opentsdb.example.com:4242 victoria-metrics.example.com:4242 2022-01-01 2022-01-31 kilda. day
+  ./otsdb-to-vm.sh opentsdb.example.com:4242 victoria-metrics.example.com:4242 2022-01-01T00:00:00 2022-01-01T23:59:59 kilda. hour
+```

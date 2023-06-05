@@ -1,17 +1,34 @@
 #!/bin/bash
 
-# ./otsdb-to-vm.sh opentsdb.example.com:4242 victoria-metrics.example.com:8428 2022-01-01 2022-01-31 rigel. day
+# ./otsdb-to-vm.sh opentsdb.example.com:4242 victoria-metrics.example.com:4242 2022-01-01 2022-01-31 kilda. day
 # This command will migrate data from OpenTSDB running at "opentsdb.example.com:4242"
-#to Victoria Metrics running at "victoria-metrics.example.com:8428" for the time period
+#to Victoria Metrics running at "victoria-metrics.example.com:4242" for the time period
 #between January 1, 2022 and January 31, 2022, using the metrics prefix "my-metrics-prefix"
 #and a time interval of one day. You can customize the command by replacing the parameters
 #with your own values.
 
 # Check for required parameters
-# if [ "$#" -lt 5 ] || [ "$#" -gt 6 ]; then
-#   echo "Usage: $0 <opentsdb_endpoint> <victoria_metrics_endpoint> <start_date> <end_date> <metrics_prefix> [hour|day]"
-#   exit 1
-# fi
+if [ "$#" -lt 5 ] || [ "$#" -gt 6 ]; then
+  echo "Usage: $0 OPENTSDB_ENDPOINT VICTORIA_ENDPOINT TIME_START TIME_STOP [hour|day]
+
+  This tool dumps the data from an OpenTSDB and restore it to a VictoriaMetrics service.
+
+  OPENTSDB_ENDPOINT openTSDB endpoint
+
+  VICTORIA_ENDPOINT VictoriaMetrics endpoint
+
+  TIME_START time since the data is dumped
+
+  DATE_STOP time where to stop dumping
+
+  [hour|day] time frame size
+
+  Examples:
+
+  ./otsdb-to-vm.sh opentsdb.example.com:4242 victoria-metrics.example.com:4242 2022-01-01 2022-01-31 kilda. day
+  ./otsdb-to-vm.sh opentsdb.example.com:4242 victoria-metrics.example.com:4242 2022-01-01T00:00:00 2022-01-01T23:59:59 kilda. hour"
+  exit 1
+fi
 
 
 # Set parameters
