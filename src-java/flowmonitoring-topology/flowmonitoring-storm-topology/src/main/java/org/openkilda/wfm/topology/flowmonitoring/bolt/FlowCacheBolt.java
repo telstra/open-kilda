@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowmonitoring.bolt;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.ACTION_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_REMOVE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.FLOW_UPDATE_STREAM_ID;
+import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.HA_SUB_FLOW_UPDATE_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.Stream.STATS_STREAM_ID;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt.COMMAND_DATA_FIELD;
 import static org.openkilda.wfm.topology.flowmonitoring.bolt.FlowSplitterBolt.INFO_DATA_FIELD;
@@ -28,6 +29,7 @@ import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.flow.UpdateFlowCommand;
+import org.openkilda.messaging.info.haflow.UpdateHaSubFlowCommand;
 import org.openkilda.messaging.info.stats.FlowRttStatsData;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.context.PersistenceContextRequired;
@@ -46,6 +48,8 @@ import org.openkilda.wfm.topology.flowmonitoring.service.FlowCacheService;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -64,8 +68,8 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
     public static final String LINK_FIELD = "link";
     public static final String LATENCY_FIELD = "latency";
 
-    private Duration flowRttStatsExpirationTime;
-    private MetricFormatter metricFormatter;
+    private final Duration flowRttStatsExpirationTime;
+    private final MetricFormatter metricFormatter;
 
     private transient FlowCacheService flowCacheService;
     private transient CalculateFlowLatencyService calculateFlowLatencyService;
@@ -109,6 +113,12 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
                     String flowId = pullValue(input, FLOW_ID_FIELD, String.class);
                     flowCacheService.removeFlowInfo(flowId);
                     emit(FLOW_REMOVE_STREAM_ID.name(), input, new Values(flowId, getCommandContext()));
+                } else if (HA_SUB_FLOW_UPDATE_STREAM_ID.name().equals(input.getSourceStreamId())) {
+                    UpdateHaSubFlowCommand updateHaSubFlowCommand = pullValue(input, COMMAND_DATA_FIELD,
+                            UpdateHaSubFlowCommand.class);
+                    flowCacheService.updateHaFlowInfo(updateHaSubFlowCommand);
+                    emit(HA_SUB_FLOW_UPDATE_STREAM_ID.name(), input, new Values(updateHaSubFlowCommand.getFlowId(),
+                            updateHaSubFlowCommand, getCommandContext()));
                 } else {
                     String flowId = pullValue(input, FLOW_ID_FIELD, String.class);
                     flowCacheService.processFlowLatencyCheck(flowId);
@@ -136,8 +146,9 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
     }
 
     @Override
-    public void emitCalculateFlowLatencyRequest(String flowId, FlowDirection direction, List<Link> flowPath) {
-        calculateFlowLatencyService.handleCalculateFlowLatencyRequest(flowId, direction, flowPath);
+    public void emitCalculateFlowLatencyRequest(String flowId, FlowDirection direction, List<Link> flowPath,
+                                                String haFlowId) {
+        calculateFlowLatencyService.handleCalculateFlowLatencyRequest(flowId, direction, flowPath, haFlowId);
     }
 
     @Override
@@ -152,12 +163,14 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
     }
 
     @Override
-    public void emitLatencyStats(String flowId, FlowDirection direction, Duration latency) {
-        Map<String, String> tags = ImmutableMap.of(
+    public void emitLatencyStats(String flowId, FlowDirection direction, Duration latency, String haFlowId) {
+        Map<String, String> tags = Maps.newHashMap(ImmutableMap.of(
                 "flowid", flowId,
                 "direction", direction.name().toLowerCase(),
-                "origin", "flow-monitoring"
-        );
+                "origin", "flow-monitoring"));
+        if (!StringUtils.isEmpty(haFlowId)) {
+            tags.put("ha_flow_id", haFlowId);
+        }
 
         Datapoint datapoint = new Datapoint(metricFormatter.format("flow.rtt"),
                 System.currentTimeMillis(), tags, latency.toNanos());
@@ -175,6 +188,8 @@ public class FlowCacheBolt extends AbstractBolt implements FlowCacheBoltCarrier 
         declarer.declareStream(ACTION_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, FLOW_DIRECTION_FIELD,
                 LATENCY_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(FLOW_UPDATE_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, COMMAND_DATA_FIELD,
+                FIELD_ID_CONTEXT));
+        declarer.declareStream(HA_SUB_FLOW_UPDATE_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, COMMAND_DATA_FIELD,
                 FIELD_ID_CONTEXT));
         declarer.declareStream(FLOW_REMOVE_STREAM_ID.name(), new Fields(FLOW_ID_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(STATS_STREAM_ID.name(), new Fields(KafkaEncoder.FIELD_ID_PAYLOAD));

@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology;
 
+import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.Destination;
@@ -26,7 +27,9 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.WakeupException;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -35,11 +38,11 @@ import java.util.concurrent.TimeUnit;
 
 public class TestKafkaConsumer extends Thread {
     private static final long CONSUMER_QUEUE_OFFER_TIMEOUT = 1000;
-    private static final long KAFKA_MESSAGE_POLL_TIMEOUT = 30000;
     private static final long KAFKA_CONSUMER_POLL_TIMEOUT = 100;
     private final KafkaConsumer<String, String> consumer;
     private final String topic;
     private final Destination destination;
+    private long kafkaMessagePollTimeout = 30000;
     private boolean checkDestination = true;
     private volatile BlockingQueue<ConsumerRecord<String, String>> records = new ArrayBlockingQueue<>(100);
 
@@ -55,6 +58,15 @@ public class TestKafkaConsumer extends Thread {
         checkDestination = false;
     }
 
+    public TestKafkaConsumer(final String topic, final Properties properties, long kafkaMessagePollTimeout) {
+        this(topic, null, properties);
+        checkDestination = false;
+        this.kafkaMessagePollTimeout = kafkaMessagePollTimeout;
+    }
+
+    /**
+     * Starts Kafka consumer.
+     * */
     public void run() {
         System.out.println("Starting Kafka Consumer for " + topic);
         consumer.subscribe(Collections.singletonList(topic));
@@ -81,7 +93,7 @@ public class TestKafkaConsumer extends Thread {
     }
 
     public ConsumerRecord<String, String> pollMessage() throws InterruptedException {
-        return pollMessage(KAFKA_MESSAGE_POLL_TIMEOUT);
+        return pollMessage(kafkaMessagePollTimeout);
     }
 
     public ConsumerRecord<String, String> pollMessage(final long timeout) throws InterruptedException {
@@ -90,6 +102,50 @@ public class TestKafkaConsumer extends Thread {
 
     public String pollMessageValue() throws InterruptedException {
         return Optional.ofNullable(pollMessage()).map(ConsumerRecord::value).orElse(null);
+    }
+
+    /**
+     * Polls messages from Kafka until expectedCount is reached.
+     *
+     * @param expectedCount expected count of messages
+     * @param clazz class of messages
+     * @return list of messages
+     */
+    public <T> List<T> assertNAndPoll(final int expectedCount, Class<T> clazz) {
+        return assertNAndPoll(expectedCount, kafkaMessagePollTimeout, clazz);
+    }
+
+    /**
+     * Polls messages from Kafka until expectedCount is reached.
+     *
+     * @param expectedCount expected count of messages
+     * @param pollTimeout timeout for poll
+     * @param clazz class of messages
+     * @return list of messages
+     */
+    public <T> List<T> assertNAndPoll(final int expectedCount, final long pollTimeout, Class<T> clazz) {
+        List<T> messages = new ArrayList<>();
+        ConsumerRecord<String, String> record = null;
+        for (int i = 0; i < expectedCount; i++) {
+            try {
+                record = pollMessage(pollTimeout);
+                if (record == null) {
+                    throw new AssertionError(format("Could not get %d records. %d records gotten",
+                            expectedCount, messages.size()));
+                }
+                messages.add(MAPPER.readValue(record.value(), clazz));
+            } catch (InterruptedException e) {
+                throw new AssertionError(format("Could not get %d records. %d records gotten", expectedCount,
+                        messages.size()));
+            } catch (IOException e) {
+                throw new AssertionError(format("Could not parse %s object: '%s'", clazz.getName(), record.value()));
+            }
+        }
+        // ensure there are no more records
+        if (!isEmpty()) {
+            throw new AssertionError(format("Got more than %d records", expectedCount));
+        }
+        return messages;
     }
 
     public void clear() {

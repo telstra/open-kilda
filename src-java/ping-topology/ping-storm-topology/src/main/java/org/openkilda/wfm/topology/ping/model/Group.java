@@ -35,6 +35,7 @@ public class Group implements Serializable {
 
     public enum Type {
         FLOW,
-        Y_FLOW
+        Y_FLOW,
+        HA_FLOW
     }
 }

@@ -16,8 +16,10 @@
 package org.openkilda.wfm.topology.ping.model;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
+@EqualsAndHashCode
 public abstract class Expirable<K> {
     private boolean active = true;
     private final long expireAt;

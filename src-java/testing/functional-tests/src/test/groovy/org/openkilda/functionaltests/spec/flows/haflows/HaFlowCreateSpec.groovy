@@ -18,6 +18,7 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPingPayload
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -61,6 +62,17 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         then: "The ha-flow is no longer visible via 'get' API"
         Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getHaFlow(haFlow.haFlowId) }
         def flowRemoved = true
+
+        and: "ha-flow is pingable"
+        // Ping operation is temporary allowed only for multi switch HA-flows https://github.com/telstra/open-kilda/issues/5224
+        if (SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(swT)) {
+            def response = northboundV2.pingHaFlow(haFlow.haFlowId, new HaFlowPingPayload(2000))
+            !response.error
+            response.subFlows.each {
+                assert it.forward.pingSuccess
+                assert it.reverse.pingSuccess
+            }
+        }
 
         and: "And involved switches pass validation"
         withPool {

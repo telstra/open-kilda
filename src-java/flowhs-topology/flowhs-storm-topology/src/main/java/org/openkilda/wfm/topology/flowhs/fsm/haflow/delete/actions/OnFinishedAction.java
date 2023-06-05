@@ -34,9 +34,10 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowDeleteFsm, St
 
     @Override
     public void perform(State from, State to, Event event, HaFlowDeleteContext context, HaFlowDeleteFsm stateMachine) {
-        //TODO periodic pings
         //TODO deactivate flow monitoring
+        stateMachine.getCarrier().sendPeriodicPingNotification(stateMachine.getHaFlowId(), false);
         dashboardLogger.onSuccessfulHaFlowDelete(stateMachine.getHaFlowId());
         stateMachine.saveHaFlowActionToHistory("HA-flow was deleted successfully");
     }
+
 }

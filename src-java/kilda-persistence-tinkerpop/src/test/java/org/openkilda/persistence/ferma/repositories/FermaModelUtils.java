@@ -33,6 +33,7 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.google.common.collect.Lists;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class FermaModelUtils {
@@ -130,10 +131,19 @@ public final class FermaModelUtils {
      * Builds 2 PathSegment objects.
      */
     public static List<PathSegment> buildSegments(PathId pathId, Switch switch1, Switch switch2, Switch switch3) {
-        PathSegment segment1 = PathSegment.builder()
-                .pathId(pathId).srcSwitch(switch1).destSwitch(switch3).build();
-        PathSegment segment2 = PathSegment.builder()
-                .pathId(pathId).srcSwitch(switch3).destSwitch(switch2).build();
-        return Lists.newArrayList(segment1, segment2);
+        return buildSegments(pathId, Lists.newArrayList(switch1, switch3, switch2));
+    }
+
+    /**
+     * Builds PathSegment objects.
+     */
+    public static List<PathSegment> buildSegments(PathId pathId, List<Switch> switches) {
+        List<PathSegment> segments = new ArrayList<>();
+        for (int i = 0; i < switches.size() - 1; i++) {
+            PathSegment segment = PathSegment.builder()
+                    .pathId(pathId).srcSwitch(switches.get(i)).destSwitch(switches.get(i + 1)).build();
+            segments.add(segment);
+        }
+        return segments;
     }
 }

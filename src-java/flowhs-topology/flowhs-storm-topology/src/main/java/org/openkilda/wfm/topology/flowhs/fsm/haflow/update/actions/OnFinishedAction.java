@@ -19,12 +19,15 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -63,7 +66,42 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, St
     }
 
     private void updateFlowMonitoring(HaFlowUpdateFsm stateMachine) {
-        // TODO activate/deactivate flow monitoring for multi switch flows if required
-        // https://github.com/telstra/open-kilda/issues/5172
+        HaFlow original = stateMachine.getOriginalHaFlow();
+        HaFlow target = HaFlowMapper.INSTANCE.toHaFlow(stateMachine.getTargetHaFlow());
+
+        for (HaSubFlow originalSubFlow : original.getHaSubFlows()) {
+            HaSubFlow targetSubFlow = target.getHaSubFlowOrThrowException(originalSubFlow.getHaSubFlowId());
+            boolean originalNotSingle = !originalSubFlow.isOneSwitch();
+            boolean targetNotSingle = !targetSubFlow.isOneSwitch();
+            boolean srcUpdated = isSrcUpdated(original, target);
+            boolean dstUpdated = isDstUpdated(originalSubFlow, targetSubFlow);
+
+            // clean up old if it is not single
+            //TODO: Review logic during https://github.com/telstra/open-kilda/issues/5208
+            if (originalNotSingle && (srcUpdated || dstUpdated)) {
+                stateMachine.getCarrier().sendDeactivateFlowMonitoring(stateMachine.getFlowId(),
+                        original.getSharedSwitchId(), originalSubFlow.getEndpointSwitchId());
+
+            }
+            // setup new if it is not single
+            //TODO: Review logic during https://github.com/telstra/open-kilda/issues/5208
+            if (targetNotSingle && (srcUpdated || dstUpdated)) {
+                stateMachine.getCarrier().sendActivateFlowMonitoring(null);
+            }
+        }
+    }
+
+    private boolean isSrcUpdated(HaFlow original, HaFlow target) {
+        return !(original.getSharedSwitchId().equals(target.getSharedSwitchId())
+                && original.getSharedPort() == target.getSharedPort()
+                && original.getSharedOuterVlan() == target.getSharedOuterVlan()
+                && original.getSharedInnerVlan() == target.getSharedInnerVlan());
+    }
+
+    private boolean isDstUpdated(HaSubFlow originalSubFlow, HaSubFlow targetSubFlow) {
+        return !(originalSubFlow.getEndpointSwitchId().equals(targetSubFlow.getEndpointSwitchId())
+                && originalSubFlow.getEndpointPort() == targetSubFlow.getEndpointPort()
+                && originalSubFlow.getEndpointVlan() == targetSubFlow.getEndpointVlan()
+                && originalSubFlow.getEndpointInnerVlan() == targetSubFlow.getEndpointInnerVlan());
     }
 }

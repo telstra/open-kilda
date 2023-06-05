@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions;
 
+import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
@@ -34,9 +35,15 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowCreateFsm, St
 
     @Override
     public void perform(State from, State to, Event event, HaFlowCreateContext context, HaFlowCreateFsm stateMachine) {
-        //TODO periodic pings
-        //TODO activate flow monitoring
+        //TODO activate server42 monitoring
+        sendPeriodicPingNotification(stateMachine);
         dashboardLogger.onSuccessfulHaFlowCreate(stateMachine.getHaFlowId());
         stateMachine.saveHaFlowActionToHistory("HA-flow was created successfully");
+    }
+
+    private void sendPeriodicPingNotification(HaFlowCreateFsm stateMachine) {
+        HaFlowRequest requestedFlow = stateMachine.getTargetFlow();
+        stateMachine.getCarrier().sendPeriodicPingNotification(
+                requestedFlow.getHaFlowId(), requestedFlow.isPeriodicPings());
     }
 }

@@ -18,6 +18,7 @@ package org.openkilda.northbound.service.impl;
 import static java.util.Collections.emptySet;
 
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.HaFlowPingRequest;
 import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathSwapRequest;
@@ -33,6 +34,7 @@ import org.openkilda.messaging.command.haflow.HaFlowValidationResponse;
 import org.openkilda.messaging.command.haflow.HaFlowsDumpRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
+import org.openkilda.messaging.info.flow.HaFlowPingResponse;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowStatusTimestampsRequest;
 import org.openkilda.messaging.payload.history.FlowStatusTimestampsEntry;
@@ -71,16 +73,19 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class HaFlowServiceImpl implements HaFlowService {
-    private final MessagingChannel messagingChannel;
-    private final HaFlowMapper flowMapper;
     @Value("#{kafkaTopicsConfig.getFlowHsTopic()}")
     private String flowHsTopic;
     @Value("#{kafkaTopicsConfig.getTopoRerouteTopic()}")
     private String rerouteTopic;
     @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbworkerTopic;
+    @Value("#{kafkaTopicsConfig.getPingTopic()}")
+    private String pingTopic;
 
     private final FlowStatusMapper flowStatusMapper;
+
+    private final MessagingChannel messagingChannel;
+    private final HaFlowMapper flowMapper;
 
     @Autowired
     public HaFlowServiceImpl(MessagingChannel messagingChannel,
@@ -236,7 +241,13 @@ public class HaFlowServiceImpl implements HaFlowService {
 
     @Override
     public CompletableFuture<HaFlowPingResult> pingHaFlow(String haFlowId, HaFlowPingPayload payload) {
-        return null;
+        log.info("API request: Ping ha-flow {}, payload {}", haFlowId, payload);
+        CommandMessage command = new CommandMessage(new HaFlowPingRequest(haFlowId, payload.getTimeoutMillis()),
+                System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(pingTopic, command)
+                .thenApply(HaFlowPingResponse.class::cast)
+                .thenApply(flowMapper::toPingResult);
     }
 
     @Override

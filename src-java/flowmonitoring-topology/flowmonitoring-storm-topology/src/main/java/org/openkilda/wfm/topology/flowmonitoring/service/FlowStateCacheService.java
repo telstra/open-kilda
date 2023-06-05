@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,11 +15,12 @@
 
 package org.openkilda.wfm.topology.flowmonitoring.service;
 
-import org.openkilda.messaging.info.flow.UpdateFlowCommand;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaSubFlowRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,11 +34,11 @@ public class FlowStateCacheService {
 
     public FlowStateCacheService(PersistenceManager persistenceManager) {
         FlowRepository flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-
-        initCache(flowRepository);
+        HaSubFlowRepository haSubFlowRepository = persistenceManager.getRepositoryFactory().createHaSubFlowRepository();
+        initCache(flowRepository, haSubFlowRepository);
     }
 
-    private void initCache(FlowRepository flowRepository) {
+    private void initCache(FlowRepository flowRepository, HaSubFlowRepository haSubFlowRepository) {
         try {
             flows = flowRepository.findAll().stream()
                     .filter(flow -> !flow.isOneSwitchFlow())
@@ -48,13 +49,24 @@ public class FlowStateCacheService {
         } catch (Exception e) {
             log.error("Flow state cache initialization exception. Empty cache is used.", e);
         }
+        try {
+            flows.addAll(haSubFlowRepository.findAll().stream()
+                    .filter(haSubFlow -> haSubFlow.getHaFlow() != null)
+                    .filter(haSubFlow -> !haSubFlow.isOneSwitch())
+                    .filter(haSubFlow -> haSubFlow.getStatus() != FlowStatus.IN_PROGRESS)
+                    .map(HaSubFlow::getHaSubFlowId)
+                    .collect(Collectors.toSet()));
+            log.info("HA-Sub-Flow state cache initialized successfully.");
+        } catch (Exception e) {
+            log.error("HA-flow state cache initialization exception. Empty cache is used.", e);
+        }
     }
 
     /**
      * Add flow to cache.
      */
-    public void updateFlow(UpdateFlowCommand updateFlowCommand) {
-        flows.add(updateFlowCommand.getFlowId());
+    public void updateFlow(String flowId) {
+        flows.add(flowId);
     }
 
     /**
@@ -63,8 +75,6 @@ public class FlowStateCacheService {
     public void removeFlow(String flowId) {
         flows.remove(flowId);
     }
-
-
 
     public Set<String> getFlows() {
         return flows;

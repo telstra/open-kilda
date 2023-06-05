@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.info.flow;
 
+import static org.openkilda.messaging.info.flow.FlowPingResponseUtils.buildPingSuccess;
+
 import org.openkilda.messaging.info.InfoData;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -43,21 +45,6 @@ public class YFlowPingResponse extends InfoData {
         this.yFlowId = yFlowId;
         this.error = error;
         this.subFlows = subFlows;
-        this.pingSuccess = checkPingSuccess(error, subFlows);
-    }
-
-    @JsonProperty
-    private boolean checkPingSuccess(String error, List<SubFlowPingPayload> subFlows) {
-        if (error != null) {
-            return false;
-        }
-        if (subFlows != null) {
-            for (SubFlowPingPayload subFlow : subFlows) {
-                if (!subFlow.getForward().isPingSuccess() || !subFlow.getReverse().isPingSuccess()) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        this.pingSuccess = buildPingSuccess(error, subFlows);
     }
 }
