@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow;
+package org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions;
 
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.HaFlowPath;

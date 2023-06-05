@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.stats.model;
 
+import org.openkilda.model.GroupId;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
@@ -31,6 +32,16 @@ public abstract class BaseFlowDescriptor extends KildaEntryDescriptor {
     @NonNull
     protected final FlowSegmentCookie cookie;
     protected final MeterId meterId;
+    GroupId ypointGroupId;
+
+    public BaseFlowDescriptor(
+            SwitchId switchId, MeasurePoint measurePoint, @NonNull FlowSegmentCookie cookie, MeterId meterId,
+            GroupId ypointGroupId) {
+        super(switchId, measurePoint);
+        this.cookie = cookie;
+        this.meterId = meterId;
+        this.ypointGroupId = ypointGroupId;
+    }
 
     public BaseFlowDescriptor(
             SwitchId switchId, MeasurePoint measurePoint, @NonNull FlowSegmentCookie cookie, MeterId meterId) {
