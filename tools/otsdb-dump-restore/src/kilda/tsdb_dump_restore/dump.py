@@ -6,6 +6,8 @@ import pathlib
 import click
 import ndjson
 import requests
+from requests.adapters import HTTPAdapter, Retry
+
 
 from kilda.tsdb_dump_restore import mapping
 from kilda.tsdb_dump_restore import stats_client
@@ -61,6 +63,10 @@ def main(opentsdb_endpoint, time_start, **options):
 
     http_session = requests.Session()
     http_session.hooks['response'].append(utils.ResponseStatisticsHook(rest_statistics))
+
+    retries = Retry(total=5, backoff_factor=0.5, status_forcelist=[424])
+
+    http_session.mount('http://', HTTPAdapter(max_retries=retries))
 
     client = stats_client.OpenTSDBStatsClient(http_session, opentsdb_endpoint)
 

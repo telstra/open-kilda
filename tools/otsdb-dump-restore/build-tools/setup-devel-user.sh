@@ -13,9 +13,10 @@ if [ ${DEVEL_UID} -eq 0 ]; then
   exit
 fi
 
-if [ -z "$(getent group "${DEVEL_NAME}")" ]; then
+if [ -z "$(getent group "${DEVEL_GID}")" ]; then
   groupadd -g "${DEVEL_GID}" "${DEVEL_NAME}"
 fi
+
 if [ -z "$(getent passwd "${DEVEL_NAME}")" ]; then
   useradd -m -u "${DEVEL_UID}" -g "${DEVEL_GID}" -s /bin/bash "${DEVEL_NAME}"
 fi

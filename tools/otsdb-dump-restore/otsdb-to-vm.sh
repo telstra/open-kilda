@@ -92,7 +92,7 @@ while [[ "$start_date" < "$end_date" ]]; do
     dump_data "${start_date}" "${metrics_prefix}" "${interval_end_date}" "${opentsdb_endpoint}" "${volume_subfix}"
 
     echo "Restoring data from ${start_date} to ${interval_end_date} in background"
-    restore_data "${victoria_metrics_endpoint}" "${volume_subfix}" &
+    # restore_data "${victoria_metrics_endpoint}" "${volume_subfix}" &
 
     # Increment date by time interval
     increment_date start_date
