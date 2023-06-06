@@ -16,6 +16,8 @@
 package org.openkilda.wfm.topology.nbworker.services;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -225,6 +227,33 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
         Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
 
         assertTrue(updatedFlow.isStrictBandwidth());
+    }
+
+    @Test
+    public void updateFlowWouldNotChangeTheVlanStatsInTheFlow() throws FlowNotFoundException, InvalidFlowException {
+        String testFlowId = "flow_id";
+        Set<Integer> originalVlanStatistics = new HashSet<>();
+        originalVlanStatistics.add(11);
+
+        Flow flow = new TestFlowBuilder()
+                .flowId(testFlowId)
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .vlanStatistics(originalVlanStatistics)
+                .build();
+        flowRepository.add(flow);
+
+        Set<Integer> expectedVlanStatistics = new HashSet<>();
+        expectedVlanStatistics.add(31);
+
+        FlowPatch receivedFlow = FlowPatch.builder()
+                .flowId(testFlowId)
+                .vlanStatistics(expectedVlanStatistics)
+                .build();
+
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+
+        assertThat(updatedFlow.getVlanStatistics(), containsInAnyOrder(originalVlanStatistics.toArray()));
     }
 
     @Test(expected = IllegalArgumentException.class)
