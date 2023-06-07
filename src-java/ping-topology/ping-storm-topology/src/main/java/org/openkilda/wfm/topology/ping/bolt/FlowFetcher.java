@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.HaFlowPingRequest;
+import org.openkilda.messaging.command.flow.PeriodicHaPingCommand;
 import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.command.flow.YFlowPingRequest;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
@@ -29,6 +30,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
@@ -122,7 +124,13 @@ public class FlowFetcher extends Abstract {
     }
 
     private void updatePeriodicPingHeap(Tuple input) throws PipelineException {
+        if (hasHaFlowPeriodicPingRequest(input)) {
+            updatePeriodicHaPingHeap(input);
+            return;
+        }
+
         PeriodicPingCommand periodicPingCommand = pullPeriodicPingRequest(input);
+
         if (periodicPingCommand.isEnable()) {
             flowRepository.findById(periodicPingCommand.getFlowId())
                     .flatMap(flow -> {
@@ -130,26 +138,58 @@ public class FlowFetcher extends Abstract {
                         return getFlowWithTransitEncapsulation(flow);
                     })
                     .ifPresent(flowsSet::add);
+
         } else {
             flowsSet.removeIf(flowWithTransitEncapsulation ->
                     flowWithTransitEncapsulation.getFlow().getFlowId().equals(periodicPingCommand.getFlowId()));
         }
     }
 
+    private void updatePeriodicHaPingHeap(Tuple input) throws PipelineException {
+        PeriodicHaPingCommand periodicHaPingCommand = pullPeriodicHaPingRequest(input);
+        String haFlowId = periodicHaPingCommand.getHaFlowId();
+        if (periodicHaPingCommand.isEnable()) {
+            haFlowRepository.findById(haFlowId)
+                    .flatMap(haFlow -> {
+                        haFlowRepository.detach(haFlow);
+                        return getFlowWithTransitEncapsulation(haFlow);
+                    })
+                    .ifPresent(flowsSet::add);
+
+        } else {
+            flowsSet.removeIf(flowWithTransitEncapsulation ->
+                    flowWithTransitEncapsulation.getHaFlow().getHaFlowId().equals(haFlowId));
+        }
+    }
+
+
     private void refreshHeap(Tuple input, boolean emitCacheExpiry) throws PipelineException {
-        log.debug("Handle periodic ping request");
-        Set<FlowWithTransitEncapsulation> flowsWithTransitEncapsulation =
-                flowRepository.findWithPeriodicPingsEnabled().stream()
-                        .peek(flowRepository::detach)
-                        .map(this::getFlowWithTransitEncapsulation)
-                        .flatMap(o -> o.isPresent() ? Stream.of(o.get()) : Stream.empty())
-                        .collect(Collectors.toSet());
+        Set<FlowWithTransitEncapsulation> flowsWithTransitEncapsulation = getFlowsWithTransitEncapsulation();
+        Set<FlowWithTransitEncapsulation> haFlowsWithTransitEncapsulation = getHaFlowsWithTransitEncapsulation();
         if (emitCacheExpiry) {
             final CommandContext commandContext = pullContext(input);
             emitCacheExpire(input, commandContext, flowsWithTransitEncapsulation);
         }
         flowsSet = flowsWithTransitEncapsulation;
+        flowsSet.addAll(haFlowsWithTransitEncapsulation);
+
         lastPeriodicPingCacheRefresh = System.currentTimeMillis();
+    }
+
+    private Set<FlowWithTransitEncapsulation> getFlowsWithTransitEncapsulation() {
+        return flowRepository.findWithPeriodicPingsEnabled().stream()
+                .peek(flowRepository::detach)
+                .map(this::getFlowWithTransitEncapsulation)
+                .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
+                .collect(Collectors.toSet());
+    }
+
+    private Set<FlowWithTransitEncapsulation> getHaFlowsWithTransitEncapsulation() {
+        return haFlowRepository.findWithPeriodicPingsEnabled().stream()
+                .peek(haFlowRepository::detach)
+                .map(this::getFlowWithTransitEncapsulation)
+                .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
+                .collect(Collectors.toSet());
     }
 
     private void handlePeriodicRequest(Tuple input) throws PipelineException {
@@ -159,7 +199,8 @@ public class FlowFetcher extends Abstract {
             refreshHeap(input, true);
         }
         final CommandContext commandContext = pullContext(input);
-        for (FlowWithTransitEncapsulation flow : flowsSet) {
+
+        flowsSet.stream().filter(flowWithTransit -> flowWithTransit.getFlow() != null).forEach(flow -> {
             PingContext pingContext = PingContext.builder()
                     .group(new GroupId(DIRECTION_COUNT_PER_FLOW))
                     .kind(Kinds.PERIODIC)
@@ -168,8 +209,16 @@ public class FlowFetcher extends Abstract {
                     .transitEncapsulation(flow.getTransitEncapsulation())
                     .build();
             emit(input, pingContext, commandContext);
-        }
+        });
 
+        flowsSet.stream().filter(flowWithTransit -> flowWithTransit.getHaFlow() != null).forEach(flow -> {
+            PingContext pingContext = PingContext.builder()
+                    .kind(Kinds.PERIODIC)
+                    .haFlow(flow.getHaFlow())
+                    .transitEncapsulation(flow.getTransitEncapsulation())
+                    .build();
+            emit(input, pingContext, commandContext);
+        });
     }
 
     private void handleOnDemandRequest(Tuple input) throws PipelineException {
@@ -287,9 +336,7 @@ public class FlowFetcher extends Abstract {
             return;
         }
 
-        long notOneSwitchFlowCount =
-                haFlow.getHaSubFlows().stream().filter(subFlow -> !subFlow.isOneSwitchFlow()).count();
-        if (notOneSwitchFlowCount == 0) {
+        if (haFlow.getHaSubFlows().stream().allMatch(HaSubFlow::isOneSwitchFlow)) {
             emitOnDemandHaFlowResponse(input, request, format(
                     "HaFlow %s has only one-switch sub-flows", request.getHaFlowId()));
             return;
@@ -305,7 +352,6 @@ public class FlowFetcher extends Abstract {
             return;
         }
 
-        GroupId groupId = new GroupId(DIRECTION_COUNT_PER_FLOW * (int) notOneSwitchFlowCount);
         Optional<FlowTransitEncapsulation> transitEncapsulation = getTransitEncapsulation(haFlow);
         if (!transitEncapsulation.isPresent()) {
             emitOnDemandHaFlowResponse(input, request, format(
@@ -313,7 +359,6 @@ public class FlowFetcher extends Abstract {
             return;
         }
         PingContext pingContext = PingContext.builder()
-                .group(groupId)
                 .kind(Kinds.ON_DEMAND_HA_FLOW)
                 .haFlow(haFlow)
                 .transitEncapsulation(transitEncapsulation.get())
@@ -327,10 +372,17 @@ public class FlowFetcher extends Abstract {
             Optional<String> yFlowId = yFlowRepository.findYFlowId(flow.getFlowId());
             return getTransitEncapsulation(flow)
                     .map(transitEncapsulation -> new FlowWithTransitEncapsulation(
-                            flow, yFlowId.orElse(null), transitEncapsulation));
+                            flow, yFlowId.orElse(null), null, transitEncapsulation));
         }
         return Optional.empty();
     }
+
+    private Optional<FlowWithTransitEncapsulation> getFlowWithTransitEncapsulation(HaFlow haFlow) {
+        return getTransitEncapsulation(haFlow)
+                .map(transitEncapsulation -> new FlowWithTransitEncapsulation(
+                        null, null, haFlow, transitEncapsulation));
+    }
+
 
     private Optional<FlowTransitEncapsulation> getTransitEncapsulation(Flow flow) {
         return getTransitEncapsulation(flow.getForwardPathId(), flow.getReversePathId(), flow.getEncapsulationType());
@@ -396,6 +448,14 @@ public class FlowFetcher extends Abstract {
         return pullValue(input, InputRouter.FIELD_ID_PING_REQUEST, PeriodicPingCommand.class);
     }
 
+    private PeriodicHaPingCommand pullPeriodicHaPingRequest(Tuple input) throws PipelineException {
+        return pullValue(input, InputRouter.FIELD_ID_PING_REQUEST, PeriodicHaPingCommand.class);
+    }
+
+    private boolean hasHaFlowPeriodicPingRequest(Tuple input) {
+        return hasValue(input, InputRouter.FIELD_ID_PING_REQUEST, PeriodicHaPingCommand.class);
+    }
+
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputManager) {
         outputManager.declare(STREAM_FIELDS);
@@ -428,6 +488,7 @@ public class FlowFetcher extends Abstract {
     private static class FlowWithTransitEncapsulation {
         Flow flow;
         String yFlowId;
+        HaFlow haFlow;
         FlowTransitEncapsulation transitEncapsulation;
     }
 }

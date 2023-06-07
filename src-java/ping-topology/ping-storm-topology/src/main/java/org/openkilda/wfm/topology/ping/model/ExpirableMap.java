@@ -15,23 +15,36 @@
 
 package org.openkilda.wfm.topology.ping.model;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
 
 public class ExpirableMap<K, V extends Expirable<K>> {
-    private final LinkedList<V> queue = new LinkedList<>();
-    private final HashMap<K, V> map = new HashMap<>();
+    private final PriorityQueue<V> expirableQueue =
+            new PriorityQueue<>(Comparator.comparingLong(Expirable::getExpireAt));
+    private final Map<K, V> map = new HashMap<>();
 
+    /**
+     * Add a record.
+     */
     public V put(K key, V value) {
-        queue.addLast(value);
+        expirableQueue.add(value);
         return map.put(key, value);
     }
 
+    /**
+     * Get a record.
+     */
     public V get(K key) {
         return map.get(key);
     }
 
+    /**
+     * Add a value.
+     */
     public void add(V value) {
         put(value.getExpirableKey(), value);
     }
@@ -44,9 +57,8 @@ public class ExpirableMap<K, V extends Expirable<K>> {
         V current = map.putIfAbsent(key, value);
         if (current == null) {
             current = value;
-            queue.addLast(value);
+            expirableQueue.add(value);
         }
-
         return current;
     }
 
@@ -65,7 +77,7 @@ public class ExpirableMap<K, V extends Expirable<K>> {
      * Clear records.
      */
     public void clear() {
-        queue.clear();
+        expirableQueue.clear();
         map.clear();
     }
 
@@ -73,25 +85,20 @@ public class ExpirableMap<K, V extends Expirable<K>> {
      * Iterate over list until meet not expired record. Remove passed records.
      */
     public List<V> expire(long edge) {
-        LinkedList<V> removed = new LinkedList<>();
-
-        while (! queue.isEmpty()) {
-            V value = queue.getFirst();
-
-            if (edge < value.getExpireAt()) {
+        LinkedList<V> expired = new LinkedList<>();
+        while (!expirableQueue.isEmpty()) {
+            V firstExpirable = expirableQueue.peek();
+            if (edge < firstExpirable.getExpireAt()) {
                 break;
             }
-
-            queue.removeFirst();
-            map.remove(value.getExpirableKey());
-            if (!value.isActive()) {
+            expirableQueue.remove(firstExpirable);
+            map.remove(firstExpirable.getExpirableKey());
+            if (!firstExpirable.isActive()) {
                 continue;
             }
-
-            removed.addLast(value);
+            expired.add(firstExpirable);
         }
-
-        return removed;
+        return expired;
     }
 
     public int size() {
