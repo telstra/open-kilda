@@ -4,6 +4,7 @@ import os
 import pathlib
 import re
 import json
+import csv
 
 import click
 import requests
@@ -119,8 +120,7 @@ def decode_stream_map(stream):
     for stream_entry, record, offset, size, total_size in stream:
         if not record:
             continue
-        data = json.loads(record)
-        entry = mapping.decode_stats_entry(data)
+        entry = mapping.decode_raw_cvs_row(record)
         yield stream_entry, entry, offset, size, total_size
 
 

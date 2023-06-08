@@ -2,11 +2,14 @@
 
 import datetime
 import pathlib
+import concurrent.futures
 
 import click
 import ndjson
+import csv
 import requests
 from requests.adapters import HTTPAdapter, Retry
+from threading import Thread
 
 
 from kilda.tsdb_dump_restore import mapping
@@ -33,6 +36,9 @@ ZERO_TIMEDELTA = datetime.timedelta()
     help='Only metrics that match this prefix will be dumped')
 @click.option(
     '--remove-metadata', is_flag=True)
+@click.option(
+    '--concurrent', type=int, default=1, show_default=True,
+    help='Number of concurrent threads')
 @click.argument('opentsdb_endpoint')
 @click.argument(
     'time_start', type=click.types.DateTime(), metavar='TIME_START')
@@ -47,6 +53,7 @@ def main(opentsdb_endpoint, time_start, **options):
     Example:
     kilda-otsdb-dump http://example.com:4242 2023-03-08
     """
+
     time_start = time_start.astimezone(datetime.timezone.utc)
     time_stop = options['time_stop'].astimezone(datetime.timezone.utc)
 
@@ -54,6 +61,7 @@ def main(opentsdb_endpoint, time_start, **options):
     query_frame_size = datetime.timedelta(seconds=options['query_frame_size'])
     prefix = options['metrics_prefix']
     need_remove_meta = options['remove_metadata']
+    concurrent_executors = options['concurrent']
 
     dump_dir.mkdir(exist_ok=True, parents=True)
     dump_frame = _TimeFrame(time_start, time_stop)
@@ -69,11 +77,19 @@ def main(opentsdb_endpoint, time_start, **options):
     http_session.mount('http://', HTTPAdapter(max_retries=retries))
 
     client = stats_client.OpenTSDBStatsClient(http_session, opentsdb_endpoint)
-
     all_metrics_iterator = stats_client.OpenTSDBMetricsList(http_session, opentsdb_endpoint, prefix=prefix)
-    for metric in all_metrics_iterator:
-        dump(statistics, client, dump_frame, dump_dir, metric, query_frame_size, need_remove_meta=need_remove_meta)
 
+    concurrent_dump(all_metrics_iterator, statistics, client, dump_frame, dump_dir, query_frame_size, need_remove_meta, concurrent_executors)
+
+def concurrent_dump(all_metrics_iterator, statistics, client, dump_frame, dump_dir, query_frame_size, need_remove_meta, concurrent_executors):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=concurrent_executors) as executor:
+        futures = []
+        for metric in all_metrics_iterator:
+            futures.append(executor.submit(dump, statistics, client, dump_frame, dump_dir, metric, query_frame_size, need_remove_meta))
+        # concurrent.futures.wait(futures)
+        concurrent.futures.as_completed(futures)
+        # for _ in concurrent.futures.as_completed(futures):
+        #     print("OK")
 
 def dump(statistics, client, dump_frame, dump_location, metric_name, query_frame_size, need_remove_meta):
     meta = _DumpMetadata(metric_name, dump_location)
@@ -107,7 +123,7 @@ def dump(statistics, client, dump_frame, dump_location, metric_name, query_frame
 
 
 def _dump_stream(stream, target, meta, status_report, statistics):
-    writer = ndjson.writer(target)
+    writer = mapping.get_csv_writer(target)
     for frame, stats_entries in stream:
         status_report.flush()
         for entry in stats_entries:
