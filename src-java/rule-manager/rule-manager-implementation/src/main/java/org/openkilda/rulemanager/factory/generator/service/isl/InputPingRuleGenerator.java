@@ -13,14 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.rulemanager.factory.generator.flow.haflow;
-
-import static org.openkilda.rulemanager.Constants.Priority.SKIP_EGRESS_FLOW_PING_PRIORITY;
+package org.openkilda.rulemanager.factory.generator.service.isl;
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.cookie.ServiceCookie;
-import org.openkilda.model.cookie.ServiceCookie.ServiceCookieTag;
+import org.openkilda.model.cookie.CookieBase.CookieType;
+import org.openkilda.model.cookie.PortColourCookie;
+import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;
@@ -35,41 +34,38 @@ import lombok.Builder;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
-public class SkipEgressPingRuleGenerator implements RuleGenerator {
+public class InputPingRuleGenerator implements RuleGenerator {
 
+    private final int islPort;
     private final long flowPingMagicSrcMacAddress;
 
     @Builder
-    public SkipEgressPingRuleGenerator(String flowPingMagicSrcMacAddress) {
+    public InputPingRuleGenerator(int islPort, String flowPingMagicSrcMacAddress) {
+        this.islPort = islPort;
         this.flowPingMagicSrcMacAddress = new SwitchId(flowPingMagicSrcMacAddress).toLong();
     }
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
-        OfVersion ofVersion = OfVersion.of(sw.getOfVersion());
-        if (ofVersion == OfVersion.OF_12) {
-            return null;
-        }
-
-        Set<FieldMatch> matchMagicAddress =
-                Sets.newHashSet(FieldMatch.builder().field(Field.ETH_SRC).value(flowPingMagicSrcMacAddress).build());
-
-        Instructions goToTransit = Instructions.builder()
-                .goToTable(OfTable.TRANSIT)
-                .build();
-
-        return Collections.singletonList(FlowSpeakerData.builder()
-                .switchId(sw.getSwitchId())
-                .ofVersion(OfVersion.of(sw.getOfVersion()))
-                .table(OfTable.EGRESS)
-                .cookie(new ServiceCookie(ServiceCookieTag.SKIP_EGRESS_FLOW_PING_COOKIE))
-                .priority(SKIP_EGRESS_FLOW_PING_PRIORITY)
-                .match(matchMagicAddress)
-                .instructions(goToTransit)
-                .build());
+        return Collections.singletonList(buildPingInputFlowCommand(sw));
     }
 
-}
+    private SpeakerData buildPingInputFlowCommand(Switch sw) {
 
+        return FlowSpeakerData.builder()
+                .switchId(sw.getSwitchId())
+                .ofVersion(OfVersion.of(sw.getOfVersion()))
+                .cookie(new PortColourCookie(CookieType.PING_INPUT, islPort))
+                .table(OfTable.INPUT)
+                .priority(Priority.PING_INPUT_PRIORITY)
+                .match(Sets.newHashSet(
+                        FieldMatch.builder().field(Field.IN_PORT).value(islPort).build(),
+                        FieldMatch.builder().field(Field.ETH_SRC).value(flowPingMagicSrcMacAddress).build()))
+                .instructions(Instructions.builder()
+                        .goToTable(OfTable.TRANSIT)
+                        .build())
+                .build();
+
+    }
+}

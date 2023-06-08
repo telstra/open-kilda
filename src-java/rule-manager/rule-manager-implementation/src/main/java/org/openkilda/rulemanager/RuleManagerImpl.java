@@ -217,7 +217,6 @@ public class RuleManagerImpl implements RuleManager {
             generators.add(serviceRulesFactory.getArpPostIngressRuleGenerator());
             generators.add(serviceRulesFactory.getArpPostIngressVxlanRuleGenerator());
             generators.add(serviceRulesFactory.getArpPostIngressOneSwitchRuleGenerator());
-            generators.add(serviceRulesFactory.getSkipEgressPingRuleGenerator());
 
             if (switchProperties.isSwitchLldp()) {
                 generators.add(serviceRulesFactory.getLldpTransitRuleGenerator());
@@ -287,6 +286,7 @@ public class RuleManagerImpl implements RuleManager {
         result.add(serviceRulesFactory.getEgressIslVxlanRuleGenerator(port));
         result.add(serviceRulesFactory.getEgressIslVlanRuleGenerator(port));
         result.add(serviceRulesFactory.getTransitIslVxlanRuleGenerator(port));
+        result.add(serviceRulesFactory.getInputPingRuleGenerator(port));
         return result;
     }
 

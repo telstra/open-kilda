@@ -33,7 +33,8 @@ public class PortColourCookie extends CookieBase implements Comparable<PortColou
             CookieType.ARP_INPUT_CUSTOMER_TYPE,
             CookieType.SERVER_42_FLOW_RTT_INPUT,
             CookieType.SERVER_42_ISL_RTT_INPUT,
-            CookieType.LACP_REPLY_INPUT
+            CookieType.LACP_REPLY_INPUT,
+            CookieType.PING_INPUT
     );
 
     // update ALL_FIELDS if modify fields list
