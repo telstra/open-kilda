@@ -19,7 +19,6 @@ import org.openkilda.model.MacAddress;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.RuleManagerConfig;
-import org.openkilda.rulemanager.factory.generator.flow.haflow.SkipEgressPingRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.BfdCatchRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.BroadCastDiscoveryRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.DropDiscoveryLoopRuleGenerator;
@@ -35,6 +34,7 @@ import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressVxl
 import org.openkilda.rulemanager.factory.generator.service.arp.ArpTransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.isl.EgressIslVlanRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.isl.EgressIslVxlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.isl.InputPingRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.isl.TransitIslVxlanRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lacp.DropSlowProtocolsLoopRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lacp.LacpReplyRuleGenerator;
@@ -333,6 +333,16 @@ public class ServiceRulesGeneratorFactory {
     }
 
     /**
+     * Get input Ping rule generator.
+     */
+    public InputPingRuleGenerator getInputPingRuleGenerator(int islPort) {
+        return InputPingRuleGenerator.builder()
+                .islPort(islPort)
+                .flowPingMagicSrcMacAddress(config.getFlowPingMagicSrcMacAddress())
+                .build();
+    }
+
+    /**
      * Get transit ISL VLAN rule generator.
      */
     public TransitIslVxlanRuleGenerator getTransitIslVxlanRuleGenerator(int islPort) {
@@ -359,12 +369,4 @@ public class ServiceRulesGeneratorFactory {
         return DropSlowProtocolsLoopRuleGenerator.builder().build();
     }
 
-    /**
-     * Get skip egress ping rule generator.
-     */
-    public SkipEgressPingRuleGenerator getSkipEgressPingRuleGenerator() {
-        return SkipEgressPingRuleGenerator.builder()
-                .flowPingMagicSrcMacAddress(config.getFlowPingMagicSrcMacAddress())
-                .build();
-    }
 }

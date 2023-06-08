@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.helpers
 
-import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.hasItem
@@ -35,7 +33,6 @@ import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKI
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE
-import static org.openkilda.model.cookie.Cookie.SKIP_EGRESS_FLOW_PING_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
@@ -58,6 +55,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -178,7 +176,7 @@ class SwitchHelper {
             multiTableRules = [MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
                                MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
                                MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
-                               ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE, SKIP_EGRESS_FLOW_PING_COOKIE]
+                               ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE]
             if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
                 multiTableRules.addAll([LLDP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE])
             }
@@ -188,6 +186,7 @@ class SwitchHelper {
                     multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES, it.source.portNo).getValue())
                 }
                 multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES, it.source.portNo).getValue())
+                multiTableRules.add(new PortColourCookie(CookieType.PING_INPUT, it.source.portNo).getValue())
             }
             northbound.get().getSwitchFlows(sw.dpId).each {
                 if (it.source.datapath.equals(sw.dpId)) {
