@@ -66,7 +66,7 @@ fi
 
 # Define function to dump data from OpenTSDB
 function dump_data {
-    docker run --rm --network="host" -v "opentsdb-data-${5}":/tmp kilda-otsdb-dump-restore kilda-otsdb-dump --concurrent "${5}" --metrics-prefix "${2}" --time-stop "${3}" "${4}" "${1}"
+    docker run --rm --network="host" -v "opentsdb-data-${5}":/tmp kilda-otsdb-dump-restore kilda-otsdb-dump --concurrent "${6}" --metrics-prefix "${2}" --time-stop "${3}" "${4}" "${1}"
 }
 
 # Define function to restore data to Victoria Metrics
