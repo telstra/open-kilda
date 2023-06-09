@@ -229,7 +229,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
 
         wait(pingInterval + STATS_LOGGING_TIMEOUT + WAIT_OFFSET) {
 
-           print("counter retries")
+           println("counter retries")
             println(getPacketCountOfVlanPingRule(swT.shared.dpId, haFlow) + "  eshared")
             println(getPacketCountOfVlanPingRule(swT.ep1.dpId, haFlow) + "  ep1" )
             println(getPacketCountOfVlanPingRule(swT.ep2.dpId, haFlow) + "  ep2" )
@@ -246,6 +246,8 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     }
 
     private long getPacketCountOfVlanPingRule(SwitchId switchId, HaFlow haFlow) {
+def pingRule = switchRulesFactory.get(switchId).pingRule(haFlow.encapsulationType).toJson()
+        println("pingRule" + pingRule)
         return switchRulesFactory.get(switchId).pingRule(haFlow.encapsulationType).packetCount
     }
 
