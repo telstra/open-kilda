@@ -20,6 +20,8 @@ import static java.lang.String.format;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,7 +31,10 @@ public class HandleNotDeallocatedResourcesAction<T extends HaFlowPathSwappingFsm
     @Override
     public void perform(S from, S to, E event, C context, T stateMachine) {
         stateMachine.getOldResources().forEach(haFlowResources ->
-                stateMachine.saveErrorToHistory("Failed to deallocate resources",
-                        format("Failed to deallocate resources: %s", haFlowResources)));
+                HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                        .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                        .withAction("Failed to deallocate resources")
+                        .withDescription(format("Failed to deallocate resources: %s", haFlowResources))
+                        .withHaFlowId(stateMachine.getHaFlowId())));
     }
 }

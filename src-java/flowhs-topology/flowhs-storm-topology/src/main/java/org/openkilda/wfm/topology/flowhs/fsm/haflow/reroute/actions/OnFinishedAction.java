@@ -25,6 +25,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,12 +46,19 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowRerouteFsm, S
             State from, State to, Event event, HaFlowRerouteContext context, HaFlowRerouteFsm stateMachine) {
         if (stateMachine.getNewHaFlowStatus() == FlowStatus.UP) {
             dashboardLogger.onSuccessfulHaFlowReroute(stateMachine.getHaFlowId());
-            stateMachine.saveActionToHistory("HA-flow was rerouted successfully");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("HA-flow has been rerouted successfully")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
+
             sendPeriodicPingNotification(stateMachine);
         } else {
-            stateMachine.saveActionToHistory("HA-flow reroute completed",
-                    format("HA-flow reroute completed with status %s and error %s", stateMachine.getNewHaFlowStatus(),
-                            stateMachine.getErrorReason()));
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("HA-flow reroute completed")
+                    .withDescription(format("HA-flow reroute completed with status %s and error %s",
+                            stateMachine.getNewHaFlowStatus(), stateMachine.getErrorReason()))
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
         log.info("HA-flow {} reroute success", stateMachine.getFlowId());
         carrier.sendRerouteResultStatus(stateMachine.getHaFlowId(), stateMachine.getRerouteError(),

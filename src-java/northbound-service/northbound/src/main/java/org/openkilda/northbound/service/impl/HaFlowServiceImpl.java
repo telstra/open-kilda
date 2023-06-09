@@ -265,7 +265,7 @@ public class HaFlowServiceImpl implements HaFlowService {
     @Override
     public CompletableFuture<List<HaFlowHistoryEntry>> getFlowHistory(String flowId,
                                                                       FlowHistoryRangeConstraints constraints) {
-        log.info("API request: List flow events: flowId {}, timestampFrom {}, timestampTo {}, maxCount {}",
+        log.info("API request: get HA-flow history: HA-flow ID {}, timestampFrom {}, timestampTo {}, maxCount {}",
                 flowId, constraints.getTimeFrom(), constraints.getTimeTo(), constraints.getMaxCount());
 
         String correlationId = RequestCorrelationId.getId();

@@ -277,6 +277,7 @@ public class HaFlowHistoryMapperTest {
         HaFlowDumpPayload result = mapper.persistenceToPayload(source);
 
         assertEquals(source.getHaFlowId(), result.getHaFlowId());
+        assertEquals("correlation ID", result.getTaskId());
         assertEquals(source.getSharedPort(), result.getSharedPort());
         assertEquals(source.getSharedOuterVlan(), result.getSharedOuterVlan());
         assertEquals(source.getSharedInnerVlan(), result.getSharedInnerVlan());

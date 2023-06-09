@@ -28,7 +28,7 @@ import org.openkilda.model.HaSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.history.model.FlowEventData;
+import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -36,6 +36,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 import org.openkilda.wfm.topology.flowhs.validation.HaFlowValidator;
 import org.openkilda.wfm.topology.flowhs.validation.UnavailableFlowEndpointException;
 
@@ -114,7 +115,12 @@ public class ValidateFlowAction extends
         });
 
         stateMachine.saveOldPathIds(stateMachine.getOriginalHaFlow());
-        stateMachine.saveNewEventToHistory("Ha-flow was validated successfully", FlowEventData.Event.UPDATE);
+
+        HaFlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
+                        .action("HA-flow has been validated successfully")
+                        .event(HaFlowEventData.Event.UPDATE)
+                        .haFlowId(stateMachine.getHaFlowId())
+                .build());
 
         return Optional.empty();
     }

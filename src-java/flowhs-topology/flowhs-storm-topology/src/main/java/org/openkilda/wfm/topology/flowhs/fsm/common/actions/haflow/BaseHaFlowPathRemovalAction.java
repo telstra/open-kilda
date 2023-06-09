@@ -23,6 +23,9 @@ import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
+import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,7 +44,8 @@ public abstract class BaseHaFlowPathRemovalAction<T extends FlowProcessingWithHi
         haFlowPathRepository = persistenceManager.getRepositoryFactory().createHaFlowPathRepository();
     }
 
-    protected void removeFlowPaths(HaPathIdsPair haPathIdsPair) {
+    protected void removeFlowPaths(HaPathIdsPair haPathIdsPair,
+                                   HistoryUpdateCarrier carrier, String correlationId) {
         if (haPathIdsPair == null) {
             return;
         }
@@ -50,9 +54,12 @@ public abstract class BaseHaFlowPathRemovalAction<T extends FlowProcessingWithHi
             if (subPathId != null) {
                 FlowPath oldSubPath = flowPathRepository.remove(subPathId).orElse(null);
                 if (oldSubPath != null) {
-                    log.debug("Removed ha-flow sub path {}", oldSubPath);
+                    log.debug("Removed HA-flow sub path {}", oldSubPath);
                     updateIslsForFlowPath(oldSubPath);
-                    // TODO save info about removed paths into history https://github.com/telstra/open-kilda/issues/5169
+                    HaFlowHistoryService.using(carrier).save(HaFlowHistory.withTaskId(correlationId)
+                                    .withAction("Remove an HA-flow sub path")
+                                    .withDescription(String.format("%s with ID %s has been removed",
+                                            oldSubPath.getClass().getSimpleName(), oldSubPath.getPathId())));
                 }
             }
         }
@@ -61,27 +68,38 @@ public abstract class BaseHaFlowPathRemovalAction<T extends FlowProcessingWithHi
             if (haFlowPathId != null) {
                 HaFlowPath oldPath = haFlowPathRepository.remove(haFlowPathId).orElse(null);
                 if (oldPath != null) {
-                    log.debug("Removed ha-flow path {}", oldPath);
-                    // TODO save info about removed paths into history https://github.com/telstra/open-kilda/issues/5169
+                    log.debug("Removed HA-flow path {}", oldPath);
+                    HaFlowHistoryService.using(carrier).save(HaFlowHistory.withTaskId(correlationId)
+                                    .withAction("Remove an HA-flow path")
+                                    .withDescription(String.format("%s with ID %s has been removed",
+                                            oldPath.getClass().getSimpleName(), oldPath.getHaPathId()))
+                                    .withHaFlowId(oldPath.getHaFlowId()));
                 }
             }
         }
     }
 
-    protected void removeRejectedPaths(Collection<PathId> subPathIds, Collection<PathId> haFlowPathIds) {
+    protected void removeRejectedPaths(Collection<PathId> subPathIds, Collection<PathId> haFlowPathIds,
+                                       HistoryUpdateCarrier carrier, String correlationId) {
         for (PathId subPathId : subPathIds) {
             flowPathRepository.remove(subPathId)
                     .ifPresent(subPath -> {
                         updateIslsForFlowPath(subPath);
-                        // TODO save info about removed paths into history
-                        // https://github.com/telstra/open-kilda/issues/5169
+                        HaFlowHistoryService.using(carrier).save(HaFlowHistory.withTaskId(correlationId)
+                                .withAction("Remove a rejected path")
+                                .withDescription(String.format("%s with ID %s has been removed",
+                                        subPath.getClass().getSimpleName(), subPath.getPathId()))
+                                .withHaFlowId(subPath.getHaFlowId()));
                     });
         }
         for (PathId haFlowPathId : haFlowPathIds) {
             haFlowPathRepository.remove(haFlowPathId)
                     .ifPresent(haFlowPath -> {
-                        // TODO save info about removed paths into history
-                        // https://github.com/telstra/open-kilda/issues/5169
+                        HaFlowHistoryService.using(carrier).save(HaFlowHistory.withTaskId(correlationId)
+                                .withAction("Remove a rejected path")
+                                .withDescription(String.format("%s with ID %s has been removed",
+                                        haFlowPath.getClass().getSimpleName(), haFlowPath.getHaPathId()))
+                                .withHaFlowId(haFlowPath.getHaFlowId()));
                     });
         }
     }

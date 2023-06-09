@@ -25,6 +25,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -54,17 +56,25 @@ public class OnReceivedResponseAction extends HistoryRecordingAction<
 
         if (response.isSuccess()) {
             stateMachine.removePendingCommand(commandId);
-            stateMachine.saveHaFlowActionToHistory("Rule was deleted",
-                    format("The rule was removed: switch %s", response.getSwitchId()));
+            HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                    .withTaskId(stateMachine.getHaFlowId())
+                    .withAction("Rule was deleted")
+                    .withDescription(format("The rule with command ID %s has been removed: switch %s",
+                            commandId, response.getSwitchId()))
+                    .withHaFlowId(stateMachine.getHaFlowId()));
+
         } else {
             Optional<BaseSpeakerCommandsRequest> command = stateMachine.getSpeakerCommand(commandId);
             int attempt = stateMachine.doRetryForCommand(commandId);
             if (attempt <= speakerCommandRetriesLimit && command.isPresent()) {
                 response.getFailedCommandIds().forEach((uuid, message) ->
-                        stateMachine.saveHaFlowErrorToHistory(FAILED_TO_REMOVE_RULE_ACTION,
-                                format("Failed to remove the rule: commandId %s, ruleId %s, switch %s. "
-                                                + "Error: %s. Retrying (attempt %d)",
-                                        commandId, uuid, response.getSwitchId(), message, attempt)));
+                        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                                .withTaskId(stateMachine.getHaFlowId())
+                                .withAction(FAILED_TO_REMOVE_RULE_ACTION)
+                                .withDescription(format("Failed to remove the rule: commandId %s, ruleId %s,"
+                                                + " switch %s. Error: %s. Retrying (attempt %d)",
+                                                commandId, uuid, response.getSwitchId(), message, attempt))
+                                .withHaFlowId(stateMachine.getHaFlowId())));
 
                 BaseSpeakerCommandsRequest request = command.get();
                 keepOnlyFailedCommands(request, response.getFailedCommandIds().keySet());
@@ -73,9 +83,13 @@ public class OnReceivedResponseAction extends HistoryRecordingAction<
                 stateMachine.addFailedCommand(commandId, response);
                 stateMachine.removePendingCommand(commandId);
                 response.getFailedCommandIds().forEach((uuid, message) ->
-                        stateMachine.saveHaFlowErrorToHistory(FAILED_TO_REMOVE_RULE_ACTION,
-                                format("Failed to remove the rule: commandId %s, ruleId %s, switch %s. Error: %s",
-                                        commandId, uuid, response.getSwitchId(), message)));
+                        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                                .withTaskId(stateMachine.getHaFlowId())
+                                .withAction(FAILED_TO_REMOVE_RULE_ACTION)
+                                .withDescription(
+                                    format("Failed to remove the rule: commandId %s, ruleId %s, switch %s. Error: %s",
+                                        commandId, uuid, response.getSwitchId(), message))
+                                .withHaFlowId(stateMachine.getHaFlowId())));
             }
         }
 
@@ -87,7 +101,12 @@ public class OnReceivedResponseAction extends HistoryRecordingAction<
             } else {
                 String errorMessage = format("Received error response(s) for %d remove commands",
                         stateMachine.getFailedCommands().size());
-                stateMachine.saveHaFlowErrorToHistory(errorMessage);
+                HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                        .withTaskId(stateMachine.getHaFlowId())
+                        .withAction(errorMessage)
+                        .withDescription(stateMachine.getErrorReason())
+                        .withHaFlowId(stateMachine.getHaFlowId()));
+
                 stateMachine.fireError(errorMessage);
             }
         }

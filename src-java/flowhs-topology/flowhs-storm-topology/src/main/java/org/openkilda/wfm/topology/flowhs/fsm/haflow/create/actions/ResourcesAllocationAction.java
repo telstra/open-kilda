@@ -48,10 +48,6 @@ import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
-import org.openkilda.wfm.share.history.model.DumpType;
-import org.openkilda.wfm.share.history.model.HaFlowDumpData;
-import org.openkilda.wfm.share.history.model.HaFlowEventData;
-import org.openkilda.wfm.share.mappers.HaFlowHistoryMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
@@ -60,6 +56,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -127,7 +125,11 @@ public class ResourcesAllocationAction extends
             stateMachine.setPathsBeenAllocated(true);
 
             HaFlow resultHaFlow = getHaFlow(haFlowId);
-            saveCreateHaFlowToHistory(stateMachine, resultHaFlow);
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("HA-flow has been created")
+                    .withHaFlowDumpAfter(resultHaFlow));
+
             stateMachine.fireNext(context);
 
             // Notify about successful allocation.
@@ -152,15 +154,6 @@ public class ResourcesAllocationAction extends
                 return Optional.empty();
             }
         }
-    }
-
-    private void saveCreateHaFlowToHistory(HaFlowCreateFsm stateMachine, HaFlow haFlow) {
-        HaFlowDumpData haFlowDumpData = HaFlowHistoryMapper.INSTANCE.toHaFlowDumpData(haFlow,
-                stateMachine.getCommandContext().getCorrelationId(),
-                DumpType.STATE_AFTER);
-
-        stateMachine.saveHaFlowActionWithDumpToHistory(HaFlowEventData.Event.CREATE,
-                "HA-Flow has been created", haFlowDumpData);
     }
 
     private void createFlow(HaFlowRequest targetFlow) throws FlowNotFoundException, FlowAlreadyExistException {

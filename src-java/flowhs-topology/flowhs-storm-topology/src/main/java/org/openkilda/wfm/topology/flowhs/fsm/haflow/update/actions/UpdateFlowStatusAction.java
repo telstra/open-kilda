@@ -31,6 +31,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -115,7 +117,10 @@ public class UpdateFlowStatusAction extends
             return newHaFlowStatusStatus;
         });
 
-        stateMachine.saveActionToHistory(format("The ha-flow status was set to %s", resultStatus));
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction(format("The HA-flow status has been set to %s", resultStatus))
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 
     private boolean isBackUpStrategyUsed(PathId pathId, HaFlowUpdateFsm stateMachine) {

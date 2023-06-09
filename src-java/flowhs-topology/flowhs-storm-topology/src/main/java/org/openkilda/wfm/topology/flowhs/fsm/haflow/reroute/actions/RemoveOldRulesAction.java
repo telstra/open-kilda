@@ -31,6 +31,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -84,7 +86,10 @@ public class RemoveOldRulesAction extends
         stateMachine.clearPendingAndRetriedAndFailedCommands();
 
         if (commands.isEmpty()) {
-            stateMachine.saveActionToHistory("No need to remove old rules");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("No need to remove old rules")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
             stateMachine.fire(Event.RULES_REMOVED);
         } else {
             Collection<DeleteSpeakerCommandsRequest> deleteRequests = buildHaFlowDeleteRequests(
@@ -95,7 +100,10 @@ public class RemoveOldRulesAction extends
                 stateMachine.getRemoveCommands().put(request.getCommandId(), request);
                 stateMachine.addPendingCommand(request.getCommandId(), request.getSwitchId());
             }
-            stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("Remove commands for old rules have been sent")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
     }
 

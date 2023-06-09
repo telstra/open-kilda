@@ -21,6 +21,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,6 +38,11 @@ public class OnFinishedWithErrorAction extends HistoryRecordingAction<
     @Override
     public void perform(State from, State to, Event event, HaFlowCreateContext context, HaFlowCreateFsm stateMachine) {
         dashboardLogger.onFailedHaFlowCreate(stateMachine.getHaFlowId(), stateMachine.getErrorReason());
-        stateMachine.saveHaFlowActionToHistory("Failed to create the HA-flow", stateMachine.getErrorReason());
+
+        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction("Failed to create the HA-flow")
+                .withDescription(stateMachine.getErrorReason())
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 }

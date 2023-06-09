@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.messaging.info.reroute.error.SpeakerRequestError;
 import org.openkilda.model.SwitchId;
@@ -22,6 +24,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
@@ -41,6 +45,13 @@ public class SetInstallRuleErrorAction extends AnonymousAction<HaFlowRerouteFsm,
                 .collect(Collectors.toSet());
         stateMachine.setRerouteError(new SpeakerRequestError("Failed to install rules", switches));
         log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());
+
+        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction("Failed to install rules")
+                .withDescription(format("Abandoning all pending commands: %s", stateMachine.getPendingCommands()))
+                .withHaFlowId(stateMachine.getHaFlowId()));
+
         stateMachine.clearPendingCommands();
     }
 }

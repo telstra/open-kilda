@@ -24,6 +24,11 @@ import lombok.Value;
 import java.io.Serializable;
 import java.time.Instant;
 
+/**
+ * This class holds the information about an event performed on HA-flow.
+ * Fields action and details are loosely defined and could mean different things depending on the context. It is best
+ * to have an action as a short phrase.
+ */
 @Value
 @Builder
 @EqualsAndHashCode(callSuper = false)
@@ -33,6 +38,8 @@ public class HaFlowEventData implements Serializable {
     Event event;
     String details;
     Instant time;
+    String taskId;
+    String action;
 
     @Getter
     public enum Initiator {
@@ -46,7 +53,8 @@ public class HaFlowEventData implements Serializable {
         CREATE("HA-Flow create"),
         UPDATE("HA-Flow update"),
         REROUTE("HA-Flow reroute"),
-        DELETE("HA-Flow delete");
+        DELETE("HA-Flow delete"),
+        PATH_SWAP("HA-flow path swap");
 
         private final String description;
     }

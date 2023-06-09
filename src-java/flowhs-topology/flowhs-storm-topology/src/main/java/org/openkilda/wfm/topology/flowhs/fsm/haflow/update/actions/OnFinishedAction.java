@@ -28,6 +28,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -46,16 +48,22 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, St
             sendPeriodicPingNotification(stateMachine);
             updateFlowMonitoring(stateMachine);
             dashboardLogger.onSuccessfulHaFlowUpdate(stateMachine.getHaFlowId());
-            stateMachine.saveActionToHistory("Flow was updated successfully");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getHaFlowId())
+                    .withAction("HA-flow has been updated successfully")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         } else if (stateMachine.getNewFlowStatus() == FlowStatus.DEGRADED) {
             sendPeriodicPingNotification(stateMachine);
             updateFlowMonitoring(stateMachine);
             dashboardLogger.onFailedHaFlowUpdate(stateMachine.getFlowId(), DEGRADED_FAIL_REASON);
             stateMachine.saveActionToHistory(DEGRADED_FAIL_REASON);
         } else {
-            stateMachine.saveActionToHistory("Flow update completed",
-                    format("Flow update completed with status %s and error %s", stateMachine.getNewFlowStatus(),
-                            stateMachine.getErrorReason()));
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getHaFlowId())
+                    .withAction("HA-flow update has been completed")
+                    .withDescription(format("HA-flow update has been completed with status %s and error %s",
+                            stateMachine.getNewFlowStatus(), stateMachine.getErrorReason()))
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
     }
 

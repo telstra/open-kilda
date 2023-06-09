@@ -22,6 +22,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,7 +33,9 @@ public class HandleNotDeallocatedResourcesAction extends
     @Override
     public void perform(State from, State to, Event event, HaFlowDeleteContext context, HaFlowDeleteFsm stateMachine) {
         stateMachine.getHaFlowResources().forEach(resources ->
-                stateMachine.saveHaFlowErrorToHistory("Failed to deallocate resources",
-                        format("Failed to deallocate resources: %s", resources)));
+                HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                        .withTaskId(stateMachine.getHaFlowId())
+                        .withAction("Failed to deallocate resources")
+                        .withDescription(format("Failed to deallocate resources: %s", resources))));
     }
 }

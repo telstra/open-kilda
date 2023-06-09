@@ -22,6 +22,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,10 +35,12 @@ public class HandleNotCompletedCommandsAction extends
     @Override
     public void perform(State from, State to, Event event, HaFlowDeleteContext context, HaFlowDeleteFsm stateMachine) {
         for (UUID commandId : stateMachine.getPendingCommands().keySet()) {
-            stateMachine.saveHaFlowErrorToHistory("Command is not finished yet",
-                    format("Completing the revert operation although the remove command may not be "
-                                    + "finished yet: commandId %s, switch %s", commandId,
-                            stateMachine.getPendingCommands().get(commandId)));
+            HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                            .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                            .withAction("Command is not finished yet")
+                            .withDescription(format("Completing the revert operation although the remove command "
+                                            + "may not be finished yet: commandId %s, switch %s", commandId,
+                            stateMachine.getPendingCommands().get(commandId))));
         }
 
         log.debug("Abandoning all pending commands: {}", stateMachine.getPendingCommands());

@@ -13,9 +13,7 @@
  *   limitations under the License.
  */
 
-
 package org.openkilda.wfm.share.history.model;
-
 
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertFalse;

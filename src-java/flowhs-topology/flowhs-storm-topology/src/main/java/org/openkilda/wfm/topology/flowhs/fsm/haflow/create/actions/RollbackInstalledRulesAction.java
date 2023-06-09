@@ -23,6 +23,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -48,7 +50,11 @@ public class RollbackInstalledRulesAction extends
                 stateMachine.getSentCommands(), stateMachine.getCommandContext());
 
         if (deleteRequests.isEmpty()) {
-            stateMachine.saveHaFlowActionToHistory("No need to rollback ha-flow rules");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("No need to rollback HA-flow rules")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
+
             stateMachine.fire(Event.RULES_REMOVED);
         } else {
             // emitting
@@ -58,7 +64,10 @@ public class RollbackInstalledRulesAction extends
                 stateMachine.addPendingCommand(request.getCommandId(), request.getSwitchId());
             });
 
-            stateMachine.saveHaFlowActionToHistory("Commands for rolling back ha-flow rules have been sent");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("Commands for rolling back HA-flow rules have been sent")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
     }
 }

@@ -162,9 +162,9 @@ public class HaFlowControllerV2 extends BaseController {
      */
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     @ApiOperation(value = "Gets history for HA-flow", response = HaFlowHistoryEntry.class, responseContainer = "List")
-    @GetMapping(path = "/{flow_id}/history")
+    @GetMapping(path = "/{ha-flow_id}/history")
     public CompletableFuture<ResponseEntity<List<HaFlowHistoryEntry>>> getHistory(
-            @PathVariable("flow_id") String flowId,
+            @PathVariable("ha-flow_id") String haFlowId,
             @ApiParam(value = "default: 0 (1 January 1970 00:00:00).")
             @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalTimeFrom,
             @ApiParam(value = "default: now.")
@@ -177,6 +177,6 @@ public class HaFlowControllerV2 extends BaseController {
             @RequestParam(value = "max_count", required = false) Optional<Integer> optionalMaxCount) {
 
         return FlowHistoryHelper
-                .getFlowHistoryEvents(flowService, flowId, optionalTimeFrom, optionalTimeTo, optionalMaxCount);
+                .getFlowHistoryEvents(flowService, haFlowId, optionalTimeFrom, optionalTimeTo, optionalMaxCount);
     }
 }

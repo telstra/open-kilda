@@ -75,7 +75,7 @@ public class HistoryService {
 
     private void storeHaFlowHistory(FlowHistoryHolder historyHolder) {
         HaFlowHistoryMapper mapper = HaFlowHistoryMapper.INSTANCE;
-
+        log.debug("HaFlowHistory start saving data: {}", historyHolder);
         transactionManager.doInTransaction(() -> {
             String taskId = historyHolder.getTaskId();
             if (historyHolder.getHaFlowEventData() != null) {
@@ -166,7 +166,7 @@ public class HistoryService {
      */
     public List<HaFlowEvent> getHaFlowHistoryEvents(String haFlowId, Instant timeFrom, Instant timeTo, int maxCount) {
         List<HaFlowEvent> result = new LinkedList<>();
-        log.info("getHaFlowHistoryEvents fetching events using time from: {}, time to: {}, maxCount: {}, flow ID: {}",
+        log.debug("getHaFlowHistoryEvents fetching events using time from: {}, time to: {}, maxCount: {}, flow ID: {}",
                 timeFrom, timeTo, maxCount, haFlowId);
         transactionManager.doInTransaction(() -> haFlowEventRepository
                 .findByHaFlowIdAndTimeFrame(haFlowId, timeFrom, timeTo, maxCount))
@@ -174,6 +174,7 @@ public class HistoryService {
                     haFlowEventRepository.detach(haFlowEvent);
                     result.add(haFlowEvent);
                 });
+        log.info("getHaFlowHistoryEvents fetched {} events", result.size());
         return result;
     }
 

@@ -32,6 +32,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 import org.openkilda.wfm.topology.flowhs.validation.HaFlowValidator;
 import org.openkilda.wfm.topology.flowhs.validation.UnavailableFlowEndpointException;
 
@@ -87,7 +88,12 @@ public class HaFlowValidateAction extends
                 request.getMaximumBandwidth(), request.getPathComputationStrategy(), request.getMaxLatency(),
                 request.getMaxLatencyTier2());
 
-        stateMachine.saveNewHaFlowEventToHistory("HA-flow was validated successfully", HaFlowEventData.Event.CREATE);
+        HaFlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
+                        .details("HA-flow has been validated successfully")
+                        .event(HaFlowEventData.Event.CREATE)
+                        .taskId(stateMachine.getCommandContext().getCorrelationId())
+                        .haFlowId(stateMachine.getHaFlowId())
+                .build());
         return Optional.empty();
     }
 

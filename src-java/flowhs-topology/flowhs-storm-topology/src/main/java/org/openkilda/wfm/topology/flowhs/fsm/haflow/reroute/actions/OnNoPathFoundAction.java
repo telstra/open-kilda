@@ -26,6 +26,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -105,7 +107,10 @@ public class OnNoPathFoundAction extends
             return newFlowStatus;
         });
 
-        stateMachine.saveActionToHistory(String.format("The HA-flow status was set to %s", flowStatus));
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction(String.format("The HA-flow status was set to %s", flowStatus))
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 
     private void setInactiveStatusForSubPaths(Collection<FlowPath> subPaths) {

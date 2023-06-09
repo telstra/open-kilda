@@ -25,7 +25,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.history.model.FlowEventData;
+import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -33,6 +33,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapConte
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -78,7 +79,7 @@ public class HaFlowValidateAction extends
             saveAndSetInProgressStatuses(haFlow.getProtectedForwardPath(), stateMachine);
             saveAndSetInProgressStatuses(haFlow.getProtectedReversePath(), stateMachine);
         });
-        stateMachine.saveNewEventToHistory("HA-flow was validated successfully", FlowEventData.Event.PATH_SWAP);
+        saveNewEventToHistory(stateMachine);
         return Optional.empty();
     }
 
@@ -94,5 +95,14 @@ public class HaFlowValidateAction extends
     @Override
     protected String getGenericErrorMessage() {
         return "Could not swap paths for flow";
+    }
+
+    private void saveNewEventToHistory(HaFlowPathSwapFsm stateMachine) {
+        HaFlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
+                        .action("HA-flow has been validated successfully")
+                        .event(HaFlowEventData.Event.PATH_SWAP)
+                        .haFlowId(stateMachine.getHaFlowId())
+                        .taskId(stateMachine.getCommandContext().getCorrelationId())
+                .build());
     }
 }
