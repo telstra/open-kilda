@@ -74,6 +74,7 @@ public class OtsdbQueryServiceImpl implements OtsdbQueryService {
 
     @Override
     public StatsResult query(Date start, String metric, Map<String, Object> tags) {
+        log.info("query" + query(start, new Date(), Aggregator.SUM, metric, tags));
         return query(start, new Date(), Aggregator.SUM, metric, tags);
     }
 

@@ -131,19 +131,29 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         when: "Create a HA-flow with periodic pings turned on"
         def swT = topologyHelper.switchTriplets.find { SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it) }
         def beforeCreationTime = new Date()
+        println("Date before start")
+        println(beforeCreationTime)
+
         def haFlowRequest = haFlowHelper.randomHaFlow(swT).tap {
             it.periodicPings = true
         }
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
+        println("HA flow response")
+        println(haFlow)
 
         then: "Periodic pings are really enabled"
-        northboundV2.getHaFlow(haFlow.haFlowId).periodicPings
+        def getHa =  northboundV2.getHaFlow(haFlow.haFlowId).periodicPings
+        println("HA get flow response")
+        println(getHa)
 
         and: "Packet counter on catch ping rules grows due to pings happening"
         arePingRuleCountersGrow(swT, haFlow)
 
         and: "Metrics for HA-subflows have 'success' in otsdb"
         def subFlowTags = generatePingMetricTags(haFlow, "success")
+        def pathes = northboundV2.getHaFlowPaths(haFlow.haFlowId)
+        println("pathes     "+pathes)
+
         wait(pingInterval + WAIT_OFFSET, 2) {
             withPool {
                 subFlowTags.eachParallel { Map<String, String> tags ->
@@ -212,11 +222,26 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         def sharedSwitchPacketCount = getPacketCountOfVlanPingRule(swT.shared.dpId, haFlow)
         def ep1SwitchPacketCount = getPacketCountOfVlanPingRule(swT.ep1.dpId, haFlow)
         def ep2SwitchPacketCount = getPacketCountOfVlanPingRule(swT.ep2.dpId, haFlow)
+        println(sharedSwitchPacketCount + "  eshared")
+        println(ep1SwitchPacketCount + "  ep1" )
+        println(ep2SwitchPacketCount + "  ep2" )
+
 
         wait(pingInterval + STATS_LOGGING_TIMEOUT + WAIT_OFFSET) {
+
+           print("counter retries")
+            println(getPacketCountOfVlanPingRule(swT.shared.dpId, haFlow) + "  eshared")
+            println(getPacketCountOfVlanPingRule(swT.ep1.dpId, haFlow) + "  ep1" )
+            println(getPacketCountOfVlanPingRule(swT.ep2.dpId, haFlow) + "  ep2" )
+
+
             assert getPacketCountOfVlanPingRule(swT.shared.dpId, haFlow) > sharedSwitchPacketCount
             assert getPacketCountOfVlanPingRule(swT.ep1.dpId, haFlow) > ep1SwitchPacketCount
             assert getPacketCountOfVlanPingRule(swT.ep2.dpId, haFlow) > ep2SwitchPacketCount
+
+
+
+
         }
     }
 
