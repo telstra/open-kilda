@@ -8,8 +8,8 @@
 #with your own values.
 
 # Check for required parameters
-if [ "$#" -lt 5 ] || [ "$#" -gt 6 ]; then
-  echo "Usage: $0 OPENTSDB_ENDPOINT VICTORIA_ENDPOINT TIME_START TIME_STOP [hour|day]
+if [[ $# -lt 4 ]]; then
+  echo "Usage: $0 OPENTSDB_ENDPOINT VICTORIA_ENDPOINT TIME_START TIME_STOP [hour|day] CONCURRENT_JOBS
 
   This tool dumps the data from an OpenTSDB and restore it to a VictoriaMetrics service.
 
@@ -21,7 +21,9 @@ if [ "$#" -lt 5 ] || [ "$#" -gt 6 ]; then
 
   DATE_STOP time where to stop dumping
 
-  [hour|day] time frame size
+  [hour|day] time frame size to dump data. Default is day.
+
+  CONCURRENT_JOBS number of concurrent jobs to run. Default is 1.
 
   Examples:
 
@@ -38,6 +40,7 @@ start_date="$3"
 end_date="$4"
 metrics_prefix="$5"
 interval="${6:-day}"
+concurrent_jobs="${7:-1}"
 
 # Set time interval
 case $interval in
@@ -63,7 +66,7 @@ fi
 
 # Define function to dump data from OpenTSDB
 function dump_data {
-    docker run --rm --network="host" -v "opentsdb-data-${5}":/tmp kilda-otsdb-dump-restore kilda-otsdb-dump --metrics-prefix "${2}" --time-stop "${3}" "${4}" "${1}"
+    docker run --rm --network="host" -v "opentsdb-data-${5}":/tmp kilda-otsdb-dump-restore kilda-otsdb-dump --concurrent "${5}" --metrics-prefix "${2}" --time-stop "${3}" "${4}" "${1}"
 }
 
 # Define function to restore data to Victoria Metrics
@@ -89,7 +92,7 @@ while [[ "$start_date" < "$end_date" ]]; do
     increment_date interval_end_date
 
     echo "Dumping data from ${start_date} to ${interval_end_date}"
-    dump_data "${start_date}" "${metrics_prefix}" "${interval_end_date}" "${opentsdb_endpoint}" "${volume_subfix}"
+    dump_data "${start_date}" "${metrics_prefix}" "${interval_end_date}" "${opentsdb_endpoint}" "${volume_subfix}" "${concurrent_jobs}"
 
     echo "Restoring data from ${start_date} to ${interval_end_date} in background"
     # restore_data "${victoria_metrics_endpoint}" "${volume_subfix}" &
