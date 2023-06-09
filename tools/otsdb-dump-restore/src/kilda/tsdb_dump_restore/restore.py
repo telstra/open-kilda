@@ -4,7 +4,6 @@ import os
 import pathlib
 import re
 import json
-import csv
 
 import click
 import requests

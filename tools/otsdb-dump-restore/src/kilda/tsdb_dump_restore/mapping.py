@@ -7,6 +7,7 @@ from kilda.tsdb_dump_restore import utils
 import csv
 import ast
 
+
 def encode_stats_entry(entry):
     result = {}
     _timestamp_adapter.write(
@@ -17,12 +18,14 @@ def encode_stats_entry(entry):
 
     return result
 
+
 def get_csv_writer(file):
     return csv.DictWriter(
         file,
         fieldnames=_fieldnames,
         delimiter='|',
         extrasaction='ignore')
+
 
 def decode_raw_cvs_row(raw):
     row = raw.decode('utf-8')
@@ -50,10 +53,10 @@ _timestamp_adapter = Adapter(constants.TIMESTAMP_FIELD)
 _metric_name_adapter = Adapter(constants.METRIC_NAME_FIELD)
 _tags_adapter = Adapter(constants.TAGS_FIELD)
 _value_adapter = Adapter(constants.VALUE_FIELD)
-_fieldnames=[
+_fieldnames = [
             constants.TIMESTAMP_FIELD,
             constants.METRIC_NAME_FIELD,
             constants.TAGS_FIELD,
             constants.VALUE_FIELD,
         ]
-_delimiter='|'
+_delimiter = '|'

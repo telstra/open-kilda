@@ -5,12 +5,8 @@ import pathlib
 import concurrent.futures
 
 import click
-import ndjson
-import csv
 import requests
 from requests.adapters import HTTPAdapter, Retry
-from threading import Thread
-
 
 from kilda.tsdb_dump_restore import mapping
 from kilda.tsdb_dump_restore import stats_client
@@ -79,17 +75,22 @@ def main(opentsdb_endpoint, time_start, **options):
     client = stats_client.OpenTSDBStatsClient(http_session, opentsdb_endpoint)
     all_metrics_iterator = stats_client.OpenTSDBMetricsList(http_session, opentsdb_endpoint, prefix=prefix)
 
-    concurrent_dump(all_metrics_iterator, statistics, client, dump_frame, dump_dir, query_frame_size, need_remove_meta, concurrent_executors)
+    concurrent_dump(all_metrics_iterator, statistics, client, dump_frame,
+                    dump_dir, query_frame_size, need_remove_meta, concurrent_executors)
 
-def concurrent_dump(all_metrics_iterator, statistics, client, dump_frame, dump_dir, query_frame_size, need_remove_meta, concurrent_executors):
+
+def concurrent_dump(all_metrics_iterator, statistics, client, dump_frame, dump_dir,
+                    query_frame_size, need_remove_meta, concurrent_executors):
     with concurrent.futures.ThreadPoolExecutor(max_workers=concurrent_executors) as executor:
         futures = []
         for metric in all_metrics_iterator:
-            futures.append(executor.submit(dump, statistics, client, dump_frame, dump_dir, metric, query_frame_size, need_remove_meta))
+            futures.append(executor.submit(dump, statistics, client, dump_frame,
+                                           dump_dir, metric, query_frame_size, need_remove_meta))
         # concurrent.futures.wait(futures)
         concurrent.futures.as_completed(futures)
         # for _ in concurrent.futures.as_completed(futures):
         #     print("OK")
+
 
 def dump(statistics, client, dump_frame, dump_location, metric_name, query_frame_size, need_remove_meta):
     meta = _DumpMetadata(metric_name, dump_location)
