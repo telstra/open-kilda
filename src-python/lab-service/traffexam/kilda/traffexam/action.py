@@ -18,12 +18,13 @@ import operator
 import pyroute2
 
 from scapy.all import ARP, IP, TCP, UDP, Ether, sendp
-from scapy.contrib import lldp
+from scapy.contrib import lldp, lacp
 
 from kilda.traffexam import context as context_module
 from kilda.traffexam import exc
 from kilda.traffexam import proc
 from kilda.traffexam import system
+from scapy.contrib.lacp import SlowProtocol
 
 
 class Abstract(context_module.ContextConsumer):
@@ -64,6 +65,33 @@ class LLDPPush(Abstract):
         payload = functools.reduce(operator.truediv, entries)
 
         return Ether(src=entry.mac_address, dst=self.lldp_bcast_mac) / payload
+
+
+class LACPPush(Abstract):
+    def __call__(self, iface, push_entry):
+        pkt = self._encode(push_entry)
+
+        with self._network_namespace_context:
+            sendp(pkt, iface=iface.name, verbose=False, promisc=False)
+
+    def _encode(self, entry):
+        # entry, containing 8 boolean fields -> string representation of binary number, e.g. '10011010'
+        actor_state_binary = ""
+        for field in [entry.expired,
+                      entry.defaulted,
+                      entry.distributing,
+                      entry.collecting,
+                      entry.synchronization,
+                      entry.aggregation,
+                      entry.lacp_timeout,
+                      entry.lacp_activity]:
+            actor_state_binary += self._bool_to_str(field)
+        # Kilda ignores everything except lacp actor state. If this changes - expand this method with more fields
+        return Ether() / SlowProtocol() / lacp.LACP(actor_state=int(actor_state_binary, 2))
+
+    @staticmethod
+    def _bool_to_str(boolean):
+        return '1' if boolean else '0'
 
 
 class ARPPush(Abstract):
@@ -110,12 +138,12 @@ class AddressStats(Abstract):
             return ipr.get_links(iface.index)[0].get_attr('IFLA_STATS')
 
 
-
 class Adapter(object):
     def __init__(self, context):
         network_namespace = self._make_network_namespace_context(context)
 
         self.lldp_push = LLDPPush(context, network_namespace)
+        self.lacp_push = LACPPush(context, network_namespace)
         self.arp_push = ARPPush(context, network_namespace)
         self.udp_push = UDPPush(context, network_namespace)
         self.tcp_push = TCPPush(context, network_namespace)
