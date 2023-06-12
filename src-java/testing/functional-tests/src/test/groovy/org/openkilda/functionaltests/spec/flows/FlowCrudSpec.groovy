@@ -7,7 +7,6 @@ import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExp
 import org.openkilda.functionaltests.error.flow.FlowNotDeletedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithMissingPathExpectedError
-import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
@@ -1382,6 +1381,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
     }
 
     @Tags(LOW_PRIORITY)
+    @Tidy
     def "Able to #method update with empty VLAN stats and non-zero VLANs (#5063)"() {
         given: "A flow with non empty vlans stats and with src and dst vlans set to '0'"
         def switches = topologyHelper.getSwitchPairs().shuffled().first()
@@ -1398,14 +1398,21 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         then: "Flow is really updated"
         def actualFlow = northboundV2.getFlow(flow.getFlowId())
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.getFlowId()).collect{it.getDpId()}
         actualFlow.getSource() == updatedFlow.getSource()
         actualFlow.getDestination() == updatedFlow.getDestination()
         actualFlow.getStatistics() == updatedFlow.getStatistics()
+        switchHelper.validate(involvedSwitches).isEmpty()
+
+        when: "Delete the flow"
+        flowHelperV2.deleteFlow(flow.getFlowId())
+
+        then: "No excess rules left on the switches (#5141)"
+        switchHelper.validate(involvedSwitches).isEmpty()
+
         cleanup:
         Wrappers.silent {
             flowHelperV2.deleteFlow(flow.getFlowId())
-            //https://github.com/telstra/open-kilda/issues/5141
-            switchHelper.removeExcessRules([switches.getSrc().getDpId(), switches.getDst().getDpId()])
         }
 
         where:
