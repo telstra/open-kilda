@@ -86,10 +86,7 @@ def concurrent_dump(all_metrics_iterator, statistics, client, dump_frame, dump_d
         for metric in all_metrics_iterator:
             futures.append(executor.submit(dump, statistics, client, dump_frame,
                                            dump_dir, metric, query_frame_size, need_remove_meta))
-        # concurrent.futures.wait(futures)
-        concurrent.futures.as_completed(futures)
-        # for _ in concurrent.futures.as_completed(futures):
-        #     print("OK")
+        concurrent.futures.wait(futures)
 
 
 def dump(statistics, client, dump_frame, dump_location, metric_name, query_frame_size, need_remove_meta):
