@@ -61,6 +61,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
+import org.apache.commons.lang.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -279,7 +280,7 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
                                                           HaFlowPathPair newHaFlowPaths) {
         HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
                 .withTaskId(stateMachine.getCommandContext().getCorrelationId())
-                .withAction(format("%s paths have been allocated", pathsType))
+                .withAction(format("%s paths have been allocated", StringUtils.capitalize(pathsType)))
                 .withDescription(
                         format("The following paths have been allocated for HA-flow %s: forward: %s, reverse: %s",
                                 haFlow.getHaFlowId(),

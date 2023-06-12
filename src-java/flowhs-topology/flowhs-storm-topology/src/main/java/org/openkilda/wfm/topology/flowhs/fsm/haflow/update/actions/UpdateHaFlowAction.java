@@ -143,6 +143,7 @@ public class UpdateHaFlowAction extends
                 .withTaskId(stateMachine.getCommandContext().getCorrelationId())
                 .withHaFlowDumpBefore(haFlow)
                 .withAction("Update HA-flow")
-                .withDescription("Updating HA-flow %s with the new properties %s"));
+                .withDescription(format("Updating HA-flow %s with the new properties (see dumps for details)",
+                        stateMachine.getHaFlowId())));
     }
 }
