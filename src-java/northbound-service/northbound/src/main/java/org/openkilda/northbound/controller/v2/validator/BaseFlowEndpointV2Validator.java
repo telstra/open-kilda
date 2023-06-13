@@ -77,8 +77,8 @@ public final class BaseFlowEndpointV2Validator {
         }
 
         //validate baseFlowEndpointV2 vlanId is not more than 4095
-        if (baseFlowEndpointV2.getVlanId() > 4094) {
-            return Optional.of("VlanId must be less than 4095");
+        if (baseFlowEndpointV2.getVlanId() > 4095) {
+            return Optional.of("VlanId must be less than 4096");
         }
         return Optional.empty();
     }
@@ -95,8 +95,8 @@ public final class BaseFlowEndpointV2Validator {
         }
 
         //validate baseFlowEndpointV2 innerVlanId is not more than 4095
-        if (baseFlowEndpointV2.getInnerVlanId() > 4094) {
-            return Optional.of("InnerVlanId must be less than 4095");
+        if (baseFlowEndpointV2.getInnerVlanId() > 4095) {
+            return Optional.of("InnerVlanId must be less than 4096");
         }
         return Optional.empty();
     }

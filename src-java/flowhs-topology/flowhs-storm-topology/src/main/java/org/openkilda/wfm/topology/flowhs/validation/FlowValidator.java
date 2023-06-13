@@ -74,7 +74,7 @@ public class FlowValidator {
     static final int STATS_VLAN_LOWER_BOUND = 1;
 
     @VisibleForTesting
-    static final int STATS_VLAN_UPPER_BOUND = 4094;
+    static final int STATS_VLAN_UPPER_BOUND = 4095;
 
     private final FlowRepository flowRepository;
     private final YFlowRepository yFlowRepository;
