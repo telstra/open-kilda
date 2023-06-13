@@ -44,6 +44,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.topology.ping.model.CacheExpirationRequest;
 import org.openkilda.wfm.topology.ping.model.GroupId;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 import org.openkilda.wfm.topology.ping.model.PingContext.Kinds;
@@ -427,7 +428,17 @@ public class FlowFetcher extends Abstract {
         OutputCollector collector = getOutput();
         flowsSet.removeAll(flows);
         for (FlowWithTransitEncapsulation flow : flowsSet) {
-            Values output = new Values(flow.getFlow(), commandContext);
+            CacheExpirationRequest cacheExpirationRequest;
+            if (flow.getHaFlow() != null) {
+                cacheExpirationRequest = new CacheExpirationRequest(flow.getHaFlow().getHaFlowId(),
+                        flow.getHaFlow().getForwardPath().getCookie().getValue(),
+                        flow.getHaFlow().getReversePath().getCookie().getValue());
+            } else {
+                cacheExpirationRequest = new CacheExpirationRequest(flow.getFlow().getFlowId(),
+                        flow.getFlow().getForwardPath().getCookie().getValue(),
+                        flow.getFlow().getReversePath().getCookie().getValue());
+            }
+            Values output = new Values(cacheExpirationRequest, commandContext);
             collector.emit(STREAM_EXPIRE_CACHE_ID, input, output);
         }
     }
