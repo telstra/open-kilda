@@ -15,7 +15,8 @@
 
 package org.openkilda.messaging.payload.history;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
@@ -25,9 +26,9 @@ import java.time.Instant;
 @Value
 @Builder
 @AllArgsConstructor
+@JsonNaming(SnakeCaseStrategy.class)
 public class HaFlowHistoryPayload {
     Instant timestamp;
-    @JsonProperty("timestamp_iso")
     String timestampIso;
     String action;
     String details;

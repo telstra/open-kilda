@@ -28,13 +28,15 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /**
+ * For detailed guide please see <b>a-flow-history.md</b> under the docs directory.
+ * <p>
  * This class is used on the caller side for saving history events. It saves events, actions, dumps, and errors grouped
  * together using a task ID (correlation ID).
  * An event is an operation or an attempt to perform an operation.
  * Supported events are listed in the {@link HaFlowEventData.Event}.
  * An action is a specific step performed when some event happened.
  * A dump is a state of the HA flow before or after the event.
- * An error is a special kind of action (not successful action).
+ * An error is a special kind of action (not successful action).</p>
  */
 @Slf4j
 public final class HaFlowHistoryService {

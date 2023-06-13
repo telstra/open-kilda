@@ -676,12 +676,7 @@ public class FlowServiceImpl implements FlowService {
                                                                     FlowHistoryRangeConstraints constraints) {
         log.info("API request: List flow events: flowId {}, timestampFrom {}, timestampTo {}, maxCount {}",
                 flowId, constraints.getTimeFrom(), constraints.getTimeTo(), constraints.getMaxCount());
-        if (constraints.getMaxCount() < 1) {
-            throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
-                    ErrorType.PARAMETERS_INVALID, format("Invalid `max_count` argument '%s'.",
-                    constraints.getMaxCount()),
-                    "`max_count` argument must be positive.");
-        }
+
         String correlationId = RequestCorrelationId.getId();
         GetFlowHistoryRequest request = GetFlowHistoryRequest.builder()
                 .flowId(flowId)
@@ -701,12 +696,7 @@ public class FlowServiceImpl implements FlowService {
                                                                           FlowHistoryRangeConstraints constraints) {
         log.info("API request: Get flow statuses: flowId {}, timestampFrom {}, timestampTo {}, maxCount {}",
                 flowId, constraints.getTimeFrom(), constraints.getTimeTo(), constraints.getMaxCount());
-        if (constraints.getMaxCount() < 1) {
-            throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
-                    ErrorType.PARAMETERS_INVALID, format("Invalid `max_count` argument '%s'.",
-                    constraints.getMaxCount()),
-                    "`max_count` argument must be positive.");
-        }
+
         String correlationId = RequestCorrelationId.getId();
         GetFlowStatusTimestampsRequest request = GetFlowStatusTimestampsRequest.builder()
                 .flowId(flowId)
