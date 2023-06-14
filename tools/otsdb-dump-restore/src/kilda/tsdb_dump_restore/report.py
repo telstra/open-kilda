@@ -47,5 +47,11 @@ class ProgressReportBase:
             self.stream.write('\n')
             self.stream.flush()
 
+    # def get_last_message(self):
+    #     chunks = self._format_message()
+    #     chunks = (str(x) for x in chunks if x is not None)
+    #     chunks = (str(x) for x in chunks if x)
+    #     return ''.join(chunks)
+
     def _format_message(self):
         raise NotImplementedError()

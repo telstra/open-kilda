@@ -68,8 +68,7 @@ def main(opentsdb_endpoint, time_start, **options):
     http_session = requests.Session()
     http_session.hooks['response'].append(utils.ResponseStatisticsHook(rest_statistics))
 
-    retries = Retry(total=5, backoff_factor=0.5, status_forcelist=[424])
-
+    retries = Retry(total=3, status_forcelist=[424])
     http_session.mount('http://', HTTPAdapter(max_retries=retries))
 
     client = stats_client.OpenTSDBStatsClient(http_session, opentsdb_endpoint)
@@ -86,44 +85,55 @@ def concurrent_dump(all_metrics_iterator, statistics, client, dump_frame, dump_d
         for metric in all_metrics_iterator:
             futures.append(executor.submit(dump, statistics, client, dump_frame,
                                            dump_dir, metric, query_frame_size, need_remove_meta))
-        concurrent.futures.wait(futures)
+
+        exit_result = 0
+        for future in concurrent.futures.as_completed(futures):
+            if future.result() == 1:
+                exit_result = 1
+
+        exit(exit_result)
 
 
 def dump(statistics, client, dump_frame, dump_location, metric_name, query_frame_size, need_remove_meta):
-    meta = _DumpMetadata(metric_name, dump_location)
-
     try:
-        last_frame = meta.read()
-        start = last_frame.start
-    except ValueError:
-        start = utils.datetime_align(dump_frame.start, query_frame_size)
+        meta = _DumpMetadata(metric_name, dump_location)
 
-    end = dump_frame.end
+        try:
+            last_frame = meta.read()
+            start = last_frame.start
+        except ValueError:
+            start = utils.datetime_align(dump_frame.start, query_frame_size)
 
-    query_manager = _AggDataQueryManager()
-    statistics.evaluate_expected_iterations_count(start, end, query_frame_size)
+        end = dump_frame.end
 
-    stream = build_time_stream(start, end, query_frame_size)
-    stream = query_data_stream(stream, query_manager)
-    stream = stats_stream(stream, client, metric_name, query_manager)
+        query_manager = _AggDataQueryManager()
+        statistics.evaluate_expected_iterations_count(start, end, query_frame_size)
 
-    dump_file = dump_location / (metric_name + '.ndjson')
-    with dump_file.open('at') as target:
-        if 0 < target.tell():
-            # extending existing file, make sure we have line separator before
-            # new record
-            target.write('\n')
-        with DumpProgressReport(metric_name, statistics) as status_report:
-            _dump_stream(stream, target, meta, status_report, statistics)
+        stream = build_time_stream(start, end, query_frame_size)
+        stream = query_data_stream(stream, query_manager)
+        stream = stats_stream(stream, client, metric_name, query_manager)
 
-    if need_remove_meta:
-        meta.remove()
+        dump_file = dump_location / (metric_name + '.ndjson')
+        with dump_file.open('at') as target:
+            if 0 < target.tell():
+                # extending existing file, make sure we have line separator before
+                # new record
+                target.write('\n')
+            with DumpProgressReport(metric_name, statistics) as status_report:
+                _dump_stream(stream, target, meta, status_report, statistics)
+
+        if need_remove_meta:
+            meta.remove()
+
+    except Exception as e:
+        print('Failed to dump metric "{}": {}'.format(metric_name, e))
+        return 1
 
 
 def _dump_stream(stream, target, meta, status_report, statistics):
     writer = mapping.get_csv_writer(target)
     for frame, stats_entries in stream:
-        status_report.flush()
+        # status_report.flush()
         for entry in stats_entries:
             statistics.add_entry(frame, entry)
             writer.writerow(mapping.encode_stats_entry(entry))
