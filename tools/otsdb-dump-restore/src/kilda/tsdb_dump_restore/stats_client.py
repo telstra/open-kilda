@@ -13,6 +13,9 @@ class _StatsClientBase:
         self._http_session = http_session
         self._url_factory = utils.HttpUrlFactory(endpoint)
 
+    def close(self):
+        self._http_session.close()
+
 
 class VictoriaMetricsStatsClient(_StatsClientBase):
     def query_range(self, start, end, metric_name, tags=None, is_rate=False):
@@ -108,6 +111,7 @@ class OpenTSDBStatsClient(_StatsClientBase):
                 start=self._format_time_query_arg(start),
                 end=self._format_time_query_arg(end),
                 m=self._build_query(metric_name, tags, agg_func)))
+
         response.raise_for_status()
         return self._parse_query_response(response.json())
 

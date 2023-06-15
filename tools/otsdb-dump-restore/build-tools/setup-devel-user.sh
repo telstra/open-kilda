@@ -25,4 +25,4 @@ chown "${DEVEL_UID}:${DEVEL_GID}" \
   /kilda \
   /usr/local \
   /usr/local/bin \
-  /usr/local/lib/python3.10/site-packages
+  /usr/local/lib/python3.11/site-packages

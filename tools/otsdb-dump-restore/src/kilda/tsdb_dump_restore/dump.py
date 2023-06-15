@@ -62,29 +62,23 @@ def main(opentsdb_endpoint, time_start, **options):
     dump_dir.mkdir(exist_ok=True, parents=True)
     dump_frame = _TimeFrame(time_start, time_stop)
 
-    rest_statistics = utils.RestStatistics()
-    statistics = _DumpStatistics(rest_statistics)
-
     http_session = requests.Session()
-    http_session.hooks['response'].append(utils.ResponseStatisticsHook(rest_statistics))
 
-    retries = Retry(total=3, status_forcelist=[424])
-    http_session.mount('http://', HTTPAdapter(max_retries=retries))
-
-    client = stats_client.OpenTSDBStatsClient(http_session, opentsdb_endpoint)
     all_metrics_iterator = stats_client.OpenTSDBMetricsList(http_session, opentsdb_endpoint, prefix=prefix)
 
-    concurrent_dump(all_metrics_iterator, statistics, client, dump_frame,
-                    dump_dir, query_frame_size, need_remove_meta, concurrent_executors)
+    print('Starting dumping metrics from {} to {}'.format(time_start, time_stop))
+
+    concurrent_dump(all_metrics_iterator, dump_frame,
+                    dump_dir, query_frame_size, need_remove_meta, concurrent_executors, opentsdb_endpoint)
 
 
-def concurrent_dump(all_metrics_iterator, statistics, client, dump_frame, dump_dir,
-                    query_frame_size, need_remove_meta, concurrent_executors):
+def concurrent_dump(all_metrics_iterator, dump_frame, dump_dir,
+                    query_frame_size, need_remove_meta, concurrent_executors, opentsdb_endpoint):
     with concurrent.futures.ThreadPoolExecutor(max_workers=concurrent_executors) as executor:
         futures = []
         for metric in all_metrics_iterator:
-            futures.append(executor.submit(dump, statistics, client, dump_frame,
-                                           dump_dir, metric, query_frame_size, need_remove_meta))
+            futures.append(executor.submit(dump, dump_frame,
+                                           dump_dir, metric, query_frame_size, need_remove_meta, opentsdb_endpoint))
 
         exit_result = 0
         for future in concurrent.futures.as_completed(futures):
@@ -94,8 +88,19 @@ def concurrent_dump(all_metrics_iterator, statistics, client, dump_frame, dump_d
         exit(exit_result)
 
 
-def dump(statistics, client, dump_frame, dump_location, metric_name, query_frame_size, need_remove_meta):
+def dump(dump_frame, dump_location, metric_name, query_frame_size, need_remove_meta, opentsdb_endpoint):
     try:
+        rest_statistics = utils.RestStatistics()
+        statistics = _DumpStatistics(rest_statistics)
+
+        http_session = requests.Session()
+        http_session.hooks['response'].append(utils.ResponseStatisticsHook(rest_statistics))
+
+        retries = Retry(total=3, status_forcelist=[424])
+        http_session.mount('http://', HTTPAdapter(max_retries=retries))
+
+        client = stats_client.OpenTSDBStatsClient(http_session, opentsdb_endpoint)
+
         meta = _DumpMetadata(metric_name, dump_location)
 
         try:
@@ -129,10 +134,14 @@ def dump(statistics, client, dump_frame, dump_location, metric_name, query_frame
         print('Failed to dump metric "{}": {}'.format(metric_name, e))
         return 1
 
+    finally:
+        client.close()
+
 
 def _dump_stream(stream, target, meta, status_report, statistics):
     writer = mapping.get_csv_writer(target)
     for frame, stats_entries in stream:
+        # This flush doesn't work fine with concurrency, so we don't use it.
         # status_report.flush()
         for entry in stats_entries:
             statistics.add_entry(frame, entry)
@@ -151,7 +160,6 @@ def build_time_stream(start, end, step):
     stream = frame_stream(stream)
     stream = frame_overlap_fix_stream(
         stream, end_offset=datetime.timedelta(seconds=-1))
-
     for frame_start, frame_end in stream:
         yield factory.produce(frame_start, frame_end)
 
@@ -210,23 +218,11 @@ def stats_stream(stream, client, metric, query_manager):
         for entry in batches:
             if entry.aggregate_tags:
                 query_manager.schedule(
-                    _extract_stats_batch_time_frame(entry, query_data.frame),
+                    query_data.frame,
                     entry.aggregate_tags)
                 continue
 
             yield query_data.frame, stats_client.batch_to_entries(entry)
-
-
-def _extract_stats_batch_time_frame(batch, fallback):
-    if not batch.values:
-        return fallback
-    start = batch.values[0].timestamp
-    end = batch.values[-1].timestamp
-    if start == end:
-        end = start + datetime.timedelta(seconds=1)
-
-    return _TimeFrame(
-        start, end, step_number=fallback.step_number)
 
 
 class _DumpStatistics:

@@ -83,7 +83,6 @@ function increment_date()
     eval $__resultvar=$(date -d "${start_date} ${increment}" +${interval_format})
 }
 
-
 # Loop through dates
 while [[ "$start_date" < "$end_date" ]]; do
     # trim : from date

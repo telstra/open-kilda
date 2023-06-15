@@ -33,7 +33,7 @@ def decode_raw_cvs_row(raw):
     timestamp = float(row[0])
     metric_name = row[1]
     tags = ast.literal_eval(row[2])
-    value = int(row[3])
+    value = float(row[3])
     return stats_client.StatsEntry(
         utils.unixtime_to_datetime(timestamp), metric_name, value, tags=tags)
 
