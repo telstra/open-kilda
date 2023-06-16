@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.service.haflow.history;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
@@ -130,6 +131,27 @@ public class HaFlowHistoryServiceTest {
 
         assertNull(fakeCarrier.getHistoryHolderList().get(0).getHaFlowDumpData());
         assertNull(fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData());
+    }
+
+    @Test
+    public void whenInvalidEventData_returnFalseAndLogTheError() {
+        assertFalse(HaFlowHistoryService.using(fakeCarrier).saveNewHaFlowEvent(HaFlowEventData.builder()
+                .action(ACTION)
+                .details(DESCRIPTION)
+                .event(HaFlowEventData.Event.CREATE)
+                .taskId(null)
+                .haFlowId(HA_FLOW_ID)
+                .initiator(Initiator.AUTO)
+                .build()));
+
+        assertFalse(HaFlowHistoryService.using(fakeCarrier).saveNewHaFlowEvent(HaFlowEventData.builder()
+                        .action(ACTION)
+                        .details(DESCRIPTION)
+                        .event(HaFlowEventData.Event.CREATE)
+                        .taskId(TASK_ID)
+                        .haFlowId(null)
+                        .initiator(Initiator.AUTO)
+                        .build()));
     }
 
     @Test

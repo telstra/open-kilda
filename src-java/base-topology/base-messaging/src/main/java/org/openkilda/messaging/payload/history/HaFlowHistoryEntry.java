@@ -17,6 +17,8 @@ package org.openkilda.messaging.payload.history;
 
 import org.openkilda.messaging.info.InfoData;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -30,6 +32,7 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
+@JsonNaming(SnakeCaseStrategy.class)
 public class HaFlowHistoryEntry extends InfoData {
     String haFlowId;
     Instant time;

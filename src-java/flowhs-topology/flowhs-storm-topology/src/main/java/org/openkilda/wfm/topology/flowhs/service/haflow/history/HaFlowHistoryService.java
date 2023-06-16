@@ -85,30 +85,36 @@ public final class HaFlowHistoryService {
     /**
      * Saves a new HA flow event to history. The <i>eventData</i> might be augmented with some additional information.
      * @param eventData data about the event
+     * @return true if the event is created successfully and sent for being stored, false otherwise.
      */
-    public void saveNewHaFlowEvent(HaFlowEventData eventData) {
+    public boolean saveNewHaFlowEvent(HaFlowEventData eventData) {
         try {
             Instant timestamp = getNextHistoryEntryTime();
+            String haFlowId = Objects.requireNonNull(eventData.getHaFlowId());
+            String taskId = Objects.requireNonNull(eventData.getTaskId());
+
             FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                    .taskId(Objects.requireNonNull(eventData.getTaskId()))
+                    .taskId(taskId)
                     .haFlowHistoryData(HaFlowHistoryData.builder()
                             .action(eventData.getEvent().getDescription())
                             .time(timestamp)
-                            .haFlowId(eventData.getHaFlowId())
+                            .haFlowId(haFlowId)
                             .build())
                     .haFlowEventData(HaFlowEventData.builder()
-                            .haFlowId(eventData.getHaFlowId())
+                            .haFlowId(haFlowId)
                             .action(eventData.getAction())
                             .event(eventData.getEvent())
                             .initiator(eventData.getInitiator())
                             .time(timestamp)
                             .details(eventData.getDetails())
-                            .taskId(eventData.getTaskId())
+                            .taskId(taskId)
                             .build())
                     .build();
             carrier.sendHistoryUpdate(historyHolder);
+            return true;
         } catch (RuntimeException e) {
             log.error("An error occurred when trying to save a new History Event", e);
+            return false;
         }
     }
 
