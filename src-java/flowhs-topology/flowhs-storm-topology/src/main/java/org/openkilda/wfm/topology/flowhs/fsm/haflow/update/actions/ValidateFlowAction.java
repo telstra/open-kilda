@@ -119,6 +119,7 @@ public class ValidateFlowAction extends
         HaFlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
                         .action("HA-flow has been validated successfully")
                         .event(HaFlowEventData.Event.UPDATE)
+                        .taskId(stateMachine.getCommandContext().getCorrelationId())
                         .haFlowId(stateMachine.getHaFlowId())
                 .build());
 
