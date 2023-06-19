@@ -99,8 +99,6 @@ import { FlowsService } from 'src/app/common/services/flows.service';
     newMessageDetail(){
       this.islDataService.changeMessage(this.currentGraphData)
     }
-
-
     constructor(private httpClient:HttpClient,
       private route: ActivatedRoute,
       private maskPipe: SwitchidmaskPipe,
@@ -198,19 +196,22 @@ import { FlowsService } from 'src/app/common/services/flows.service';
             this.detailDataObservable = data;
               this.islForm = this.islFormBuiler.group({
               cost: [this.detailDataObservable.cost, Validators.min(0)],
-              max_bandwidth:[this.max_bandwidth,Validators.min(0)]
+                max_bandwidth: [this.max_bandwidth, Validators.min(0)],
+                description:[this.detailDataObservable.props.description],
             });
           }
           else{
             this.detailDataObservable = {
               "props": {
-              "cost": "-"
+                "cost": "-",
+                "description":''
               }
               };
     
                 this.islForm = this.islFormBuiler.group({
             cost: [this.detailDataObservable.cost, Validators.min(0)],
-            max_bandwidth:[this.max_bandwidth,Validators.min(0)]
+                  max_bandwidth: [this.max_bandwidth, Validators.min(0)],
+                  description:[this.detailDataObservable.props.description],
             });
           }
          },error=>{
@@ -980,6 +981,43 @@ get f() {
             this.toastr.error(error.error['error-message'],'Error! ');
           }else{
             this.toastr.error(MessageObj.error_isl_cost_updated,'Error');
+          }
+        })
+      }
+    });
+  }
+  saveEditedDescription(){
+    if (this.islForm.invalid) {
+      this.toastr.error("Please enter valid value for  Description.");
+      return;
+    }
+
+    const modalRef = this.modalService.open(ModalconfirmationComponent);
+    modalRef.componentInstance.title = "Confirmation";
+    modalRef.componentInstance.content = 'Are you sure you want to change the Description?';
+
+    modalRef.result.then((response) => {
+      if(response && response == true){
+        this.loaderService.show(MessageObj.updating_isl_description);
+        let descriptionValue = this.islForm.value.description;
+        console.log(descriptionValue,this.islForm.value)
+        this.islListService.updateDescription(this.src_switch, this.src_port, this.dst_switch, this.dst_port, descriptionValue).subscribe((status: any) => {
+          this.loaderService.hide();
+
+          if(typeof(status.successes)!=='undefined' && status.successes > 0){
+            this.toastr.success(MessageObj.isl_description_updated,'Success');
+            this.detailDataObservable.props.description = descriptionValue;
+            this.islForm.controls["description"].setValue(descriptionValue);
+            
+          }else if(typeof(status.failures)!=='undefined' && status.failures > 0){
+            this.toastr.error(MessageObj.error_isl_description_updated,'Error');       
+          }
+
+        },error => {
+          if(error.status == '500'){
+            this.toastr.error(error.error['error-message'],'Error! ');
+          }else{
+            this.toastr.error(MessageObj.error_isl_description_updated,'Error');
           }
         })
       }

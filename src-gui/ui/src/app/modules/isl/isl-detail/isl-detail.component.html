@@ -248,6 +248,18 @@
                   </div>
                 </div>
               </div>
+              <div class='row isl_sbl_details mt-3' *ngIf="under_maintenance" >
+                <label class='col-sm-3 col-form-label'>Description:</label>
+                <div class="col-sm-6">
+                  <textarea formControlName="description" id="isl_description" 
+                    class="form-control"></textarea>
+                    <!-- <quill-editor  placeholder="Enter Text" [modules]="quillConfig"
+	(onSelectionChanged)="onSelectionChanged($event)" ></quill-editor> -->
+                </div>
+                <div class="col-sm-3">
+                  <button  class="btn btn-sm btn-dark" (click)="saveEditedDescription()">Update</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
