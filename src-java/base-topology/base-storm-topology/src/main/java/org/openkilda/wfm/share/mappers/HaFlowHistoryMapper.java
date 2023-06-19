@@ -43,6 +43,7 @@ import org.openkilda.wfm.share.history.model.HaFlowHistoryData;
 import org.openkilda.wfm.share.history.model.HaFlowPathDump;
 import org.openkilda.wfm.share.history.model.HaSubFlowDump;
 
+import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
@@ -54,6 +55,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Mapper(imports = { ZoneOffset.class, SwitchId.class, MeterId.class, GroupId.class })
+@Slf4j
 public abstract class HaFlowHistoryMapper {
 
     public static HaFlowHistoryMapper INSTANCE = Mappers.getMapper(HaFlowHistoryMapper.class);
@@ -286,23 +288,27 @@ public abstract class HaFlowHistoryMapper {
         if (haFlowPath == null) {
             return HaFlowPathDump.empty();
         }
-
-        return HaFlowPathDump.builder()
-                .haPathId(haFlowPath.getHaPathId())
-                .sharedSwitchId(haFlowPath.getSharedSwitchId())
-                .yPointSwitchId(haFlowPath.getYPointSwitchId())
-                .timeModify(haFlowPath.getTimeModify())
-                .timeCreate(haFlowPath.getTimeCreate())
-                .status(haFlowPath.getStatus())
-                .ignoreBandwidth(haFlowPath.isIgnoreBandwidth())
-                .cookie(haFlowPath.getCookie())
-                .sharedPointMeterId(haFlowPath.getSharedPointMeterId())
-                .yPointMeterId(haFlowPath.getYPointMeterId())
-                .yPointGroupId(haFlowPath.getYPointGroupId())
-                .bandwidth(haFlowPath.getBandwidth())
-                .paths(toPathNodePayloadList(haFlowPath.getHaFlow(), haFlowPath))
-                .haSubFlows(toHaSubFlowDumpList(haFlowPath.getHaSubFlows()))
-                .build();
+        try {
+            return HaFlowPathDump.builder()
+                    .haPathId(haFlowPath.getHaPathId())
+                    .sharedSwitchId(haFlowPath.getSharedSwitchId())
+                    .yPointSwitchId(haFlowPath.getYPointSwitchId())
+                    .timeModify(haFlowPath.getTimeModify())
+                    .timeCreate(haFlowPath.getTimeCreate())
+                    .status(haFlowPath.getStatus())
+                    .ignoreBandwidth(haFlowPath.isIgnoreBandwidth())
+                    .cookie(haFlowPath.getCookie())
+                    .sharedPointMeterId(haFlowPath.getSharedPointMeterId())
+                    .yPointMeterId(haFlowPath.getYPointMeterId())
+                    .yPointGroupId(haFlowPath.getYPointGroupId())
+                    .bandwidth(haFlowPath.getBandwidth())
+                    .paths(toPathNodePayloadList(haFlowPath.getHaFlow(), haFlowPath))
+                    .haSubFlows(toHaSubFlowDumpList(haFlowPath.getHaSubFlows()))
+                    .build();
+        } catch (Exception e) {
+            log.error("An exception occurred when creating an HA-flow path dump", e);
+            return HaFlowPathDump.empty();
+        }
     }
 
     private List<HaSubFlowDump> toHaSubFlowDumpList(List<HaSubFlow> haSubFlows) {
