@@ -1,6 +1,7 @@
 # OpenFlow cookies data
 
-The length of a cookie field is 64. It is divided into several bit groups. Some bit fields are system-wide, i.e. have same meaning for possible cookies. Other bit fields are specific for a specific cookie type (some subset of cookies).
+The length of a cookie field is 64. It is divided into several bit groups. Some bit fields are system-wide, i.e. have 
+the same meaning for all cookies. Other bit fields are specific for a specific cookie type (some subset of cookies).
 
 ## System wide cookie fields
 This is a set of basic fields that are present in all cookie types.
@@ -11,12 +12,14 @@ S00TTTTT TTTT0000 00000000 00000000 00000000 00000000 00000000 00000000
 `- 63 bit                                                             `- 0 bit
 ```
 
-* S - SERVICE_FLAG (1 bit): if OF flow marked with 1 in this bit, then it is a service flow.  OpenKilda uses it to manage service traffic: ISL detection, ISL health check, loops prevention, etc.
-* T - TYPE_FIELD (9 bit): contains a cookie type code. This type defines the existence and layout of all other bit fields in the cookie.
+* S - SERVICE_FLAG (1 bit): if OF flow marked with 1 in this bit, then it is a service flow. OpenKilda uses it to manage 
+service traffic: ISL detection, ISL health check, loops prevention, etc.
+* T - TYPE_FIELD (9 bit): contains a cookie type code. This type defines the existence and the layout of all other bit fields in the cookie.
 
 
 ## Generic cookies (org.openkilda.model.cookie.CookieBase)
-This cookie format was the only existing format in OpenKilda from the beginning. It does not put any restrictions on a cookie format, and it can be used to read a "raw" cookie value to determine its actual type.
+This cookie format was the only existing format in OpenKilda from the beginning. It does not put any restrictions on a 
+cookie format, and it can be used to read a "raw" cookie value to determine its actual type.
 
 ## Service cookies (org.openkilda.model.cookie.ServiceCookie)
 Fields:
@@ -33,7 +36,7 @@ Constraints:
 * SERVICE_FLAG == 1
 * TYPE_FIELD == SERVICE_OR_FLOW_SEGMENT (0x000)
 
-## OpenKilda-flow's segment cookies (org.openkilda.model.cookie.FlowSegmentCookie)
+## OpenKilda flow's segment cookies (org.openkilda.model.cookie.FlowSegmentCookie)
 Fields:
 
 ```
@@ -42,11 +45,11 @@ _FR_____ ____LMY0 00000000 00000000 00000000 0000IIII IIIIIIII IIIIIIII
 `- 63 bit                                                             `- 0 bit
 ```
 
-* I - FLOW_EFFECTIVE_ID_FIELD (20 bits): a unique numeric kilda-flow identifier (equal across all paths)
-* R - FLOW_REVERSE_DIRECTION_FLAG (1 bit): if set, OF flow belongs to a reverse (Z-to-A) kilda-flow path
-* F - FLOW_FORWARD_DIRECTION_FLAG (1 bit): if set, OF flow belongs to a forward (A-to-Z) kilda-flow path
-* L - FLOW_LOOP_FLAG (1 bit): if set, this is a OF flow that "makes" a loop on a kilda-flow
-* M - MIRROR_LOOP_FLAG (1 bit): if set, this is a OF flow that mirrors a kilda-flow
+* I - FLOW_EFFECTIVE_ID_FIELD (20 bits): a unique numeric OpenKilda flow identifier (equal across all paths)
+* R - FLOW_REVERSE_DIRECTION_FLAG (1 bit): if set, OF flow belongs to a reverse (Z-to-A) OpenKilda flow path
+* F - FLOW_FORWARD_DIRECTION_FLAG (1 bit): if set, OF flow belongs to a forward (A-to-Z) OpenKilda flow path
+* L - FLOW_LOOP_FLAG (1 bit): if set, this is a OF flow that "makes" a loop on a OpenKilda flow
+* M - MIRROR_LOOP_FLAG (1 bit): if set, this is a OF flow that mirrors a OpenKilda flow
 * Y - Y_FLOW_FLAG (1 bit): if set, this is a OF flow that is used by y-flows to share the same meter
 
 Constraints:
@@ -54,8 +57,8 @@ Constraints:
 * TYPE_FIELD one of {SERVICE_OR_FLOW_SEGMENT(0x000), SERVER_42_FLOW_RTT_INGRESS(0x00C)}
 * FLOW_REVERSE_DIRECTION_FLAG or FLOW_FORWARD_DIRECTION_FLAG must be set, but not both of them
 
-## Kilda-flow's shared segment cookies (org.openkilda.model.cookie.FlowSharedSegmentCookie)
-Refers to the OF flows used by several (at least one) kilda-flows.
+## OpenKilda flow's shared segment cookies (org.openkilda.model.cookie.FlowSharedSegmentCookie)
+Refers to the OF flows used by several (at least one) OpenKilda flows.
 
 Fields:
 ```
@@ -66,7 +69,7 @@ _00_____ ____SSSS 00000000 00000000 0000VVVV VVVVVVVV PPPPPPPP PPPPPPPP
 
 * S - SHARED_TYPE_FIELD (4 bits): shared segment type
 * p - PORT_NUMBER_FIELD (16 bits): a switch port number with the OF flow belongs to this port
-* V - VLAN_ID_FIELD (12 bits): vlanId this OF flow matches
+* V - VLAN_ID_FIELD (12 bits): VLAN ID that this OF flow matches
 
 Constraints:
 
