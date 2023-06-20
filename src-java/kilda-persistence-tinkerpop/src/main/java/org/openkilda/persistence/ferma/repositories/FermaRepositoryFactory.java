@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ public class FermaRepositoryFactory implements RepositoryFactory {
 
     @Override
     public FlowRepository createFlowRepository() {
-        return new FermaFlowRepository(implementation, createFlowPathRepository());
+        return new FermaFlowRepository(implementation, createFlowPathRepository(), createFlowStatsRepository());
     }
 
     @Override
@@ -260,7 +260,7 @@ public class FermaRepositoryFactory implements RepositoryFactory {
 
     @Override
     public HaSubFlowRepository createHaSubFlowRepository() {
-        return new FermaHaSubFlowRepository(implementation);
+        return new FermaHaSubFlowRepository(implementation, createFlowStatsRepository());
     }
 
     @Override
