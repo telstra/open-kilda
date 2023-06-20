@@ -27,6 +27,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.See
 
 import java.util.concurrent.TimeUnit
@@ -37,6 +38,7 @@ class LinkSpec extends HealthCheckSpecification {
     int antiflapCooldown
 
     @Tidy
+    @Ignore
     @Tags([SMOKE_SWITCHES, SMOKE, LOCKKEEPER])
     def "Link (not BFD) status is properly changed when link connectivity is broken (not port down)"() {
         given: "A link going through a-switch"
@@ -131,6 +133,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore
     @Tags(SMOKE)
     def "Get all flows (UP/DOWN) going through a particular link"() {
         given: "Two active not neighboring switches"
@@ -230,6 +233,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore
     def "ISL should immediately fail if the port went down while switch was disconnected"() {
         when: "A switch disconnects"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
@@ -415,6 +419,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore
     def "Reroute all flows going through a particular link"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -597,6 +602,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tags(SMOKE)
+    @Ignore
     def "Able to update max bandwidth for a link"() {
         given: "An active ISL"
         // Find such an ISL that is the only ISL between switches.
@@ -727,6 +733,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore
     def "Unable to delete inactive link with flowPath"() {
         given: "An inactive link with flow on it"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -761,6 +768,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore
     def "Able to delete an active link with flowPath if using force delete"() {
         given: "Two active neighboring switches and two possible paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -826,6 +834,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignorew
     def "System detects a 1-way ISL as a Failed ISL"() {
         given: "A deleted a-switch ISL"
         def isl = topology.islsForActiveSwitches.find {

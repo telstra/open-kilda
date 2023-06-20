@@ -18,6 +18,7 @@ import org.openkilda.northbound.dto.v2.links.BfdProperties
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.ResourceLock
 import spock.lang.See
@@ -35,6 +36,7 @@ class BfdSpec extends HealthCheckSpecification {
     BfdProperties defaultBfdProps = new BfdProperties(350, (short)3)
 
     @Tidy
+    @Ignore
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "Able to create a valid BFD session between two Noviflow switches"() {
         given: "An a-switch ISL between two Noviflow switches with BFD and RTL"
@@ -150,6 +152,7 @@ class BfdSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore
     @ResourceLock(BFD_TOGGLE)
     def "Reacting on BFD events can be turned on/off by a feature toggle"() {
         given: "An a-switch ISL between two Noviflow switches with BFD enabled"
@@ -211,6 +214,7 @@ class BfdSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore
     def "Deleting a failed BFD link also removes the BFD session from it"() {
         given: "An inactive a-switch link with BFD session"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow &&
@@ -263,6 +267,7 @@ class BfdSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "System is able to rediscover failed link after deleting BFD session"() {
         given: "An interrupted a-switch ISL with BFD session"

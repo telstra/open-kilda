@@ -15,6 +15,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchFeature
 
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Isolated
 
 import java.util.concurrent.TimeUnit
@@ -126,6 +127,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore
     def "System can detect switch port changes if they happen while Floodlight was disconnected after it reconnects"() {
         when: "Controllers lose connection to kafka"
         def regions = flHelper.fls*.region

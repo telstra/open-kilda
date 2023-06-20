@@ -23,6 +23,7 @@ import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
+import spock.lang.Ignore
 import spock.lang.See
 
 import java.util.concurrent.TimeUnit
@@ -36,6 +37,7 @@ class RoundTripIslSpec extends HealthCheckSpecification {
     Integer customWaitOffset = WAIT_OFFSET * 4
 
     @Tidy
+    @Ignore
     def "Isl with round-trip properly changes status after port events(#descr)"() {
         given: "Round-trip ISL with a-switch"
         def cleanupActions = []

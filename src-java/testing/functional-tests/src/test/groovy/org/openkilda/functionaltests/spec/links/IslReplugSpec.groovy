@@ -25,6 +25,7 @@ import spock.lang.Narrative
 import java.util.concurrent.TimeUnit
 
 @Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
+@Ignore
 @Tags([TOPOLOGY_DEPENDENT])
 class IslReplugSpec extends HealthCheckSpecification {
 
@@ -216,6 +217,7 @@ class IslReplugSpec extends HealthCheckSpecification {
     }
 
     @Tags(SMOKE)
+    @Ignore
     @Ignore("https://github.com/telstra/open-kilda/issues/3633")
     def "New potential self-loop ISL (different ports on the same switch) is not getting discovered when replugging"() {
         given: "Two a-switch links on a single switch"

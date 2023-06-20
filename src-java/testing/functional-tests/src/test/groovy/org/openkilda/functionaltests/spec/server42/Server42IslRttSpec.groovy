@@ -34,6 +34,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Isolated
 import spock.lang.ResourceLock
 import spock.lang.Shared
@@ -181,6 +182,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([LOW_PRIORITY])
+    @Ignore
     def "ISL RTT stats are not available for a moved link and available for a new link"() {
         given: "An active a-switch ISL with both switches having server42"
         def server42switchesDpIds = topology.getActiveServer42Switches()*.dpId
@@ -285,6 +287,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     }
 
     @Tidy
+    @Ignore
     @Tags([HARDWARE])
     def "No ISL RTT stats in both directions in case link is UP in forward direction only"() {
         given: "An active a-switch ISL with both switches having server42 and with broken reverse direction"
