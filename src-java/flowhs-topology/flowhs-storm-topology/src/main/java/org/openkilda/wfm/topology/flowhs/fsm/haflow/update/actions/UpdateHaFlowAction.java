@@ -58,14 +58,13 @@ public class UpdateHaFlowAction extends
             HaFlow haFlow = getHaFlow(haFlowId);
 
             log.debug("Updating the flow {} with properties: {}", haFlowId, targetHaFlow);
-            saveNewEventInHistoryWithDumpBefore(stateMachine, haFlow);
+            saveNewEventInHistory(stateMachine, haFlow);
 
             // Complete target ha-flow in FSM with values from original ha-flow
             stateMachine.setTargetHaFlow(updateFlow(haFlow, targetHaFlow));
             HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
                     .withTaskId(stateMachine.getCommandContext().getCorrelationId())
-                    .withAction("HA-flow properties have been updated.")
-                    .withHaFlowDumpAfter(haFlow));
+                    .withAction("HA-flow properties have been updated."));
         });
 
         return Optional.empty();
@@ -132,18 +131,12 @@ public class UpdateHaFlowAction extends
         return "Couldn't update HA-flow";
     }
 
-    private void saveNewEventInHistoryWithDumpBefore(HaFlowUpdateFsm stateMachine, HaFlow haFlow) {
+    private void saveNewEventInHistory(HaFlowUpdateFsm stateMachine, HaFlow haFlow) {
         HaFlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
                 .taskId(stateMachine.getCommandContext().getCorrelationId())
                 .action("Update HA-flow")
                 .event(HaFlowEventData.Event.UPDATE)
                 .haFlowId(stateMachine.getHaFlowId())
                 .build());
-        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
-                .withHaFlowDumpBefore(haFlow)
-                .withAction("Update HA-flow")
-                .withDescription(format("Updating HA-flow %s with the new properties (see dumps for details)",
-                        stateMachine.getHaFlowId())));
     }
 }

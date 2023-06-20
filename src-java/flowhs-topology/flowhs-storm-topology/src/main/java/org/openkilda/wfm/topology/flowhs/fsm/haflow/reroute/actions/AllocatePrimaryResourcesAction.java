@@ -102,7 +102,7 @@ public class AllocatePrimaryResourcesAction extends
                     stateMachine.isIgnoreBandwidth());
             log.debug("New primary paths have been created: {}", createdPaths);
 
-            saveAllocationActionWithDumpsToHistory(stateMachine, haFlow, PATHS_TYPE, createdPaths);
+            saveAllocationActionToHistory(stateMachine, haFlow, PATHS_TYPE, createdPaths);
         } else {
             HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
                     .withTaskId(stateMachine.getCommandContext().getCorrelationId())

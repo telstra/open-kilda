@@ -90,8 +90,8 @@ public class SwapFlowPathsAction extends
 
                 log.debug("Swapping the primary paths {}/{} with {}/{}",
                         getPathId(oldForward), getPathId(oldReverse), newForwardPathId, newReversePathId);
+                saveHistory(stateMachine, haFlow, newForwardPathId, newReversePathId);
             });
-            saveHistory(stateMachine, stateMachine.getFlowId(), newForwardPathId, newReversePathId);
         }
     }
 
@@ -134,7 +134,7 @@ public class SwapFlowPathsAction extends
             if (newForward != null && newReverse != null) {
                 log.debug("Swapping the protected paths {}/{} with {}/{}",
                         getPathId(oldForward), getPathId(oldReverse), newForward, newReverse);
-                saveHistory(stateMachine, stateMachine.getHaFlowId(), newForward, newReverse);
+                saveHistory(stateMachine, haFlow, newForward, newReverse);
             }
         });
     }
@@ -147,13 +147,15 @@ public class SwapFlowPathsAction extends
     }
 
     private void saveHistory(
-            HaFlowUpdateFsm stateMachine, String haFlowId, PathId forwardPathId, PathId reversePathId) {
+            HaFlowUpdateFsm stateMachine, HaFlow haFlow, PathId forwardPathId, PathId reversePathId) {
 
         HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
                 .withTaskId(stateMachine.getCommandContext().getCorrelationId())
                 .withAction("HA-flow was updated with new paths")
                 .withDescription(format("The HA-flow %s has been updated with paths %s / %s",
-                        haFlowId, forwardPathId, reversePathId))
-                .withHaFlowId(stateMachine.getHaFlowId()));
+                        haFlow.getHaFlowId(), forwardPathId, reversePathId))
+                .withHaFlowId(stateMachine.getHaFlowId())
+                .withHaFlowDumpAfter(haFlow));
     }
+
 }

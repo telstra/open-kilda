@@ -276,8 +276,8 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
         return subPaths;
     }
 
-    protected void saveAllocationActionWithDumpsToHistory(T stateMachine, HaFlow haFlow, String pathsType,
-                                                          HaFlowPathPair newHaFlowPaths) {
+    protected void saveAllocationActionToHistory(T stateMachine, HaFlow haFlow, String pathsType,
+                                                 HaFlowPathPair newHaFlowPaths) {
         HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
                 .withTaskId(stateMachine.getCommandContext().getCorrelationId())
                 .withAction(format("%s paths have been allocated", StringUtils.capitalize(pathsType)))
@@ -285,8 +285,7 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
                         format("The following paths have been allocated for HA-flow %s: forward: %s, reverse: %s",
                                 haFlow.getHaFlowId(),
                                 newHaFlowPaths.getForward().getHaPathId(),
-                                newHaFlowPaths.getReverse().getHaPathId()))
-                .withHaFlowDumpAfter(haFlow));
+                                newHaFlowPaths.getReverse().getHaPathId())));
     }
 
     @Override
