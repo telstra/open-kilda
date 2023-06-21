@@ -15,9 +15,7 @@
 
 package org.openkilda.messaging.command.haflow;
 
-import org.openkilda.messaging.command.yflow.SubFlowPathDto;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.command.CommandData;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -25,19 +23,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.util.List;
-
 /**
- * Represents a reroute response for an HA-flow.
+ * Represents a synchronization request for na HA-flow.
  */
 @Data
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
 @JsonNaming(SnakeCaseStrategy.class)
-public class HaFlowRerouteResponse extends InfoData {
+public class HaFlowSyncRequest extends CommandData {
     private static final long serialVersionUID = 1L;
-
-    PathInfoData sharedPath;
-    List<SubFlowPathDto> subFlowPaths;
-    boolean rerouted;
+    String haFlowId;
 }

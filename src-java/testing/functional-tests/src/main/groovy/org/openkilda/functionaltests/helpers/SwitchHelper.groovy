@@ -167,6 +167,11 @@ class SwitchHelper {
         database.get().getSwitch(sw.dpId).features
     }
 
+    static void synchronize(Switch sw) {
+        northbound.get().synchronizeSwitch(sw.dpId, true)
+        assert northboundV2.get().validateSwitch(sw.dpId).asExpected
+    }
+
     static List<Long> getDefaultCookies(Switch sw) {
         def swProps = northbound.get().getSwitchProperties(sw.dpId)
         def multiTableRules = []

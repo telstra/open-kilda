@@ -31,7 +31,7 @@ import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaFlowPathIds;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaPathIdsPairBuilder;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
-import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowPaths;
+import org.openkilda.wfm.topology.flowhs.model.CrossingPaths;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -109,9 +109,9 @@ public final class HaFlowUtils {
     }
 
     /**
-     * Builds YFlowPaths object.
+     * Builds CrossingPaths object from flowPaths.
      */
-    public static YFlowPaths definePaths(List<FlowPath> flowPaths) {
+    public static CrossingPaths definePaths(List<FlowPath> flowPaths) {
         List<FlowPath> nonEmptyPaths = flowPaths.stream()
                 .filter(flowPath -> !flowPath.getSegments().isEmpty())
                 .collect(Collectors.toList());
@@ -122,10 +122,20 @@ public final class HaFlowUtils {
                 .map(flowPath -> new SubFlowPathDto(flowPath.getHaSubFlowId(), FlowPathMapper.INSTANCE.map(flowPath)))
                 .collect(Collectors.toList());
 
-        return YFlowPaths.builder()
+        return CrossingPaths.builder()
                 .sharedPath(sharedPath)
                 .subFlowPaths(subFlowPaths)
                 .build();
+    }
+
+    /**
+     * Builds CrossingPaths object from haFlowPath.
+     */
+    public static CrossingPaths buildCrossingPaths(HaFlowPath haFlowPath, CrossingPaths defaultValue) {
+        return Optional.ofNullable(haFlowPath)
+                .map(HaFlowPath::getSubPaths)
+                .map(HaFlowUtils::definePaths)
+                .orElse(defaultValue);
     }
 
     /**

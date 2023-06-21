@@ -20,6 +20,7 @@ import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathsResponse;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRerouteResponse;
+import org.openkilda.messaging.command.haflow.HaFlowSyncResponse;
 import org.openkilda.messaging.command.haflow.HaFlowValidationResponse;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
 import org.openkilda.messaging.command.haflow.HaSubFlowPartialUpdateDto;
@@ -47,8 +48,8 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowPath.HaFlowProtectedPath;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult;
-import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult.ReroutedSharedPath;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowSyncResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload;
@@ -203,17 +204,8 @@ public abstract class HaFlowMapper {
 
     public abstract HaFlowRerouteResult toRerouteResult(HaFlowRerouteResponse source);
 
-    /**
-     * Convert {@link PathInfoData} to {@link ReroutedSharedPath}.
-     */
-    public HaFlowRerouteResult.ReroutedSharedPath toReroutedSharedPath(PathInfoData path) {
-        if (path != null && path.getPath() != null && !path.getPath().isEmpty()) {
-            return HaFlowRerouteResult.ReroutedSharedPath.builder()
-                    .nodes(path.getPath().stream().map(this::toPathNode).collect(Collectors.toList()))
-                    .build();
-        }
-        return null;
-    }
+    @Mapping(target = "nodes", source = "path")
+    public abstract HaFlowRerouteResult.ReroutedSharedPath toReroutedSharedPath(PathInfoData path);
 
     @Mapping(target = "nodes", source = "path.path")
     public abstract HaFlowRerouteResult.ReroutedSubFlowPath toReroutedSubFlowPath(SubFlowPathDto flow);
@@ -221,4 +213,11 @@ public abstract class HaFlowMapper {
     @Mapping(target = "segmentLatency", source = "segLatency")
     public abstract PathNodeV2 toPathNode(PathNode pathNode);
 
+    public abstract HaFlowSyncResult toSyncResult(HaFlowSyncResponse source);
+
+    @Mapping(target = "nodes", source = "path.path")
+    public abstract HaFlowSyncResult.SyncSubFlowPath toSyncSubFlowPath(SubFlowPathDto subPath);
+
+    @Mapping(target = "nodes", source = "path")
+    public abstract HaFlowSyncResult.SyncSharedPath toSyncSharedPath(PathInfoData path);
 }

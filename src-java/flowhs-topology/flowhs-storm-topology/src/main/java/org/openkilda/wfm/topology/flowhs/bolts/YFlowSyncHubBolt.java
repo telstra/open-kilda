@@ -26,7 +26,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.ComponentId;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathOperationConfig;
-import org.openkilda.wfm.topology.flowhs.service.YFlowSyncService;
+import org.openkilda.wfm.topology.flowhs.service.yflow.YFlowSyncService;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
 import lombok.NonNull;

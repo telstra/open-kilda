@@ -13,15 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions;
+package org.openkilda.wfm.topology.flowhs.fsm.haflow.sync.actions;
 
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.BaseReceivedResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.haflow.sync.HaFlowSyncContext;
+import org.openkilda.wfm.topology.flowhs.fsm.haflow.sync.HaFlowSyncFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.haflow.sync.HaFlowSyncFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.haflow.sync.HaFlowSyncFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
 import lombok.extern.slf4j.Slf4j;
@@ -30,21 +30,20 @@ import java.util.UUID;
 
 @Slf4j
 public class OnReceivedResponseAction
-        extends BaseReceivedResponseAction<HaFlowCreateFsm, State, Event, HaFlowCreateContext> {
-    private final String actionName;
+        extends BaseReceivedResponseAction<HaFlowSyncFsm, State, Event, HaFlowSyncContext> {
+    public static final String INSTALL_ACTION_NAME = "install";
 
     public OnReceivedResponseAction(
-            int speakerCommandRetriesLimit, String actionName, Event finishEvent, FlowGenericCarrier carrier) {
+            int speakerCommandRetriesLimit, Event finishEvent, FlowGenericCarrier carrier) {
         super(speakerCommandRetriesLimit, finishEvent, carrier);
-        this.actionName = actionName;
     }
 
     @Override
     protected void perform(
-            State from, State to, Event event, HaFlowCreateContext context, HaFlowCreateFsm stateMachine) {
+            State from, State to, Event event, HaFlowSyncContext context, HaFlowSyncFsm stateMachine) {
         SpeakerCommandResponse response = context.getSpeakerResponse();
         UUID commandId = response.getCommandId();
         BaseSpeakerCommandsRequest request = stateMachine.getSpeakerCommand(commandId).orElse(null);
-        handleResponse(response, request, actionName, stateMachine);
+        handleResponse(response, request, INSTALL_ACTION_NAME, stateMachine);
     }
 }

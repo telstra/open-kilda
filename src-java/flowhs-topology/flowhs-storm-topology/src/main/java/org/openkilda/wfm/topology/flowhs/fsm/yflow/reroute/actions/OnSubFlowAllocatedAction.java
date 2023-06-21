@@ -29,7 +29,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowPaths;
+import org.openkilda.wfm.topology.flowhs.model.CrossingPaths;
 import org.openkilda.wfm.topology.flowhs.utils.YFlowUtils;
 
 import lombok.extern.slf4j.Slf4j;
@@ -72,7 +72,7 @@ public class OnSubFlowAllocatedAction extends
     }
 
     private Message buildRerouteResponseMessage(YFlowRerouteFsm stateMachine) {
-        YFlowPaths paths = utils.definePaths(stateMachine.getYFlowId(), stateMachine.getOldYFlowPathCookies());
+        CrossingPaths paths = utils.definePaths(stateMachine.getYFlowId(), stateMachine.getOldYFlowPathCookies());
         boolean rerouted = !(
                 paths.getSharedPath().equals(stateMachine.getOldSharedPath())
                         && paths.getSubFlowPaths().equals(stateMachine.getOldSubFlowPathDtos()));

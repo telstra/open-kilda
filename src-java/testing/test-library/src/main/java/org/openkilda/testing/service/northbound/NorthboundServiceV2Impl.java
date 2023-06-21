@@ -40,6 +40,7 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowSyncResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
@@ -628,6 +629,12 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     public HaFlowRerouteResult rerouteHaFlow(String haFlowId) {
         return restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}/reroute", HttpMethod.POST,
                 new HttpEntity<>(buildHeadersWithCorrelationId()), HaFlowRerouteResult.class, haFlowId).getBody();
+    }
+
+    @Override
+    public HaFlowSyncResult syncHaFlow(String haFlowId) {
+        return restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}/sync", HttpMethod.POST,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), HaFlowSyncResult.class, haFlowId).getBody();
     }
 
     @Override
