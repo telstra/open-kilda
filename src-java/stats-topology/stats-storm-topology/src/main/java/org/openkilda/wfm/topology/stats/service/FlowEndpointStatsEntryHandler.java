@@ -81,16 +81,8 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
     public void handleStatsEntry(YFlowDescriptor descriptor) {
         TagsFormatter tags = initTags(false);
         tags.addYFlowIdTag(descriptor.getYFlowId());
-
-        switch (descriptor.getMeasurePoint()) {
-            case Y_FLOW_SHARED:
-                emitYFlowSharedPoints(tags);
-                break;
-            case Y_FLOW_Y_POINT:
-                emitYFlowYPointPoints(tags);
-                break;
-            default:
-                // nothing to do here
+        if (descriptor.getMeasurePoint() == MeasurePoint.Y_FLOW_Y_POINT) {
+            emitYFlowYPointPoints(tags);
         }
     }
 
@@ -172,15 +164,9 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
                 statsEntry.getPacketCount(), statsEntry.getByteCount(), tags.getTags());
     }
 
-    private void emitYFlowSharedPoints(TagsFormatter tags) {
-        meterEmitter.emitPacketAndBytePoints(
-                new MetricFormatter("yFlow.shared."), timestamp,
-                statsEntry.getPacketCount(), statsEntry.getByteCount(), tags.getTags());
-    }
-
     private void emitYFlowYPointPoints(TagsFormatter tags) {
         meterEmitter.emitPacketAndBytePoints(
-                new MetricFormatter("yFlow.yPoint."), timestamp,
+                new MetricFormatter("yflow.ypoint."), timestamp,
                 statsEntry.getPacketCount(), statsEntry.getByteCount(), tags.getTags());
     }
 
