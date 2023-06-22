@@ -83,8 +83,8 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
         { targets: [1], visible: this.hasStoreSetting},
         ]
     }
-    this.portListData();
-  	this.getSwitchPortList()
+    this.initPortListData();
+  	this.initSwitchPortList();
   }
   
   fulltextSearch(e:any){ 
@@ -108,16 +108,16 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
     this.router.navigate(['/switches/details/'+this.switch_id+'/port/'+item.port_number]);
   }
 
-   getSwitchPortList(){
+   initSwitchPortList(){
       this.portListTimerId = setInterval(() => {
         if(this.loadinterval){
-            this.portListData();
+            this.initPortListData();
         }
       }, 30000);
   }
 
-  portListData(){
-      if(this.loadPorts){
+  initPortListData(){
+      if (this.loadPorts) {
         return ;
       }
       if(localStorage.getItem('portLoaderEnabled')){
@@ -195,43 +195,51 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
           }else{
             this.switchPortDataSet[i]['stats'] = {};
           }
-
-          this.fetchPortFlowData(this.switch_id,this.switchPortDataSet[i].port_number);
-          
       }
-
+        const ports: Array<number> = this.switchPortDataSet.filter(obj => !isNaN(parseInt(obj.port_number, 10)))
+              .map(obj => parseInt(obj.port_number, 10));
+        if (ports.length !== 0) {
+            this.initPortFlowData(this.switch_id, ports);
+        }
      },error=>{
         //this.toastr.error("No Switch Port data",'Error');
      });
   }
 
-  fetchPortFlowData(switchId,portnumber){
-    var swithDetail = localStorage.getItem('switchDetailsJSON') || null;
-    var filter = this.switchFilterFlag == 'inventory';
-    if(switchId && portnumber!='-'){
-         var subscriptionPortFlows =  this.switchService.getSwitchFlows(switchId,filter,portnumber).subscribe(data=>{
-          let flowsData:any = data;
-          this.portFlowData[portnumber] = {};
-          this.portFlowData[portnumber].sumflowbandwidth = 0;
-          this.portFlowData[portnumber].noofflows = 0;
-            if(flowsData && flowsData.length){
-              for(let flow of flowsData){
-                this.portFlowData[portnumber].sumflowbandwidth = this.portFlowData[portnumber].sumflowbandwidth + (flow.maximum_bandwidth / 1000);
-              }
-              this.portFlowData[portnumber].noofflows =flowsData.length;
-              if(this.portFlowData[portnumber].sumflowbandwidth){
-                this.portFlowData[portnumber].sumflowbandwidth = this.portFlowData[portnumber].sumflowbandwidth.toFixed(3);
-              }
-              
-            }
-          },error=>{
-            this.portFlowData[portnumber] = {};
-           this.portFlowData[portnumber].sumflowbandwidth = 0;
-           this.portFlowData[portnumber].noofflows =0;
-          }) 
-          this.portFlowSubscription.push(subscriptionPortFlows);
+    initPortFlowData(switchId: string, ports: Array<number>) {
+        ports.forEach(port => {
+            this.portFlowData[port] = {};
+            this.portFlowData[port].sumflowbandwidth = 0;
+            this.portFlowData[port].noofflows = 0;
+        });
+        if (switchId) {
+            const subscriptionPortFlows = this.switchService.getSwitchFlowsForPorts(switchId, ports)
+                .subscribe((data: any) => {
+                    if (data) {
+                        const flowsByPortData = data.flows_by_port;
+                        const flowsByPort = new Map(Object.entries(flowsByPortData));
+                        flowsByPort.forEach((flows: Array<any>, port) => {
+                            const portNumber: number = Number(port);
+                            if (flows.length) {
+                                this.portFlowData[portNumber].sumflowbandwidth =
+                                    flows.reduce((accumulator, flow) => accumulator + flow.maximum_bandwidth / 1000, 0)
+                                        .toFixed(3);
+                                this.portFlowData[portNumber].noofflows = flows.length;
+                            }
+                        });
+                    }
+
+            }, error => {
+                    ports.forEach(port => {
+                        this.portFlowData[port] = {};
+                        this.portFlowData[port].sumflowbandwidth = 0;
+                        this.portFlowData[port].noofflows = 0;
+                    });
+
+            });
+            this.portFlowSubscription.push(subscriptionPortFlows);
+        }
     }
-  }
 
    ngAfterViewInit(): void {
        try{
