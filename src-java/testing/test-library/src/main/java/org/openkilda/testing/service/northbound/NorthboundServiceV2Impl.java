@@ -636,4 +636,10 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         return restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}/ping", HttpMethod.POST, httpEntity,
                 HaFlowPingResult.class, haFlowId).getBody();
     }
+
+    @Override
+    public HaFlowPaths getHaFlowHistory(String haFlowId) {
+        return restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}/history", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), HaFlowPaths.class, haFlowId).getBody();
+    }
 }
