@@ -76,9 +76,11 @@ export class FlowEditComponent implements OnInit {
       source_switch: [null, Validators.required],
       source_port: [null, Validators.required],
       source_vlan: ["0"],
+      source_inner_vlan: ["0"],
       target_switch: [null, Validators.required],
       target_port: [null, Validators.required],
       target_vlan: ["0"],
+      target_inner_vlan: ["0"],
       diverse_flowid:[null],
       allocate_protected_path:[null],
       ignore_bandwidth:[null],
@@ -88,9 +90,7 @@ export class FlowEditComponent implements OnInit {
       max_latency_tier2:[""]
     });
 
-    this.vlanPorts = Array.from({ length: 4095 }, (v, k) => {
-      return { label: (k).toString(), value: (k).toString() };
-    });
+    this.vlanPorts = this.getVlans();
     let flowId: string = this.route.snapshot.paramMap.get("id");
     var filterFlag = localStorage.getItem('filterFlag') || 'controller';
 
@@ -116,9 +116,11 @@ export class FlowEditComponent implements OnInit {
           source_switch: flow.source_switch,
           source_port: flow.src_port.toString(),
           source_vlan: flow.src_vlan.toString(),
+          source_inner_vlan: flow.src_inner_vlan.toString(),
           target_switch: flow.target_switch,
           target_port: flow.dst_port.toString(),
           target_vlan: flow.dst_vlan.toString(),
+          target_inner_vlan: flow.dst_inner_vlan.toString(),
           diverse_flowid:( typeof(flow['diverse_with'])!='undefined' && flow['diverse_with'].length > 0 )? flow['diverse_with'][0] : null,
           allocate_protected_path:flow['allocate_protected_path'] || null,
           ignore_bandwidth:flow['ignore_bandwidth'] || null,
@@ -200,6 +202,7 @@ export class FlowEditComponent implements OnInit {
             if(!flag){
               this.flowEditForm.controls["source_port"].setValue(null);
               this.flowEditForm.controls["source_vlan"].setValue("0");
+              this.flowEditForm.controls["source_inner_vlan"].setValue("0");
             }
     
           } else {
@@ -208,6 +211,7 @@ export class FlowEditComponent implements OnInit {
             if(!flag){
               this.flowEditForm.controls["target_port"].setValue(null);
               this.flowEditForm.controls["target_vlan"].setValue("0");
+              this.flowEditForm.controls["target_inner_vlan"].setValue("0");
             }
           }
           
@@ -216,10 +220,12 @@ export class FlowEditComponent implements OnInit {
             if(switchType == "source_switch"){ 
               this.flowEditForm.controls["source_port"].setValue(null);
               this.flowEditForm.controls["source_vlan"].setValue("0");
+              this.flowEditForm.controls["source_inner_vlan"].setValue("0");
             }else{
               this.flowEditForm.controls["target_port"].setValue(null);
               this.flowEditForm.controls["target_vlan"].setValue("0");
-            } 
+              this.flowEditForm.controls["target_inner_vlan"].setValue("0");
+            }
             
           }
 
@@ -236,10 +242,12 @@ export class FlowEditComponent implements OnInit {
       if(switchType == "source_switch"){ 
         this.flowEditForm.controls["source_port"].setValue(null);
         this.flowEditForm.controls["source_vlan"].setValue("0");
+        this.flowEditForm.controls["source_inner_vlan"].setValue("0");
       }else{
         this.flowEditForm.controls["target_port"].setValue(null);
         this.flowEditForm.controls["target_vlan"].setValue("0");
-      } 
+        this.flowEditForm.controls["target_inner_vlan"].setValue("0");
+      }
     }
   }
 
@@ -255,13 +263,13 @@ export class FlowEditComponent implements OnInit {
         "switch_id": this.flowEditForm.controls["source_switch"].value,
         "port_number": this.flowEditForm.controls["source_port"].value,
         "vlan_id": this.flowEditForm.controls["source_vlan"].value,
-        "inner_vlan_id":0,
+        "inner_vlan_id": this.flowEditForm.controls["source_inner_vlan"].value
       },
       destination: {
         "switch_id": this.flowEditForm.controls["target_switch"].value,
         "port_number": this.flowEditForm.controls["target_port"].value,
         "vlan_id": this.flowEditForm.controls["target_vlan"].value,
-        "inner_vlan_id":0,
+        "inner_vlan_id": this.flowEditForm.controls["target_inner_vlan"].value
       },
       "flow_id": this.flowEditForm.controls["flowid"].value,
       "maximum_bandwidth": this.flowEditForm.controls["maximum_bandwidth"].value,
@@ -386,8 +394,16 @@ export class FlowEditComponent implements OnInit {
   getVLAN(type){
     if(type == "source_port"){ 
       this.flowEditForm.controls["source_vlan"].setValue("0");
+      this.flowEditForm.controls["source_inner_vlan"].setValue("0");
     }else{
       this.flowEditForm.controls["target_vlan"].setValue("0");
-    } 
+      this.flowEditForm.controls["target_inner_vlan"].setValue("0");
+    }
+  }
+
+  getVlans() {
+   return  Array.from({ length: 4095 }, (v, k) => {
+      return { label: (k).toString(), value: (k).toString() };
+    });
   }
 }
