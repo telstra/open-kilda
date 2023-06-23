@@ -248,14 +248,15 @@
                   </div>
                 </div>
               </div>
-              <div class='row isl_sbl_details mt-3' *ngIf="under_maintenance" >
+              <div class='row isl_sbl_details mt-3'>
                 <label class='col-sm-3 col-form-label'>Description:</label>
                 <div class="col-sm-6">
                   <textarea formControlName="description" id="isl_description" 
                     class="form-control"></textarea>
                 </div>
-                <div class="col-sm-3">
-                  <button  class="btn btn-sm btn-dark" (click)="saveEditedDescription()">Update</button>
+                <div class="">
+                  <span style="margin-right: 5px; border: 1; padding: 7px 12px;" class="btn kilda_btn ml-1 mt-2"
+                  data-toggle="modal" (click)="saveEditedDescription()"><i class="icon icon-ok-sign"></i></span>
                 </div>
               </div>
             </div>
