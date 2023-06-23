@@ -44,7 +44,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -59,9 +58,7 @@ import java.util.stream.Collectors;
 @Service
 @Profile("hardware")
 public class LockKeeperServiceImpl implements LockKeeperService {
-
-    public static final String SWITCH_TYPE_PARAMETER = "switch_type";
-    public static final String NOVIFLOW_SWITCH_TYPE = "noviflow";
+    public static final String SWITCH_TYPE_ARGUMENT = "?switch_type=noviflow";
 
     @Autowired
     @Qualifier("islandNb")
@@ -83,8 +80,8 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     @Override
     public void addFlows(List<ASwitchFlow> flows) {
         RestTemplate restTemplate = lockKeepersByRegion.values().iterator().next(); //any template fits
-        restTemplate.exchange("/flows", HttpMethod.POST, new HttpEntity<>(flows, buildJsonHeaders()), String.class,
-                buildNoviflowSwitchParameters());
+        restTemplate.exchange("/flows" + SWITCH_TYPE_ARGUMENT, HttpMethod.POST,
+                new HttpEntity<>(flows, buildJsonHeaders()), String.class);
         log.debug("Added flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
                 .collect(toList()));
@@ -93,8 +90,8 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     @Override
     public void removeFlows(List<ASwitchFlow> flows) {
         RestTemplate restTemplate = lockKeepersByRegion.values().iterator().next();
-        restTemplate.exchange("/flows", HttpMethod.DELETE, new HttpEntity<>(flows, buildJsonHeaders()), String.class,
-                buildNoviflowSwitchParameters());
+        restTemplate.exchange("/flows" + SWITCH_TYPE_ARGUMENT, HttpMethod.DELETE,
+                new HttpEntity<>(flows, buildJsonHeaders()), String.class);
         log.debug("Removed flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
                 .collect(toList()));
@@ -103,25 +100,24 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     @Override
     public List<ASwitchFlow> getAllFlows() {
         RestTemplate restTemplate = lockKeepersByRegion.values().iterator().next();
-        ASwitchFlow[] flows = restTemplate.exchange("/flows",
-                HttpMethod.GET, new HttpEntity<>(buildJsonHeaders()), ASwitchFlow[].class,
-                buildNoviflowSwitchParameters()).getBody();
+        ASwitchFlow[] flows = restTemplate.exchange("/flows" + SWITCH_TYPE_ARGUMENT,
+                HttpMethod.GET, new HttpEntity<>(buildJsonHeaders()), ASwitchFlow[].class).getBody();
         return Arrays.asList(flows);
     }
 
     @Override
     public void portsUp(List<Integer> ports) {
         RestTemplate restTemplate = lockKeepersByRegion.values().iterator().next();
-        restTemplate.exchange("/ports", HttpMethod.POST, new HttpEntity<>(ports, buildJsonHeaders()), String.class,
-                buildNoviflowSwitchParameters());
+        restTemplate.exchange("/ports" + SWITCH_TYPE_ARGUMENT, HttpMethod.POST,
+                new HttpEntity<>(ports, buildJsonHeaders()), String.class);
         log.debug("Brought up ports: {}", ports);
     }
 
     @Override
     public void portsDown(List<Integer> ports) {
         RestTemplate restTemplate = lockKeepersByRegion.values().iterator().next();
-        restTemplate.exchange("/ports", HttpMethod.DELETE, new HttpEntity<>(ports, buildJsonHeaders()), String.class,
-                buildNoviflowSwitchParameters());
+        restTemplate.exchange("/ports" + SWITCH_TYPE_ARGUMENT, HttpMethod.DELETE,
+                new HttpEntity<>(ports, buildJsonHeaders()), String.class);
         log.debug("Brought down ports: {}", ports);
     }
 
@@ -280,7 +276,6 @@ public class LockKeeperServiceImpl implements LockKeeperService {
         return Integer.valueOf(parts[parts.length - 1]);
     }
 
-
     private List<FloodlightResourceAddress> toFlResources(Switch sw, List<String> regions) {
         return sw.getRegions().stream().filter(regions::contains).map(region -> {
             Floodlight fl = flHelper.getFlByRegion(region);
@@ -290,11 +285,5 @@ public class LockKeeperServiceImpl implements LockKeeperService {
             return new FloodlightResourceAddress(region, fl.getContainer(), inetAddress.getLeft(),
                     inetAddress.getRight());
         }).collect(toList());
-    }
-
-    private static Map<String, String> buildNoviflowSwitchParameters() {
-        Map<String, String> parameters = new HashMap<>();
-        parameters.put(SWITCH_TYPE_PARAMETER, NOVIFLOW_SWITCH_TYPE);
-        return parameters;
     }
 }

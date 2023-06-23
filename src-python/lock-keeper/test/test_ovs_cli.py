@@ -3,7 +3,7 @@ from unittest import TestCase
 from cli.ovs_cli import OvsCli
 
 
-class TestStringMethods(TestCase):
+class TestOvsCli(TestCase):
 
     def test_parse_dump_flows(self):
         test_data = '''OFPST_FLOW reply (OF1.3) (xid=0x2):

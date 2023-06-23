@@ -2,7 +2,8 @@ from unittest import TestCase
 
 from cli.novi_cli import NoviCli
 
-class TestStringMethods(TestCase):
+
+class TestNoviCli(TestCase):
 
     def test_parse_dump_flows(self):
         test_data = '''        [##################################################] 100%       Flow entries
