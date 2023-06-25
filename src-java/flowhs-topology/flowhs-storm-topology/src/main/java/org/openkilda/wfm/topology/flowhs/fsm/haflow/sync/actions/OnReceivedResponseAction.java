@@ -44,6 +44,8 @@ public class OnReceivedResponseAction
         SpeakerCommandResponse response = context.getSpeakerResponse();
         UUID commandId = response.getCommandId();
         BaseSpeakerCommandsRequest request = stateMachine.getSpeakerCommand(commandId).orElse(null);
+        log.error("LLDP: response sw {} result {} full {} , request {}",
+                response.getSwitchId(), response.isSuccess(), response, request);
         handleResponse(response, request, INSTALL_ACTION_NAME, stateMachine);
     }
 }

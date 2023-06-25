@@ -20,7 +20,6 @@ import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
-import org.openkilda.northbound.dto.v2.haflows.HaSubFlow
 
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Autowired
@@ -72,12 +71,7 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         def syncTime = new Date()
         def syncResponse = northboundV2.syncHaFlow(haFlow.haFlowId)
         Wrappers.wait(WAIT_OFFSET) {
-            def syncedHaFlow = northboundV2.getHaFlow(haFlow.haFlowId)
-            assert syncedHaFlow.status == FlowState.UP.toString()
-            assert syncedHaFlow.subFlows.size() == 2
-            for (HaSubFlow subFlow : syncedHaFlow.subFlows) {
-                assert subFlow.status == FlowState.UP.toString()
-            }
+            haFlowHelper.assertHaFlowAndSubFlowStatuses(haFlow.haFlowId, FlowState.UP)
         }
 
         then: "The HA-flow is synced"
@@ -132,12 +126,7 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         def syncTime = new Date()
         def syncResponse = northboundV2.syncHaFlow(haFlow.haFlowId)
         Wrappers.wait(WAIT_OFFSET) {
-            def syncedHaFlow = northboundV2.getHaFlow(haFlow.haFlowId)
-            assert syncedHaFlow.status == FlowState.DOWN.toString()
-            assert syncedHaFlow.subFlows.size() == 2
-            for (HaSubFlow subFlow : syncedHaFlow.subFlows) {
-                assert subFlow.status == FlowState.DOWN.toString()
-            }
+            haFlowHelper.assertHaFlowAndSubFlowStatuses(haFlow.haFlowId, FlowState.DOWN)
         }
 
         then: "The HA-flow is not synced"
