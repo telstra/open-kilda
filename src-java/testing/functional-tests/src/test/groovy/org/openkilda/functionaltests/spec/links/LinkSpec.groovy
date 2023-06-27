@@ -9,6 +9,7 @@ import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
@@ -853,7 +854,7 @@ class LinkSpec extends HealthCheckSpecification {
         aSwitchForwardRuleIsDeleted = false
 
         then: "The ISL is discovered"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        Wrappers.wait(RULES_INSTALLATION_TIME + discoveryInterval + WAIT_OFFSET) {
             def fw = northbound.getLink(isl)
             def rv = northbound.getLink(isl.reversed)
             assert fw.state == FAILED
@@ -879,7 +880,7 @@ class LinkSpec extends HealthCheckSpecification {
         cleanup:
         aSwitchForwardRuleIsDeleted && lockKeeper.addFlows([isl.aswitch])
         aSwitchReverseRuleIsDeleted && lockKeeper.addFlows([isl.aswitch.reversed])
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        Wrappers.wait(RULES_INSTALLATION_TIME + discoveryInterval + WAIT_OFFSET) {
             def fw = northbound.getLink(isl)
             def rv = northbound.getLink(isl.reversed)
             assert fw.state == DISCOVERED

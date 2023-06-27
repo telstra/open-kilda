@@ -7,6 +7,12 @@ from flask import Flask, Response
 from flask import jsonify
 from flask import request
 
+from cli.novi_cli import NoviCli
+from cli.ovs_cli import OvsCli
+
+NOVIFLOW_SWITCH_TYPE = 'noviflow'
+SWITCH_TYPE_PARAMETER = 'switch_type'
+
 app = Flask(__name__)
 
 HOST = os.environ.get("LOCK_KEEPER_HOST")
@@ -80,37 +86,37 @@ def parse_dump_flows(raw):
 
 @app.route('/flows', methods=['GET'])
 def get_flows_route():
-    flows = execute_remote_command('ovs-ofctl dump-flows br0')
-    return jsonify(parse_dump_flows(flows))
+    switch_cli = _get_switch_cli(request.args.get(SWITCH_TYPE_PARAMETER))
+    return jsonify(switch_cli.dump_all_flows())
 
 
 @app.route('/flows', methods=['POST'])
 def post_flows_route():
     payload = request.get_json()
-    commands = ['ovs-ofctl add-flow br0 in_port={in_port},' \
-                'actions=output={out_port}'.format(**flow) for flow in payload]
-    execute_remote_commands(commands)
+    switch_cli = _get_switch_cli(request.args.get(SWITCH_TYPE_PARAMETER))
+    switch_cli.create_flows(payload)
     return jsonify({'status': 'ok'})
 
 
 @app.route('/flows', methods=['DELETE'])
 def delete_flows_route():
     payload = request.get_json()
-    commands = ['ovs-ofctl del-flows br0 in_port={in_port}'.format(**flow)
-                for flow in payload]
-    execute_remote_commands(commands)
+    switch_cli = _get_switch_cli(request.args.get(SWITCH_TYPE_PARAMETER))
+    switch_cli.delete_flows(payload)
     return jsonify({'status': 'ok'})
 
 
 @app.route('/ports', methods=['POST'])
 def ports_up():
-    change_ports_state(request.get_json(), "up")
+    switch_cli = _get_switch_cli(request.args.get(SWITCH_TYPE_PARAMETER))
+    switch_cli.ports_up(request.get_json())
     return jsonify({'status': 'ok'})
 
 
 @app.route('/ports', methods=['DELETE'])
 def ports_down():
-    change_ports_state(request.get_json(), "down")
+    switch_cli = _get_switch_cli(request.args.get(SWITCH_TYPE_PARAMETER))
+    switch_cli.ports_down(request.get_json())
     return jsonify({'status': 'ok'})
 
 
@@ -254,3 +260,10 @@ def get_iptables_commands(address, operation):
         --state ESTABLISHED'
                         .format(operation, address['port']))
     return commands
+
+
+def _get_switch_cli(switch_type):
+    if switch_type == NOVIFLOW_SWITCH_TYPE:
+        return NoviCli(HOST, USER, SECRET, PORT)
+    else:
+        return OvsCli(HOST, USER, SECRET, PORT)
