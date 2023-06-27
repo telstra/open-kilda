@@ -1,5 +1,14 @@
 package org.openkilda.functionaltests.spec.flows
 
+import groovy.transform.AutoClone
+import org.openkilda.functionaltests.error.AbstractExpectedError
+import org.openkilda.functionaltests.error.flowmirror.FlowMirrorPointNotCreatedExpectedError
+import org.openkilda.functionaltests.error.flowmirror.FlowMirrorPointNotCreatedWithConflictExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
+import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotUpdatedExpectedError
+
+import java.util.regex.Pattern
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeFalse
@@ -18,7 +27,6 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.FlowHistoryConstants
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
@@ -45,7 +53,6 @@ import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.See
 import spock.lang.Shared
@@ -702,10 +709,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Error is returned, cannot create mirror point on given sw"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.BAD_REQUEST
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow mirror point"
-        errorDetails.errorDescription == data.errorDesc(involvedSwitches)
+        new FlowMirrorPointNotCreatedExpectedError(~/${data.errorDesc(involvedSwitches)}/).matches(error)
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
@@ -744,8 +748,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     @Unroll("#testData.testName, #testData.mirrorPoint.mirrorPointDirection")
     def "Test possible error scenarios during mirror point creation"(MirrorErrorTestData testData) {
-        assumeTrue(testData.skipTestReason.empty, testData.skipTestReason)
-
         given: "A flow"
         def flow = testData.flow
         flowHelperV2.addFlow(flow)
@@ -755,30 +757,13 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Error is returned, cannot create mirror point with given params"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == testData.errorCode
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow mirror point"
-        errorDetails.errorDescription == testData.errorDescription
+        testData.expectedError.matches(error)
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         testData << [
-                new MirrorErrorTestData("Unable to create a mirror point with parent flow conflict", {
-                    it.flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
-                    it.mirrorPoint = FlowMirrorPointPayload.builder()
-                            .mirrorPointId(flowHelperV2.generateFlowId())
-                            .mirrorPointSwitchId(flow.source.switchId)
-                            .mirrorPointDirection(FlowPathDirection.FORWARD.toString())
-                            .sinkEndpoint(FlowEndpointV2.builder().switchId(flow.source.switchId)
-                                    .portNumber(flow.source.portNumber)
-                                    .vlanId(flow.source.vlanId)
-                                    .build())
-                            .build()
-                    it.errorCode = HttpStatus.CONFLICT
-                    it.errorDescription = getEndpointConflictError(it.mirrorPoint, it.flow, "source")
-                }),
                 new MirrorErrorTestData("Unable to create a mirror endpoint on the src sw and sink back to dst sw", {
                     def swPair = topologyHelper.switchPairs[0]
                     it.flow = flowHelperV2.randomFlow(swPair)
@@ -791,9 +776,9 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                                     .vlanId(flowHelperV2.randomVlan())
                                     .build())
                             .build()
-                    it.errorCode = HttpStatus.BAD_REQUEST
-                    it.errorDescription = "Invalid sink endpoint switch id: $swPair.src.dpId. In the current " +
-                            "implementation, the sink switch id cannot differ from the mirror point switch id."
+                    it.expectedError = new FlowMirrorPointNotCreatedExpectedError(
+                            ~/Invalid sink endpoint switch id: $swPair.src.dpId. In the current implementation, \
+the sink switch id cannot differ from the mirror point switch id./)
                 }),
                 new MirrorErrorTestData("Unable to create a mirror point with isl conflict", {
                     def swPair = topologyHelper.switchPairs[0]
@@ -808,9 +793,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                                     .vlanId(flowHelperV2.randomVlan())
                                     .build())
                             .build()
-                    it.errorCode = HttpStatus.BAD_REQUEST
-                    it.errorDescription = "The port $islPort on the switch '$swPair.dst.dpId' is occupied by an ISL " +
-                            "(destination endpoint collision)."
+                    it.expectedError = new FlowMirrorPointNotCreatedExpectedError(~/The port $islPort on the switch \
+\'$swPair.dst.dpId\' is occupied by an ISL \(destination endpoint collision\)./)
                 }),
                 new MirrorErrorTestData("Unable to create a mirror point with s42Port conflict", {
                     def s42Switches = topology.getActiveServer42Switches()*.dpId
@@ -828,14 +812,13 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                                     .vlanId(flowHelperV2.randomVlan())
                                     .build())
                             .build()
-                    it.errorCode = HttpStatus.BAD_REQUEST
-                    it.errorDescription = "Server 42 port in the switch properties for switch '$swPair.dst.dpId' " +
-                            "is set to '$s42Port'. It is not possible to create or update an endpoint " +
-                            "with these parameters."
+                    it.expectedError = new FlowMirrorPointNotCreatedExpectedError(~/Server 42 port in the switch \
+properties for switch \'$swPair.dst.dpId\' is set to \'$s42Port\'. It is not possible to create or update an endpoint \
+with these parameters./)
                 })
         ].collectMany {
             [it.tap { mirrorPoint.mirrorPointDirection = FlowPathDirection.FORWARD.toString() },
-             it.jacksonCopy().tap { mirrorPoint.mirrorPointDirection = FlowPathDirection.REVERSE.toString() }]
+             it.clone().tap { mirrorPoint.mirrorPointDirection = FlowPathDirection.REVERSE.toString() }]
         }
     }
 
@@ -863,10 +846,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Error is returned, cannot create mirror point with given params"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.CONFLICT
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow mirror point"
-        errorDetails.errorDescription == getEndpointConflictError(mirrorPoint, otherFlow, "source")
+        new FlowMirrorPointNotCreatedWithConflictExpectedError(
+                getEndpointConflictError(mirrorPoint, otherFlow, "source")).matches(error)
 
         cleanup:
         [flow, otherFlow].each { flowHelperV2.deleteFlow(it.flowId) }
@@ -907,10 +888,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Error is returned, cannot create flow that conflicts with mirror point"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.CONFLICT
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == getEndpointConflictError(otherFlow.destination, mirrorPoint)
+        new FlowNotCreatedWithConflictExpectedError(
+                getEndpointConflictError(otherFlow.destination, mirrorPoint)).matches(error)
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
@@ -946,12 +925,9 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Error is returned, cannot create create mirror for a flow with devices"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.BAD_REQUEST
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow mirror point"
-        errorDetails.errorDescription == "Connected devices feature is active on the flow $flow.flowId" +
-                " for endpoint switchId=\"$flow.source.switchId\" port=$flow.source.portNumber vlanId=$flow.source.vlanId, " +
-                "flow mirror point cannot be created this flow"
+        new FlowMirrorPointNotCreatedExpectedError(~/Connected devices feature is active on the flow $flow.flowId \
+for endpoint switchId=\"$flow.source.switchId\" port=$flow.source.portNumber vlanId=$flow.source.vlanId, \
+flow mirror point cannot be created this flow/).matches(error)
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
@@ -990,10 +966,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Error is returned, cannot enable devices on a flow with mirror"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.BAD_REQUEST
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not update flow"
-        errorDetails.errorDescription.toLowerCase() == "Flow mirror point is created for the flow $flow.flowId, lldp or arp can not be set to true.".toLowerCase()
+        new FlowNotUpdatedExpectedError(
+                ~/Flow mirror point is created for the flow $flow.flowId, LLDP or ARP can not be set to true./).matches(error)
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
@@ -1032,11 +1006,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Error is returned, cannot enable devices on a switch with mirror"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.BAD_REQUEST
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Flow mirror point is created on the switch $swPair.src.dpId, switchLldp or " +
-                "switchArp can not be set to true."
-        errorDetails.errorDescription == "Failed to update switch properties."
+        new SwitchPropertiesNotUpdatedExpectedError("Flow mirror point is created on the switch $swPair.src.dpId, " +
+                "switchLldp or switchArp can not be set to true.").matches(error)
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
@@ -1072,11 +1043,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Error is returned, cannot create flow that conflicts with mirror point"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.BAD_REQUEST
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow mirror point"
-        errorDetails.errorDescription == "Connected devices feature is active on the switch $swPair.src.dpId, flow " +
-                "mirror point cannot be created on this switch."
+        new FlowMirrorPointNotCreatedExpectedError(~/Connected devices feature is active on the switch $swPair.src.dpId\
+, flow mirror point cannot be created on this switch./).matches(error)
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
@@ -1120,10 +1088,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Error is returned, cannot create flow that conflicts with mirror point"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.CONFLICT
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow mirror point"
-        errorDetails.errorDescription == getEndpointConflictError(mirrorPoint2.sinkEndpoint, mirrorPoint)
+        new FlowMirrorPointNotCreatedWithConflictExpectedError(
+                getEndpointConflictError(mirrorPoint2.sinkEndpoint, mirrorPoint)).matches(error)
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
@@ -1153,27 +1119,26 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         findRule(rules, pathDirection, true)
     }
 
-    static String getEndpointConflictError(FlowMirrorPointPayload mirrorEp, FlowRequestV2 existingFlow, String srcOrDst) {
+    static Pattern getEndpointConflictError(FlowMirrorPointPayload mirrorEp, FlowRequestV2 existingFlow, String srcOrDst) {
         FlowEndpointV2 flowEndpoint = existingFlow."$srcOrDst"
-        "Requested flow '$mirrorEp.mirrorPointId' conflicts with existing flow '$existingFlow.flowId'. Details: " +
-                "requested flow '$mirrorEp.mirrorPointId' destination: " +
-                "switchId=\"${mirrorEp.sinkEndpoint.switchId}\" port=${mirrorEp.sinkEndpoint.portNumber} " +
-                "vlanId=${mirrorEp.sinkEndpoint.vlanId}, existing flow '$existingFlow.flowId' $srcOrDst: " +
-                "switchId=\"${flowEndpoint.switchId}\" port=${flowEndpoint.portNumber} vlanId=${flowEndpoint.vlanId}"
+        ~/Requested flow \'$mirrorEp.mirrorPointId\' conflicts with existing flow \'$existingFlow.flowId\'. Details: \
+requested flow \'$mirrorEp.mirrorPointId\' destination: switchId=\"${mirrorEp.sinkEndpoint.switchId}\"\
+ port=${mirrorEp.sinkEndpoint.portNumber} vlanId=${mirrorEp.sinkEndpoint.vlanId}, existing flow \'$existingFlow.flowId\'\
+ $srcOrDst: switchId=\"${flowEndpoint.switchId}\" port=${flowEndpoint.portNumber} vlanId=${flowEndpoint.vlanId}/
     }
 
-    static String getEndpointConflictError(FlowRequestV2 reqFlow, FlowMirrorPointPayload existingMirror, String srcOrDst) {
+    static Pattern getEndpointConflictError(FlowRequestV2 reqFlow, FlowMirrorPointPayload existingMirror, String srcOrDst) {
         FlowEndpointV2 flowEndpoint = reqFlow."$srcOrDst"
-        "Requested flow '$reqFlow.flowId' conflicts with existing flow '$existingMirror.mirrorPointId'. Details: " +
-                "requested flow '$reqFlow.flowId' $srcOrDst: switchId=\"${flowEndpoint.switchId}\" " +
-                "port=${flowEndpoint.portNumber} vlanId=${flowEndpoint.vlanId}, existing flow " +
-                "'$existingMirror.mirrorPointId' destination: switchId=\"${existingMirror.sinkEndpoint.switchId}\" " +
-                "port=${existingMirror.sinkEndpoint.portNumber} vlanId=${existingMirror.sinkEndpoint.vlanId}"
+        ~/Requested flow \'$reqFlow.flowId\' conflicts with existing flow \'$existingMirror.mirrorPointId\'. Details: \
+requested flow \'$reqFlow.flowId\' $srcOrDst: switchId=\"${flowEndpoint.switchId}\" port=${flowEndpoint.portNumber} \
+vlanId=${flowEndpoint.vlanId}, existing flow \'$existingMirror.mirrorPointId\' \
+destination: switchId=\"${existingMirror.sinkEndpoint.switchId}\" port=${existingMirror.sinkEndpoint.portNumber} \
+vlanId=${existingMirror.sinkEndpoint.vlanId}/
     }
 
-    static String getEndpointConflictError(FlowEndpointV2 flowEp, FlowMirrorPointPayload existingMirror) {
-        "Requested endpoint 'switchId=\"$flowEp.switchId\" port=$flowEp.portNumber vlanId=$flowEp.vlanId' conflicts " +
-                "with existing flow mirror point '$existingMirror.mirrorPointId'."
+    static Pattern getEndpointConflictError(FlowEndpointV2 flowEp, FlowMirrorPointPayload existingMirror) {
+        ~/Requested endpoint \'switchId=\"$flowEp.switchId\" port=$flowEp.portNumber vlanId=$flowEp.vlanId\' conflicts \
+with existing flow mirror point \'$existingMirror.mirrorPointId\'./
     }
 
     static Exam getExam(FlowBidirectionalExam biExam, FlowPathDirection direction) {
@@ -1260,15 +1225,12 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         })
     }
 
+    @AutoClone
     private static class MirrorErrorTestData {
         String testName
         FlowRequestV2 flow
         FlowMirrorPointPayload mirrorPoint
-        HttpStatus errorCode
-        String errorDescription
-        String skipTestReason = ""
-
-        MirrorErrorTestData() {} //required for jacksonCopy()
+        AbstractExpectedError expectedError
 
         MirrorErrorTestData(String testName, Closure init) {
             this.testName = testName

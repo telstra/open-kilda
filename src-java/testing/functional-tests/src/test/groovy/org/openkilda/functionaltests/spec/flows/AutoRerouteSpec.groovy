@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.error.flow.FlowNotReroutedExpectedError
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -23,7 +25,6 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
@@ -38,9 +39,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
 import groovy.util.logging.Slf4j
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Isolated
 import spock.lang.Narrative
 
@@ -150,10 +149,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         then: "Error is returned, stating a 'not enough bandwidth' reason"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.NOT_FOUND
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not reroute flow"
-        errorDetails.errorDescription.contains("Not enough bandwidth or no path found")
+        new FlowNotReroutedExpectedError(~/Not enough bandwidth or no path found/).matches(error)
 
         and: "Flow history shows more reroute attempts after manual command"
         wait(WAIT_OFFSET * 2) {
@@ -256,7 +252,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags(SMOKE)
-    // unignored. Test needs supervision next builds
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no alt path to reroute"() {
         given: "A flow without alternative paths"
         def data = noIntermediateSwitchFlow(0, true)
@@ -994,10 +989,7 @@ Failed to find path with requested bandwidth= ignored"
 
         then: "Error is returned, stating a readable reason"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.NOT_FOUND
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not reroute flow"
-        errorDetails.errorDescription.contains("Not enough bandwidth or no path found")
+        new FlowNotReroutedExpectedError(~/Not enough bandwidth or no path found/).matches(error)
 
         and: "Flow remains DEGRADED and on the same path"
         wait(rerouteDelay + WAIT_OFFSET) {

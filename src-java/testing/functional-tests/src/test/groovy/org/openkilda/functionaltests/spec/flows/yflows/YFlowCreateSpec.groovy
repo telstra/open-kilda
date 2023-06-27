@@ -1,7 +1,9 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.error.yflow.YFlowNotCreatedExpectedError
+import org.openkilda.functionaltests.error.yflow.YFlowNotCreatedWithConflictExpectedError
+
 import static groovyx.gpars.GParsPool.withPool
-import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -18,7 +20,6 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest
@@ -32,7 +33,6 @@ import org.openkilda.testing.tools.SoftAssertions
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
@@ -216,12 +216,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         then: "Error is received, describing the problem"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == "Could not create y-flow"
-            assertThat(errorDescription).matches(data.errorPattern(yFlow))
-        }
-
+        new YFlowNotCreatedExpectedError(data.errorPattern(yFlow)).matches(exc)
         and: "'Get' y-flows doesn't return the flow"
         assert !yFlowResponse || !northboundV2.getYFlow(yFlowResponse.YFlowId)
 
@@ -386,16 +381,12 @@ switch '${flow.sharedEndpoint.switchId}' is occupied by an ISL \(source endpoint
 
         then: "Error is received, describing the problem"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.CONFLICT
-        exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == "Could not create y-flow"
-            assertThat(errorDescription).matches(~/FlowValidateAction failed: \
+        new YFlowNotCreatedWithConflictExpectedError(~/FlowValidateAction failed: \
 Requested flow '.*?' conflicts with existing flow '.*?'. Details: requested flow '.*?' \
 source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.portNumber} vlanId=${flow.subFlows[0].sharedEndpoint.innerVlanId}, \
 existing flow '.*?' \
 source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.portNumber} vlanId=${flow.subFlows[1].sharedEndpoint.vlanId}/)
-        }
-
+       .matches(exc)
         and: "'Get' y-flows doesn't return the flow"
         Wrappers.wait(WAIT_OFFSET) { //even on error system briefly creates an 'in progress' flow
             assert !yFlowResponse || !northboundV2.getYFlow(yFlowResponse.YFlowId)
@@ -435,13 +426,8 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
 
         then: "Error is received, describing the problem"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == "Could not create y-flow"
-            assert errorDescription == "Port ${portsArray[0]} on switch $swT.shared.dpId is used " +
-                    "as part of LAG port $lagPort"
-        }
-
+        new YFlowNotCreatedExpectedError(
+                ~/Port ${portsArray[0]} on switch $swT.shared.dpId is used as part of LAG port $lagPort/).matches(exc)
         and: "'Get' y-flows doesn't return the flow"
         Wrappers.wait(WAIT_OFFSET) { //even on error system briefly creates an 'in progress' flow
             assert !yFlowResponse || !northboundV2.getYFlow(yFlowResponse.YFlowId)
