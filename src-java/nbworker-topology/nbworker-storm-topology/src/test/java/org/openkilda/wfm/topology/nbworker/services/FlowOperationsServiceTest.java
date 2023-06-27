@@ -230,7 +230,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void updateVlanStatisticsTest() throws FlowNotFoundException, InvalidFlowException {
+    public void updateFlowWouldNotChangeTheVlanStatsInTheFlow() throws FlowNotFoundException, InvalidFlowException {
         String testFlowId = "flow_id";
         Set<Integer> originalVlanStatistics = new HashSet<>();
         originalVlanStatistics.add(11);
@@ -253,86 +253,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
 
         Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
 
-        assertThat(updatedFlow.getVlanStatistics(), containsInAnyOrder(expectedVlanStatistics.toArray()));
-    }
-
-    @Test
-    public void updateVlanStatisticsToZeroOldSrcAndDstVlanAreZeroTest()
-            throws FlowNotFoundException, InvalidFlowException {
-        runUpdateVlanStatisticsToZeroTest(0, 0, VLAN_1, VLAN_2);
-    }
-
-    @Test
-    public void updateVlanStatisticsToZeroOldDstVlanAreNotZeroTest()
-            throws FlowNotFoundException, InvalidFlowException {
-        runUpdateVlanStatisticsToZeroTest(VLAN_3, 0, VLAN_1, VLAN_2);
-    }
-
-    @Test
-    public void updateVlanStatisticsToZeroOldSrcVlanAreNotZeroTest()
-            throws FlowNotFoundException, InvalidFlowException {
-        runUpdateVlanStatisticsToZeroTest(0, VLAN_3, VLAN_1, VLAN_2);
-    }
-
-    @Test
-    public void updateVlanStatisticsToZeroDstVlanIsZeroNewVlansNullTest()
-            throws FlowNotFoundException, InvalidFlowException {
-        runUpdateVlanStatisticsToZeroTest(VLAN_1, 0, null, null);
-    }
-
-    @Test
-    public void updateVlanStatisticsToZeroSrcVlanIsZeroNewVlansNullTest()
-            throws FlowNotFoundException, InvalidFlowException {
-        runUpdateVlanStatisticsToZeroTest(0, VLAN_1, null, null);
-    }
-
-    @Test
-    public void updateVlanStatisticsToZeroSrcAndDstVlanAreZeroNewVlansNullTest()
-            throws FlowNotFoundException, InvalidFlowException {
-        runUpdateVlanStatisticsToZeroTest(0, 0, null, null);
-    }
-
-    @Test
-    public void updateVlanStatisticsToZeroDstVlanIsZeroNewVlansZerosTest()
-            throws FlowNotFoundException, InvalidFlowException {
-        runUpdateVlanStatisticsToZeroTest(VLAN_1, 0, 0, 0);
-    }
-
-    @Test
-    public void updateVlanStatisticsToZeroSrcVlanIsZeroNewVlansZerosTest()
-            throws FlowNotFoundException, InvalidFlowException {
-        runUpdateVlanStatisticsToZeroTest(0, VLAN_1, 0, 0);
-    }
-
-    @Test
-    public void updateVlanStatisticsToZeroSrcAndDstVlanAreZeroNewVlansZerosTest()
-            throws FlowNotFoundException, InvalidFlowException {
-        runUpdateVlanStatisticsToZeroTest(0, 0, 0, 0);
-    }
-
-    private void runUpdateVlanStatisticsToZeroTest(
-            int oldSrcVlan, int oldDstVlan, Integer newSrcVlan, Integer newDstVLan)
-            throws FlowNotFoundException, InvalidFlowException {
-        Set<Integer> originalVlanStatistics = Sets.newHashSet(1, 2, 3);
-        Flow flow = new TestFlowBuilder()
-                .flowId(FLOW_ID_1)
-                .srcSwitch(switchA)
-                .srcVlan(oldSrcVlan)
-                .destSwitch(switchB)
-                .destVlan(oldDstVlan)
-                .vlanStatistics(originalVlanStatistics)
-                .build();
-        flowRepository.add(flow);
-
-        FlowPatch receivedFlow = FlowPatch.builder()
-                .flowId(FLOW_ID_1)
-                .vlanStatistics(new HashSet<>())
-                .source(buildPathEndpoint(newSrcVlan))
-                .destination(buildPathEndpoint(newDstVLan))
-                .build();
-
-        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
-        assertTrue(updatedFlow.getVlanStatistics().isEmpty());
+        assertThat(updatedFlow.getVlanStatistics(), containsInAnyOrder(originalVlanStatistics.toArray()));
     }
 
     @Test(expected = IllegalArgumentException.class)
