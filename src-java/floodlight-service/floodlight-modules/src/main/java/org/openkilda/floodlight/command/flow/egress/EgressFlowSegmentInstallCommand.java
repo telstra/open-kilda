@@ -24,8 +24,7 @@ import org.openkilda.floodlight.error.NotImplementedEncapsulationException;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfAdapter;
-import org.openkilda.floodlight.utils.OfFlowModAddMultiTableMessageBuilderFactory;
-import org.openkilda.floodlight.utils.OfFlowModAddSingleTableMessageBuilderFactory;
+import org.openkilda.floodlight.utils.OfFlowModAddMessageBuilderFactory;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
@@ -51,12 +50,8 @@ import java.util.concurrent.CompletableFuture;
 
 @Getter
 public class EgressFlowSegmentInstallCommand extends EgressFlowSegmentCommand {
-    private static OfFlowModBuilderFactory makeFlowModBuilderFactory(boolean isMultiTable) {
-        if (isMultiTable) {
-            return new OfFlowModAddMultiTableMessageBuilderFactory(SwitchManager.FLOW_PRIORITY);
-        } else {
-            return new OfFlowModAddSingleTableMessageBuilderFactory(SwitchManager.FLOW_PRIORITY);
-        }
+    private static OfFlowModBuilderFactory makeFlowModBuilderFactory() {
+        return new OfFlowModAddMessageBuilderFactory(SwitchManager.FLOW_PRIORITY);
     }
 
     @JsonCreator
@@ -71,7 +66,7 @@ public class EgressFlowSegmentInstallCommand extends EgressFlowSegmentCommand {
             @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
         super(
                 context, commandId, metadata, endpoint, ingressEndpoint, islPort, encapsulation,
-                makeFlowModBuilderFactory(metadata.isMultiTable()), mirrorConfig);
+                makeFlowModBuilderFactory(), mirrorConfig);
     }
 
     public EgressFlowSegmentInstallCommand(MessageContext context, UUID commandId, FlowSegmentMetadata metadata,
@@ -128,7 +123,7 @@ public class EgressFlowSegmentInstallCommand extends EgressFlowSegmentCommand {
             actions.add(of.actions().kildaPopVxlanField());
         } else {
             throw new UnsupportedOperationException(String.format("Switch %s must support on of next features: "
-                    + "[%s, %s] for VXLAN encapsulation.",
+                            + "[%s, %s] for VXLAN encapsulation.",
                     switchId, NOVIFLOW_PUSH_POP_VXLAN, KILDA_OVS_PUSH_POP_MATCH_VXLAN));
         }
         // All ingress vlan tags have been removed on ingress side

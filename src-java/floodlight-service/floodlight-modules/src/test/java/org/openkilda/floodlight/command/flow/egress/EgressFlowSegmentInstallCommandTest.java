@@ -16,7 +16,6 @@
 package org.openkilda.floodlight.command.flow.egress;
 
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
-import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
@@ -30,7 +29,6 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -47,6 +45,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setTableId(EGRESS_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
+                .setTableId(EGRESS_TABLE)
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .build())
@@ -70,6 +69,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setTableId(EGRESS_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
+                .setTableId(EGRESS_TABLE)
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .build())
@@ -93,6 +93,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setTableId(EGRESS_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
+                .setTableId(EGRESS_TABLE)
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .build())
@@ -116,6 +117,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setTableId(EGRESS_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
+                .setTableId(EGRESS_TABLE)
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .build())
@@ -139,6 +141,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setTableId(EGRESS_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
+                .setTableId(EGRESS_TABLE)
                 .setMatch(OfAdapter.INSTANCE.matchVxLanVni(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .setExact(MatchField.ETH_TYPE, EthType.IPv4)
@@ -165,6 +168,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setTableId(EGRESS_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
+                .setTableId(EGRESS_TABLE)
                 .setMatch(OfAdapter.INSTANCE.matchVxLanVni(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .setExact(MatchField.ETH_TYPE, EthType.IPv4)
@@ -193,6 +197,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setTableId(EGRESS_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
+                .setTableId(EGRESS_TABLE)
                 .setMatch(OfAdapter.INSTANCE.matchVxLanVni(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .setExact(MatchField.ETH_TYPE, EthType.IPv4)
@@ -219,6 +224,7 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setTableId(EGRESS_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
+                .setTableId(EGRESS_TABLE)
                 .setMatch(OfAdapter.INSTANCE.matchVxLanVni(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .setExact(MatchField.ETH_TYPE, EthType.IPv4)
@@ -238,14 +244,14 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
     }
 
     @Test
-    public void happyPathTransitVlanMultiTable() throws Exception {
+    public void happyPathTransitVlan() throws Exception {
         EgressFlowSegmentInstallCommand command = makeCommand(
                 endpointEgressSingleVlan, endpointIngressSingleVlan, encapsulationVlan,
-                new FlowSegmentMetadata("egress-flow-segment-multitable", new Cookie(3)));
+                new FlowSegmentMetadata("egress-flow-segment", new Cookie(3)));
         executeCommand(command, 1);
 
         OFFlowAdd expected = of.buildFlowAdd()
-                .setTableId(TableId.of(SwitchManager.EGRESS_TABLE_ID))
+                .setTableId(EGRESS_TABLE)
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setTableId(EGRESS_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))

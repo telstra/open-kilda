@@ -258,14 +258,6 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     }
 
     protected List<OFFlowMod> makeFlowModMessages(EffectiveIds effectiveIds) {
-        if (metadata.isMultiTable()) {
-            return makeMultiTableFlowModMessages(effectiveIds);
-        } else {
-            return makeSingleTableFlowModMessages(effectiveIds);
-        }
-    }
-
-    protected List<OFFlowMod> makeMultiTableFlowModMessages(EffectiveIds effectiveIds) {
         List<OFFlowMod> ofMessages = new ArrayList<>(2);
         if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
             if (FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())) {
@@ -283,16 +275,6 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         return ofMessages;
     }
 
-    protected List<OFFlowMod> makeSingleTableFlowModMessages(EffectiveIds effectiveIds) {
-        List<OFFlowMod> ofMessages = new ArrayList<>();
-        if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
-            ofMessages.add(flowModFactory.makeOuterOnlyVlanForwardMessage(effectiveIds));
-        } else {
-            ofMessages.add(flowModFactory.makeDefaultPortForwardMessage(effectiveIds));
-        }
-        return ofMessages;
-    }
-
     /**
      * Make flow-mod-requests to install shared OF flow. Shared OF flows can be used from 1 up to many kilda-flows. They
      * are required to route network packets into the correct OF table or to make a complex packet match that can't be
@@ -304,24 +286,22 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
      */
     protected List<OFFlowMod> makeSharedFlowModInstallMessages() {
         List<OFFlowMod> ofMessages = new ArrayList<>();
-        if (metadata.isMultiTable()) {
-            ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
+        ofMessages.add(getFlowModFactory().makeCustomerPortSharedCatchMessage());
 
-            if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
-                ofMessages.add(flowModFactory.makeOuterVlanMatchSharedMessage());
+        if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
+            ofMessages.add(flowModFactory.makeOuterVlanMatchSharedMessage());
 
-                if (rulesContext != null && rulesContext.isInstallServer42OuterVlanMatchSharedRule()) {
-                    ofMessages.add(flowModFactory.makeServer42OuterVlanMatchSharedMessage());
-                }
+            if (rulesContext != null && rulesContext.isInstallServer42OuterVlanMatchSharedRule()) {
+                ofMessages.add(flowModFactory.makeServer42OuterVlanMatchSharedMessage());
             }
+        }
 
-            if (getEndpoint().isTrackLldpConnectedDevices()) {
-                ofMessages.add(getFlowModFactory().makeLldpInputCustomerFlowMessage());
-            }
+        if (getEndpoint().isTrackLldpConnectedDevices()) {
+            ofMessages.add(getFlowModFactory().makeLldpInputCustomerFlowMessage());
+        }
 
-            if (getEndpoint().isTrackArpConnectedDevices()) {
-                ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
-            }
+        if (getEndpoint().isTrackArpConnectedDevices()) {
+            ofMessages.add(getFlowModFactory().makeArpInputCustomerFlowMessage());
         }
         return ofMessages;
     }
@@ -353,14 +333,6 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
     }
 
     protected List<OFFlowMod> makeServer42IngressFlowModMessages() {
-        if (metadata.isMultiTable()) {
-            return makeMultiTableServer42IngressFlowModMessages();
-        } else {
-            return makeSingleTableServer42IngressFlowModMessages();
-        }
-    }
-
-    protected List<OFFlowMod> makeMultiTableServer42IngressFlowModMessages() {
         List<OFFlowMod> ofMessages = new ArrayList<>();
         if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
             if (FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())) {
@@ -376,27 +348,7 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
         return ofMessages;
     }
 
-    protected List<OFFlowMod> makeSingleTableServer42IngressFlowModMessages() {
-        List<OFFlowMod> ofMessages = new ArrayList<>();
-        if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
-            ofMessages.add(flowModFactory.makeOuterOnlyVlanServer42IngressFlowMessage(
-                    getKildaCoreConfig().getServer42FlowRttUdpPortOffset()));
-        } else {
-            ofMessages.add(flowModFactory.makeDefaultPortServer42IngressFlowMessage(
-                    getKildaCoreConfig().getServer42FlowRttUdpPortOffset()));
-        }
-        return ofMessages;
-    }
-
     protected List<OFFlowMod> makeIngressLoopFlowModMessages() {
-        if (metadata.isMultiTable()) {
-            return makeMultiTableLoopFlowModMessages();
-        } else {
-            return makeSingleTableLoopFlowModMessages();
-        }
-    }
-
-    protected List<OFFlowMod> makeMultiTableLoopFlowModMessages() {
         List<OFFlowMod> ofMessages = new ArrayList<>(2);
         if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
             if (FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())) {
@@ -408,16 +360,6 @@ public abstract class IngressFlowSegmentBase extends FlowSegmentCommand {
             ofMessages.add(flowModFactory.makeDefaultPortIngressFlowLoopMessage());
         }
 
-        return ofMessages;
-    }
-
-    protected List<OFFlowMod> makeSingleTableLoopFlowModMessages() {
-        List<OFFlowMod> ofMessages = new ArrayList<>();
-        if (FlowEndpoint.isVlanIdSet(endpoint.getOuterVlanId())) {
-            ofMessages.add(flowModFactory.makeOuterOnlyVlanIngressFlowLoopMessage());
-        } else {
-            ofMessages.add(flowModFactory.makeDefaultPortIngressFlowLoopMessage());
-        }
         return ofMessages;
     }
 

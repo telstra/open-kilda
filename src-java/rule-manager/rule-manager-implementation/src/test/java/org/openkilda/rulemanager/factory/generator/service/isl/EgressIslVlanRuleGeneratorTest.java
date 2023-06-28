@@ -64,7 +64,7 @@ public class EgressIslVlanRuleGeneratorTest {
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
         assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES, ISL_PORT),
+        assertEquals(new PortColourCookie(CookieType.ISL_VLAN_EGRESS_RULES, ISL_PORT),
                 flowCommandData.getCookie());
         assertEquals(OfTable.INPUT, flowCommandData.getTable());
         assertEquals(ISL_EGRESS_VLAN_RULE_PRIORITY, flowCommandData.getPriority());

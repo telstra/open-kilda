@@ -17,8 +17,7 @@ package org.openkilda.floodlight.command.flow.transit;
 
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.floodlight.utils.OfFlowModAddMultiTableMessageBuilderFactory;
-import org.openkilda.floodlight.utils.OfFlowModAddSingleTableMessageBuilderFactory;
+import org.openkilda.floodlight.utils.OfFlowModAddMessageBuilderFactory;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEncapsulationType;
@@ -40,12 +39,8 @@ import java.util.UUID;
 
 public class TransitFlowLoopSegmentInstallCommand extends TransitFlowLoopSegmentCommand {
 
-    private static OfFlowModBuilderFactory makeFlowModBuilderFactory(boolean isMultiTable) {
-        if (isMultiTable) {
-            return new OfFlowModAddMultiTableMessageBuilderFactory(SwitchManager.FLOW_LOOP_PRIORITY);
-        } else {
-            return new OfFlowModAddSingleTableMessageBuilderFactory(SwitchManager.FLOW_LOOP_PRIORITY);
-        }
+    private static OfFlowModBuilderFactory makeFlowModBuilderFactory() {
+        return new OfFlowModAddMessageBuilderFactory(SwitchManager.FLOW_LOOP_PRIORITY);
     }
 
     @JsonCreator
@@ -60,7 +55,7 @@ public class TransitFlowLoopSegmentInstallCommand extends TransitFlowLoopSegment
             @JsonProperty("egress_isl_port") int egressIslPort) {
         super(
                 context, switchId, egressSwitchId, commandId, metadata, ingressIslPort, encapsulation, egressIslPort,
-                makeFlowModBuilderFactory(metadata.isMultiTable()));
+                makeFlowModBuilderFactory());
     }
 
     @Override
@@ -75,8 +70,8 @@ public class TransitFlowLoopSegmentInstallCommand extends TransitFlowLoopSegment
         }
 
         applyActions.add(of.actions().buildOutput()
-                        .setPort(OFPort.IN_PORT)
-                        .build());
+                .setPort(OFPort.IN_PORT)
+                .build());
         return ImmutableList.of(of.instructions().applyActions(ImmutableList.copyOf(applyActions)));
     }
 

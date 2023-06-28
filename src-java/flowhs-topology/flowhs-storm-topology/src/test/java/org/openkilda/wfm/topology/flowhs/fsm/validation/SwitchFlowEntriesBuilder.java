@@ -251,7 +251,7 @@ public final class SwitchFlowEntriesBuilder {
 
     public static FlowSpeakerData getSharedCustomerPortFlow(SwitchId switchId, int srcPort) {
         Set<FieldMatch> fieldMatchSet = newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(srcPort).build());
-        PortColourCookie cookie = new PortColourCookie(CookieType.MULTI_TABLE_INGRESS_RULES, srcPort);
+        PortColourCookie cookie = new PortColourCookie(CookieType.INGRESS_RULES, srcPort);
         return getFlowSpeakerDataBuilder(switchId)
                 .table(OfTable.INPUT)
                 .cookie(cookie)

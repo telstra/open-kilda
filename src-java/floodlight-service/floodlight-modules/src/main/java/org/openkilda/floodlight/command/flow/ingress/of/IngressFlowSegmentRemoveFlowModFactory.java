@@ -16,17 +16,17 @@
 package org.openkilda.floodlight.command.flow.ingress.of;
 
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentCommand;
-import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
+import org.openkilda.floodlight.switchmanager.SwitchManager;
+import org.openkilda.floodlight.utils.OfFlowModDelMessageBuilderFactory;
 import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 
 import java.util.Set;
 
-abstract class IngressFlowSegmentRemoveFlowModFactory extends IngressRemoveFlowModFactory {
+public class IngressFlowSegmentRemoveFlowModFactory extends IngressFlowSegmentRemoveFlowModFactoryBase {
     public IngressFlowSegmentRemoveFlowModFactory(
-            OfFlowModBuilderFactory flowModBuilderFactory, IngressFlowSegmentCommand command, IOFSwitch sw,
-            Set<SwitchFeature> features) {
-        super(flowModBuilderFactory, command, sw, features);
+            IngressFlowSegmentCommand command, IOFSwitch sw, Set<SwitchFeature> features) {
+        super(new OfFlowModDelMessageBuilderFactory(SwitchManager.FLOW_PRIORITY), command, sw, features);
     }
 }

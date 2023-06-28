@@ -142,11 +142,11 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                         format("Ha-flow %s has no ha-path %s", haFlow.getHaFlowId(), haPathId)));
     }
 
-    protected Set<String> findFlowsIdsByEndpointWithMultiTable(SwitchId switchId, int port) {
+    protected Set<String> findFlowsIdsByEndpoint(SwitchId switchId, int port) {
         return new HashSet<>(flowRepository.findFlowsIdsByEndpoint(switchId, port));
     }
 
-    protected Set<String> findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(SwitchId switchId, int port) {
+    protected Set<String> findFlowIdsForMultiSwitchFlowsByEndpoint(SwitchId switchId, int port) {
         return new HashSet<>(
                 flowRepository.findFlowIdsForMultiSwitchFlowsByEndpoint(switchId, port));
     }
@@ -163,10 +163,8 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                     new FlowDestAdapter(flow)}) {
                 FlowEndpoint endpoint = flowSide.getEndpoint();
                 if (needle.isSwitchPortEquals(endpoint) && needle.getOuterVlanId() == endpoint.getOuterVlanId()) {
-                    if (isUseSharedRule(flow, endpoint)) {
-                        results.add(flow);
-                        break;
-                    }
+                    results.add(flow);
+                    break;
                 }
             }
         }
@@ -192,10 +190,8 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                 FlowEndpoint endpoint = flowSide.getEndpoint();
                 if (needle.getSwitchId().equals(endpoint.getSwitchId())
                         && needle.getOuterVlanId() == endpoint.getOuterVlanId()) {
-                    if (isUseSharedRule(flow, endpoint)) {
-                        flowIds.add(flow.getFlowId());
-                        break;
-                    }
+                    flowIds.add(flow.getFlowId());
+                    break;
                 }
             }
         }

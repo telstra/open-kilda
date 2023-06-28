@@ -62,7 +62,7 @@ public class TransitIslVxlanRuleGenerator implements RuleGenerator {
         return Collections.singletonList(FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
-                .cookie(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES, islPort))
+                .cookie(new PortColourCookie(CookieType.ISL_VXLAN_TRANSIT_RULES, islPort))
                 .table(OfTable.INPUT)
                 .priority(ISL_TRANSIT_VXLAN_RULE_PRIORITY)
                 .match(match)

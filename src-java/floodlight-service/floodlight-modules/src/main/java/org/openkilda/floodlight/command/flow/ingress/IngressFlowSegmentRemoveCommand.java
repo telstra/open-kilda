@@ -17,8 +17,7 @@ package org.openkilda.floodlight.command.flow.ingress;
 
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentRemoveMultiTableFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentRemoveSingleTableFlowModFactory;
+import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentRemoveFlowModFactory;
 import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
@@ -50,7 +49,7 @@ public class IngressFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
             @JsonProperty("isl_port") int islPort,
             @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
             @JsonProperty("rules_context") RulesContext rulesContext,
-            @JsonProperty("mirror_config")MirrorConfig mirrorConfig,
+            @JsonProperty("mirror_config") MirrorConfig mirrorConfig,
             @JsonProperty("stat_vlans") Set<Integer> statVlans) {
         super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
                 rulesContext, mirrorConfig, statVlans);
@@ -58,13 +57,8 @@ public class IngressFlowSegmentRemoveCommand extends IngressFlowSegmentCommand {
 
     @Override
     protected void setupFlowModFactory() {
-        if (metadata.isMultiTable()) {
-            setFlowModFactory(
-                    new IngressFlowSegmentRemoveMultiTableFlowModFactory(this, getSw(), getSwitchFeatures()));
-        } else {
-            setFlowModFactory(
-                    new IngressFlowSegmentRemoveSingleTableFlowModFactory(this, getSw(), getSwitchFeatures()));
-        }
+        setFlowModFactory(
+                new IngressFlowSegmentRemoveFlowModFactory(this, getSw(), getSwitchFeatures()));
     }
 
     @Override

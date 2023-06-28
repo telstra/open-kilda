@@ -52,7 +52,7 @@ public class EgressIslVlanRuleGenerator implements RuleGenerator {
         return Collections.singletonList(FlowSpeakerData.builder()
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
-                .cookie(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES, islPort))
+                .cookie(new PortColourCookie(CookieType.ISL_VLAN_EGRESS_RULES, islPort))
                 .table(OfTable.INPUT)
                 .priority(ISL_EGRESS_VLAN_RULE_PRIORITY)
                 .match(match)

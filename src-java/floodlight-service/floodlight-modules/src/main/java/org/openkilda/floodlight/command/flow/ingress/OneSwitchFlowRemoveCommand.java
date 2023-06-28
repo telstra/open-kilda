@@ -17,8 +17,7 @@ package org.openkilda.floodlight.command.flow.ingress;
 
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
-import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowRemoveMultiTableFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowRemoveSingleTableFlowModFactory;
+import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowRemoveFlowModFactory;
 import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
@@ -55,11 +54,7 @@ public class OneSwitchFlowRemoveCommand extends OneSwitchFlowCommand {
 
     @Override
     protected void setupFlowModFactory() {
-        if (metadata.isMultiTable()) {
-            setFlowModFactory(new OneSwitchFlowRemoveMultiTableFlowModFactory(this, getSw(), getSwitchFeatures()));
-        } else {
-            setFlowModFactory(new OneSwitchFlowRemoveSingleTableFlowModFactory(this, getSw(), getSwitchFeatures()));
-        }
+        setFlowModFactory(new OneSwitchFlowRemoveFlowModFactory(this, getSw(), getSwitchFeatures()));
     }
 
     @Override

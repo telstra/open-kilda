@@ -18,8 +18,7 @@ package org.openkilda.floodlight.command.flow.egress;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
-import org.openkilda.floodlight.utils.OfFlowModDelMultiTableMessageBuilderFactory;
-import org.openkilda.floodlight.utils.OfFlowModDelSingleTableMessageBuilderFactory;
+import org.openkilda.floodlight.utils.OfFlowModDelMessageBuilderFactory;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
@@ -31,12 +30,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.UUID;
 
 public class EgressMirrorFlowSegmentRemoveCommand extends EgressFlowSegmentRemoveCommand {
-    private static OfFlowModBuilderFactory makeFlowModBuilderFactory(boolean isMultiTable) {
-        if (isMultiTable) {
-            return new OfFlowModDelMultiTableMessageBuilderFactory(SwitchManager.MIRROR_FLOW_PRIORITY);
-        } else {
-            return new OfFlowModDelSingleTableMessageBuilderFactory(SwitchManager.MIRROR_FLOW_PRIORITY);
-        }
+    private static OfFlowModBuilderFactory makeFlowModBuilderFactory() {
+        return new OfFlowModDelMessageBuilderFactory(SwitchManager.MIRROR_FLOW_PRIORITY);
     }
 
     @JsonCreator
@@ -51,6 +46,6 @@ public class EgressMirrorFlowSegmentRemoveCommand extends EgressFlowSegmentRemov
             @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
         super(
                 context, commandId, metadata, endpoint, ingressEndpoint, islPort, encapsulation,
-                makeFlowModBuilderFactory(metadata.isMultiTable()), mirrorConfig);
+                makeFlowModBuilderFactory(), mirrorConfig);
     }
 }

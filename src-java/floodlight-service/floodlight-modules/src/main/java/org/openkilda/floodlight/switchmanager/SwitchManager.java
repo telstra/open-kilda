@@ -126,18 +126,12 @@ import java.util.stream.Collectors;
 public class SwitchManager implements IFloodlightModule, IFloodlightService, ISwitchManager, IOFMessageListener {
     private static final Logger logger = LoggerFactory.getLogger(SwitchManager.class);
 
-    public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
     public static final int FLOW_LOOP_PRIORITY = FLOW_PRIORITY + 100;
     public static final int MIRROR_FLOW_PRIORITY = FLOW_PRIORITY + 50;
-    public static final int ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
-    public static final int ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 3;
-    public static final int INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
-    public static final int ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 5;
+    public static final int INGRESS_CUSTOMER_PORT_RULE_PRIORITY = FLOW_PRIORITY - 2;
 
-    public static final int SERVER_42_FLOW_RTT_INPUT_PRIORITY = INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE;
-
-    public static final int SERVER_42_ISL_RTT_INPUT_PRIORITY = VERIFICATION_RULE_PRIORITY;
+    public static final int SERVER_42_FLOW_RTT_INPUT_PRIORITY = INGRESS_CUSTOMER_PORT_RULE_PRIORITY;
 
     public static final int LLDP_INPUT_CUSTOMER_PRIORITY = FLOW_PRIORITY - 1;
 

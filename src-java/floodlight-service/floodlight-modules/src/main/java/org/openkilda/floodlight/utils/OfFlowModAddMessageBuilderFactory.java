@@ -15,16 +15,16 @@
 
 package org.openkilda.floodlight.utils;
 
+import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.types.TableId;
 
-public class OfFlowModAddSingleTableMessageBuilderFactory extends OfFlowModAddBuilderFactory {
-    public OfFlowModAddSingleTableMessageBuilderFactory(int basePriority) {
+public class OfFlowModAddMessageBuilderFactory extends OfFlowModBuilderFactory {
+    public OfFlowModAddMessageBuilderFactory(int basePriority) {
         super(basePriority);
     }
 
     @Override
-    protected OFFlowMod.Builder setTableId(OFFlowMod.Builder builder, TableId tableId) {
-        return builder;
+    public OFFlowMod.Builder makeBuilder(OFFactory of) {
+        return of.buildFlowAdd();
     }
 }

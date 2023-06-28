@@ -28,10 +28,6 @@ public abstract class OfFlowModBuilderFactory {
         this.basePriority = basePriority;
     }
 
-    public OFFlowMod.Builder makeBuilder(OFFactory of, int priorityOffset) {
-        return makeBuilder(of, null, priorityOffset);
-    }
-
     public OFFlowMod.Builder makeBuilder(OFFactory of, TableId tableId) {
         return makeBuilder(of, tableId, 0);
     }
@@ -41,13 +37,9 @@ public abstract class OfFlowModBuilderFactory {
      */
     public OFFlowMod.Builder makeBuilder(OFFactory of, TableId tableId, int priorityOffset) {
         OFFlowMod.Builder builder = makeBuilder(of);
-        if (tableId != null) {
-            builder = setTableId(builder, tableId);
-        }
+        builder = builder.setTableId(tableId);
         return builder.setPriority(basePriority + priorityOffset);
     }
 
     public abstract OFFlowMod.Builder makeBuilder(OFFactory of);
-
-    protected abstract OFFlowMod.Builder setTableId(OFFlowMod.Builder builder, TableId tableId);
 }

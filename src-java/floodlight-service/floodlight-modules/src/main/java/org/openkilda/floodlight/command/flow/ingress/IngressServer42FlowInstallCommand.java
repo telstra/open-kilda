@@ -17,8 +17,7 @@ package org.openkilda.floodlight.command.flow.ingress;
 
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallMultiTableFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallSingleTableFlowModFactory;
+import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallFlowModFactory;
 import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
@@ -54,13 +53,8 @@ public class IngressServer42FlowInstallCommand extends IngressServer42FlowComman
 
     @Override
     protected void setupFlowModFactory() {
-        if (metadata.isMultiTable()) {
-            setFlowModFactory(
-                    new IngressFlowSegmentInstallMultiTableFlowModFactory(this, getSw(), getSwitchFeatures()));
-        } else {
-            setFlowModFactory(
-                    new IngressFlowSegmentInstallSingleTableFlowModFactory(this, getSw(), getSwitchFeatures()));
-        }
+        setFlowModFactory(
+                new IngressFlowSegmentInstallFlowModFactory(this, getSw(), getSwitchFeatures()));
     }
 
     @Override

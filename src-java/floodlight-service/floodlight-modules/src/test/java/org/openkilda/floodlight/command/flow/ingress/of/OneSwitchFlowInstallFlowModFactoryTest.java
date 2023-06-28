@@ -19,6 +19,7 @@ import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand
 import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
+import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 import org.openkilda.messaging.MessageContext;
@@ -46,10 +47,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFactoryTest {
-    private static final FlowEndpoint egressEndpointZeroVlan = new FlowEndpoint(
-            new SwitchId(datapathIdAlpha.getLong()),
-            endpointSingleVlan.getPortNumber() + 10, 0);
+class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFactoryTest {
     private static final FlowEndpoint egressEndpointSingleVlan = new FlowEndpoint(
             new SwitchId(datapathIdAlpha.getLong()),
             endpointSingleVlan.getPortNumber() + 10, endpointSingleVlan.getOuterVlanId() + 10);
@@ -81,64 +79,6 @@ abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFact
         IngressFlowModFactory factory = makeFactory(command);
         verifyOfMessageEquals(
                 expected, factory.makeDefaultPortForwardMessage(
-                        new EffectiveIds(getEffectiveMeterId(command.getMeterConfig()), null)));
-    }
-
-    // --- makeOuterOnlyVlanForwardMessage
-
-    @Test
-    public void makeOuterOnlyVlanForwardMessageSamePort() {
-        FlowEndpoint egress = new FlowEndpoint(
-                endpointSingleVlan.getSwitchId(), endpointSingleVlan.getPortNumber(),
-                endpointSingleVlan.getOuterVlanId() + 1);
-        OneSwitchFlowInstallCommand command = makeCommand(endpointSingleVlan, egress, meterConfig);
-        testMakeOuterOnlyVlanForwardMessage(command);
-    }
-
-    @Test
-    public void makeOuterOnlyVlanForwardMessageMeterless() {
-        OneSwitchFlowInstallCommand command = makeCommand(
-                endpointSingleVlan, egressEndpointSingleVlan, null);
-        testMakeOuterOnlyVlanForwardMessage(command);
-    }
-
-    @Test
-    public void makeOuterOnlyVlanForwardMessageMeteredOneToOne() {
-        OneSwitchFlowInstallCommand command = makeCommand(
-                endpointSingleVlan, egressEndpointSingleVlan, meterConfig);
-        testMakeOuterOnlyVlanForwardMessage(command);
-    }
-
-    @Test
-    public void makeOuterOnlyVlanForwardMessageMeteredOneToZero() {
-        OneSwitchFlowInstallCommand command = makeCommand(
-                endpointSingleVlan, egressEndpointZeroVlan, meterConfig);
-        testMakeOuterOnlyVlanForwardMessage(command);
-    }
-
-    @Test
-    public void makeOuterOnlyVlanForwardMessageMeteredZeroToOne() {
-        OneSwitchFlowInstallCommand command = makeCommand(
-                endpointZeroVlan, egressEndpointSingleVlan, meterConfig);
-        testMakeOuterOnlyVlanForwardMessage(command);
-    }
-
-    @Test
-    public void makeOuterOnlyVlanForwardMessageMeteredZeroToZero() {
-        OneSwitchFlowInstallCommand command = makeCommand(
-                endpointZeroVlan, egressEndpointZeroVlan, meterConfig);
-        testMakeOuterOnlyVlanForwardMessage(command);
-    }
-
-    private void testMakeOuterOnlyVlanForwardMessage(OneSwitchFlowInstallCommand command) {
-        OFFlowAdd expected = makeForwardingMessage(
-                command, 0,
-                OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEndpoint().getOuterVlanId())
-                        .setExact(MatchField.IN_PORT, OFPort.of(command.getEndpoint().getPortNumber()))
-                        .build(), getTargetIngressTableId(), command.getEndpoint().getVlanStack());
-        IngressFlowModFactory factory = makeFactory(command);
-        verifyOfMessageEquals(
-                expected, factory.makeOuterOnlyVlanForwardMessage(
                         new EffectiveIds(getEffectiveMeterId(command.getMeterConfig()), null)));
     }
 
@@ -221,7 +161,7 @@ abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFact
 
         FlowEndpoint ingress = command.getEndpoint();
         FlowEndpoint egress = command.getEgressEndpoint();
-        OFPort outPort = ingress.getPortNumber() == egress.getPortNumber()
+        OFPort outPort = ingress.getPortNumber().equals(egress.getPortNumber())
                 ? OFPort.IN_PORT
                 : OFPort.of(egress.getPortNumber());
         applyActions.add(of.actions().buildOutput().setPort(outPort).build());
@@ -243,7 +183,9 @@ abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFact
         return makeFactory(makeCommand());
     }
 
-    abstract IngressFlowModFactory makeFactory(OneSwitchFlowInstallCommand command);
+    IngressFlowModFactory makeFactory(OneSwitchFlowInstallCommand command) {
+        return new OneSwitchFlowInstallFlowModFactory(command, sw, switchFeatures);
+    }
 
     OneSwitchFlowInstallCommand makeCommand() {
         return makeCommand(endpointSingleVlan, egressEndpointSingleVlan, meterConfig);
@@ -257,9 +199,27 @@ abstract class OneSwitchFlowInstallFlowModFactoryTest extends IngressFlowModFact
                 egressEndpoint, RulesContext.builder().build(), null, new HashSet<>());
     }
 
-    abstract FlowSegmentMetadata makeMetadata();
 
-    abstract Optional<OFInstructionGotoTable> getGoToTableInstruction();
+    FlowSegmentMetadata makeMetadata() {
+        return new FlowSegmentMetadata(flowId, cookie);
+    }
 
-    abstract Optional<OFInstructionWriteMetadata> getWriteMetadataInstruction();
+    @Override
+    TableId getTargetPreIngressTableId() {
+        return TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID);
+    }
+
+    @Override
+    TableId getTargetIngressTableId() {
+        return TableId.of(SwitchManager.INGRESS_TABLE_ID);
+    }
+
+    Optional<OFInstructionGotoTable> getGoToTableInstruction() {
+        return Optional.of(of.instructions().gotoTable(TableId.of(SwitchManager.POST_INGRESS_TABLE_ID)));
+    }
+
+    Optional<OFInstructionWriteMetadata> getWriteMetadataInstruction() {
+        RoutingMetadata metadata = RoutingMetadata.builder().oneSwitchFlowFlag(true).build(switchFeatures);
+        return Optional.of(of.instructions().writeMetadata(metadata.getValue(), metadata.getMask()));
+    }
 }

@@ -85,7 +85,7 @@ public class IngressFlowLoopSegmentInstallCommandTest {
     public static final HashSet<SwitchFeature> FEATURES = Sets.newHashSet(HALF_SIZE_METADATA, MULTI_TABLE);
 
     @Test
-    public void ingressFlowLoopDoubleTagMultiTableTest() throws Exception {
+    public void ingressFlowLoopDoubleTagTest() throws Exception {
         IngressFlowLoopSegmentInstallCommand command = createCommand(VLAN_1, VLAN_2);
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
@@ -102,7 +102,7 @@ public class IngressFlowLoopSegmentInstallCommandTest {
     }
 
     @Test
-    public void ingressFlowLoopSigleTagMultiTableTest() throws Exception {
+    public void ingressFlowLoopSingleTagTest() throws Exception {
         IngressFlowLoopSegmentInstallCommand command = createCommand(VLAN_1, 0);
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
@@ -119,7 +119,7 @@ public class IngressFlowLoopSegmentInstallCommandTest {
     }
 
     @Test
-    public void ingressFlowLoopDefaultTagMultiTableTest() throws Exception {
+    public void ingressFlowLoopDefaultTagTest() throws Exception {
         IngressFlowLoopSegmentInstallCommand command = createCommand(0, 0);
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
@@ -169,8 +169,7 @@ public class IngressFlowLoopSegmentInstallCommandTest {
         assertEquals(value, setFiledAction.getField().getValue());
     }
 
-    private IngressFlowLoopSegmentInstallCommand createCommand(
-            int outerVlan, int innerVlan) throws Exception {
+    private IngressFlowLoopSegmentInstallCommand createCommand(int outerVlan, int innerVlan) throws Exception {
         FlowSegmentMetadata metadata = new FlowSegmentMetadata(FLOW_ID, COOKIE);
         FlowEndpoint endpoint = FlowEndpoint.builder()
                 .switchId(SWITCH_ID_1)

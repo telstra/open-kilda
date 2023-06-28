@@ -303,7 +303,7 @@ public final class Utils {
      * Builds rule for catching packets from customer port.
      */
     public static FlowSpeakerData buildCustomerPortSharedCatchCommand(Switch sw, FlowEndpoint endpoint) {
-        PortColourCookie cookie = new PortColourCookie(CookieType.MULTI_TABLE_INGRESS_RULES, endpoint.getPortNumber());
+        PortColourCookie cookie = new PortColourCookie(CookieType.INGRESS_RULES, endpoint.getPortNumber());
 
         Instructions instructions = Instructions.builder()
                 .goToTable(OfTable.PRE_INGRESS)

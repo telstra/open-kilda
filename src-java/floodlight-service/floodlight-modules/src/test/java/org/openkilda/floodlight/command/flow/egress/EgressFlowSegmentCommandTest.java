@@ -19,6 +19,7 @@ import org.openkilda.floodlight.command.AbstractSpeakerCommandTest;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.error.SwitchErrorResponseException;
 import org.openkilda.floodlight.error.SwitchOperationException;
+import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchFeature;
@@ -27,10 +28,13 @@ import com.google.common.collect.Sets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
+import org.projectfloodlight.openflow.types.TableId;
 
 import java.util.concurrent.CompletableFuture;
 
 abstract class EgressFlowSegmentCommandTest extends AbstractSpeakerCommandTest {
+    public static final TableId EGRESS_TABLE = TableId.of(SwitchManager.EGRESS_TABLE_ID);
+
     @Override
     @BeforeEach
     public void setUp() throws Exception {

@@ -15,8 +15,7 @@
 
 package org.openkilda.floodlight.command.flow.ingress;
 
-import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowRemoveMultiTableMirrorFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowRemoveSingleTableMirrorFlowModFactory;
+import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowRemoveMirrorFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
@@ -49,12 +48,7 @@ public class OneSwitchMirrorFlowRemoveCommand extends OneSwitchFlowRemoveCommand
 
     @Override
     protected void setupFlowModFactory() {
-        if (metadata.isMultiTable()) {
-            setFlowModFactory(
-                    new OneSwitchFlowRemoveMultiTableMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
-        } else {
-            setFlowModFactory(
-                    new OneSwitchFlowRemoveSingleTableMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
-        }
+        setFlowModFactory(
+                new OneSwitchFlowRemoveMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
     }
 }

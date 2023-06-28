@@ -72,7 +72,7 @@ public class EgressIslVxlanRuleGeneratorTest {
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
         Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES, ISL_PORT),
+        assertEquals(new PortColourCookie(CookieType.ISL_VXLAN_EGRESS_RULES, ISL_PORT),
                 flowCommandData.getCookie());
         assertEquals(OfTable.INPUT, flowCommandData.getTable());
         assertEquals(ISL_EGRESS_VXLAN_RULE_PRIORITY, flowCommandData.getPriority());
@@ -97,7 +97,7 @@ public class EgressIslVxlanRuleGeneratorTest {
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
         Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES, ISL_PORT),
+        assertEquals(new PortColourCookie(CookieType.ISL_VXLAN_EGRESS_RULES, ISL_PORT),
                 flowCommandData.getCookie());
         assertEquals(OfTable.INPUT, flowCommandData.getTable());
         assertEquals(ISL_EGRESS_VXLAN_RULE_PRIORITY, flowCommandData.getPriority());

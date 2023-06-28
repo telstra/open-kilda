@@ -17,8 +17,7 @@ package org.openkilda.floodlight.command.flow.ingress;
 
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallMultiTableMirrorFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallSingleTableMirrorFlowModFactory;
+import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallMirrorFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
@@ -62,13 +61,8 @@ public class IngressMirrorFlowSegmentInstallCommand extends IngressFlowSegmentCo
 
     @Override
     protected void setupFlowModFactory() {
-        if (metadata.isMultiTable()) {
-            setFlowModFactory(
-                    new IngressFlowSegmentInstallMultiTableMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
-        } else {
-            setFlowModFactory(
-                    new IngressFlowSegmentInstallSingleTableMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
-        }
+        setFlowModFactory(
+                new IngressFlowSegmentInstallMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
     }
 
     @Override
@@ -78,10 +72,7 @@ public class IngressMirrorFlowSegmentInstallCommand extends IngressFlowSegmentCo
             required.add(Sets.newHashSet(
                     SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN, SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN));
         }
-        if (metadata.isMultiTable()) {
-            required.add(Sets.newHashSet(SwitchFeature.MULTI_TABLE));
-        }
-
+        required.add(Sets.newHashSet(SwitchFeature.MULTI_TABLE));
         return required;
     }
 

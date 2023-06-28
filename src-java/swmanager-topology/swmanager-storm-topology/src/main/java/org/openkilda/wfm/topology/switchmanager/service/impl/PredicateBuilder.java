@@ -28,17 +28,16 @@ import static org.openkilda.model.cookie.Cookie.ARP_TRANSIT_COOKIE;
 import static org.openkilda.model.cookie.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
+import static org.openkilda.model.cookie.Cookie.EGRESS_PASS_THROUGH_COOKIE;
+import static org.openkilda.model.cookie.Cookie.INGRESS_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.LLDP_INGRESS_COOKIE;
 import static org.openkilda.model.cookie.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_COOKIE;
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE;
 import static org.openkilda.model.cookie.Cookie.LLDP_TRANSIT_COOKIE;
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE;
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE;
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.POST_INGRESS_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.PRE_INGRESS_PASS_THROUGH_COOKIE;
 import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE;
@@ -46,6 +45,7 @@ import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKI
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE;
+import static org.openkilda.model.cookie.Cookie.TRANSIT_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
@@ -86,15 +86,15 @@ public final class PredicateBuilder {
             case INSTALL_UNICAST_VXLAN:
                 return buildPredicate(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE);
             case INSTALL_MULTITABLE_PRE_INGRESS_PASS_THROUGH:
-                return buildPredicate(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE);
+                return buildPredicate(PRE_INGRESS_PASS_THROUGH_COOKIE);
             case INSTALL_MULTITABLE_INGRESS_DROP:
-                return buildPredicate(MULTITABLE_INGRESS_DROP_COOKIE);
+                return buildPredicate(INGRESS_DROP_COOKIE);
             case INSTALL_MULTITABLE_POST_INGRESS_DROP:
-                return buildPredicate(MULTITABLE_POST_INGRESS_DROP_COOKIE);
+                return buildPredicate(POST_INGRESS_DROP_COOKIE);
             case INSTALL_MULTITABLE_EGRESS_PASS_THROUGH:
-                return buildPredicate(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE);
+                return buildPredicate(EGRESS_PASS_THROUGH_COOKIE);
             case INSTALL_MULTITABLE_TRANSIT_DROP:
-                return buildPredicate(MULTITABLE_TRANSIT_DROP_COOKIE);
+                return buildPredicate(TRANSIT_DROP_COOKIE);
             case INSTALL_LLDP_INPUT_PRE_DROP:
                 return buildPredicate(LLDP_INPUT_PRE_DROP_COOKIE);
             case INSTALL_LLDP_INGRESS:
@@ -177,15 +177,15 @@ public final class PredicateBuilder {
             case REMOVE_UNICAST_VXLAN:
                 return buildPredicate(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE);
             case REMOVE_MULTITABLE_PRE_INGRESS_PASS_THROUGH:
-                return buildPredicate(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE);
+                return buildPredicate(PRE_INGRESS_PASS_THROUGH_COOKIE);
             case REMOVE_MULTITABLE_INGRESS_DROP:
-                return buildPredicate(MULTITABLE_INGRESS_DROP_COOKIE);
+                return buildPredicate(INGRESS_DROP_COOKIE);
             case REMOVE_MULTITABLE_POST_INGRESS_DROP:
-                return buildPredicate(MULTITABLE_POST_INGRESS_DROP_COOKIE);
+                return buildPredicate(POST_INGRESS_DROP_COOKIE);
             case REMOVE_MULTITABLE_EGRESS_PASS_THROUGH:
-                return buildPredicate(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE);
+                return buildPredicate(EGRESS_PASS_THROUGH_COOKIE);
             case REMOVE_MULTITABLE_TRANSIT_DROP:
-                return buildPredicate(MULTITABLE_TRANSIT_DROP_COOKIE);
+                return buildPredicate(TRANSIT_DROP_COOKIE);
             case REMOVE_LLDP_INPUT_PRE_DROP:
                 return buildPredicate(LLDP_INPUT_PRE_DROP_COOKIE);
             case REMOVE_LLDP_INGRESS:

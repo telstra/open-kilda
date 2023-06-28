@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
-import static org.openkilda.model.cookie.CookieBase.CookieType.MULTI_TABLE_INGRESS_RULES;
+import static org.openkilda.model.cookie.CookieBase.CookieType.INGRESS_RULES;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
 import static org.openkilda.rulemanager.utils.Utils.mapMetadata;
@@ -370,7 +370,7 @@ public class IngressRuleGeneratorTest {
         RoutingMetadata metadata = RoutingMetadata.builder().oneSwitchFlowFlag(true).build(SWITCH_1.getFeatures());
         assertIngressCommand(ingressCommand, Priority.DEFAULT_FLOW_PRIORITY, expectedIngressMatch,
                 expectedIngressActions, null, mapMetadata(metadata));
-        assertInputCustomerCommand(inputCustomerCommand, new PortColourCookie(MULTI_TABLE_INGRESS_RULES, PORT_NUMBER_1),
+        assertInputCustomerCommand(inputCustomerCommand, new PortColourCookie(INGRESS_RULES, PORT_NUMBER_1),
                 Sets.newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()));
     }
 
@@ -398,7 +398,7 @@ public class IngressRuleGeneratorTest {
         assertPreIngressCommand(preIngressCommand, preIngressCookie, Priority.FLOW_PRIORITY, expectedPreIngressMatch,
                 newArrayList(new PopVlanAction()), mapMetadata(preIngressMetadata));
 
-        assertInputCustomerCommand(inputCustomerCommand, new PortColourCookie(MULTI_TABLE_INGRESS_RULES, PORT_NUMBER_1),
+        assertInputCustomerCommand(inputCustomerCommand, new PortColourCookie(INGRESS_RULES, PORT_NUMBER_1),
                 Sets.newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()));
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)

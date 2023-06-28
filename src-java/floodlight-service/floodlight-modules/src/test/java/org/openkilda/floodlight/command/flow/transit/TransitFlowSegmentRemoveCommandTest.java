@@ -43,6 +43,7 @@ public class TransitFlowSegmentRemoveCommandTest extends TransitFlowSegmentComma
                 .setPriority(TransitFlowSegmentRemoveCommand.FLOW_PRIORITY)
                 .setTableId(TableId.of(5))
                 .setCookie(U64.of(command.getCookie().getValue()))
+                .setTableId(TRANSIT_TABLE)
                 .setCookieMask(U64.NO_MASK)
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
                                   .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))

@@ -15,8 +15,7 @@
 
 package org.openkilda.floodlight.command.flow.ingress;
 
-import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowInstallMultiTableMirrorFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowInstallSingleTableMirrorFlowModFactory;
+import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowInstallMirrorFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
@@ -49,12 +48,7 @@ public class OneSwitchMirrorFlowInstallCommand extends OneSwitchFlowInstallComma
 
     @Override
     protected void setupFlowModFactory() {
-        if (metadata.isMultiTable()) {
-            setFlowModFactory(
-                    new OneSwitchFlowInstallMultiTableMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
-        } else {
-            setFlowModFactory(
-                    new OneSwitchFlowInstallSingleTableMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
-        }
+        setFlowModFactory(
+                new OneSwitchFlowInstallMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
     }
 }

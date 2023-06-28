@@ -101,7 +101,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         def initSwProps = switchHelper.getCachedSwProps(sw.dpId)
         assert northbound.getSwitchProperties(sw.dpId).multiTable == initConf.useMultiTable
         def islRules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-            new Cookie(it.cookie).getType() == CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES
+            new Cookie(it.cookie).getType() == CookieType.ISL_VLAN_EGRESS_RULES
         }
         with(islRules) { rules ->
             rules.size() == isls.size()

@@ -18,8 +18,7 @@ package org.openkilda.floodlight.command.flow.transit;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
-import org.openkilda.floodlight.utils.OfFlowModDelMultiTableMessageBuilderFactory;
-import org.openkilda.floodlight.utils.OfFlowModDelSingleTableMessageBuilderFactory;
+import org.openkilda.floodlight.utils.OfFlowModDelMessageBuilderFactory;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchId;
@@ -34,12 +33,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class TransitFlowLoopSegmentRemoveCommand extends TransitFlowLoopSegmentCommand {
-    private static OfFlowModBuilderFactory makeFlowModBuilderFactory(boolean isMultiTable) {
-        if (isMultiTable) {
-            return new OfFlowModDelMultiTableMessageBuilderFactory(SwitchManager.FLOW_LOOP_PRIORITY);
-        } else {
-            return new OfFlowModDelSingleTableMessageBuilderFactory(SwitchManager.FLOW_LOOP_PRIORITY);
-        }
+    private static OfFlowModBuilderFactory makeFlowModBuilderFactory() {
+        return new OfFlowModDelMessageBuilderFactory(SwitchManager.FLOW_LOOP_PRIORITY);
     }
 
     @JsonCreator
@@ -54,7 +49,7 @@ public class TransitFlowLoopSegmentRemoveCommand extends TransitFlowLoopSegmentC
             @JsonProperty("egress_isl_port") int egressIslPort) {
         super(
                 context, switchId, egressSwitchId, commandId, metadata, ingressIslPort, encapsulation, egressIslPort,
-                makeFlowModBuilderFactory(metadata.isMultiTable()));
+                makeFlowModBuilderFactory());
     }
 
     @Override

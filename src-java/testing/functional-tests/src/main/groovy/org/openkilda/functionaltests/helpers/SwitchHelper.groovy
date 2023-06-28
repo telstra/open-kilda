@@ -21,11 +21,11 @@ import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_TRANSIT_COOKIE
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_INGRESS_DROP_COOKIE
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
+import static org.openkilda.model.cookie.Cookie.EGRESS_PASS_THROUGH_COOKIE
+import static org.openkilda.model.cookie.Cookie.INGRESS_DROP_COOKIE
+import static org.openkilda.model.cookie.Cookie.POST_INGRESS_DROP_COOKIE
+import static org.openkilda.model.cookie.Cookie.PRE_INGRESS_PASS_THROUGH_COOKIE
+import static org.openkilda.model.cookie.Cookie.TRANSIT_DROP_COOKIE
 import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
@@ -198,24 +198,24 @@ class SwitchHelper {
         def lacpRules = []
         def toggles = northbound.get().getFeatureToggles()
         if (swProps.multiTable) {
-            multiTableRules = [MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE, MULTITABLE_INGRESS_DROP_COOKIE,
-                               MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
-                               MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
+            multiTableRules = [PRE_INGRESS_PASS_THROUGH_COOKIE, INGRESS_DROP_COOKIE,
+                               POST_INGRESS_DROP_COOKIE, EGRESS_PASS_THROUGH_COOKIE,
+                               TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
                                ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE]
             if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
                 multiTableRules.addAll([LLDP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE])
             }
             northbound.get().getLinks(sw.dpId, null, null, null).each {
                 if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-                    multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES, it.source.portNo).getValue())
-                    multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES, it.source.portNo).getValue())
+                    multiTableRules.add(new PortColourCookie(CookieType.ISL_VXLAN_EGRESS_RULES, it.source.portNo).getValue())
+                    multiTableRules.add(new PortColourCookie(CookieType.ISL_VXLAN_TRANSIT_RULES, it.source.portNo).getValue())
                 }
-                multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES, it.source.portNo).getValue())
+                multiTableRules.add(new PortColourCookie(CookieType.ISL_VLAN_EGRESS_RULES, it.source.portNo).getValue())
                 multiTableRules.add(new PortColourCookie(CookieType.PING_INPUT, it.source.portNo).getValue())
             }
             northbound.get().getSwitchFlows(sw.dpId).each {
                 if (it.source.datapath.equals(sw.dpId)) {
-                    multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_INGRESS_RULES, it.source.portNumber).getValue())
+                    multiTableRules.add(new PortColourCookie(CookieType.INGRESS_RULES, it.source.portNumber).getValue())
                     if (swProps.switchLldp || it.source.detectConnectedDevices.lldp) {
                         devicesRules.add(new PortColourCookie(CookieType.LLDP_INPUT_CUSTOMER_TYPE, it.source.portNumber).getValue())
                     }
@@ -224,7 +224,7 @@ class SwitchHelper {
                     }
                 }
                 if (it.destination.datapath.equals(sw.dpId)) {
-                    multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_INGRESS_RULES, it.destination.portNumber).getValue())
+                    multiTableRules.add(new PortColourCookie(CookieType.INGRESS_RULES, it.destination.portNumber).getValue())
                     if (swProps.switchLldp || it.destination.detectConnectedDevices.lldp) {
                         devicesRules.add(new PortColourCookie(CookieType.LLDP_INPUT_CUSTOMER_TYPE, it.destination.portNumber).getValue())
                     }

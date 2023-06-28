@@ -16,8 +16,7 @@
 package org.openkilda.floodlight.command.flow.ingress;
 
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentRemoveMultiTableFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentRemoveSingleTableFlowModFactory;
+import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentRemoveFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
@@ -35,14 +34,14 @@ import java.util.UUID;
 
 public class IngressFlowSegmentRemoveCommandTest extends IngressCommandRemoveTest {
     @Test
-    public void zeroVlanMultiTable() throws Exception {
-        processZeroVlanMultiTable(makeCommand(
+    public void zeroVlan() throws Exception {
+        processZeroVlan(makeCommand(
                 endpointIngressZeroVlan, endpointEgressSingleVlan, meterConfig, makeMetadata()));
     }
 
     @Test
-    public void oneVlanMultiTable() throws Exception {
-        processOneVlanMultiTable(makeCommand(
+    public void oneVlan() throws Exception {
+        processOneVlan(makeCommand(
                 endpointIngressSingleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata()));
     }
 
@@ -77,12 +76,7 @@ public class IngressFlowSegmentRemoveCommandTest extends IngressCommandRemoveTes
             super.setupFlowModFactory();
 
             realFlowModFactory = getFlowModFactory();
-            if (metadata.isMultiTable()) {
-                Assertions.assertTrue(realFlowModFactory instanceof IngressFlowSegmentRemoveMultiTableFlowModFactory);
-            } else {
-                Assertions.assertTrue(realFlowModFactory instanceof IngressFlowSegmentRemoveSingleTableFlowModFactory);
-            }
-
+            Assertions.assertTrue(realFlowModFactory instanceof IngressFlowSegmentRemoveFlowModFactory);
             setFlowModFactory(flowModFactoryMock);
         }
     }

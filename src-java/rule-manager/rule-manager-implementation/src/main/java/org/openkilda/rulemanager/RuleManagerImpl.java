@@ -22,11 +22,11 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.openkilda.adapter.FlowSideAdapter.makeIngressAdapter;
 import static org.openkilda.model.cookie.Cookie.DROP_RULE_COOKIE;
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_INGRESS_DROP_COOKIE;
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE;
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE;
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.EGRESS_PASS_THROUGH_COOKIE;
+import static org.openkilda.model.cookie.Cookie.INGRESS_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.POST_INGRESS_DROP_COOKIE;
+import static org.openkilda.model.cookie.Cookie.PRE_INGRESS_PASS_THROUGH_COOKIE;
+import static org.openkilda.model.cookie.Cookie.TRANSIT_DROP_COOKIE;
 import static org.openkilda.rulemanager.utils.RuleManagerHelper.postProcessCommands;
 import static org.openkilda.rulemanager.utils.Utils.getShortestSubPath;
 
@@ -195,15 +195,15 @@ public class RuleManagerImpl implements RuleManager {
         generators.add(serviceRulesFactory.getUnicastVerificationVxlanRuleGenerator());
 
         generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(
-                new Cookie(MULTITABLE_INGRESS_DROP_COOKIE), OfTable.INGRESS));
+                new Cookie(INGRESS_DROP_COOKIE), OfTable.INGRESS));
         generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(
-                new Cookie(MULTITABLE_TRANSIT_DROP_COOKIE), OfTable.TRANSIT));
+                new Cookie(TRANSIT_DROP_COOKIE), OfTable.TRANSIT));
         generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(
-                new Cookie(MULTITABLE_POST_INGRESS_DROP_COOKIE), OfTable.POST_INGRESS));
+                new Cookie(POST_INGRESS_DROP_COOKIE), OfTable.POST_INGRESS));
         generators.add(serviceRulesFactory.getTablePassThroughDefaultRuleGenerator(
-                new Cookie(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE), OfTable.TRANSIT, OfTable.EGRESS));
+                new Cookie(EGRESS_PASS_THROUGH_COOKIE), OfTable.TRANSIT, OfTable.EGRESS));
         generators.add(serviceRulesFactory.getTablePassThroughDefaultRuleGenerator(
-                new Cookie(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE), OfTable.INGRESS, OfTable.PRE_INGRESS));
+                new Cookie(PRE_INGRESS_PASS_THROUGH_COOKIE), OfTable.INGRESS, OfTable.PRE_INGRESS));
         generators.add(serviceRulesFactory.getLldpPostIngressRuleGenerator());
         generators.add(serviceRulesFactory.getLldpPostIngressVxlanRuleGenerator());
         generators.add(serviceRulesFactory.getLldpPostIngressOneSwitchRuleGenerator());

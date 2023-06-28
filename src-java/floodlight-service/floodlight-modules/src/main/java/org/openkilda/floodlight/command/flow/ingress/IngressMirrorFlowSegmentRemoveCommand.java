@@ -17,8 +17,7 @@ package org.openkilda.floodlight.command.flow.ingress;
 
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentRemoveMultiTableMirrorFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentRemoveSingleTableMirrorFlowModFactory;
+import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentRemoveMirrorFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
@@ -46,7 +45,7 @@ public class IngressMirrorFlowSegmentRemoveCommand extends IngressFlowSegmentCom
             @JsonProperty("isl_port") int islPort,
             @JsonProperty("encapsulation") FlowTransitEncapsulation encapsulation,
             @JsonProperty("rules_context") RulesContext rulesContext,
-            @JsonProperty("mirror_config")MirrorConfig mirrorConfig,
+            @JsonProperty("mirror_config") MirrorConfig mirrorConfig,
             @JsonProperty("stat_vlans") Set<Integer> statVlans) {
         super(context, commandId, metadata, endpoint, meterConfig, egressSwitchId, islPort, encapsulation,
                 rulesContext, mirrorConfig, statVlans);
@@ -54,13 +53,8 @@ public class IngressMirrorFlowSegmentRemoveCommand extends IngressFlowSegmentCom
 
     @Override
     protected void setupFlowModFactory() {
-        if (metadata.isMultiTable()) {
-            setFlowModFactory(
-                    new IngressFlowSegmentRemoveMultiTableMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
-        } else {
-            setFlowModFactory(
-                    new IngressFlowSegmentRemoveSingleTableMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
-        }
+        setFlowModFactory(
+                new IngressFlowSegmentRemoveMirrorFlowModFactory(this, getSw(), getSwitchFeatures()));
     }
 
     @Override

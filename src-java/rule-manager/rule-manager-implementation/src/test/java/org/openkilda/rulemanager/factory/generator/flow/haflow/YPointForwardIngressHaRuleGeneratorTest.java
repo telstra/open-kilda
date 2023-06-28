@@ -18,7 +18,7 @@ package org.openkilda.rulemanager.factory.generator.flow.haflow;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.openkilda.model.cookie.CookieBase.CookieType.MULTI_TABLE_INGRESS_RULES;
+import static org.openkilda.model.cookie.CookieBase.CookieType.INGRESS_RULES;
 import static org.openkilda.rulemanager.Constants.Priority.DEFAULT_FLOW_PRIORITY;
 import static org.openkilda.rulemanager.Constants.Priority.DOUBLE_VLAN_FLOW_PRIORITY;
 import static org.openkilda.rulemanager.Constants.Priority.FLOW_PRIORITY;
@@ -719,7 +719,7 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
                 expectedPreIngressMatch, newArrayList(new PopVlanAction()), mapMetadata(preIngressMetadata));
 
         assertInputCustomerCommand(inputCustomerCommand, SWITCH_2,
-                new PortColourCookie(MULTI_TABLE_INGRESS_RULES, PORT_NUMBER_1),
+                new PortColourCookie(INGRESS_RULES, PORT_NUMBER_1),
                 newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()));
 
         assertEquals(newArrayList(meterCommand.getUuid(), groupCommand.getUuid()), ingressCommand.getDependsOn());

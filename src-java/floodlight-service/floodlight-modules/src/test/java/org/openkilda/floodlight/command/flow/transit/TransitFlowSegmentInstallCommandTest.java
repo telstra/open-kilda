@@ -16,7 +16,6 @@
 package org.openkilda.floodlight.command.flow.transit;
 
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
-import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowTransitEncapsulation;
@@ -29,7 +28,6 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -48,6 +46,7 @@ public class TransitFlowSegmentInstallCommandTest extends TransitFlowSegmentComm
                 .setPriority(TransitFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setTableId(TRANSIT_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
+                .setTableId(TRANSIT_TABLE)
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .build())
@@ -70,6 +69,7 @@ public class TransitFlowSegmentInstallCommandTest extends TransitFlowSegmentComm
                 .setPriority(TransitFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setTableId(TRANSIT_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
+                .setTableId(TRANSIT_TABLE)
                 .setMatch(OfAdapter.INSTANCE.matchVxLanVni(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
                         .setExact(MatchField.ETH_TYPE, EthType.IPv4)
@@ -84,17 +84,17 @@ public class TransitFlowSegmentInstallCommandTest extends TransitFlowSegmentComm
     }
 
     @Test
-    public void happyPathMultiTable() throws Exception {
+    public void happyPath() throws Exception {
         replayAll();
 
         TransitFlowSegmentInstallCommand command = makeCommand(
                 encapsulationVxLan,
-                new FlowSegmentMetadata("transit-segment-install-multitable", new Cookie(5)));
+                new FlowSegmentMetadata("transit-segment-install", new Cookie(5)));
         verifySuccessCompletion(command.execute(commandProcessor));
         verifyWriteCount(1);
 
         OFFlowAdd expected = of.buildFlowAdd()
-                .setTableId(TableId.of(SwitchManager.TRANSIT_TABLE_ID))
+                .setTableId(TRANSIT_TABLE)
                 .setPriority(TransitFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setCookie(U64.of(command.getCookie().getValue()))
                 .setMatch(OfAdapter.INSTANCE.matchVxLanVni(of, of.buildMatch(), command.getEncapsulation().getId())

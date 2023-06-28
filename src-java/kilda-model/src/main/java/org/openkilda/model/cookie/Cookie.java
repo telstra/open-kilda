@@ -40,16 +40,16 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
             ServiceCookie.ServiceCookieTag.ROUND_TRIP_LATENCY_RULE_COOKIE).getValue();
     public static final long VERIFICATION_UNICAST_VXLAN_RULE_COOKIE = new ServiceCookie(
             ServiceCookie.ServiceCookieTag.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE).getValue();
-    public static final long MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE = new ServiceCookie(
-            ServiceCookie.ServiceCookieTag.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE).getValue();
-    public static final long MULTITABLE_INGRESS_DROP_COOKIE = new ServiceCookie(
-            ServiceCookie.ServiceCookieTag.MULTITABLE_INGRESS_DROP_COOKIE).getValue();
-    public static final long MULTITABLE_POST_INGRESS_DROP_COOKIE = new ServiceCookie(
-            ServiceCookie.ServiceCookieTag.MULTITABLE_POST_INGRESS_DROP_COOKIE).getValue();
-    public static final long MULTITABLE_EGRESS_PASS_THROUGH_COOKIE = new ServiceCookie(
-            ServiceCookie.ServiceCookieTag.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE).getValue();
-    public static final long MULTITABLE_TRANSIT_DROP_COOKIE = new ServiceCookie(
-            ServiceCookie.ServiceCookieTag.MULTITABLE_TRANSIT_DROP_COOKIE).getValue();
+    public static final long PRE_INGRESS_PASS_THROUGH_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.PRE_INGRESS_PASS_THROUGH_COOKIE).getValue();
+    public static final long INGRESS_DROP_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.INGRESS_DROP_COOKIE).getValue();
+    public static final long POST_INGRESS_DROP_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.POST_INGRESS_DROP_COOKIE).getValue();
+    public static final long EGRESS_PASS_THROUGH_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.EGRESS_PASS_THROUGH_COOKIE).getValue();
+    public static final long TRANSIT_DROP_COOKIE = new ServiceCookie(
+            ServiceCookie.ServiceCookieTag.TRANSIT_DROP_COOKIE).getValue();
     public static final long LLDP_INPUT_PRE_DROP_COOKIE = new ServiceCookie(
             ServiceCookie.ServiceCookieTag.LLDP_INPUT_PRE_DROP_COOKIE).getValue();
     public static final long LLDP_TRANSIT_COOKIE = new ServiceCookie(
@@ -122,7 +122,7 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
     @Deprecated
     public static long encodeIslVlanEgress(int port) {
         // FIXME(surabujin): replace with direct cookie call
-        return new PortColourCookie(CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES, port).getValue();
+        return new PortColourCookie(CookieType.ISL_VLAN_EGRESS_RULES, port).getValue();
     }
 
     /**
@@ -131,7 +131,7 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
     @Deprecated
     public static long encodeIslVxlanEgress(int port) {
         // FIXME(surabujin): replace with direct cookie call
-        return new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES, port).getValue();
+        return new PortColourCookie(CookieType.ISL_VXLAN_EGRESS_RULES, port).getValue();
     }
 
     /**
@@ -140,7 +140,7 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
     @Deprecated
     public static long encodeIslVxlanTransit(int port) {
         // FIXME(surabujin): replace with direct cookie call
-        return new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES, port).getValue();
+        return new PortColourCookie(CookieType.ISL_VXLAN_TRANSIT_RULES, port).getValue();
     }
 
     /**
@@ -149,7 +149,7 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
     @Deprecated
     public static long encodeIngressRulePassThrough(int port) {
         // FIXME(surabujin): replace with direct cookie call
-        return new PortColourCookie(CookieType.MULTI_TABLE_INGRESS_RULES, port).getValue();
+        return new PortColourCookie(CookieType.INGRESS_RULES, port).getValue();
     }
 
     /**
@@ -195,13 +195,13 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
     }
 
     /**
-     * Check is cookie have type MULTI_TABLE_INGRESS_RULES.
+     * Check is cookie have type INGRESS_RULES.
      *
      * <p>Deprecated {@code ServiceCookieSchema.getType()} must be used instead of this method.
      */
     @Deprecated
     public static boolean isIngressRulePassThrough(long raw) {
         // FIXME(surabujin): replace with direct cookie call
-        return new Cookie(raw).getType() == CookieType.MULTI_TABLE_INGRESS_RULES;
+        return new Cookie(raw).getType() == CookieType.INGRESS_RULES;
     }
 }

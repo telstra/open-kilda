@@ -16,8 +16,7 @@
 package org.openkilda.floodlight.command.flow.ingress;
 
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowRemoveMultiTableFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowRemoveSingleTableFlowModFactory;
+import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowRemoveFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
@@ -70,12 +69,7 @@ public class OneSwitchFlowRemoveCommandTest extends IngressCommandRemoveTest {
             super.setupFlowModFactory();
 
             realFlowModFactory = getFlowModFactory();
-            if (metadata.isMultiTable()) {
-                Assertions.assertTrue(realFlowModFactory instanceof OneSwitchFlowRemoveMultiTableFlowModFactory);
-            } else {
-                Assertions.assertTrue(realFlowModFactory instanceof OneSwitchFlowRemoveSingleTableFlowModFactory);
-            }
-
+            Assertions.assertTrue(realFlowModFactory instanceof OneSwitchFlowRemoveFlowModFactory);
             setFlowModFactory(flowModFactoryMock);
         }
     }

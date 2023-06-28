@@ -16,8 +16,7 @@
 package org.openkilda.floodlight.command.flow.ingress;
 
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowInstallMultiTableFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowInstallSingleTableFlowModFactory;
+import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowInstallFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
@@ -42,14 +41,14 @@ public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
             IngressCommandInstallTest.endpointEgressSingleVlan.getOuterVlanId());
 
     @Test
-    public void zeroVlanMultiTable() throws Exception {
-        processZeroVlanMultiTable(makeCommand(
+    public void zeroVlan() throws Exception {
+        processZeroVlan(makeCommand(
                 endpointIngressZeroVlan, endpointEgressOneVlan, meterConfig, makeMetadata()));
     }
 
     @Test
-    public void oneVlanMultiTable() throws Exception {
-        processOneVlanMultiTable(makeCommand(
+    public void oneVlan() throws Exception {
+        processOneVlan(makeCommand(
                 endpointIngressSingleVlan, endpointEgressZeroVlan, meterConfig, makeMetadata()));
     }
 
@@ -88,12 +87,7 @@ public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
             super.setupFlowModFactory();
 
             realFlowModFactory = getFlowModFactory();
-            if (metadata.isMultiTable()) {
-                Assertions.assertTrue(realFlowModFactory instanceof OneSwitchFlowInstallMultiTableFlowModFactory);
-            } else {
-                Assertions.assertTrue(realFlowModFactory instanceof OneSwitchFlowInstallSingleTableFlowModFactory);
-            }
-
+            Assertions.assertTrue(realFlowModFactory instanceof OneSwitchFlowInstallFlowModFactory);
             setFlowModFactory(flowModFactoryMock);
         }
     }

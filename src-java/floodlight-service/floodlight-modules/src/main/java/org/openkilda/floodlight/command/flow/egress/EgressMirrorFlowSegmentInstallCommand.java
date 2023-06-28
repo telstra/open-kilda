@@ -17,8 +17,7 @@ package org.openkilda.floodlight.command.flow.egress;
 
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.floodlight.utils.OfFlowModAddMultiTableMessageBuilderFactory;
-import org.openkilda.floodlight.utils.OfFlowModAddSingleTableMessageBuilderFactory;
+import org.openkilda.floodlight.utils.OfFlowModAddMessageBuilderFactory;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowEndpoint;
@@ -33,12 +32,8 @@ import java.util.UUID;
 
 @Getter
 public class EgressMirrorFlowSegmentInstallCommand extends EgressFlowSegmentInstallCommand {
-    private static OfFlowModBuilderFactory makeFlowModBuilderFactory(boolean isMultiTable) {
-        if (isMultiTable) {
-            return new OfFlowModAddMultiTableMessageBuilderFactory(SwitchManager.MIRROR_FLOW_PRIORITY);
-        } else {
-            return new OfFlowModAddSingleTableMessageBuilderFactory(SwitchManager.MIRROR_FLOW_PRIORITY);
-        }
+    private static OfFlowModBuilderFactory makeFlowModBuilderFactory() {
+        return new OfFlowModAddMessageBuilderFactory(SwitchManager.MIRROR_FLOW_PRIORITY);
     }
 
     @JsonCreator
@@ -53,6 +48,6 @@ public class EgressMirrorFlowSegmentInstallCommand extends EgressFlowSegmentInst
             @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
         super(
                 context, commandId, metadata, endpoint, ingressEndpoint, islPort, encapsulation,
-                makeFlowModBuilderFactory(metadata.isMultiTable()), mirrorConfig);
+                makeFlowModBuilderFactory(), mirrorConfig);
     }
 }
