@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.multitable
 
-import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotUpdatedExpectedError
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 
@@ -44,7 +44,6 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.See
@@ -1257,11 +1256,9 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Failed to update switch properties."
-        exc.responseBodyAsString.to(MessageError).errorDescription ==
-                "Switch $sw.dpId doesn't support requested feature MULTI_TABLE"
-    }
+        new SwitchPropertiesNotUpdatedExpectedError(
+                "Failed to update switch properties.",
+                ~/Switch ${sw.dpId} doesn\'t support requested feature MULTI_TABLE/).matches(exc)    }
 
     @Tags([LOW_PRIORITY, TOPOLOGY_DEPENDENT])
     @Ignore("wait until knockout switch is fixed for staging")

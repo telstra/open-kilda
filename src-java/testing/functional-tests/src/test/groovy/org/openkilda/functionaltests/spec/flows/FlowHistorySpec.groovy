@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.error.HistoryMaxCountExpectedError
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
@@ -16,7 +18,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.history.FlowHistoryEntry
@@ -28,7 +29,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import com.github.javafaker.Faker
 import groovy.util.logging.Slf4j
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
@@ -227,12 +227,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
 
         then: "Error due to invalid max_count returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-        with(e.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Invalid `max_count` argument '0'."
-            errorDescription == "`max_count` argument must be positive."
-        }
-    }
+        new HistoryMaxCountExpectedError(0).matches(e)    }
 
     @Tidy
     @Tags(LOW_PRIORITY)

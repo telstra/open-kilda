@@ -1,10 +1,10 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithMissingPathExpectedError
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -12,14 +12,10 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 
 @Narrative("Verify that ISL's bandwidth behaves consistently and does not allow any oversubscribtions etc.")
@@ -256,7 +252,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/5069")
     @Tidy
     def "System doesn't allow to exceed bandwidth limit on ISL while updating a flow with ignore_bandwidth=false"() {
         given: "Two active switches"
@@ -281,13 +276,9 @@ class BandwidthSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.NOT_FOUND
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not update flow"
-        errorDetails.errorDescription == "Not enough bandwidth or no path found. " +
-                "Failed to find path with requested bandwidth=${flow.maximumBandwidth}: " +
-                "Switch ${flow.source.switchId} doesn't have links with enough bandwidth"
-
+        new FlowNotUpdatedWithMissingPathExpectedError(~/Not enough bandwidth or no path found.\
+ Switch ${flow.source.switchId} doesn't have links with enough bandwidth,\
+ Failed to find path with requested bandwidth=${flow.maximumBandwidth}/).matches(exc)
         and: "The flow is not updated and has 'Up' status"
         Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
         northboundV2.getFlow(flow.flowId).ignoreBandwidth
@@ -297,16 +288,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         def flowPathAfterUpdate = PathHelper.convert(northbound.getFlowPath(flow.flowId))
         flowPathAfterUpdate == flowPath
         checkBandwidth(flowPathAfterUpdate, linksBeforeFlowCreate, linksAfterFlowUpdate)
-
-        //make sure 'retry' is finished
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlow(flow.flowId).statusInfo == "No path found. Failed to find path with requested \
-bandwidth= ignored: Switch $flow.source.switchId doesn't have links with enough bandwidth"
-            northbound.getFlowHistory(flow.flowId).last().taskId =~ (/.+ : retry #1 ignore_bw true/)
-            assert northbound.getFlowHistory(flow.flowId).find {
-                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
-            }?.payload?.last()?.action == REROUTE_FAIL
-        }
 
         cleanup: "Delete the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)

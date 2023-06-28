@@ -1,6 +1,11 @@
 package org.openkilda.functionaltests.spec.switches
 
-import org.openkilda.functionaltests.exception.ExpectedHttpClientErrorException
+import org.openkilda.functionaltests.error.LagNotCreatedExpectedError
+import org.openkilda.functionaltests.error.LagNotDeletedExpectedError
+import org.openkilda.functionaltests.error.LagNotDeletedWithNotFoundExpectedError
+import org.openkilda.functionaltests.error.LagNotUpdatedExpectedError
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -289,12 +294,9 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == BAD_REQUEST
         def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Error during LAG delete"
-        errorDetails.errorDescription == "Couldn't delete LAG port '$lagPort' from switch $switchPair.src.dpId " +
-                "because flows '[$flow.flowId]' use it as endpoint"
-
+        new LagNotDeletedExpectedError(~/Couldn\'t delete LAG port \'$lagPort\' from switch $switchPair.src.dpId \
+because flows \'[$flow.flowId]\' use it as endpoint/).matches(exc)
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
@@ -312,12 +314,8 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == BAD_REQUEST
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Error during LAG create"
-        errorDetails.errorDescription == "Physical port $flow.source.portNumber already used by following flows:" +
-                " [$flow.flowId]. You must remove these flows to be able to use the port in LAG."
-
+        new LagNotCreatedExpectedError(~/Physical port $flow.source.portNumber already used by following flows:\
+ \[$flow.flowId\]. You must remove these flows to be able to use the port in LAG./).matches(exc)
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
         !exc && deleteAllLagPorts(sw.dpId)
@@ -340,12 +338,8 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == BAD_REQUEST
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "Port $flow.source.portNumber on switch $sw.dpId is used " +
-                "as part of LAG port $lagPort"
-
+        new FlowNotCreatedExpectedError("Could not create flow", ~/Port $flow.source.portNumber \
+on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
         cleanup:
         !exc && flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
@@ -375,11 +369,10 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        def expectedExc = new ExpectedHttpClientErrorException(BAD_REQUEST,
+        def expectedExc = new SwitchNotFoundExpectedError(
                 ~/Physical port $mirrorPort already used as sink by following mirror points flow \'${flow
                         .getFlowId()}\'\: \[${mirrorEndpoint.getMirrorPointId()}\]/)
-        expectedExc == exc
-
+        expectedExc.matches(exc)
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
         !exc && swP && deleteAllLagPorts(swP.src.dpId)
@@ -394,11 +387,7 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == BAD_REQUEST
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Error during LAG create"
-        errorDetails.errorDescription.contains(String.format(data.errorMsg, occupiedPort, sw.dpId))
-
+        new LagNotCreatedExpectedError(data.errorDescription).matches(exc)
         cleanup:
         !exc && deleteAllLagPorts(sw.dpId)
 
@@ -407,22 +396,22 @@ class LagPortSpec extends HealthCheckSpecification {
                 [
                         description: "occupied by server42",
                         portNumber : { Switch s -> s.prop.server42Port },
-                        errorMsg   : "Physical port number %d on switch %s is server42 port."
+                        errorDescription: ~/Physical port number \d+ on switch .*? is server42 port./
                 ],
                 [
                         description: "occupied by isl",
                         portNumber : { Switch s -> getTopology().getBusyPortsForSwitch(s)[0] },
-                        errorMsg   : "Physical port number %d intersects with existing ISLs"
+                        errorDescription: ~/Physical port number \d+ intersects with existing ISLs/
                 ],
                 [
                         description: "more than lagOffset",
                         portNumber : { 2008 },
-                        errorMsg   : "Physical port number %d can't be greater than LAG port offset $lagOffset."
+                        errorDescription: ~/Physical port number \d+ can\'t be greater than LAG port offset $lagOffset./
                 ],
                 [
                         description: "not exist",
                         portNumber : { Switch s -> s.maxPort + 1 },
-                        errorMsg   : "Invalid portno value."
+                        errorDescription: ~/Invalid portno value./
                 ]
         ]
     }
@@ -442,13 +431,8 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == BAD_REQUEST
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        //test errorMessage, conflictPortsArray was introduced
-        errorDetails.errorMessage == "Error during LAG create"
-        errorDetails.errorDescription == "Physical ports [${portsArray[-1]}] on switch $sw.dpId already " +
-                "occupied by other LAG group(s)."
-
+        new LagNotCreatedExpectedError(~/Physical ports \[${portsArray[-1]}]\ on switch $sw.dpId already \
+occupied by other LAG group\(s\)./).matches(exc)
         cleanup:
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
     }
@@ -460,24 +444,20 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.NOT_FOUND
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Error during LAG delete"
-        errorDetails.errorDescription == String.format(data.errorMsg, data.swIdForRequest())
-
+        new LagNotDeletedWithNotFoundExpectedError(data.errorDescription).matches(exc)
         where:
         data << [
                 [
                         description      : "non-existent LAG port",
                         swIdForRequest   : { getTopology().getActiveSwitches().first().dpId },
                         logicalPortNumber: 1999, // lagOffset - 1
-                        errorMsg         : "LAG port 1999 on switch %s not found"
+                        errorDescription : ~/LAG port 1999 on switch .*? not found/
                 ],
                 [
                         description      : "non-existent switch",
                         swIdForRequest   : { NON_EXISTENT_SWITCH_ID },
                         logicalPortNumber: 2001, // lagOffset + 1
-                        errorMsg         : "Switch '%s' not found"
+                        errorDescription : ~/Switch '.*' not found/
                 ]
         ]
     }
@@ -1006,11 +986,8 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == BAD_REQUEST
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Error processing LAG logical port #$lagPort on $switchPair.src.dpId update request"
-        errorDetails.errorDescription == "Not enough bandwidth for LAG port $lagPort."
-
+        new LagNotUpdatedExpectedError(
+                switchPair.getSrc().getDpId(), lagPort, ~/Not enough bandwidth for LAG port $lagPort./).matches(exc)
         then: "No bandwidth changed for LAG port and all connected ports are in place"
         with(northboundV2.getLagLogicalPort(switchPair.src.dpId)[0]) {
             logicalPortNumber == lagPort

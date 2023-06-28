@@ -384,8 +384,6 @@ public class FlowOperationsService {
                 }
             });
 
-            Optional.ofNullable(flowPatch.getVlanStatistics()).ifPresent(currentFlow::setVlanStatistics);
-
             return Optional.of(result.updatedFlow(currentFlow).build());
 
         }).orElseThrow(() -> new FlowNotFoundException(flowId));

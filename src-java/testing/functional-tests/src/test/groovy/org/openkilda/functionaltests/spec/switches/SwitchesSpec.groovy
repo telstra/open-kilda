@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
+import spock.lang.Shared
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -17,16 +20,17 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
-
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 
 class SwitchesSpec extends HealthCheckSpecification {
+    @Shared
+    SwitchNotFoundExpectedError switchNotFoundExpectedError = new SwitchNotFoundExpectedError(
+            "Switch $NON_EXISTENT_SWITCH_ID not found", ~/Switch $NON_EXISTENT_SWITCH_ID not found/)
+
     @Tidy
     def "System is able to return a list of all switches"() {
         expect: "System can return list of all switches"
@@ -59,9 +63,8 @@ class SwitchesSpec extends HealthCheckSpecification {
         northbound.getSwitch(NON_EXISTENT_SWITCH_ID)
 
         then: "Not Found error is returned"
-        def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found."
+        def error = thrown(HttpClientErrorException)
+        new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID).matches(error)
     }
 
     @Tidy
@@ -191,9 +194,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found."
-    }
+        new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID).matches(exc)    }
 
     @Tidy
     def "Systems allows to get all flows that goes through a DEACTIVATED switch"() {
@@ -232,9 +233,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
-    }
+        switchNotFoundExpectedError.matches(e)    }
 
     @Tidy
     @Tags(LOW_PRIORITY)
@@ -244,9 +243,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
-    }
+        switchNotFoundExpectedError.matches(e)    }
 
     @Tidy
     @Tags(LOW_PRIORITY)
@@ -256,9 +253,8 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
-    }
+        new SwitchNotFoundExpectedError("Switch $NON_EXISTENT_SWITCH_ID not found",
+                ~/Error when installing switch rules/).matches(e)    }
 
     @Tidy
     @Tags(LOW_PRIORITY)
@@ -268,9 +264,8 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
-    }
+        new SwitchNotFoundExpectedError("Switch $NON_EXISTENT_SWITCH_ID not found",
+                ~/Error when deleting switch rules/).matches(e)    }
 
     @Tidy
     @Tags(LOW_PRIORITY)
@@ -280,9 +275,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found."
-    }
+        new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID).matches(e)    }
 
     @Tidy
     @Tags(LOW_PRIORITY)
@@ -292,9 +285,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
-    }
+        switchNotFoundExpectedError.matches(e)    }
 
     @Tidy
     @Tags(LOW_PRIORITY)
@@ -304,9 +295,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
-    }
+        switchNotFoundExpectedError.matches(e)    }
 
     @Tidy
     @Tags(LOW_PRIORITY)
@@ -316,9 +305,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        e.responseBodyAsString.to(MessageError).errorMessage == "Switch $NON_EXISTENT_SWITCH_ID not found"
-    }
+        switchNotFoundExpectedError.matches(e)    }
 
     @Tidy
     @Tags(LOW_PRIORITY)
@@ -328,8 +315,8 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        e.responseBodyAsString.to(MessageError).errorMessage == "Switch '$NON_EXISTENT_SWITCH_ID' not found"
+        new SwitchNotFoundExpectedError("Switch '$NON_EXISTENT_SWITCH_ID' not found",
+        ~/Error in switch validation/)
 
         where:
         data << [
