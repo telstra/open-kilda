@@ -66,7 +66,6 @@ import org.projectfloodlight.openflow.protocol.oxm.OFOxmVlanVid;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 
@@ -101,11 +100,11 @@ public class IngressServer42FlowInstallCommandTest {
             SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN);
 
     @Test
-    public void server42IngressFlowDoubleTagMultiTableVlan() throws Exception {
+    public void server42IngressFlowDoubleTagVlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(VLAN_1, VLAN_2, VLAN_ENCAPSULATION);
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
-        assertCommonMultiTable(mod);
+        assertCommon(mod);
         assertEquals(3, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
         assertEquals(VLAN_2, mod.getMatch().get(MatchField.VLAN_VID).getVlan());
         assertMetadata(mod, VLAN_1, CUSTOMER_PORT);
@@ -119,11 +118,11 @@ public class IngressServer42FlowInstallCommandTest {
     }
 
     @Test
-    public void server42IngressFlowSingleTagMultiTableVlan() throws Exception {
+    public void server42IngressFlowSingleTagVlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(VLAN_1, 0, VLAN_ENCAPSULATION);
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
-        assertCommonMultiTable(mod);
+        assertCommon(mod);
         assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
         assertNull(mod.getMatch().get(MatchField.VLAN_VID));
         assertMetadata(mod, VLAN_1, CUSTOMER_PORT);
@@ -138,11 +137,11 @@ public class IngressServer42FlowInstallCommandTest {
     }
 
     @Test
-    public void server42IngressFlowDefaultMultiTableVlan() throws Exception {
+    public void server42IngressFlowDefaultVlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(0, 0, VLAN_ENCAPSULATION);
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
-        assertCommonMultiTable(mod);
+        assertCommon(mod);
         assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
         assertNull(mod.getMatch().get(MatchField.VLAN_VID));
         assertMetadata(mod, 0, CUSTOMER_PORT);
@@ -157,11 +156,11 @@ public class IngressServer42FlowInstallCommandTest {
     }
 
     @Test
-    public void server42IngressFlowDoubleTagMultiTableVxlan() throws Exception {
+    public void server42IngressFlowDoubleTagVxlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(VLAN_1, VLAN_2, VXLAN_ENCAPSULATION);
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
-        assertCommonMultiTable(mod);
+        assertCommon(mod);
         assertEquals(3, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
         assertEquals(VLAN_2, mod.getMatch().get(MatchField.VLAN_VID).getVlan());
         assertMetadata(mod, VLAN_1, CUSTOMER_PORT);
@@ -174,11 +173,11 @@ public class IngressServer42FlowInstallCommandTest {
     }
 
     @Test
-    public void server42IngressFlowSigleTagMultiTableVxlan() throws Exception {
+    public void server42IngressFlowSingleTagVxlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(VLAN_1, 0, VXLAN_ENCAPSULATION);
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
-        assertCommonMultiTable(mod);
+        assertCommon(mod);
         assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
         assertNull(mod.getMatch().get(MatchField.VLAN_VID));
         assertMetadata(mod, VLAN_1, CUSTOMER_PORT);
@@ -190,11 +189,11 @@ public class IngressServer42FlowInstallCommandTest {
     }
 
     @Test
-    public void server42IngressFlowDefaultMultiTableVxlan() throws Exception {
+    public void server42IngressFlowDefaultVxlan() throws Exception {
         IngressServer42FlowInstallCommand command = createCommand(0, 0, VXLAN_ENCAPSULATION);
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
-        assertCommonMultiTable(mod);
+        assertCommon(mod);
         assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
         assertNull(mod.getMatch().get(MatchField.VLAN_VID));
         assertMetadata(mod, 0, CUSTOMER_PORT);
@@ -216,25 +215,12 @@ public class IngressServer42FlowInstallCommandTest {
         assertEquals(metadata.getMask(), mod.getMatch().getMasked(MatchField.METADATA).getMask().getValue());
     }
 
-    private void assertCommonMultiTable(OFFlowMod mod) {
-        assertCommon(mod);
-        assertEquals(SwitchManager.INGRESS_TABLE_ID, mod.getTableId().getValue());
-    }
-
-    private void assertCommonSingleTable(OFFlowMod mod) {
-        assertCommon(mod);
-        assertEquals(0, mod.getTableId().getValue());
-        assertEquals(MacAddress.of(SERVER_42_MAC_ADDRESS.getAddress()), mod.getMatch().get(MatchField.ETH_SRC));
-        assertEquals(EthType.IPv4, mod.getMatch().get(MatchField.ETH_TYPE));
-        assertEquals(IpProtocol.UDP, mod.getMatch().get(MatchField.IP_PROTO));
-        assertEquals(SERVER_42_UPD_PORT_OFFSET + CUSTOMER_PORT, mod.getMatch().get(MatchField.UDP_SRC).getPort());
-    }
-
     private void assertCommon(OFFlowMod mod) {
         assertEquals(COOKIE.getValue(), mod.getCookie().getValue());
         assertEquals(SERVER_42_PORT, mod.getMatch().get(MatchField.IN_PORT).getPortNumber());
         assertEquals(1, mod.getInstructions().size());
         assertEquals(APPLY_ACTIONS, mod.getInstructions().get(0).getType());
+        assertEquals(SwitchManager.INGRESS_TABLE_ID, mod.getTableId().getValue());
     }
 
     private void assertOutputAction(OFAction action) {
@@ -261,7 +247,7 @@ public class IngressServer42FlowInstallCommandTest {
         assertEquals(OFActionType.POP_VLAN, action.getType());
     }
 
-    private void assertSetField(OFAction action, Class<? extends OFOxm> type, Object value) {
+    private void assertSetField(OFAction action, Class<? extends OFOxm<?>> type, Object value) {
         assertEquals(OFActionType.SET_FIELD, action.getType());
         OFActionSetField setFiledAction = (OFActionSetField) action;
         assertTrue(type.isInstance(setFiledAction.getField()));

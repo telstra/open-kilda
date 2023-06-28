@@ -19,7 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
-import static org.openkilda.rulemanager.Constants.Priority.ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE;
+import static org.openkilda.rulemanager.Constants.Priority.ISL_TRANSIT_VXLAN_RULE_PRIORITY;
 import static org.openkilda.rulemanager.Constants.STUB_VXLAN_UDP_SRC;
 import static org.openkilda.rulemanager.Constants.VXLAN_UDP_DST;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
@@ -72,10 +72,10 @@ public class TransitIslVxlanRuleGeneratorTest {
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
         assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES, ISL_PORT),
+        assertEquals(new PortColourCookie(CookieType.ISL_VXLAN_TRANSIT_RULES, ISL_PORT),
                 flowCommandData.getCookie());
         assertEquals(OfTable.INPUT, flowCommandData.getTable());
-        assertEquals(ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE, flowCommandData.getPriority());
+        assertEquals(ISL_TRANSIT_VXLAN_RULE_PRIORITY, flowCommandData.getPriority());
 
         Set<FieldMatch> match = flowCommandData.getMatch();
         assertEquals(5, match.size());
@@ -97,10 +97,10 @@ public class TransitIslVxlanRuleGeneratorTest {
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
         assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES, ISL_PORT),
+        assertEquals(new PortColourCookie(CookieType.ISL_VXLAN_TRANSIT_RULES, ISL_PORT),
                 flowCommandData.getCookie());
         assertEquals(OfTable.INPUT, flowCommandData.getTable());
-        assertEquals(ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE, flowCommandData.getPriority());
+        assertEquals(ISL_TRANSIT_VXLAN_RULE_PRIORITY, flowCommandData.getPriority());
 
         Set<FieldMatch> match = flowCommandData.getMatch();
         assertEquals(5, match.size());

@@ -67,7 +67,7 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
         }
 
         instructions.add(of.instructions().applyActions(applyActions));
-        if (command.getMetadata().isMultiTable() && effectiveGroupId == null) {
+        if (effectiveGroupId == null) {
             instructions.add(of.instructions().gotoTable(TableId.of(SwitchManager.POST_INGRESS_TABLE_ID)));
             instructions.addAll(makeMetadataInstructions());
         }
@@ -77,12 +77,10 @@ public abstract class IngressInstallFlowModFactory extends IngressFlowModFactory
 
     @Override
     protected List<OFInstruction> makeIngressFlowLoopInstructions(FlowEndpoint endpoint) {
-        List<OFAction> actions = new ArrayList<>();
-        if (command.getMetadata().isMultiTable()) {
-            actions.addAll(OfAdapter.INSTANCE.makeVlanReplaceActions(of,
-                    FlowEndpoint.makeVlanStack(endpoint.getInnerVlanId()),
-                    endpoint.getVlanStack()));
-        }
+        List<OFAction> actions = new ArrayList<>(
+                OfAdapter.INSTANCE.makeVlanReplaceActions(of,
+                FlowEndpoint.makeVlanStack(endpoint.getInnerVlanId()),
+                endpoint.getVlanStack()));
         actions.add(of.actions().buildOutput()
                 .setPort(OFPort.IN_PORT)
                 .build());

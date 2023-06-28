@@ -972,7 +972,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
             switches.eachParallel { Switch sw ->
                 assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.findAll {
                     def cookie = new Cookie(it)
-                    cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES || !cookie.serviceFlag
+                    cookie.type == CookieType.INGRESS_RULES || !cookie.serviceFlag
                 }.empty
             }
         }

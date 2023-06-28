@@ -18,8 +18,7 @@ package org.openkilda.floodlight.command.flow.transit;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
-import org.openkilda.floodlight.utils.OfFlowModDelMultiTableMessageBuilderFactory;
-import org.openkilda.floodlight.utils.OfFlowModDelSingleTableMessageBuilderFactory;
+import org.openkilda.floodlight.utils.OfFlowModDelMessageBuilderFactory;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MirrorConfig;
@@ -35,12 +34,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class TransitFlowSegmentRemoveCommand extends TransitFlowSegmentCommand {
-    private static OfFlowModBuilderFactory makeFlowModBuilderFactory(boolean isMultiTable) {
-        if (isMultiTable) {
-            return new OfFlowModDelMultiTableMessageBuilderFactory(SwitchManager.FLOW_PRIORITY);
-        } else {
-            return new OfFlowModDelSingleTableMessageBuilderFactory(SwitchManager.FLOW_PRIORITY);
-        }
+    private static OfFlowModBuilderFactory makeFlowModBuilderFactory() {
+        return new OfFlowModDelMessageBuilderFactory(SwitchManager.FLOW_PRIORITY);
     }
 
     @JsonCreator
@@ -55,7 +50,7 @@ public class TransitFlowSegmentRemoveCommand extends TransitFlowSegmentCommand {
             @JsonProperty("mirror_config") MirrorConfig mirrorConfig) {
         super(
                 context, switchId, commandId, metadata, ingressIslPort, encapsulation, egressIslPort,
-                makeFlowModBuilderFactory(metadata.isMultiTable()), mirrorConfig);
+                makeFlowModBuilderFactory(), mirrorConfig);
     }
 
     @Override

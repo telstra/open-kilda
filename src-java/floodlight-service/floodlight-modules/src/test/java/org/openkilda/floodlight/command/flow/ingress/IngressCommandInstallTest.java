@@ -116,31 +116,21 @@ abstract class IngressCommandInstallTest extends IngressCommandTest {
         verifyErrorCompletion(result, SwitchOperationException.class);
     }
 
-    protected void processZeroVlanSingleTable(IngressFlowSegmentBase command) throws Exception {
-        expectMakeDefaultPortForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
-        executeCommand(command, 1);
-    }
-
-    protected void processOneVlanSingleTable(IngressFlowSegmentBase command) throws Exception {
-        expectMakeOuterOnlyVlanForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
-        executeCommand(command, 1);
-    }
-
-    protected void processZeroVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
+    protected void processZeroVlan(IngressFlowSegmentBase command) throws Exception {
         expectMakeDefaultPortForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
         expectMakeVlanStatsFlowMessage(command);
         expectMakeCustomerPortSharedCatchInstallMessage(command);
         executeCommand(command, 2);
     }
 
-    protected void processOneVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
+    protected void processOneVlan(IngressFlowSegmentBase command) throws Exception {
         expectMakeSingleVlanForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
         expectMakeCustomerPortSharedCatchInstallMessage(command);
         expectMakeOuterVlanMatchSharedMessage(command);
         executeCommand(command, 3);
     }
 
-    void processDoubleVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
+    void processDoubleVlanM(IngressFlowSegmentBase command) throws Exception {
         expectMakeDoubleVlanForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
         expectMakeCustomerPortSharedCatchInstallMessage(command);
         expectMakeOuterVlanMatchSharedMessage(command);

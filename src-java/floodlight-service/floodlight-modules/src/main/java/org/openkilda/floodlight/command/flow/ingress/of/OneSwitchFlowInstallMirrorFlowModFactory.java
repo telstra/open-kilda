@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2021 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,19 +15,19 @@
 
 package org.openkilda.floodlight.command.flow.ingress.of;
 
-import org.openkilda.floodlight.command.flow.ingress.IngressFlowLoopCommand;
+import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowCommand;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.floodlight.utils.OfFlowModDelSingleTableMessageBuilderFactory;
+import org.openkilda.floodlight.utils.OfFlowModAddMessageBuilderFactory;
 import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 
 import java.util.Set;
 
-public class IngressFlowLoopRemoveSingleTableFlowModFactory extends IngressFlowLoopFlowModFactory {
-    public IngressFlowLoopRemoveSingleTableFlowModFactory(
-            IngressFlowLoopCommand command, IOFSwitch sw, Set<SwitchFeature> features) {
-        super(new OfFlowModDelSingleTableMessageBuilderFactory(SwitchManager.FLOW_LOOP_PRIORITY),
+public class OneSwitchFlowInstallMirrorFlowModFactory extends OneSwitchFlowInstallFlowModFactoryBase {
+    public OneSwitchFlowInstallMirrorFlowModFactory(
+            OneSwitchFlowCommand command, IOFSwitch sw, Set<SwitchFeature> features) {
+        super(new OfFlowModAddMessageBuilderFactory(SwitchManager.MIRROR_FLOW_PRIORITY),
                 command, sw, features);
     }
 }

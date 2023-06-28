@@ -95,7 +95,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         def expectedRules = defaultRules.findAll { it.cookie == data.cookie }
         wait(RULES_INSTALLATION_TIME) {
             compareRules(northbound.getSwitchRules(sw.dpId).flowEntries
-                    .findAll { new Cookie(it.cookie).getType() != CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES },
+                    .findAll { new Cookie(it.cookie).getType() != CookieType.ISL_VLAN_EGRESS_RULES },
                     expectedRules)
         }
 
@@ -185,23 +185,23 @@ class DefaultRulesSpec extends HealthCheckSpecification {
                 [
                         [
                                 installRulesAction: InstallRulesAction.INSTALL_MULTITABLE_PRE_INGRESS_PASS_THROUGH,
-                                cookie            : Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE
+                                cookie            : Cookie.PRE_INGRESS_PASS_THROUGH_COOKIE
                         ],
                         [
                                 installRulesAction: InstallRulesAction.INSTALL_MULTITABLE_INGRESS_DROP,
-                                cookie            : Cookie.MULTITABLE_INGRESS_DROP_COOKIE
+                                cookie            : Cookie.INGRESS_DROP_COOKIE
                         ],
                         [
                                 installRulesAction: InstallRulesAction.INSTALL_MULTITABLE_POST_INGRESS_DROP,
-                                cookie            : Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE
+                                cookie            : Cookie.POST_INGRESS_DROP_COOKIE
                         ],
                         [
                                 installRulesAction: InstallRulesAction.INSTALL_MULTITABLE_EGRESS_PASS_THROUGH,
-                                cookie            : Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE
+                                cookie            : Cookie.EGRESS_PASS_THROUGH_COOKIE
                         ],
                         [
                                 installRulesAction: InstallRulesAction.INSTALL_MULTITABLE_TRANSIT_DROP,
-                                cookie            : Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
+                                cookie            : Cookie.TRANSIT_DROP_COOKIE
                         ]
                 ],
                 getTopology().getActiveSwitches().findAll {
@@ -352,23 +352,23 @@ class DefaultRulesSpec extends HealthCheckSpecification {
                 [
                         [
                                 deleteRulesAction: DeleteRulesAction.REMOVE_MULTITABLE_PRE_INGRESS_PASS_THROUGH,
-                                cookie           : Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE
+                                cookie           : Cookie.PRE_INGRESS_PASS_THROUGH_COOKIE
                         ],
                         [
                                 deleteRulesAction: DeleteRulesAction.REMOVE_MULTITABLE_INGRESS_DROP,
-                                cookie           : Cookie.MULTITABLE_INGRESS_DROP_COOKIE
+                                cookie           : Cookie.INGRESS_DROP_COOKIE
                         ],
                         [
                                 deleteRulesAction: DeleteRulesAction.REMOVE_MULTITABLE_POST_INGRESS_DROP,
-                                cookie           : Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE
+                                cookie           : Cookie.POST_INGRESS_DROP_COOKIE
                         ],
                         [
                                 deleteRulesAction: DeleteRulesAction.REMOVE_MULTITABLE_EGRESS_PASS_THROUGH,
-                                cookie           : Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE
+                                cookie           : Cookie.EGRESS_PASS_THROUGH_COOKIE
                         ],
                         [
                                 deleteRulesAction: DeleteRulesAction.REMOVE_MULTITABLE_TRANSIT_DROP,
-                                cookie           : Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
+                                cookie           : Cookie.TRANSIT_DROP_COOKIE
                         ]
                 ],
                 getTopology().getActiveSwitches().findAll {

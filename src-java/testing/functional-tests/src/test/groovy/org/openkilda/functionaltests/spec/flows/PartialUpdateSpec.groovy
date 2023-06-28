@@ -60,7 +60,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
             def cookie = new Cookie(it.cookie)
-            !cookie.serviceFlag || cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES
+            !cookie.serviceFlag || cookie.type == CookieType.INGRESS_RULES
         }*.cookie
 
         when: "Request a flow partial update for a #data.field field"
@@ -129,7 +129,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
             def cookie = new Cookie(it.cookie)
-            !cookie.serviceFlag || cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES
+            !cookie.serviceFlag || cookie.type == CookieType.INGRESS_RULES
         }*.cookie
 
         when: "Request a flow partial update for a #data.field field"
@@ -248,7 +248,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
             def cookie = new Cookie(it.cookie)
-            !cookie.serviceFlag || cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES
+            !cookie.serviceFlag || cookie.type == CookieType.INGRESS_RULES
         }*.cookie
 
         when: "Request a flow partial update for a 'priority' field"
@@ -540,7 +540,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
             def cookie = new Cookie(it.cookie)
-            !cookie.serviceFlag || cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES
+            !cookie.serviceFlag || cookie.type == CookieType.INGRESS_RULES
         }*.cookie
 
         when: "Request a flow partial update without specifying any fields"
@@ -578,7 +578,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
             def cookie = new Cookie(it.cookie)
-            !cookie.serviceFlag || cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES
+            !cookie.serviceFlag || cookie.type == CookieType.INGRESS_RULES
         }*.cookie
 
         when: "Request a flow partial update without specifying any fields"

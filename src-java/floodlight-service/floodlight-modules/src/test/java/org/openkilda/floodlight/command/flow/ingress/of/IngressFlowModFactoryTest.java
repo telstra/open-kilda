@@ -143,7 +143,7 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
 
         OFFlowMod expected = of.buildFlowAdd()
                 .setTableId(TableId.of(SwitchManager.INPUT_TABLE_ID))
-                .setPriority(SwitchManager.INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE)
+                .setPriority(SwitchManager.INGRESS_CUSTOMER_PORT_RULE_PRIORITY)
                 .setCookie(U64.of(Cookie.encodeIngressRulePassThrough(endpoint.getPortNumber())))
                 .setMatch(of.buildMatch().setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber())).build())
                 .setInstructions(Collections.singletonList(of.instructions().gotoTable(

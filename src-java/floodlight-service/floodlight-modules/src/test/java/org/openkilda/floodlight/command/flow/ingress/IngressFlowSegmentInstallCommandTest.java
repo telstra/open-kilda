@@ -16,8 +16,7 @@
 package org.openkilda.floodlight.command.flow.ingress;
 
 import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallMultiTableFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallSingleTableFlowModFactory;
+import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallFlowModFactory;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.messaging.MessageContext;
@@ -38,20 +37,20 @@ import java.util.UUID;
 
 public class IngressFlowSegmentInstallCommandTest extends IngressCommandInstallTest {
     @Test
-    public void zeroVlanMultiTable() throws Exception {
-        processZeroVlanMultiTable(makeCommand(
+    public void zeroVlan() throws Exception {
+        processZeroVlan(makeCommand(
                 endpointIngressZeroVlan, endpointEgressSingleVlan, meterConfig, makeMetadata()));
     }
 
     @Test
-    public void singleVlanMultiTable() throws Exception {
-        processOneVlanMultiTable(makeCommand(
+    public void singleVlan() throws Exception {
+        processOneVlan(makeCommand(
                 endpointIngressSingleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata()));
     }
 
     @Test
-    public void doubleVlanMultiTable() throws Exception {
-        processDoubleVlanMultiTable(makeCommand(
+    public void doubleVlan() throws Exception {
+        processDoubleVlanM(makeCommand(
                 endpointIngressDoubleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata()));
     }
 
@@ -97,12 +96,7 @@ public class IngressFlowSegmentInstallCommandTest extends IngressCommandInstallT
             super.setupFlowModFactory();
 
             realFlowModFactory = getFlowModFactory();
-            if (metadata.isMultiTable()) {
-                Assert.assertTrue(realFlowModFactory instanceof IngressFlowSegmentInstallMultiTableFlowModFactory);
-            } else {
-                Assert.assertTrue(realFlowModFactory instanceof IngressFlowSegmentInstallSingleTableFlowModFactory);
-            }
-
+            Assert.assertTrue(realFlowModFactory instanceof IngressFlowSegmentInstallFlowModFactory);
             setFlowModFactory(flowModFactoryMock);
         }
     }

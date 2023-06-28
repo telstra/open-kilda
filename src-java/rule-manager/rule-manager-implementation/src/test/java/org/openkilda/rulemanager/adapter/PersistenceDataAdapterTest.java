@@ -38,7 +38,6 @@ import org.openkilda.model.YFlow;
 import org.openkilda.model.YFlow.SharedEndpoint;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -63,8 +62,6 @@ public class PersistenceDataAdapterTest {
     @Mock
     private PersistenceManager persistenceManager;
     @Mock
-    private FlowRepository flowRepository;
-    @Mock
     private FlowPathRepository flowPathRepository;
     @Mock
     private SwitchRepository switchRepository;
@@ -83,7 +80,6 @@ public class PersistenceDataAdapterTest {
     @Before
     public void setup() {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
-        when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
@@ -177,9 +173,9 @@ public class PersistenceDataAdapterTest {
     public void shouldProvideCorrectSwitchProperties() {
         Set<SwitchId> switchIds = Sets.newHashSet(SWITCH_ID_1, SWITCH_ID_2);
         Switch sw1 = buildSwitch(SWITCH_ID_1, Collections.emptySet());
-        SwitchProperties switchProperties1 = buildSwitchProperties(sw1, false);
+        SwitchProperties switchProperties1 = buildSwitchProperties(sw1);
         Switch sw2 = buildSwitch(SWITCH_ID_2, Collections.emptySet());
-        SwitchProperties switchProperties2 = buildSwitchProperties(sw2, true);
+        SwitchProperties switchProperties2 = buildSwitchProperties(sw2);
         Map<SwitchId, SwitchProperties> switchProperties = new HashMap<>();
         switchProperties.put(SWITCH_ID_1, switchProperties1);
         switchProperties.put(SWITCH_ID_2, switchProperties2);

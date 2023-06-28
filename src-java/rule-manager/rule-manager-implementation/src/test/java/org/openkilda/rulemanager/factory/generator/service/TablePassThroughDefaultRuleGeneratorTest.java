@@ -18,7 +18,7 @@ package org.openkilda.rulemanager.factory.generator.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
+import static org.openkilda.model.cookie.Cookie.EGRESS_PASS_THROUGH_COOKIE;
 import static org.openkilda.rulemanager.Constants.Priority.MINIMAL_POSITIVE_PRIORITY;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
 import static org.openkilda.rulemanager.Utils.getCommand;
@@ -41,7 +41,7 @@ public class TablePassThroughDefaultRuleGeneratorTest {
     public void shouldBuildCorrectRuleForOf13() {
         Switch sw = buildSwitch("OF_13", Collections.emptySet());
         TablePassThroughDefaultRuleGenerator generator = TablePassThroughDefaultRuleGenerator.builder()
-                .cookie(new Cookie(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE))
+                .cookie(new Cookie(EGRESS_PASS_THROUGH_COOKIE))
                 .tableId(OfTable.EGRESS)
                 .goToTableId(OfTable.TRANSIT)
                 .build();
@@ -54,7 +54,7 @@ public class TablePassThroughDefaultRuleGeneratorTest {
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
         assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(new Cookie(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE), flowCommandData.getCookie());
+        assertEquals(new Cookie(EGRESS_PASS_THROUGH_COOKIE), flowCommandData.getCookie());
         assertEquals(OfTable.EGRESS, flowCommandData.getTable());
         assertEquals(MINIMAL_POSITIVE_PRIORITY, flowCommandData.getPriority());
 

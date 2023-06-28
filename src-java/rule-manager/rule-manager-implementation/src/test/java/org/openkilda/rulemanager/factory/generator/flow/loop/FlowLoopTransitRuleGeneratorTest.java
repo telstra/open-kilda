@@ -87,59 +87,29 @@ public class FlowLoopTransitRuleGeneratorTest {
     public static final Flow FLOW = buildFlow(PATH);
 
     @Test
-    public void buildCorrectVlanMultiTableTransitRuleTest() {
+    public void buildCorrectVlanTransitRuleTest() {
         FlowLoopTransitRuleGenerator generator = FlowLoopTransitRuleGenerator.builder()
                 .flow(FLOW)
                 .flowPath(PATH)
                 .inPort(PORT_NUMBER_1)
-                .multiTable(true)
                 .encapsulation(VLAN_ENCAPSULATION)
                 .build();
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertTransitCommands(commands, OfTable.EGRESS, VLAN_ENCAPSULATION);
+        assertTransitCommands(commands, VLAN_ENCAPSULATION);
     }
 
     @Test
-    public void buildCorrectVlanSingleTransitRuleTest() {
+    public void buildCorrectVxlanTransitRuleTest() {
         FlowLoopTransitRuleGenerator generator = FlowLoopTransitRuleGenerator.builder()
                 .flow(FLOW)
                 .flowPath(PATH)
                 .inPort(PORT_NUMBER_1)
-                .multiTable(false)
-                .encapsulation(VLAN_ENCAPSULATION)
-                .build();
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertTransitCommands(commands, OfTable.INPUT, VLAN_ENCAPSULATION);
-    }
-
-    @Test
-    public void buildCorrectVxlanMultiTableTransitRuleTest() {
-        FlowLoopTransitRuleGenerator generator = FlowLoopTransitRuleGenerator.builder()
-                .flow(FLOW)
-                .flowPath(PATH)
-                .inPort(PORT_NUMBER_1)
-                .multiTable(true)
                 .encapsulation(VXLAN_ENCAPSULATION)
                 .build();
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertTransitCommands(commands, OfTable.EGRESS, VXLAN_ENCAPSULATION);
-    }
-
-    @Test
-    public void buildCorrectVxlanSingleTableTransitRuleTest() {
-        FlowLoopTransitRuleGenerator generator = FlowLoopTransitRuleGenerator.builder()
-                .flow(FLOW)
-                .flowPath(PATH)
-                .inPort(PORT_NUMBER_1)
-                .multiTable(false)
-                .encapsulation(VXLAN_ENCAPSULATION)
-                .build();
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertTransitCommands(commands, OfTable.INPUT, VXLAN_ENCAPSULATION);
+        assertTransitCommands(commands, VXLAN_ENCAPSULATION);
     }
 
     @Test
@@ -155,7 +125,6 @@ public class FlowLoopTransitRuleGeneratorTest {
                 .flow(buildFlow(path))
                 .flowPath(path)
                 .inPort(PORT_NUMBER_1)
-                .multiTable(true)
                 .encapsulation(VLAN_ENCAPSULATION)
                 .build();
         assertEquals(0, generator.generateCommands(SWITCH_1).size());
@@ -170,14 +139,12 @@ public class FlowLoopTransitRuleGeneratorTest {
                 .flow(flow)
                 .flowPath(PATH)
                 .inPort(PORT_NUMBER_1)
-                .multiTable(true)
                 .encapsulation(VLAN_ENCAPSULATION)
                 .build();
         assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }
 
-    private void assertTransitCommands(List<SpeakerData> commands, OfTable table,
-                                       FlowTransitEncapsulation encapsulation) {
+    private void assertTransitCommands(List<SpeakerData> commands, FlowTransitEncapsulation encapsulation) {
         assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
@@ -186,7 +153,7 @@ public class FlowLoopTransitRuleGeneratorTest {
         assertTrue(flowCommandData.getDependsOn().isEmpty());
 
         assertEquals(LOOP_COOKIE, flowCommandData.getCookie());
-        assertEquals(table, flowCommandData.getTable());
+        assertEquals(OfTable.EGRESS, flowCommandData.getTable());
         assertEquals(Priority.LOOP_FLOW_PRIORITY, flowCommandData.getPriority());
 
         Set<FieldMatch> expectedMatch;

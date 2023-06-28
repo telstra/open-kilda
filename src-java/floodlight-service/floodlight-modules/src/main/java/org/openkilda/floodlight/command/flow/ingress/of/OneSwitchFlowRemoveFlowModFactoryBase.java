@@ -15,18 +15,18 @@
 
 package org.openkilda.floodlight.command.flow.ingress.of;
 
-import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentCommand;
-import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.floodlight.utils.OfFlowModAddMultiTableMessageBuilderFactory;
+import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
+import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 
 import java.util.Set;
 
-public class IngressFlowSegmentInstallMultiTableFlowModFactory extends IngressFlowSegmentInstallFlowModFactory {
-    public IngressFlowSegmentInstallMultiTableFlowModFactory(
-            IngressFlowSegmentCommand command, IOFSwitch sw, Set<SwitchFeature> features) {
-        super(new OfFlowModAddMultiTableMessageBuilderFactory(SwitchManager.FLOW_PRIORITY), command, sw, features);
+public class OneSwitchFlowRemoveFlowModFactoryBase extends IngressRemoveFlowModFactory {
+    public OneSwitchFlowRemoveFlowModFactoryBase(
+            OfFlowModBuilderFactory flowModBuilderFactory, IngressFlowSegmentBase command, IOFSwitch sw,
+            Set<SwitchFeature> features) {
+        super(flowModBuilderFactory, command, sw, features);
     }
 }

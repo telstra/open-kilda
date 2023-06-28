@@ -99,7 +99,6 @@ public class RuleManagerServiceRulesTest {
     public static final int ISL_PORT = 1;
 
     public static final PathId PATH_ID = new PathId("path_id");
-    public static final String FLOW_ID = "flow";
     public static final MeterId METER_ID = new MeterId(17);
     public static final int PORT_NUMBER_1 = 1;
     public static final int PORT_NUMBER_2 = 2;
@@ -194,10 +193,10 @@ public class RuleManagerServiceRulesTest {
     }
 
     @Test
-    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInMultiTableMode() {
+    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInMode() {
         Switch sw = buildSwitch("OF_13", Collections.emptySet());
         SwitchId switchId = sw.getSwitchId();
-        SwitchProperties switchProperties = buildSwitchProperties(sw, true);
+        SwitchProperties switchProperties = buildSwitchProperties(sw);
 
         List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
                 switchId, buildAdapter(switchId, switchProperties, new HashSet<>(), false, LAG_PORTS));
@@ -224,7 +223,7 @@ public class RuleManagerServiceRulesTest {
     }
 
     @Test
-    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInMultiTableModeWithSwitchArpAndLldp() {
+    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInModeWithSwitchArpAndLldp() {
         Switch sw = buildSwitch("OF_13", Collections.emptySet());
         SwitchId switchId = sw.getSwitchId();
         SwitchProperties switchProperties = buildSwitchProperties(sw, true, true);
@@ -257,7 +256,7 @@ public class RuleManagerServiceRulesTest {
     }
 
     @Test
-    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInMultiTableModeWithAllRules() {
+    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInModeWithAllRules() {
         Switch sw = buildSwitch("OF_13", Collections.emptySet());
         SwitchId switchId = sw.getSwitchId();
         SwitchProperties switchProperties = buildSwitchProperties(sw, true, true, true, RttState.ENABLED);
@@ -328,7 +327,7 @@ public class RuleManagerServiceRulesTest {
     }
 
     private DataAdapter buildYFlowAdapter(MeterId meterId) {
-        SwitchProperties switchProperties = buildSwitchProperties(SWITCH_1, false);
+        SwitchProperties switchProperties = buildSwitchProperties(SWITCH_1);
 
         Map<SwitchId, SwitchProperties> switchPropertiesMap = new HashMap<>();
         switchPropertiesMap.put(SWITCH_ID_1, switchProperties);

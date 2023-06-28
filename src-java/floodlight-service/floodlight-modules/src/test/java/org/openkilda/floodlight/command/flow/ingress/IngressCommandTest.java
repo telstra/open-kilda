@@ -50,14 +50,6 @@ abstract class IngressCommandTest extends AbstractSpeakerCommandTest {
         super.tearDown();
     }
 
-    public void expectMakeOuterOnlyVlanForwardMessage(IngressFlowSegmentBase command, EffectiveIds effectiveIds) {
-        EasyMock.expect(flowModFactoryMock.makeOuterOnlyVlanForwardMessage(effectiveIds))
-                .andAnswer(() -> {
-                    EffectiveIds ids = (EffectiveIds) getCurrentArguments()[0];
-                    return extractFlowModFactory(command).makeOuterOnlyVlanForwardMessage(ids);
-                });
-    }
-
     public void expectMakeSingleVlanForwardMessage(IngressFlowSegmentBase command, EffectiveIds effectiveIds) {
         EasyMock.expect(flowModFactoryMock.makeSingleVlanForwardMessage(effectiveIds))
                 .andAnswer(() -> {
@@ -131,7 +123,6 @@ abstract class IngressCommandTest extends AbstractSpeakerCommandTest {
             FlowEndpoint endpoint, MeterConfig meterConfig, FlowSegmentMetadata metadata);
 
     protected FlowSegmentMetadata makeMetadata() {
-        return new FlowSegmentMetadata(
-                "speaker-unit-test", new Cookie(1));
+        return new FlowSegmentMetadata("speaker-unit-test", new Cookie(1));
     }
 }

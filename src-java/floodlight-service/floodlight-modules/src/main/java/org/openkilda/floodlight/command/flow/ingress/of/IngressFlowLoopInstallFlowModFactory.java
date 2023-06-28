@@ -17,17 +17,16 @@ package org.openkilda.floodlight.command.flow.ingress.of;
 
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowLoopCommand;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.floodlight.utils.OfFlowModAddSingleTableMessageBuilderFactory;
+import org.openkilda.floodlight.utils.OfFlowModAddMessageBuilderFactory;
 import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 
 import java.util.Set;
 
-public class IngressFlowLoopInstallSingleTableFlowModFactory extends IngressFlowLoopFlowModFactory {
-    public IngressFlowLoopInstallSingleTableFlowModFactory(
+public class IngressFlowLoopInstallFlowModFactory extends IngressFlowLoopFlowModFactory {
+    public IngressFlowLoopInstallFlowModFactory(
             IngressFlowLoopCommand command, IOFSwitch sw, Set<SwitchFeature> features) {
-        super(new OfFlowModAddSingleTableMessageBuilderFactory(SwitchManager.FLOW_LOOP_PRIORITY),
-                command, sw, features);
+        super(new OfFlowModAddMessageBuilderFactory(SwitchManager.FLOW_LOOP_PRIORITY), command, sw, features);
     }
 }

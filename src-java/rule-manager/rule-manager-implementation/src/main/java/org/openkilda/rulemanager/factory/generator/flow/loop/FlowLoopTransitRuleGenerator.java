@@ -51,7 +51,6 @@ public class FlowLoopTransitRuleGenerator extends NotIngressRuleGenerator {
     private final Flow flow;
     private final FlowPath flowPath;
     private final int inPort;
-    private final boolean multiTable;
     private final FlowTransitEncapsulation encapsulation;
 
     @Override
@@ -72,7 +71,7 @@ public class FlowLoopTransitRuleGenerator extends NotIngressRuleGenerator {
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie().toBuilder().looped(true).build())
-                .table(multiTable ? OfTable.EGRESS : OfTable.INPUT)
+                .table(OfTable.EGRESS)
                 .priority(Priority.LOOP_FLOW_PRIORITY)
                 .match(makeTransitMatch(sw, inPort, encapsulation))
                 .instructions(buildInstructions(sw.getSwitchId()));

@@ -23,7 +23,6 @@ import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.RulesContext;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.switchmanager.factory.generator.server42.Server42FlowRttInputFlowGenerator;
-import org.openkilda.floodlight.utils.OfAdapter;
 import org.openkilda.floodlight.utils.OfFlowModBuilderFactory;
 import org.openkilda.floodlight.utils.metadata.RoutingMetadata;
 import org.openkilda.floodlight.utils.metadata.RoutingMetadata.RoutingMetadataBuilder;
@@ -48,13 +47,10 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IpProtocol;
-import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
-import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.ArrayList;
@@ -85,18 +81,6 @@ public abstract class IngressFlowModFactory {
         this.switchFeatures = features;
 
         of = sw.getOFFactory();
-    }
-
-    /**
-     * Make rule to match traffic by port+vlan and route it into ISL/egress end.
-     */
-    public OFFlowMod makeOuterOnlyVlanForwardMessage(EffectiveIds effectiveIds) {
-        FlowEndpoint endpoint = command.getEndpoint();
-        OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
-                .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), endpoint.getOuterVlanId())
-                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
-                        .build());
-        return makeForwardMessage(builder, effectiveIds, FlowEndpoint.makeVlanStack(endpoint.getOuterVlanId()));
     }
 
     /**
@@ -191,38 +175,13 @@ public abstract class IngressFlowModFactory {
                 .build();
     }
 
-    /**
-     * Make server 42 ingress rule to match RTT packets by port+vlan and route it into ISL/egress end.
-     */
-    public OFFlowMod makeOuterOnlyVlanServer42IngressFlowMessage(int server42UpdPortOffset) {
-        Match match = makeServer42IngressFlowMatch(
-                OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEndpoint().getOuterVlanId()),
-                server42UpdPortOffset);
-
-        OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
-                .setMatch(match);
-        return makeServer42IngressFlowMessage(
-                builder, FlowEndpoint.makeVlanStack(command.getEndpoint().getOuterVlanId()));
-    }
-
     private Match makeServer42IngressFlowMatch(Match.Builder builder, int server42UpdPortOffset) {
         builder.setExact(MatchField.IN_PORT, OFPort.of(command.getRulesContext().getServer42Port()));
 
-        if (getCommand().getMetadata().isMultiTable()) {
-            RoutingMetadata metadata = buildServer42IngressMetadata();
-
-            builder.setMasked(MatchField.METADATA,
-                    OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
-                    .build();
-        } else {
-            MacAddress macAddress = MacAddress.of(getCommand().getRulesContext().getServer42MacAddress().toString());
-            int udpSrcPort = server42UpdPortOffset + command.getEndpoint().getPortNumber();
-
-            builder.setExact(MatchField.ETH_SRC, macAddress)
-                    .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                    .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-                    .setExact(MatchField.UDP_SRC, TransportPort.of(udpSrcPort));
-        }
+        RoutingMetadata metadata = buildServer42IngressMetadata();
+        builder.setMasked(MatchField.METADATA,
+                        OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
+                .build();
 
         return builder.build();
     }
@@ -234,7 +193,7 @@ public abstract class IngressFlowModFactory {
         Match match = makeServer42IngressFlowMatch(of.buildMatch(), server42UpdPortOffset);
 
         OFFlowMod.Builder builder = flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID),
-                SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET)
+                        SERVER_42_INGRESS_DEFAULT_FLOW_PRIORITY_OFFSET)
                 .setMatch(match);
         return makeServer42IngressFlowMessage(builder, Collections.emptyList());
     }
@@ -279,11 +238,11 @@ public abstract class IngressFlowModFactory {
     public OFFlowMod makeCustomerPortSharedCatchMessage() {
         FlowEndpoint endpoint = command.getEndpoint();
         return flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INPUT_TABLE_ID))
-                .setPriority(SwitchManager.INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE)
+                .setPriority(SwitchManager.INGRESS_CUSTOMER_PORT_RULE_PRIORITY)
                 .setCookie(U64.of(Cookie.encodeIngressRulePassThrough(endpoint.getPortNumber())))
                 .setMatch(of.buildMatch()
-                                  .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
-                                  .build())
+                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
+                        .build())
                 .setInstructions(makeCustomerPortSharedCatchInstructions())
                 .build();
     }
@@ -295,7 +254,7 @@ public abstract class IngressFlowModFactory {
      */
     public OFFlowMod makeLldpInputCustomerFlowMessage() {
         FlowEndpoint endpoint = command.getEndpoint();
-        return flowModBuilderFactory.makeBuilder(of, SwitchManager.INPUT_TABLE_ID)
+        return flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INPUT_TABLE_ID))
                 .setPriority(SwitchManager.LLDP_INPUT_CUSTOMER_PRIORITY)
                 .setCookie(U64.of(Cookie.encodeLldpInputCustomer(endpoint.getPortNumber())))
                 .setCookieMask(U64.NO_MASK)
@@ -315,7 +274,7 @@ public abstract class IngressFlowModFactory {
      */
     public OFFlowMod makeArpInputCustomerFlowMessage() {
         FlowEndpoint endpoint = command.getEndpoint();
-        return flowModBuilderFactory.makeBuilder(of, SwitchManager.INPUT_TABLE_ID)
+        return flowModBuilderFactory.makeBuilder(of, TableId.of(SwitchManager.INPUT_TABLE_ID))
                 .setPriority(SwitchManager.ARP_INPUT_CUSTOMER_PRIORITY)
                 .setCookie(U64.of(Cookie.encodeArpInputCustomer(endpoint.getPortNumber())))
                 .setCookieMask(U64.NO_MASK)
@@ -432,22 +391,6 @@ public abstract class IngressFlowModFactory {
                         .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
                         .setMasked(MatchField.METADATA,
                                 OFMetadata.of(metadata.getValue()), OFMetadata.of(metadata.getMask()))
-                        .build())
-                .setCookie(U64.of(command.getCookie().getValue()))
-                .setInstructions(makeIngressFlowLoopInstructions(endpoint))
-                .build();
-    }
-
-    /**
-     * Make ingress flow loop rule to match all flow traffic by port and outer vlan and route it back to port from
-     * where it came.
-     */
-    public OFFlowMod makeOuterOnlyVlanIngressFlowLoopMessage() {
-        FlowEndpoint endpoint = command.getEndpoint();
-        return flowModBuilderFactory
-                .makeBuilder(of, TableId.of(SwitchManager.INGRESS_TABLE_ID))
-                .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), endpoint.getOuterVlanId())
-                        .setExact(MatchField.IN_PORT, OFPort.of(endpoint.getPortNumber()))
                         .build())
                 .setCookie(U64.of(command.getCookie().getValue()))
                 .setInstructions(makeIngressFlowLoopInstructions(endpoint))

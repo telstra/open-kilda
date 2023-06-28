@@ -22,6 +22,7 @@ import org.openkilda.floodlight.command.AbstractSpeakerCommandTest;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
 import org.openkilda.floodlight.error.SwitchErrorResponseException;
 import org.openkilda.floodlight.error.SwitchOperationException;
+import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowTransitEncapsulation;
 
@@ -29,12 +30,14 @@ import com.google.common.collect.Sets;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
+import org.projectfloodlight.openflow.types.TableId;
 
 import java.util.concurrent.CompletableFuture;
 
 abstract class TransitFlowSegmentCommandTest extends AbstractSpeakerCommandTest {
     protected static final FlowTransitEncapsulation encapsulationVlan = new FlowTransitEncapsulation(
             50, FlowEncapsulationType.TRANSIT_VLAN);
+    protected static final TableId TRANSIT_TABLE = TableId.of(SwitchManager.TRANSIT_TABLE_ID);
 
     @Override
     @Before

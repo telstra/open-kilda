@@ -47,12 +47,12 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
     }
 
     protected boolean isRemoveCustomerPortSharedCatchRule(String flowId, SwitchId ingressSwitchId, int ingressPort) {
-        Set<String> flowIds = findFlowsIdsByEndpointWithMultiTable(ingressSwitchId, ingressPort);
+        Set<String> flowIds = findFlowsIdsByEndpoint(ingressSwitchId, ingressPort);
         return flowIds.size() == 1 && flowIds.iterator().next().equals(flowId);
     }
 
     protected boolean isFlowTheLastUserOfServer42InputSharedRule(String flowId, SwitchId switchId, int port) {
-        Set<String> flowIds = findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(switchId, port);
+        Set<String> flowIds = findFlowIdsForMultiSwitchFlowsByEndpoint(switchId, port);
         return flowIds.size() == 1 && flowIds.iterator().next().equals(flowId);
     }
 
@@ -97,7 +97,7 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
         boolean srcSwitchChanged = !oldFlow.getSrcSwitch().equals(newFlow.getSrcSwitch());
 
         return (srcPortChanged || srcSwitchChanged)
-                && findFlowsIdsByEndpointWithMultiTable(oldFlow.getSrcSwitch(), oldFlow.getSrcPort()).isEmpty();
+                && findFlowsIdsByEndpoint(oldFlow.getSrcSwitch(), oldFlow.getSrcPort()).isEmpty();
     }
 
     protected boolean removeReverseCustomerPortSharedCatchRule(RequestedFlow oldFlow, RequestedFlow newFlow) {
@@ -105,7 +105,7 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
         boolean dstSwitchChanged = !oldFlow.getDestSwitch().equals(newFlow.getDestSwitch());
 
         return (dstPortChanged || dstSwitchChanged)
-                && findFlowsIdsByEndpointWithMultiTable(oldFlow.getDestSwitch(), oldFlow.getDestPort()).isEmpty();
+                && findFlowsIdsByEndpoint(oldFlow.getDestSwitch(), oldFlow.getDestPort()).isEmpty();
     }
 
     protected boolean removeSharedServer42InputRule(
@@ -123,7 +123,7 @@ public abstract class BaseFlowRuleRemovalAction<T extends FlowProcessingWithHist
         }
 
         // Current flow doesn't use server42 input rule anymore, but maybe some other flow still need this rule.
-        return findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(
+        return findFlowIdsForMultiSwitchFlowsByEndpoint(
                 oldEndpoint.getSwitchId(), oldEndpoint.getPortNumber()).isEmpty();
     }
 

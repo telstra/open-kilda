@@ -17,8 +17,7 @@ package org.openkilda.floodlight.command.flow.ingress;
 
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallMultiTableFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallSingleTableFlowModFactory;
+import org.openkilda.floodlight.command.flow.ingress.of.IngressFlowSegmentInstallFlowModFactory;
 import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
@@ -70,22 +69,15 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
             required.add(Sets.newHashSet(
                     SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN, SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN));
         }
-        if (metadata.isMultiTable()) {
-            required.add(Sets.newHashSet(SwitchFeature.MULTI_TABLE));
-        }
+        required.add(Sets.newHashSet(SwitchFeature.MULTI_TABLE));
 
         return required;
     }
 
     @Override
     protected void setupFlowModFactory() {
-        if (metadata.isMultiTable()) {
-            setFlowModFactory(
-                    new IngressFlowSegmentInstallMultiTableFlowModFactory(this, getSw(), getSwitchFeatures()));
-        } else {
-            setFlowModFactory(
-                    new IngressFlowSegmentInstallSingleTableFlowModFactory(this, getSw(), getSwitchFeatures()));
-        }
+        setFlowModFactory(
+                new IngressFlowSegmentInstallFlowModFactory(this, getSw(), getSwitchFeatures()));
     }
 
     @Override
@@ -106,7 +98,7 @@ public class IngressFlowSegmentInstallCommand extends IngressFlowSegmentCommand 
     @Override
     protected List<OFFlowMod> makeSharedFlowModInstallMessages() {
         List<OFFlowMod> ofMessages = super.makeSharedFlowModInstallMessages();
-        if (metadata.isMultiTable() && rulesContext != null && rulesContext.isInstallServer42InputRule()) {
+        if (rulesContext != null && rulesContext.isInstallServer42InputRule()) {
             Optional<OFFlowMod> server42InputRule = getFlowModFactory().makeServer42InputFlowMessage(
                     getKildaCoreConfig().getServer42FlowRttUdpPortOffset());
             if (server42InputRule.isPresent()) {

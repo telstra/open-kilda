@@ -247,23 +247,15 @@ public final class Utils {
      * Builds match for ingress rule.
      */
     public static Set<FieldMatch> makeIngressMatch(
-            FlowEndpoint endpoint, boolean multiTable, Set<SwitchFeature> features) {
-        if (multiTable) {
-            if (isVlanIdSet(endpoint.getOuterVlanId())) {
-                if (isVlanIdSet(endpoint.getInnerVlanId())) {
-                    return makeDoubleVlanIngressMatch(endpoint, features);
-                } else {
-                    return makeSingleVlanMultiTableIngressMatch(endpoint, features);
-                }
+            FlowEndpoint endpoint, Set<SwitchFeature> features) {
+        if (isVlanIdSet(endpoint.getOuterVlanId())) {
+            if (isVlanIdSet(endpoint.getInnerVlanId())) {
+                return makeDoubleVlanIngressMatch(endpoint, features);
             } else {
-                return makeDefaultPortIngresMatch(endpoint);
+                return makeSingleVlanIngressMatch(endpoint, features);
             }
         } else {
-            if (isVlanIdSet(endpoint.getOuterVlanId())) {
-                return makeSingleVlanSingleTableIngressMatch(endpoint);
-            } else {
-                return makeDefaultPortIngresMatch(endpoint);
-            }
+            return makeDefaultPortIngresMatch(endpoint);
         }
     }
 
@@ -311,7 +303,7 @@ public final class Utils {
      * Builds rule for catching packets from customer port.
      */
     public static FlowSpeakerData buildCustomerPortSharedCatchCommand(Switch sw, FlowEndpoint endpoint) {
-        PortColourCookie cookie = new PortColourCookie(CookieType.MULTI_TABLE_INGRESS_RULES, endpoint.getPortNumber());
+        PortColourCookie cookie = new PortColourCookie(CookieType.INGRESS_RULES, endpoint.getPortNumber());
 
         Instructions instructions = Instructions.builder()
                 .goToTable(OfTable.PRE_INGRESS)
@@ -322,7 +314,7 @@ public final class Utils {
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(cookie)
                 .table(OfTable.INPUT)
-                .priority(Priority.INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE)
+                .priority(Priority.INGRESS_CUSTOMER_PORT_RULE_PRIORITY)
                 .match(Sets.newHashSet(
                         FieldMatch.builder().field(Field.IN_PORT).value(endpoint.getPortNumber()).build()))
                 .instructions(instructions);
@@ -375,17 +367,11 @@ public final class Utils {
                 FieldMatch.builder().field(Field.METADATA).value(metadata.getValue()).mask(metadata.getMask()).build());
     }
 
-    private static Set<FieldMatch> makeSingleVlanMultiTableIngressMatch(
+    private static Set<FieldMatch> makeSingleVlanIngressMatch(
             FlowEndpoint endpoint, Set<SwitchFeature> features) {
         RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(endpoint.getOuterVlanId()).build(features);
         return newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(endpoint.getPortNumber()).build(),
                 FieldMatch.builder().field(Field.METADATA).value(metadata.getValue()).mask(metadata.getMask()).build());
-    }
-
-    private static Set<FieldMatch> makeSingleVlanSingleTableIngressMatch(FlowEndpoint endpoint) {
-        return newHashSet(
-                FieldMatch.builder().field(Field.IN_PORT).value(endpoint.getPortNumber()).build(),
-                FieldMatch.builder().field(Field.VLAN_VID).value(endpoint.getOuterVlanId()).build());
     }
 }

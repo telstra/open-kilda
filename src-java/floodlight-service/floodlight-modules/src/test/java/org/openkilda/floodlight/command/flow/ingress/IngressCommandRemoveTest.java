@@ -86,23 +86,13 @@ abstract class IngressCommandRemoveTest extends IngressCommandTest {
         verifyErrorCompletion(result, SwitchOperationException.class);
     }
 
-    protected void processZeroVlanSingleTable(IngressFlowSegmentBase command) throws Exception {
-        expectMakeDefaultPortForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
-        executeCommand(command, 1);
-    }
-
-    protected void processOneVlanSingleTable(IngressFlowSegmentBase command) throws Exception {
-        expectMakeOuterOnlyVlanForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
-        executeCommand(command, 1);
-    }
-
-    protected void processZeroVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
+    protected void processZeroVlan(IngressFlowSegmentBase command) throws Exception {
         expectMakeDefaultPortForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
         expectMakeVlanStatsFlowMessage(command);
         executeCommand(command, 1);
     }
 
-    protected void processOneVlanMultiTable(IngressFlowSegmentBase command) throws Exception {
+    protected void processOneVlan(IngressFlowSegmentBase command) throws Exception {
         expectMakeSingleVlanForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
         executeCommand(command, 1);
     }

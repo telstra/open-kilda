@@ -26,10 +26,10 @@ import java.util.Set;
 public class PortColourCookie extends CookieBase implements Comparable<PortColourCookie> {
     private static final Set<CookieType> allowedTypes = ImmutableSet.of(
             CookieType.LLDP_INPUT_CUSTOMER_TYPE,
-            CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES,
-            CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES,
-            CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES,
-            CookieType.MULTI_TABLE_INGRESS_RULES,
+            CookieType.ISL_VLAN_EGRESS_RULES,
+            CookieType.ISL_VXLAN_EGRESS_RULES,
+            CookieType.ISL_VXLAN_TRANSIT_RULES,
+            CookieType.INGRESS_RULES,
             CookieType.ARP_INPUT_CUSTOMER_TYPE,
             CookieType.SERVER_42_FLOW_RTT_INPUT,
             CookieType.SERVER_42_ISL_RTT_INPUT,

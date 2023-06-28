@@ -32,15 +32,11 @@ public class FlowSegmentMetadata implements Serializable {
     @JsonProperty("cookie")
     private final Cookie cookie;
 
-    @JsonProperty("multi_table")
-    private final boolean multiTable;
-
     @JsonCreator
     public FlowSegmentMetadata(
             @JsonProperty("flowid") @NonNull String flowId,
             @JsonProperty("cookie") @NonNull Cookie cookie) {
         this.flowId = flowId;
         this.cookie = cookie;
-        this.multiTable = true;
     }
 }

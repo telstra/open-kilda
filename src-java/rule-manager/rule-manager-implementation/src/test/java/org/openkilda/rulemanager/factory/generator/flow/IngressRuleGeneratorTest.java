@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
-import static org.openkilda.model.cookie.CookieBase.CookieType.MULTI_TABLE_INGRESS_RULES;
+import static org.openkilda.model.cookie.CookieBase.CookieType.INGRESS_RULES;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
 import static org.openkilda.rulemanager.utils.Utils.mapMetadata;
@@ -79,7 +79,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class MultiTableIngressRuleGeneratorTest {
+public class IngressRuleGeneratorTest {
     public static final PathId PATH_ID = new PathId("path_id");
     public static final String FLOW_ID = "flow";
     public static final MeterId METER_ID = new MeterId(17);
@@ -141,7 +141,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build()
@@ -152,7 +152,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
-        MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
                 new PushVlanAction(),
@@ -164,7 +164,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
-        MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
                 new PushVlanAction(),
@@ -176,7 +176,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVlanEncapsulationInnerVlanEqualTransitVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, TRANSIT_VLAN_ID);
-        MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(TRANSIT_VLAN_ID, FEATURES);
         assertTrue(transformActions.isEmpty());
     }
@@ -185,7 +185,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVxlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(new PopVlanAction(), buildPushVxlan());
         assertEquals(expectedActions, transformActions);
@@ -194,7 +194,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVxlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
-        MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(buildPushVxlan());
         assertEquals(expectedActions, transformActions);
@@ -203,7 +203,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVxlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
-        MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(buildPushVxlan());
         assertEquals(expectedActions, transformActions);
@@ -212,7 +212,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsOneSwitchDoubleVlanInDoubleVlanOutTest() {
         Flow flow = buildFlow(ONE_SWITCH_PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
-        MultiTableIngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(INNER_VLAN_ID_2).build(),
@@ -225,7 +225,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsOneSwitchDoubleVlanInSingleVlanOutTest() {
         Flow flow = buildFlow(ONE_SWITCH_PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1, OUTER_VLAN_ID_2, 0);
-        MultiTableIngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build()
@@ -236,7 +236,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsOneSwitchDoubleVlanInFullPortOutTest() {
         Flow flow = buildFlow(ONE_SWITCH_PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1, 0, 0);
-        MultiTableIngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(new PopVlanAction());
         assertEquals(expectedActions, transformActions);
@@ -245,7 +245,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsOneSwitchSingleVlanInDoubleVlanOutTest() {
         Flow flow = buildFlow(ONE_SWITCH_PATH, OUTER_VLAN_ID_1, 0, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
-        MultiTableIngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
                 new PushVlanAction(),
@@ -259,7 +259,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsOneSwitchSingleVlanInSingleVlanOutTest() {
         Flow flow = buildFlow(ONE_SWITCH_PATH, OUTER_VLAN_ID_1, 0, OUTER_VLAN_ID_2, 0);
-        MultiTableIngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
                 new PushVlanAction(),
@@ -271,7 +271,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsOneSwitchSingleVlanInFullPortOutTest() {
         Flow flow = buildFlow(ONE_SWITCH_PATH, OUTER_VLAN_ID_1, 0, 0, 0);
-        MultiTableIngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList();
         assertEquals(expectedActions, transformActions);
@@ -280,7 +280,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsOneSwitchFullPortInDoubleVlanOutTest() {
         Flow flow = buildFlow(ONE_SWITCH_PATH, 0, 0, OUTER_VLAN_ID_2, INNER_VLAN_ID_2);
-        MultiTableIngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
                 new PushVlanAction(),
@@ -294,7 +294,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsOneSwitchFullPortInSingleVlanOutTest() {
         Flow flow = buildFlow(ONE_SWITCH_PATH, 0, 0, OUTER_VLAN_ID_2, 0);
-        MultiTableIngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
                 new PushVlanAction(),
@@ -306,7 +306,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsOneSwitchFullPortInFullPortOutTest() {
         Flow flow = buildFlow(ONE_SWITCH_PATH, 0, 0, 0, 0);
-        MultiTableIngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList();
         assertEquals(expectedActions, transformActions);
@@ -315,7 +315,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildMatchVlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), FEATURES);
         RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
@@ -330,7 +330,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildMatchVlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
-        MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), FEATURES);
         RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
@@ -344,7 +344,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void buildMatchVlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
-        MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         Set<FieldMatch> match = generator.buildIngressMatch(new FlowSourceAdapter(flow).getEndpoint(), FEATURES);
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()
@@ -355,7 +355,7 @@ public class MultiTableIngressRuleGeneratorTest {
     @Test
     public void oneSwitchFlowFullPortRuleTest() {
         Flow flow = buildFlow(ONE_SWITCH_PATH, 0, 0, OUTER_VLAN_ID_2, 0);
-        MultiTableIngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(2, commands.size());
 
@@ -371,14 +371,14 @@ public class MultiTableIngressRuleGeneratorTest {
         RoutingMetadata metadata = RoutingMetadata.builder().oneSwitchFlowFlag(true).build(SWITCH_1.getFeatures());
         assertIngressCommand(ingressCommand, Priority.DEFAULT_FLOW_PRIORITY, expectedIngressMatch,
                 expectedIngressActions, null, mapMetadata(metadata));
-        assertInputCustomerCommand(inputCustomerCommand, new PortColourCookie(MULTI_TABLE_INGRESS_RULES, PORT_NUMBER_1),
+        assertInputCustomerCommand(inputCustomerCommand, new PortColourCookie(INGRESS_RULES, PORT_NUMBER_1),
                 Sets.newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()));
     }
 
     @Test
     public void buildCommandsVlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(4, commands.size());
 
@@ -399,7 +399,7 @@ public class MultiTableIngressRuleGeneratorTest {
         assertPreIngressCommand(preIngressCommand, preIngressCookie, Priority.FLOW_PRIORITY, expectedPreIngressMatch,
                 newArrayList(new PopVlanAction()), mapMetadata(preIngressMetadata));
 
-        assertInputCustomerCommand(inputCustomerCommand, new PortColourCookie(MULTI_TABLE_INGRESS_RULES, PORT_NUMBER_1),
+        assertInputCustomerCommand(inputCustomerCommand, new PortColourCookie(INGRESS_RULES, PORT_NUMBER_1),
                 Sets.newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()));
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
@@ -425,7 +425,7 @@ public class MultiTableIngressRuleGeneratorTest {
         Set<FlowSideAdapter> overlapping = Sets.newHashSet(
                 FlowSideAdapter.makeIngressAdapter(oneSwitchFlow, ONE_SWITCH_PATH));
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, overlapping);
+        IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, overlapping);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(2, commands.size());
 
@@ -456,7 +456,7 @@ public class MultiTableIngressRuleGeneratorTest {
         Set<FlowSideAdapter> overlapping = Sets.newHashSet(
                 FlowSideAdapter.makeIngressAdapter(oneSwitchFlow, ONE_SWITCH_PATH));
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        MultiTableIngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, overlapping);
+        IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, overlapping);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         assertEquals(3, commands.size());
 
@@ -543,7 +543,7 @@ public class MultiTableIngressRuleGeneratorTest {
         assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
         assertEquals(cookie, command.getCookie());
         assertEquals(OfTable.INPUT, command.getTable());
-        assertEquals(Priority.INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE, command.getPriority());
+        assertEquals(Priority.INGRESS_CUSTOMER_PORT_RULE_PRIORITY, command.getPriority());
         assertTrue(command.getDependsOn().isEmpty());
 
         assertEqualsMatch(expectedMatch, command.getMatch());
@@ -566,15 +566,15 @@ public class MultiTableIngressRuleGeneratorTest {
 
     }
 
-    private MultiTableIngressRuleGenerator buildGenerator(
+    private IngressRuleGenerator buildGenerator(
             FlowPath path, Flow flow, FlowTransitEncapsulation encapsulation) {
         return buildGenerator(path, flow, encapsulation, new HashSet<>());
     }
 
-    private MultiTableIngressRuleGenerator buildGenerator(
+    private IngressRuleGenerator buildGenerator(
             FlowPath path, Flow flow, FlowTransitEncapsulation encapsulation,
             Set<FlowSideAdapter> overlappingAdapters) {
-        return MultiTableIngressRuleGenerator.builder()
+        return IngressRuleGenerator.builder()
                 .config(config)
                 .flowPath(path)
                 .flow(flow)

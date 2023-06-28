@@ -42,6 +42,7 @@ public class EgressFlowSegmentRemoveCommandTest extends EgressFlowSegmentCommand
                 .setPriority(EgressFlowSegmentRemoveCommand.FLOW_PRIORITY)
                 .setTableId(EGRESS_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
+                .setTableId(EGRESS_TABLE)
                 .setCookieMask(U64.NO_MASK)
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
                                   .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))

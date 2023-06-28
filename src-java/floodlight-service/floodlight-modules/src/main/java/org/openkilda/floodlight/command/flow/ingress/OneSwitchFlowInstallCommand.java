@@ -17,8 +17,7 @@ package org.openkilda.floodlight.command.flow.ingress;
 
 import org.openkilda.floodlight.command.SpeakerCommandProcessor;
 import org.openkilda.floodlight.command.flow.FlowSegmentReport;
-import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowInstallMultiTableFlowModFactory;
-import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowInstallSingleTableFlowModFactory;
+import org.openkilda.floodlight.command.flow.ingress.of.OneSwitchFlowInstallFlowModFactory;
 import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.floodlight.model.FlowSegmentMetadata;
 import org.openkilda.floodlight.model.RulesContext;
@@ -57,11 +56,7 @@ public class OneSwitchFlowInstallCommand extends OneSwitchFlowCommand {
 
     @Override
     protected void setupFlowModFactory() {
-        if (metadata.isMultiTable()) {
-            setFlowModFactory(new OneSwitchFlowInstallMultiTableFlowModFactory(this, getSw(), getSwitchFeatures()));
-        } else {
-            setFlowModFactory(new OneSwitchFlowInstallSingleTableFlowModFactory(this, getSw(), getSwitchFeatures()));
-        }
+        setFlowModFactory(new OneSwitchFlowInstallFlowModFactory(this, getSw(), getSwitchFeatures()));
     }
 
     @Override
@@ -79,10 +74,7 @@ public class OneSwitchFlowInstallCommand extends OneSwitchFlowCommand {
     @Override
     protected List<Set<SwitchFeature>> getRequiredFeatures() {
         List<Set<SwitchFeature>> required = super.getRequiredFeatures();
-        if (metadata.isMultiTable()) {
-            required.add(Sets.newHashSet(SwitchFeature.MULTI_TABLE));
-        }
-
+        required.add(Sets.newHashSet(SwitchFeature.MULTI_TABLE));
         return required;
     }
 
