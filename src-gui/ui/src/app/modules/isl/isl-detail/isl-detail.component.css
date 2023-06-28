@@ -74,3 +74,7 @@ padding-left: 0px;
 .isl_delete_dropdown .dropdown-menu{
   min-width: 120px;
 }
+
+.text_description_details{
+  word-wrap: break-word;
+}

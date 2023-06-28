@@ -83,6 +83,7 @@ import { FlowsService } from 'src/app/common/services/flows.service';
     bfdPropForm:FormGroup;
     islForm: FormGroup;
     showCostEditing: boolean = false;
+    showDescriptionEditing: boolean = false;
     showBandwidthEditing : boolean = false;
     currentGraphName : string = "Round Trip Latency Graph (In Seconds)";
     dateMessage:string;
@@ -325,6 +326,8 @@ import { FlowsService } from 'src/app/common/services/flows.service';
     modalRef.componentInstance.title = "Confirmation";
     modalRef.componentInstance.isMaintenance = !this.under_maintenance;
     modalRef.componentInstance.content = 'Are you sure ?';
+    modalRef.componentInstance.descriptionValue = this.islForm.value.description;
+    modalRef.componentInstance.isDescription =true;
     this.under_maintenance = e.target.checked;
     modalRef.result.then((response) =>{
       if(!response){
@@ -334,20 +337,37 @@ import { FlowsService } from 'src/app/common/services/flows.service';
       this.under_maintenance = false;
     })
     modalRef.componentInstance.emitService.subscribe(
-      evacuate => {
-        var data = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port,under_maintenance:e.target.checked,evacuate:evacuate};
+      (evacuate:any) => {
+        var data = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port,under_maintenance:e.target.checked,evacuate:evacuate.evaluateValue};
         this.loaderService.show(MessageObj.applying_changes);
         this.islListService.islUnderMaintenance(data).subscribe(response=>{
           this.toastr.success(MessageObj.maintenance_mode_changed,'Success');
           this.loaderService.hide();
           this.under_maintenance = e.target.checked;
-          if(evacuate){
-            location.reload();
+          if (response) {
+            this.loaderService.show(MessageObj.applying_changes);
+            this.islListService.updateDescription(this.src_switch, this.src_port, this.dst_switch, this.dst_port, evacuate.description).subscribe(response=>{
+              this.toastr.success(MessageObj.isl_description_updated,'Success');
+              this.loaderService.hide();
+              if (evacuate) {
+                this.detailDataObservable.props.description = evacuate.description;
+                this.islForm.controls["description"].setValue(
+                  evacuate.description
+                 );
+              }
+              if(evacuate.evaluateValue){
+                location.reload();
+              }
+            },error => {
+              this.loaderService.hide();
+              this.toastr.error(MessageObj.error_isl_description_updated,'Error');
+            })
           }
+         
         },error => {
           this.loaderService.hide();
           this.toastr.error(MessageObj.error_im_maintenance_mode,'Error');
-        })
+        })      
       },
       error => {
       }
@@ -985,7 +1005,19 @@ get f() {
         })
       }
     });
-  }
+    }
+    cancelEditedDescription() {
+      this.showDescriptionEditing = false;
+      this.detailDataObservable.props.description == "";
+    }
+    editDescription(){
+      this.showDescriptionEditing = true;
+      this.detailDataObservable.props.description == ""
+  
+       this.islForm.controls["description"].setValue(
+               this.detailDataObservable.props.description
+              );
+    }
   saveEditedDescription(){
     if (this.islForm.invalid) {
       this.toastr.error("Please enter valid value for  Description.");
@@ -1005,15 +1037,18 @@ get f() {
           this.loaderService.hide();
 
           if(typeof(status.successes)!=='undefined' && status.successes > 0){
-            this.toastr.success(MessageObj.isl_description_updated,'Success');
+            this.toastr.success(MessageObj.isl_description_updated, 'Success');
+            this.showDescriptionEditing = false;
             this.detailDataObservable.props.description = descriptionValue;
             this.islForm.controls["description"].setValue(descriptionValue);
             
           }else if(typeof(status.failures)!=='undefined' && status.failures > 0){
-            this.toastr.error(MessageObj.error_isl_description_updated,'Error');       
+            this.toastr.error(MessageObj.error_isl_description_updated, 'Error');
+            this.showDescriptionEditing = false;
           }
 
-        },error => {
+        }, error => {
+          this.showDescriptionEditing = false;
           if(error.status == '500'){
             this.toastr.error(error.error['error-message'],'Error! ');
           }else{
