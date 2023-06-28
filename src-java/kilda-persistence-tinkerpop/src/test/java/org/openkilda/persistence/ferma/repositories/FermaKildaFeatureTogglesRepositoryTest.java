@@ -15,20 +15,20 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class FermaKildaFeatureTogglesRepositoryTest extends InMemoryGraphBasedTest {
     KildaFeatureTogglesRepository featureTogglesRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }

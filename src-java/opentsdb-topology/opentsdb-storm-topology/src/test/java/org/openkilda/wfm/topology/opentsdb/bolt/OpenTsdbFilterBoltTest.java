@@ -20,8 +20,6 @@ import static org.apache.storm.Constants.SYSTEM_COMPONENT_ID;
 import static org.apache.storm.Constants.SYSTEM_TICK_STREAM_ID;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
@@ -36,21 +34,22 @@ import org.openkilda.wfm.topology.opentsdb.bolts.OpenTsdbFilterBolt;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.tuple.Tuple;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class OpenTsdbFilterBoltTest {
 
     private static final String METRIC = "METRIC";
@@ -69,7 +68,7 @@ public class OpenTsdbFilterBoltTest {
     @Captor
     private ArgumentCaptor<List<Object>> argumentCaptor;
 
-    @Before
+    @BeforeEach
     public void init() {
         Mockito.reset(outputCollector, tuple);
 
@@ -86,9 +85,9 @@ public class OpenTsdbFilterBoltTest {
         verify(outputCollector).emit(eq(tuple), argumentCaptor.capture());
         verify(outputCollector).ack(any(Tuple.class));
         List<Object> captured = argumentCaptor.getValue();
-        assertNotNull(captured);
+        Assertions.assertNotNull(captured);
         assertThat(captured.size(), is(1));
-        assertEquals(tuple.getValueByField("datapoint"), captured.get(0));
+        Assertions.assertEquals(tuple.getValueByField("datapoint"), captured.get(0));
     }
 
     @Test
@@ -136,9 +135,9 @@ public class OpenTsdbFilterBoltTest {
         // given
         target.prepare(Collections.emptyMap(), null, outputCollector);
 
-        Datapoint infoData1 = new Datapoint("1", TIMESTAMP, singletonMap("key",  "a"), VALUE);
-        Datapoint infoData2 = new Datapoint("2", TIMESTAMP, singletonMap("key",  "\u0040"), VALUE);
-        assertEquals(infoData1.simpleHashCode(), infoData2.simpleHashCode());
+        Datapoint infoData1 = new Datapoint("1", TIMESTAMP, singletonMap("key", "a"), VALUE);
+        Datapoint infoData2 = new Datapoint("2", TIMESTAMP, singletonMap("key", "@"), VALUE);
+        Assertions.assertEquals(infoData1.simpleHashCode(), infoData2.simpleHashCode());
 
         // when
         when(tuple.contains(eq("datapoint"))).thenReturn(true);

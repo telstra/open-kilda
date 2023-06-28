@@ -15,8 +15,8 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.model.history.FlowEventAction;
@@ -25,8 +25,8 @@ import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -54,7 +54,7 @@ public class FermaFlowEventRepositoryTest extends InMemoryGraphBasedTest {
     private static FlowEventRepository flowEventRepository;
     private static FlowEventActionRepository flowEventActionRepository;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUp() {
         flowEventRepository = repositoryFactory.createFlowEventRepository();
         flowEventActionRepository = repositoryFactory.createFlowEventActionRepository();

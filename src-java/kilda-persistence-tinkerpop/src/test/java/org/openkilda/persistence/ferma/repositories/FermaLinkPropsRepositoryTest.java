@@ -15,8 +15,8 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
@@ -25,8 +25,8 @@ import org.openkilda.persistence.repositories.LinkPropsRepository;
 
 import com.google.common.collect.Lists;
 import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -36,7 +36,7 @@ public class FermaLinkPropsRepositoryTest extends InMemoryGraphBasedTest {
 
     LinkPropsRepository linkPropsRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
     }

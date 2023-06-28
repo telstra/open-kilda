@@ -15,12 +15,12 @@
 
 package org.openkilda.wfm.share.utils;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.wfm.share.utils.TimestampHelper.noviflowTimestamp;
 import static org.openkilda.wfm.share.utils.TimestampHelper.noviflowTimestampToInstant;
 import static org.openkilda.wfm.share.utils.TimestampHelper.noviflowTimestampsToDuration;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.time.Instant;

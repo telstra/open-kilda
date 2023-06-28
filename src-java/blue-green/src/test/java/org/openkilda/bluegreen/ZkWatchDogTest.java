@@ -15,8 +15,6 @@
 
 package org.openkilda.bluegreen;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
@@ -29,7 +27,8 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooKeeper;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -89,8 +88,8 @@ public class ZkWatchDogTest {
         doCallRealMethod().when(watchDog).subscribe(any(LifeCycleObserver.class));
         doCallRealMethod().when(watchDog).unsubscribe(any(LifeCycleObserver.class));
         watchDog.subscribe(observer);
-        assertEquals(1, watchDog.observers.size());
-        assertTrue(watchDog.observers.contains(observer));
+        Assertions.assertEquals(1, watchDog.observers.size());
+        Assertions.assertTrue(watchDog.observers.contains(observer));
     }
 
     @Test
@@ -101,8 +100,8 @@ public class ZkWatchDogTest {
         doCallRealMethod().when(watchDog).subscribe(any(BuildVersionObserver.class));
         doCallRealMethod().when(watchDog).unsubscribe(any(BuildVersionObserver.class));
         watchDog.subscribe(observer);
-        assertEquals(1, watchDog.buildVersionObservers.size());
-        assertTrue(watchDog.buildVersionObservers.contains(observer));
+        Assertions.assertEquals(1, watchDog.buildVersionObservers.size());
+        Assertions.assertTrue(watchDog.buildVersionObservers.contains(observer));
     }
 
     @Test

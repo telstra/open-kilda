@@ -22,11 +22,11 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThan;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -47,7 +47,8 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.BestWeightAndShortestPathFinder;
 import org.openkilda.pce.model.Node;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -56,7 +57,8 @@ import java.util.concurrent.TimeUnit;
 
 public class MaxLatencyPathComputationStrategyBaseTest extends InMemoryPathComputerBaseTest {
 
-    @Test(timeout = 10_000)
+    @Test
+    @Timeout(10)
     public void shouldFindPathInHugeNetworkWithAffinity() throws UnroutableFlowException, RecoverableException {
         SwitchId srcSwitchId = new SwitchId(1);
         SwitchId dstSwitchId = new SwitchId(49);

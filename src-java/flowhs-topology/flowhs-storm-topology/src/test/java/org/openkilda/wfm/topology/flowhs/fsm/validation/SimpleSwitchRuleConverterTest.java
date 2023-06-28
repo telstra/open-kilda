@@ -16,9 +16,6 @@
 package org.openkilda.wfm.topology.flowhs.fsm.validation;
 
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
 import static org.openkilda.rulemanager.action.ActionType.PUSH_VXLAN_NOVIFLOW;
 
 import org.openkilda.messaging.info.flow.FlowDumpResponse;
@@ -57,7 +54,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.junit.Test;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -123,8 +122,8 @@ public class SimpleSwitchRuleConverterTest {
                                     flowDumpList.get(i).getFlowSpeakerData(),
                                     meterDumpList.get(i).getMeterSpeakerData(),
                                     Collections.singletonList(GroupSpeakerData.builder().build()));
-            assertThat(actualSimpleSwitchRules, hasSize(1));
-            assertEquals(expectedSwitchRules.get(i), actualSimpleSwitchRules.get(0));
+            MatcherAssert.assertThat(actualSimpleSwitchRules, hasSize(1));
+            Assertions.assertEquals(expectedSwitchRules.get(i), actualSimpleSwitchRules.get(0));
         }
     }
 
@@ -141,8 +140,8 @@ public class SimpleSwitchRuleConverterTest {
                             switchFlowEntries.get(i).getFlowSpeakerData(),
                             switchMeterEntries.get(i).getMeterSpeakerData(),
                             Collections.singletonList(GroupSpeakerData.builder().build()));
-            assertThat(switchRules, hasSize(1));
-            assertEquals(expectedSwitchRules.get(i), switchRules.get(0));
+            MatcherAssert.assertThat(switchRules, hasSize(1));
+            Assertions.assertEquals(expectedSwitchRules.get(i), switchRules.get(0));
         }
     }
 
@@ -158,7 +157,7 @@ public class SimpleSwitchRuleConverterTest {
                         getMeterDumpResponseOneSwitchFlow().getMeterSpeakerData(),
                         Collections.singletonList(GroupSpeakerData.builder().build()));
 
-        assertEquals(expectedSwitchRules, switchRules);
+        Assertions.assertEquals(expectedSwitchRules, switchRules);
     }
 
     @Test
@@ -176,8 +175,8 @@ public class SimpleSwitchRuleConverterTest {
                             flowDumpResponses.get(i).getFlowSpeakerData(),
                             meterDumpResponses.get(0).getMeterSpeakerData(),
                             groupDumpResponses.get(0).getGroupSpeakerData());
-            assertThat(actualList, hasSize(1));
-            assertEquals(expectedSwitchRules.get(i), actualList.get(0));
+            MatcherAssert.assertThat(actualList, hasSize(1));
+            Assertions.assertEquals(expectedSwitchRules.get(i), actualList.get(0));
         }
     }
 
@@ -196,8 +195,8 @@ public class SimpleSwitchRuleConverterTest {
                             flowDumpResponses.get(i).getFlowSpeakerData(),
                             meterDumpResponses.get(0).getMeterSpeakerData(),
                             groupDumpResponses.get(0).getGroupSpeakerData());
-            assertThat(switchRules, hasSize(1));
-            assertEquals(expectedSwitchRules.get(i), switchRules.get(0));
+            MatcherAssert.assertThat(switchRules, hasSize(1));
+            Assertions.assertEquals(expectedSwitchRules.get(i), switchRules.get(0));
         }
     }
 
@@ -215,7 +214,7 @@ public class SimpleSwitchRuleConverterTest {
                             getMeterDumpResponseOneSwitchFlow().getMeterSpeakerData(),
                             groupDumpResponses.get(0).getGroupSpeakerData());
 
-            assertEquals(expectedSwitchRules.get(i), switchRules.get(0));
+            Assertions.assertEquals(expectedSwitchRules.get(i), switchRules.get(0));
         }
     }
 
@@ -262,14 +261,14 @@ public class SimpleSwitchRuleConverterTest {
             int base = (int) cookie.getFlowEffectiveId();
 
             if (cookie.isMirror()) {
-                assertEquals(base + 8, switchRule.getMeterId().intValue());
-                assertEquals(base + 9, switchRule.getGroupId());
+                Assertions.assertEquals(base + 8, switchRule.getMeterId().intValue());
+                Assertions.assertEquals(base + 9, switchRule.getGroupId());
             } else if (cookie.getDirection() == FlowPathDirection.FORWARD) {
-                assertEquals(base + 8, switchRule.getMeterId().intValue());
-                assertEquals(0, switchRule.getGroupId());
+                Assertions.assertEquals(base + 8, switchRule.getMeterId().intValue());
+                Assertions.assertEquals(0, switchRule.getGroupId());
             } else if (cookie.getDirection() == FlowPathDirection.REVERSE) {
-                assertNull(switchRule.getMeterId());
-                assertEquals(0, switchRule.getGroupId());
+                Assertions.assertNull(switchRule.getMeterId());
+                Assertions.assertEquals(0, switchRule.getGroupId());
             } else {
                 throw new AssertionError(String.format("Unknown rule %s", switchRule));
             }

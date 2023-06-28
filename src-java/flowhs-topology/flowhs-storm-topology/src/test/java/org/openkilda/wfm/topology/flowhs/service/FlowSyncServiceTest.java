@@ -36,12 +36,12 @@ import org.openkilda.wfm.topology.flowhs.model.path.FlowPathResultCode;
 import com.google.common.collect.Sets;
 import lombok.Value;
 import org.apache.commons.lang3.function.FailableConsumer;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -51,7 +51,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class FlowSyncServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
     private static final int SPEAKER_RETRY_LIMIT = 3;
     private static final FlowPathOperationConfig PATH_OPERATION_CONFIG = new FlowPathOperationConfig(
@@ -62,7 +62,7 @@ public class FlowSyncServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
 
     private final Queue<CarrierLaunchPathOperation> pathRequests = new ArrayDeque<>();
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         doAnswer(invocation -> {
             CarrierLaunchPathOperation pathOperation = new CarrierLaunchPathOperation(
@@ -97,14 +97,14 @@ public class FlowSyncServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
             }
         });
 
-        Assert.assertTrue(expected.isEmpty());
-        Assert.assertTrue(unexpected.isEmpty());
+        Assertions.assertTrue(expected.isEmpty());
+        Assertions.assertTrue(unexpected.isEmpty());
 
         Flow flow = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyFlowPathStatus(flow.getForwardPath(), FlowPathStatus.ACTIVE, "forward");
         verifyFlowPathStatus(flow.getReversePath(), FlowPathStatus.ACTIVE, "reversed");
 
-        Assert.assertTrue(service.deactivate());
+        Assertions.assertTrue(service.deactivate());
     }
 
     @Test
@@ -130,19 +130,19 @@ public class FlowSyncServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
             FlowPathRequest pathRequest = entry.getRequest();
             FlowPathReference reference = pathRequest.getReference();
             if (expected.remove(reference.getPathId())) {
-                Assert.assertEquals(2, pathRequest.getPathChunks().size());
+                Assertions.assertEquals(2, pathRequest.getPathChunks().size());
                 service.handlePathSyncResponse(reference, FlowPathResultCode.SUCCESS);
             } else if (expectedProtected.remove(reference.getPathId())) {
-                Assert.assertEquals(1, pathRequest.getPathChunks().size());
+                Assertions.assertEquals(1, pathRequest.getPathChunks().size());
                 service.handlePathSyncResponse(reference, FlowPathResultCode.SUCCESS);
             } else {
                 unexpected.add(entry);
             }
         });
 
-        Assert.assertTrue(expected.isEmpty());
-        Assert.assertTrue(expectedProtected.isEmpty());
-        Assert.assertTrue(unexpected.isEmpty());
+        Assertions.assertTrue(expected.isEmpty());
+        Assertions.assertTrue(expectedProtected.isEmpty());
+        Assertions.assertTrue(unexpected.isEmpty());
 
         Flow flow = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyFlowPathStatus(flow.getForwardPath(), FlowPathStatus.ACTIVE, "forward");
@@ -150,7 +150,7 @@ public class FlowSyncServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
         verifyFlowPathStatus(flow.getProtectedForwardPath(), FlowPathStatus.ACTIVE, "forward-protected");
         verifyFlowPathStatus(flow.getProtectedReversePath(), FlowPathStatus.ACTIVE, "reversed-protected");
 
-        Assert.assertTrue(service.deactivate());
+        Assertions.assertTrue(service.deactivate());
     }
 
     @Test
@@ -173,7 +173,7 @@ public class FlowSyncServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
             }
         });
 
-        Assert.assertTrue(unexpected.isEmpty());
+        Assertions.assertTrue(unexpected.isEmpty());
 
         // All flow's path are in ACTIVE state (same as they were before sync), but due to error during sync
         // final flow state will be DEGRADED (so system will try to fix later).
@@ -181,7 +181,7 @@ public class FlowSyncServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
         verifyFlowPathStatus(flow.getForwardPath(), FlowPathStatus.ACTIVE, "forward");
         verifyFlowPathStatus(flow.getReversePath(), FlowPathStatus.ACTIVE, "reversed");
 
-        Assert.assertTrue(service.deactivate());
+        Assertions.assertTrue(service.deactivate());
     }
 
     @Test
@@ -209,7 +209,7 @@ public class FlowSyncServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
         verifyFlowPathStatus(flow.getForwardPath(), FlowPathStatus.INACTIVE, "forward");
         verifyFlowPathStatus(flow.getReversePath(), FlowPathStatus.ACTIVE, "reversed");
 
-        Assert.assertTrue(service.deactivate());
+        Assertions.assertTrue(service.deactivate());
     }
 
     // utility/service

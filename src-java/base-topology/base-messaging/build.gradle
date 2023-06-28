@@ -17,7 +17,6 @@ dependencies {
     implementation 'org.slf4j:slf4j-api'
     implementation 'javax.validation:validation-api'
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

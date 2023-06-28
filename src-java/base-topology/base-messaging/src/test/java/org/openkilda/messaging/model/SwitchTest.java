@@ -23,8 +23,8 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -58,6 +58,6 @@ public class SwitchTest {
         serializer.serialize(origin);
 
         Switch reconstructed = (Switch) serializer.deserialize();
-        Assert.assertEquals(origin, reconstructed);
+        Assertions.assertEquals(origin, reconstructed);
     }
 }

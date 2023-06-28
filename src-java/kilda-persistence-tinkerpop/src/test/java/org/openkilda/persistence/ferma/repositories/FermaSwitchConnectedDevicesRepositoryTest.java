@@ -16,10 +16,10 @@
 package org.openkilda.persistence.ferma.repositories;
 
 import static com.google.common.collect.Sets.newHashSet;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.model.ConnectedDeviceType.ARP;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
 import static org.openkilda.model.SwitchConnectedDevice.buildUniqueArpIndex;
@@ -35,8 +35,8 @@ import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.collect.Lists;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.Collection;
@@ -78,7 +78,7 @@ public class FermaSwitchConnectedDevicesRepositoryTest extends InMemoryGraphBase
     SwitchRepository switchRepository;
     SwitchConnectedDeviceRepository connectedDeviceRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         switchRepository = repositoryFactory.createSwitchRepository();
         connectedDeviceRepository = repositoryFactory.createSwitchConnectedDeviceRepository();

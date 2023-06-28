@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.ping.bolt.producer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildSegments;
 
 import org.openkilda.model.FlowPath;
@@ -23,7 +24,8 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
 
 public class ProducerUtilsTest {
 
@@ -44,19 +46,23 @@ public class ProducerUtilsTest {
         assertEquals(expectedResult, result);
     }
 
-    @Test (expected = IllegalArgumentException.class)
+    @Test
     public void getFirstIslPortEmptySegments() {
-        FlowPath flowPath = buildPath(PATH_ID, SWITCH_1, SWITCH_2);
+        assertThrows(IllegalArgumentException.class, () -> {
+            FlowPath flowPath = buildPath(PATH_ID, SWITCH_1, SWITCH_2);
 
-        ProducerUtils.getFirstIslPort(flowPath);
+            ProducerUtils.getFirstIslPort(flowPath);
+        });
     }
 
-    @Test (expected = IllegalStateException.class)
+    @Test
     public void getFirstIslPortNoIngressSegment() {
-        FlowPath flowPath = buildPath(PATH_ID, SWITCH_1, SWITCH_2);
-        flowPath.setSegments(buildSegments(PATH_ID, SWITCH_2, SWITCH_3, SWITCH_1));
+        assertThrows(IllegalStateException.class, () -> {
+            FlowPath flowPath = buildPath(PATH_ID, SWITCH_1, SWITCH_2);
+            flowPath.setSegments(buildSegments(PATH_ID, SWITCH_2, SWITCH_3, SWITCH_1));
 
-        ProducerUtils.getFirstIslPort(flowPath);
+            ProducerUtils.getFirstIslPort(flowPath);
+        });
     }
 
     private FlowPath buildPath(

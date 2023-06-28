@@ -15,12 +15,12 @@
 
 package org.openkilda.pce;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
 import org.openkilda.pce.impl.InMemoryPathComputer;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class PathComputerFactoryTest {
     @Test

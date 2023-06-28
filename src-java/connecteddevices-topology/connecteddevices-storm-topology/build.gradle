@@ -20,9 +20,9 @@ dependencies {
     compileOnly('org.apache.storm:storm-core')
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params'
     testImplementation 'org.mockito:mockito-junit-jupiter'
-    testImplementation 'pl.pragmatists:JUnitParams:1.1.1'
 
     compileOnly 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'
@@ -47,4 +47,8 @@ shadowJar {
 
 artifacts {
     archives shadowJar
+}
+
+test {
+    useJUnitPlatform()
 }

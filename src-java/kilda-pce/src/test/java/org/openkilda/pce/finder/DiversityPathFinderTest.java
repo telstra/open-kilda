@@ -19,8 +19,8 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -49,12 +49,9 @@ import org.openkilda.persistence.repositories.IslRepository.IslImmutableView;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import com.google.common.collect.Lists;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -63,7 +60,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-@RunWith(Parameterized.class)
 public class DiversityPathFinderTest {
     public static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     public static final SwitchId SWITCH_ID_2 = new SwitchId(2);
@@ -92,10 +88,8 @@ public class DiversityPathFinderTest {
 
     private AvailableNetworkFactory availableNetworkFactory;
 
-    @Parameter
-    public PathComputationStrategy pathComputationStrategy;
 
-    @Before
+    @BeforeEach
     public void setup() {
         MockitoAnnotations.initMocks(this);
 
@@ -112,8 +106,10 @@ public class DiversityPathFinderTest {
         availableNetworkFactory = new AvailableNetworkFactory(config, repositoryFactory);
     }
 
-    @Test
-    public void chooseSamePathTest() throws RecoverableException, UnroutableFlowException {
+    @ParameterizedTest
+    @EnumSource(PathComputationStrategy.class)
+    public void chooseSamePathTest(PathComputationStrategy pathComputationStrategy)
+            throws RecoverableException, UnroutableFlowException {
         // Topology:
         // A----B----C     Already created flow: A-B-C
         //                 Requested flow: A-B-C
@@ -203,8 +199,10 @@ public class DiversityPathFinderTest {
         );
     }
 
-    @Test
-    public void useSameSwitchTest() throws RecoverableException, UnroutableFlowException {
+    @ParameterizedTest
+    @EnumSource(PathComputationStrategy.class)
+    public void useSameSwitchTest(PathComputationStrategy pathComputationStrategy)
+            throws RecoverableException, UnroutableFlowException {
         // Topology:
         //      D
         //      |
@@ -300,8 +298,10 @@ public class DiversityPathFinderTest {
 
     }
 
-    @Test
-    public void chooseLongerPathTest() throws RecoverableException, UnroutableFlowException {
+    @ParameterizedTest
+    @EnumSource(PathComputationStrategy.class)
+    public void chooseLongerPathTest(PathComputationStrategy pathComputationStrategy)
+            throws RecoverableException, UnroutableFlowException {
         // Topology:
         //      D----E
         //      |    |
@@ -398,8 +398,10 @@ public class DiversityPathFinderTest {
         );
     }
 
-    @Test
-    public void choosePathWithoutSingleSwitchFlowTest() throws RecoverableException, UnroutableFlowException {
+    @ParameterizedTest
+    @EnumSource(PathComputationStrategy.class)
+    public void choosePathWithoutSingleSwitchFlowTest(PathComputationStrategy pathComputationStrategy)
+            throws RecoverableException, UnroutableFlowException {
         // Topology:
         // -----E----D
         // |         |
@@ -513,18 +515,5 @@ public class DiversityPathFinderTest {
                 .bandwidth(100)
                 .ignoreBandwidth(false)
                 .build();
-    }
-
-    /**
-     * PathComputationStrategies.
-     */
-    @Parameters(name = "PathComputationStrategy = {0}")
-    public static Object[][] data() {
-        return new Object[][] {
-                {PathComputationStrategy.MAX_LATENCY},
-                {PathComputationStrategy.LATENCY},
-                {PathComputationStrategy.COST},
-                {PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH}
-        };
     }
 }

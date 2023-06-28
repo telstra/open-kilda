@@ -5,6 +5,7 @@
 
 <suppressions>
     <suppress files="src/main/.*Fsm\.java$" checks="JavadocMethod" />
+    <suppress files="src/test/.*Test\.java$" checks="JavadocMethod" />
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/CypherExecutor.java" lines="81" checks="NonEmptyAtclauseDescription"/>
     <suppress files="src/main/java/org/openkilda/wfm/topology/stats/CypherExecutor.java" lines="85" checks="MissingSwitchDefault"/>

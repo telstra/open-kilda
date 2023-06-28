@@ -15,28 +15,24 @@
 
 package org.openkilda.wfm.topology.stats.bolts.metrics;
 
-import static org.junit.Assert.assertEquals;
-
 import org.openkilda.wfm.topology.stats.bolts.metrics.FlowDirectionHelper.Direction;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
 
 public class FlowDirectionHelperTest {
     private static final long FORWARD_COOKIE = 0x4000000000000001L;
     private static final long REVERSE_COOKIE = 0x2000000000000001L;
-    private static final long BAD_COOKIE =     0x6000000000000001L;
-
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
+    private static final long BAD_COOKIE = 0x6000000000000001L;
 
     @Test
     public void findDirectionTest() throws Exception {
-        assertEquals(Direction.FORWARD, FlowDirectionHelper.findDirection(FORWARD_COOKIE));
-        assertEquals(Direction.REVERSE, FlowDirectionHelper.findDirection(REVERSE_COOKIE));
+        Assertions.assertEquals(Direction.FORWARD, FlowDirectionHelper.findDirection(FORWARD_COOKIE));
+        Assertions.assertEquals(Direction.REVERSE, FlowDirectionHelper.findDirection(REVERSE_COOKIE));
 
-        thrown.expect(FlowCookieException.class);
-        FlowDirectionHelper.findDirection(BAD_COOKIE);
+        Assertions.assertThrows(FlowCookieException.class, () -> {
+            FlowDirectionHelper.findDirection(BAD_COOKIE);
+        });
     }
 }

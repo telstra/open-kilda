@@ -16,8 +16,6 @@
 package org.openkilda.wfm.topology.flowhs.service;
 
 import static java.util.Collections.singletonList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
@@ -35,13 +33,14 @@ import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.RuleManagerImpl;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class FlowPathSwapServiceTest extends AbstractFlowTest<SpeakerRequest> {
     private static final int SPEAKER_COMMAND_RETRIES_LIMIT = 0;
 
@@ -49,7 +48,7 @@ public class FlowPathSwapServiceTest extends AbstractFlowTest<SpeakerRequest> {
     private FlowPathSwapHubCarrier carrier;
     private RuleManager ruleManager;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         doAnswer(buildSpeakerRequestAnswer()).when(carrier).sendSpeakerRequest(any(SpeakerRequest.class));
 
@@ -114,7 +113,7 @@ public class FlowPathSwapServiceTest extends AbstractFlowTest<SpeakerRequest> {
                     service.handleAsyncResponse(dummyRequestKey, buildSpeakerResponse(flowSegmentRequest));
                 }
             } else {
-                fail();
+                Assertions.fail();
             }
         }
 
@@ -162,17 +161,17 @@ public class FlowPathSwapServiceTest extends AbstractFlowTest<SpeakerRequest> {
     }
 
     private void verifyPathSwapped(Flow origin, Flow result) {
-        assertEquals(origin.getProtectedForwardPathId(), result.getForwardPathId());
-        assertEquals(origin.getForwardPathId(), result.getProtectedForwardPathId());
-        assertEquals(origin.getProtectedReversePathId(), result.getReversePathId());
-        assertEquals(origin.getReversePathId(), result.getProtectedReversePathId());
+        Assertions.assertEquals(origin.getProtectedForwardPathId(), result.getForwardPathId());
+        Assertions.assertEquals(origin.getForwardPathId(), result.getProtectedForwardPathId());
+        Assertions.assertEquals(origin.getProtectedReversePathId(), result.getReversePathId());
+        Assertions.assertEquals(origin.getReversePathId(), result.getProtectedReversePathId());
     }
 
     private void verifyPathNotSwapped(Flow origin, Flow result) {
-        assertEquals(origin.getForwardPathId(), result.getForwardPathId());
-        assertEquals(origin.getProtectedForwardPathId(), result.getProtectedForwardPathId());
-        assertEquals(origin.getReversePathId(), result.getReversePathId());
-        assertEquals(origin.getProtectedReversePathId(), result.getProtectedReversePathId());
+        Assertions.assertEquals(origin.getForwardPathId(), result.getForwardPathId());
+        Assertions.assertEquals(origin.getProtectedForwardPathId(), result.getProtectedForwardPathId());
+        Assertions.assertEquals(origin.getReversePathId(), result.getReversePathId());
+        Assertions.assertEquals(origin.getProtectedReversePathId(), result.getProtectedReversePathId());
     }
 
     @Override

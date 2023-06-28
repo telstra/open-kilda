@@ -15,9 +15,9 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PhysicalPort;
@@ -26,9 +26,8 @@ import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.LagLogicalPortRepository;
 import org.openkilda.persistence.repositories.PhysicalPortRepository;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mapstruct.ap.internal.util.Collections;
 
 import java.util.ArrayList;
@@ -52,7 +51,7 @@ public class FermaPhysicalPortTest extends InMemoryGraphBasedTest {
     LagLogicalPortRepository lagLogicalPortRepository;
     PhysicalPortRepository physicalPortRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         lagLogicalPortRepository = repositoryFactory.createLagLogicalPortRepository();
         physicalPortRepository = repositoryFactory.createPhysicalPortRepository();
@@ -73,13 +72,13 @@ public class FermaPhysicalPortTest extends InMemoryGraphBasedTest {
         assertEquals(3, ports.size());
         ports.sort(Comparator.comparingInt(PhysicalPort::getPortNumber));
 
-        Assert.assertEquals(PHYSICAL_PORT_NUMBER_1, ports.get(0).getPortNumber());
-        Assert.assertEquals(PHYSICAL_PORT_NUMBER_2, ports.get(1).getPortNumber());
-        Assert.assertEquals(PHYSICAL_PORT_NUMBER_3, ports.get(2).getPortNumber());
+        assertEquals(PHYSICAL_PORT_NUMBER_1, ports.get(0).getPortNumber());
+        assertEquals(PHYSICAL_PORT_NUMBER_2, ports.get(1).getPortNumber());
+        assertEquals(PHYSICAL_PORT_NUMBER_3, ports.get(2).getPortNumber());
 
-        Assert.assertEquals(SWITCH_ID_1, ports.get(0).getSwitchId());
-        Assert.assertEquals(SWITCH_ID_1, ports.get(1).getSwitchId());
-        Assert.assertEquals(SWITCH_ID_2, ports.get(2).getSwitchId());
+        assertEquals(SWITCH_ID_1, ports.get(0).getSwitchId());
+        assertEquals(SWITCH_ID_1, ports.get(1).getSwitchId());
+        assertEquals(SWITCH_ID_2, ports.get(2).getSwitchId());
 
         assertNull(ports.get(0).getLagLogicalPort());
         assertNull(ports.get(1).getLagLogicalPort());

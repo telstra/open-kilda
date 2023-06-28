@@ -31,12 +31,12 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.TupleImpl;
 import org.apache.storm.tuple.Values;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -44,7 +44,7 @@ import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.Objects;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class MonotonicClockTest {
     @Mock
     private OutputCollector output;
@@ -52,7 +52,7 @@ public class MonotonicClockTest {
     @Mock
     private TopologyContext topologyContext;
 
-    @BeforeClass
+    @BeforeAll
     public static void initPersistenceManager() {
         InMemoryGraphPersistenceManager.newInstance().install();
     }
@@ -159,7 +159,7 @@ public class MonotonicClockTest {
 
     private Tuple makeSystemTickTuple() {
         return new TupleImpl(topologyContext, Collections.emptyList(),
-                             (int) Constants.SYSTEM_TASK_ID, Constants.SYSTEM_TICK_STREAM_ID);
+                (int) Constants.SYSTEM_TASK_ID, Constants.SYSTEM_TICK_STREAM_ID);
 
     }
 

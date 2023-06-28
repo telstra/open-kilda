@@ -15,10 +15,11 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static junit.framework.TestCase.assertNull;
-import static junit.framework.TestCase.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.messaging.model.SwitchLocation;
 import org.openkilda.messaging.model.SwitchPatch;
@@ -58,8 +59,8 @@ import org.openkilda.wfm.share.model.Endpoint;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -93,7 +94,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     private static final MacAddress SERVER_42_MAC_ADDRESS_1 = new MacAddress("42:42:42:42:42:42");
     private static final MacAddress SERVER_42_MAC_ADDRESS_2 = new MacAddress("45:45:45:45:45:45");
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpOnce() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
@@ -159,96 +160,106 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         assertTrue(portPropertiesRepository.findAll().isEmpty());
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateSupportedEncapsulationTypeWhenUpdatingSwitchProperties() {
-        Switch sw = createSwitch(TEST_SWITCH_ID);
-        createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false, false);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            Switch sw = createSwitch(TEST_SWITCH_ID);
+            createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false, false);
 
-        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, new SwitchPropertiesDto());
+            switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, new SwitchPropertiesDto());
+        });
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateMultiTableFlagWhenUpdatingSwitchProperties() {
-        Switch sw = createSwitch(TEST_SWITCH_ID);
-        createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, true, false);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            Switch sw = createSwitch(TEST_SWITCH_ID);
+            createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, true, false);
 
-        // user can't disable multiTable without disabling LLDP
-        SwitchPropertiesDto update = new SwitchPropertiesDto();
-        update.setSupportedTransitEncapsulation(
-                Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
-        update.setMultiTable(false);
-        update.setSwitchLldp(true);
+            // user can't disable multiTable without disabling LLDP
+            SwitchPropertiesDto update = new SwitchPropertiesDto();
+            update.setSupportedTransitEncapsulation(
+                    Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+            update.setMultiTable(false);
+            update.setSwitchLldp(true);
 
-        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+            switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+        });
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateFlowWithLldpFlagWhenUpdatingSwitchProperties() {
-        Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
-        Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
+            Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
 
-        Flow flow = Flow.builder()
-                .flowId(TEST_FLOW_ID_1)
-                .srcSwitch(firstSwitch)
-                .destSwitch(secondSwitch)
-                .detectConnectedDevices(new DetectConnectedDevices(
-                        true, false, true, false, false, false, false, false))
-                .build();
-        flowRepository.add(flow);
+            Flow flow = Flow.builder()
+                    .flowId(TEST_FLOW_ID_1)
+                    .srcSwitch(firstSwitch)
+                    .destSwitch(secondSwitch)
+                    .detectConnectedDevices(new DetectConnectedDevices(
+                            true, false, true, false, false, false, false, false))
+                    .build();
+            flowRepository.add(flow);
 
-        createSwitchProperties(
-                firstSwitch, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+            createSwitchProperties(
+                    firstSwitch, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
 
-        // user can't disable multiTable if some flows has enabled detect connected devices via LLDP
-        SwitchPropertiesDto update = new SwitchPropertiesDto();
-        update.setSupportedTransitEncapsulation(
-                Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
-        update.setMultiTable(false);
-        update.setSwitchLldp(false);
+            // user can't disable multiTable if some flows has enabled detect connected devices via LLDP
+            SwitchPropertiesDto update = new SwitchPropertiesDto();
+            update.setSupportedTransitEncapsulation(
+                    Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+            update.setMultiTable(false);
+            update.setSwitchLldp(false);
 
-        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+            switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+        });
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateMultiTableFlagWhenUpdatingSwitchPropertiesWithArp() {
-        Switch sw = createSwitch(TEST_SWITCH_ID);
-        createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, true);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            Switch sw = createSwitch(TEST_SWITCH_ID);
+            createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, true);
 
-        // user can't disable multiTable without disabling ARP
-        SwitchPropertiesDto update = new SwitchPropertiesDto();
-        update.setSupportedTransitEncapsulation(
-                Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
-        update.setMultiTable(false);
-        update.setSwitchArp(true);
+            // user can't disable multiTable without disabling ARP
+            SwitchPropertiesDto update = new SwitchPropertiesDto();
+            update.setSupportedTransitEncapsulation(
+                    Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+            update.setMultiTable(false);
+            update.setSwitchArp(true);
 
-        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+            switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+        });
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateFlowWithArpFlagWhenUpdatingSwitchProperties() {
-        Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
-        Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
+            Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
 
-        Flow flow = Flow.builder()
-                .flowId(TEST_FLOW_ID_1)
-                .srcSwitch(firstSwitch)
-                .destSwitch(secondSwitch)
-                .detectConnectedDevices(
-                        new DetectConnectedDevices(false, true, false, true, false, false, false, false))
-                .build();
-        flowRepository.add(flow);
+            Flow flow = Flow.builder()
+                    .flowId(TEST_FLOW_ID_1)
+                    .srcSwitch(firstSwitch)
+                    .destSwitch(secondSwitch)
+                    .detectConnectedDevices(
+                            new DetectConnectedDevices(false, true, false, true, false, false, false, false))
+                    .build();
+            flowRepository.add(flow);
 
-        createSwitchProperties(firstSwitch,
-                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+            createSwitchProperties(firstSwitch,
+                    Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
 
-        // user can't disable multiTable if some flows has enabled detect connected devices via ARP
-        SwitchPropertiesDto update = new SwitchPropertiesDto();
-        update.setSupportedTransitEncapsulation(
-                Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
-        update.setMultiTable(false);
-        update.setSwitchArp(false);
+            // user can't disable multiTable if some flows has enabled detect connected devices via ARP
+            SwitchPropertiesDto update = new SwitchPropertiesDto();
+            update.setSupportedTransitEncapsulation(
+                    Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+            update.setMultiTable(false);
+            update.setSwitchArp(false);
 
-        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+            switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+        });
     }
 
     @Test
@@ -375,151 +386,165 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         assertEquals(SERVER_42_MAC_ADDRESS_2, updated.get().getServer42MacAddress());
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateServer42VlanWhenEnableFlowRttInSwitchProperties() {
-        // user can't enable server42FlowRtt and do not specify server42Vlan
-        SwitchPropertiesDto properties = new SwitchPropertiesDto();
-        properties.setServer42FlowRtt(true);
-        properties.setServer42Port(SERVER_42_PORT_2);
-        properties.setServer42Vlan(null);
-        properties.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
-        runInvalidServer42PropsTest(properties);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            // user can't enable server42FlowRtt and do not specify server42Vlan
+            SwitchPropertiesDto properties = new SwitchPropertiesDto();
+            properties.setServer42FlowRtt(true);
+            properties.setServer42Port(SERVER_42_PORT_2);
+            properties.setServer42Vlan(null);
+            properties.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
+            runInvalidServer42PropsTest(properties);
+        });
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateServer42PortWhenEnableFlowRttInSwitchProperties() {
-        // user can't enable server42FlowRtt and do not specify server42Port
-        SwitchPropertiesDto properties = new SwitchPropertiesDto();
-        properties.setServer42FlowRtt(true);
-        properties.setServer42Port(null);
-        properties.setServer42Vlan(SERVER_42_VLAN_2);
-        properties.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
-        runInvalidServer42PropsTest(properties);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            // user can't enable server42FlowRtt and do not specify server42Port
+            SwitchPropertiesDto properties = new SwitchPropertiesDto();
+            properties.setServer42FlowRtt(true);
+            properties.setServer42Port(null);
+            properties.setServer42Vlan(SERVER_42_VLAN_2);
+            properties.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
+            runInvalidServer42PropsTest(properties);
+        });
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateServer42MacAddressWhenEnableFlowRttInSwitchProperties() {
-        // user can't enable server42FlowRtt and do not specify server42MacAddress
-        SwitchPropertiesDto properties = new SwitchPropertiesDto();
-        properties.setServer42FlowRtt(true);
-        properties.setServer42Port(SERVER_42_PORT_2);
-        properties.setServer42Vlan(SERVER_42_VLAN_2);
-        properties.setServer42MacAddress(null);
-        runInvalidServer42PropsTest(properties);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            // user can't enable server42FlowRtt and do not specify server42MacAddress
+            SwitchPropertiesDto properties = new SwitchPropertiesDto();
+            properties.setServer42FlowRtt(true);
+            properties.setServer42Port(SERVER_42_PORT_2);
+            properties.setServer42Vlan(SERVER_42_VLAN_2);
+            properties.setServer42MacAddress(null);
+            runInvalidServer42PropsTest(properties);
+        });
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateFlowMirrorPointsWhenUpdatingSwitchLldpProperties() {
-        Switch mirrorSwitch = createSwitch(TEST_SWITCH_ID);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            Switch mirrorSwitch = createSwitch(TEST_SWITCH_ID);
 
-        MirrorGroup mirrorGroup = MirrorGroup.builder()
-                .switchId(TEST_SWITCH_ID)
-                .groupId(new GroupId(12L))
-                .pathId(new PathId("test_path_id"))
-                .flowId(TEST_FLOW_ID_1)
-                .mirrorGroupType(MirrorGroupType.TRAFFIC_INTEGRITY)
-                .mirrorDirection(MirrorDirection.INGRESS)
-                .build();
-        mirrorGroupRepository.add(mirrorGroup);
+            MirrorGroup mirrorGroup = MirrorGroup.builder()
+                    .switchId(TEST_SWITCH_ID)
+                    .groupId(new GroupId(12L))
+                    .pathId(new PathId("test_path_id"))
+                    .flowId(TEST_FLOW_ID_1)
+                    .mirrorGroupType(MirrorGroupType.TRAFFIC_INTEGRITY)
+                    .mirrorDirection(MirrorDirection.INGRESS)
+                    .build();
+            mirrorGroupRepository.add(mirrorGroup);
 
-        FlowMirrorPoints flowMirrorPoints = FlowMirrorPoints.builder()
-                .mirrorGroup(mirrorGroup)
-                .mirrorSwitch(mirrorSwitch)
-                .build();
-        flowMirrorPointsRepository.add(flowMirrorPoints);
+            FlowMirrorPoints flowMirrorPoints = FlowMirrorPoints.builder()
+                    .mirrorGroup(mirrorGroup)
+                    .mirrorSwitch(mirrorSwitch)
+                    .build();
+            flowMirrorPointsRepository.add(flowMirrorPoints);
 
-        createSwitchProperties(
-                mirrorSwitch, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+            createSwitchProperties(
+                    mirrorSwitch, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
 
-        SwitchPropertiesDto update = new SwitchPropertiesDto();
-        update.setSupportedTransitEncapsulation(
-                Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
-        update.setMultiTable(true);
-        update.setSwitchLldp(true);
+            SwitchPropertiesDto update = new SwitchPropertiesDto();
+            update.setSupportedTransitEncapsulation(
+                    Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+            update.setMultiTable(true);
+            update.setSwitchLldp(true);
 
-        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+            switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+        });
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateFlowMirrorPointsWhenUpdatingSwitchArpProperties() {
-        Switch mirrorSwitch = createSwitch(TEST_SWITCH_ID);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            Switch mirrorSwitch = createSwitch(TEST_SWITCH_ID);
 
-        MirrorGroup mirrorGroup = MirrorGroup.builder()
-                .switchId(TEST_SWITCH_ID)
-                .groupId(new GroupId(12L))
-                .pathId(new PathId("test_path_id"))
-                .flowId(TEST_FLOW_ID_1)
-                .mirrorGroupType(MirrorGroupType.TRAFFIC_INTEGRITY)
-                .mirrorDirection(MirrorDirection.INGRESS)
-                .build();
-        mirrorGroupRepository.add(mirrorGroup);
+            MirrorGroup mirrorGroup = MirrorGroup.builder()
+                    .switchId(TEST_SWITCH_ID)
+                    .groupId(new GroupId(12L))
+                    .pathId(new PathId("test_path_id"))
+                    .flowId(TEST_FLOW_ID_1)
+                    .mirrorGroupType(MirrorGroupType.TRAFFIC_INTEGRITY)
+                    .mirrorDirection(MirrorDirection.INGRESS)
+                    .build();
+            mirrorGroupRepository.add(mirrorGroup);
 
-        FlowMirrorPoints flowMirrorPoints = FlowMirrorPoints.builder()
-                .mirrorGroup(mirrorGroup)
-                .mirrorSwitch(mirrorSwitch)
-                .build();
-        flowMirrorPointsRepository.add(flowMirrorPoints);
+            FlowMirrorPoints flowMirrorPoints = FlowMirrorPoints.builder()
+                    .mirrorGroup(mirrorGroup)
+                    .mirrorSwitch(mirrorSwitch)
+                    .build();
+            flowMirrorPointsRepository.add(flowMirrorPoints);
 
-        createSwitchProperties(
-                mirrorSwitch, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+            createSwitchProperties(
+                    mirrorSwitch, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
 
-        SwitchPropertiesDto update = new SwitchPropertiesDto();
-        update.setSupportedTransitEncapsulation(
-                Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
-        update.setMultiTable(true);
-        update.setSwitchArp(true);
+            SwitchPropertiesDto update = new SwitchPropertiesDto();
+            update.setSupportedTransitEncapsulation(
+                    Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+            update.setMultiTable(true);
+            update.setSwitchArp(true);
 
-        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+            switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+        });
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateFlowWhenUpdatingServer42PortSwitchProperties() {
-        Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
-        Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
+            Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
 
-        Flow flow = Flow.builder()
-                .flowId(TEST_FLOW_ID_1)
-                .srcSwitch(firstSwitch)
-                .srcPort(TEST_FLOW_SRC_PORT)
-                .destSwitch(secondSwitch)
-                .detectConnectedDevices(
-                        new DetectConnectedDevices(false, true, false, true, false, false, false, false))
-                .build();
-        flowRepository.add(flow);
+            Flow flow = Flow.builder()
+                    .flowId(TEST_FLOW_ID_1)
+                    .srcSwitch(firstSwitch)
+                    .srcPort(TEST_FLOW_SRC_PORT)
+                    .destSwitch(secondSwitch)
+                    .detectConnectedDevices(
+                            new DetectConnectedDevices(false, true, false, true, false, false, false, false))
+                    .build();
+            flowRepository.add(flow);
 
-        createSwitchProperties(firstSwitch,
-                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+            createSwitchProperties(firstSwitch,
+                    Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
 
-        SwitchPropertiesDto update = new SwitchPropertiesDto();
-        update.setSupportedTransitEncapsulation(
-                Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
-        update.setServer42Port(TEST_FLOW_SRC_PORT);
+            SwitchPropertiesDto update = new SwitchPropertiesDto();
+            update.setSupportedTransitEncapsulation(
+                    Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+            update.setServer42Port(TEST_FLOW_SRC_PORT);
 
-        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+            switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+        });
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateFlowMirrorPathWhenUpdatingServer42PortSwitchProperties() {
-        Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
-        Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
+            Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
 
-        FlowMirrorPath flowMirrorPath = FlowMirrorPath.builder()
-                .pathId(new PathId("test_path_id"))
-                .mirrorSwitch(secondSwitch)
-                .egressSwitch(firstSwitch)
-                .egressPort(TEST_FLOW_SRC_PORT)
-                .build();
-        flowMirrorPathRepository.add(flowMirrorPath);
+            FlowMirrorPath flowMirrorPath = FlowMirrorPath.builder()
+                    .pathId(new PathId("test_path_id"))
+                    .mirrorSwitch(secondSwitch)
+                    .egressSwitch(firstSwitch)
+                    .egressPort(TEST_FLOW_SRC_PORT)
+                    .build();
+            flowMirrorPathRepository.add(flowMirrorPath);
 
-        createSwitchProperties(firstSwitch,
-                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+            createSwitchProperties(firstSwitch,
+                    Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
 
-        SwitchPropertiesDto update = new SwitchPropertiesDto();
-        update.setSupportedTransitEncapsulation(
-                Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
-        update.setServer42Port(TEST_FLOW_SRC_PORT);
+            SwitchPropertiesDto update = new SwitchPropertiesDto();
+            update.setSupportedTransitEncapsulation(
+                    Collections.singleton(org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
+            update.setServer42Port(TEST_FLOW_SRC_PORT);
 
-        switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+            switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
+        });
     }
 
     @Test
@@ -584,37 +609,43 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         assertEquals(SERVER_42_MAC_ADDRESS_2, updated.get().getServer42MacAddress());
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateServer42VlanWhenEnableIslRttInSwitchProperties() {
-        // user can't enable server42FlowRtt and do not specify server42Vlan
-        SwitchPropertiesDto properties = new SwitchPropertiesDto();
-        properties.setServer42IslRtt(SwitchPropertiesDto.RttState.ENABLED);
-        properties.setServer42Port(SERVER_42_PORT_2);
-        properties.setServer42Vlan(null);
-        properties.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
-        runInvalidServer42PropsTest(properties);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            // user can't enable server42FlowRtt and do not specify server42Vlan
+            SwitchPropertiesDto properties = new SwitchPropertiesDto();
+            properties.setServer42IslRtt(SwitchPropertiesDto.RttState.ENABLED);
+            properties.setServer42Port(SERVER_42_PORT_2);
+            properties.setServer42Vlan(null);
+            properties.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
+            runInvalidServer42PropsTest(properties);
+        });
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateServer42PortWhenEnableIslRttInSwitchProperties() {
-        // user can't enable server42FlowRtt and do not specify server42Port
-        SwitchPropertiesDto properties = new SwitchPropertiesDto();
-        properties.setServer42IslRtt(SwitchPropertiesDto.RttState.ENABLED);
-        properties.setServer42Port(null);
-        properties.setServer42Vlan(SERVER_42_VLAN_2);
-        properties.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
-        runInvalidServer42PropsTest(properties);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            // user can't enable server42FlowRtt and do not specify server42Port
+            SwitchPropertiesDto properties = new SwitchPropertiesDto();
+            properties.setServer42IslRtt(SwitchPropertiesDto.RttState.ENABLED);
+            properties.setServer42Port(null);
+            properties.setServer42Vlan(SERVER_42_VLAN_2);
+            properties.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
+            runInvalidServer42PropsTest(properties);
+        });
     }
 
-    @Test(expected = IllegalSwitchPropertiesException.class)
+    @Test
     public void shouldValidateServer42MacAddressWhenEnableIslRttInSwitchProperties() {
-        // user can't enable server42FlowRtt and do not specify server42MacAddress
-        SwitchPropertiesDto properties = new SwitchPropertiesDto();
-        properties.setServer42IslRtt(SwitchPropertiesDto.RttState.ENABLED);
-        properties.setServer42Port(SERVER_42_PORT_2);
-        properties.setServer42Vlan(SERVER_42_VLAN_2);
-        properties.setServer42MacAddress(null);
-        runInvalidServer42PropsTest(properties);
+        assertThrows(IllegalSwitchPropertiesException.class, () -> {
+            // user can't enable server42FlowRtt and do not specify server42MacAddress
+            SwitchPropertiesDto properties = new SwitchPropertiesDto();
+            properties.setServer42IslRtt(SwitchPropertiesDto.RttState.ENABLED);
+            properties.setServer42Port(SERVER_42_PORT_2);
+            properties.setServer42Vlan(SERVER_42_VLAN_2);
+            properties.setServer42MacAddress(null);
+            runInvalidServer42PropsTest(properties);
+        });
     }
 
     @Test
@@ -662,9 +693,10 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         assertTrue(ports.iterator().next().isLacpReply());
     }
 
-    @Test(expected = SwitchNotFoundException.class)
-    public void shouldThrowExceptionDuringGettingLagPorts() throws SwitchNotFoundException {
-        switchOperationsService.getSwitchLagPorts(TEST_SWITCH_ID);
+    @Test
+    public void shouldThrowExceptionDuringGettingLagPorts() {
+        assertThrows(SwitchNotFoundException.class, () -> switchOperationsService.getSwitchLagPorts(TEST_SWITCH_ID));
+
     }
 
     private void runInvalidServer42PropsTest(SwitchPropertiesDto invalidProperties) {

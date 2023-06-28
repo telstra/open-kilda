@@ -6,5 +6,6 @@
 <suppressions>
     <suppress files="src/main/.*Fsm\.java$" checks="JavadocMethod" />
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
+    <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="JavadocMethod" />
     <suppress files="src/test/java/org/openkilda/wfm/topology/opentsdb/bolt/OpenTsdbFilterBoltTest.java" lines="140" checks="AvoidEscapedUnicodeCharacters"/>
 </suppressions>

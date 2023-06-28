@@ -21,8 +21,8 @@ import static org.apache.storm.utils.Utils.sleep;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openkilda.model.FlowPathDirection.FORWARD;
 import static org.openkilda.model.FlowPathDirection.REVERSE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
@@ -83,12 +83,11 @@ import com.google.common.collect.Sets;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -157,7 +156,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static final String flowId = "f253423454343";
     private static final String Y_FLOW_ID = "Y_flow_1";
 
-    @BeforeClass
+    @BeforeAll
     public static void setupOnce() throws Exception {
         Properties configOverlay = getZooKeeperProperties(STATS_TOPOLOGY_TEST_ZOOKEEPER_PORT, ROOT_NODE);
         configOverlay.putAll(getKafkaProperties(STATS_TOPOLOGY_TEST_KAFKA_PORT));
@@ -192,7 +191,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         sleep(TOPOLOGY_START_TIMEOUT);
     }
 
-    @AfterClass
+    @AfterAll
     public static void teardownOnce() throws Exception {
         otsdbConsumer.wakeup();
         otsdbConsumer.join();
@@ -200,7 +199,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         AbstractStormTest.stopZooKafkaAndStorm();
     }
 
-    @Before
+    @BeforeEach
     public void setup() {
         otsdbConsumer.clear();
 
@@ -878,7 +877,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     }
 
     @Test
-    @Ignore
+    @Disabled
     public void flowLldpStatsTest() {
         long lldpCookie = 1;
         FlowStatsEntry stats = new FlowStatsEntry(1, lldpCookie, 450, 550L, 10, 10);
@@ -938,19 +937,19 @@ public class StatsTopologyTest extends AbstractStormTest {
                 .filter(entry -> (METRIC_PREFIX + "flow.raw.packets").equals(entry.getMetric()))
                 .collect(Collectors.toList());
 
-        Assert.assertEquals(3, rawPacketsMetric.size());
+        assertEquals(3, rawPacketsMetric.size());
         for (Datapoint entry : rawPacketsMetric) {
             Map<String, String> tags = entry.getTags();
-            Assert.assertEquals(CookieType.SERVER_42_FLOW_RTT_INGRESS.name().toLowerCase(), tags.get("type"));
+            assertEquals(CookieType.SERVER_42_FLOW_RTT_INGRESS.name().toLowerCase(), tags.get("type"));
 
             if (Objects.equals(0, entry.getValue())) {
-                Assert.assertEquals("unknown", tags.get("flowid"));
+                assertEquals("unknown", tags.get("flowid"));
             } else if (Objects.equals(1, entry.getValue())) {
-                Assert.assertEquals(flowId, tags.get("flowid"));
+                assertEquals(flowId, tags.get("flowid"));
             } else if (Objects.equals(2, entry.getValue())) {
-                Assert.assertEquals("unknown", tags.get("flowid"));
+                assertEquals("unknown", tags.get("flowid"));
             } else {
-                Assert.fail(format("Unexpected metric value: %s", entry));
+                fail(format("Unexpected metric value: %s", entry));
             }
         }
     }

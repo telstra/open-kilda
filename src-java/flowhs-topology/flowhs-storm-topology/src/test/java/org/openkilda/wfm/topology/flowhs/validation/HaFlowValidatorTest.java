@@ -39,8 +39,9 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -64,7 +65,7 @@ public class HaFlowValidatorTest {
 
     public static HaFlowValidator haFlowValidator;
 
-    @BeforeClass
+    @BeforeAll
     public static void setup() {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createFlowRepository()).thenReturn(mock(FlowRepository.class));
@@ -100,15 +101,16 @@ public class HaFlowValidatorTest {
         when(physicalPortRepository.findBySwitchIdAndPortNumber(any(), anyInt())).thenReturn(Optional.empty());
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfNoSubFlowsProvidedTest()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        HaFlowRequest request = HaFlowRequest.builder()
-                .haFlowId(HA_FLOW_ID)
-                .sharedEndpoint(new FlowEndpoint(SWITCH_ID_1, PORT_1))
-                .subFlows(emptyList())
-                .build();
-        haFlowValidator.validate(request);
+    @Test
+    public void failIfNoSubFlowsProvidedTest() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            HaFlowRequest request = HaFlowRequest.builder()
+                    .haFlowId(HA_FLOW_ID)
+                    .sharedEndpoint(new FlowEndpoint(SWITCH_ID_1, PORT_1))
+                    .subFlows(emptyList())
+                    .build();
+            haFlowValidator.validate(request);
+        });
     }
 
     @Test
@@ -137,46 +139,50 @@ public class HaFlowValidatorTest {
         haFlowValidator.validate(request);
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void faitIfBothSubFlowIsOneSwitchFlowTest()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        HaFlowRequest request = HaFlowRequest.builder()
-                .haFlowId(HA_FLOW_ID)
-                .sharedEndpoint(new FlowEndpoint(SWITCH_ID_1, PORT_3))
-                .subFlows(Arrays.asList(
-                        buildSubFlow(SUB_FLOW_ID_1, SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1),
-                        buildSubFlow(SUB_FLOW_ID_2, SWITCH_ID_1, PORT_2, VLAN_2, INNER_VLAN_2)))
-                .build();
-        haFlowValidator.validate(request);
+    @Test
+    public void faitIfBothSubFlowIsOneSwitchFlowTest() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            HaFlowRequest request = HaFlowRequest.builder()
+                    .haFlowId(HA_FLOW_ID)
+                    .sharedEndpoint(new FlowEndpoint(SWITCH_ID_1, PORT_3))
+                    .subFlows(Arrays.asList(
+                            buildSubFlow(SUB_FLOW_ID_1, SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1),
+                            buildSubFlow(SUB_FLOW_ID_2, SWITCH_ID_1, PORT_2, VLAN_2, INNER_VLAN_2)))
+                    .build();
+            haFlowValidator.validate(request);
+        });
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfNegativeBandwidthProvidedTest()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        HaFlowRequest request = HaFlowRequest.builder()
-                .haFlowId(HA_FLOW_ID)
-                .maximumBandwidth(-1)
-                .sharedEndpoint(new FlowEndpoint(SWITCH_ID_1, PORT_1))
-                .subFlows(Arrays.asList(
-                        buildSubFlow(SUB_FLOW_ID_1, SWITCH_ID_2, PORT_2, VLAN_2, INNER_VLAN_2),
-                        buildSubFlow(SUB_FLOW_ID_2, SWITCH_ID_3, PORT_3, VLAN_3, INNER_VLAN_3)))
-                .build();
-        haFlowValidator.validate(request);
+    @Test
+    public void failIfNegativeBandwidthProvidedTest() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            HaFlowRequest request = HaFlowRequest.builder()
+                    .haFlowId(HA_FLOW_ID)
+                    .maximumBandwidth(-1)
+                    .sharedEndpoint(new FlowEndpoint(SWITCH_ID_1, PORT_1))
+                    .subFlows(Arrays.asList(
+                            buildSubFlow(SUB_FLOW_ID_1, SWITCH_ID_2, PORT_2, VLAN_2, INNER_VLAN_2),
+                            buildSubFlow(SUB_FLOW_ID_2, SWITCH_ID_3, PORT_3, VLAN_3, INNER_VLAN_3)))
+                    .build();
+            haFlowValidator.validate(request);
+        });
     }
 
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfMaxLatencyTier2HigherThanMaxLatencyTest()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        HaFlowRequest request = buildHaFlowRequestWithMaxLatency(1000L, 500L);
-        haFlowValidator.validate(request);
+    @Test
+    public void failIfMaxLatencyTier2HigherThanMaxLatencyTest() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            HaFlowRequest request = buildHaFlowRequestWithMaxLatency(1000L, 500L);
+            haFlowValidator.validate(request);
+        });
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfMaxLatencyTier2butMaxLatencyIsNullTest()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        HaFlowRequest request = buildHaFlowRequestWithMaxLatency(null, 500L);
-        haFlowValidator.validate(request);
+    @Test
+    public void failIfMaxLatencyTier2butMaxLatencyIsNullTest() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            HaFlowRequest request = buildHaFlowRequestWithMaxLatency(null, 500L);
+            haFlowValidator.validate(request);
+        });
     }
 
     @Test
@@ -193,45 +199,48 @@ public class HaFlowValidatorTest {
         haFlowValidator.validate(request);
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfNoSharedEndpointProvidedTest()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        HaFlowRequest request = HaFlowRequest.builder()
-                .haFlowId(HA_FLOW_ID)
-                .subFlows(Arrays.asList(
-                        buildSubFlow(SUB_FLOW_ID_1, SWITCH_ID_2, PORT_2, VLAN_2, INNER_VLAN_2),
-                        buildSubFlow(SUB_FLOW_ID_2, SWITCH_ID_3, PORT_3, VLAN_3, INNER_VLAN_3)))
-                .build();
-        haFlowValidator.validate(request);
+    @Test
+    public void failIfNoSharedEndpointProvidedTest() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            HaFlowRequest request = HaFlowRequest.builder()
+                    .haFlowId(HA_FLOW_ID)
+                    .subFlows(Arrays.asList(
+                            buildSubFlow(SUB_FLOW_ID_1, SWITCH_ID_2, PORT_2, VLAN_2, INNER_VLAN_2),
+                            buildSubFlow(SUB_FLOW_ID_2, SWITCH_ID_3, PORT_3, VLAN_3, INNER_VLAN_3)))
+                    .build();
+            haFlowValidator.validate(request);
+        });
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfSubFlowHasNoEndpointProvidedTest()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        HaFlowRequest request = HaFlowRequest.builder()
-                .haFlowId(HA_FLOW_ID)
-                .sharedEndpoint(new FlowEndpoint(SWITCH_ID_1, PORT_1))
-                .subFlows(Arrays.asList(
-                        HaSubFlowDto.builder().flowId(SUB_FLOW_ID_1).build(),
-                        HaSubFlowDto.builder().flowId(SUB_FLOW_ID_2).build()))
-                .build();
-        haFlowValidator.validate(request);
+    @Test
+    public void failIfSubFlowHasNoEndpointProvidedTest() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            HaFlowRequest request = HaFlowRequest.builder()
+                    .haFlowId(HA_FLOW_ID)
+                    .sharedEndpoint(new FlowEndpoint(SWITCH_ID_1, PORT_1))
+                    .subFlows(Arrays.asList(
+                            HaSubFlowDto.builder().flowId(SUB_FLOW_ID_1).build(),
+                            HaSubFlowDto.builder().flowId(SUB_FLOW_ID_2).build()))
+                    .build();
+            haFlowValidator.validate(request);
+        });
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfSubFlowHasNoIdTest()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        HaFlowRequest request = HaFlowRequest.builder()
-                .haFlowId(HA_FLOW_ID)
-                .sharedEndpoint(new FlowEndpoint(SWITCH_ID_1, PORT_1))
-                .subFlows(Arrays.asList(HaSubFlowDto.builder()
-                                .endpoint(new FlowEndpoint(SWITCH_ID_2, PORT_2, VLAN_2))
-                                .build(),
-                        HaSubFlowDto.builder()
-                                .endpoint(new FlowEndpoint(SWITCH_ID_3, PORT_3, VLAN_3))
-                                .build()))
-                .build();
-        haFlowValidator.validate(request);
+    @Test
+    public void failIfSubFlowHasNoIdTest() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            HaFlowRequest request = HaFlowRequest.builder()
+                    .haFlowId(HA_FLOW_ID)
+                    .sharedEndpoint(new FlowEndpoint(SWITCH_ID_1, PORT_1))
+                    .subFlows(Arrays.asList(HaSubFlowDto.builder()
+                                    .endpoint(new FlowEndpoint(SWITCH_ID_2, PORT_2, VLAN_2))
+                                    .build(),
+                            HaSubFlowDto.builder()
+                                    .endpoint(new FlowEndpoint(SWITCH_ID_3, PORT_3, VLAN_3))
+                                    .build()))
+                    .build();
+            haFlowValidator.validate(request);
+        });
     }
 
     private static HaSubFlowDto buildSubFlow(String flowId, SwitchId switchId, int port, int vlan, int innerVlan) {

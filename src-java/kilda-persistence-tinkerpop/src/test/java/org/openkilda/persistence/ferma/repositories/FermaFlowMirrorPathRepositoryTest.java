@@ -15,9 +15,9 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.model.FlowMirrorPath;
 import org.openkilda.model.FlowMirrorPoints;
@@ -36,8 +36,8 @@ import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -65,7 +65,7 @@ public class FermaFlowMirrorPathRepositoryTest extends InMemoryGraphBasedTest {
     FlowMirrorPoints flowMirrorPoints;
     MirrorGroup mirrorGroup;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
         flowMirrorPathRepository = repositoryFactory.createFlowMirrorPathRepository();

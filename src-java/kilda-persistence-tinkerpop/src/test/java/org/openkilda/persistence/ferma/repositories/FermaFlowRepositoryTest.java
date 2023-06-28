@@ -17,11 +17,11 @@ package org.openkilda.persistence.ferma.repositories;
 
 import static com.google.common.collect.Sets.newHashSet;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -44,8 +44,8 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -86,7 +86,7 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     private Switch switchB;
     private Switch switchC;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
@@ -110,13 +110,13 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
         Map<Integer, Collection<Flow>> result = flowRepository.findSwitchFlowsByPort(switchA.getSwitchId(), null);
 
         assertNotNull(result);
-        assertTrue("The map must contain a key for the port", result.containsKey(PORT_1));
-        assertNotNull("The map must contain a non-null value for the test port", result.get(PORT_1));
-        assertEquals("The map must contain exactly two keys", 2, result.size());
-        assertEquals("There must be exactly 4 flows for PORT_1", 4, result.get(PORT_1).size());
-        assertTrue("There must be exactly 4 flows for PORT_1",
-                result.get(PORT_1).stream().map(Flow::getFlowId).collect(Collectors.toList())
-                .containsAll(Arrays.asList(TEST_FLOW_ID, TEST_FLOW_ID_2, TEST_FLOW_ID_3, TEST_FLOW_ID_5)));
+        assertTrue(result.containsKey(PORT_1), "The map must contain a key for the port");
+        assertNotNull(result.get(PORT_1), "The map must contain a non-null value for the test port");
+        assertEquals(2, result.size(), "The map must contain exactly two keys");
+        assertEquals(4, result.get(PORT_1).size(), "There must be exactly 4 flows for PORT_1");
+        assertTrue(result.get(PORT_1).stream().map(Flow::getFlowId).collect(Collectors.toList())
+                        .containsAll(Arrays.asList(TEST_FLOW_ID, TEST_FLOW_ID_2, TEST_FLOW_ID_3, TEST_FLOW_ID_5)),
+                "There must be exactly 4 flows for PORT_1");
     }
 
     @Test
@@ -130,14 +130,14 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
                 Collections.singletonList(PORT_1));
 
         assertNotNull(result);
-        assertTrue("The map must contain a key for the port", result.containsKey(PORT_1));
-        assertFalse("The map must not contain a key for the filtered out port", result.containsKey(PORT_2));
-        assertNotNull("The map must contain a non-null value for the test port", result.get(PORT_1));
-        assertEquals("The map must contain exactly one key", 1, result.size());
-        assertEquals("There must be exactly 3 flows for PORT_1", 3, result.get(PORT_1).size());
-        assertTrue("There must be exactly 3 flows for PORT_1",
-                result.get(PORT_1).stream().map(Flow::getFlowId).collect(Collectors.toList())
-                        .containsAll(Arrays.asList(TEST_FLOW_ID, TEST_FLOW_ID_2, TEST_FLOW_ID_3)));
+        assertTrue(result.containsKey(PORT_1), "The map must contain a key for the port");
+        assertFalse(result.containsKey(PORT_2), "The map must not contain a key for the filtered out port");
+        assertNotNull(result.get(PORT_1), "The map must contain a non-null value for the test port");
+        assertEquals(1, result.size(), "The map must contain exactly one key");
+        assertEquals(3, result.get(PORT_1).size(), "There must be exactly 3 flows for PORT_1");
+        assertTrue(result.get(PORT_1).stream().map(Flow::getFlowId).collect(Collectors.toList())
+                        .containsAll(Arrays.asList(TEST_FLOW_ID, TEST_FLOW_ID_2, TEST_FLOW_ID_3)),
+                "There must be exactly 3 flows for PORT_1");
     }
 
     @Test

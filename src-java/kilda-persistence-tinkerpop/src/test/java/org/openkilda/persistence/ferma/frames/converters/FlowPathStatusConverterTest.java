@@ -15,11 +15,13 @@
 
 package org.openkilda.persistence.ferma.frames.converters;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.model.FlowPathStatus;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import java.util.Arrays;
 
 public class FlowPathStatusConverterTest {
     @Test
@@ -35,8 +37,9 @@ public class FlowPathStatusConverterTest {
     public void shouldConvertToEntity() {
         FlowPathStatusConverter converter = new FlowPathStatusConverter();
 
-        assertEquals(FlowPathStatus.ACTIVE, converter.toEntityAttribute("ACTIVE"));
-        assertEquals(FlowPathStatus.ACTIVE, converter.toEntityAttribute("active"));
+        for (String s : Arrays.asList("ACTIVE", "active")) {
+            assertEquals(FlowPathStatus.ACTIVE, converter.toEntityAttribute(s));
+        }
         assertEquals(FlowPathStatus.IN_PROGRESS, converter.toEntityAttribute("In_Progress"));
     }
 }

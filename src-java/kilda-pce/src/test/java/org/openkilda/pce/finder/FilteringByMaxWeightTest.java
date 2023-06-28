@@ -29,8 +29,8 @@ import org.openkilda.pce.model.PathWeight;
 import org.openkilda.pce.model.WeightFunction;
 
 import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -51,7 +51,7 @@ public class FilteringByMaxWeightTest {
     private static final SwitchId SWITCH_ID_5 = new SwitchId("00:00:00:00:00:00:00:05");
 
 
-    @Before
+    @BeforeEach
     public void setUp() {
         /*
          *   Topology:

@@ -18,12 +18,11 @@ package org.openkilda.pce.impl;
 import static java.lang.String.format;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -43,8 +42,7 @@ import org.openkilda.pce.finder.FailReasonType;
 
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
-import org.junit.Test;
-import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -70,7 +68,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(flow);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // should choose path B because it has lower latency
         assertEquals(new SwitchId("00:02"), path.getForward().getSegments().get(0).getDestSwitchId());
     }
@@ -93,7 +91,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(flow);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // should have switch C as first hop since B is inactive
         assertEquals(new SwitchId("00:03"), path.getForward().getSegments().get(0).getDestSwitchId());
     }
@@ -120,7 +118,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(flow);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // should now have C as first hop since A - B link is under maintenance
         assertEquals(new SwitchId("00:03"), path.getForward().getSegments().get(0).getDestSwitchId());
     }
@@ -147,7 +145,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(flow);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // should now have C as first hop since A - B link is unstable
         assertEquals(new SwitchId("00:03"), path.getForward().getSegments().get(0).getDestSwitchId());
     }
@@ -172,7 +170,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(flow);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // it should now have C as first hop since A - B segment has high latency
         assertEquals(new SwitchId("00:03"), path.getForward().getSegments().get(0).getDestSwitchId());
     }
@@ -198,29 +196,30 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(flow);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // should choose B because default latency (500_000_000) is less then A-C latency (1_000_000_000)
         assertEquals(new SwitchId("00:02"), path.getForward().getSegments().get(0).getDestSwitchId());
     }
 
     @Test
     public void shouldFailToFindOverDiamondWithNoActiveRoutes() throws UnroutableFlowException, RecoverableException {
-        createDiamond(IslStatus.INACTIVE, IslStatus.INACTIVE, 100L, 1000L);
+        assertThrows(UnroutableFlowException.class, () -> {
+            createDiamond(IslStatus.INACTIVE, IslStatus.INACTIVE, 100L, 1000L);
 
-        Switch srcSwitch = getSwitchById("00:01");
-        Switch destSwitch = getSwitchById("00:04");
+            Switch srcSwitch = getSwitchById("00:01");
+            Switch destSwitch = getSwitchById("00:04");
 
-        Flow flow = new TestFlowBuilder()
-                .srcSwitch(srcSwitch)
-                .destSwitch(destSwitch)
-                .bandwidth(100)
-                .pathComputationStrategy(PathComputationStrategy.LATENCY)
-                .build();
+            Flow flow = new TestFlowBuilder()
+                    .srcSwitch(srcSwitch)
+                    .destSwitch(destSwitch)
+                    .bandwidth(100)
+                    .pathComputationStrategy(PathComputationStrategy.LATENCY)
+                    .build();
 
-        thrown.expect(UnroutableFlowException.class);
+            PathComputer pathComputer = pathComputerFactory.getPathComputer();
+            pathComputer.getPath(flow);
+        });
 
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        pathComputer.getPath(flow);
     }
 
     @Test
@@ -240,7 +239,7 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        Exception exception = Assertions.assertThrows(UnroutableFlowException.class, () -> {
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
             pathComputer.getPath(flow);
         });
         MatcherAssert.assertThat(exception.getMessage(), containsString(FailReasonType.NO_CONNECTION.toString()));
@@ -353,14 +352,16 @@ public class LatencyPathComputationStrategyBaseTest extends InMemoryPathComputer
 
         //then: system returns a path built with backUpPathComputationWayUsed flag
         assertTrue(pathsResult.isBackUpPathComputationWayUsed());
-        assertThat(pathsResult.getForward().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:03")));
-        assertThat(pathsResult.getReverse().getSegments().get(1).getSrcSwitchId(), equalTo(new SwitchId("00:03")));
+        MatcherAssert.assertThat(pathsResult.getForward().getSegments().get(1).getSrcSwitchId(),
+                equalTo(new SwitchId("00:03")));
+        MatcherAssert.assertThat(pathsResult.getReverse().getSegments().get(1).getSrcSwitchId(),
+                equalTo(new SwitchId("00:03")));
     }
 
     @Test
     public void shouldReturnEmptyPathWhenPathHasLatencyGreaterThanMaxLatencyTier2()
             throws RecoverableException, UnroutableFlowException {
-        createLinear(100,  "00:", 1, TimeUnit.MILLISECONDS.toNanos(100));
+        createLinear(100, "00:", 1, TimeUnit.MILLISECONDS.toNanos(100));
 
         //when: request a flow with LATENCY strategy and 'max-latency-tier-2' is lower than found path
         Flow flow = Flow.builder()
