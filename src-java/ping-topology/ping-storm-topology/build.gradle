@@ -18,6 +18,7 @@ dependencies {
     runtimeOnly project(':kilda-persistence-orientdb')
     runtimeOnly project(':kilda-persistence-hibernate')
     aspect project(':kilda-persistence-api')
+    testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
 
     compileOnly('org.apache.storm:storm-core')
     testImplementation('org.apache.storm:storm-core')
@@ -27,6 +28,7 @@ dependencies {
     testImplementation 'org.mockito:mockito-junit-jupiter'
     testImplementation 'org.hamcrest:hamcrest-library'
     testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
+    testRuntimeOnly 'org.apache.curator:curator-test'
 
     compileOnly 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'

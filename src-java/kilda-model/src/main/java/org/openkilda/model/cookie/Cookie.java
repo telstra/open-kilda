@@ -89,7 +89,6 @@ public class Cookie extends CookieBase implements Comparable<Cookie> {
     public static final long DROP_SLOW_PROTOCOLS_LOOP_COOKIE = new ServiceCookie(
             ServiceCookieTag.DROP_SLOW_PROTOCOLS_LOOP_COOKIE).getValue();
 
-
     @JsonCreator
     public Cookie(long value) {
         super(value);

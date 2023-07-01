@@ -20,6 +20,7 @@ import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.PingMeters;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowTransitEncapsulation;
+import org.openkilda.model.HaFlow;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -33,16 +34,21 @@ import java.util.UUID;
 @Builder(toBuilder = true)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class PingContext implements Serializable {
+
     public enum Kinds {
         PERIODIC,
         ON_DEMAND,
-        ON_DEMAND_Y_FLOW
+        ON_DEMAND_Y_FLOW,
+        ON_DEMAND_HA_FLOW
     }
 
     private Kinds kind;
     private GroupId group;
 
     private String yFlowId;
+    private HaFlow haFlow;
+    private String haFlowId;
+    private String haSubFlowId;
     private Flow flow;
     private FlowTransitEncapsulation transitEncapsulation;
     private FlowDirection direction;
@@ -60,7 +66,7 @@ public class PingContext implements Serializable {
     }
 
     public String getFlowId() {
-        return flow.getFlowId();
+        return isHaFlow() ? getHaFlowId() : flow.getFlowId();
     }
 
     /**
@@ -106,6 +112,13 @@ public class PingContext implements Serializable {
      * <p>It use direction value to determine which(forward, reverse, of flagless) cookie should be returned.
      */
     public long getCookie() {
+        if (isHaFlow()) {
+            return getHaFlowCookie();
+        }
+        return getFlowCookie();
+    }
+
+    private long getFlowCookie() {
         long value;
         if (direction == null) {
             value = flow.getForwardPath().getCookie().getFlowEffectiveId();
@@ -118,6 +131,30 @@ public class PingContext implements Serializable {
                     "Unsupported %s.%s value", FlowDirection.class.getName(), direction));
         }
         return value;
+    }
+
+    private long getHaFlowCookie() {
+        long value;
+        if (direction == null) {
+            value = haFlow.getForwardPath().getCookie().getFlowEffectiveId();
+        } else if (direction == FlowDirection.FORWARD) {
+            value = haFlow.getForwardPath().getCookie().getValue();
+        } else if (direction == FlowDirection.REVERSE) {
+            value = haFlow.getReversePath().getCookie().getValue();
+        } else {
+            throw new IllegalArgumentException(String.format(
+                    "Unsupported %s.%s value", FlowDirection.class.getName(), direction));
+        }
+        return value;
+    }
+
+
+    public String getHaFlowId() {
+        return haFlowId != null ? haFlowId : haFlow.getHaFlowId();
+    }
+
+    public boolean isHaFlow() {
+        return haFlow != null;
     }
 
     @Override

@@ -85,4 +85,5 @@ public class Ping implements Serializable {
     public static String formatEndpoint(SwitchId swId, int portNumber) {
         return String.format("%s-%d", swId, portNumber);
     }
+
 }

@@ -26,4 +26,5 @@ public class FlowState {
     private FlowPathLatency forwardPathLatency = new FlowPathLatency();
     private List<Link> reversePath;
     private FlowPathLatency reversePathLatency = new FlowPathLatency();
+    private String haFlowId;
 }

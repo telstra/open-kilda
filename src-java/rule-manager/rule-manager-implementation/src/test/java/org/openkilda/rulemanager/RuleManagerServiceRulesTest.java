@@ -60,6 +60,10 @@ import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressOne
 import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressVxlanRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.arp.ArpTransitRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.isl.EgressIslVlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.isl.EgressIslVxlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.isl.InputPingRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.isl.TransitIslVxlanRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lacp.DropSlowProtocolsLoopRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lacp.LacpReplyRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lldp.LldpIngressRuleGenerator;
@@ -274,6 +278,7 @@ public class RuleManagerServiceRulesTest {
         assertTrue(generators.stream().anyMatch(g -> g instanceof ArpTransitRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof ArpInputPreDropRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof ArpIngressRuleGenerator));
+
     }
 
     @Test
@@ -285,7 +290,7 @@ public class RuleManagerServiceRulesTest {
         List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
                 switchId, buildAdapter(switchId, switchProperties, Sets.newHashSet(ISL_PORT), true, LAG_PORTS));
 
-        assertEquals(37, generators.size());
+        assertEquals(38, generators.size());
         assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
 
@@ -318,6 +323,11 @@ public class RuleManagerServiceRulesTest {
         assertTrue(generators.stream().anyMatch(g -> g instanceof Server42IslRttInputRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof Server42IslRttTurningRuleGenerator));
         assertTrue(generators.stream().anyMatch(g -> g instanceof Server42IslRttOutputRuleGenerator));
+
+        assertTrue(generators.stream().anyMatch(g -> g instanceof EgressIslVlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof EgressIslVxlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof TransitIslVxlanRuleGenerator));
+        assertTrue(generators.stream().anyMatch(g -> g instanceof InputPingRuleGenerator));
     }
 
     private DataAdapter buildAdapter(

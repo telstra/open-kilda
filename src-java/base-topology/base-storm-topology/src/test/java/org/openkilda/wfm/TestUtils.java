@@ -64,7 +64,8 @@ public final class TestUtils {
         }
 
         private void start(Properties props) throws Exception {
-            Integer port = getZkPort(props);
+            int port = getZkPort(props);
+            System.out.println("Starting ZooKeeper: ");
 
             zk = new TestingServer(port, tempDir); // this starts the zk server
             System.out.println("Started ZooKeeper: ");

@@ -17,6 +17,7 @@ package org.openkilda.testing.service.database;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.openkilda.testing.Constants.DEFAULT_COST;
 
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -25,6 +26,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowMeter;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -32,7 +34,10 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
+import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.history.FlowEvent;
+import org.openkilda.northbound.dto.v2.haflows.HaFlow;
+import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.context.PersistenceContext;
 import org.openkilda.persistence.context.PersistenceContextManager;
@@ -44,6 +49,8 @@ import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowMirrorPointsRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowPathRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
@@ -65,7 +72,10 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -87,6 +97,8 @@ public class DatabaseSupportImpl implements Database {
     private final TransitVlanRepository transitVlanRepository;
     private final SwitchConnectedDeviceRepository switchDevicesRepository;
     private final FlowEventRepository flowEventRepository;
+    private final HaFlowPathRepository haFlowPathRepository;
+    private final HaFlowRepository haFlowRepository;
 
     public DatabaseSupportImpl(PersistenceManager persistenceManager) {
         this.orientPersistenceImplementation = persistenceManager.getImplementation(
@@ -102,6 +114,8 @@ public class DatabaseSupportImpl implements Database {
         switchDevicesRepository = repositoryFactory.createSwitchConnectedDeviceRepository();
         flowEventRepository = repositoryFactory.createFlowEventRepository();
         flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
+        haFlowPathRepository = repositoryFactory.createHaFlowPathRepository();
+        haFlowRepository = repositoryFactory.createHaFlowRepository();
 
         this.transactionManager = persistenceManager.getTransactionManager();
         historyTransactionManager = persistenceManager.getTransactionManager(flowEventRepository);
@@ -445,6 +459,70 @@ public class DatabaseSupportImpl implements Database {
     @Override
     public List<FlowMirrorPoints> getMirrorPoints() {
         return transactionManager.doInTransaction(() -> new ArrayList<>(flowMirrorPointsRepository.findAll()));
+    }
+
+    @Override
+    public Set<Cookie> getHaFlowCookies(String haFlowId) {
+        return transactionManager.doInTransaction(() -> haFlowPathRepository.findByHaFlowId(haFlowId)
+                .stream()
+                .map(HaFlowPath::getCookie)
+                .collect(toSet()));
+    }
+
+    @Override
+    public Set<Cookie> getHaSubFlowsCookies(HaFlow haFlow) {
+        Set<String> haSubFlowIds = haFlow.getSubFlows().stream()
+                .map(HaSubFlow::getFlowId)
+                .collect(toSet());
+        return transactionManager.doInTransaction(() ->
+                flowPathRepository.findAll().stream()
+                        .filter(flowPath -> haSubFlowIds.contains(flowPath.getHaSubFlowId()))
+                        .map(FlowPath::getCookie)
+                        .collect(toSet()));
+    }
+
+    @Override
+    public Set<FlowMeter> getHaFlowMeters(HaFlow haFlow) {
+        Set<String> haRelatedFlowIds = haFlow.getSubFlows().stream()
+                .map(HaSubFlow::getFlowId)
+                .collect(toSet());
+        haRelatedFlowIds.add(haFlow.getHaFlowId());
+        return transactionManager.doInTransaction(() -> {
+            org.openkilda.model.HaFlow haFlowModel = findHaFlow(haFlow.getHaFlowId());
+            Map<SwitchId, Set<MeterId>> meterMap = new HashMap<>();
+
+            for (HaFlowPath haFlowPath : haFlowModel.getPrimaryPaths()) {
+                addMeterIfNotNull(haFlowPath.getSharedPointMeterId(), haFlowPath.getSharedSwitchId(), meterMap);
+                addMeterIfNotNull(haFlowPath.getYPointMeterId(), haFlowPath.getYPointSwitchId(), meterMap);
+
+                for (FlowPath subPath : haFlowPath.getSubPaths()) {
+                    if (!subPath.getSrcSwitchId().equals(haFlowPath.getYPointSwitchId())) {
+                        addMeterIfNotNull(subPath.getMeterId(), subPath.getSrcSwitchId(), meterMap);
+                    }
+                }
+            }
+
+            Set<FlowMeter> meters = new HashSet<>();
+            for (SwitchId switchId : meterMap.keySet()) {
+                for (MeterId meterId : meterMap.get(switchId)) {
+                    flowMeterRepository.findById(switchId, meterId).ifPresent(meters::add);
+                }
+            }
+            return meters;
+        });
+    }
+
+    private void addMeterIfNotNull(MeterId meterId, SwitchId switchId, Map<SwitchId, Set<MeterId>> map) {
+        if (meterId != null) {
+            map.computeIfAbsent(switchId, id -> new HashSet<>());
+            map.get(switchId).add(meterId);
+        }
+    }
+
+    private org.openkilda.model.HaFlow findHaFlow(String haFlowId) {
+        return haFlowRepository.findById(haFlowId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        String.format("HA-Flow %s non found", haFlowId)));
     }
 
     @Override

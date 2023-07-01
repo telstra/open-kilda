@@ -99,7 +99,8 @@ class StormLcmSpec extends HealthCheckSpecification {
         and: "Flow can be updated"
         def flowToUpdate = flows[0]
         //expect enough free vlans here, ignore used switch-ports for simplicity of search
-        def unusedVlan = (flowHelper.allowedVlans - flows.collectMany { [it.source.vlanId, it.destination.vlanId] })[0]
+        def unusedVlan = (flowHelper.KILDA_ALLOWED_VLANS - flows
+                .collectMany { [it.source.vlanId, it.destination.vlanId] })[0]
         flowHelperV2.updateFlow(flowToUpdate.flowId, flowToUpdate.tap { it.source.vlanId = unusedVlan })
         northbound.validateFlow(flowToUpdate.flowId).each { direction -> assert direction.asExpected }
 

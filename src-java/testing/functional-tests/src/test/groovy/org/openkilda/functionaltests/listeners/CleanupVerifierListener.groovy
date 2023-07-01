@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.listeners
 
+import org.openkilda.functionaltests.helpers.SwitchHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+
 import static groovyx.gpars.GParsPool.withPool
 
 import org.openkilda.model.IslStatus
@@ -17,6 +20,8 @@ import org.spockframework.runtime.model.SpecInfo
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+
+import static org.openkilda.testing.Constants.*
 
 /**
  * Performs certain checks after every spec/feature, tries to verify that environment is left clean.
@@ -40,6 +45,8 @@ class CleanupVerifierListener extends AbstractSpringListener {
     FloodlightsHelper flHelper
     @Autowired
     Database database
+    @Autowired
+    SwitchHelper switchHelper
     @Value('${use.multitable}')
     boolean useMultitable
 
@@ -60,11 +67,11 @@ class CleanupVerifierListener extends AbstractSpringListener {
     def runVerifications() {
         context.autowireCapableBeanFactory.autowireBean(this)
         assert northboundV2.getAllFlows().empty
+        Wrappers.wait(RULES_DELETION_TIME) {
+            assert switchHelper.validate(topology.activeSwitches*.dpId).isEmpty()
+        }
         withPool {
             topology.activeSwitches.eachParallel { Switch sw ->
-                def validation = northbound.validateSwitch(sw.dpId)
-                validation.verifyRuleSectionsAreEmpty()
-                validation.verifyMeterSectionsAreEmpty()
                 def swProps = northbound.getSwitchProperties(sw.dpId)
                 assert swProps.multiTable == useMultitable
                 def s42Config = sw.prop
@@ -94,7 +101,7 @@ class CleanupVerifierListener extends AbstractSpringListener {
                 assert it.actualStatus == IslStatus.ACTIVE
                 assert it.availableBandwidth == it.maxBandwidth
                 assert it.availableBandwidth == it.speed
-                assert it.cost == Constants.DEFAULT_COST || it.cost == 0
+                assert it.cost == DEFAULT_COST || it.cost == 0
             }
         }
         assert northbound.getLinkProps(topology.isls).empty

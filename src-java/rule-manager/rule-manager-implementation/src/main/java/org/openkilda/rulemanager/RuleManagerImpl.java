@@ -286,6 +286,7 @@ public class RuleManagerImpl implements RuleManager {
         result.add(serviceRulesFactory.getEgressIslVxlanRuleGenerator(port));
         result.add(serviceRulesFactory.getEgressIslVlanRuleGenerator(port));
         result.add(serviceRulesFactory.getTransitIslVxlanRuleGenerator(port));
+        result.add(serviceRulesFactory.getInputPingRuleGenerator(port));
         return result;
     }
 

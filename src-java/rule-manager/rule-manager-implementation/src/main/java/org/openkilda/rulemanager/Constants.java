@@ -75,6 +75,7 @@ public final class Constants {
         public static final int DROP_DISCOVERY_LOOP_RULE_PRIORITY = DISCOVERY_RULE_PRIORITY + 1;
         public static final int CATCH_BFD_RULE_PRIORITY = DROP_DISCOVERY_LOOP_RULE_PRIORITY + 1;
         public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = DROP_DISCOVERY_LOOP_RULE_PRIORITY + 1;
+        public static final int PING_INPUT_PRIORITY = FLOW_PRIORITY - 1;
         public static final int ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
         public static final int ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 3;
         public static final int INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;

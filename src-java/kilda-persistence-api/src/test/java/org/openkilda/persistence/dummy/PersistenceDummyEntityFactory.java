@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -22,8 +22,16 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMeter;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.FlowStatus;
+import org.openkilda.model.GroupId;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.MeterId;
+import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
@@ -38,7 +46,11 @@ import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowPathRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
+import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -57,7 +69,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class PersistenceDummyEntityFactory {
-    private TransactionManager txManager;
+    private final TransactionManager txManager;
     private final SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final IslRepository islRepository;
@@ -67,6 +79,10 @@ public class PersistenceDummyEntityFactory {
     private final FlowCookieRepository flowCookieRepository;
     private final TransitVlanRepository transitVlanRepository;
     private final VxlanRepository transitVxLanRepository;
+    private final HaFlowRepository haFlowRepository;
+    private final HaSubFlowRepository haSubFlowRepository;
+    private final HaFlowPathRepository haFlowPathRepository;
+    private final PathSegmentRepository pathSegmentRepository;
 
     private final IdProvider idProvider = new IdProvider();
 
@@ -104,6 +120,10 @@ public class PersistenceDummyEntityFactory {
         flowCookieRepository = repositoryFactory.createFlowCookieRepository();
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
         transitVxLanRepository = repositoryFactory.createVxlanRepository();
+        haFlowRepository = repositoryFactory.createHaFlowRepository();
+        haSubFlowRepository = repositoryFactory.createHaSubFlowRepository();
+        haFlowPathRepository = repositoryFactory.createHaFlowPathRepository();
+        pathSegmentRepository = repositoryFactory.createPathSegmentRepository();
 
         flowDefaults = new FlowDefaults();
     }
@@ -140,7 +160,7 @@ public class PersistenceDummyEntityFactory {
                 .features(new HashSet<SwitchFeature>() {{
                         add(SwitchFeature.METERS);
                         add(SwitchFeature.GROUPS);
-                    }})
+                        }})
                 .ofDescriptionManufacturer("manufacturer")
                 .ofDescriptionSoftware("software")
                 .build();
@@ -150,7 +170,6 @@ public class PersistenceDummyEntityFactory {
                 switchPropertiesDefaults.fill(SwitchProperties.builder())
                         .switchObj(sw)
                         .build());
-
         return sw;
     }
 
@@ -259,6 +278,109 @@ public class PersistenceDummyEntityFactory {
             flowRepository.detach(flow);
             return flow;
         });
+    }
+
+    /**
+     * Create {@link HaFlow} object.
+     */
+    public HaFlow makeHaFlow(String flowId, Switch sharedSwitch, int port, long latency, long latencyTier2) {
+        return makeHaFlow(flowId, sharedSwitch, port, 0, 0, latency, latencyTier2, 0, null, 0, null,
+                PathComputationStrategy.LATENCY, null, true, true, true, true, true);
+    }
+
+    private HaFlow makeHaFlow(
+            String flowId, Switch sharedSwitch, int port, int vlan, int innerVlan, long latency, long latencyTier2,
+            long bandwidth, FlowEncapsulationType encapsulationType, int priority, String description,
+            PathComputationStrategy strategy, FlowStatus status, boolean protectedPath, boolean pinned, boolean pings,
+            boolean ignoreBandwidth, boolean strictBandwidth) {
+        HaFlow haFlow = HaFlow.builder()
+                .haFlowId(flowId)
+                .sharedSwitch(sharedSwitch)
+                .sharedPort(port)
+                .sharedOuterVlan(vlan)
+                .sharedInnerVlan(innerVlan)
+                .maxLatency(latency)
+                .maxLatencyTier2(latencyTier2)
+                .maximumBandwidth(bandwidth)
+                .encapsulationType(encapsulationType)
+                .priority(priority)
+                .description(description)
+                .pathComputationStrategy(strategy)
+                .status(status)
+                .allocateProtectedPath(protectedPath)
+                .pinned(pinned)
+                .periodicPings(pings)
+                .ignoreBandwidth(ignoreBandwidth)
+                .strictBandwidth(strictBandwidth)
+                .build();
+        haFlowRepository.add(haFlow);
+        return haFlow;
+    }
+
+    /**
+     * Create {@link HaSubFlow} object.
+     */
+    public HaSubFlow makeHaSubFlow(String subFlowId, Switch sw, int port, int vlan, int innerVlan, String description) {
+        HaSubFlow haSubFlow = HaSubFlow.builder()
+                .haSubFlowId(subFlowId)
+                .endpointSwitch(sw)
+                .endpointPort(port)
+                .endpointVlan(vlan)
+                .endpointInnerVlan(innerVlan)
+                .status(FlowStatus.UP)
+                .description(description)
+                .build();
+        haSubFlowRepository.add(haSubFlow);
+        return haSubFlow;
+    }
+
+    /**
+     * Create {@link HaFlowPath} object.
+     */
+    public HaFlowPath makeHaFlowPath(
+            PathId pathId, long bandwidth, FlowSegmentCookie cookie, MeterId sharedMeterId,
+            MeterId yPointMeterId, Switch sharedSwitch, SwitchId yPointSwitchId, GroupId yPointGroupId) {
+        HaFlowPath haFlowPath = HaFlowPath.builder()
+                .haPathId(pathId)
+                .bandwidth(bandwidth)
+                .ignoreBandwidth(true)
+                .cookie(cookie)
+                .sharedPointMeterId(sharedMeterId)
+                .yPointMeterId(yPointMeterId)
+                .sharedSwitch(sharedSwitch)
+                .yPointSwitchId(yPointSwitchId)
+                .status(FlowPathStatus.ACTIVE)
+                .yPointGroupId(yPointGroupId)
+                .build();
+        haFlowPathRepository.add(haFlowPath);
+        return haFlowPath;
+    }
+
+    /**
+     * Create {@link FlowPath} object.
+     */
+    public FlowPath makeFlowPath(PathId pathId, HaFlowPath haFlowPath, Switch srcSwitch, Switch dstSwitch) {
+        FlowPath flowPath = FlowPath.builder()
+                .pathId(pathId)
+                .srcSwitch(srcSwitch)
+                .destSwitch(dstSwitch)
+                .haFlowPath(haFlowPath)
+                .build();
+        flowPathRepository.add(flowPath);
+        return flowPath;
+    }
+
+    /**
+     * Create {@link PathSegment} object.
+     */
+    public PathSegment makePathSegment(PathId pathId, Switch srcSwitch, Switch dstSwitch) {
+        PathSegment pathSegment = PathSegment.builder()
+                .pathId(pathId)
+                .srcSwitch(srcSwitch)
+                .destSwitch(dstSwitch)
+                .build();
+        pathSegmentRepository.add(pathSegment);
+        return pathSegment;
     }
 
     private void makeFlowPathPair(

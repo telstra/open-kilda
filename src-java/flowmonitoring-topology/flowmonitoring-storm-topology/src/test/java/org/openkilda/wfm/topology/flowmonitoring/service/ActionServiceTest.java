@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -28,12 +28,16 @@ import static org.openkilda.wfm.topology.flowmonitoring.fsm.FlowLatencyMonitorin
 import static org.openkilda.wfm.topology.flowmonitoring.fsm.FlowLatencyMonitoringFsm.State.UNSTABLE;
 
 import org.openkilda.messaging.info.flow.UpdateFlowCommand;
+import org.openkilda.messaging.info.haflow.UpdateHaSubFlowCommand;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.PathComputationStrategy;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.dummy.FlowDefaults;
 import org.openkilda.persistence.dummy.PersistenceDummyEntityFactory;
@@ -44,6 +48,7 @@ import org.openkilda.stubs.ManualClock;
 import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowOperationsCarrier;
 import org.openkilda.wfm.topology.flowmonitoring.fsm.FlowLatencyMonitoringFsm;
 
+import com.google.common.collect.Sets;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -72,6 +77,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
     private KildaFeatureTogglesRepository featureTogglesRepository;
     private ActionService service;
     private Flow flow;
+    private HaSubFlow haSubFlow;
 
     @Mock
     private FlowOperationsCarrier carrier;
@@ -93,11 +99,13 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
         flow = dummyFactory.makeFlow(new FlowEndpoint(SRC_SWITCH, IN_PORT),
                 new FlowEndpoint(DST_SWITCH, OUT_PORT));
 
+        haSubFlow = createHaSubFlow();
+
         service = new ActionService(carrier, persistenceManager, clock, TIMEOUT, THRESHOLD, SHARD_COUNT);
     }
 
     @Test
-    public void shouldStayInHealthyState() {
+    public void stayInHealthyState() {
         Duration latency = Duration.ofNanos(flow.getMaxLatency() - 10);
 
         service.processFlowLatencyMeasurement(flow.getFlowId(), FORWARD, latency);
@@ -120,7 +128,30 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldFailTier1AndSendRerouteRequest() {
+    public void stayInHealthyStateHaFlow() {
+        Duration latency = Duration.ofNanos(MAX_LATENCY_1 - 10);
+
+        service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), FORWARD, latency);
+        service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), REVERSE, latency.minus(NANOSECOND));
+
+        latency = Duration.ofNanos((long) (MAX_LATENCY_1 * (1 + THRESHOLD)) - 1);
+
+        for (int i = 0; i < 10; i++) {
+            clock.adjust(Duration.ofSeconds(10));
+            service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), FORWARD, latency);
+            service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), REVERSE, latency.minus(NANOSECOND));
+            service.processTick(0);
+        }
+
+        assertEquals(2, service.fsms.values().size());
+        assertTrue(service.fsms.values().stream().allMatch(fsm -> HEALTHY.equals(fsm.getCurrentState())));
+
+        verify(carrier, times(0)).sendHaFlowRerouteRequest(any());
+        verify(carrier, times(0)).sendHaFlowSyncRequest(any());
+    }
+
+    @Test
+    public void failTier1AndSendRerouteRequest() {
         service.processFlowLatencyMeasurement(flow.getFlowId(), FORWARD, NANOSECOND);
         service.processFlowLatencyMeasurement(flow.getFlowId(), REVERSE, NANOSECOND);
 
@@ -144,7 +175,31 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldFailTier1AndDoNotSendRerouteRequestWhenToggleIsFalse() {
+    public void failTier1AndSendRerouteRequestHaFlow() {
+        service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), FORWARD, NANOSECOND);
+        service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), REVERSE, NANOSECOND);
+
+        Duration latency = Duration.ofNanos((long) (MAX_LATENCY_1 * (1 + THRESHOLD)) + 5);
+
+        for (int i = 0; i < 10; i++) {
+            clock.adjust(Duration.ofSeconds(10));
+            service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), FORWARD, latency);
+            service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), REVERSE, latency.minus(NANOSECOND));
+            service.processTick(0);
+            if (i == 0) {
+                assertTrue(service.fsms.values().stream().allMatch(fsm -> UNSTABLE.equals(fsm.getCurrentState())));
+            }
+        }
+
+        assertEquals(2, service.fsms.values().size());
+        assertTrue(service.fsms.values().stream().allMatch(fsm -> TIER_1_FAILED.equals(fsm.getCurrentState())));
+
+        verify(carrier, times(2)).sendHaFlowRerouteRequest(haSubFlow.getHaFlowId());
+        verify(carrier, times(0)).sendHaFlowSyncRequest(any());
+    }
+
+    @Test
+    public void failTier1AndDoNotSendRerouteRequestWhenToggleIsFalse() {
         transactionManager.doInTransaction(() -> {
             KildaFeatureToggles featureToggles = featureTogglesRepository.find()
                     .orElseThrow(() -> new IllegalStateException("Feature toggle not found"));
@@ -174,7 +229,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldFailTier1AndDoNotSendRerouteRequestForCostStrategy() {
+    public void failTier1AndDoNotSendRerouteRequestForCostStrategy() {
         transactionManager.doInTransaction(() -> {
             Flow flowSetup = flowRepository.findById(flow.getFlowId())
                     .orElseThrow(() -> new IllegalStateException("Flow not found"));
@@ -204,7 +259,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldFailTier2AndSendRerouteRequest() {
+    public void failTier2AndSendRerouteRequest() {
         transactionManager.doInTransaction(() -> {
             Flow flowSetup = flowRepository.findById(flow.getFlowId())
                     .orElseThrow(() -> new IllegalStateException("Flow not found"));
@@ -234,7 +289,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldFailTier2AndDoNotSendRerouteRequestForCostStrategy() {
+    public void failTier2AndDoNotSendRerouteRequestForCostStrategy() {
         transactionManager.doInTransaction(() -> {
             Flow flowSetup = flowRepository.findById(flow.getFlowId())
                     .orElseThrow(() -> new IllegalStateException("Flow not found"));
@@ -264,7 +319,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldBecomeHealthyAndSendSyncRequest() {
+    public void becomeHealthyAndSendSyncRequest() {
         Duration tier2Failed = Duration.ofNanos(flow.getMaxLatencyTier2() * 2);
         service.processFlowLatencyMeasurement(flow.getFlowId(), FORWARD, tier2Failed);
         service.processFlowLatencyMeasurement(flow.getFlowId(), REVERSE, tier2Failed);
@@ -289,7 +344,32 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldUpdateFlowInfo() {
+    public void becomeHealthyAndSendSyncRequestHaFlow() {
+        Duration tier2Failed = Duration.ofNanos(MAX_LATENCY_TIER_2_1 * 2);
+        service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), FORWARD, tier2Failed);
+        service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), REVERSE, tier2Failed);
+
+        Duration healthy = Duration.ofNanos((long) (MAX_LATENCY_1 * (1 - THRESHOLD)) - 5);
+
+        for (int i = 0; i < 10; i++) {
+            clock.adjust(Duration.ofSeconds(10));
+            service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), FORWARD, healthy);
+            service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), REVERSE, healthy.minus(NANOSECOND));
+            service.processTick(0);
+            if (i == 0) {
+                assertTrue(service.fsms.values().stream().allMatch(fsm -> UNSTABLE.equals(fsm.getCurrentState())));
+            }
+        }
+
+        assertEquals(2, service.fsms.values().size());
+        assertTrue(service.fsms.values().stream().allMatch(fsm -> HEALTHY.equals(fsm.getCurrentState())));
+
+        verify(carrier, times(0)).sendHaFlowRerouteRequest(any());
+        verify(carrier, times(2)).sendHaFlowSyncRequest(haSubFlow.getHaFlowId());
+    }
+
+    @Test
+    public void updateFlowInfo() {
         service.processFlowLatencyMeasurement(flow.getFlowId(), FORWARD, NANOSECOND);
         service.processFlowLatencyMeasurement(flow.getFlowId(), REVERSE, NANOSECOND);
 
@@ -297,7 +377,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
                 .forwardPath(Arrays.asList(new PathNodePayload(SRC_SWITCH, 1, 2),
                         new PathNodePayload(DST_SWITCH, 3, 4)))
                 .reversePath(Arrays.asList(new PathNodePayload(DST_SWITCH, 4, 3),
-                                new PathNodePayload(SRC_SWITCH, 2, 1)))
+                        new PathNodePayload(SRC_SWITCH, 2, 1)))
                 .build();
         long maxLatency = flow.getMaxLatency() / 2;
         long maxLatencyTier2 = flow.getMaxLatencyTier2() / 2;
@@ -315,7 +395,29 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldRemoveFlowInfo() {
+    public void updateHaFlowInfo() {
+        service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), FORWARD, NANOSECOND);
+        service.processFlowLatencyMeasurement(haSubFlow.getHaSubFlowId(), REVERSE, NANOSECOND);
+
+        long maxLatency = MAX_LATENCY_2;
+        long maxLatencyTier2 = MAX_LATENCY_TIER_2_2;
+        UpdateHaSubFlowCommand info = new UpdateHaSubFlowCommand(haSubFlow.getHaSubFlowId(), maxLatency,
+                maxLatencyTier2);
+        service.updateHaSubFlowInfo(info);
+
+        assertEquals(2, service.fsms.values().size());
+        FlowLatencyMonitoringFsm fsm = service.fsms.values().stream()
+                .findAny()
+                .orElseThrow(() -> new IllegalStateException("Fsm not found"));
+        assertEquals(maxLatency, fsm.getMaxLatency());
+        assertEquals(maxLatencyTier2, fsm.getMaxLatencyTier2());
+
+        verify(carrier, times(0)).sendHaFlowRerouteRequest(any());
+        verify(carrier, times(0)).sendHaFlowSyncRequest(any());
+    }
+
+    @Test
+    public void removeFlowInfo() {
         service.processFlowLatencyMeasurement(flow.getFlowId(), FORWARD, NANOSECOND);
         service.processFlowLatencyMeasurement(flow.getFlowId(), REVERSE, NANOSECOND);
 
@@ -325,6 +427,19 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
 
         verify(carrier, times(0)).sendFlowRerouteRequest(any());
         verify(carrier, times(0)).sendFlowSyncRequest(any());
+    }
+
+    @Test
+    public void removeHaFlowInfo() {
+        service.processFlowLatencyMeasurement(flow.getFlowId(), FORWARD, NANOSECOND);
+        service.processFlowLatencyMeasurement(flow.getFlowId(), REVERSE, NANOSECOND);
+
+        service.removeFlowInfo(flow.getFlowId());
+
+        assertTrue(service.fsms.values().isEmpty());
+
+        verify(carrier, times(0)).sendHaFlowRerouteRequest(any());
+        verify(carrier, times(0)).sendHaFlowSyncRequest(any());
     }
 
     @Test
@@ -345,5 +460,17 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
         assertEquals(10, shardChecks[1]);
         assertEquals(10, shardChecks[2]);
         assertEquals(10, shardChecks[3]);
+    }
+
+    private HaSubFlow createHaSubFlow() {
+        Switch sharedSwitch = createTestSwitch(SWITCH_ID_3.toLong());
+        Switch endpointSwitch = createTestSwitch(SWITCH_ID_4.toLong());
+
+        HaFlow haFlow = dummyFactory.makeHaFlow(HA_FLOW_ID_1, sharedSwitch, PORT_1, MAX_LATENCY_1,
+                MAX_LATENCY_TIER_2_1);
+        HaSubFlow haSubFlow = dummyFactory.makeHaSubFlow(SUB_FLOW_ID_1, endpointSwitch, PORT_1, VLAN_1, INNER_VLAN_1,
+                DESCRIPTION_1);
+        haFlow.setHaSubFlows(Sets.newHashSet(haSubFlow));
+        return haSubFlow;
     }
 }

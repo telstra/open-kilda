@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -37,13 +37,16 @@ public class FlowLatencyRequest {
     @Getter
     private final FlowDirection direction;
     private final Map<Link, Duration> responses;
+    private final String haFlowId;
 
     @Builder
-    public FlowLatencyRequest(String requestId, String flowId, FlowDirection direction, List<Link> flowPath) {
+    public FlowLatencyRequest(String requestId, String flowId, FlowDirection direction, List<Link> flowPath,
+                              String haFlowId) {
         this.requestId = requestId;
         this.flowId = flowId;
         this.direction = direction;
         this.responses = new HashMap<>();
+        this.haFlowId = haFlowId;
         flowPath.forEach(link -> responses.put(link, null));
     }
 
@@ -60,5 +63,9 @@ public class FlowLatencyRequest {
 
     public Duration getResult() {
         return responses.values().stream().reduce(Duration.ZERO, Duration::plus);
+    }
+
+    public String getHaFlowId() {
+        return haFlowId;
     }
 }

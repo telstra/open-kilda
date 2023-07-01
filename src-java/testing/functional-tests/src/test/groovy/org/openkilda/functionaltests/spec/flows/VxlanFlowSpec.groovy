@@ -111,7 +111,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         and: "The flow allows traffic"
         def traffExam = traffExamProvider.get()
         def exam
-        try {
+        if (swPair.isTraffExamCapable()) {
             exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000, 5)
             withPool {
                 [exam.forward, exam.reverse].eachParallel { direction ->
@@ -120,10 +120,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                     assert traffExam.waitExam(direction).hasTraffic()
                 }
             }
-        } catch (FlowNotApplicableException e) {
-            //flow is not applicable for traff exam. That's fine, just inform
-            logger.warn(e.message)
-            exam = null
         }
 
         and: "Flow is pingable"

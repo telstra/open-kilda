@@ -29,6 +29,8 @@ import org.openkilda.floodlight.api.request.SpeakerRequest;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.PeriodicHaPingCommand;
 import org.openkilda.messaging.command.haflow.HaFlowPathSwapRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.persistence.PersistenceManager;
@@ -131,14 +133,19 @@ public class HaFlowPathSwapHubBolt extends HubBolt implements FlowPathSwapHubCar
 
     @Override
     public void sendPeriodicPingNotification(String haFlowId, boolean enabled) {
-        //TODO implement periodic pings https://github.com/telstra/open-kilda/issues/5153
-        log.info("Periodic pings are not implemented for ha-flow swap path operation yet. Skipping for the ha-flow {}",
-                haFlowId);
+        log.debug("Periodic ping ha-flow path swap operation. haFlowId={}", haFlowId);
+        PeriodicHaPingCommand payload = new PeriodicHaPingCommand(haFlowId, enabled);
+        Message message = new CommandMessage(payload, getCommandContext().getCreateTime(),
+                getCommandContext().getCorrelationId());
+        emitWithContext(Stream.HUB_TO_PING_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
     }
 
     @Override
-    public void sendNotifyFlowMonitor(CommandData flowCommand) {
-        //TODO implement https://github.com/telstra/open-kilda/issues/5172
+    public void sendNotifyFlowMonitor(CommandData haFlowCommand) {
+        String correlationId = getCommandContext().getCorrelationId();
+        Message message = new CommandMessage(haFlowCommand, System.currentTimeMillis(), correlationId);
+        emitWithContext(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(correlationId, message));
     }
 
     @Override

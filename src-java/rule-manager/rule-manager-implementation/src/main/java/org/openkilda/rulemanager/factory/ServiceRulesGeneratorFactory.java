@@ -34,6 +34,7 @@ import org.openkilda.rulemanager.factory.generator.service.arp.ArpPostIngressVxl
 import org.openkilda.rulemanager.factory.generator.service.arp.ArpTransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.isl.EgressIslVlanRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.isl.EgressIslVxlanRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.service.isl.InputPingRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.isl.TransitIslVxlanRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lacp.DropSlowProtocolsLoopRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.service.lacp.LacpReplyRuleGenerator;
@@ -332,6 +333,16 @@ public class ServiceRulesGeneratorFactory {
     }
 
     /**
+     * Get input Ping rule generator.
+     */
+    public InputPingRuleGenerator getInputPingRuleGenerator(int islPort) {
+        return InputPingRuleGenerator.builder()
+                .islPort(islPort)
+                .flowPingMagicSrcMacAddress(config.getFlowPingMagicSrcMacAddress())
+                .build();
+    }
+
+    /**
      * Get transit ISL VLAN rule generator.
      */
     public TransitIslVxlanRuleGenerator getTransitIslVxlanRuleGenerator(int islPort) {
@@ -357,4 +368,5 @@ public class ServiceRulesGeneratorFactory {
     public DropSlowProtocolsLoopRuleGenerator getDropSlowProtocolsLoopRuleGenerator() {
         return DropSlowProtocolsLoopRuleGenerator.builder().build();
     }
+
 }

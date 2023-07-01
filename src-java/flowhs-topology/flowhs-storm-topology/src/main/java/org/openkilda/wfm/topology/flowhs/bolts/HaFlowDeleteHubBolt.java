@@ -30,10 +30,13 @@ import org.openkilda.floodlight.api.response.SpeakerResponse;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.PeriodicHaPingCommand;
 import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.RuleManagerConfig;
@@ -163,15 +166,20 @@ public class HaFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
     }
 
     @Override
-    public void sendNotifyFlowMonitor(@NonNull CommandData flowCommand) {
-        //TODO implement https://github.com/telstra/open-kilda/issues/5172
+    public void sendNotifyFlowMonitor(@NonNull CommandData haFlowCommand) {
+        String correlationId = getCommandContext().getCorrelationId();
+        Message message = new CommandMessage(haFlowCommand, System.currentTimeMillis(), correlationId);
+        emitWithContext(HUB_TO_FLOW_MONITORING_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(correlationId, message));
     }
 
     @Override
     public void sendPeriodicPingNotification(String haFlowId, boolean enabled) {
-        //TODO implement periodic pings https://github.com/telstra/open-kilda/issues/5153
-        log.info("Periodic pings are not implemented for ha-flow delete operation yet. Skipping for the ha-flow {}",
-                haFlowId);
+        log.debug("Periodic ping ha-flow delete operation. haFlowId={}", haFlowId);
+        PeriodicHaPingCommand payload = new PeriodicHaPingCommand(haFlowId, enabled);
+        Message message = new CommandMessage(payload, getCommandContext().getCreateTime(),
+                getCommandContext().getCorrelationId());
+        emitWithContext(Stream.HUB_TO_PING_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
     }
 
     @Override
@@ -180,11 +188,15 @@ public class HaFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
     }
 
     @Override
+    public void sendDeactivateFlowMonitoring(String flow, SwitchId srcSwitchId, SwitchId dstSwitchId) {
+        //TODO: Implement logic during https://github.com/telstra/open-kilda/issues/5208
+    }
+
+    @Override
     public void sendInactive() {
         getOutput().emit(ZkStreams.ZK.toString(), new Values(deferredShutdownEvent, getCommandContext()));
         deferredShutdownEvent = null;
     }
-
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {

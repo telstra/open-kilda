@@ -43,6 +43,7 @@ import org.openkilda.wfm.topology.ping.bolt.TickDeduplicator;
 import org.openkilda.wfm.topology.ping.bolt.TickId;
 import org.openkilda.wfm.topology.ping.bolt.TimeoutManager;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.TopologyBuilder;
@@ -51,8 +52,18 @@ import org.apache.storm.tuple.Fields;
 import java.util.concurrent.TimeUnit;
 
 public class PingTopology extends AbstractTopology<PingTopologyConfig> {
+
+    private final PersistenceManager persistenceManager;
+
     protected PingTopology(LaunchEnvironment env) {
         super(env, "ping-topology", PingTopologyConfig.class);
+        persistenceManager = new PersistenceManager(configurationProvider);
+    }
+
+    @VisibleForTesting
+    public PingTopology(LaunchEnvironment env, PersistenceManager persistenceManager) {
+        super(env, "ping-topology", PingTopologyConfig.class);
+        this.persistenceManager = persistenceManager;
     }
 
     /**
@@ -137,7 +148,6 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
     }
 
     private void flowFetcher(TopologyBuilder topology) {
-        PersistenceManager persistenceManager = new PersistenceManager(configurationProvider);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
 
         FlowFetcher bolt = new FlowFetcher(persistenceManager, flowResourcesConfig,
@@ -147,6 +157,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
                 .globalGrouping(TickDeduplicator.BOLT_ID, TickDeduplicator.STREAM_PING_ID)
                 .shuffleGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_ON_DEMAND_REQUEST_ID)
                 .shuffleGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_ON_DEMAND_Y_FLOW_REQUEST_ID)
+                .shuffleGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_ON_DEMAND_HA_FLOW_REQUEST_ID)
                 .allGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_PERIODIC_PING_UPDATE_REQUEST_ID);
     }
 
@@ -169,8 +180,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
                 .shuffleGrouping(PingProducer.BOLT_ID)
                 .shuffleGrouping(Blacklist.BOLT_ID)
                 .shuffleGrouping(InputRouter.BOLT_ID, InputRouter.STREAM_SPEAKER_PING_RESPONSE_ID)
-                .shuffleGrouping(
-                        PeriodicResultManager.BOLT_ID, PeriodicResultManager.STREAM_BLACKLIST_ID);
+                .shuffleGrouping(PeriodicResultManager.BOLT_ID, PeriodicResultManager.STREAM_BLACKLIST_ID);
     }
 
     private void blacklist(TopologyBuilder topology) {
@@ -271,6 +281,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
         declareBolt(topology, bolt, NorthboundEncoder.BOLT_ID)
                 .shuffleGrouping(FlowFetcher.BOLT_ID, FlowFetcher.STREAM_ON_DEMAND_RESPONSE_ID)
                 .shuffleGrouping(FlowFetcher.BOLT_ID, FlowFetcher.STREAM_ON_DEMAND_Y_FLOW_RESPONSE_ID)
+                .shuffleGrouping(FlowFetcher.BOLT_ID, FlowFetcher.STREAM_ON_DEMAND_HA_FLOW_RESPONSE_ID)
                 .shuffleGrouping(OnDemandResultManager.BOLT_ID);
 
         KafkaBolt output = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());

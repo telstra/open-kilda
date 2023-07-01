@@ -31,4 +31,9 @@ class SwitchPair {
     String hwSwString() {
         return "$src.hwSwString-$dst.hwSwString"
     }
+
+    @JsonIgnore
+    Boolean isTraffExamCapable() {
+        return !(src.getTraffGens().isEmpty() || dst.getTraffGens().isEmpty())
+    }
 }

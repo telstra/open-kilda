@@ -24,6 +24,7 @@ public interface KafkaConfig {
     // To be able to run tests in parallel we must use different ports for kafka hosts in each test
     int STATS_TOPOLOGY_TEST_KAFKA_PORT = 2188;
     int ISL_LATENCY_TOPOLOGY_TEST_KAFKA_PORT = 2189;
+    int FLOW_PING_TOPOLOGY_TEST_KAFKA_PORT = 2190;
 
     @Key("hosts")
     String getHosts();

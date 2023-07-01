@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult
 import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
 
 import static groovyx.gpars.GParsPool.withPool
@@ -57,6 +58,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -187,6 +189,7 @@ class SwitchHelper {
                     multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES, it.source.portNo).getValue())
                 }
                 multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES, it.source.portNo).getValue())
+                multiTableRules.add(new PortColourCookie(CookieType.PING_INPUT, it.source.portNo).getValue())
             }
             northbound.get().getSwitchFlows(sw.dpId).each {
                 if (it.source.datapath.equals(sw.dpId)) {
@@ -644,6 +647,12 @@ class SwitchHelper {
         reviveSwitch(sw, flResourceAddress, false)
     }
 
+    static void removeExcessRules(List<SwitchId> switches) {
+        withPool {
+            switches.eachParallel {northbound.get().synchronizeSwitch(it, true)}
+        }
+    }
+
     static void verifySectionInSwitchValidationInfo(SwitchValidationV2ExtendedResult switchValidateInfo,
                                                     List<String> sections = ["groups", "meters", "logical_ports", "rules"]) {
         sections.each { String section ->
@@ -661,6 +670,31 @@ class SwitchHelper {
             }
         }
         assert result == switchValidateInfo.asExpected
+    }
+
+    static SwitchSyncResult synchronize(SwitchId switchId) {
+        return northbound.get().synchronizeSwitch(switchId, true)
+    }
+
+    static void synchronize(List<SwitchId> switchesToSynchronize) {
+        def synchronizationResult = withPool {
+            switchesToSynchronize.collectParallel { synchronize(it) }
+                    .findAll {
+                        !(it.getRules().getExcess().isEmpty() ||
+                                it.getRules().getMisconfigured().isEmpty() ||
+                                it.getRules().getMissing().isEmpty())
+                    }
+        }
+        assert synchronizationResult.isEmpty()
+    }
+
+    static SwitchValidationV2ExtendedResult validate(SwitchId switchId) {
+        return northboundV2.get().validateSwitch(switchId)
+    }
+
+    static List<SwitchValidationV2ExtendedResult> validate(List<SwitchId> switchesToValidate) {
+        return switchesToValidate.collect { validate(it) }
+                    .findAll {!it.isAsExpected()}
     }
 
     @Memoized

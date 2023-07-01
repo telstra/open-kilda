@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,15 +23,23 @@ import static org.mockito.Mockito.when;
 import static org.openkilda.model.IslStatus.ACTIVE;
 
 import org.openkilda.messaging.info.flow.UpdateFlowCommand;
+import org.openkilda.messaging.info.haflow.UpdateHaSubFlowCommand;
 import org.openkilda.messaging.info.stats.FlowRttStatsData;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslEndpoint;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.dummy.IslDirectionalReference;
 import org.openkilda.persistence.dummy.PersistenceDummyEntityFactory;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
@@ -40,6 +48,8 @@ import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.wfm.share.utils.TimestampHelper;
 import org.openkilda.wfm.topology.flowmonitoring.model.Link;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -51,6 +61,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -58,18 +69,24 @@ import java.util.stream.Collectors;
 public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
     private static final Duration FLOW_RTT_STATS_EXPIRATION_TIME = Duration.ofSeconds(3);
 
-    private static final SwitchId SRC_SWITCH = new SwitchId(1);
-    private static final SwitchId DST_SWITCH = new SwitchId(2);
     private static final int IN_PORT = 7;
     private static final int OUT_PORT = 8;
     private static final int ISL_SRC_PORT = 10;
     private static final int ISL_DST_PORT = 20;
     private static final int ISL_SRC_PORT_2 = 11;
     private static final int ISL_DST_PORT_2 = 21;
+    private static final FlowSegmentCookie COOKIE_1 = FlowSegmentCookie.builder()
+            .flowEffectiveId(1).direction(FlowPathDirection.FORWARD).build();
+    private static final FlowSegmentCookie COOKIE_2 = FlowSegmentCookie.builder()
+            .flowEffectiveId(1).direction(FlowPathDirection.REVERSE).build();
 
     private PersistenceDummyEntityFactory dummyFactory;
     private IslRepository islRepository;
     private FlowCacheService service;
+
+    private Switch firstSwitch;
+    private Switch secondSwitch;
+    private Switch thirdSwitch;
 
     @Mock
     private FlowCacheBoltCarrier carrier;
@@ -82,8 +99,9 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
 
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
 
-        Switch firstSwitch = createTestSwitch(SRC_SWITCH.toLong());
-        Switch secondSwitch = createTestSwitch(DST_SWITCH.toLong());
+        firstSwitch = createTestSwitch(SWITCH_ID_1.toLong());
+        secondSwitch = createTestSwitch(SWITCH_ID_2.toLong());
+        thirdSwitch = createTestSwitch(SWITCH_ID_3.toLong());
 
         createIsl(firstSwitch, ISL_SRC_PORT, secondSwitch, ISL_DST_PORT);
         createIsl(secondSwitch, ISL_DST_PORT, firstSwitch, ISL_SRC_PORT);
@@ -92,25 +110,27 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldSendCheckLatencyRequests() {
+    public void sendCheckLatencyRequests() {
         when(clock.instant()).thenReturn(Instant.now());
-        dummyFactory.makeFlow(new FlowEndpoint(SRC_SWITCH, 8), new FlowEndpoint(SRC_SWITCH, 9));
+        dummyFactory.makeFlow(new FlowEndpoint(SWITCH_ID_1, 8), new FlowEndpoint(SWITCH_ID_1, 9));
         Flow flow = createFlow();
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
         service.activate();
 
         service.processFlowLatencyCheck(flow.getFlowId());
 
-        List<Link> expectedForwardPath = getLinks(SRC_SWITCH, ISL_SRC_PORT, DST_SWITCH, ISL_DST_PORT);
-        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD, expectedForwardPath);
+        List<Link> expectedForwardPath = getLinks(SWITCH_ID_1, ISL_SRC_PORT, SWITCH_ID_2, ISL_DST_PORT);
+        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD, expectedForwardPath,
+                null);
         List<Link> expectedReversePath = reverse(expectedForwardPath);
-        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath);
+        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath,
+                null);
 
         verifyNoMoreInteractions(carrier);
     }
 
     @Test
-    public void shouldRemoveFlowFromCache() {
+    public void removeFlowFromCache() {
         Flow flow = createFlow();
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
         service.activate();
@@ -123,7 +143,7 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldChangeFlowPathInCache() {
+    public void changeFlowPathInCache() {
         when(clock.instant()).thenReturn(Instant.now());
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
         service.activate();
@@ -134,25 +154,27 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
         Flow flow = createFlow();
         UpdateFlowCommand updateFlowCommand = new UpdateFlowCommand(flow.getFlowId(), FlowPathDto.builder()
                 .id(flow.getFlowId())
-                .forwardPath(Arrays.asList(new PathNodePayload(SRC_SWITCH, IN_PORT, ISL_SRC_PORT_2),
-                        new PathNodePayload(DST_SWITCH, ISL_DST_PORT_2, OUT_PORT)))
-                .reversePath(Arrays.asList(new PathNodePayload(DST_SWITCH, OUT_PORT, ISL_DST_PORT_2),
-                        new PathNodePayload(SRC_SWITCH, ISL_SRC_PORT_2, IN_PORT)))
+                .forwardPath(Arrays.asList(new PathNodePayload(SWITCH_ID_1, IN_PORT, ISL_SRC_PORT_2),
+                        new PathNodePayload(SWITCH_ID_2, ISL_DST_PORT_2, OUT_PORT)))
+                .reversePath(Arrays.asList(new PathNodePayload(SWITCH_ID_2, OUT_PORT, ISL_DST_PORT_2),
+                        new PathNodePayload(SWITCH_ID_1, ISL_SRC_PORT_2, IN_PORT)))
                 .build(), maxLatency, maxLatencyTier2);
 
         service.updateFlowInfo(updateFlowCommand);
         service.processFlowLatencyCheck(flow.getFlowId());
 
-        List<Link> expectedForwardPath = getLinks(SRC_SWITCH, ISL_SRC_PORT_2, DST_SWITCH, ISL_DST_PORT_2);
-        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD, expectedForwardPath);
+        List<Link> expectedForwardPath = getLinks(SWITCH_ID_1, ISL_SRC_PORT_2, SWITCH_ID_2, ISL_DST_PORT_2);
+        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD, expectedForwardPath,
+                null);
         List<Link> expectedReversePath = reverse(expectedForwardPath);
-        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath);
+        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath,
+                null);
 
         verifyNoMoreInteractions(carrier);
     }
 
     @Test
-    public void shouldSendCheckFlowSlaRequests() {
+    public void sendCheckFlowSlaRequests() {
         Instant now = Instant.now();
         when(clock.instant()).thenReturn(now);
 
@@ -171,17 +193,18 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
         service.processFlowRttStatsData(flowRttStatsData);
         service.processFlowLatencyCheck(flow.getFlowId());
 
-        List<Link> expectedForwardPath = getLinks(SRC_SWITCH, ISL_SRC_PORT, DST_SWITCH, ISL_DST_PORT);
+        List<Link> expectedForwardPath = getLinks(SWITCH_ID_1, ISL_SRC_PORT, SWITCH_ID_2, ISL_DST_PORT);
         verify(carrier).emitCheckFlowLatencyRequest(flow.getFlowId(), FlowDirection.FORWARD,
                 TimestampHelper.noviflowTimestampsToDuration(t0, t1));
         List<Link> expectedReversePath = reverse(expectedForwardPath);
-        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath);
+        verify(carrier).emitCalculateFlowLatencyRequest(flow.getFlowId(), FlowDirection.REVERSE, expectedReversePath,
+                null);
 
         verifyNoMoreInteractions(carrier);
     }
 
     @Test
-    public void serviceActivationDeactivationAndReactivation() {
+    public void activationDeactivationAndReactivation() {
         createFlow();
         service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
         service.activate();
@@ -197,6 +220,64 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
         assertFalse(service.flowStatesIsEmpty());
     }
 
+    @Test
+    public void changeHaFlowPathInCache() {
+        when(clock.instant()).thenReturn(Instant.now());
+        service = new FlowCacheService(persistenceManager, clock, FLOW_RTT_STATS_EXPIRATION_TIME, carrier);
+        service.activate();
+
+        HaFlow haFlow = dummyFactory.makeHaFlow(HA_FLOW_ID_1, thirdSwitch, PORT_1, 50L, 100L);
+        HaSubFlow firstHaSubFlow = dummyFactory.makeHaSubFlow(SUB_FLOW_ID_1, firstSwitch, PORT_1, VLAN_1, INNER_VLAN_1,
+                DESCRIPTION_1);
+        HaSubFlow secondHaSubFlow = dummyFactory.makeHaSubFlow(SUB_FLOW_ID_2, secondSwitch, PORT_2, VLAN_2,
+                INNER_VLAN_2, DESCRIPTION_2);
+        HashSet<HaSubFlow> haSubFlows = Sets.newHashSet(firstHaSubFlow, secondHaSubFlow);
+        haFlow.setHaSubFlows(haSubFlows);
+
+        PathId forwardPathId = new PathId(HA_FLOW_ID_1 + "_ha_path_1");
+        HaFlowPath forwardHaFlowPath = dummyFactory.makeHaFlowPath(forwardPathId, 0, COOKIE_1,
+                METER_ID_1, METER_ID_2, thirdSwitch, firstSwitch.getSwitchId(), GROUP_ID_1);
+        forwardHaFlowPath.setHaSubFlows(haSubFlows);
+        FlowPath forwardSubPath = dummyFactory.makeFlowPath(
+                forwardHaFlowPath.getHaPathId().append("_sub_path"), forwardHaFlowPath, thirdSwitch, firstSwitch);
+        forwardSubPath.setHaSubFlow(firstHaSubFlow);
+        forwardSubPath.setSegments(Lists.newArrayList(dummyFactory.makePathSegment(forwardPathId, thirdSwitch,
+                firstSwitch)));
+        forwardHaFlowPath.setSubPaths(Lists.newArrayList(forwardSubPath));
+
+        PathId reversePathId = new PathId(HA_FLOW_ID_1 + "_ha_path_2");
+        HaFlowPath reverseHaFlowPath = dummyFactory.makeHaFlowPath(reversePathId, 0, COOKIE_2,
+                METER_ID_1, METER_ID_2, thirdSwitch, firstSwitch.getSwitchId(), GROUP_ID_1);
+        reverseHaFlowPath.setHaSubFlows(haSubFlows);
+        FlowPath reverseSubPath = dummyFactory.makeFlowPath(
+                reverseHaFlowPath.getHaPathId().append("_sub_path"), reverseHaFlowPath, firstSwitch, thirdSwitch);
+        reverseSubPath.setHaSubFlow(firstHaSubFlow);
+        reverseSubPath.setSegments(Lists.newArrayList(dummyFactory.makePathSegment(reversePathId, firstSwitch,
+                thirdSwitch)));
+        reverseHaFlowPath.setSubPaths(Lists.newArrayList(reverseSubPath));
+
+        haFlow.setForwardPath(forwardHaFlowPath);
+        haFlow.setReversePath(reverseHaFlowPath);
+
+        Long maxLatency = 100L;
+        Long maxLatencyTier2 = 200L;
+
+        UpdateHaSubFlowCommand updateHaSubFlowCommand = new UpdateHaSubFlowCommand(firstHaSubFlow.getHaSubFlowId(),
+                maxLatency, maxLatencyTier2);
+
+        service.updateHaFlowInfo(updateHaSubFlowCommand);
+        service.processFlowLatencyCheck(firstHaSubFlow.getHaSubFlowId());
+
+        List<Link> expectedForwardPath = getLinks(SWITCH_ID_3, PORT_0, SWITCH_ID_1, PORT_0);
+        verify(carrier).emitCalculateFlowLatencyRequest(firstHaSubFlow.getHaSubFlowId(), FlowDirection.FORWARD,
+                expectedForwardPath, haFlow.getHaFlowId());
+        List<Link> expectedReversePath = reverse(expectedForwardPath);
+        verify(carrier).emitCalculateFlowLatencyRequest(firstHaSubFlow.getHaSubFlowId(), FlowDirection.REVERSE,
+                expectedReversePath, haFlow.getHaFlowId());
+
+        verifyNoMoreInteractions(carrier);
+    }
+
     private void createIsl(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort) {
         Isl isl = Isl.builder()
                 .srcSwitch(srcSwitch)
@@ -210,11 +291,11 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
     }
 
     private Flow createFlow() {
-        FlowEndpoint flowSource = new FlowEndpoint(SRC_SWITCH, IN_PORT);
-        FlowEndpoint flowDestination = new FlowEndpoint(DST_SWITCH, OUT_PORT);
+        FlowEndpoint flowSource = new FlowEndpoint(SWITCH_ID_1, IN_PORT);
+        FlowEndpoint flowDestination = new FlowEndpoint(SWITCH_ID_2, OUT_PORT);
         IslDirectionalReference islDirectionalReference = new IslDirectionalReference(
-                new IslEndpoint(SRC_SWITCH, ISL_SRC_PORT),
-                new IslEndpoint(DST_SWITCH, ISL_DST_PORT));
+                new IslEndpoint(SWITCH_ID_1, ISL_SRC_PORT),
+                new IslEndpoint(SWITCH_ID_2, ISL_DST_PORT));
         return dummyFactory.makeFlow(flowSource, flowDestination, islDirectionalReference);
     }
 
