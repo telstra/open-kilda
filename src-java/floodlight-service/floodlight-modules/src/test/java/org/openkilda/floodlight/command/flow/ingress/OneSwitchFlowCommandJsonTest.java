@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow.ingress;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.openkilda.floodlight.api.request.OneSwitchFlowRequest;
 import org.openkilda.floodlight.api.request.factory.OneSwitchFlowRequestFactory;
 import org.openkilda.floodlight.command.AbstractSpeakerCommandJsonTest;
@@ -28,21 +30,19 @@ import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 
-import org.junit.Assert;
-
 import java.util.HashSet;
 
 abstract class OneSwitchFlowCommandJsonTest
         extends AbstractSpeakerCommandJsonTest<OneSwitchFlowRequest> {
     protected void verifyPayload(OneSwitchFlowRequest request, OneSwitchFlowCommand command) {
-        Assert.assertEquals(request.getMessageContext(), command.getMessageContext());
-        Assert.assertEquals(request.getSwitchId(), command.getSwitchId());
-        Assert.assertEquals(request.getCommandId(), command.getCommandId());
-        Assert.assertEquals(request.getEndpoint(), command.getEndpoint());
-        Assert.assertEquals(request.getEndpoint(), command.getEndpoint());
-        Assert.assertEquals(request.getMeterConfig(), command.getMeterConfig());
-        Assert.assertEquals(request.getEgressEndpoint(), command.getEgressEndpoint());
-        Assert.assertEquals(request.getRulesContext(), command.getRulesContext());
+        assertEquals(request.getMessageContext(), command.getMessageContext());
+        assertEquals(request.getSwitchId(), command.getSwitchId());
+        assertEquals(request.getCommandId(), command.getCommandId());
+        assertEquals(request.getEndpoint(), command.getEndpoint());
+        assertEquals(request.getEndpoint(), command.getEndpoint());
+        assertEquals(request.getMeterConfig(), command.getMeterConfig());
+        assertEquals(request.getEgressEndpoint(), command.getEgressEndpoint());
+        assertEquals(request.getRulesContext(), command.getRulesContext());
     }
 
     @Override

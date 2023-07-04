@@ -20,12 +20,12 @@ import org.openkilda.floodlight.api.request.factory.OneSwitchFlowRequestFactory;
 import org.openkilda.floodlight.command.SpeakerCommand;
 import org.openkilda.floodlight.command.SpeakerCommandReport;
 
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 
 public class OneSwitchFlowInstallCommandJsonTest extends OneSwitchFlowCommandJsonTest {
     @Override
     protected void verify(OneSwitchFlowRequest request, SpeakerCommand<? extends SpeakerCommandReport> rawCommand) {
-        Assert.assertTrue(rawCommand instanceof OneSwitchFlowInstallCommand);
+        Assertions.assertTrue(rawCommand instanceof OneSwitchFlowInstallCommand);
         verifyPayload(request, (OneSwitchFlowInstallCommand) rawCommand);
     }
 

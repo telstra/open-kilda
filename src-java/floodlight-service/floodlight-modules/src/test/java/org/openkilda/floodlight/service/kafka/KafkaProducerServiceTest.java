@@ -35,9 +35,9 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.easymock.EasyMockSupport;
 import org.easymock.IAnswer;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -57,7 +57,7 @@ public class KafkaProducerServiceTest extends EasyMockSupport {
     @SuppressWarnings("unchecked")
     private Producer<String, String> kafkaProducer = (Producer<String, String>) strictMock(Producer.class);
 
-    @Before
+    @BeforeEach
     public void setUp() {
         injectMocks(this);
 
@@ -125,8 +125,8 @@ public class KafkaProducerServiceTest extends EasyMockSupport {
         } catch (ExecutionException e) {
             isThrown = true;
         }
-        Assert.assertTrue(String.format(
-                "Exception was not thrown by %s object", status.getClass().getCanonicalName()), isThrown);
+        Assertions.assertTrue(isThrown, String.format(
+                "Exception was not thrown by %s object", status.getClass().getCanonicalName()));
     }
 
     private InfoMessage makePayload() {

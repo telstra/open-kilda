@@ -38,9 +38,9 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.easymock.Capture;
 import org.easymock.EasyMockSupport;
 import org.easymock.Mock;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
@@ -62,7 +62,7 @@ public class NetworkDiscoveryEmitterTest extends EasyMockSupport {
     @Mock
     private IPathVerificationService pathVerificationService;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         injectMocks(this);
 
@@ -140,7 +140,7 @@ public class NetworkDiscoveryEmitterTest extends EasyMockSupport {
         subject.tick();
 
         verify(pathVerificationService);  // no interaction
-        Assert.assertFalse(confirmationCapture.hasCaptured());
+        Assertions.assertFalse(confirmationCapture.hasCaptured());
 
         clock.adjust(flushHalfDelay);
         // third (1)
@@ -149,7 +149,7 @@ public class NetworkDiscoveryEmitterTest extends EasyMockSupport {
         subject.tick();
 
         verify(pathVerificationService);  // no interaction
-        Assert.assertFalse(confirmationCapture.hasCaptured());
+        Assertions.assertFalse(confirmationCapture.hasCaptured());
 
         clock.adjust(flushHalfDelay);
         // fourth (1.5)
@@ -158,7 +158,7 @@ public class NetworkDiscoveryEmitterTest extends EasyMockSupport {
         subject.tick();
 
         verify(pathVerificationService);  // no interaction
-        Assert.assertFalse(confirmationCapture.hasCaptured());
+        Assertions.assertFalse(confirmationCapture.hasCaptured());
 
         // wait flush (3)
         clock.adjust(flushHalfDelay);
@@ -179,15 +179,15 @@ public class NetworkDiscoveryEmitterTest extends EasyMockSupport {
     }
 
     private void verifyCaptured(Capture<InfoMessage> capture, DiscoverIslCommandData request) {
-        Assert.assertTrue(capture.hasCaptured());
+        Assertions.assertTrue(capture.hasCaptured());
         InfoMessage wrapper = capture.getValue();
-        Assert.assertEquals(REGION, wrapper.getRegion());
-        Assert.assertTrue(wrapper.getData() instanceof DiscoPacketSendingConfirmation);
+        Assertions.assertEquals(REGION, wrapper.getRegion());
+        Assertions.assertTrue(wrapper.getData() instanceof DiscoPacketSendingConfirmation);
 
         DiscoPacketSendingConfirmation confirmation = (DiscoPacketSendingConfirmation) wrapper.getData();
-        Assert.assertEquals(request.getSwitchId(), confirmation.getEndpoint().getDatapath());
-        Assert.assertEquals(request.getPortNumber(), (int) confirmation.getEndpoint().getPortNumber());
-        Assert.assertEquals((long) request.getPacketId(), confirmation.getPacketId());
+        Assertions.assertEquals(request.getSwitchId(), confirmation.getEndpoint().getDatapath());
+        Assertions.assertEquals(request.getPortNumber(), (int) confirmation.getEndpoint().getPortNumber());
+        Assertions.assertEquals((long) request.getPacketId(), confirmation.getPacketId());
     }
 
     private void expectDiscoveryEmmit(DiscoverIslCommandData request) {

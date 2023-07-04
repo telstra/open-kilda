@@ -20,14 +20,14 @@ import org.openkilda.floodlight.api.request.factory.TransitFlowSegmentRequestFac
 import org.openkilda.floodlight.command.SpeakerCommand;
 import org.openkilda.floodlight.command.SpeakerCommandReport;
 
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 
 public class TransitFlowSegmentVerifyCommandTest extends TransitFlowSegmentCommandJsonTest {
 
     @Override
     protected void verify(
             TransitFlowSegmentRequest request, SpeakerCommand<? extends SpeakerCommandReport> rawCommand) {
-        Assert.assertTrue(rawCommand instanceof TransitFlowSegmentVerifyCommand);
+        Assertions.assertTrue(rawCommand instanceof TransitFlowSegmentVerifyCommand);
         verifyPayload(request, (TransitFlowSegmentVerifyCommand) rawCommand);
     }
 

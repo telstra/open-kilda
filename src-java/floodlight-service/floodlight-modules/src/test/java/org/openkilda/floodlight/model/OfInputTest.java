@@ -23,10 +23,10 @@ import net.floodlightcontroller.core.IOFSwitch;
 import org.easymock.EasyMockSupport;
 import org.easymock.Mock;
 import org.easymock.MockType;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFType;
@@ -45,7 +45,7 @@ public class OfInputTest extends EasyMockSupport {
     @Mock
     private IOFSwitch ofSwitch;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         injectMocks(this);
 
@@ -56,7 +56,7 @@ public class OfInputTest extends EasyMockSupport {
         replayAll();
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         verifyAll();
     }
@@ -67,7 +67,7 @@ public class OfInputTest extends EasyMockSupport {
     @Test
     public void isCookieMismatch0() {
         OfInput input = makeInput(U64.of(cookieAlpha.getValue()));
-        Assert.assertFalse(input.packetInCookieMismatchAll(callerLogger, cookieAlpha));
+        Assertions.assertFalse(input.packetInCookieMismatchAll(callerLogger, cookieAlpha));
     }
 
     /**
@@ -76,10 +76,10 @@ public class OfInputTest extends EasyMockSupport {
     @Test
     public void isCookieMismatch1() {
         OfInput input = makeInput(U64.of(-1));
-        Assert.assertFalse(input.packetInCookieMismatchAll(callerLogger, cookieAlpha));
+        Assertions.assertFalse(input.packetInCookieMismatchAll(callerLogger, cookieAlpha));
 
         input = makeInput(U64.ZERO);
-        Assert.assertFalse(input.packetInCookieMismatchAll(callerLogger, cookieAlpha));
+        Assertions.assertFalse(input.packetInCookieMismatchAll(callerLogger, cookieAlpha));
     }
 
     /**
@@ -95,7 +95,7 @@ public class OfInputTest extends EasyMockSupport {
 
         FloodlightContext messageMetadata = new FloodlightContext();
         OfInput input = new OfInput(ofSwitch, message, messageMetadata);
-        Assert.assertFalse(input.packetInCookieMismatchAll(callerLogger, cookieAlpha));
+        Assertions.assertFalse(input.packetInCookieMismatchAll(callerLogger, cookieAlpha));
     }
 
     /**
@@ -104,7 +104,7 @@ public class OfInputTest extends EasyMockSupport {
     @Test
     public void isCookieMismatch3() {
         OfInput input = makeInput(cookieAlpha);
-        Assert.assertTrue(input.packetInCookieMismatchAll(callerLogger, cookieBeta));
+        Assertions.assertTrue(input.packetInCookieMismatchAll(callerLogger, cookieBeta));
     }
 
     private OfInput makeInput(U64 cookie) {

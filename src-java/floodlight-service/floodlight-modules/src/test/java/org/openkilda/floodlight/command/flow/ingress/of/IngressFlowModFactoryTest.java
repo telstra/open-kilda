@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.command.flow.ingress.of;
 
 import static org.easymock.EasyMock.expect;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.floodlight.command.flow.FlowSegmentCommand;
 import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentBase;
@@ -40,10 +41,10 @@ import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.easymock.EasyMockSupport;
 import org.easymock.Mock;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
@@ -89,7 +90,7 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
     @Mock
     protected IOFSwitch sw;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         injectMocks(this);
 
@@ -99,7 +100,7 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
         replayAll();
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         verifyAll();
     }
@@ -164,16 +165,18 @@ abstract class IngressFlowModFactoryTest extends EasyMockSupport {
         }
 
         if (expectPostIngressTableRedirect()) {
-            Assert.assertNotNull(match);
-            Assert.assertEquals(TableId.of(SwitchManager.POST_INGRESS_TABLE_ID), match.getTableId());
+            Assertions.assertNotNull(match);
+
+
+            assertEquals(TableId.of(SwitchManager.POST_INGRESS_TABLE_ID), match.getTableId());
         } else {
-            Assert.assertNull(match);
+            Assertions.assertNull(match);
         }
     }
 
     protected void verifyOfMessageEquals(OFMessage expected, OFMessage actual) {
-        if (! expected.equalsIgnoreXid(actual)) {
-            Assert.assertEquals(expected, actual);
+        if (!expected.equalsIgnoreXid(actual)) {
+            assertEquals(expected, actual);
         }
     }
 

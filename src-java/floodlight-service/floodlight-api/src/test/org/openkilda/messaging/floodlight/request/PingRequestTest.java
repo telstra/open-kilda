@@ -22,8 +22,8 @@ import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.model.SwitchId;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class PingRequestTest {
 	StringSerializer serializer = new StringSerializer();
@@ -41,9 +41,7 @@ public class PingRequestTest {
         CommandMessage decodedWrapper = (CommandMessage) serializer.deserialize();
         CommandData decoded = decodedWrapper.getData();
 
-        Assert.assertEquals(
-                String.format("%s object have been mangled in serialisation/deserialization loop",
-                        origin.getClass().getName()),
-                origin, decoded);
+        Assertions.assertEquals(origin, decoded, String.format("%s object have been mangled in serialisation/deserialization loop",
+                origin.getClass().getName()));
     }
 }

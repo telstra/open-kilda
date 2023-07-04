@@ -14,9 +14,13 @@ dependencies {
     implementation 'org.apache.commons:commons-lang3'
     implementation 'org.slf4j:slf4j-api'
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+}
+
+test {
+    useJUnitPlatform()
 }

@@ -25,8 +25,8 @@ import net.floodlightcontroller.core.internal.OFConnection;
 import net.floodlightcontroller.core.internal.OFSwitch;
 import net.floodlightcontroller.core.internal.OFSwitchManager;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -48,7 +48,7 @@ public class BfdFeatureTest {
 
     @Test
     public void testDiscoverOfSwitchWithoutBfdSupport() {
-        Assert.assertFalse(bfdFeature.discover(createSwitchWithDescription(null)).isPresent());
+        Assertions.assertFalse(bfdFeature.discover(createSwitchWithDescription(null)).isPresent());
 
         assertWithoutBfdSupport("2.8.16.21");
         assertWithoutBfdSupport("2.8.16.15");
@@ -57,13 +57,13 @@ public class BfdFeatureTest {
 
     private static void assertWithBfdSupport(String description) {
         Optional<SwitchFeature> feature = bfdFeature.discover(createSwitchWithSoftwareDescription(description));
-        Assert.assertTrue(feature.isPresent());
-        Assert.assertEquals(SwitchFeature.BFD, feature.get());
+        Assertions.assertTrue(feature.isPresent());
+        Assertions.assertEquals(SwitchFeature.BFD, feature.get());
     }
 
     private static void assertWithoutBfdSupport(String description) {
         Optional<SwitchFeature> feature = bfdFeature.discover(createSwitchWithSoftwareDescription(description));
-        Assert.assertFalse(feature.isPresent());
+        Assertions.assertFalse(feature.isPresent());
     }
 
     private static IOFSwitch createSwitchWithSoftwareDescription(String softwareDescription) {

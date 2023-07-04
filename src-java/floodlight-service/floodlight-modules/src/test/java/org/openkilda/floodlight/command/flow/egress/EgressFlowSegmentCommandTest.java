@@ -24,15 +24,15 @@ import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 
 import java.util.concurrent.CompletableFuture;
 
 abstract class EgressFlowSegmentCommandTest extends AbstractSpeakerCommandTest {
     @Override
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
         switchFeaturesSetup(swNext, Sets.newHashSet(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN));

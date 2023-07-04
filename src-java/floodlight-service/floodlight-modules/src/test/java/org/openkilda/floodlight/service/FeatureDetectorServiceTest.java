@@ -45,10 +45,10 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.easymock.EasyMockSupport;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 
@@ -58,14 +58,14 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     private final FeatureDetectorService featuresDetector = new FeatureDetectorService();
     private final FloodlightModuleContext moduleContext = new FloodlightModuleContext();
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         injectMocks(this);
 
         featuresDetector.setup(moduleContext);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         verifyAll();
     }
@@ -253,7 +253,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
         replayAll();
 
         Set<SwitchFeature> actualFeatures = featuresDetector.detectSwitch(sw);
-        Assert.assertEquals(expectedFeatures, actualFeatures);
+        Assertions.assertEquals(expectedFeatures, actualFeatures);
     }
 
     private void discoveryContain(IOFSwitch sw, SwitchFeature... expectedFeatules) {
@@ -261,7 +261,7 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
 
         Set<SwitchFeature> actualFeatures = featuresDetector.detectSwitch(sw);
         for (SwitchFeature expected : expectedFeatules) {
-            Assert.assertTrue(actualFeatures.contains(expected));
+            Assertions.assertTrue(actualFeatures.contains(expected));
         }
     }
 

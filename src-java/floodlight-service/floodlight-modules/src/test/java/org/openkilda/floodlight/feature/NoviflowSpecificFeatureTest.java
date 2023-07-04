@@ -18,15 +18,15 @@ package org.openkilda.floodlight.feature;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.floodlight.feature.NoviflowSpecificFeature.isNoviSwitch;
 import static org.openkilda.floodlight.feature.NoviflowSpecificFeature.isSmSeries;
 import static org.openkilda.floodlight.feature.NoviflowSpecificFeature.isWbSeries;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class NoviflowSpecificFeatureTest {
 

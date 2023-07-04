@@ -17,8 +17,8 @@ package org.openkilda.floodlight.pathverification;
 
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.floodlight.pathverification.DiscoveryPacket.CHASSIS_ID_LLDPTV_PACKET_TYPE;
 import static org.openkilda.floodlight.pathverification.DiscoveryPacket.OPTIONAL_LLDPTV_PACKET_TYPE;
 import static org.openkilda.floodlight.pathverification.DiscoveryPacket.PORT_ID_LLDPTV_PACKET_TYPE;
@@ -54,9 +54,9 @@ import net.floodlightcontroller.packet.UDP;
 import org.apache.commons.codec.binary.Hex;
 import org.bouncycastle.util.Arrays;
 import org.easymock.EasyMock;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
@@ -166,45 +166,45 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
                         .setLength((short) 12)
                         .setValue(Arrays.concatenate(
                                 ORGANIZATIONALLY_UNIQUE_IDENTIFIER,
-                                new byte[] {SWITCH_T0_OPTIONAL_TYPE},
+                                new byte[]{SWITCH_T0_OPTIONAL_TYPE},
                                 SWITCH_T0)),
                 new LLDPTLV() // switch t1
                         .setType(OPTIONAL_LLDPTV_PACKET_TYPE)
                         .setLength((short) 12)
                         .setValue(Arrays.concatenate(
                                 ORGANIZATIONALLY_UNIQUE_IDENTIFIER,
-                                new byte[] {SWITCH_T1_OPTIONAL_TYPE},
+                                new byte[]{SWITCH_T1_OPTIONAL_TYPE},
                                 SWITCH_T1)),
                 new LLDPTLV() // dpid
                         .setType(OPTIONAL_LLDPTV_PACKET_TYPE)
                         .setLength((short) 12)
                         .setValue(Arrays.concatenate(
                                 ORGANIZATIONALLY_UNIQUE_IDENTIFIER,
-                                new byte[] {REMOTE_SWITCH_OPTIONAL_TYPE},
+                                new byte[]{REMOTE_SWITCH_OPTIONAL_TYPE},
                                 REMOTE_SWITCH_ID)),
                 new LLDPTLV() // timestamp
                         .setType(OPTIONAL_LLDPTV_PACKET_TYPE)
                         .setLength((short) 12)
                         .setValue(Arrays.concatenate(
                                 ORGANIZATIONALLY_UNIQUE_IDENTIFIER,
-                                new byte[] {TIMESTAMP_OPTIONAL_TYPE},
+                                new byte[]{TIMESTAMP_OPTIONAL_TYPE},
                                 TIMESTAMP)),
                 new LLDPTLV() // path ordinal
                         .setType(OPTIONAL_LLDPTV_PACKET_TYPE)
                         .setLength((short) 8)
                         .setValue(Arrays.concatenate(
                                 ORGANIZATIONALLY_UNIQUE_IDENTIFIER,
-                                new byte[] {PATH_ORDINAL_OPTIONAL_TYPE},
+                                new byte[]{PATH_ORDINAL_OPTIONAL_TYPE},
                                 PATH_ORDINAL))
         );
 
         DiscoveryPacket discoveryPacket = DiscoveryPacket.builder()
                 .chassisId(new LLDPTLV().setType(CHASSIS_ID_LLDPTV_PACKET_TYPE).setLength((short) 7)
-                        .setValue(new byte[] {0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}))
+                        .setValue(new byte[]{0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}))
                 .portId(new LLDPTLV().setType(PORT_ID_LLDPTV_PACKET_TYPE).setLength((short) 3)
-                        .setValue(new byte[] {0x02, 0x00, 0x01}))
+                        .setValue(new byte[]{0x02, 0x00, 0x01}))
                 .ttl(new LLDPTLV().setType(TTL_LLDPTV_PACKET_TYPE).setLength((short) 2)
-                        .setValue(new byte[] {0x00, 0x78}))
+                        .setValue(new byte[]{0x00, 0x78}))
                 .optionalTlvList(optional)
                 .build();
 
@@ -226,7 +226,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         return eth;
     }
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
 
         super.setUp();
@@ -287,7 +287,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         replay(sw2);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
     }
 

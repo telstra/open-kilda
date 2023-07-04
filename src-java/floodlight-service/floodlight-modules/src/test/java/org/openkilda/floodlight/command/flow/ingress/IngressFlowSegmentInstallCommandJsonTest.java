@@ -21,14 +21,14 @@ import org.openkilda.floodlight.command.SpeakerCommand;
 import org.openkilda.floodlight.command.SpeakerCommandReport;
 
 import lombok.extern.slf4j.Slf4j;
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 
 @Slf4j
 public class IngressFlowSegmentInstallCommandJsonTest extends IngressFlowSegmentCommandJsonTest {
     @Override
     protected void verify(IngressFlowSegmentRequest request,
                           SpeakerCommand<? extends SpeakerCommandReport> rawCommand) {
-        Assert.assertTrue(rawCommand instanceof IngressFlowSegmentInstallCommand);
+        Assertions.assertTrue(rawCommand instanceof IngressFlowSegmentInstallCommand);
         verifyPayload(request, (IngressFlowSegmentInstallCommand) rawCommand);
     }
 

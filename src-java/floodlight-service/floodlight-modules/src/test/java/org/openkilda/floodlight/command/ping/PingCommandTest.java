@@ -34,7 +34,7 @@ import org.openkilda.messaging.Message;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.Mock;
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 public abstract class PingCommandTest extends AbstractCommandTest {
     protected static final String PING_KAFKA_TOPIC = "ping.topic";
@@ -51,7 +51,7 @@ public abstract class PingCommandTest extends AbstractCommandTest {
     protected KildaCore kildaCore;
 
     @Override
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
 

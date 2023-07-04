@@ -15,8 +15,8 @@
 
 package org.openkilda.floodlight.utils;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.floodlight.shared.packet.VlanTag;
 import org.openkilda.floodlight.test.standard.PacketTestBase;
@@ -24,8 +24,8 @@ import org.openkilda.floodlight.test.standard.PacketTestBase;
 import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.types.EthType;
 
 import java.util.ArrayList;
@@ -34,7 +34,7 @@ import java.util.List;
 @Slf4j
 public class EthernetPacketToolboxTest extends PacketTestBase {
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpClass() throws Exception {
         log.info("Force loading of {}", Class.forName(VlanTag.class.getName()));
     }

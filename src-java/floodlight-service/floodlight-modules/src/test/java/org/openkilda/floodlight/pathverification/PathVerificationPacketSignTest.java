@@ -31,12 +31,12 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import org.easymock.EasyMock;
-import org.easymock.EasyMockRunner;
+import org.easymock.EasyMockExtension;
 import org.easymock.IAnswer;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
@@ -47,13 +47,13 @@ import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.HashMap;
 
-@RunWith(EasyMockRunner.class)
+@ExtendWith(EasyMockExtension.class)
 public class PathVerificationPacketSignTest extends PathVerificationPacketInTest {
 
     private OFPacketIn ofPacketIn;
     private FloodlightContext context;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
 
@@ -99,7 +99,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
     public void testInputSwitchNotFound() {
         producerService.sendMessageAndTrack(anyObject(), anyObject(), anyObject(Message.class));
         expectLastCall().andAnswer((IAnswer) () -> {
-            Assert.fail();
+            Assertions.fail();
             return null;
         }).anyTimes();
         replay(producerService);
